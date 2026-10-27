@@ -10,4 +10,4 @@
 {{- else -}}
   {{- $heading = printf `<h1 class="h1">%s</h1>` (.LinkTitle | htmlEscape) -}}
 {{- end -}}
-{{ partial "blog/list.html" (dict "page" . "crumbs" $crumbs "heading" ($heading | safeHTML) "pages" .Pages.ByDate.Reverse "current" (cond $isAuthor nil .)) }}
+{{ partial "blog/list.html" (dict "page" . "crumbs" $crumbs "heading" ($heading | safeHTML) "pages" (partial "visible.html" .Pages).ByDate.Reverse "current" (cond $isAuthor nil .)) }}

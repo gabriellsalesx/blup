@@ -33,6 +33,16 @@ loadMore = "Carregar mais"
 newer = "Posts mais novos"
 related = "Posts relacionados"
 
+lockedTitle = "Publicação bloqueada"
+lockedText = "Digite a senha para ler."
+lockedDescription = "Publicação protegida por senha."
+lockedPreview = "Protegida por senha: no site publicado, quem ler precisa digitar a senha."
+lockedNoScript = "Ative o JavaScript para desbloquear esta publicação."
+password = "Senha"
+unlock = "Desbloquear"
+unlocking = "Desbloqueando…"
+wrongPassword = "Senha incorreta."
+
 [readingTime]
 one = "{{ .Count }} min de leitura"
 other = "{{ .Count }} min de leitura"

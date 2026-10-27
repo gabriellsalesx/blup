@@ -1,0 +1,9 @@
+{{- /* Password of a protected note: the "password" property. "true", "sim"
+or "yes" means the site-wide password set in the CLI. Returns "" when the
+note is not protected. */ -}}
+{{- $pw := "" -}}
+{{- with .Params.password -}}
+  {{- $s := lower (string .) -}}
+  {{- if in (slice "true" "sim" "yes") $s }}{{ $pw = "__global__" }}{{ else }}{{ $pw = string . }}{{ end -}}
+{{- end -}}
+{{- return $pw -}}

@@ -168,6 +168,16 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 			},
 		},
 	}
+	// blup-locks.json lists the passwords of protected notes for the CLI,
+	// which encrypts them and deletes the file (see internal/lock).
+	cfg["outputFormats"] = map[string]any{"bluplocks": map[string]any{
+		"mediaType": "application/json", "baseName": "blup-locks", "isPlainText": true, "notAlternative": true,
+	}}
+	home := []string{"html", "rss", "bluplocks"}
+	if s.Model == "docs" {
+		home = []string{"html", "bluplocks"}
+	}
+	cfg["outputs"] = map[string]any{"home": home}
 	if preview {
 		mounts := cfg["module"].(map[string]any)["mounts"].([]mount)
 		cfg["module"] = map[string]any{"mounts": append(mounts, mount{Source: PreviewStatic, Target: "static"})}

@@ -27,6 +27,7 @@ through light-dark(): the theme switcher only changes color-scheme. */
   ul, ol { padding: 0; list-style: none; }
   a { color: inherit; text-decoration: none; }
   button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  [hidden] { display: none !important; }
   input { font: inherit; color: inherit; }
 }
 
@@ -83,7 +84,7 @@ through light-dark(): the theme switcher only changes color-scheme. */
   main { flex: 1; }
   :focus-visible { outline: 2px solid var(--primary-500); outline-offset: 2px; border-radius: .25rem; }
   ::selection { background: color-mix(in srgb, var(--primary-500) 25%, transparent); }
-  .icon { width: 1.25rem; height: 1.25rem; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+  .icon { width: 1.25rem; height: 1.25rem; flex-shrink: 0; overflow: visible; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
   .icon-sm { width: 1rem; height: 1rem; }
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
   .skip { position: absolute; left: -999px; top: .5rem; z-index: 100; padding: .5rem 1rem; background: var(--main-900); color: var(--main-25); border-radius: .5rem; }
@@ -343,6 +344,20 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .post-end h2 { font-size: 1rem; font-weight: 500; color: var(--main-700); }
   .post-end .tag-list { margin: 0; }
   .related { padding-block: 2.5rem 4rem; }
+
+  /* Password-protected post */
+  .lock-form { display: grid; justify-items: center; gap: .75rem; text-align: center; padding: 3rem 1.5rem; border: 1px solid var(--main-200); border-radius: var(--radius); background: var(--main-50); }
+  .lock-form h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.025em; color: var(--main-900); }
+  .lock-form p { color: var(--main-600); }
+  .lock-icon { display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%; background: var(--main-100); color: var(--main-700); }
+  .lock-icon .icon { width: 1.5rem; height: 1.5rem; overflow: visible; }
+  .lock-field { display: flex; gap: .5rem; width: min(100%, 24rem); margin-block-start: .5rem; }
+  .lock-field input { flex: 1; min-width: 0; padding: .5rem .75rem; border: 1px solid var(--main-300); border-radius: .375rem; background: var(--main-25); }
+  .lock-field input:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 1px; }
+  .lock-field .button:disabled { opacity: .6; cursor: progress; transform: none; }
+  .lock-error { color: light-dark(#b91c1c, #f87171); font-size: .875rem; }
+  .locked-note { display: flex; align-items: center; gap: .5rem; margin-block-end: 1.5rem; padding: .5rem .75rem; border-radius: .375rem; background: var(--main-100); color: var(--main-600); font-size: .875rem; }
+  .lock-badge { display: inline-block; width: 1em; height: 1em; margin-inline-end: .35em; vertical-align: -.1em; color: var(--main-500); }
   .related .h2 { margin-block-end: 2.5rem; }
 }
 

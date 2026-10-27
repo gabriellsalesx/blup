@@ -8,7 +8,7 @@
     {{- end }}
   </a>
   {{ partial "blog/tags.html" . }}
-  <a class="card-title h5" href="{{ .RelPermalink }}"><h3>{{ $title }}</h3></a>
+  <a class="card-title h5" href="{{ .RelPermalink }}"><h3>{{ if partial "locked.html" . }}<svg class="icon lock-badge" aria-label="{{ T "lockedTitle" }}"><use href="#i-lock"/></svg>{{ end }}{{ $title }}</h3></a>
   {{- with partial "description.html" . }}<p>{{ . }}</p>{{ end }}
   {{ partial "blog/byline.html" (dict "page" . "size" "sm" "long" true) }}
 </article>

@@ -5,6 +5,7 @@
 {{- if not $crumbs }}{{ $crumbs = slice (dict "name" (T "blog") "url" site.Home.RelPermalink) }}{{ end -}}
 {{- $crumbs = $crumbs | append (dict "name" $title) -}}
 {{- $a := partial "blog/author.html" . -}}
+{{- $locked := partial "locked.html" . -}}
 <main id="main">
   <header class="post-hero{{ if not $cover }} no-cover{{ end }}">
     <div class="container">
@@ -21,7 +22,7 @@
   </header>
   <div class="container post-body">
     <aside class="post-aside">
-      {{- if gt (len .Fragments.Headings) 0 }}{{ with .TableOfContents }}{{ if ne . "" }}
+      {{- if and (not $locked) (gt (len .Fragments.Headings) 0) }}{{ with .TableOfContents }}{{ if ne . "" }}
       <div>
         <h2 class="toc-title">{{ T "onThisPage" }}</h2>
         <div class="toc">{{ . }}</div>
@@ -40,9 +41,13 @@
       {{- end }}
     </aside>
     <article class="post-article">
-      <div class="prose" data-pagefind-body data-pagefind-meta="title:{{ $title }}">
+      {{- if $locked }}
+      {{ partial "blog/lock.html" . }}
+      {{- else }}
+      <div class="prose"{{ if not .Params.hidden }} data-pagefind-body data-pagefind-meta="title:{{ $title }}"{{ end }}>
         {{ partial "content.html" . }}
       </div>
+      {{- end }}
       <footer class="post-end">
         {{ partial "blog/tags.html" . }}
         <h2>{{ T "shareArticle" }}</h2>
@@ -51,7 +56,7 @@
     </article>
   </div>
   {{- /* Related by tags first, completed with the newest posts. */}}
-  {{- $related := site.RegularPages.Related . | first 4 -}}
+  {{- $related := partial "visible.html" (site.RegularPages.Related .) | first 4 -}}
   {{- if lt (len $related) 4 }}
     {{- $more := complement (slice .) $related (partial "blog/posts.html" .) }}
     {{- $related = $related | append (first (sub 4 (len $related)) $more) }}

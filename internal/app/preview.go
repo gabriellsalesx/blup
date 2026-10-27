@@ -23,6 +23,8 @@ var serverURL = regexp.MustCompile(`https?://(localhost|127\.0\.0\.1):\d+/\S*`)
 
 // preview runs "hugo server" so every saved note shows up in the browser
 // immediately (drafts included). Ctrl+C stops it and returns to the menu.
+// It renders to memory only: protected notes are shown in clear text in the
+// preview, and that must never land in public/.
 func preview(ctx context.Context, _ *config.Global, site *config.Site) error {
 	bin, err := ensureHugo(ctx)
 	if err != nil {
@@ -35,8 +37,9 @@ func preview(ctx context.Context, _ *config.Global, site *config.Site) error {
 	defer stop()
 	previewSearch(ctx, bin, site)
 
-	cmd := bin.Command(ctx, site.Dir(), "server", "--config", scaffold.PreviewConfig, "--buildDrafts", "--navigateToChanged",
+	cmd := bin.Command(ctx, site.Dir(), "server", "--config", scaffold.PreviewConfig, "--renderToMemory", "--buildDrafts", "--navigateToChanged",
 		"--bind", "127.0.0.1", "--baseURL", "http://localhost/", "--logLevel", "warn")
+	cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=preview")
 	pr, pw := io.Pipe()
 	cmd.Stdout, cmd.Stderr = pw, pw
 	if err := cmd.Start(); err != nil {
@@ -81,6 +84,7 @@ func previewSearch(ctx context.Context, bin hugo.Binary, site *config.Site) {
 	defer os.RemoveAll(tmp)
 	err = ui.Spin(ctx, i18n.T("preview.indexing"), func(ctx context.Context) error {
 		cmd := bin.Command(ctx, site.Dir(), "--buildDrafts", "--baseURL", "http://localhost/", "--destination", tmp, "--quiet")
+		cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=preview")
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("%w: %s", err, out)
 		}

@@ -1,3 +1,4 @@
+{{- if partial "locked.html" . }}{{ return T "lockedDescription" }}{{ end -}}
 {{- $d := .Description -}}
 {{- if not $d -}}
   {{- if .IsHome -}}{{- $d = site.Params.description -}}

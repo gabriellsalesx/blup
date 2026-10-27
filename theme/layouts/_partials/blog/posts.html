@@ -1,2 +1,2 @@
 {{- /* All posts, newest first. */ -}}
-{{- return site.RegularPages.ByDate.Reverse -}}
+{{- return (partial "visible.html" site.RegularPages).ByDate.Reverse -}}

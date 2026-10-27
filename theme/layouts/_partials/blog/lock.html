@@ -1,0 +1,26 @@
+{{- /* Locked post body. With HUGO_BLUP_MODE=publish the content goes between
+markers that the CLI replaces with ciphertext; in the preview it is shown with
+a notice; with plain "hugo" (no CLI) it is left out, never published in clear. */ -}}
+{{- $mode := os.Getenv "HUGO_BLUP_MODE" -}}
+<div class="locked" data-blup-lock>
+  {{- if eq $mode "preview" }}
+  <p class="locked-note"><svg class="icon icon-sm"><use href="#i-lock"/></svg>{{ T "lockedPreview" }}</p>
+  <div class="prose">{{ partial "content.html" . }}</div>
+  {{- else }}
+  <form class="lock-form">
+    <span class="lock-icon" aria-hidden="true"><svg class="icon"><use href="#i-lock"/></svg></span>
+    <h2>{{ T "lockedTitle" }}</h2>
+    <p>{{ T "lockedText" }}</p>
+    <div class="lock-field">
+      <input type="password" name="password" required autocomplete="current-password" aria-label="{{ T "password" }}" placeholder="{{ T "password" }}">
+      <button class="button" type="submit" data-busy="{{ T "unlocking" }}">{{ T "unlock" }}</button>
+    </div>
+    <p class="lock-error" data-blup-error hidden>{{ T "wrongPassword" }}</p>
+    <noscript><p class="lock-error">{{ T "lockedNoScript" }}</p></noscript>
+  </form>
+  <div class="prose" data-blup-content hidden></div>
+  {{- if eq $mode "publish" }}<blup-begin data-id="{{ .File.UniqueID }}"></blup-begin>{{ partial "content.html" . }}<blup-end></blup-end>{{ end }}
+  {{- $js := resources.Get "js/lock.js" | js.Build (dict "minify" true "format" "esm") | fingerprint }}
+  <script type="module" src="{{ $js.RelPermalink }}"></script>
+  {{- end }}
+</div>

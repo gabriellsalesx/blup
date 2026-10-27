@@ -1,0 +1,9 @@
+{{- /* Passwords of protected notes, for the CLI to encrypt them. Only written
+when the CLI builds for publishing; the CLI deletes it right after. */ -}}
+{{- $m := dict -}}
+{{- if eq (os.Getenv "HUGO_BLUP_MODE") "publish" -}}
+  {{- range $p := site.RegularPages -}}
+    {{- with partial "locked.html" $p }}{{ $m = merge $m (dict $p.File.UniqueID .) }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+{{- $m | jsonify -}}

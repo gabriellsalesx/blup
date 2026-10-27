@@ -37,8 +37,11 @@ type Site struct {
 	Folder      string `toml:"folder"` // folder inside the vault published as the site; "" = whole vault
 	Domain      string `toml:"domain,omitempty"`
 	AuthorBio   string `toml:"author_bio,omitempty"`
-	Logo        string `toml:"logo,omitempty"`   // image file chosen by the user
-	Avatar      string `toml:"avatar,omitempty"` // author photo
+	// Password is the general password of protected notes ("password: sim").
+	// It stays in this file, on the user's computer, and is never published.
+	Password string `toml:"password,omitempty"`
+	Logo     string `toml:"logo,omitempty"`   // image file chosen by the user
+	Avatar   string `toml:"avatar,omitempty"` // author photo
 	// Menu is the top menu. Empty means automatic: Home plus the top-level
 	// folders of the site.
 	Menu   []MenuItem `toml:"menu,omitempty"`

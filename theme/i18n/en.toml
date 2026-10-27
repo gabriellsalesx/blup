@@ -33,6 +33,16 @@ loadMore = "Load more"
 newer = "Newer posts"
 related = "Related posts"
 
+lockedTitle = "Locked post"
+lockedText = "Type the password to read it."
+lockedDescription = "Password-protected post."
+lockedPreview = "Password protected: on the published site, readers must type the password."
+lockedNoScript = "Turn on JavaScript to unlock this post."
+password = "Password"
+unlock = "Unlock"
+unlocking = "Unlocking…"
+wrongPassword = "Wrong password."
+
 [readingTime]
 one = "{{ .Count }} min read"
 other = "{{ .Count }} min read"

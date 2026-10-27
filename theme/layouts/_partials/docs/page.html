@@ -3,7 +3,7 @@
   <main id="main">
     <article class="prose">
       <h1>{{ partial "title.html" . }}</h1>
-      {{ partial "content.html" . }}
+      {{ if partial "locked.html" . }}{{ partial "blog/lock.html" . }}{{ else }}{{ partial "content.html" . }}{{ end }}
       {{ partial "tags.html" . }}
     </article>
     {{ partial "docs/prevnext.html" . }}

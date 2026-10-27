@@ -9,7 +9,7 @@
 <meta name="description" content="{{ . }}">
 {{- end }}
 <link rel="canonical" href="{{ .Permalink }}">
-{{- if or (eq .Kind "404") .Params.noindex }}
+{{- if or (eq .Kind "404") .Params.noindex .Params.hidden }}
 <meta name="robots" content="noindex">
 {{- end }}
 <meta property="og:type" content="{{ cond $isArticle "article" "website" }}">

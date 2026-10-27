@@ -28,6 +28,7 @@ func customize(ctx context.Context, _ *config.Global, site *config.Site) error {
 			ui.Option(i18n.T("custom.social"), "social"),
 			ui.Option(i18n.T("custom.images"), "images"),
 			ui.Option(i18n.T("custom.about"), "about"),
+			ui.Option(i18n.T("custom.password"), "password"),
 			ui.Option(i18n.T("custom.back"), "back"),
 		); err != nil || choice == "back" {
 			return err
@@ -42,6 +43,8 @@ func customize(ctx context.Context, _ *config.Global, site *config.Site) error {
 			err = editImages(site)
 		case "about":
 			err = editAbout(site)
+		case "password":
+			err = editPassword(site)
 		}
 		if err != nil {
 			if ui.Aborted(err) {
@@ -234,4 +237,17 @@ func optional(check func(string) error) func(string) error {
 		}
 		return check(s)
 	}
+}
+
+// editPassword sets the general password used by notes with "password: sim".
+func editPassword(site *config.Site) error {
+	if err := ui.Explain(i18n.T("custom.password"), i18n.T("lock.explain")); err != nil {
+		return err
+	}
+	pw := ""
+	if err := ui.AskSecret(i18n.T("lock.global_q"), i18n.T("lock.global_help"), &pw); err != nil {
+		return err
+	}
+	site.Password = pw
+	return nil
 }

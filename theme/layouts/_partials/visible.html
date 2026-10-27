@@ -1,0 +1,3 @@
+{{- /* Pages that appear in lists: notes with "hidden: true" are reachable
+only by their link. */ -}}
+{{- return where . "Params.hidden" "!=" true -}}

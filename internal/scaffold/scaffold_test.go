@@ -9,6 +9,7 @@ import (
 
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/hugo"
+	"github.com/gabriellsalesx/blup/internal/lock"
 )
 
 // TestBuild generates a site from testdata/vault for both models and builds
@@ -31,7 +32,9 @@ func TestBuild(t *testing.T) {
 			if err := Write(s); err != nil {
 				t.Fatal(err)
 			}
-			out, err := bin.Command(context.Background(), dir, "--minify", "--baseURL", "https://example.org/", "--logLevel", "warn").CombinedOutput()
+			cmd := bin.Command(context.Background(), dir, "--minify", "--baseURL", "https://example.org/", "--logLevel", "warn")
+			cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=publish")
+			out, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("hugo: %v\n%s", err, out)
 			}
@@ -74,6 +77,39 @@ func TestBuild(t *testing.T) {
 					t.Errorf("%s should not be published", gone)
 				}
 			}
+			// Protected note: encrypted, nothing readable anywhere.
+			if n, err := lock.Process(filepath.Join(dir, "public"), ""); err != nil || n != 1 {
+				t.Fatalf("lock: %d %v", n, err)
+			}
+			if _, err := os.Stat(filepath.Join(dir, "public", lock.Manifest)); err == nil {
+				t.Error("passwords manifest was published")
+			}
+			filepath.WalkDir(filepath.Join(dir, "public"), func(p string, d os.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return err
+				}
+				b, _ := os.ReadFile(p)
+				for _, secret := range []string{"SEGREDO-SUPREMO", "abacaxi", "blup-begin"} {
+					if strings.Contains(string(b), secret) {
+						t.Errorf("%s leaks %q", p, secret)
+					}
+				}
+				return nil
+			})
+			if s := read("receitas-doces/receita-secreta/index.html"); !strings.Contains(s, "data-blup-cipher") {
+				t.Error("protected page has no ciphertext")
+			}
+			// Hidden note: published, out of the lists, not indexed.
+			if !strings.Contains(read("oculto/index.html"), `content="noindex"`) && !strings.Contains(read("oculto/index.html"), "content=noindex") {
+				t.Error("hidden page should be noindex")
+			}
+			if model == "blog" {
+				for _, list := range []string{"index.html", "index.xml"} {
+					if strings.Contains(read(list), "/oculto/") {
+						t.Errorf("%s lists the hidden note", list)
+					}
+				}
+			}
 			if model == "docs" {
 				g := read("01---guia/index.html")
 				if i, j := strings.Index(g, ">Instalar<"), strings.Index(g, ">Configurar<"); i < 0 || j < 0 || i > j {
@@ -81,5 +117,33 @@ func TestBuild(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestBuildWithoutCLI: plain "hugo" (no HUGO_BLUP_MODE) must never publish a
+// protected note in clear text.
+func TestBuildWithoutCLI(t *testing.T) {
+	bin, ok := hugo.Find(context.Background())
+	if !ok {
+		t.Skip("hugo not installed")
+	}
+	vault, _ := filepath.Abs("testdata/vault")
+	dir := t.TempDir()
+	s := config.NewSite(dir)
+	s.Title, s.Lang, s.Model, s.Vault, s.Folder = "Cozinha", "pt", "blog", vault, "Site"
+	if err := Write(s); err != nil {
+		t.Fatal(err)
+	}
+	cmd := bin.Command(context.Background(), dir, "--logLevel", "error")
+	cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("hugo: %v\n%s", err, out)
+	}
+	b, _ := os.ReadFile(filepath.Join(dir, "public", "receitas-doces", "receita-secreta", "index.html"))
+	if strings.Contains(string(b), "SEGREDO-SUPREMO") || len(b) == 0 {
+		t.Fatal("protected note leaked (or missing) without the CLI")
+	}
+	if m, _ := os.ReadFile(filepath.Join(dir, "public", lock.Manifest)); strings.Contains(string(m), "abacaxi") {
+		t.Fatal("manifest leaked the password without the CLI")
 	}
 }

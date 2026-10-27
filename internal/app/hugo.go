@@ -13,6 +13,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/hugo"
 	"github.com/gabriellsalesx/blup/internal/i18n"
+	"github.com/gabriellsalesx/blup/internal/lock"
 	"github.com/gabriellsalesx/blup/internal/pagefind"
 	"github.com/gabriellsalesx/blup/internal/scaffold"
 	"github.com/gabriellsalesx/blup/internal/ui"
@@ -56,6 +57,7 @@ func build(ctx context.Context, site *config.Site, baseURL string) (string, erro
 	err = ui.Spin(ctx, i18n.T("build.running"), func(ctx context.Context) error {
 		cmd := bin.Command(ctx, site.Dir(), "--gc", "--minify", "--cleanDestinationDir",
 			"--environment", "production", "--baseURL", baseURL, "--destination", out, "--logLevel", "warn")
+		cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=publish")
 		cmd.Stdout, cmd.Stderr = &log, &log
 		return cmd.Run()
 	})
@@ -69,14 +71,52 @@ func build(ctx context.Context, site *config.Site, baseURL string) (string, erro
 	for _, w := range warnings {
 		ui.Warn(w)
 	}
+	if err := encryptLocked(ctx, site, out); err != nil {
+		// Never leave a build with protected posts in clear text around.
+		os.RemoveAll(out)
+		return "", err
+	}
 	ui.OK(i18n.T("build.done"))
 	searchIndex(ctx, out)
 	return out, nil
 }
 
+// encryptLocked encrypts the password-protected notes of the build in dir,
+// asking for the general password when a note uses it and none is set.
+func encryptLocked(ctx context.Context, site *config.Site, dir string) error {
+	posts, needsGlobal, err := lock.Pending(dir)
+	if err != nil || posts == 0 {
+		return err
+	}
+	if needsGlobal && site.Password == "" {
+		if !ui.Interactive() {
+			return errors.New(i18n.T("lock.no_global"))
+		}
+		if err := ui.AskSecret(i18n.T("lock.global_q"), i18n.T("lock.global_help"), &site.Password); err != nil {
+			return err
+		}
+		if err := site.Save(); err != nil {
+			return err
+		}
+	}
+	var n int
+	err = ui.Spin(ctx, i18n.T("lock.encrypting"), func(context.Context) error {
+		n, err = lock.Process(dir, site.Password)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	ui.OK(i18n.T("lock.done", n))
+	return nil
+}
+
 // searchIndex builds the Pagefind index inside dir. Search is a nicety: a
 // failure is reported but never blocks publishing.
 func searchIndex(ctx context.Context, dir string) {
+	if os.Getenv("BLUP_NO_SEARCH") != "" {
+		return // e.g. in CI, or to skip downloading Pagefind
+	}
 	err := ui.Spin(ctx, i18n.T("build.search"), func(ctx context.Context) error {
 		bin, err := pagefind.Ensure(ctx)
 		if err != nil {
