@@ -1,0 +1,11 @@
+{{- /* "All" plus the most used tags. Params: current (term page or nil),
+pages (to count tags in, e.g. an author's posts). */ -}}
+{{- $cur := .current -}}
+{{- with site.Taxonomies.tags }}
+<nav class="pills" aria-label="{{ T "tags" }}">
+  <a class="pill" href="{{ site.Home.RelPermalink }}"{{ if not $cur }} aria-current="page"{{ end }}>{{ T "allTags" }}</a>
+  {{- range first 8 .ByCount }}
+  <a class="pill" href="{{ .Page.RelPermalink }}"{{ if eq .Page $cur }} aria-current="page"{{ end }}>{{ .Page.LinkTitle }}</a>
+  {{- end }}
+</nav>
+{{- end -}}

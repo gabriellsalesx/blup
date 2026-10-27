@@ -1,0 +1,10 @@
+{{- /* Site logo: the image chosen in the CLI, else the theme's character. */ -}}
+{{- with and site.Params.logo (resources.Get site.Params.logo) -}}
+  {{- $img := . -}}
+  {{- if not (in (slice "image/svg+xml" "image/gif") .MediaType.Type) }}{{ $img = .Resize "x64 webp" }}{{ end -}}
+<img src="{{ $img.RelPermalink }}" alt="{{ site.Title }}" width="{{ $img.Width | default 32 }}" height="{{ $img.Height | default 32 }}">
+{{- else -}}
+  {{- with resources.Get "favicon.svg" -}}
+<img src="{{ (. | fingerprint).RelPermalink }}" alt="{{ site.Title }}" width="32" height="32">
+  {{- end -}}
+{{- end -}}

@@ -1,0 +1,8 @@
+<main id="main">
+  <h1>#{{ .LinkTitle }}</h1>
+  <ul class="children">
+    {{- range .Pages.ByTitle }}
+    <li><a href="{{ .RelPermalink }}">{{ partial "title.html" . }}</a></li>
+    {{- end }}
+  </ul>
+</main>

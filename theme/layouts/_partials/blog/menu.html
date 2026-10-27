@@ -1,0 +1,19 @@
+{{- /* Top menu entries chosen in the CLI (menus.main), or, when none were
+chosen, Home plus the top-level folders of the site. Returns a slice of
+dicts {name, url, current}. */ -}}
+{{- $page := . -}}
+{{- $out := slice -}}
+{{- with site.Menus.main -}}
+  {{- range . -}}
+    {{- $url := .URL -}}
+    {{- with .Page }}{{ $url = .RelPermalink }}{{ end -}}
+    {{- $cur := or ($page.IsMenuCurrent "main" .) ($page.HasMenuCurrent "main" .) -}}
+    {{- $out = $out | append (dict "name" .Name "url" $url "current" $cur "external" (hasPrefix $url "http")) -}}
+  {{- end -}}
+{{- else -}}
+  {{- $out = $out | append (dict "name" (T "home") "url" site.Home.RelPermalink "current" $page.IsHome) -}}
+  {{- range site.Sections.ByWeight -}}
+    {{- $out = $out | append (dict "name" (partial "title.html" .) "url" .RelPermalink "current" (or (eq $page .) ($page.IsDescendant .))) -}}
+  {{- end -}}
+{{- end -}}
+{{- return $out -}}

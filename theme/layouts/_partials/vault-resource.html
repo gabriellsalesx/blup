@@ -1,0 +1,16 @@
+{{- /* Resolves a path written in a note (relative to the note, as Obsidian
+writes it with "relative path" links) to a resource in the vault mount.
+Params: page, path. Returns the resource or nil. */ -}}
+{{- $p := .path -}}
+{{- $u := urls.Parse $p -}}
+{{- $p = $u.Path -}}
+{{- $r := false -}}
+{{- if not $u.IsAbs -}}
+  {{- $prefix := site.Params.blup.folder | default "" -}}
+  {{- $dir := "" -}}
+  {{- with .page.File -}}{{- $dir = .Dir -}}{{- end -}}
+  {{- $r = resources.Get (path.Join "vault" $prefix $dir $p) -}}
+  {{- if not $r -}}{{- $r = resources.Get (path.Join "vault" $prefix $p) -}}{{- end -}}
+  {{- if not $r -}}{{- $r = resources.Get (path.Join "vault" $p) -}}{{- end -}}
+{{- end -}}
+{{- return $r -}}

@@ -1,0 +1,14 @@
+{{- $title := partial "title.html" . -}}
+<article class="card">
+  <a class="card-media" href="{{ .RelPermalink }}" tabindex="-1" aria-hidden="true">
+    {{- with partial "blog/cover.html" . }}
+    {{ partial "blog/picture.html" (dict "img" . "w" 600 "ratio" "3:1" "alt" "") }}
+    {{- else }}
+    <span class="card-fallback">{{ $title }}</span>
+    {{- end }}
+  </a>
+  {{ partial "blog/tags.html" . }}
+  <a class="card-title h5" href="{{ .RelPermalink }}"><h3>{{ $title }}</h3></a>
+  {{- with partial "description.html" . }}<p>{{ . }}</p>{{ end }}
+  {{ partial "blog/byline.html" (dict "page" . "size" "sm" "long" true) }}
+</article>

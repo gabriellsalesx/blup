@@ -1,0 +1,6 @@
+{{- /* $math$ and $$math$$ rendered to MathML (native in browsers) at build time (KaTeX inside
+Hugo): no JavaScript in the browser. */ -}}
+{{- $opts := dict "output" "mathml" "displayMode" (eq .Type "block") -}}
+{{- with try (transform.ToMath .Inner $opts) -}}
+  {{- with .Err -}}{{- warnf "math: %s" . -}}{{ $.Inner }}{{- else -}}{{- .Value -}}{{- end -}}
+{{- end -}}

@@ -1,0 +1,25 @@
+{{- $p := .page -}}
+{{- $graph := slice -}}
+{{- if $p.IsHome -}}
+  {{- $graph = $graph | append (dict "@type" "WebSite" "name" site.Title "url" site.Home.Permalink "description" .desc "inLanguage" site.Language.Locale) -}}
+{{- else if $p.IsPage -}}
+  {{- $type := cond (eq site.Params.model "docs") "TechArticle" "BlogPosting" -}}
+  {{- $a := dict "@type" $type "headline" .title "description" .desc "image" .img "url" $p.Permalink "mainEntityOfPage" $p.Permalink "inLanguage" site.Language.Locale -}}
+  {{- if not $p.Date.IsZero -}}{{- $a = merge $a (dict "datePublished" ($p.Date.Format "2006-01-02T15:04:05Z07:00")) -}}{{- end -}}
+  {{- if not $p.Lastmod.IsZero -}}{{- $a = merge $a (dict "dateModified" ($p.Lastmod.Format "2006-01-02T15:04:05Z07:00")) -}}{{- end -}}
+  {{- with site.Params.author -}}{{- $a = merge $a (dict "author" (dict "@type" "Person" "name" .)) -}}{{- end -}}
+  {{- $graph = $graph | append $a -}}
+{{- end -}}
+{{- if not $p.IsHome -}}
+  {{- $items := slice -}}
+  {{- $i := 0 -}}
+  {{- range $p.Ancestors.Reverse -}}
+    {{- $i = add $i 1 -}}
+    {{- $items = $items | append (dict "@type" "ListItem" "position" $i "name" (partial "title.html" .) "item" .Permalink) -}}
+  {{- end -}}
+  {{- $items = $items | append (dict "@type" "ListItem" "position" (add $i 1) "name" .title "item" $p.Permalink) -}}
+  {{- $graph = $graph | append (dict "@type" "BreadcrumbList" "itemListElement" $items) -}}
+{{- end -}}
+{{- with $graph }}
+<script type="application/ld+json">{{ dict "@context" "https://schema.org" "@graph" . | jsonify | safeJS }}</script>
+{{- end }}

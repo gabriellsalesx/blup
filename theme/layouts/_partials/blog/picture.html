@@ -1,0 +1,28 @@
+{{- /* Responsive <img> for a vault image. Params: img, w (CSS px of the
+largest slot), ratio ("3:1", "16:9" or "" to keep), alt, class, eager. */ -}}
+{{- $img := .img -}}
+{{- if in (slice "image/svg+xml" "image/gif") $img.MediaType.Type -}}
+<img src="{{ $img.RelPermalink }}" alt="{{ .alt }}"{{ with .class }} class="{{ . }}"{{ end }}{{ if not .eager }} loading="lazy"{{ end }}>
+{{- else -}}
+  {{- $ratio := .ratio -}}
+  {{- $set := slice -}}
+  {{- $fallback := false -}}
+  {{- range $w := slice 480 800 1200 1600 -}}
+    {{- if or (le $w $img.Width) (eq $w 480) -}}
+      {{- $spec := "" -}}
+      {{- if $ratio -}}
+        {{- $p := split $ratio ":" -}}
+        {{- $h := div (mul $w (int (index $p 1))) (int (index $p 0)) -}}
+        {{- $spec = printf "%dx%d webp q78 smart" $w $h -}}
+        {{- $r := $img.Fill $spec -}}
+        {{- $set = $set | append (printf "%s %dw" $r.RelPermalink $r.Width) -}}
+        {{- if not $fallback }}{{ $fallback = $r }}{{ end -}}
+      {{- else -}}
+        {{- $r := $img.Resize (printf "%dx webp q78" (cond (gt $w $img.Width) $img.Width $w)) -}}
+        {{- $set = $set | append (printf "%s %dw" $r.RelPermalink $r.Width) -}}
+        {{- if not $fallback }}{{ $fallback = $r }}{{ end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+<img src="{{ $fallback.RelPermalink }}" srcset="{{ delimit $set ", " }}" sizes="(max-width: 48rem) 100vw, {{ .w | default 600 }}px" width="{{ $fallback.Width }}" height="{{ $fallback.Height }}" alt="{{ .alt }}"{{ with .class }} class="{{ . }}"{{ end }}{{ if .eager }} fetchpriority="high"{{ else }} loading="lazy"{{ end }} decoding="async">
+{{- end -}}

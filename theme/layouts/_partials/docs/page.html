@@ -1,0 +1,12 @@
+<div class="docs">
+  <aside class="sidebar">{{ partial "docs/tree.html" . }}</aside>
+  <main id="main">
+    <article class="prose">
+      <h1>{{ partial "title.html" . }}</h1>
+      {{ partial "content.html" . }}
+      {{ partial "tags.html" . }}
+    </article>
+    {{ partial "docs/prevnext.html" . }}
+  </main>
+  {{ partial "docs/toc.html" . }}
+</div>

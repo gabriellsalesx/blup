@@ -1,0 +1,19 @@
+{{- /* Obsidian callouts: > [!tip] Title. A "-" or "+" after the type makes
+it foldable (collapsed or open), done with <details>, no JavaScript. */ -}}
+{{- if eq .Type "alert" -}}
+  {{- $type := lower .AlertType -}}
+  {{- $title := .AlertTitle | default (title $type) -}}
+  {{- if .AlertSign -}}
+<details class="callout" data-callout="{{ $type }}"{{ if eq .AlertSign "+" }} open{{ end }}>
+  <summary class="callout-title">{{ $title }}</summary>
+  <div class="callout-body">{{ .Text }}</div>
+</details>
+  {{- else -}}
+<aside class="callout" data-callout="{{ $type }}">
+  <p class="callout-title">{{ $title }}</p>
+  <div class="callout-body">{{ .Text }}</div>
+</aside>
+  {{- end -}}
+{{- else -}}
+<blockquote>{{ .Text }}</blockquote>
+{{- end -}}

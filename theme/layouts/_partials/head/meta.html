@@ -1,0 +1,15 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="generator" content="Hugo {{ hugo.Version }} + blup">
+{{- /* Favicon: the theme's character, or favicon.svg placed in the site's
+assets folder (it overrides the theme's). */ -}}
+{{- with resources.Get "favicon.svg" }}
+<link rel="icon" href="{{ (. | fingerprint).RelPermalink }}" type="image/svg+xml">
+{{- end }}
+{{- with resources.Get "defaults/apple-touch-icon.png" }}
+<link rel="apple-touch-icon" href="{{ .RelPermalink }}">
+{{- end }}
+{{- with site.Home.OutputFormats.Get "rss" }}
+<link rel="alternate" type="application/rss+xml" href="{{ .Permalink }}" title="{{ site.Title }}">
+{{- end }}

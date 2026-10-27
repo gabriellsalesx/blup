@@ -1,0 +1,6 @@
+# blup theme defaults. The site's generated hugo.toml overrides these.
+[module.hugoVersion]
+min = "0.160.0"
+
+[params]
+model = "blog"

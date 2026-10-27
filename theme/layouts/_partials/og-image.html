@@ -1,0 +1,26 @@
+{{- /* Social preview image: front matter "image" (a vault attachment or URL),
+else one generated at build time with the page title written on
+assets/og/base.png. Returns an absolute URL. */ -}}
+{{- $url := "" -}}
+{{- with .Params.image -}}
+  {{- if hasPrefix . "http" -}}{{- $url = . -}}
+  {{- else -}}
+    {{- with partial "vault-resource.html" (dict "page" $ "path" .) -}}
+      {{- $url = (.Fill "1200x630 webp q85").Permalink -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- if not $url -}}
+  {{- $title := partial "title.html" . -}}
+  {{- $base := resources.Get "og/base.png" -}}
+  {{- $font := resources.Get "og/font.ttf" -}}
+  {{- $opts := dict "color" "#ffffff" "size" 64 "linespacing" 18 "x" 80 "y" 315 "aligny" "center" -}}
+  {{- with $font -}}{{- $opts = merge $opts (dict "font" .) -}}{{- end -}}
+  {{- $site := dict "color" "#a1a1aa" "size" 32 "x" 80 "y" 540 -}}
+  {{- with $font -}}{{- $site = merge $site (dict "font" .) -}}{{- end -}}
+  {{- $img := $base | images.Filter (images.Text $title $opts) (images.Text site.Title $site) -}}
+  {{- $name := path.Join "og" (strings.TrimSuffix "/" .RelPermalink | default "home") -}}
+  {{- $name = cond (eq $name "og") "og/home" $name -}}
+  {{- $url = ($img | resources.Copy (printf "%s.png" $name)).Permalink -}}
+{{- end -}}
+{{- return $url -}}

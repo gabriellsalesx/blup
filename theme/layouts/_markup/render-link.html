@@ -1,0 +1,24 @@
+{{- /* Links between notes. Obsidian writes paths relative to the note
+("../Pasta/Nota%20X.md#titulo"); turn them into the page URL. Attachments
+(PDF, audio...) are published from the vault mount. External links get
+rel="noopener" and open normally. */ -}}
+{{- $u := urls.Parse .Destination -}}
+{{- $href := .Destination -}}
+{{- $ext := false -}}
+{{- if $u.IsAbs -}}
+  {{- $ext = true -}}
+{{- else if $u.Path -}}
+  {{- $target := path.Join .Page.File.Dir $u.Path -}}
+  {{- with or (.Page.GetPage $target) (.Page.GetPage (strings.TrimSuffix ".md" $target)) -}}
+    {{- $href = .RelPermalink -}}
+  {{- else -}}
+    {{- with partial "vault-resource.html" (dict "page" .Page "path" $u.Path) -}}
+      {{- $href = .RelPermalink -}}
+    {{- else -}}
+      {{- warnf "%s: link not found: %s" $.Page.File.Path $.Destination -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with $u.Fragment }}{{ $href = printf "%s#%s" $href (anchorize .) }}{{ end -}}
+{{- end -}}
+<a href="{{ $href }}"{{ with .Title }} title="{{ . }}"{{ end }}{{ if $ext }} rel="noopener"{{ end }}>{{ .Text }}</a>
+{{- /**/ -}}

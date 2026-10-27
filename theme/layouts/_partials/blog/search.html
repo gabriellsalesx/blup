@@ -1,0 +1,8 @@
+<dialog id="search" class="search" aria-label="{{ T "search" }}" data-pagefind="{{ "pagefind/" | relURL }}" data-script="{{ (resources.Get "js/search.js" | js.Build (dict "minify" true "format" "esm") | fingerprint).RelPermalink }}" data-empty="{{ T "searchEmpty" }}" data-unavailable="{{ T "searchUnavailable" }}">
+  <form method="dialog" class="search-field" role="search">
+    <svg class="icon"><use href="#i-search"/></svg>
+    <input type="search" name="q" placeholder="{{ T "searchPlaceholder" }}" autocomplete="off" aria-label="{{ T "search" }}">
+    <button class="icon-button" value="close" aria-label="{{ T "close" }}"><svg class="icon"><use href="#i-x"/></svg></button>
+  </form>
+  <div class="search-results" aria-live="polite"></div>
+</dialog>

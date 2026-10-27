@@ -1,0 +1,17 @@
+{{- /* The post's cover: the "image" property, else the first image of the
+note. Returns an image resource from the vault, or false. */ -}}
+{{- $r := false -}}
+{{- $src := .Params.image | default .Params.cover -}}
+{{- if not $src -}}
+  {{- with findRESubmatch `!\[[^\]]*\]\(<?([^)>\s]+)` .RawContent 1 -}}
+    {{- $src = index (index . 0) 1 -}}
+  {{- end -}}
+{{- end -}}
+{{- with $src -}}
+  {{- if not (hasPrefix . "http") -}}
+    {{- with partial "vault-resource.html" (dict "page" $ "path" .) -}}
+      {{- if eq .ResourceType "image" }}{{ $r = . }}{{ end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- return $r -}}

@@ -1,0 +1,31 @@
+{{- /* Images from the vault are resized to WebP in a few widths with srcset.
+Obsidian's width syntax in the alt text sets the display size:
+![foto|300](img.png) or ![foto|300x200](img.png). */ -}}
+{{- $alt := .PlainText -}}
+{{- $width := 0 -}}
+{{- $title := .Title -}}
+{{- with findRESubmatch `^(.*?)\|\s*(\d+)(?:x\d+)?\s*$` $alt 1 -}}
+  {{- $alt = index (index . 0) 1 -}}
+  {{- $width = int (index (index . 0) 2) -}}
+{{- end -}}
+{{- with partial "vault-resource.html" (dict "page" .Page "path" .Destination) -}}
+  {{- if in (slice "image/svg+xml" "image/gif") .MediaType.Type -}}
+<img src="{{ .RelPermalink }}" alt="{{ $alt }}" loading="lazy"{{ with $width }} width="{{ . }}"{{ end }}>
+  {{- else -}}
+    {{- $img := . -}}
+    {{- $srcset := slice -}}
+    {{- $fallback := "" -}}
+    {{- range $w := slice 480 800 1200 1600 -}}
+      {{- if le $w $img.Width -}}
+        {{- $r := $img.Resize (printf "%dx webp q80" $w) -}}
+        {{- $srcset = $srcset | append (printf "%s %dw" $r.RelPermalink $w) -}}
+        {{- if not $fallback }}{{ $fallback = $r }}{{ end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if not $fallback -}}{{- $fallback = $img.Process "webp q80" -}}{{- $srcset = slice (printf "%s %dw" $fallback.RelPermalink $img.Width) -}}{{- end -}}
+    {{- $h := cond (gt $width 0) (div (mul $img.Height $width) $img.Width) $img.Height -}}
+<img src="{{ $fallback.RelPermalink }}" srcset="{{ delimit $srcset ", " }}" sizes="(max-width: 48rem) 100vw, 48rem" width="{{ $width | default $img.Width }}" height="{{ $h }}" alt="{{ $alt }}"{{ with $title }} title="{{ . }}"{{ end }} loading="lazy" decoding="async">
+  {{- end -}}
+{{- else -}}
+<img src="{{ .Destination | safeURL }}" alt="{{ $alt }}"{{ with $width }} width="{{ . }}"{{ end }} loading="lazy">
+{{- end -}}

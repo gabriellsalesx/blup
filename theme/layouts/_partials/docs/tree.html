@@ -1,0 +1,10 @@
+{{- /* Sidebar built from the vault folders. Order: "weight" property, then
+file name (so "01 - Intro" sorts first). */ -}}
+<ul class="tree">
+  {{- range site.Home.RegularPages.ByWeight }}
+  <li><a href="{{ .RelPermalink }}"{{ if eq . $ }} aria-current="page"{{ end }}>{{ partial "title.html" . }}</a></li>
+  {{- end }}
+  {{- range site.Sections.ByWeight }}
+  {{ partial "docs/branch.html" (dict "section" . "current" $) }}
+  {{- end }}
+</ul>

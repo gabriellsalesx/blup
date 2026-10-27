@@ -1,0 +1,14 @@
+{{- /* Page title for notes that often have no "title" property: front matter
+title, else the note's first H1, else the file name without a numeric
+ordering prefix ("01 - Install" → "Install"). */ -}}
+{{- $t := .Title -}}
+{{- if and (not $t) .File -}}
+  {{- with findRESubmatch `(?s)^\s*<h1[^>]*>(.*?)</h1>` .Content 1 -}}
+    {{- $t = index (index . 0) 1 | plainify | htmlUnescape -}}
+  {{- else -}}
+    {{- $t = .File.ContentBaseName -}}
+  {{- end -}}
+{{- end -}}
+{{- if and (not $t) .IsHome -}}{{- $t = site.Title -}}{{- end -}}
+{{- $t = replaceRE `^\d+\s*[-._)]\s*` "" $t -}}
+{{- return $t -}}

@@ -1,0 +1,6 @@
+{{- if gt (len .Fragments.Headings) 0 }}{{ with .TableOfContents }}{{ if ne . "" }}
+<aside class="toc">
+  <h2>{{ T "onThisPage" }}</h2>
+  {{ . }}
+</aside>
+{{- end }}{{ end }}{{ end -}}

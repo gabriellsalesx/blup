@@ -1,0 +1,8 @@
+<main id="main">
+  <h1>{{ T "tags" }}</h1>
+  <ul class="tags tags-cloud">
+    {{- range .Data.Terms.ByCount }}
+    <li><a href="{{ .Page.RelPermalink }}">#{{ .Page.LinkTitle }} <small>{{ .Count }}</small></a></li>
+    {{- end }}
+  </ul>
+</main>

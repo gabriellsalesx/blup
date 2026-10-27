@@ -1,0 +1,52 @@
+/* Provisional structural CSS: the visual design comes from the owner's base
+model. Only layout essentials live here for now. */
+@layer reset, base, layout;
+
+@layer reset {
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; }
+  img, svg, video { max-width: 100%; height: auto; }
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+    --bg: light-dark(#ffffff, #18181b);
+    --fg: light-dark(#18181b, #e4e4e7);
+    --muted: light-dark(#52525b, #a1a1aa);
+    --line: light-dark(#e4e4e7, #3f3f46);
+    --measure: 48rem;
+    font-family: system-ui, sans-serif;
+    line-height: 1.6;
+  }
+  body { background: var(--bg); color: var(--fg); }
+  a { color: inherit; }
+  .skip { position: absolute; left: -999px; }
+  .skip:focus { left: 1rem; top: 1rem; }
+}
+
+@layer layout {
+  .site-header, .site-footer, main { padding-inline: 1rem; }
+  .site-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1rem; }
+  main { max-width: var(--measure); margin-inline: auto; }
+  .site-nav:popover-open { inset: 0 0 0 auto; width: min(20rem, 85vw); height: 100dvh; }
+  @media (width >= 64rem) {
+    .menu-button, .menu-close { display: none; }
+    .site-nav[popover] { display: block; position: static; inset: auto; width: auto; height: auto; border: 0; padding: 0; background: none; }
+    .site-nav ul { display: flex; gap: 1rem; list-style: none; margin: 0; padding: 0; }
+    [data-model="docs"] .site-header .site-nav { display: none; }
+  }
+  .docs { display: grid; gap: 2rem; padding-inline: 1rem; }
+  .docs main { padding: 0; }
+  .docs .sidebar, .docs .toc { display: none; }
+  @media (width >= 64rem) {
+    .docs { grid-template-columns: 16rem minmax(0, 1fr); }
+    .docs .sidebar { display: block; }
+  }
+  @media (width >= 80rem) {
+    .docs { grid-template-columns: 16rem minmax(0, 1fr) 14rem; }
+    .docs .toc { display: block; }
+  }
+  .prevnext, .pager { display: flex; justify-content: space-between; gap: 1rem; }
+  .callout { border-inline-start: 4px solid var(--line); padding: .5rem 1rem; margin-block: 1rem; }
+}

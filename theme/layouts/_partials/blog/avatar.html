@@ -1,0 +1,4 @@
+{{- $a := .author -}}
+<span class="avatar{{ with .size }} avatar-{{ . }}{{ end }}" aria-hidden="true">
+  {{- with $a.avatar }}<img src="{{ .RelPermalink }}" alt="" width="80" height="80" loading="lazy">{{ else }}{{ $a.initials }}{{ end -}}
+</span>

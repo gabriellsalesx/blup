@@ -1,0 +1,12 @@
+<main id="main" class="home">
+  {{- with partial "content.html" . }}
+  <section class="intro prose">{{ . }}</section>
+  {{- else }}
+  <section class="intro"><h1>{{ site.Title }}</h1>{{ with site.Params.description }}<p>{{ . }}</p>{{ end }}</section>
+  {{- end }}
+  <section class="sections">
+    {{- range site.Sections.ByWeight }}
+    <a class="card" href="{{ .RelPermalink }}"><h2>{{ partial "title.html" . }}</h2>{{ with partial "description.html" . }}<p>{{ . }}</p>{{ end }}</a>
+    {{- end }}
+  </section>
+</main>

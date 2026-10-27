@@ -1,0 +1,7 @@
+{{- /* Static pagination in the reference's "Load more" style. */ -}}
+{{- if or .HasPrev .HasNext }}
+<nav class="load-more" aria-label="{{ T "pages" }}">
+  {{- with .Prev }}<a href="{{ .URL }}" rel="prev">{{ T "newer" }}</a>{{ end }}
+  {{- with .Next }}<a href="{{ .URL }}" rel="next">{{ T "loadMore" }}</a>{{ end }}
+</nav>
+{{- end -}}

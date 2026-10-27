@@ -1,0 +1,15 @@
+{{- $s := .section -}}
+{{- $cur := .current -}}
+<li>
+  <details{{ if or (eq $cur $s) ($cur.IsDescendant $s) }} open{{ end }}>
+    <summary><a href="{{ $s.RelPermalink }}"{{ if eq $cur $s }} aria-current="page"{{ end }}>{{ partial "title.html" $s }}</a></summary>
+    <ul>
+      {{- range $s.RegularPages.ByWeight }}
+      <li><a href="{{ .RelPermalink }}"{{ if eq . $cur }} aria-current="page"{{ end }}>{{ partial "title.html" . }}</a></li>
+      {{- end }}
+      {{- range $s.Sections.ByWeight }}
+      {{ partial "docs/branch.html" (dict "section" . "current" $cur) }}
+      {{- end }}
+    </ul>
+  </details>
+</li>

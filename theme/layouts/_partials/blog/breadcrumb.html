@@ -1,0 +1,12 @@
+{{- /* Params: items (slice of dict name/url; the last one is the current page). */ -}}
+<nav class="breadcrumb" aria-label="breadcrumb">
+  <a href="{{ site.Home.RelPermalink }}" aria-label="{{ T "home" }}"><svg class="icon"><use href="#i-home"/></svg></a>
+  {{- range $i, $it := .items }}
+  <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+  {{- if eq (add $i 1) (len $.items) }}
+  <span aria-current="page">{{ $it.name }}</span>
+  {{- else }}
+  <a href="{{ $it.url }}">{{ $it.name }}</a>
+  {{- end }}
+  {{- end }}
+</nav>

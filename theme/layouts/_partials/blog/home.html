@@ -1,0 +1,46 @@
+{{- $posts := partial "blog/posts.html" . -}}
+{{- $featured := index (where $posts "Params.featured" true) 0 | default (index $posts 0) -}}
+{{- $rest := $posts -}}
+{{- with $featured }}{{ $rest = complement (slice .) $posts }}{{ end -}}
+{{- $pager := .Paginate $rest -}}
+<main id="main">
+  {{- if eq $pager.PageNumber 1 }}
+  <section class="hero">
+    <div class="container">
+      <header class="hero-head">
+        <h1 class="h1">{{ .Title | default site.Title }}</h1>
+        {{- with partial "content.html" . | plainify | strings.TrimSpace }}
+        <p>{{ . }}</p>
+        {{- else }}{{ with site.Params.description }}
+        <p>{{ . }}</p>
+        {{- end }}{{ end }}
+      </header>
+      {{- with $featured }}
+      {{- $title := partial "title.html" . }}
+      <article class="featured">
+        <a class="featured-media" href="{{ .RelPermalink }}" tabindex="-1" aria-hidden="true">
+          {{- with partial "blog/cover.html" . }}
+          {{ partial "blog/picture.html" (dict "img" . "w" 640 "ratio" "37:18" "alt" "" "eager" true) }}
+          {{- else }}
+          <span class="card-fallback">{{ $title }}</span>
+          {{- end }}
+        </a>
+        <div class="featured-text">
+          {{ partial "blog/tags.html" . }}
+          <a href="{{ .RelPermalink }}"><h2 class="h2">{{ $title }}</h2></a>
+          {{- with partial "description.html" . }}<p>{{ . }}</p>{{ end }}
+          {{ partial "blog/byline.html" (dict "page" .) }}
+        </div>
+      </article>
+      {{- end }}
+    </div>
+  </section>
+  {{- end }}
+  <section class="listing container">
+    {{ partial "blog/pills.html" (dict) }}
+    <div class="post-grid">
+      {{- range $pager.Pages }}{{ partial "blog/card.html" . }}{{ end }}
+    </div>
+    {{ partial "blog/more.html" $pager }}
+  </section>
+</main>

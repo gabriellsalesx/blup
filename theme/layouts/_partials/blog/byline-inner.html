@@ -1,0 +1,8 @@
+{{- $p := .page -}}
+{{ partial "blog/avatar.html" (dict "author" .author "size" .size) }}
+<span>
+  <span class="byline-name">{{ .author.name }}</span>
+  {{- if not $p.Date.IsZero }}
+  <time datetime="{{ $p.Date.Format "2006-01-02" }}">{{ $p.Date | time.Format (cond .long ":date_long" ":date_medium") }}</time>
+  {{- end }}
+</span>
