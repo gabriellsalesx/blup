@@ -33,3 +33,9 @@ weight: 1
 - The note's text becomes the item's page, opened by clicking the card.
 
 To move an item to another column, change the **status** and save.
+
+## Ordered by votes
+
+With [comments and reactions](Comments%20and%20reactions.md) on, the **Planned** and **In progress** columns put the most voted items on top, and the most voted card of the board gets a **Most voted** label. **weight** still breaks ties, and **Done** keeps its order.
+
+To keep only the **weight** order, add `sort_by_votes: false` to the roadmap's _index.

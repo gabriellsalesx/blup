@@ -5,7 +5,10 @@
     <h1>{{ partial "title.html" . }}</h1>
     {{- with .Description | default (partial "content.html" . | plainify | htmlUnescape | strings.TrimSpace) }}<p>{{ . }}</p>{{ end }}
   </header>
-  <div class="board">
+  {{- /* With feedback, feedback.js orders the open columns by votes (the
+  weight breaks ties) and marks the most voted card; sort_by_votes: false
+  in the roadmap's _index keeps the weight order. */}}
+  <div class="board"{{ if or (not (isset .Params "sort_by_votes")) .Params.sort_by_votes }} data-fb-sort{{ end }}>
     {{- range $status := slice "planned" "progress" "done" }}
     {{- $col := slice }}
     {{- range $items.ByWeight }}{{ if eq (partial "bento/status.html" .) $status }}{{ $col = $col | append . }}{{ end }}{{ end }}

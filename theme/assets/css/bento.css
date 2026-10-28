@@ -172,6 +172,7 @@ layout. Bundled into one file by css.Build. */
   .roadmap-card footer { padding-block-start: 1rem; border-block-start: 1px dashed color-mix(in srgb, var(--main-300) 60%, transparent); font-size: .625rem; font-weight: 700; color: var(--main-500);; display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
   /* Feedback (GitHub issues): counters on cards, reactions on changelog
      entries, and the votes/comments block of each page. */
+  .fb-top { display: inline-block; margin-block-end: .5rem; padding: .125rem .5rem; border-radius: 9999px; font-size: .625rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--main-900); background: color-mix(in srgb, var(--primary-500) 18%, transparent); }
   .fb-mini { display: inline-flex; gap: .625rem; font-size: .6875rem; font-weight: 600; color: var(--main-500); }
   .fb-mini span { display: inline-flex; align-items: center; gap: .125rem; }
   .fb-mini .icon { width: .875rem; height: .875rem; }

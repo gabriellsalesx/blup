@@ -8,6 +8,12 @@
 // service only trades the login for the visitor's key, kept in this
 // browser; everything else goes straight to GitHub. Without it, the links
 // in the page take visitors to GitHub.
+//
+// Visitors who are not signed in read through the login service too: it
+// reads GitHub with its own key and caches for a minute, so they don't hit
+// GitHub's limit of 60 reads per hour (shared by everyone behind the same
+// address, as on mobile networks). Signed in, reads go straight to GitHub
+// with the visitor's key, to show their own changes at once.
 const script = document.querySelector("script[data-fb-repo]");
 const repo = script?.dataset.fbRepo;
 const loginAPI = script?.dataset.fbApi;
@@ -16,6 +22,7 @@ const nodes = [...document.querySelectorAll("[data-fb-issue]")];
 const API = `https://api.github.com/repos/${repo}`;
 const EMOJI = { "+1": "👍", heart: "❤️", hooray: "🎉", rocket: "🚀", laugh: "😄", eyes: "👀", confused: "😕", "-1": "👎" };
 const TTL = 5 * 60 * 1000; // unauthenticated GitHub API: 60 requests/hour
+const API_TTL = 60 * 1000; // the login service caches for a minute
 const AUTH = "blup-gh";
 const STATE = "blup-gh-state";
 
@@ -84,16 +91,17 @@ function clearCache() {
   } catch {}
 }
 
-async function gh(url, { method = "GET", body, accept = "application/vnd.github+json", cache = method === "GET" } = {}) {
+async function gh(url, { method = "GET", body, accept = "application/vnd.github+json", cache = method === "GET", ttl = TTL } = {}) {
   const ck = `blup-fb:${url}`;
   if (cache) {
     try {
       const hit = JSON.parse(sessionStorage.getItem(ck));
-      if (hit && Date.now() - hit.at < TTL) return hit.data;
+      if (hit && Date.now() - hit.at < ttl) return hit.data;
     } catch {}
   }
   const headers = { Accept: accept };
-  const k = loginAPI && (await key());
+  // The visitor's key only ever goes to GitHub.
+  const k = loginAPI && url.startsWith("https://api.github.com/") && (await key());
   if (k) headers.Authorization = `Bearer ${k}`;
   if (body) headers["Content-Type"] = "application/json";
   const res = await fetch(url, { method, headers, body: body && JSON.stringify(body) });
@@ -326,12 +334,39 @@ function form(node, issue, lang) {
   link.before(f);
 }
 
+// sortBoard orders the roadmap's open columns by votes (a stable sort: the
+// weight order breaks ties) and marks the most voted card.
+function sortBoard() {
+  const board = document.querySelector(".board[data-fb-sort]");
+  if (!board) return;
+  const votes = (li) => {
+    const mini = li.querySelector(".fb-mini");
+    return mini && !mini.hidden ? Number(mini.querySelector("[data-fb-votes]")?.textContent) || 0 : 0;
+  };
+  let top = null;
+  for (const ul of board.querySelectorAll('.column:not([data-status="done"]) ul')) {
+    const items = [...ul.children].sort((a, b) => votes(b) - votes(a));
+    ul.append(...items);
+    for (const li of items) if (votes(li) > (top ? votes(top) : 0)) top = li;
+  }
+  if (top && t.top) top.querySelector(".roadmap-card")?.prepend(el("span", { className: "fb-top", textContent: t.top }));
+}
+
+// read goes through the login service for visitors who are not signed in
+// (falling back to GitHub when it fails), straight to GitHub otherwise.
+async function read(path, github, accept) {
+  if (loginAPI && !auth) {
+    try { return await gh(loginAPI + path, { ttl: API_TTL }); } catch {}
+  }
+  return gh(github, { accept });
+}
+
 async function run() {
   if (!repo || !nodes.length) return;
   const back = loginAPI && takeLogin();
   let list;
   try {
-    list = await gh(`${API}/issues?labels=blup&state=all&per_page=100`);
+    list = await read(`/issues?repo=${encodeURIComponent(repo)}`, `${API}/issues?labels=blup&state=all&per_page=100`);
   } catch {
     return; // offline or rate limited: the links to GitHub still work
   }
@@ -361,13 +396,19 @@ async function run() {
     if (auth) issue.loadMine().then(() => issue.render());
     if (issue.data.comments) {
       try {
-        const comments = await gh(`${API}/issues/${issue.data.number}/comments?per_page=100`, { accept: "application/vnd.github.full+json" });
+        const n = issue.data.number;
+        const comments = await read(
+          `/comments?repo=${encodeURIComponent(repo)}&issue=${n}`,
+          `${API}/issues/${n}/comments?per_page=100`,
+          "application/vnd.github.full+json",
+        );
         node.querySelector("[data-fb-list]").replaceChildren(...comments.map((c) => comment(c, lang)));
         deletable(node, issue);
       } catch {}
     }
     if (back) node.scrollIntoView({ block: "start" });
   }
+  sortBoard();
 }
 
 run();

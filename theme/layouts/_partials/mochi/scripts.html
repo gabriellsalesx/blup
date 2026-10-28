@@ -5,5 +5,5 @@
 {{- $fb := resources.Get "js/feedback.js" | js.Build (dict "minify" true "format" "esm") | fingerprint }}
 {{- /* api: the login service, set by the CLI while its GitHub App is on the
 repository; without it, voting and commenting link to GitHub. */}}
-<script type="module" src="{{ $fb.RelPermalink }}" data-fb-repo="{{ site.Params.blup.feedback }}" data-fb-text="{{ dict "login" (T "fbLogin") "logout" (T "fbLogout") "as" (T "fbAs") "placeholder" (T "fbPlaceholder") "post" (T "fbPost") "error" (T "fbError") "react" (T "fbReactHere") "note" (T "fbNoteHere") "delete" (T "fbDelete") "deleteQ" (T "fbDeleteQ") "reply" (T "fbReply") | jsonify }}"{{ with hugo.Data.blup_feedback }}{{ with .api }} data-fb-api="{{ . }}"{{ end }}{{ end }}></script>
+<script type="module" src="{{ $fb.RelPermalink }}" data-fb-repo="{{ site.Params.blup.feedback }}" data-fb-text="{{ dict "login" (T "fbLogin") "logout" (T "fbLogout") "as" (T "fbAs") "placeholder" (T "fbPlaceholder") "post" (T "fbPost") "error" (T "fbError") "react" (T "fbReactHere") "note" (T "fbNoteHere") "delete" (T "fbDelete") "deleteQ" (T "fbDeleteQ") "reply" (T "fbReply") "top" (T "fbTop") | jsonify }}"{{ with hugo.Data.blup_feedback }}{{ with .api }} data-fb-api="{{ . }}"{{ end }}{{ end }}></script>
 {{- end }}

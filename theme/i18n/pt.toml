@@ -94,6 +94,7 @@ fbNoteHere = "Votar, reagir e comentar usa a sua conta do GitHub, aqui mesmo no 
 fbDelete = "Apagar"
 fbDeleteQ = "Apagar este comentário?"
 fbReply = "Responder"
+fbTop = "Mais votado"
 
 [readingTime]
 one = "{{ .Count }} min de leitura"
