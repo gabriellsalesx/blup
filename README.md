@@ -79,7 +79,7 @@ Running `blup` alone opens a menu with everything. Each action also has a comman
 | `blup customize` | `blup personalizar` | Menu, sections, social links, logo, favicon, author, custom domain, password |
 | `blup sync` | `blup sincronizar` | Keep your notes in a private GitHub repository |
 | `blup convert` | `blup converter` | Turn `[[wikilinks]]` into standard links |
-| `blup build` | `blup gerar` | Build the site into `public/`, no questions asked |
+| `blup build` | `blup gerar` | Build the site into `public/`, no questions asked; `--url https://site.pages.dev/bento/ --out ../landing/bento` builds it for a subfolder and copies it elsewhere |
 | `blup language` | `blup idioma` | Change Blup's language |
 | `blup update` | `blup atualizar` | Update Blup (`--rollback` goes back one version) |
 

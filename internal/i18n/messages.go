@@ -42,6 +42,8 @@ Usage:
   blup sync         keep the notes in a private GitHub repository
   blup convert      turn [[wikilinks]] into standard links
   blup build        build the site into public/ without questions
+                    --url https://site.pages.dev/bento/  address, even in a subfolder
+                    --out ../landing/bento               copy the result to a folder
   blup language     change the language
   blup update       update Blup (--rollback goes back one version)
   blup version      show the version`,
@@ -264,6 +266,10 @@ Usage:
 
 		"build.running":       "Building the site…",
 		"build.done":          "Site built.",
+		"build.flag_value":    "%s needs a value, like --url https://mysite.pages.dev/bento/",
+		"build.bad_url":       "Use a full address for --url, like https://mysite.pages.dev/bento/ (got %s).",
+		"build.copied":        "Site copied to %s",
+		"build.out_not_ours":  "%s already has files that Blup didn't create. Pick an empty folder (or one Blup filled before).",
 		"build.failed":        "The site couldn't be built. See the messages above.",
 		"build.no_folder":     "The site folder no longer exists: %s",
 		"build.search":        "Building the search index…",
@@ -365,6 +371,8 @@ Uso:
   blup sincronizar  guarda as notas num repositório privado no GitHub
   blup converter    troca [[wikilinks]] por links padrão
   blup gerar        gera o site em public/ sem perguntas
+                    --url https://site.pages.dev/bento/  endereço, até numa subpasta
+                    --saida ../landing/bento             copia o resultado para uma pasta
   blup idioma       muda o idioma
   blup atualizar    atualiza o Blup (--voltar volta uma versão)
   blup version      mostra a versão`,
@@ -587,6 +595,10 @@ Uso:
 
 		"build.running":       "Gerando o site…",
 		"build.done":          "Site gerado.",
+		"build.flag_value":    "%s precisa de um valor, como --url https://meusite.pages.dev/bento/",
+		"build.bad_url":       "Use o endereço completo em --url, como https://meusite.pages.dev/bento/ (veio %s).",
+		"build.copied":        "Site copiado para %s",
+		"build.out_not_ours":  "%s já tem arquivos que não foram criados pelo Blup. Escolha uma pasta vazia (ou que o Blup já tenha preenchido).",
 		"build.failed":        "Não deu para gerar o site. Veja as mensagens acima.",
 		"build.no_folder":     "A pasta do site não existe mais: %s",
 		"build.search":        "Gerando o índice da busca…",

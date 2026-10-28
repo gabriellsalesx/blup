@@ -64,9 +64,15 @@ func Run(ctx context.Context, args []string) error {
 		return withSite(ctx, &g, args[1:], publish)
 	case "build", "gerar":
 		// Non-interactive build into <site>/public, for scripts and CI.
-		return withSite(ctx, &g, args[1:], func(ctx context.Context, _ *config.Global, s *config.Site) error {
-			_, err := build(ctx, s, siteURL(s, "/"))
+		// --url sets the address the site will live at (it can be a
+		// subfolder: https://x.pages.dev/bento/); --out copies the result
+		// to another folder, like the one of a landing page.
+		opts, rest, err := parseBuildFlags(args[1:])
+		if err != nil {
 			return err
+		}
+		return withSite(ctx, &g, rest, func(ctx context.Context, _ *config.Global, s *config.Site) error {
+			return buildCommand(ctx, s, opts)
 		})
 	case "convert", "converter":
 		return withSite(ctx, &g, args[1:], convertLinks)

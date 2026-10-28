@@ -29,3 +29,18 @@ Blup remembers every site you created. In the menu, **Switch site** picks anothe
 ## No questions
 
 `blup build` asks nothing: good for scripts and automation. The site goes to the `public` folder inside the site folder.
+
+## A site inside a subfolder
+
+Want the docs at `mysite.pages.dev/bento/`, next to a landing page at the root? Build the site for that address and copy it into the landing page folder:
+
+```sh
+blup build --url https://mysite.pages.dev/bento/ --out ../my-landing/bento
+```
+
+- `--url` is the site's final address, and it can be a subfolder. Links, images and search work inside it.
+- `--out` copies the finished site to another folder, replacing what Blup put there before. To be safe, Blup never wipes a folder it didn't fill.
+- Then publish the landing page folder, for example with Cloudflare Pages connected to a GitHub repository: every `git push` updates the site.
+
+> [!tip] In Portuguese too
+> `blup gerar --url … --saida …` does the same.

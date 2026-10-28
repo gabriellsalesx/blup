@@ -79,7 +79,7 @@ Rodar só `blup` abre um menu com tudo. Cada ação também tem um comando, em p
 | `blup personalizar` | `blup customize` | Menu, seções, redes, logo, favicon, autor, domínio próprio, senha |
 | `blup sincronizar` | `blup sync` | Guarda as notas num repositório privado no GitHub |
 | `blup converter` | `blup convert` | Troca `[[wikilinks]]` por links padrão |
-| `blup gerar` | `blup build` | Gera o site em `public/`, sem perguntas |
+| `blup gerar` | `blup build` | Gera o site em `public/`, sem perguntas; `--url https://site.pages.dev/bento/ --saida ../landing/bento` gera para uma subpasta e copia para outra pasta |
 | `blup idioma` | `blup language` | Troca o idioma do Blup |
 | `blup atualizar` | `blup update` | Atualiza o Blup (`--rollback` volta uma versão) |
 

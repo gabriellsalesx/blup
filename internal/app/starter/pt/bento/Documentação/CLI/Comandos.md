@@ -29,3 +29,18 @@ O Blup lembra de todos os sites que você criou. No menu, **Trocar de site** esc
 ## Sem perguntas
 
 `blup gerar` não pergunta nada: bom para scripts e automações. O site sai na pasta `public` da pasta do site.
+
+## Site dentro de uma subpasta
+
+Quer a documentação em `meusite.pages.dev/bento/`, junto de uma landing page na raiz? Gere o site para esse endereço e copie para a pasta da landing:
+
+```sh
+blup gerar --url https://meusite.pages.dev/bento/ --saida ../minha-landing/bento
+```
+
+- `--url` é o endereço final do site, e pode ser uma subpasta. Links, imagens e a busca passam a funcionar dentro dela.
+- `--saida` copia o site pronto para outra pasta, trocando o que o Blup tinha posto lá antes. Por segurança, o Blup nunca apaga uma pasta que não foi ele que preencheu.
+- Depois, publique a pasta da landing, por exemplo com o Cloudflare Pages ligado a um repositório do GitHub: cada `git push` atualiza o site.
+
+> [!tip] Em inglês também
+> `blup build --url … --out …` faz o mesmo.
