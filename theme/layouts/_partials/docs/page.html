@@ -1,5 +1,0 @@
-{{- $kind := partial "docs/kind.html" . -}}
-{{- if eq $kind "docs" }}{{ partial "docs/doc.html" . -}}
-{{- else if eq $kind "roadmap" }}{{ partial "docs/roadmap-item.html" . -}}
-{{- else if eq $kind "changelog" }}{{ partial "docs/changelog-entry.html" . -}}
-{{- else }}{{ partial "docs/plain.html" . }}{{ end -}}

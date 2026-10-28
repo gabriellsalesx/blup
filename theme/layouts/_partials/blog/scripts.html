@@ -1,2 +1,0 @@
-{{- $js := resources.Get "js/blog.js" | js.Build (dict "minify" true "format" "esm") | fingerprint -}}
-<script type="module" src="{{ $js.RelPermalink }}"></script>

@@ -1,0 +1,13 @@
+{{- $label := cond (eq .Data.Plural "authors") (T "authors") (T "tags") -}}
+<main id="main" class="container">
+  <header class="page-head">
+    {{ partial "mochi/breadcrumb.html" (dict "items" (slice (dict "name" $label))) }}
+    <h1 class="h1">{{ $label }}</h1>
+  </header>
+  <nav class="pills">
+    {{- range .Data.Terms.ByCount }}
+    <a class="pill" href="{{ .Page.RelPermalink }}">{{ .Page.LinkTitle }} <small>{{ .Count }}</small></a>
+    {{- end }}
+  </nav>
+  <div class="listing"></div>
+</main>

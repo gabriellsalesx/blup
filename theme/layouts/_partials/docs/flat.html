@@ -1,4 +1,0 @@
-{{- /* Every page of a docs section in sidebar order (for previous/next). */ -}}
-{{- $out := slice -}}
-{{- range partial "docs/order.html" . }}{{ $out = $out | append .pages }}{{ end -}}
-{{- return $out -}}

@@ -1,0 +1,14 @@
+{{- /* Header links: the menu chosen in the CLI, else the site's sections. */ -}}
+{{- $page := . -}}
+{{- $out := slice -}}
+{{- with site.Menus.main -}}
+  {{- range . -}}
+    {{- $url := .URL }}{{ with .Page }}{{ $url = .RelPermalink }}{{ end -}}
+    {{- $out = $out | append (dict "name" .Name "url" $url "current" (or ($page.IsMenuCurrent "main" .) ($page.HasMenuCurrent "main" .)) "external" (hasPrefix $url "http")) -}}
+  {{- end -}}
+{{- else -}}
+  {{- range partial "bento/sections.html" . -}}
+    {{- $out = $out | append (dict "name" (partial "title.html" .) "url" .RelPermalink "current" (or (eq $page .) ($page.IsDescendant .))) -}}
+  {{- end -}}
+{{- end -}}
+{{- return $out -}}

@@ -1,4 +1,4 @@
-{{- $model := site.Params.model | default "blog" -}}
+{{- $model := site.Params.model | default "mochi" -}}
 <!doctype html>
 <html lang="{{ site.Language.Locale | default site.Language.Lang }}" data-model="{{ $model }}">
 <head>
@@ -8,10 +8,10 @@
 </head>
 <body>
   <a class="skip" href="#main">{{ T "skip" }}</a>
-  {{- partial "blog/icons.html" . }}
+  {{- partial "mochi/icons.html" . }}
   {{ partial (printf "%s/header.html" $model) . }}
   {{ block "main" . }}{{ end }}
   {{ partial (printf "%s/footer.html" $model) . }}
-  {{- partial "blog/scripts.html" . }}
+  {{- partial "mochi/scripts.html" . }}
 </body>
 </html>

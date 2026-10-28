@@ -1,0 +1,4 @@
+<main id="main" class="page-wrap">
+  {{ partial "mochi/breadcrumb.html" (dict "items" (slice (dict "name" (partial "title.html" .FirstSection) "url" .FirstSection.RelPermalink) (dict "name" (partial "title.html" .)))) }}
+  <div class="changelog">{{ partial "bento/release.html" (dict "page" .) }}</div>
+</main>

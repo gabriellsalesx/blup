@@ -24,7 +24,7 @@ func customize(ctx context.Context, _ *config.Global, site *config.Site) error {
 	for {
 		choice := "menu"
 		opts := []huh.Option[string]{ui.Option(i18n.T("custom.menu"), "menu")}
-		if site.Model == "docs" {
+		if site.Model == "bento" {
 			opts = append(opts, ui.Option(i18n.T("custom.sections"), "sections"))
 		}
 		if err := ui.Choose(i18n.T("custom.q"), i18n.T("custom.help"), &choice, append(opts,

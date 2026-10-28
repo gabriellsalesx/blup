@@ -100,6 +100,15 @@ func Choose[T comparable](question, help string, value *T, options ...huh.Option
 	return run(s)
 }
 
+// ChooseDescribed is Choose with a description that follows the highlighted
+// option (what it includes, when to pick it).
+func ChooseDescribed[T comparable](question string, value *T, describe func(T) string, options ...huh.Option[T]) error {
+	s := huh.NewSelect[T]().Title(question).Options(options...).Value(value).
+		DescriptionFunc(func() string { return describe(*value) }, value).
+		Height(len(options) + 10) // room for a long description plus every option
+	return run(s)
+}
+
 // ChooseMany asks the user to tick several options.
 func ChooseMany[T comparable](question, help string, value *[]T, options ...huh.Option[T]) error {
 	m := huh.NewMultiSelect[T]().Title(question).Options(options...).Value(value).Height(min(len(options), 10) + 6)

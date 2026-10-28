@@ -113,7 +113,7 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 	}
 
 	date := []string{"date", "publishDate", "created", ":filename", ":fileModTime"}
-	if s.Model == "docs" {
+	if s.Model == "bento" {
 		// Docs are ordered by weight and file name; modification times
 		// must not reshuffle them.
 		date = []string{"date", "publishDate", "created"}

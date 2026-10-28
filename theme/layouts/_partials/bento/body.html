@@ -1,0 +1,6 @@
+{{- /* Note content, protected notes included. */ -}}
+{{- if partial "locked.html" . -}}
+  {{ partial "mochi/lock.html" . }}
+{{- else -}}
+<div class="prose"{{ if not .Params.hidden }} data-pagefind-body data-pagefind-meta="title:{{ partial "title.html" . }}"{{ end }}>{{ partial "content.html" . }}</div>
+{{- end -}}

@@ -20,7 +20,7 @@ func TestBuild(t *testing.T) {
 		t.Skip("hugo not installed")
 	}
 	vault, _ := filepath.Abs("testdata/vault")
-	for _, model := range []string{"blog", "docs"} {
+	for _, model := range []string{"mochi", "bento"} {
 		t.Run(model, func(t *testing.T) {
 			dir := t.TempDir()
 			if d := os.Getenv("BLUP_KEEP"); d != "" {
@@ -103,14 +103,14 @@ func TestBuild(t *testing.T) {
 			if !strings.Contains(read("oculto/index.html"), `content="noindex"`) && !strings.Contains(read("oculto/index.html"), "content=noindex") {
 				t.Error("hidden page should be noindex")
 			}
-			if model == "blog" {
+			if model == "mochi" {
 				for _, list := range []string{"index.html", "index.xml"} {
 					if strings.Contains(read(list), "/oculto/") {
 						t.Errorf("%s lists the hidden note", list)
 					}
 				}
 			}
-			if model == "docs" {
+			if model == "bento" {
 				g := read("01---guia/index.html")
 				if i, j := strings.Index(g, ">Instalar<"), strings.Index(g, ">Configurar<"); i < 0 || j < 0 || i > j {
 					t.Error("docs: sidebar order/titles wrong")
@@ -130,7 +130,7 @@ func TestBuildWithoutCLI(t *testing.T) {
 	vault, _ := filepath.Abs("testdata/vault")
 	dir := t.TempDir()
 	s := config.NewSite(dir)
-	s.Title, s.Lang, s.Model, s.Vault, s.Folder = "Cozinha", "pt", "blog", vault, "Site"
+	s.Title, s.Lang, s.Model, s.Vault, s.Folder = "Cozinha", "pt", "mochi", vault, "Site"
 	if err := Write(s); err != nil {
 		t.Fatal(err)
 	}

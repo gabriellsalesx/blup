@@ -34,16 +34,17 @@ func newSite(ctx context.Context, g *config.Global) error {
 		return err
 	}
 
-	model := "blog"
-	if err := ui.Choose(i18n.T("new.model"), "", &model,
-		ui.Option(i18n.T("new.model_blog"), "blog"),
-		ui.Option(i18n.T("new.model_docs"), "docs"),
+	model := "mochi"
+	about := func(m string) string { return i18n.T("new.model_" + m + "_about") }
+	if err := ui.ChooseDescribed(i18n.T("new.model"), &model, about,
+		ui.Option(i18n.T("new.model_mochi"), "mochi"),
+		ui.Option(i18n.T("new.model_bento"), "bento"),
 	); err != nil {
 		return err
 	}
 
 	var sections []string
-	if model == "docs" {
+	if model == "bento" {
 		sections = append([]string(nil), docsKinds...)
 		opts := []huh.Option[string]{
 			ui.Option(i18n.T("new.section_docs"), "docs"),

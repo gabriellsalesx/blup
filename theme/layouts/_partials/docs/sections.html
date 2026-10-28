@@ -1,6 +1,0 @@
-{{- /* Top-level folders that are a docs, roadmap or changelog section. */ -}}
-{{- $out := slice -}}
-{{- range site.Sections.ByWeight -}}
-  {{- if partial "docs/kind.html" . }}{{ $out = $out | append . }}{{ end -}}
-{{- end -}}
-{{- return $out -}}

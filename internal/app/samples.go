@@ -28,7 +28,7 @@ func writeSamples(site *config.Site, sections []string) error {
 	today := time.Now().Format("2006-01-02")
 	attach := i18n.T("attachments_folder")
 	notes := samples[site.Lang+"/"+site.Model]
-	if site.Model == "blog" {
+	if site.Model == "mochi" {
 		// Covers go to an attachments folder inside the site folder, where
 		// the example posts point to them.
 		for _, name := range []string{"capa-1.jpg", "capa-2.jpg"} {
@@ -89,7 +89,7 @@ func writeTemplates(site *config.Site) error {
 		}
 	}
 	list := templates[site.Lang+"/"+site.Model]
-	if site.Model == "docs" {
+	if site.Model == "bento" {
 		list = docsTemplates[site.Lang]
 	}
 	for _, n := range list {
@@ -102,12 +102,12 @@ func writeTemplates(site *config.Site) error {
 }
 
 var templates = map[string][]note{
-	"pt/blog": {{"Post do blog.md", "---\ntitle: \"{{title}}\"\ndate: {{date:YYYY-MM-DD}}\ndescription: \ntags: \ndraft: false\n---\n\n"}},
-	"en/blog": {{"Blog post.md", "---\ntitle: \"{{title}}\"\ndate: {{date:YYYY-MM-DD}}\ndescription: \ntags: \ndraft: false\n---\n\n"}},
+	"pt/mochi": {{"Post do blog.md", "---\ntitle: \"{{title}}\"\ndate: {{date:YYYY-MM-DD}}\ndescription: \ntags: \ndraft: false\n---\n\n"}},
+	"en/mochi": {{"Blog post.md", "---\ntitle: \"{{title}}\"\ndate: {{date:YYYY-MM-DD}}\ndescription: \ntags: \ndraft: false\n---\n\n"}},
 }
 
 var samples = map[string][]note{
-	"pt/blog": {
+	"pt/mochi": {
 		{"_index.md", `---
 title: "{{title}}"
 button_text:
@@ -158,7 +158,7 @@ As propriedades no topo da nota controlam o site:
 > Callouts dobráveis do Obsidian também funcionam.
 `},
 	},
-	"en/blog": {
+	"en/mochi": {
 		{"_index.md", `---
 title: "{{title}}"
 button_text:
@@ -209,7 +209,7 @@ The properties at the top of a note control the site:
 > Obsidian's foldable callouts work too.
 `},
 	},
-	"pt/docs": {
+	"pt/bento": {
 		{"_index.md", `---
 title: "{{title}}"
 description: Documentação, roadmap e novidades do projeto.
@@ -219,7 +219,7 @@ Este é o texto da página inicial. Ele fica na nota **_index** da pasta do site
 Cada seção do site é uma pasta: **Documentação**, **Roadmap** e **Changelog**. Para tirar uma seção, apague a pasta. Para adicionar, use "Personalizar o site" no Blup.
 `},
 	},
-	"en/docs": {
+	"en/bento": {
 		{"_index.md", `---
 title: "{{title}}"
 description: Docs, roadmap and news about the project.

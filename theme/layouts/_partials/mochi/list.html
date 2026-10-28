@@ -1,0 +1,15 @@
+{{- /* Shared body of section, tag and author pages. Params: page, crumbs,
+heading (HTML), pages, current (term for the pills). */ -}}
+{{- $pager := .page.Paginate .pages -}}
+<main id="main" class="container">
+  <header class="page-head">
+    {{ partial "mochi/breadcrumb.html" (dict "items" .crumbs) }}
+    {{ .heading }}
+  </header>
+  {{ partial "mochi/pills.html" (dict "current" .current) }}
+  <div class="post-grid">
+    {{- range $pager.Pages }}{{ partial "mochi/card.html" . }}{{ end }}
+  </div>
+  {{ partial "mochi/more.html" $pager }}
+  <div class="listing"></div>
+</main>

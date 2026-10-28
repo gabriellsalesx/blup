@@ -1,5 +1,5 @@
 {{- /* One stylesheet per model, minified and fingerprinted. */ -}}
-{{- with resources.Get (printf "css/%s.css" (site.Params.model | default "blog")) -}}
+{{- with resources.Get (printf "css/%s.css" (site.Params.model | default "mochi")) -}}
   {{- $css := . | css.Build (dict "minify" hugo.IsProduction "externals" (slice "*.woff2")) -}}
   {{- if hugo.IsProduction }}{{ $css = $css | fingerprint }}{{ end }}
 <link rel="preload" href="{{ "fonts/inter-latin.woff2" | relURL }}" as="font" type="font/woff2" crossorigin>

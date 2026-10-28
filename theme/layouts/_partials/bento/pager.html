@@ -1,0 +1,13 @@
+{{- $all := partial "bento/flat.html" .FirstSection -}}
+{{- $i := -1 -}}
+{{- range $k, $p := $all }}{{ if eq $p $ }}{{ $i = $k }}{{ end }}{{ end -}}
+{{- if ge $i 0 }}
+<nav class="docs-pager" aria-label="{{ T "pages" }}">
+  {{- if gt $i 0 }}{{ with index $all (sub $i 1) }}
+  <a rel="prev" href="{{ .RelPermalink }}"><small>{{ T "previous" }}</small><span>{{ partial "title.html" . }}</span></a>
+  {{- end }}{{ end }}
+  {{- if lt (add $i 1) (len $all) }}{{ with index $all (add $i 1) }}
+  <a rel="next" href="{{ .RelPermalink }}"><small>{{ T "next" }}</small><span>{{ partial "title.html" . }}</span></a>
+  {{- end }}{{ end }}
+</nav>
+{{- end -}}

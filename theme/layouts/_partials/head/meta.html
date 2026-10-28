@@ -1,7 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="generator" content="Hugo {{ hugo.Version }} + blup">
+<meta name="generator" content="Hugo {{ hugo.Version }} + Blup {{ cond (eq site.Params.model "bento") "Bento" "Mochi" }}">
 {{- /* Favicon: the theme's character, or favicon.svg placed in the site's
 assets folder (it overrides the theme's). */ -}}
 {{- with resources.Get "favicon.svg" }}

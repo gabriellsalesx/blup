@@ -129,7 +129,7 @@ func menu(ctx context.Context, g *config.Global) error {
 			ui.Option(i18n.T("menu.language"), "language"),
 			ui.Option(i18n.T("menu.exit"), "exit"),
 		)
-		if err := ui.Choose(i18n.T("menu.question"), i18n.T("menu.current", site.Title, site.Dir()), &action, opts...); err != nil {
+		if err := ui.Choose(i18n.T("menu.question"), i18n.T("menu.current", site.Title, i18n.T("model."+site.Model), site.Dir()), &action, opts...); err != nil {
 			return err
 		}
 		switch action {

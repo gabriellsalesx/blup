@@ -1,4 +1,0 @@
-<main id="main" class="page-wrap">
-  {{ partial "blog/breadcrumb.html" (dict "items" (slice (dict "name" (partial "title.html" .FirstSection) "url" .FirstSection.RelPermalink) (dict "name" (partial "title.html" .)))) }}
-  <div class="changelog">{{ partial "docs/release.html" (dict "page" .) }}</div>
-</main>

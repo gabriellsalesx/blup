@@ -32,7 +32,7 @@ type Site struct {
 	Description string `toml:"description"`
 	Author      string `toml:"author"`
 	Lang        string `toml:"lang"`   // "pt" or "en": language of the site itself
-	Model       string `toml:"model"`  // "blog" or "docs"
+	Model       string `toml:"model"`  // theme: "mochi" (personal blog) or "bento" (SaaS)
 	Vault       string `toml:"vault"`  // absolute path of the Obsidian vault
 	Folder      string `toml:"folder"` // folder inside the vault published as the site; "" = whole vault
 	Domain      string `toml:"domain,omitempty"`
@@ -138,6 +138,13 @@ func LoadSite(dir string) (*Site, error) {
 	s := &Site{dir: dir}
 	if err := toml.Unmarshal(b, s); err != nil {
 		return nil, err
+	}
+	// Sites created before the themes had names.
+	switch s.Model {
+	case "blog":
+		s.Model = "mochi"
+	case "docs":
+		s.Model = "bento"
 	}
 	return s, nil
 }

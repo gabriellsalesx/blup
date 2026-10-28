@@ -1,0 +1,2 @@
+{{- $heading := printf `<h1 class="h1">%s</h1>%s` (partial "title.html" . | htmlEscape) (partial "content.html" . | string) | safeHTML -}}
+{{ partial "mochi/list.html" (dict "page" . "crumbs" (slice (dict "name" (partial "title.html" .))) "heading" $heading "pages" (partial "visible.html" .RegularPagesRecursive).ByDate.Reverse) }}

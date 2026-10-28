@@ -12,7 +12,10 @@ go build -o bin/blup ./cmd/blup
 - O site **lê o vault direto** (mounts do Hugo): nada é copiado. Cada nota vira página e cada subpasta vira seção.
 - O assistente ajusta o Obsidian para links Markdown relativos e converte os `[[wikilinks]]` antigos, com backup.
 - O Hugo é baixado sozinho na primeira vez (versão fixada em `internal/hugo`, com conferência de SHA-256).
-- Dois modelos: `blog` e `docs`, no mesmo tema (`theme/`, embutido no binário).
+- Dois temas, escolhidos na criação do site (`model` no `blup.toml`):
+  - **Mochi** (`mochi`, uso pessoal): blog com posts por data, tags, autores, RSS e barra de leitura.
+  - **Bento** (`bento`, SaaS ou produto): documentação, roadmap e changelog; cada parte é uma pasta do vault que a pessoa liga ou desliga.
+  - Os dois compartilham tokens, tema claro/escuro, callouts do Obsidian, senha em publicações e busca (`theme/`, embutido no binário). Arquivos de cada um em `layouts/_partials/mochi|bento` e `assets/css/mochi.css|bento.css`.
 
 ## Estrutura
 
