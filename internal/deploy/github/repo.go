@@ -90,6 +90,11 @@ type EnsureRepoOptions struct {
 	// Empty creates the repository without an initial commit (no README).
 	// The first BranchTip call with an InitFile initializes it.
 	Empty bool
+	// Issues turns issues on (they are off by default).
+	Issues bool
+	// NoHomepage leaves the homepage of a public repository empty instead
+	// of pointing it to GitHub Pages.
+	NoHomepage bool
 }
 
 // EnsureRepoWith is EnsureRepo with options (e.g. a private repository).
@@ -127,12 +132,12 @@ func (c *Client) EnsureRepoWith(ctx context.Context, owner, name string, opts En
 		"name":         name,
 		"private":      opts.Private,
 		"auto_init":    !opts.Empty,
-		"has_issues":   false,
+		"has_issues":   opts.Issues,
 		"has_projects": false,
 		"has_wiki":     false,
 		"description":  desc,
 	}
-	if !opts.Private {
+	if !opts.Private && !opts.NoHomepage {
 		body["homepage"] = ExpectedURL(login, name)
 	}
 	_, err = c.do(ctx, http.MethodPost, "/user/repos", body, &r)

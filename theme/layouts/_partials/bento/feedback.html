@@ -1,0 +1,21 @@
+{{- /* Votes, reactions and comments of a page, read live from its GitHub
+issue by feedback.js; voting, reacting and commenting happen on GitHub (the
+links work without JavaScript too). Param: the page. */ -}}
+{{- $n := partial "bento/feedback-id.html" . -}}
+{{- with $n -}}
+{{- $url := printf "https://github.com/%s/issues/%d" site.Params.blup.feedback . -}}
+{{- $kind := partial "bento/kind.html" $ -}}
+<section class="feedback" data-fb-issue="{{ . }}" data-fb-mode="full" aria-labelledby="fb-title">
+  <div class="fb-bar">
+    {{- if eq $kind "roadmap" }}
+    <a class="fb-vote" href="{{ $url }}" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-chevron-up"/></svg><b data-fb-votes>0</b><span>{{ T "fbVote" }}</span></a>
+    {{- end }}
+    <span class="fb-chips" data-fb-chips></span>
+    <a class="fb-add" href="{{ $url }}" rel="noopener"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-smile-plus"/></svg><span>{{ T "fbReact" }}</span></a>
+  </div>
+  <h2 id="fb-title" class="fb-title">{{ T "fbComments" }} <span class="fb-count" data-fb-ccount></span></h2>
+  <ol class="fb-list" data-fb-list><li class="fb-empty" data-fb-empty>{{ T "fbEmpty" }}</li></ol>
+  <a class="button fb-comment" href="{{ $url }}#new_comment_field" rel="noopener"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-github"/></svg>{{ T "fbComment" }}</a>
+  <p class="fb-note">{{ T "fbNote" }}</p>
+</section>
+{{- end -}}

@@ -22,7 +22,7 @@
           <a class="roadmap-card" href="{{ .RelPermalink }}">
             <h3>{{ partial "title.html" . }}</h3>
             {{- with partial "description.html" . }}<p>{{ . }}</p>{{ end }}
-            <footer>{{ with .Params.category }}{{ . }}{{ else }}{{ with .GetTerms "tags" }}{{ (index . 0).LinkTitle }}{{ else }}{{ T (printf "status_%s" $status) }}{{ end }}{{ end }}</footer>
+            <footer><span>{{ with .Params.category }}{{ . }}{{ else }}{{ with .GetTerms "tags" }}{{ (index . 0).LinkTitle }}{{ else }}{{ T (printf "status_%s" $status) }}{{ end }}{{ end }}</span>{{ partial "bento/feedback-mini.html" (dict "page" . "mode" "card") }}</footer>
           </a>
         </li>
         {{- end }}

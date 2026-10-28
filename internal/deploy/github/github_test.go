@@ -543,8 +543,15 @@ func TestEnsureRepoPrivateAndGitData(t *testing.T) {
 	if _, err := c.EnsureRepo(ctx, "", "site"); err != nil {
 		t.Fatal(err)
 	}
-	if f.created["private"] != false || f.created["homepage"] == nil {
+	if f.created["private"] != false || f.created["homepage"] == nil || f.created["has_issues"] != false {
 		t.Fatalf("public create body = %v", f.created)
+	}
+	// Feedback repository: public, issues on, no homepage.
+	if _, err := c.EnsureRepoWith(ctx, "", "site-feedback", EnsureRepoOptions{Issues: true, NoHomepage: true}); err != nil {
+		t.Fatal(err)
+	}
+	if f.created["has_issues"] != true || f.created["homepage"] != nil {
+		t.Fatalf("feedback create body = %v", f.created)
 	}
 
 	// Empty repo without init: reported as missing branch, nothing written.

@@ -169,7 +169,36 @@ layout. Bundled into one file by css.Build. */
   .roadmap-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
   .roadmap-card h3 { margin-block-end: .5rem; font-size: 1rem; font-weight: 700; line-height: 1.25; color: var(--main-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .roadmap-card p { margin-block-end: 1rem; font-size: .75rem; color: var(--main-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .roadmap-card footer { padding-block-start: 1rem; border-block-start: 1px dashed color-mix(in srgb, var(--main-300) 60%, transparent); font-size: .625rem; font-weight: 700; color: var(--main-500); }
+  .roadmap-card footer { padding-block-start: 1rem; border-block-start: 1px dashed color-mix(in srgb, var(--main-300) 60%, transparent); font-size: .625rem; font-weight: 700; color: var(--main-500);; display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  /* Feedback (GitHub issues): counters on cards, reactions on changelog
+     entries, and the votes/comments block of each page. */
+  .fb-mini { display: inline-flex; gap: .625rem; font-size: .6875rem; font-weight: 600; color: var(--main-500); }
+  .fb-mini span { display: inline-flex; align-items: center; gap: .125rem; }
+  .fb-mini .icon { width: .875rem; height: .875rem; }
+  .fb-reactions { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem; margin-block-start: 1.25rem; }
+  @media (width >= 64rem) { .release > .fb-reactions { grid-column: 2; margin-block-start: -1.5rem; } }
+  .fb-reactions [data-fb-chips], .fb-chips { display: contents; }
+  .fb-chip { display: inline-flex; align-items: center; gap: .25rem; padding: .125rem .5rem; border: 1px solid var(--main-200); border-radius: 9999px; font-size: .75rem; color: var(--main-700); background: var(--main-25); text-decoration: none; transition: border-color .2s; }
+  .fb-chip:hover { border-color: var(--main-400); }
+  .fb-add { display: inline-flex; align-items: center; gap: .375rem; padding: .25rem .5rem; border: 1px solid var(--main-200); border-radius: 9999px; font-size: .75rem; color: var(--main-500); text-decoration: none; }
+  .fb-add:hover { color: var(--main-900); border-color: var(--main-400); }
+  .fb-add .icon { width: .875rem; height: .875rem; }
+  .feedback { margin-block-start: 3rem; padding-block-start: 2rem; border-block-start: 1px solid color-mix(in srgb, var(--main-900) 8%, transparent); }
+  .fb-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+  .fb-vote { display: inline-flex; align-items: center; gap: .375rem; padding: .375rem .875rem; border: 1px solid var(--main-300); border-radius: .5rem; font-size: .875rem; font-weight: 600; color: var(--main-900); text-decoration: none; transition: background-color .2s; }
+  .fb-vote:hover { background: var(--main-100); }
+  .fb-title { margin-block: 2rem 1rem; font-size: 1.125rem; font-weight: 600; color: var(--main-900); }
+  .fb-count { color: var(--main-500); font-weight: 400; }
+  .fb-list { display: grid; gap: 1rem; margin-block-end: 1.5rem; }
+  .fb-item { padding: 1rem; border: 1px solid var(--main-200); border-radius: .5rem; }
+  .fb-head { display: flex; align-items: center; gap: .5rem; margin-block-end: .5rem; font-size: .875rem; }
+  .fb-head img { border-radius: 50%; }
+  .fb-head a { font-weight: 600; color: var(--main-900); }
+  .fb-head time { color: var(--main-500); }
+  .fb-body { font-size: .9375rem; }
+  .fb-empty { color: var(--main-500); font-size: .875rem; }
+  .fb-comment { display: inline-flex; align-items: center; gap: .5rem; }
+  .fb-note { margin-block-start: .75rem; font-size: .75rem; color: var(--main-500); }
   .status { display: inline-flex; align-items: center; gap: .375rem; padding: .25rem .625rem; border-radius: 9999px; font-size: .75rem; font-weight: 600; background: var(--main-100); color: var(--main-700); }
   .status::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--dot); }
   .status[data-status="planned"] { --dot: #3b82f6; }

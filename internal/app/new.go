@@ -177,6 +177,18 @@ func newSite(ctx context.Context, g *config.Global) error {
 		return err
 	}
 
+	// Optional (Bento): votes, reactions and comments in GitHub issues.
+	if site.Model == "bento" {
+		if ok, err := ui.Confirm(i18n.T("fb.new_q"), i18n.T("fb.new_help", feedbackRepoName(site)), false); err == nil && ok {
+			if err := enableFeedback(ctx, site); err != nil && !ui.Aborted(err) {
+				ui.Warn(describe(err))
+			} else if err == nil {
+				_ = site.Save()
+				_ = scaffold.Write(site)
+			}
+		}
+	}
+
 	// Optional: keep the notes in a private GitHub repository from day one.
 	if ok, err := ui.Confirm(i18n.T("new.sync_q"), i18n.T("new.sync_help"), false); err == nil && ok {
 		if err := syncNotes(ctx, g, site); err != nil && !ui.Aborted(err) {

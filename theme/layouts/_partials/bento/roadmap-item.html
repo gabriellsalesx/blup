@@ -7,5 +7,6 @@
       <p><span class="status" data-status="{{ $status }}">{{ T (printf "status_%s" $status) }}</span>{{ with .Params.category }} <span class="chip">{{ . }}</span>{{ end }}</p>
     </header>
     {{ partial "bento/body.html" . }}
+    {{ partial "bento/feedback.html" . }}
   </article>
 </main>

@@ -23,6 +23,7 @@ Não precisa saber programar. O Blup faz uma pergunta de cada vez, cada uma com 
 - **Do jeito do Obsidian**: propriedades, imagens, links entre notas, callouts, fórmulas, notas de rodapé, tarefas e `%%comentários%%` que não vão para o site.
 - **Embutido**: busca no site, tema claro e escuro, imagens em WebP, imagem de compartilhamento para cada página, RSS e mapa do site.
 - **Posts com senha**, criptografados quando o site é gerado. Sem servidor.
+- **Comentários e reações** no Bento: votos no roadmap, reações no changelog e comentários nos posts, guardados em issues de um repositório público `<site>-feedback` que o Blup cria. Liga e desliga em `blup personalizar`.
 - **Autores**: uma nota por pessoa, com foto, cargo, redes e bio.
 - **Offline primeiro**: as notas ficam no seu computador. Sincronize com um repositório privado no GitHub quando tiver internet e continue em outro computador. Sem git.
 - **Hospedagem grátis** no Cloudflare Pages (`seusite.pages.dev`) ou no GitHub Pages, e domínio próprio se você quiser.
@@ -76,7 +77,7 @@ Rodar só `blup` abre um menu com tudo. Cada ação também tem um comando, em p
 | `blup novo` | `blup new` | Cria um site novo |
 | `blup ver` | `blup preview` | Prévia no navegador, que atualiza sozinha |
 | `blup publicar` | `blup publish` | Coloca o site no ar |
-| `blup personalizar` | `blup customize` | Menu, seções, redes, logo, favicon, autor, domínio próprio, senha |
+| `blup personalizar` | `blup customize` | Menu, seções, redes, logo, favicon, autor, domínio próprio, senha, comentários |
 | `blup sincronizar` | `blup sync` | Guarda as notas num repositório privado no GitHub |
 | `blup converter` | `blup convert` | Troca `[[wikilinks]]` por links padrão |
 | `blup gerar` | `blup build` | Gera o site em `public/`, sem perguntas; `--url https://site.pages.dev/bento/ --saida ../landing/bento` gera para uma subpasta e copia para outra pasta |

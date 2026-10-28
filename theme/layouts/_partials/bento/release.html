@@ -22,7 +22,9 @@
   {{- /* In the list, entries stay out of the search index: each one is
   found on its own page. */}}
   {{- if partial "locked.html" $p }}{{ partial "mochi/lock.html" $p }}{{ else }}<div class="prose">{{ partial "content.html" $p }}</div>{{ end }}
+  {{ partial "bento/feedback-mini.html" (dict "page" $p "mode" "reactions") }}
   {{- else }}
   {{ partial "bento/body.html" $p }}
+  {{ partial "bento/feedback.html" $p }}
   {{- end }}
 </article>

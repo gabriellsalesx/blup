@@ -14,7 +14,7 @@ Rodar só `blup` abre o **menu**: prévia, publicar, personalizar, sincronizar, 
 | `blup novo` | `blup new` | Cria um site novo |
 | `blup ver` | `blup preview` | Abre a prévia no navegador |
 | `blup publicar` | `blup publish` | Coloca o site no ar |
-| `blup personalizar` | `blup customize` | Menu, seções, redes, logo, favicon, autor, domínio próprio e senha geral |
+| `blup personalizar` | `blup customize` | Menu, seções, redes, logo, favicon, autor, domínio próprio, senha geral e comentários |
 | `blup sincronizar` | `blup sync` | Guarda as notas num repositório privado no GitHub |
 | `blup converter` | `blup convert` | Troca `[[wikilinks]]` por links padrão |
 | `blup gerar` | `blup build` | Gera o site em `public/`, sem perguntas |

@@ -23,6 +23,7 @@ You don't need to know how to code. Blup asks one question at a time, each with 
 - **Write the Obsidian way**: properties, images, links between notes, callouts, math, footnotes, tasks and `%%comments%%` that never reach the site.
 - **Built in**: site search, light and dark mode, images resized to WebP, a share image for every page, RSS and sitemap.
 - **Password protected posts**, encrypted when the site is built. No server involved.
+- **Comments and reactions** on Bento: roadmap votes, changelog reactions and post comments, kept in issues of a public `<site>-feedback` repository Blup creates. Turn them on and off in `blup customize`.
 - **Authors**: one note per person, with photo, role, links and bio.
 - **Offline first**: your notes stay on your computer. Sync them with a private GitHub repository when you're back online, and pick up on another computer. No git needed.
 - **Free hosting** on Cloudflare Pages (`yoursite.pages.dev`) or GitHub Pages, and your own domain if you want one.
@@ -76,7 +77,7 @@ Running `blup` alone opens a menu with everything. Each action also has a comman
 | `blup new` | `blup novo` | Create a new site |
 | `blup preview` | `blup ver` | Live preview in the browser |
 | `blup publish` | `blup publicar` | Put the site online |
-| `blup customize` | `blup personalizar` | Menu, sections, social links, logo, favicon, author, custom domain, password |
+| `blup customize` | `blup personalizar` | Menu, sections, social links, logo, favicon, author, custom domain, password, comments |
 | `blup sync` | `blup sincronizar` | Keep your notes in a private GitHub repository |
 | `blup convert` | `blup converter` | Turn `[[wikilinks]]` into standard links |
 | `blup build` | `blup gerar` | Build the site into `public/`, no questions asked; `--url https://site.pages.dev/bento/ --out ../landing/bento` builds it for a subfolder and copies it elsewhere |

@@ -1,0 +1,7 @@
+{{- /* GitHub issue number that holds the feedback of a page (0 = none):
+written by the CLI to data/blup_feedback.json. */ -}}
+{{- $n := 0 -}}
+{{- if and site.Params.blup.feedback .File -}}
+  {{- with hugo.Data.blup_feedback }}{{ with index .issues (partial "bento/feedback-key.html" $) }}{{ $n = int . }}{{ end }}{{ end -}}
+{{- end -}}
+{{- return $n -}}

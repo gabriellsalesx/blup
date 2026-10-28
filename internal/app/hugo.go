@@ -53,24 +53,42 @@ func build(ctx context.Context, site *config.Site, baseURL string) (string, erro
 		return "", err
 	}
 	out := filepath.Join(site.Dir(), "public")
-	var log bytes.Buffer
-	err = ui.Spin(ctx, i18n.T("build.running"), func(ctx context.Context) error {
-		cmd := bin.Command(ctx, site.Dir(), "--gc", "--minify", "--cleanDestinationDir",
-			"--environment", "production", "--baseURL", baseURL, "--destination", out, "--logLevel", "warn")
-		cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=publish")
-		cmd.Stdout, cmd.Stderr = &log, &log
-		return cmd.Run()
-	})
-	warnings := hugoProblems(log.String())
-	if err != nil {
-		for _, w := range warnings {
-			ui.Error(w)
+	runHugo := func() error {
+		var log bytes.Buffer
+		err := ui.Spin(ctx, i18n.T("build.running"), func(ctx context.Context) error {
+			cmd := bin.Command(ctx, site.Dir(), "--gc", "--minify", "--cleanDestinationDir",
+				"--environment", "production", "--baseURL", baseURL, "--destination", out, "--logLevel", "warn")
+			cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=publish")
+			cmd.Stdout, cmd.Stderr = &log, &log
+			return cmd.Run()
+		})
+		warnings := hugoProblems(log.String())
+		if err != nil {
+			for _, w := range warnings {
+				ui.Error(w)
+			}
+			return errors.New(i18n.T("build.failed"))
 		}
-		return "", errors.New(i18n.T("build.failed"))
+		for _, w := range warnings {
+			ui.Warn(w)
+		}
+		return nil
 	}
-	for _, w := range warnings {
-		ui.Warn(w)
+	if err := runHugo(); err != nil {
+		return "", err
 	}
+	// Feedback (Bento): open issues for new pages; when a page got one, build
+	// again so the page shows it.
+	newIssues, ferr := syncFeedback(ctx, site, out)
+	if ferr != nil {
+		ui.Warn(i18n.T("fb.failed", describe(ferr)))
+	}
+	if newIssues {
+		if err := runHugo(); err != nil {
+			return "", err
+		}
+	}
+	os.Remove(filepath.Join(out, feedbackManifest))
 	if err := encryptLocked(ctx, site, out); err != nil {
 		// Never leave a build with protected posts in clear text around.
 		os.RemoveAll(out)

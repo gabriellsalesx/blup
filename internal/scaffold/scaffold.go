@@ -178,10 +178,19 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 	}
 	// blup-locks.json lists the passwords of protected notes for the CLI,
 	// which encrypts them and deletes the file (see internal/lock).
-	cfg["outputFormats"] = map[string]any{"bluplocks": map[string]any{
+	formats := map[string]any{"bluplocks": map[string]any{
 		"mediaType": "application/json", "baseName": "blup-locks", "isPlainText": true, "notAlternative": true,
 	}}
-	cfg["outputs"] = map[string]any{"home": []string{"html", "rss", "bluplocks"}}
+	home := []string{"html", "rss", "bluplocks"}
+	if feedbackOn(s) {
+		// Pages that get a feedback issue, read by the CLI (internal/app/feedback.go).
+		formats["blupfeedback"] = map[string]any{
+			"mediaType": "application/json", "baseName": "blup-feedback", "isPlainText": true, "notAlternative": true,
+		}
+		home = append(home, "blupfeedback")
+	}
+	cfg["outputFormats"] = formats
+	cfg["outputs"] = map[string]any{"home": home}
 	if preview {
 		mounts := cfg["module"].(map[string]any)["mounts"].([]mount)
 		cfg["module"] = map[string]any{"mounts": append(mounts, mount{Source: PreviewStatic, Target: "static"})}
@@ -219,9 +228,20 @@ func params(s *config.Site, folder, authors string) map[string]any {
 		"model":       s.Model,
 		"description": s.Description,
 		"author":      s.Author,
-		"blup":        map[string]any{"folder": folder, "authors": authorsPath(folder, authors)},
+		"blup":        blupParams(s, folder, authors),
 	}
 }
+
+func blupParams(s *config.Site, folder, authors string) map[string]any {
+	p := map[string]any{"folder": folder, "authors": authorsPath(folder, authors)}
+	if feedbackOn(s) {
+		p["feedback"] = s.Feedback.Owner + "/" + s.Feedback.Repo
+	}
+	return p
+}
+
+// feedbackOn: votes, reactions and comments exist only in the Bento model.
+func feedbackOn(s *config.Site) bool { return s.Model == "bento" && s.Feedback.On() }
 
 // authorsPath is the authors folder relative to the vault, "" without one.
 func authorsPath(folder, authors string) string {

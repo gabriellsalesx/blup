@@ -1,0 +1,3 @@
+{{- /* Stable key of a page for its feedback issue: the note's path inside
+the site folder, lowercase, with forward slashes. */ -}}
+{{- return lower (replace .File.Path "\\" "/") -}}

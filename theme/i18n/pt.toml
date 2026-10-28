@@ -76,6 +76,14 @@ lastUpdated = "Última atualização"
 section_help = "Respostas e guias passo a passo."
 section_blog = "Novidades, histórias e anúncios."
 
+fbVotes = "Votos"
+fbComments = "Comentários"
+fbVote = "Votar"
+fbReact = "Reagir no GitHub"
+fbComment = "Comentar no GitHub"
+fbEmpty = "Nenhum comentário ainda. Seja o primeiro!"
+fbNote = "Votar, reagir e comentar acontece no GitHub, com a sua conta do GitHub."
+
 [readingTime]
 one = "{{ .Count }} min de leitura"
 other = "{{ .Count }} min de leitura"

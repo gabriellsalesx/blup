@@ -71,6 +71,7 @@ func githubTokenURL() string {
 	q.Set("contents", "write")
 	q.Set("pages", "write")
 	q.Set("administration", "write")
+	q.Set("issues", "write")
 	return "https://github.com/settings/personal-access-tokens/new?" + q.Encode()
 }
 

@@ -52,6 +52,9 @@ type Site struct {
 	Deploy   Deploy `toml:"deploy"`
 	// Sync is the private GitHub repository the notes are synced with.
 	Sync NoteSync `toml:"sync,omitempty"`
+	// Feedback: votes, reactions and comments (Bento) in GitHub issues of a
+	// public repository.
+	Feedback Feedback `toml:"feedback,omitempty"`
 
 	dir string
 }
@@ -68,6 +71,17 @@ type Cloudflare struct {
 	Project   string `toml:"project,omitempty"`
 	Subdomain string `toml:"subdomain,omitempty"`
 }
+
+// Feedback is the public repository whose issues hold the votes,
+// reactions and comments of the site (Bento model only).
+type Feedback struct {
+	Enabled bool   `toml:"enabled,omitempty"`
+	Owner   string `toml:"owner,omitempty"`
+	Repo    string `toml:"repo,omitempty"`
+}
+
+// On reports whether the site shows feedback.
+func (f Feedback) On() bool { return f.Enabled && f.Owner != "" && f.Repo != "" }
 
 // NoteSync is where "blup sync" keeps a copy of the notes.
 type NoteSync struct {

@@ -1,0 +1,17 @@
+{{- /* Counters in lists, filled in by feedback.js: "card" (roadmap: votes
+and comments) or "reactions" (changelog: emoji counts). Params: page, mode. */ -}}
+{{- $n := partial "bento/feedback-id.html" .page -}}
+{{- with $n -}}
+{{- $url := printf "https://github.com/%s/issues/%d" site.Params.blup.feedback . -}}
+{{- if eq $.mode "card" -}}
+<span class="fb-mini" data-fb-issue="{{ . }}" data-fb-mode="card" hidden>
+  <span title="{{ T "fbVotes" }}"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-up"/></svg><b data-fb-votes>0</b></span>
+  <span title="{{ T "fbComments" }}"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-message"/></svg><b data-fb-ccount>0</b></span>
+</span>
+{{- else -}}
+<div class="fb-reactions" data-fb-issue="{{ . }}" data-fb-mode="reactions">
+  <span data-fb-chips></span>
+  <a class="fb-add" href="{{ $url }}" rel="noopener" title="{{ T "fbReact" }}" aria-label="{{ T "fbReact" }}"><svg class="icon icon-sm"><use href="#i-smile-plus"/></svg></a>
+</div>
+{{- end -}}
+{{- end -}}

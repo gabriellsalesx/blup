@@ -1,2 +1,7 @@
 {{- $js := resources.Get "js/blup.js" | js.Build (dict "minify" true "format" "esm") | fingerprint -}}
 <script type="module" src="{{ $js.RelPermalink }}"></script>
+{{- /* Bento feedback (votes, reactions, comments from GitHub issues). */}}
+{{- if and (eq site.Params.model "bento") site.Params.blup.feedback }}
+{{- $fb := resources.Get "js/feedback.js" | js.Build (dict "minify" true "format" "esm") | fingerprint }}
+<script type="module" src="{{ $fb.RelPermalink }}" data-fb-repo="{{ site.Params.blup.feedback }}"></script>
+{{- end }}
