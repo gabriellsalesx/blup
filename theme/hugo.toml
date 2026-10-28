@@ -1,6 +1,6 @@
 # blup theme defaults. The site's generated hugo.toml overrides these.
 [module.hugoVersion]
-min = "0.160.0"
+min = "0.169.0"
 
 [params]
 model = "mochi"

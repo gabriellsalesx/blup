@@ -27,8 +27,11 @@ import (
 // Pinned is the release downloaded when no suitable Hugo is installed.
 const Pinned = "0.169.0"
 
-// Minimum is the oldest Hugo the theme supports.
-const Minimum = "0.160.0"
+// Minimum is the oldest Hugo the theme supports. It follows Pinned: the
+// theme is written and tested against that release (0.169 changed how
+// reserved front matter fields and plainify behave), so an older Hugo found
+// on the computer is not used; the pinned one is downloaded instead.
+const Minimum = "0.169.0"
 
 // ErrUnsupportedPlatform means there is no archive we can unpack for this
 // OS/arch (macOS only ships .pkg installers).
