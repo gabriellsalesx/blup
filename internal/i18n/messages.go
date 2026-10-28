@@ -2,18 +2,35 @@ package i18n
 
 var messages = map[Lang]map[string]string{
 	EN: {
-		"tagline":            "your Obsidian vault as a website",
-		"yes":                "Yes",
-		"no":                 "No",
-		"required":           "This can't be empty.",
-		"cancelled":          "Cancelled. Nothing was changed.",
-		"unknown_command":    "unknown command",
-		"no_site":            "You don't have a site yet. Let's create one.",
-		"pick_site":          "Which site?",
-		"site_unreadable":    "Couldn't read the site in %s",
-		"browser_fallback":   "If the browser didn't open, copy this link:\n%s",
-		"templates_folder":   "Templates",
-		"attachments_folder": "Attachments",
+		"update.available":    "Blup %s is available (you have %s)",
+		"update.now":          "Update now",
+		"update.later":        "Not now",
+		"update.skip":         "Don't remind me about this version",
+		"update.checking":     "Checking for updates…",
+		"update.downloading":  "Downloading Blup %s…",
+		"update.done":         "Blup updated to %s.",
+		"update.restart":      "Run blup again to use the new version. Your sites get the updated themes on the next preview or publish.",
+		"update.current":      "You already have the latest version (%s).",
+		"update.rolled_back":  "Previous version restored.",
+		"update.dev":          "This is a development build: updates only work on released versions.",
+		"update.err_checksum": "The download did not pass the safety check, so nothing was changed. Try again later.",
+		"update.err_asset":    "This release has no download for your system yet.",
+		"update.err_writable": "I can't replace the blup file in its folder. Install again with the install script.",
+		"update.err_backup":   "There is no previous version to go back to.",
+		"tagline":             "your Obsidian vault as a website",
+		"yes":                 "Yes",
+		"no":                  "No",
+		"required":            "This can't be empty.",
+		"cancelled":           "Cancelled. Nothing was changed.",
+		"unknown_command":     "unknown command",
+		"no_site":             "You don't have a site yet. Let's create one.",
+		"pick_site":           "Which site?",
+		"site_unreadable":     "Couldn't read the site in %s",
+		"site.unknown_model":  "Unknown theme \"%s\" in blup.toml: use mochi or bento.",
+		"site.newer":          "This site was created by a newer Blup. Update first: blup update",
+		"browser_fallback":    "If the browser didn't open, copy this link:\n%s",
+		"templates_folder":    "Templates",
+		"attachments_folder":  "Attachments",
 		"help": `Blup: your Obsidian vault as a website
 
 Usage:
@@ -25,6 +42,7 @@ Usage:
   blup convert      turn [[wikilinks]] into standard links
   blup build        build the site into public/ without questions
   blup language     change the language
+  blup update       update Blup (--rollback goes back one version)
   blup version      show the version`,
 
 		"key.up":       "up",
@@ -242,18 +260,35 @@ Usage:
 		"cf.err_large":      "A file is bigger than 25 MB, the Cloudflare limit. Make it smaller or remove it from the site folder.",
 	},
 	PT: {
-		"tagline":            "seu vault do Obsidian como site",
-		"yes":                "Sim",
-		"no":                 "Não",
-		"required":           "Não pode ficar vazio.",
-		"cancelled":          "Cancelado. Nada foi alterado.",
-		"unknown_command":    "comando desconhecido",
-		"no_site":            "Você ainda não tem um site. Vamos criar um.",
-		"pick_site":          "Qual site?",
-		"site_unreadable":    "Não consegui ler o site em %s",
-		"browser_fallback":   "Se o navegador não abriu, copie este link:\n%s",
-		"templates_folder":   "Modelos",
-		"attachments_folder": "Anexos",
+		"update.available":    "Blup %s disponível (você tem a %s)",
+		"update.now":          "Atualizar agora",
+		"update.later":        "Agora não",
+		"update.skip":         "Não avisar desta versão",
+		"update.checking":     "Procurando atualizações…",
+		"update.downloading":  "Baixando o Blup %s…",
+		"update.done":         "Blup atualizado para a %s.",
+		"update.restart":      "Rode o blup de novo para usar a versão nova. Seus sites recebem os temas atualizados na próxima prévia ou publicação.",
+		"update.current":      "Você já tem a versão mais nova (%s).",
+		"update.rolled_back":  "Versão anterior restaurada.",
+		"update.dev":          "Esta é uma versão de desenvolvimento: a atualização só funciona em versões publicadas.",
+		"update.err_checksum": "O download não passou na verificação de segurança, então nada foi alterado. Tente mais tarde.",
+		"update.err_asset":    "Esta versão ainda não tem download para o seu sistema.",
+		"update.err_writable": "Não consigo trocar o arquivo do blup na pasta dele. Instale de novo com o script de instalação.",
+		"update.err_backup":   "Não há versão anterior para voltar.",
+		"tagline":             "seu vault do Obsidian como site",
+		"yes":                 "Sim",
+		"no":                  "Não",
+		"required":            "Não pode ficar vazio.",
+		"cancelled":           "Cancelado. Nada foi alterado.",
+		"unknown_command":     "comando desconhecido",
+		"no_site":             "Você ainda não tem um site. Vamos criar um.",
+		"pick_site":           "Qual site?",
+		"site_unreadable":     "Não consegui ler o site em %s",
+		"site.unknown_model":  "Tema \"%s\" desconhecido no blup.toml: use mochi ou bento.",
+		"site.newer":          "Este site foi criado por um Blup mais novo. Atualize antes: blup atualizar",
+		"browser_fallback":    "Se o navegador não abriu, copie este link:\n%s",
+		"templates_folder":    "Modelos",
+		"attachments_folder":  "Anexos",
 		"help": `Blup: seu vault do Obsidian como site
 
 Uso:
@@ -265,6 +300,7 @@ Uso:
   blup converter    troca [[wikilinks]] por links padrão
   blup gerar        gera o site em public/ sem perguntas
   blup idioma       muda o idioma
+  blup atualizar    atualiza o Blup (--voltar volta uma versão)
   blup version      mostra a versão`,
 
 		"key.up":       "subir",

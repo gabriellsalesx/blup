@@ -5,8 +5,6 @@ package i18n
 
 import (
 	"fmt"
-	"os"
-	"strings"
 )
 
 // Lang is a supported interface language.
@@ -30,16 +28,6 @@ func Set(l Lang) {
 
 // Current returns the active language.
 func Current() Lang { return current }
-
-// Detect guesses the language from the environment (LANG, LC_ALL, ...).
-func Detect() Lang {
-	for _, v := range []string{"LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"} {
-		if strings.HasPrefix(strings.ToLower(os.Getenv(v)), "pt") {
-			return PT
-		}
-	}
-	return EN
-}
 
 // T returns the translation of key, formatted with args when given.
 func T(key string, args ...any) string {

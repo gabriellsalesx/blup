@@ -45,8 +45,8 @@ func Run(ctx context.Context, args []string) error {
 		return nil
 	}
 	if cmd == "build" || cmd == "gerar" || !ui.Interactive() {
-		// No questions when scripted: use the saved or detected language.
-		i18n.Set(i18n.Detect())
+		// No questions when scripted: the saved language, else English.
+		i18n.Set(i18n.EN)
 		if g.Lang != "" {
 			i18n.Set(i18n.Lang(g.Lang))
 		}
@@ -74,6 +74,8 @@ func Run(ctx context.Context, args []string) error {
 		return withSite(ctx, &g, args[1:], customize)
 	case "language", "idioma":
 		return chooseLanguage(&g)
+	case "update", "atualizar":
+		return updateCommand(ctx, args[1:])
 	default:
 		fmt.Println(i18n.T("help"))
 		return fmt.Errorf("%s: %s", i18n.T("unknown_command"), cmd)
@@ -85,15 +87,15 @@ func chooseLanguageIfNeeded(g *config.Global) error {
 		i18n.Set(i18n.Lang(g.Lang))
 		return nil
 	}
-	i18n.Set(i18n.Detect())
+	i18n.Set(i18n.EN) // English is the default
 	return chooseLanguage(g)
 }
 
 func chooseLanguage(g *config.Global) error {
 	lang := i18n.Current()
 	if err := ui.Choose("Language / Idioma", "", &lang,
-		ui.Option("Português", i18n.PT),
 		ui.Option("English", i18n.EN),
+		ui.Option("Português", i18n.PT),
 	); err != nil {
 		return err
 	}
@@ -104,6 +106,9 @@ func chooseLanguage(g *config.Global) error {
 
 func menu(ctx context.Context, g *config.Global) error {
 	ui.Banner("Blup · " + i18n.T("tagline"))
+	if offerUpdate(ctx) {
+		return nil // the new version runs on the next start
+	}
 	sites := g.ExistingSites()
 	if len(sites) == 0 {
 		ui.Hint(i18n.T("menu.first_time"))
@@ -133,13 +138,13 @@ func menu(ctx context.Context, g *config.Global) error {
 			return err
 		}
 		switch action {
-		case "preview":
+		case "preview", "ver":
 			err = preview(ctx, g, site)
-		case "publish":
+		case "publish", "publicar":
 			err = publish(ctx, g, site)
-		case "customize":
+		case "customize", "personalizar":
 			err = customize(ctx, g, site)
-		case "convert":
+		case "convert", "converter":
 			err = convertLinks(ctx, g, site)
 		case "switch":
 			var dir string
@@ -148,10 +153,10 @@ func menu(ctx context.Context, g *config.Global) error {
 				err = g.Save()
 				sites = g.ExistingSites()
 			}
-		case "new":
+		case "new", "novo":
 			err = newSite(ctx, g)
 			sites = g.ExistingSites()
-		case "language":
+		case "language", "idioma":
 			err = chooseLanguage(g)
 		case "exit":
 			return nil
@@ -210,6 +215,13 @@ func pickSite(sites []string) (string, error) {
 
 func loadSite(dir string) (*config.Site, error) {
 	s, err := config.LoadSite(dir)
+	if errors.Is(err, config.ErrNewerSite) {
+		return nil, errors.New(i18n.T("site.newer"))
+	}
+	var unknown config.UnknownModelError
+	if errors.As(err, &unknown) {
+		return nil, errors.New(i18n.T("site.unknown_model", unknown.Model))
+	}
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", i18n.T("site_unreadable", dir), err)
 	}

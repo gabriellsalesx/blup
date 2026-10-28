@@ -1,0 +1,33 @@
+# Release of the Blup CLI. A tag vX.Y.Z triggers .github/workflows/release.yml.
+# Archive names and checksums.txt are read by `blup update` (internal/update)
+# and by install.sh / install.ps1: keep them in sync.
+version: 2
+project_name: blup
+
+builds:
+  - main: ./cmd/blup
+    binary: blup
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X github.com/gabriellsalesx/blup/internal/app.Version={{ .Version }}
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files: [README.md, theme/licenses/*]
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  disable: true # release notes are written by hand on GitHub (PT and EN)
+
+release:
+  draft: false

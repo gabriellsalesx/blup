@@ -4,6 +4,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -26,8 +27,17 @@ type Credentials struct {
 	GitHubToken     string `toml:"github_token,omitempty"`
 }
 
+// SiteVersion is the format of blup.toml this Blup writes. When a release
+// changes the format, it bumps this number and migrates older files in
+// LoadSite (with a backup).
+const SiteVersion = 1
+
+// ErrNewerSite means blup.toml was written by a newer Blup.
+var ErrNewerSite = errors.New("this site was created by a newer Blup")
+
 // Site is <site>/blup.toml.
 type Site struct {
+	Version     int    `toml:"version"`
 	Title       string `toml:"title"`
 	Description string `toml:"description"`
 	Author      string `toml:"author"`
@@ -129,6 +139,13 @@ func LoadCredentials() (Credentials, error) {
 // Save writes the credentials readable only by the user.
 func (c Credentials) Save() error { return save("credentials.toml", c, 0o600) }
 
+// UnknownModelError means blup.toml names a theme that does not exist.
+type UnknownModelError struct{ Model string }
+
+func (e UnknownModelError) Error() string {
+	return fmt.Sprintf("unknown theme %q in %s: use mochi or bento", e.Model, SiteFile)
+}
+
 // LoadSite reads dir/blup.toml.
 func LoadSite(dir string) (*Site, error) {
 	b, err := os.ReadFile(filepath.Join(dir, SiteFile))
@@ -139,12 +156,11 @@ func LoadSite(dir string) (*Site, error) {
 	if err := toml.Unmarshal(b, s); err != nil {
 		return nil, err
 	}
-	// Sites created before the themes had names.
-	switch s.Model {
-	case "blog":
-		s.Model = "mochi"
-	case "docs":
-		s.Model = "bento"
+	if s.Version > SiteVersion {
+		return nil, ErrNewerSite
+	}
+	if s.Model != "mochi" && s.Model != "bento" {
+		return nil, UnknownModelError{Model: s.Model}
 	}
 	return s, nil
 }
@@ -160,6 +176,7 @@ func (s *Site) ContentDir() string { return filepath.Join(s.Vault, s.Folder) }
 
 // Save writes dir/blup.toml.
 func (s *Site) Save() error {
+	s.Version = SiteVersion
 	b, err := toml.Marshal(s)
 	if err != nil {
 		return err

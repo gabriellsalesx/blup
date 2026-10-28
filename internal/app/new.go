@@ -76,7 +76,7 @@ func newSite(ctx context.Context, g *config.Global) error {
 	}
 	siteLang := string(i18n.Current())
 	if err := ui.Choose(i18n.T("new.site_lang"), i18n.T("new.site_lang_help"), &siteLang,
-		ui.Option("Português", "pt"), ui.Option("English", "en"),
+		ui.Option("English", "en"), ui.Option("Português", "pt"),
 	); err != nil {
 		return err
 	}

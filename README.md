@@ -2,6 +2,24 @@
 
 Transforma um vault do Obsidian (ou uma pasta dele) em um site Hugo rápido, com SEO e imagem OG, e publica no GitHub Pages ou no Cloudflare Pages. Tudo guiado por perguntas, em português ou inglês.
 
+## Instalar
+
+Linux e macOS:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.ps1 | iex
+```
+
+Os scripts baixam o executável do último release, conferem o SHA-256 e instalam sem pedir senha de administrador. Depois, o próprio Blup avisa quando há versão nova e pergunta antes de atualizar (`blup update`; `blup update --rollback` volta uma versão).
+
+## Desenvolver
+
 ```sh
 go build -o bin/blup ./cmd/blup
 ./bin/blup          # abre o menu
@@ -41,3 +59,11 @@ go test ./...
 ```
 
 O teste de `internal/scaffold` gera e compila um site real com o vault de `internal/scaffold/testdata/vault` (precisa do Hugo instalado).
+
+## Publicar uma versão
+
+1. Escreva as notas da versão (PT e EN).
+2. `git tag v1.2.3 && git push origin v1.2.3`
+3. O GitHub Actions roda os testes e o GoReleaser publica os executáveis e o `checksums.txt` no release; cole as notas no release.
+
+A CLI de quem já instalou verifica o último release no máximo uma vez por dia e pergunta se quer atualizar. Os temas vêm dentro do executável, então os sites recebem o tema novo na próxima prévia ou publicação.
