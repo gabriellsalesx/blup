@@ -85,13 +85,28 @@ async function key() {
 
 // --- GitHub API ----------------------------------------------------------
 
+// changed records that the visitor just voted, reacted or commented: for
+// a few minutes this browser reads straight from GitHub, skipping every
+// cache, so they see their own change even after reloading.
+const CHANGED = "blup-fb-changed";
+const FRESH = 3 * 60 * 1000;
+
+function changed() {
+  clearCache();
+  try { localStorage.setItem(CHANGED, String(Date.now())); } catch {}
+}
+
+function fresh() {
+  try { return Date.now() - Number(localStorage.getItem(CHANGED)) < FRESH; } catch { return false; }
+}
+
 function clearCache() {
   try {
     for (const k of Object.keys(sessionStorage)) if (k.startsWith("blup-fb:")) sessionStorage.removeItem(k);
   } catch {}
 }
 
-async function gh(url, { method = "GET", body, accept = "application/vnd.github+json", cache = method === "GET", ttl = TTL } = {}) {
+async function gh(url, { method = "GET", body, accept = "application/vnd.github+json", cache = method === "GET" && !fresh(), ttl = TTL } = {}) {
   const ck = `blup-fb:${url}`;
   if (cache) {
     try {
@@ -104,7 +119,9 @@ async function gh(url, { method = "GET", body, accept = "application/vnd.github+
   const k = loginAPI && url.startsWith("https://api.github.com/") && (await key());
   if (k) headers.Authorization = `Bearer ${k}`;
   if (body) headers["Content-Type"] = "application/json";
-  const res = await fetch(url, { method, headers, body: body && JSON.stringify(body) });
+  // After a change, ask GitHub again instead of the browser's own copy
+  // (GitHub lets browsers keep answers for a minute).
+  const res = await fetch(url, { method, headers, body: body && JSON.stringify(body), cache: fresh() ? "no-cache" : "default" });
   if (res.status === 401 && k) saveAuth(null); // revoked on GitHub
   if (!res.ok) throw new Error(res.status);
   const data = res.status === 204 ? null : await res.json();
@@ -171,7 +188,7 @@ async function deletable(node, issue) {
       b.disabled = true;
       try {
         await gh(`${API}/issues/comments/${li.dataset.id}`, { method: "DELETE" });
-        clearCache();
+        changed();
         li.remove();
         issue.data.comments = Math.max(0, (issue.data.comments || 1) - 1);
         issue.render();
@@ -223,7 +240,7 @@ class Issue {
         const r = await gh(`${API}/issues/${this.data.number}/reactions`, { method: "POST", body: { content: k } });
         this.mine.set(k, r.id);
       }
-      clearCache();
+      changed();
     } catch {
       this.data.reactions[k] = this.count(k) + (had ? 1 : -1);
       had ? this.mine.set(k, had) : this.mine.delete(k);
@@ -234,9 +251,10 @@ class Issue {
   render() { for (const v of this.views) v(); }
 }
 
+// user is the signed in visitor, asked once per page (shared promise).
 let me = null;
-async function user() {
-  if (!me) me = await gh("https://api.github.com/user", { cache: false });
+function user() {
+  me ||= gh("https://api.github.com/user", { cache: false }).catch((e) => { me = null; throw e; });
   return me;
 }
 
@@ -318,7 +336,7 @@ function form(node, issue, lang) {
         body: { body: text },
         accept: "application/vnd.github.full+json",
       });
-      clearCache();
+      changed();
       area.value = "";
       issue.data.comments = (issue.data.comments || 0) + 1;
       const ol = node.querySelector("[data-fb-list]");
@@ -353,9 +371,10 @@ function sortBoard() {
 }
 
 // read goes through the login service for visitors who are not signed in
-// (falling back to GitHub when it fails), straight to GitHub otherwise.
+// (falling back to GitHub when it fails), straight to GitHub otherwise and
+// right after the visitor's own change (the service caches for a minute).
 async function read(path, github, accept) {
-  if (loginAPI && !auth) {
+  if (loginAPI && !auth && !fresh()) {
     try { return await gh(loginAPI + path, { ttl: API_TTL }); } catch {}
   }
   return gh(github, { accept });
