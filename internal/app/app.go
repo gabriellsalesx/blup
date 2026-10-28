@@ -107,7 +107,7 @@ func chooseLanguage(g *config.Global) error {
 }
 
 func menu(ctx context.Context, g *config.Global) error {
-	ui.Banner("Blup · " + i18n.T("tagline"))
+	ui.Splash(i18n.T("credit"))
 	if offerUpdate(ctx) {
 		return nil // the new version runs on the next start
 	}
