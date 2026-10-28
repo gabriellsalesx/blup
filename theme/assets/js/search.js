@@ -7,7 +7,10 @@ export async function init(dialog) {
   let pagefind;
   try {
     pagefind = await import(t.pagefind + "pagefind.js");
-    await pagefind.options({ excerptLength: 18 });
+    // Result links start where the site lives ("/" or a subfolder like
+    // "/bento/"): the folder that holds the pagefind bundle.
+    const baseUrl = new URL(t.pagefind, location.href).pathname.replace(/pagefind\/?$/, '');
+    await pagefind.options({ excerptLength: 18, baseUrl });
     pagefind.init();
   } catch {
     out.innerHTML = `<p class="search-status">${t.unavailable}</p>`;
