@@ -1,0 +1,11 @@
+{{- $status := partial "docs/status.html" . -}}
+<main id="main" class="page-wrap">
+  <article class="docs-article">
+    <header>
+      {{ partial "blog/breadcrumb.html" (dict "items" (slice (dict "name" (partial "title.html" .FirstSection) "url" .FirstSection.RelPermalink) (dict "name" (partial "title.html" .)))) }}
+      <h1 class="docs-title">{{ partial "title.html" . }}</h1>
+      <p><span class="status" data-status="{{ $status }}">{{ T (printf "status_%s" $status) }}</span>{{ with .Params.category }} <span class="chip">{{ . }}</span>{{ end }}</p>
+    </header>
+    {{ partial "docs/body.html" . }}
+  </article>
+</main>

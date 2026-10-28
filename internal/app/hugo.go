@@ -85,8 +85,12 @@ func build(ctx context.Context, site *config.Site, baseURL string) (string, erro
 // asking for the general password when a note uses it and none is set.
 func encryptLocked(ctx context.Context, site *config.Site, dir string) error {
 	posts, needsGlobal, err := lock.Pending(dir)
-	if err != nil || posts == 0 {
+	if err != nil {
 		return err
+	}
+	if posts == 0 {
+		// The (empty) manifest is internal: never publish it.
+		return lock.Discard(dir)
 	}
 	if needsGlobal && site.Password == "" {
 		if !ui.Interactive() {

@@ -1,0 +1,7 @@
+{{- /* Roadmap status in any of the languages people write it. */ -}}
+{{- $s := lower (string (.Params.status | default "")) -}}
+{{- $s = replaceRE `[\s_-]+` " " $s | strings.TrimSpace -}}
+{{- $out := "planned" -}}
+{{- if in (slice "em andamento" "andamento" "fazendo" "in progress" "progress" "doing" "started" "em progresso") $s }}{{ $out = "progress" -}}
+{{- else if in (slice "concluido" "concluído" "feito" "pronto" "done" "completed" "complete" "shipped" "lançado" "lancado") $s }}{{ $out = "done" }}{{ end -}}
+{{- return $out -}}

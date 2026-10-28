@@ -102,7 +102,7 @@ func Choose[T comparable](question, help string, value *T, options ...huh.Option
 
 // ChooseMany asks the user to tick several options.
 func ChooseMany[T comparable](question, help string, value *[]T, options ...huh.Option[T]) error {
-	m := huh.NewMultiSelect[T]().Title(question).Options(options...).Value(value).Height(min(len(options), 10) + 3)
+	m := huh.NewMultiSelect[T]().Title(question).Options(options...).Value(value).Height(min(len(options), 10) + 6)
 	if help != "" {
 		m.Description(help)
 	}

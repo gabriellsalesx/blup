@@ -6,6 +6,7 @@
 {{- $crumbs = $crumbs | append (dict "name" $title) -}}
 {{- $a := partial "blog/author.html" . -}}
 {{- $locked := partial "locked.html" . -}}
+<div class="reading-progress" aria-hidden="true"></div>
 <main id="main">
   <header class="post-hero{{ if not $cover }} no-cover{{ end }}">
     <div class="container">

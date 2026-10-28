@@ -23,20 +23,25 @@ import (
 func customize(ctx context.Context, _ *config.Global, site *config.Site) error {
 	for {
 		choice := "menu"
-		if err := ui.Choose(i18n.T("custom.q"), i18n.T("custom.help"), &choice,
-			ui.Option(i18n.T("custom.menu"), "menu"),
+		opts := []huh.Option[string]{ui.Option(i18n.T("custom.menu"), "menu")}
+		if site.Model == "docs" {
+			opts = append(opts, ui.Option(i18n.T("custom.sections"), "sections"))
+		}
+		if err := ui.Choose(i18n.T("custom.q"), i18n.T("custom.help"), &choice, append(opts,
 			ui.Option(i18n.T("custom.social"), "social"),
 			ui.Option(i18n.T("custom.images"), "images"),
 			ui.Option(i18n.T("custom.about"), "about"),
 			ui.Option(i18n.T("custom.password"), "password"),
 			ui.Option(i18n.T("custom.back"), "back"),
-		); err != nil || choice == "back" {
+		)...); err != nil || choice == "back" {
 			return err
 		}
 		var err error
 		switch choice {
 		case "menu":
 			err = editMenu(site)
+		case "sections":
+			err = editSections(site)
 		case "social":
 			err = editSocial(site)
 		case "images":
@@ -249,5 +254,35 @@ func editPassword(site *config.Site) error {
 		return err
 	}
 	site.Password = pw
+	return nil
+}
+
+// editSections adds the docs-model sections the site does not have yet.
+// Removing one is done in Obsidian by deleting its folder.
+func editSections(site *config.Site) error {
+	have := existingSections(site)
+	var missing []huh.Option[string]
+	var present []string
+	for _, k := range docsKinds {
+		if folder, ok := have[k]; ok {
+			present = append(present, folder)
+			continue
+		}
+		missing = append(missing, ui.Option(i18n.T("new.section_"+k), k))
+	}
+	help := i18n.T("custom.sections_help", strings.Join(present, ", "))
+	if len(missing) == 0 {
+		return ui.Explain(i18n.T("custom.sections"), help+"\n\n"+i18n.T("custom.sections_all"))
+	}
+	var add []string
+	if err := ui.ChooseMany(i18n.T("custom.sections_q"), help, &add, missing...); err != nil {
+		return err
+	}
+	for _, k := range add {
+		if err := writeSection(site, k); err != nil {
+			return err
+		}
+		ui.OK(i18n.T("custom.section_added", i18n.T("section_folder."+k)))
+	}
 	return nil
 }

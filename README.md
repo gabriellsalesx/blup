@@ -1,6 +1,6 @@
 # blup
 
-Transforma um vault do Obsidian (ou uma pasta dele) em um site Hugo rápido, com SEO e imagem OG, e publica no GitHub Pages ou na Cloudflare. Tudo guiado por perguntas, em português ou inglês.
+Transforma um vault do Obsidian (ou uma pasta dele) em um site Hugo rápido, com SEO e imagem OG, e publica no GitHub Pages ou no Cloudflare Pages. Tudo guiado por perguntas, em português ou inglês.
 
 ```sh
 go build -o bin/blup ./cmd/blup
@@ -26,7 +26,9 @@ go build -o bin/blup ./cmd/blup
 | `internal/scaffold` | gera `hugo.toml` e copia o tema; teste de build real |
 | `internal/hugo` | encontra ou baixa o Hugo |
 | `internal/deploy/github` | GitHub Pages via API REST (sem git) |
-| `internal/deploy/cfworkers` | Cloudflare Workers Static Assets via API (sem wrangler) |
+| `internal/deploy/cfpages` | Cloudflare Pages via Direct Upload (sem wrangler), endereço `site.pages.dev` |
+| `internal/lock` | criptografia das publicações com senha |
+| `internal/pagefind` | baixa o Pagefind e gera o índice da busca |
 | `theme/` | tema Hugo (layouts, hooks do Obsidian, SEO, OG) |
 
 ## Testes

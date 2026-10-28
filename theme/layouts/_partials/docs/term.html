@@ -1,8 +1,8 @@
-<main id="main">
-  <h1>#{{ .LinkTitle }}</h1>
-  <ul class="children">
-    {{- range .Pages.ByTitle }}
-    <li><a href="{{ .RelPermalink }}">{{ partial "title.html" . }}</a></li>
+<main id="main" class="page-wrap">
+  <header class="page-intro"><h1 class="docs-title">{{ .LinkTitle }}</h1></header>
+  <ul class="section-cards">
+    {{- range (partial "visible.html" .Pages).ByDate.Reverse }}
+    <li><a class="section-card" href="{{ .RelPermalink }}"><strong>{{ partial "title.html" . }}</strong>{{ with partial "description.html" . }}<p>{{ . }}</p>{{ end }}</a></li>
     {{- end }}
   </ul>
 </main>

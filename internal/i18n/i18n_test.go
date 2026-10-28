@@ -39,7 +39,7 @@ func TestKeysUsedExist(t *testing.T) {
 		b, _ := os.ReadFile(p)
 		for _, r := range []*regexp.Regexp{re, knownRe} {
 			for _, m := range r.FindAllStringSubmatch(string(b), -1) {
-				if strings.HasSuffix(m[1], ".") {
+				if strings.HasSuffix(m[1], ".") || strings.HasSuffix(m[1], "_") {
 					continue // dynamic key such as "model."+name
 				}
 				if _, ok := messages[EN][m[1]]; !ok {

@@ -345,6 +345,14 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .post-end .tag-list { margin: 0; }
   .related { padding-block: 2.5rem 4rem; }
 
+  /* Reading progress under the header: blog.js sets --progress (0 to 1)
+     as the page scrolls. */
+  .reading-progress {
+    position: fixed; inset-block-start: var(--header-h); inset-inline: 0; z-index: 49; height: 4px;
+    background: var(--primary-500); transform-origin: 0 50%;
+    transform: scaleX(var(--progress, 0)); transition: transform .3s ease-out; pointer-events: none;
+  }
+
   /* Password-protected post */
   .lock-form { display: grid; justify-items: center; gap: .75rem; text-align: center; padding: 3rem 1.5rem; border: 1px solid var(--main-200); border-radius: var(--radius); background: var(--main-50); }
   .lock-form h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.025em; color: var(--main-900); }

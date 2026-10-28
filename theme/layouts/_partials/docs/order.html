@@ -1,0 +1,12 @@
+{{- /* Reading order of a docs section: the section's own page and notes,
+then each subfolder as a group (its _index first when it has text). Returns
+a slice of dicts {group: section or false, pages: [...]}. */ -}}
+{{- $root := . -}}
+{{- $groups := slice (dict "group" false "pages" ((slice $root) | append (partial "visible.html" $root.RegularPages).ByWeight)) -}}
+{{- range $root.Sections.ByWeight -}}
+  {{- $pages := slice -}}
+  {{- if strings.TrimSpace .RawContent }}{{ $pages = $pages | append . }}{{ end -}}
+  {{- $pages = $pages | append (partial "visible.html" .RegularPagesRecursive).ByWeight -}}
+  {{- $groups = $groups | append (dict "group" . "pages" $pages) -}}
+{{- end -}}
+{{- return $groups -}}

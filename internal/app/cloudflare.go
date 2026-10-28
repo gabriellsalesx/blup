@@ -3,47 +3,34 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
-	"net/url"
 
 	"charm.land/huh/v2"
 
 	"github.com/gabriellsalesx/blup/internal/config"
-	"github.com/gabriellsalesx/blup/internal/deploy/cfworkers"
+	"github.com/gabriellsalesx/blup/internal/deploy/cfpages"
 	"github.com/gabriellsalesx/blup/internal/i18n"
 	"github.com/gabriellsalesx/blup/internal/ui"
 )
 
 func init() {
 	registerErrors(
-		knownError{cfworkers.ErrInvalidToken, "cf.err_token"},
-		knownError{cfworkers.ErrMissingPermission, "cf.err_permission"},
-		knownError{cfworkers.ErrTooManyFiles, "cf.err_files"},
-		knownError{cfworkers.ErrQuota, "cf.err_quota"},
-		knownError{cfworkers.ErrFileTooLarge, "cf.err_large"},
-		knownError{cfworkers.ErrUploadExpired, "cf.err_expired"},
+		knownError{cfpages.ErrInvalidToken, "cf.err_token"},
+		knownError{cfpages.ErrMissingPermission, "cf.err_permission"},
+		knownError{cfpages.ErrProjectNameTaken, "cf.err_taken"},
+		knownError{cfpages.ErrTooManyFiles, "cf.err_files"},
+		knownError{cfpages.ErrQuota, "cf.err_quota"},
+		knownError{cfpages.ErrFileTooLarge, "cf.err_large"},
 	)
 }
 
-// cloudflareTokenURL opens the token form pre-filled with the only
-// permission needed: Account › Workers Scripts › Edit.
-func cloudflareTokenURL() string {
-	q := url.Values{}
-	q.Set("permissionGroupKeys", `[{"key":"workers_scripts","type":"edit"}]`)
-	q.Set("accountId", "*")
-	q.Set("zoneId", "all")
-	q.Set("name", "blup")
-	return "https://dash.cloudflare.com/profile/api-tokens?" + q.Encode()
-}
-
-func cloudflareClient(ctx context.Context) (*cfworkers.Client, error) {
+func cloudflareClient(ctx context.Context) (*cfpages.Client, error) {
 	creds, err := config.LoadCredentials()
 	if err != nil {
 		return nil, err
 	}
 	for {
 		if creds.CloudflareToken == "" {
-			link := cloudflareTokenURL()
+			link := cfpages.TokenTemplateURL
 			if err := ui.Explain(i18n.T("cf.token_title"), i18n.T("cf.token_steps")); err != nil {
 				return nil, err
 			}
@@ -53,7 +40,7 @@ func cloudflareClient(ctx context.Context) (*cfworkers.Client, error) {
 				return nil, err
 			}
 		}
-		c := &cfworkers.Client{Token: creds.CloudflareToken}
+		c := &cfpages.Client{Token: creds.CloudflareToken}
 		err := ui.Spin(ctx, i18n.T("cf.checking"), c.VerifyToken)
 		if err == nil {
 			return c, creds.Save()
@@ -66,6 +53,7 @@ func cloudflareClient(ctx context.Context) (*cfworkers.Client, error) {
 	}
 }
 
+// publishCloudflare sends the site to Cloudflare Pages (free, site.pages.dev).
 func publishCloudflare(ctx context.Context, site *config.Site) (string, error) {
 	c, err := cloudflareClient(ctx)
 	if err != nil {
@@ -74,7 +62,7 @@ func publishCloudflare(ctx context.Context, site *config.Site) (string, error) {
 	d := &site.Deploy.Cloudflare
 
 	if d.Account == "" {
-		var accounts []cfworkers.Account
+		var accounts []cfpages.Account
 		if err := ui.Spin(ctx, i18n.T("cf.accounts"), func(ctx context.Context) error {
 			accounts, err = c.Accounts(ctx)
 			return err
@@ -98,52 +86,30 @@ func publishCloudflare(ctx context.Context, site *config.Site) (string, error) {
 		}
 	}
 
-	first := d.Project == ""
-	if first {
-		d.Project = cfworkers.ScriptNameFromTitle(site.Title)
-		if err := ui.Ask(i18n.T("cf.name_q"), i18n.T("cf.name_help"), d.Project, &d.Project, cfworkers.ValidateScriptName); err != nil {
+	if d.Project == "" {
+		d.Project = cfpages.ProjectNameFromTitle(site.Title)
+		if err := ui.Ask(i18n.T("cf.name_q"), i18n.T("cf.name_help"), d.Project, &d.Project, cfpages.ValidateProjectName); err != nil {
 			return "", err
 		}
 	}
 
-	var target cfworkers.Site
-	for {
-		err = ui.Spin(ctx, i18n.T("cf.preparing"), func(ctx context.Context) error {
-			target, err = c.EnsureSite(ctx, d.Account, d.Project)
-			return err
-		})
-		if !errors.Is(err, cfworkers.ErrNoWorkersSubdomain) {
-			break
-		}
-		// A brand-new account has no workers.dev subdomain until the
-		// Workers page is opened once in the dashboard.
-		link := cfworkers.WorkersOnboardingURL(d.Account)
-		ui.OpenBrowser(link)
-		if err := ui.Explain(i18n.T("cf.subdomain_title"), i18n.T("cf.subdomain_steps", link)); err != nil {
-			return "", err
-		}
-	}
-	if err != nil {
+	// The real address can differ from the name: when "name.pages.dev" is
+	// taken elsewhere, Cloudflare adds a suffix. It is needed before building.
+	var project cfpages.Project
+	if err := ui.Spin(ctx, i18n.T("cf.preparing"), func(ctx context.Context) error {
+		project, err = c.EnsureProject(ctx, d.Account, d.Project)
+		return err
+	}); err != nil {
 		return "", err
 	}
-	if first && target.Exists {
-		ok, err := ui.Confirm(i18n.T("cf.exists_q", d.Project), i18n.T("cf.exists_help"), false)
-		if err != nil || !ok {
-			d.Project = ""
-			if err == nil {
-				err = errors.New(i18n.T("cancelled"))
-			}
-			return "", err
-		}
-	}
-	d.Subdomain = target.Host
+	d.Subdomain = project.Subdomain
 
-	live := siteURL(site, target.URL)
+	live := siteURL(site, project.URL())
 	dir, err := build(ctx, site, live)
 	if err != nil {
 		return "", err
 	}
-	var res cfworkers.Result
+	var res cfpages.Result
 	if err := ui.Spin(ctx, i18n.T("pub.uploading"), func(ctx context.Context) error {
 		res, err = c.Deploy(ctx, d.Account, d.Project, dir, nil)
 		return err
@@ -152,7 +118,7 @@ func publishCloudflare(ctx context.Context, site *config.Site) (string, error) {
 	}
 	ui.OK(i18n.T("pub.uploaded", res.Uploaded, res.Skipped))
 	if site.Domain != "" {
-		ui.Hint(fmt.Sprintf(i18n.T("cf.domain_hint"), site.Domain, target.URL))
+		ui.Hint(i18n.T("cf.domain_hint", site.Domain, project.URL()))
 	}
 	return live, nil
 }

@@ -173,17 +173,10 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 	cfg["outputFormats"] = map[string]any{"bluplocks": map[string]any{
 		"mediaType": "application/json", "baseName": "blup-locks", "isPlainText": true, "notAlternative": true,
 	}}
-	home := []string{"html", "rss", "bluplocks"}
-	if s.Model == "docs" {
-		home = []string{"html", "bluplocks"}
-	}
-	cfg["outputs"] = map[string]any{"home": home}
+	cfg["outputs"] = map[string]any{"home": []string{"html", "rss", "bluplocks"}}
 	if preview {
 		mounts := cfg["module"].(map[string]any)["mounts"].([]mount)
 		cfg["module"] = map[string]any{"mounts": append(mounts, mount{Source: PreviewStatic, Target: "static"})}
-	}
-	if s.Model == "docs" {
-		cfg["disableKinds"] = []string{"rss"}
 	}
 	if s.Author != "" {
 		// Notes without an "author" property belong to the site's author.

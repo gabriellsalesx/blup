@@ -24,7 +24,38 @@ document.addEventListener("click", async (e) => {
     try { localStorage.setItem("theme", v); } catch {}
     if (v === "system") delete root.dataset.theme; else root.dataset.theme = v;
     document.getElementById("theme-menu")?.hidePopover();
-    syncTheme();
+    // Reading progress bar of posts: share of the page already scrolled.
+const bar = document.querySelector(".reading-progress");
+if (bar) {
+  let queued = false;
+  const update = () => {
+    queued = false;
+    const max = document.documentElement.scrollHeight - innerHeight;
+    bar.style.setProperty("--progress", max > 0 ? Math.min(1, scrollY / max) : 0);
+  };
+  const schedule = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
+  addEventListener("scroll", schedule, { passive: true });
+  addEventListener("resize", schedule);
+  update();
+}
+
+// "On this page" of the docs: highlight the heading being read.
+const toc = document.querySelector(".docs-toc");
+if (toc && "IntersectionObserver" in window) {
+  const links = new Map([...toc.querySelectorAll("a[href^='#']")].map((a) => [decodeURIComponent(a.hash.slice(1)), a]));
+  const visible = new Set();
+  const mark = () => {
+    const id = [...links.keys()].find((k) => visible.has(k));
+    links.forEach((a, k) => a.toggleAttribute("aria-current", k === id));
+  };
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => (e.isIntersecting ? visible.add(e.target.id) : visible.delete(e.target.id)));
+    if (visible.size) mark();
+  }, { rootMargin: "-80px 0px -60% 0px" });
+  links.forEach((_, id) => { const h = document.getElementById(id); if (h) io.observe(h); });
+}
+
+syncTheme();
     return;
   }
   if (e.target.closest("[data-search-open]")) { openSearch(); return; }
@@ -47,5 +78,36 @@ document.addEventListener("keydown", (e) => {
     openSearch();
   }
 });
+
+// Reading progress bar of posts: share of the page already scrolled.
+const bar = document.querySelector(".reading-progress");
+if (bar) {
+  let queued = false;
+  const update = () => {
+    queued = false;
+    const max = document.documentElement.scrollHeight - innerHeight;
+    bar.style.setProperty("--progress", max > 0 ? Math.min(1, scrollY / max) : 0);
+  };
+  const schedule = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
+  addEventListener("scroll", schedule, { passive: true });
+  addEventListener("resize", schedule);
+  update();
+}
+
+// "On this page" of the docs: highlight the heading being read.
+const toc = document.querySelector(".docs-toc");
+if (toc && "IntersectionObserver" in window) {
+  const links = new Map([...toc.querySelectorAll("a[href^='#']")].map((a) => [decodeURIComponent(a.hash.slice(1)), a]));
+  const visible = new Set();
+  const mark = () => {
+    const id = [...links.keys()].find((k) => visible.has(k));
+    links.forEach((a, k) => a.toggleAttribute("aria-current", k === id));
+  };
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => (e.isIntersecting ? visible.add(e.target.id) : visible.delete(e.target.id)));
+    if (visible.size) mark();
+  }, { rootMargin: "-80px 0px -60% 0px" });
+  links.forEach((_, id) => { const h = document.getElementById(id); if (h) io.observe(h); });
+}
 
 syncTheme();

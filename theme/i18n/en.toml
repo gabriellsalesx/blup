@@ -43,6 +43,14 @@ unlock = "Unlock"
 unlocking = "Unlocking…"
 wrongPassword = "Wrong password."
 
+status_planned = "Planned"
+status_progress = "In progress"
+status_done = "Completed"
+roadmapEmpty = "Nothing here yet."
+section_docs = "Guides and reference."
+section_roadmap = "What we are planning and building."
+section_changelog = "What changed in each version."
+
 [readingTime]
 one = "{{ .Count }} min read"
 other = "{{ .Count }} min read"

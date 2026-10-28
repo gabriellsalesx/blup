@@ -1,12 +1,17 @@
-<main id="main" class="home">
-  {{- with partial "content.html" . }}
-  <section class="intro prose">{{ . }}</section>
-  {{- else }}
-  <section class="intro"><h1>{{ site.Title }}</h1>{{ with site.Params.description }}<p>{{ . }}</p>{{ end }}</section>
-  {{- end }}
-  <section class="sections">
-    {{- range site.Sections.ByWeight }}
-    <a class="card" href="{{ .RelPermalink }}"><h2>{{ partial "title.html" . }}</h2>{{ with partial "description.html" . }}<p>{{ . }}</p>{{ end }}</a>
+<main id="main" class="page-wrap">
+  <header class="page-intro">
+    <h1 class="docs-title">{{ .Title | default site.Title }}</h1>
+    {{- with .Description | default site.Params.description }}<p>{{ . }}</p>{{ end }}
+    {{- with partial "content.html" . | strings.TrimSpace }}<div class="prose">{{ . | safeHTML }}</div>{{ end }}
+  </header>
+  <nav class="section-cards" aria-label="{{ T "menu" }}">
+    {{- range partial "docs/sections.html" . }}
+    {{- $kind := partial "docs/kind.html" . }}
+    <a class="section-card" href="{{ .RelPermalink }}">
+      <svg class="icon" aria-hidden="true"><use href="#i-{{ index (dict "docs" "book" "roadmap" "map" "changelog" "list") $kind }}"/></svg>
+      <strong>{{ partial "title.html" . }}</strong>
+      <p>{{ .Description | default (T (printf "section_%s" $kind)) }}</p>
+    </a>
     {{- end }}
-  </section>
+  </nav>
 </main>

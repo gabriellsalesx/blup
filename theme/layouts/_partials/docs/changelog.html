@@ -1,0 +1,12 @@
+{{- $pager := .Paginate (partial "visible.html" .RegularPagesRecursive).ByDate.Reverse 10 -}}
+<main id="main">
+  <header class="changelog-head">
+    <h1 class="docs-title">{{ partial "title.html" . }}</h1>
+    {{- with .Description }}<p>{{ . }}</p>{{ end }}
+    {{- with partial "content.html" . | strings.TrimSpace }}<div class="prose">{{ . | safeHTML }}</div>{{ end }}
+  </header>
+  <div class="changelog">
+    {{- range $pager.Pages }}{{ partial "docs/release.html" (dict "page" . "link" true) }}{{ end }}
+  </div>
+  <div class="page-wrap">{{ partial "blog/more.html" $pager }}</div>
+</main>

@@ -1,12 +1,5 @@
-<div class="docs">
-  <aside class="sidebar">{{ partial "docs/tree.html" . }}</aside>
-  <main id="main">
-    <article class="prose">
-      <h1>{{ partial "title.html" . }}</h1>
-      {{ if partial "locked.html" . }}{{ partial "blog/lock.html" . }}{{ else }}{{ partial "content.html" . }}{{ end }}
-      {{ partial "tags.html" . }}
-    </article>
-    {{ partial "docs/prevnext.html" . }}
-  </main>
-  {{ partial "docs/toc.html" . }}
-</div>
+{{- $kind := partial "docs/kind.html" . -}}
+{{- if eq $kind "docs" }}{{ partial "docs/doc.html" . -}}
+{{- else if eq $kind "roadmap" }}{{ partial "docs/roadmap-item.html" . -}}
+{{- else if eq $kind "changelog" }}{{ partial "docs/changelog-entry.html" . -}}
+{{- else }}{{ partial "docs/plain.html" . }}{{ end -}}

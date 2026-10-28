@@ -42,6 +42,25 @@ func newSite(ctx context.Context, g *config.Global) error {
 		return err
 	}
 
+	var sections []string
+	if model == "docs" {
+		sections = append([]string(nil), docsKinds...)
+		opts := []huh.Option[string]{
+			ui.Option(i18n.T("new.section_docs"), "docs"),
+			ui.Option(i18n.T("new.section_roadmap"), "roadmap"),
+			ui.Option(i18n.T("new.section_changelog"), "changelog"),
+		}
+		for {
+			if err := ui.ChooseMany(i18n.T("new.sections"), i18n.T("new.sections_help"), &sections, opts...); err != nil {
+				return err
+			}
+			if len(sections) > 0 {
+				break
+			}
+			ui.Warn(i18n.T("new.sections_none"))
+		}
+	}
+
 	title := filepath.Base(filepath.Join(vault, folder))
 	if err := ui.Ask(i18n.T("new.site_title"), i18n.T("new.site_title_help"), title, &title, notEmpty); err != nil {
 		return err
@@ -91,12 +110,19 @@ func newSite(ctx context.Context, g *config.Global) error {
 		return err
 	}
 	if obsidian.CountNotes(content) == 0 {
-		if err := writeSamples(site); err != nil {
+		if err := writeSamples(site, sections); err != nil {
 			return err
 		}
 		ui.OK(i18n.T("new.samples"))
-	} else if err := ensureHome(site); err != nil {
-		return err
+	} else {
+		if err := ensureHome(site); err != nil {
+			return err
+		}
+		for _, kind := range sections {
+			if err := writeSection(site, kind); err != nil {
+				return err
+			}
+		}
 	}
 	if err := writeTemplates(site); err != nil {
 		ui.Warn(i18n.T("new.templates_failed", err))

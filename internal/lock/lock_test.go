@@ -96,6 +96,20 @@ func TestProcess(t *testing.T) {
 	}
 }
 
+func TestDiscard(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, Manifest), []byte("{}"), 0o644)
+	if err := Discard(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, Manifest)); !os.IsNotExist(err) {
+		t.Fatal("manifest should be gone")
+	}
+	if err := Discard(dir); err != nil {
+		t.Fatal("discarding twice must not fail")
+	}
+}
+
 func TestProcessUnknownID(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "x.html"), []byte(`<blup-begin data-id="zzz"></blup-begin>S<blup-end></blup-end>`), 0o644)

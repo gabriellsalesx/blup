@@ -22,8 +22,9 @@ var covers embed.FS
 type note struct{ path, body string }
 
 // writeSamples fills an empty site folder with example notes that teach the
-// basics by example (links, images, callouts, properties).
-func writeSamples(site *config.Site) error {
+// basics by example (links, images, callouts, properties). For the docs model,
+// sections lists the parts chosen (docs, roadmap, changelog).
+func writeSamples(site *config.Site, sections []string) error {
 	today := time.Now().Format("2006-01-02")
 	attach := i18n.T("attachments_folder")
 	notes := samples[site.Lang+"/"+site.Model]
@@ -50,6 +51,11 @@ func writeSamples(site *config.Site) error {
 	for _, n := range notes {
 		body := strings.NewReplacer("{{date}}", today, "{{title}}", site.Title, "{{attach}}", attach).Replace(n.body)
 		if _, err := obsidian.WriteNoteIfMissing(filepath.Join(site.ContentDir(), filepath.FromSlash(n.path)), body); err != nil {
+			return err
+		}
+	}
+	for _, kind := range sections {
+		if err := writeSection(site, kind); err != nil {
 			return err
 		}
 	}
@@ -82,7 +88,11 @@ func writeTemplates(site *config.Site) error {
 			return err
 		}
 	}
-	for _, n := range templates[site.Lang+"/"+site.Model] {
+	list := templates[site.Lang+"/"+site.Model]
+	if site.Model == "docs" {
+		list = docsTemplates[site.Lang]
+	}
+	for _, n := range list {
 		if _, err := obsidian.WriteNoteIfMissing(filepath.Join(site.Vault, filepath.FromSlash(folder), n.path), n.body); err != nil {
 			return err
 		}
@@ -94,8 +104,6 @@ func writeTemplates(site *config.Site) error {
 var templates = map[string][]note{
 	"pt/blog": {{"Post do blog.md", "---\ntitle: \"{{title}}\"\ndate: {{date:YYYY-MM-DD}}\ndescription: \ntags: \ndraft: false\n---\n\n"}},
 	"en/blog": {{"Blog post.md", "---\ntitle: \"{{title}}\"\ndate: {{date:YYYY-MM-DD}}\ndescription: \ntags: \ndraft: false\n---\n\n"}},
-	"pt/docs": {{"Página da documentação.md", "---\ntitle: \"{{title}}\"\ndescription: \nweight: 10\ndraft: false\n---\n\n"}},
-	"en/docs": {{"Docs page.md", "---\ntitle: \"{{title}}\"\ndescription: \nweight: 10\ndraft: false\n---\n\n"}},
 }
 
 var samples = map[string][]note{
@@ -204,83 +212,21 @@ The properties at the top of a note control the site:
 	"pt/docs": {
 		{"_index.md", `---
 title: "{{title}}"
+description: Documentação, roadmap e novidades do projeto.
 ---
-Bem-vindo à documentação. Este texto fica na nota **_index** da pasta do site.
-`},
-		{"Comece aqui.md", `---
-title: Comece aqui
-description: Como esta documentação é organizada.
-weight: 1
----
-Cada nota vira uma página e cada pasta vira um grupo no menu lateral.
+Este é o texto da página inicial. Ele fica na nota **_index** da pasta do site.
 
-## Ordem do menu
-
-Use a propriedade **weight**: números menores aparecem primeiro. Sem ela, a ordem é a do nome do arquivo.
-
-Veja também [Escrevendo páginas](Guia/Escrevendo%20p%C3%A1ginas.md).
-`},
-		{"Guia/_index.md", `---
-title: Guia
-weight: 2
----
-Notas desta pasta aparecem juntas no menu.
-`},
-		{"Guia/Escrevendo páginas.md", `---
-title: Escrevendo páginas
-weight: 1
----
-## Callouts
-
-> [!warning] Atenção
-> Os callouts do Obsidian viram caixas de destaque.
-
-## Fórmulas
-
-$$
-a^2 + b^2 = c^2
-$$
+Cada seção do site é uma pasta: **Documentação**, **Roadmap** e **Changelog**. Para tirar uma seção, apague a pasta. Para adicionar, use "Personalizar o site" no Blup.
 `},
 	},
 	"en/docs": {
 		{"_index.md", `---
 title: "{{title}}"
+description: Docs, roadmap and news about the project.
 ---
-Welcome to the docs. This text lives in the **_index** note of the site folder.
-`},
-		{"Start here.md", `---
-title: Start here
-description: How these docs are organised.
-weight: 1
----
-Every note becomes a page and every folder becomes a group in the sidebar.
+This is the home page text. It lives in the **_index** note of the site folder.
 
-## Sidebar order
-
-Use the **weight** property: lower numbers come first. Without it, files are ordered by name.
-
-See also [Writing pages](Guide/Writing%20pages.md).
-`},
-		{"Guide/_index.md", `---
-title: Guide
-weight: 2
----
-Notes in this folder are grouped together in the sidebar.
-`},
-		{"Guide/Writing pages.md", `---
-title: Writing pages
-weight: 1
----
-## Callouts
-
-> [!warning] Heads up
-> Obsidian callouts become highlighted boxes.
-
-## Math
-
-$$
-a^2 + b^2 = c^2
-$$
+Each section of the site is a folder: **Docs**, **Roadmap** and **Changelog**. To remove a section, delete its folder. To add one, use "Customize the site" in Blup.
 `},
 	},
 }

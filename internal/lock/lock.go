@@ -59,6 +59,15 @@ func Pending(dir string) (posts int, needsGlobal bool, err error) {
 	return len(m), needsGlobal, nil
 }
 
+// Discard deletes the manifest; used when there is nothing to encrypt.
+func Discard(dir string) error {
+	err := os.Remove(filepath.Join(dir, Manifest))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
 // Process encrypts every protected region under dir. global is the site-wide
 // password used by posts marked with Global. It returns how many posts were
 // encrypted.

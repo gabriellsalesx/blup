@@ -1,15 +1,5 @@
-<div class="docs">
-  <aside class="sidebar">{{ partial "docs/tree.html" . }}</aside>
-  <main id="main">
-    <article class="prose">
-      <h1>{{ partial "title.html" . }}</h1>
-      {{ partial "content.html" . }}
-      <ul class="children">
-        {{- range .Pages.ByWeight }}
-        <li><a href="{{ .RelPermalink }}">{{ partial "title.html" . }}</a>{{ with partial "description.html" . }}<p>{{ . }}</p>{{ end }}</li>
-        {{- end }}
-      </ul>
-    </article>
-    {{ partial "docs/prevnext.html" . }}
-  </main>
-</div>
+{{- $kind := partial "docs/kind.html" . -}}
+{{- if eq $kind "roadmap" }}{{ partial "docs/roadmap.html" . -}}
+{{- else if eq $kind "changelog" }}{{ partial "docs/changelog.html" . -}}
+{{- else if eq $kind "docs" }}{{ partial "docs/doc.html" . -}}
+{{- else }}{{ partial "docs/plain.html" . }}{{ end -}}

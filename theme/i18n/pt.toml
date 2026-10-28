@@ -43,6 +43,14 @@ unlock = "Desbloquear"
 unlocking = "Desbloqueando…"
 wrongPassword = "Senha incorreta."
 
+status_planned = "Planejado"
+status_progress = "Em andamento"
+status_done = "Concluído"
+roadmapEmpty = "Nada por aqui ainda."
+section_docs = "Guias e referência."
+section_roadmap = "O que estamos planejando e construindo."
+section_changelog = "O que mudou em cada versão."
+
 [readingTime]
 one = "{{ .Count }} min de leitura"
 other = "{{ .Count }} min de leitura"

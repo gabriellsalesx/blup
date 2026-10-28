@@ -1,4 +1,4 @@
-package cfworkers
+package cfpages
 
 import (
 	"encoding/base64"
@@ -10,8 +10,7 @@ import (
 )
 
 // HashFile returns the asset hash exactly like wrangler's hashFile
-// (@cloudflare/deploy-helpers, src/deploy/helpers/hash.ts), shared by Pages
-// and Workers Static Assets:
+// (@cloudflare/deploy-helpers, src/deploy/helpers/hash.ts):
 //
 //	blake3(base64(contents) + extname(path).substring(1)).hex().slice(0, 32)
 //
@@ -79,26 +78,20 @@ var webTypes = map[string]string{
 	"mp3": "audio/mpeg", "ogg": "audio/ogg", "wav": "audio/wav", "m4a": "audio/mp4",
 }
 
-// contentTypeFor mirrors workers-shared getContentType: mime.getType, with
-// "; charset=utf-8" appended to text/* types, and "application/null" (= send
-// no Content-Type when serving) when the type is unknown.
+// contentTypeFor mirrors wrangler pages validate.ts:
+// getType(name) || "application/octet-stream" (no charset suffix).
 func contentTypeFor(name string) string {
 	ext := strings.ToLower(strings.TrimPrefix(nodeExtname("/"+name), "."))
-	t := ""
-	if ext != "" {
-		if wt, ok := webTypes[ext]; ok {
-			t = wt
-		} else if mt := mime.TypeByExtension("." + ext); mt != "" {
-			if parsed, _, err := mime.ParseMediaType(mt); err == nil {
-				t = parsed
-			}
+	if ext == "" {
+		return "application/octet-stream"
+	}
+	if t, ok := webTypes[ext]; ok {
+		return t
+	}
+	if t := mime.TypeByExtension("." + ext); t != "" {
+		if mt, _, err := mime.ParseMediaType(t); err == nil {
+			return mt
 		}
 	}
-	if t == "" {
-		return "application/null"
-	}
-	if strings.HasPrefix(t, "text/") {
-		t += "; charset=utf-8"
-	}
-	return t
+	return "application/octet-stream"
 }

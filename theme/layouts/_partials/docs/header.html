@@ -1,9 +1,3 @@
-<header class="site-header">
-  <a class="brand" href="{{ site.Home.RelPermalink }}">{{ site.Title }}</a>
-  {{- /* Mobile menu with the Popover API: no JavaScript. */}}
-  <button class="menu-button" popovertarget="site-nav" aria-label="{{ T "menu" }}">{{ T "menu" }}</button>
-  <nav id="site-nav" class="site-nav" popover aria-label="{{ T "menu" }}">
-    <button class="menu-close" popovertarget="site-nav" popovertargetaction="hide">{{ T "close" }}</button>
-    {{ partial "docs/tree.html" . }}
-  </nav>
-</header>
+{{- /* Same header as the blog: logo, centered menu, search, theme and the
+optional button set on the home note. */ -}}
+{{ partial "blog/header.html" . }}

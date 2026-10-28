@@ -1,8 +1,6 @@
-<main id="main">
-  <h1>{{ T "tags" }}</h1>
-  <ul class="tags tags-cloud">
-    {{- range .Data.Terms.ByCount }}
-    <li><a href="{{ .Page.RelPermalink }}">#{{ .Page.LinkTitle }} <small>{{ .Count }}</small></a></li>
-    {{- end }}
-  </ul>
+<main id="main" class="page-wrap">
+  <header class="page-intro"><h1 class="docs-title">{{ cond (eq .Data.Plural "authors") (T "authors") (T "tags") }}</h1></header>
+  <nav class="pills" style="justify-content:center;margin-block-start:2rem">
+    {{- range .Data.Terms.ByCount }}<a class="pill" href="{{ .Page.RelPermalink }}">{{ .Page.LinkTitle }} <small>{{ .Count }}</small></a>{{ end }}
+  </nav>
 </main>

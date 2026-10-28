@@ -8,10 +8,10 @@
 </head>
 <body>
   <a class="skip" href="#main">{{ T "skip" }}</a>
-  {{- if eq $model "blog" }}{{ partial "blog/icons.html" . }}{{ end }}
+  {{- partial "blog/icons.html" . }}
   {{ partial (printf "%s/header.html" $model) . }}
   {{ block "main" . }}{{ end }}
   {{ partial (printf "%s/footer.html" $model) . }}
-  {{- if eq $model "blog" }}{{ partial "blog/scripts.html" . }}{{ end }}
+  {{- partial "blog/scripts.html" . }}
 </body>
 </html>
