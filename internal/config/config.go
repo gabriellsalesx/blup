@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -78,10 +79,38 @@ type Feedback struct {
 	Enabled bool   `toml:"enabled,omitempty"`
 	Owner   string `toml:"owner,omitempty"`
 	Repo    string `toml:"repo,omitempty"`
+	// API is the login service that lets visitors vote, react and comment
+	// without leaving the site (github.com/gabriellsalesx/blup-api). Empty
+	// means Blup's own; set it when running your own copy.
+	API string `toml:"api,omitempty"`
+	// App is the slug of that service's GitHub App, installed on Repo.
+	App string `toml:"app,omitempty"`
 }
+
+// Blup's login service for feedback and its GitHub App.
+const (
+	FeedbackAPI = "https://blup-api.grupovought.workers.dev"
+	FeedbackApp = "blup-comments"
+)
 
 // On reports whether the site shows feedback.
 func (f Feedback) On() bool { return f.Enabled && f.Owner != "" && f.Repo != "" }
+
+// LoginAPI is the login service of the feedback.
+func (f Feedback) LoginAPI() string {
+	if f.API != "" {
+		return strings.TrimRight(f.API, "/")
+	}
+	return FeedbackAPI
+}
+
+// AppSlug is the GitHub App of the login service.
+func (f Feedback) AppSlug() string {
+	if f.App != "" {
+		return f.App
+	}
+	return FeedbackApp
+}
 
 // NoteSync is where "blup sync" keeps a copy of the notes.
 type NoteSync struct {

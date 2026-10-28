@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/deploy/github"
@@ -22,7 +25,9 @@ import (
 // changelog entries, blog posts) in blup-feedback.json; this opens an issue
 // for each new page, keeps titles in sync, and writes the issue numbers to
 // data/blup_feedback.json for the theme. Visitors read everything live from
-// GitHub's public API and vote, react or comment on GitHub.
+// GitHub's public API. With the login service's GitHub App installed on the
+// repository (github.com/gabriellsalesx/blup-api), they sign in with GitHub
+// and vote, react and comment on the site itself; without it, on GitHub.
 
 const (
 	feedbackManifest = "blup-feedback.json"
@@ -41,8 +46,22 @@ type feedbackPage struct {
 	URL   string `json:"url"`
 }
 
+// feedbackManifestFile is what the theme writes: the site's address and
+// the pages that get feedback.
+type feedbackManifestFile struct {
+	Base  string         `json:"base"`
+	Pages []feedbackPage `json:"pages"`
+}
+
 type feedbackData struct {
-	Repo   string         `json:"repo"`
+	Repo string `json:"repo"`
+	// Site is the address last written to the repository's "website" field,
+	// which the login service checks.
+	Site string `json:"site,omitempty"`
+	// API is the login service, set only while its GitHub App is installed
+	// on the repository: the theme then lets visitors vote, react and
+	// comment on the site itself.
+	API    string         `json:"api,omitempty"`
 	Issues map[string]int `json:"issues"`
 }
 
@@ -55,21 +74,21 @@ func feedbackRepoName(site *config.Site) string {
 }
 
 // readFeedbackManifest reads and deletes the list the theme wrote.
-func readFeedbackManifest(dir string) ([]feedbackPage, error) {
+func readFeedbackManifest(dir string) (feedbackManifestFile, error) {
+	var m feedbackManifestFile
 	path := filepath.Join(dir, feedbackManifest)
 	b, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+		return m, nil
 	}
 	if err != nil {
-		return nil, err
+		return m, err
 	}
 	os.Remove(path) // internal: never published
-	var pages []feedbackPage
-	if err := json.Unmarshal(b, &pages); err != nil {
-		return nil, err
+	if err := json.Unmarshal(b, &m); err != nil {
+		return m, err
 	}
-	return pages, nil
+	return m, nil
 }
 
 func loadFeedbackData(site *config.Site) feedbackData {
@@ -118,11 +137,12 @@ func feedbackRepoDescription(site *config.Site) string {
 }
 
 // syncFeedback opens or updates the issue of every page in the manifest of
-// dir. It reports whether a page got an issue it didn't have (the site must
-// be built again to show it).
+// dir, keeps the repository's "website" on the site's address and checks
+// the login service's App. It reports whether the theme's data changed (the
+// site must be built again to show it).
 func syncFeedback(ctx context.Context, site *config.Site, dir string) (bool, error) {
-	pages, err := readFeedbackManifest(dir)
-	if err != nil || !site.Feedback.On() || len(pages) == 0 {
+	m, err := readFeedbackManifest(dir)
+	if err != nil || !site.Feedback.On() || len(m.Pages) == 0 {
 		return false, err
 	}
 	c, err := feedbackClient(ctx)
@@ -131,13 +151,28 @@ func syncFeedback(ctx context.Context, site *config.Site, dir string) (bool, err
 	}
 	owner, repo := site.Feedback.Owner, site.Feedback.Repo
 	data := loadFeedbackData(site)
-	before := len(data.Issues)
+	before := fmt.Sprint(data.API, data.Issues)
 	data.Repo = owner + "/" + repo
+	data.Issues = map[string]int{} // pages that are gone lose theirs
 	var created, updated int
 	err = ui.Spin(ctx, i18n.T("fb.syncing"), func(ctx context.Context) error {
 		var err error
-		created, updated, err = syncIssues(ctx, c, site, pages, data.Issues)
-		return err
+		created, updated, err = syncIssues(ctx, c, site, m.Pages, data.Issues)
+		if err != nil {
+			return err
+		}
+		// A build without the live address (no --url) has relative links.
+		if strings.HasPrefix(m.Base, "http") && data.Site != m.Base {
+			if err := c.SetHomepage(ctx, owner, repo, m.Base); err != nil {
+				return err
+			}
+			data.Site = m.Base
+		}
+		data.API = ""
+		if ok, err := appInstalled(ctx, site.Feedback); err == nil && ok {
+			data.API = site.Feedback.LoginAPI()
+		}
+		return nil
 	})
 	if errors.Is(err, github.ErrPermission) {
 		return false, errors.New(i18n.T("fb.need_issues_customize"))
@@ -151,7 +186,65 @@ func syncFeedback(ctx context.Context, site *config.Site, dir string) (bool, err
 	if created+updated > 0 {
 		ui.OK(i18n.T("fb.synced", created, updated, owner+"/"+repo))
 	}
-	return len(data.Issues) != before, nil
+	return fmt.Sprint(data.API, data.Issues) != before, nil
+}
+
+// appInstalled asks the login service whether its GitHub App is installed
+// on the feedback repository.
+func appInstalled(ctx context.Context, f config.Feedback) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	q := url.Values{"repo": {f.Owner + "/" + f.Repo}}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, f.LoginAPI()+"/installed?"+q.Encode(), nil)
+	if err != nil {
+		return false, err
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("%s: %s", f.LoginAPI(), res.Status)
+	}
+	var v struct{ Installed bool }
+	if err := json.NewDecoder(res.Body).Decode(&v); err != nil {
+		return false, err
+	}
+	return v.Installed, nil
+}
+
+// installApp guides the install of the login service's GitHub App on the
+// feedback repository. Without it, voting, reacting and commenting happen
+// on GitHub instead of on the site.
+func installApp(ctx context.Context, site *config.Site) error {
+	f := site.Feedback
+	if ok, err := appInstalled(ctx, f); err != nil || ok {
+		return err
+	}
+	repo := f.Owner + "/" + f.Repo
+	link := "https://github.com/apps/" + f.AppSlug() + "/installations/new"
+	if err := ui.Explain(i18n.T("fb.app_title"), i18n.T("fb.app_steps", f.AppSlug(), f.Repo)); err != nil {
+		return err
+	}
+	ui.OpenBrowser(link)
+	ui.Hint(i18n.T("browser_fallback", link))
+	for {
+		done, err := ui.Confirm(i18n.T("fb.app_q"), "", true)
+		if err != nil || !done {
+			ui.Hint(i18n.T("fb.app_later"))
+			return nil
+		}
+		ok, err := appInstalled(ctx, f)
+		if err != nil {
+			return err
+		}
+		if ok {
+			ui.OK(i18n.T("fb.app_ok", repo))
+			return nil
+		}
+		ui.Warn(i18n.T("fb.app_missing", f.Repo))
+	}
 }
 
 // feedbackClient is the GitHub client of the user. Without a terminal and
@@ -241,6 +334,9 @@ func enableFeedback(ctx context.Context, site *config.Site) error {
 	}
 	f.Enabled = true
 	ui.OK(i18n.T("fb.on", repo.FullName))
+	if err := installApp(ctx, site); err != nil {
+		ui.Warn(i18n.T("fb.failed", describe(err)))
+	}
 	ui.Hint(i18n.T("fb.republish"))
 	return nil
 }

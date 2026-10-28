@@ -22,6 +22,12 @@ func (c *Client) EnableIssues(ctx context.Context, owner, repo string) error {
 	return err
 }
 
+// SetHomepage sets the "website" of a repository.
+func (c *Client) SetHomepage(ctx context.Context, owner, repo, homepage string) error {
+	_, err := c.do(ctx, http.MethodPatch, repoPath(owner, repo), map[string]any{"homepage": homepage}, nil)
+	return err
+}
+
 // EnsureLabel creates a label (name, color without "#") unless it exists.
 func (c *Client) EnsureLabel(ctx context.Context, owner, repo, name, color, description string) error {
 	_, err := c.do(ctx, http.MethodPost, repoPath(owner, repo)+"/labels", map[string]string{

@@ -1,7 +1,8 @@
 {{- /* Pages that get feedback (votes, reactions, comments) in the Bento
 model: roadmap items, changelog entries and blog posts. Only written when the
 CLI builds for publishing with feedback on; the CLI reads it, opens a GitHub
-issue for each page and deletes the file. */ -}}
+issue for each page, writes the site's address to the repository (the login
+service checks it) and deletes the file. */ -}}
 {{- $out := slice -}}
 {{- if and (eq site.Params.model "bento") site.Params.blup.feedback (eq (os.Getenv "HUGO_BLUP_MODE") "publish") -}}
   {{- range $p := site.RegularPages -}}
@@ -11,4 +12,4 @@ issue for each page and deletes the file. */ -}}
     {{- end -}}
   {{- end -}}
 {{- end -}}
-{{- $out | jsonify -}}
+{{- dict "base" site.Home.Permalink "pages" $out | jsonify -}}

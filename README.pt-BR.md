@@ -23,7 +23,7 @@ Não precisa saber programar. O Blup faz uma pergunta de cada vez, cada uma com 
 - **Do jeito do Obsidian**: propriedades, imagens, links entre notas, callouts, fórmulas, notas de rodapé, tarefas e `%%comentários%%` que não vão para o site.
 - **Embutido**: busca no site, tema claro e escuro, imagens em WebP, imagem de compartilhamento para cada página, RSS e mapa do site.
 - **Posts com senha**, criptografados quando o site é gerado. Sem servidor.
-- **Comentários e reações** no Bento: votos no roadmap, reações no changelog e comentários nos posts, guardados em issues de um repositório público `<site>-feedback` que o Blup cria. Liga e desliga em `blup personalizar`.
+- **Comentários e reações** no Bento: votos no roadmap, reações no changelog e comentários nos posts, guardados em issues de um repositório público `<site>-feedback` que o Blup cria. Quem visita entra com o GitHub e participa sem sair do site (pelo [blup-api](https://github.com/gabriellsalesx/blup-api)). Liga e desliga em `blup personalizar`.
 - **Autores**: uma nota por pessoa, com foto, cargo, redes e bio.
 - **Offline primeiro**: as notas ficam no seu computador. Sincronize com um repositório privado no GitHub quando tiver internet e continue em outro computador. Sem git.
 - **Hospedagem grátis** no Cloudflare Pages (`seusite.pages.dev`) ou no GitHub Pages, e domínio próprio se você quiser.

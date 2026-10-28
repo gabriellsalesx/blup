@@ -195,9 +195,32 @@ layout. Bundled into one file by css.Build. */
   .fb-head img { border-radius: 50%; }
   .fb-head a { font-weight: 600; color: var(--main-900); }
   .fb-head time { color: var(--main-500); }
+  .fb-reply, .fb-delete { font-size: .8125rem; }
+  .fb-head > .fb-link:first-of-type { margin-inline-start: auto; }
   .fb-body { font-size: .9375rem; }
   .fb-empty { color: var(--main-500); font-size: .875rem; }
   .fb-comment { display: inline-flex; align-items: center; gap: .5rem; }
+  /* Signed in on the site (login service): pressed reactions, the reaction
+     menu and the comment box. */
+  button.fb-chip { font: inherit; font-size: .75rem; cursor: pointer; }
+  .fb-chip[aria-pressed="true"], .fb-vote[aria-pressed="true"] { border-color: var(--primary-500); background: color-mix(in srgb, var(--primary-500) 12%, transparent); }
+  .fb-vote { cursor: pointer; }
+  .fb-picker { display: inline-flex; flex-wrap: wrap; gap: .125rem; padding: .125rem .25rem; border: 1px solid var(--main-200); border-radius: 9999px; background: var(--main-25); box-shadow: var(--shadow-sm); }
+  .fb-picker[hidden] { display: none; }
+  .fb-picker button { padding: .25rem .375rem; border-radius: 9999px; font-size: 1rem; line-height: 1; cursor: pointer; transition: background-color .2s, transform .2s; }
+  .fb-picker button:hover { background: var(--main-100); transform: scale(1.15); }
+  .fb-form { display: grid; gap: .75rem; }
+  .fb-form > .button { justify-self: start; }
+  .fb-form textarea { width: 100%; min-height: 6rem; padding: .75rem; border: 1px solid var(--main-300); border-radius: .5rem; background: var(--main-25); color: var(--main-900); font: inherit; font-size: .9375rem; resize: vertical; }
+  .fb-form textarea:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 1px; }
+  .fb-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+  .fb-actions .button { margin-inline-start: auto; }
+  .fb-actions .button:disabled { opacity: .6; cursor: progress; transform: none; }
+  .fb-who { display: inline-flex; align-items: center; gap: .5rem; font-size: .875rem; color: var(--main-600); }
+  .fb-who img { border-radius: 50%; }
+  .fb-link { font-size: .875rem; color: var(--main-500); text-decoration: underline; cursor: pointer; }
+  .fb-link:hover { color: var(--main-900); }
+  .fb-error { color: light-dark(#b91c1c, #f87171); font-size: .875rem; }
   .fb-note { margin-block-start: .75rem; font-size: .75rem; color: var(--main-500); }
   .status { display: inline-flex; align-items: center; gap: .375rem; padding: .25rem .625rem; border-radius: 9999px; font-size: .75rem; font-weight: 600; background: var(--main-100); color: var(--main-700); }
   .status::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--dot); }
