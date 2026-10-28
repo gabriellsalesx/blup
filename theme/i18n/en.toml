@@ -51,6 +51,23 @@ section_docs = "Guides and reference."
 section_roadmap = "What we are planning and building."
 section_changelog = "What changed in each version."
 
+linkCopied = "Link copied!"
+copyFailed = "Couldn't copy the link. Copy it here:"
+
+callout_note = "Note"
+callout_abstract = "Summary"
+callout_info = "Info"
+callout_todo = "To do"
+callout_tip = "Tip"
+callout_success = "Done"
+callout_question = "Question"
+callout_warning = "Warning"
+callout_failure = "Failure"
+callout_danger = "Danger"
+callout_bug = "Bug"
+callout_example = "Example"
+callout_quote = "Quote"
+
 [readingTime]
 one = "{{ .Count }} min read"
 other = "{{ .Count }} min read"

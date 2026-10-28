@@ -61,11 +61,21 @@ syncTheme();
   if (e.target.closest("[data-search-open]")) { openSearch(); return; }
   const copy = e.target.closest("[data-copy]");
   if (copy) {
-    try {
-      await navigator.clipboard.writeText(copy.dataset.copy);
-      copy.classList.add("copied");
-      setTimeout(() => copy.classList.remove("copied"), 1500);
-    } catch {}
+    // Feedback where the click happened: the icon turns into a check and a
+    // small bubble (also read by screen readers) says it worked.
+    const tip = copy.parentElement.querySelector(".copy-tip");
+    let ok = true;
+    try { await navigator.clipboard.writeText(copy.dataset.copy); } catch { ok = false; }
+    const state = ok ? "copied" : "copy-failed";
+    copy.classList.remove("copied", "copy-failed");
+    copy.classList.add(state);
+    if (tip) tip.textContent = ok ? copy.dataset.copied : copy.dataset.failed;
+    clearTimeout(copy._timer);
+    copy._timer = setTimeout(() => {
+      copy.classList.remove(state);
+      if (tip) tip.textContent = "";
+    }, 2000);
+    if (!ok) prompt(copy.dataset.failed, copy.dataset.copy); // copy by hand
   }
   const dialog = e.target.closest("dialog");
   if (dialog && e.target === dialog) dialog.close(); // click on the backdrop

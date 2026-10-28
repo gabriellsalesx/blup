@@ -54,7 +54,7 @@ func TestBuild(t *testing.T) {
 				`<mark>marcado</mark>`,
 				`<math`,
 				`data-callout=tip`,
-				`<details class=callout data-callout=faq`,
+				`<details class=callout data-callout=question`,
 				`.webp`,
 				`width=300`,
 				`<br>`,

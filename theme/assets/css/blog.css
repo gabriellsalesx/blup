@@ -109,7 +109,9 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .nav a:hover { background: color-mix(in srgb, var(--main-200) 60%, transparent); }
   .header-actions { display: flex; align-items: center; margin-inline-start: auto; }
   .icon-button { display: inline-flex; align-items: center; gap: .125rem; padding: .5rem; border-radius: .25rem; color: var(--main-600); transition: background-color .2s var(--ease); }
-  .icon-button:hover { background: var(--main-100); }
+  /* Same hover tone as the menu links: visible on the blog's gray header
+     and on the docs' page-colored one. */
+  .icon-button:hover { background: color-mix(in srgb, var(--main-200) 60%, transparent); color: var(--main-900); }
   .theme-picker { margin-inline: .75rem; }
   .button {
     display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
@@ -264,6 +266,24 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .share a, .share button { display: inline-flex; width: 2.5rem; height: 2.5rem; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--main-200); background: var(--main-25); color: var(--main-600); transition: all .2s; }
   .share a:hover, .share button:hover { background: var(--main-100); color: var(--main-900); }
   .share .icon { width: 1.125rem; height: 1.125rem; }
+
+  /* Copy link: the icon becomes a check and a bubble confirms. */
+  .share .copy { position: relative; }
+  .share .icon-check { display: none; }
+  .share .copied, .share .copied:hover { border-color: color-mix(in srgb, #16a34a 45%, var(--main-200)); color: light-dark(#16a34a, #4ade80); }
+  .share .copied .icon-link { display: none; }
+  .share .copied .icon-check { display: block; }
+  .copy-tip {
+    position: absolute; inset-block-end: calc(100% + .5rem); inset-inline-start: 50%; translate: -50% .25rem;
+    padding: .25rem .5rem; border-radius: .375rem; white-space: nowrap; pointer-events: none;
+    font-size: .75rem; font-weight: 500; background: var(--main-900); color: var(--main-25);
+    opacity: 0; transition: opacity .15s, translate .15s;
+  }
+  .copy-tip::after { content: ""; position: absolute; inset-block-start: 100%; inset-inline-start: 50%; translate: -50% 0; border: 5px solid transparent; border-block-start-color: var(--main-900); }
+  .copy-tip:empty { display: none; }
+  .copied + .copy-tip, .copy-failed + .copy-tip { opacity: 1; translate: -50% 0; }
+  .copy-failed + .copy-tip { background: light-dark(#b91c1c, #f87171); }
+  .copy-failed + .copy-tip::after { border-block-start-color: light-dark(#b91c1c, #f87171); }
 }
 
 @layer layout {
@@ -405,20 +425,24 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .prose math[display="block"] { overflow-x: auto; padding-block: .5em; }
   .prose .footnotes { font-size: .9em; color: var(--main-600); }
 
-  /* Obsidian callouts */
-  .prose .callout { --c: var(--primary-500); border: 1px solid var(--main-200); border-inline-start: 4px solid var(--c); border-radius: .375rem; padding: .75em 1em; background: color-mix(in srgb, var(--c) 6%, var(--main-25)); font-size: .95em; }
-  .prose .callout-title { font-weight: 600; color: var(--main-900); }
-  .prose details.callout > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; }
-  .prose details.callout > summary::after { content: "+"; color: var(--main-500); }
-  .prose details.callout[open] > summary::after { content: "−"; }
-  .prose .callout-body { margin-block-start: .5em; }
+  /* Obsidian callouts, with Obsidian's colors and icons (as Digital Garden
+     shows them): tinted box, colored title with icon, no side border. */
+  .prose .callout { --c: 8 109 221; padding: 1rem 1.5rem; border-radius: .375rem; background: rgb(var(--c) / .1); font-size: .95em; }
+  .prose .callout-title { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: rgb(var(--c)); }
+  .prose .callout-title .icon { width: 1.25em; height: 1.25em; stroke-width: 2; }
+  .prose details.callout > summary { cursor: pointer; list-style: none; }
+  .prose details.callout > summary::-webkit-details-marker { display: none; }
+  .prose details.callout > summary::after { content: ""; margin-inline-start: auto; width: .5em; height: .5em; border: solid currentColor; border-width: 0 2px 2px 0; rotate: -45deg; transition: rotate .2s; }
+  .prose details.callout[open] > summary::after { rotate: 45deg; }
+  .prose .callout-body { margin-block-start: .5rem; color: var(--main-700); }
   .prose .callout-body > * + * { margin-block-start: .75em; }
-  .prose [data-callout="tip"], .prose [data-callout="success"], .prose [data-callout="check"], .prose [data-callout="done"] { --c: #16a34a; }
-  .prose [data-callout="warning"], .prose [data-callout="caution"], .prose [data-callout="attention"], .prose [data-callout="question"], .prose [data-callout="faq"], .prose [data-callout="help"] { --c: #d97706; }
-  .prose [data-callout="danger"], .prose [data-callout="error"], .prose [data-callout="bug"], .prose [data-callout="failure"], .prose [data-callout="fail"] { --c: #dc2626; }
-  .prose [data-callout="note"], .prose [data-callout="info"], .prose [data-callout="todo"], .prose [data-callout="abstract"], .prose [data-callout="summary"], .prose [data-callout="tldr"] { --c: #2563eb; }
-  .prose [data-callout="example"] { --c: #7c3aed; }
-  .prose [data-callout="quote"], .prose [data-callout="cite"] { --c: var(--main-500); }
+  .prose [data-callout="abstract"], .prose [data-callout="tip"] { --c: 0 191 188; }
+  .prose [data-callout="info"], .prose [data-callout="todo"], .prose [data-callout="note"] { --c: 8 109 221; }
+  .prose [data-callout="success"] { --c: 8 185 78; }
+  .prose [data-callout="question"], .prose [data-callout="warning"] { --c: 236 117 0; }
+  .prose [data-callout="failure"], .prose [data-callout="danger"], .prose [data-callout="bug"] { --c: 233 49 71; }
+  .prose [data-callout="example"] { --c: 120 82 238; }
+  .prose [data-callout="quote"] { --c: 158 158 158; }
 }
 
 @layer utilities {

@@ -8,7 +8,7 @@
     {{- range partial "docs/sections.html" . }}
     {{- $kind := partial "docs/kind.html" . }}
     <a class="section-card" href="{{ .RelPermalink }}">
-      <svg class="icon" aria-hidden="true"><use href="#i-{{ index (dict "docs" "book" "roadmap" "map" "changelog" "list") $kind }}"/></svg>
+      <svg class="icon" aria-hidden="true"><use href="#i-{{ index (dict "docs" "book" "roadmap" "map" "changelog" "history") $kind }}"/></svg>
       <strong>{{ partial "title.html" . }}</strong>
       <p>{{ .Description | default (T (printf "section_%s" $kind)) }}</p>
     </a>

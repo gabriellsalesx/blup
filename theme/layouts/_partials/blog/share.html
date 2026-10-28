@@ -1,7 +1,13 @@
 {{- $url := .Permalink | urlquery -}}
 {{- $title := partial "title.html" . | urlquery -}}
 <ul class="share">
-  <li><button type="button" data-copy="{{ .Permalink }}" aria-label="{{ T "copyLink" }}"><svg class="icon"><use href="#i-link"/></svg></button></li>
+  <li class="copy">
+    <button type="button" data-copy="{{ .Permalink }}" data-copied="{{ T "linkCopied" }}" data-failed="{{ T "copyFailed" }}" aria-label="{{ T "copyLink" }}">
+      <svg class="icon icon-link"><use href="#i-link"/></svg>
+      <svg class="icon icon-check" aria-hidden="true"><use href="#i-check"/></svg>
+    </button>
+    <span class="copy-tip" role="status" aria-live="polite"></span>
+  </li>
   <li><a href="https://x.com/intent/post?url={{ $url }}&text={{ $title }}" rel="noopener" target="_blank" aria-label="{{ T "shareOn" "X" }}"><svg class="icon"><use href="#i-x-social"/></svg></a></li>
   <li><a href="https://www.facebook.com/sharer/sharer.php?u={{ $url }}" rel="noopener" target="_blank" aria-label="{{ T "shareOn" "Facebook" }}"><svg class="icon"><use href="#i-facebook"/></svg></a></li>
   <li><a href="https://www.linkedin.com/sharing/share-offsite/?url={{ $url }}" rel="noopener" target="_blank" aria-label="{{ T "shareOn" "LinkedIn" }}"><svg class="icon"><use href="#i-linkedin"/></svg></a></li>

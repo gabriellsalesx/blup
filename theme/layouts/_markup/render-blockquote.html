@@ -1,18 +1,40 @@
-{{- /* Obsidian callouts: > [!tip] Title. A "-" or "+" after the type makes
-it foldable (collapsed or open), done with <details>, no JavaScript. */ -}}
+{{- /* Obsidian callouts, styled like Obsidian (and Digital Garden): tinted box,
+colored title with the type's icon. In a note:
+
+  > [!tip] Optional title
+  > Text of the callout.
+
+A "-" after the type starts it folded, "+" starts it open (<details>, no
+JavaScript). Aliases follow Obsidian: hint/important = tip, faq/help =
+question, caution/attention = warning, error = danger, and so on. Unknown
+types look like "note". */ -}}
 {{- if eq .Type "alert" -}}
   {{- $type := lower .AlertType -}}
-  {{- $title := .AlertTitle | default (title $type) -}}
+  {{- $aliases := dict
+      "summary" "abstract" "tldr" "abstract"
+      "hint" "tip" "important" "tip"
+      "check" "success" "done" "success"
+      "help" "question" "faq" "question"
+      "caution" "warning" "attention" "warning"
+      "fail" "failure" "missing" "failure"
+      "error" "danger"
+      "cite" "quote" -}}
+  {{- $kind := index $aliases $type | default $type -}}
+  {{- if not (in (slice "note" "abstract" "info" "todo" "tip" "success" "question" "warning" "failure" "danger" "bug" "example" "quote") $kind) }}{{ $kind = "note" }}{{ end -}}
+  {{- /* With Obsidian's soft line breaks an empty title arrives as "<br>". */ -}}
+  {{- $title := replaceRE `<br\s*/?>` "" (string .AlertTitle) | strings.TrimSpace -}}
+  {{- $title = $title | default (T (printf "callout_%s" $kind)) | default (title $type) -}}
+  {{- $head := printf `<svg class="icon" aria-hidden="true"><use href="#c-%s"/></svg><span>%s</span>` $kind $title | safeHTML -}}
   {{- if .AlertSign -}}
-<details class="callout" data-callout="{{ $type }}"{{ if eq .AlertSign "+" }} open{{ end }}>
-  <summary class="callout-title">{{ $title }}</summary>
+<details class="callout" data-callout="{{ $kind }}"{{ if eq .AlertSign "+" }} open{{ end }}>
+  <summary class="callout-title">{{ $head }}</summary>
   <div class="callout-body">{{ .Text }}</div>
 </details>
   {{- else -}}
-<aside class="callout" data-callout="{{ $type }}">
-  <p class="callout-title">{{ $title }}</p>
+<div class="callout" data-callout="{{ $kind }}">
+  <p class="callout-title">{{ $head }}</p>
   <div class="callout-body">{{ .Text }}</div>
-</aside>
+</div>
   {{- end -}}
 {{- else -}}
 <blockquote>{{ .Text }}</blockquote>
