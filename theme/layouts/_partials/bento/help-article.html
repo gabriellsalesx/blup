@@ -1,0 +1,17 @@
+{{- $root := .FirstSection -}}
+<main id="main" class="help help-article docs-main">
+  <article class="docs-article">
+    <header>
+      {{- /* Same breadcrumb as the rest of the theme. */}}
+      {{- $crumbs := slice (dict "name" ($root.LinkTitle | default (partial "title.html" $root)) "url" $root.RelPermalink) }}
+      {{- with .Parent }}{{ if ne . $root }}{{ $crumbs = $crumbs | append (dict "name" (partial "title.html" .) "url" .RelPermalink) }}{{ end }}{{ end }}
+      {{ partial "mochi/breadcrumb.html" (dict "items" ($crumbs | append (dict "name" (partial "title.html" .)))) }}
+      <h1 class="docs-title">{{ partial "title.html" . }}</h1>
+      {{- with .Description }}<p class="help-lead">{{ . }}</p>{{ end }}
+      {{- if not .Lastmod.IsZero }}<p class="help-updated">{{ T "lastUpdated" }} <b>{{ .Lastmod | time.Format ":date_medium" }}</b></p>{{ end }}
+      <hr>
+    </header>
+    {{ partial "bento/body.html" . }}
+  </article>
+  {{ partial "bento/toc.html" . }}
+</main>

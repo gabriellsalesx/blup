@@ -37,7 +37,7 @@
   </section>
   {{- end }}
   <section class="listing container">
-    {{ partial "mochi/pills.html" (dict) }}
+    {{ partial "mochi/pills.html" (dict "base" .RelPermalink "pages" (cond (eq site.Params.model "bento") $posts false)) }}
     <div class="post-grid">
       {{- range $pager.Pages }}{{ partial "mochi/card.html" . }}{{ end }}
     </div>

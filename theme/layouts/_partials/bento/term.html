@@ -1,3 +1,7 @@
+{{- /* Authors get the Mochi author page (photo, bio, their blog posts);
+tags keep a simple list across the whole site. */ -}}
+{{- if eq .Data.Plural "authors" }}{{ partial "mochi/term.html" . -}}
+{{- else -}}
 <main id="main" class="page-wrap">
   <header class="page-intro"><h1 class="docs-title">{{ .LinkTitle }}</h1></header>
   <ul class="section-cards">
@@ -6,3 +10,4 @@
     {{- end }}
   </ul>
 </main>
+{{- end -}}

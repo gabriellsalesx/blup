@@ -13,7 +13,7 @@ dicts {name, url, current}. */ -}}
 {{- else -}}
   {{- $out = $out | append (dict "name" (T "home") "url" site.Home.RelPermalink "current" $page.IsHome) -}}
   {{- range site.Sections.ByWeight -}}
-    {{- $out = $out | append (dict "name" (partial "title.html" .) "url" .RelPermalink "current" (or (eq $page .) ($page.IsDescendant .))) -}}
+    {{- $out = $out | append (dict "name" (.LinkTitle | default (partial "title.html" .)) "url" .RelPermalink "current" (or (eq $page .) ($page.IsDescendant .))) -}}
   {{- end -}}
 {{- end -}}
 {{- return $out -}}

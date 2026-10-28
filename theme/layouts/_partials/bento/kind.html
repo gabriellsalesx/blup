@@ -1,8 +1,8 @@
-{{- /* What a page belongs to: "docs", "roadmap" or "changelog", from the
-"blup" property of the top-level folder's _index note. "" otherwise. */ -}}
+{{- /* What a page belongs to: "docs", "roadmap", "changelog", "help" or
+"blog", from the "blup" property of the top-level folder's _index note. */ -}}
 {{- $k := "" -}}
 {{- with .FirstSection -}}
   {{- if not .IsHome }}{{ $k = lower (string (.Params.blup | default "")) }}{{ end -}}
 {{- end -}}
-{{- if not (in (slice "docs" "roadmap" "changelog") $k) }}{{ $k = "" }}{{ end -}}
+{{- if not (in (slice "docs" "roadmap" "changelog" "help" "blog") $k) }}{{ $k = "" }}{{ end -}}
 {{- return $k -}}

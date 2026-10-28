@@ -2,4 +2,8 @@
 {{- if eq $kind "roadmap" }}{{ partial "bento/roadmap.html" . -}}
 {{- else if eq $kind "changelog" }}{{ partial "bento/changelog.html" . -}}
 {{- else if eq $kind "docs" }}{{ partial "bento/doc.html" . -}}
+{{- else if and (eq $kind "help") (eq . .FirstSection) }}{{ partial "bento/help-home.html" . -}}
+{{- else if eq $kind "help" }}{{ partial "bento/help-collection.html" . -}}
+{{- else if and (eq $kind "blog") (eq . .FirstSection) }}{{ partial "mochi/home.html" . -}}
+{{- else if eq $kind "blog" }}{{ partial "mochi/section.html" . -}}
 {{- else }}{{ partial "bento/plain.html" . }}{{ end -}}

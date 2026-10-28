@@ -50,6 +50,11 @@ func newSite(ctx context.Context, g *config.Global) error {
 			ui.Option(i18n.T("new.section_docs"), "docs"),
 			ui.Option(i18n.T("new.section_roadmap"), "roadmap"),
 			ui.Option(i18n.T("new.section_changelog"), "changelog"),
+			ui.Option(i18n.T("new.section_help"), "help"),
+			ui.Option(i18n.T("new.section_blog"), "blog"),
+		}
+		if err := ui.Explain(i18n.T("new.sections_about_title"), i18n.T("new.sections_about")); err != nil {
+			return err
 		}
 		for {
 			if err := ui.ChooseMany(i18n.T("new.sections"), i18n.T("new.sections_help"), &sections, opts...); err != nil {

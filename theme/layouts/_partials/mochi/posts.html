@@ -1,2 +1,5 @@
-{{- /* All posts, newest first. */ -}}
-{{- return (partial "visible.html" site.RegularPages).ByDate.Reverse -}}
+{{- /* Posts, newest first: every note in Mochi; in Bento, the notes of the
+blog folder this page belongs to. */ -}}
+{{- $pages := site.RegularPages -}}
+{{- if eq site.Params.model "bento" }}{{ with .FirstSection }}{{ $pages = .RegularPagesRecursive }}{{ end }}{{ end -}}
+{{- return (partial "visible.html" $pages).ByDate.Reverse -}}

@@ -12,6 +12,10 @@ layout. Bundled into one file by css.Build. */
     border-block-end: 1px solid color-mix(in srgb, var(--main-900) 6%, transparent);
   }
 
+  /* Bento has a single page color: the blog's hero bands (gray in Mochi)
+     take the page background. */
+  [data-model="bento"] :is(.hero, .post-hero) { background: transparent; }
+
   /* Second bar on small screens: opens the sidebar. */
   .docs-subbar { display: flex; align-items: center; gap: .75rem; padding: .75rem var(--gutter); border-block-end: 1px solid color-mix(in srgb, var(--main-900) 6%, transparent); font-size: .875rem; font-weight: 600; color: var(--main-900); }
   .docs-subbar button { display: inline-flex; color: var(--main-500); }
@@ -160,6 +164,43 @@ layout. Bundled into one file by css.Build. */
   .status[data-status="planned"] { --dot: #3b82f6; }
   .status[data-status="progress"] { --dot: #f59e0b; }
   .status[data-status="done"] { --dot: #22c55e; }
+}
+
+@layer components {
+  /* Help center (FeedLog-like): centered column, collection cards, articles. */
+  .help { width: 100%; max-width: 45rem; margin-inline: auto; padding: 5rem var(--gutter) 5rem; }
+  .help.help-article { max-width: 64rem; padding-block-start: 4rem; }
+  .help-head { text-align: center; }
+  .help-head h1 { font-size: 2.25rem; font-weight: 700; letter-spacing: -.02em; color: var(--main-900); }
+  .help-head p { margin-block-start: .5rem; font-size: 1rem; color: var(--main-500); }
+  .help-search {
+    display: flex; align-items: center; gap: .75rem; width: 100%; height: 3.25rem; margin-block-start: 2rem; padding-inline: 1rem;
+    border: 1px solid var(--main-200); border-radius: 1rem; background: var(--main-25); color: var(--main-500); font-size: .875rem; text-align: start;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .help-search:hover { border-color: var(--primary-500); box-shadow: 0 4px 20px color-mix(in srgb, var(--primary-500) 10%, transparent); }
+  .help-collections { display: grid; gap: 1rem; margin-block-start: 2.5rem; }
+  @media (width >= 40rem) { .help-collections { grid-template-columns: 1fr 1fr; } }
+  .help-card, .help-row { display: grid; gap: .25rem; padding: 1.25rem; border: 1px solid var(--main-200); border-radius: 1rem; background: var(--main-25); transition: border-color .2s; }
+  .help-card:hover, .help-row:hover { border-color: color-mix(in srgb, var(--primary-500) 50%, var(--main-200)); }
+  .help-icon { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; margin-block-end: .5rem; border-radius: .375rem; background: var(--main-100); color: var(--primary-700); }
+  .help-icon .icon { width: 1.125rem; height: 1.125rem; }
+  .help-card strong, .help-row strong { font-size: 1rem; font-weight: 700; line-height: 1.5; color: var(--main-900); }
+  .help-desc { font-size: .875rem; line-height: 1.4; color: var(--main-500); }
+  .help-card small { margin-block-start: .625rem; font-size: .75rem; font-weight: 600; color: var(--main-500); }
+  .help-row small { display: flex; align-items: center; gap: .375rem; margin-block-start: .375rem; font-size: .75rem; color: var(--main-500); }
+  .help-row small .icon { width: .875rem; height: .875rem; }
+  .help-list { display: grid; gap: .75rem; margin-block-start: 1.5rem; }
+  .help-lead { margin-block-start: .5rem; font-size: 1.0625rem; color: var(--main-500); }
+  .help-updated { margin-block-start: 1.25rem; font-size: .875rem; color: var(--main-500); }
+  .help-updated b { color: var(--main-700); }
+  .help-article hr { margin-block: 1.5rem; border: 0; border-block-start: 1px solid var(--main-200); }
+  /* "On this page" as a rail with the current heading marked. */
+  .help-article .docs-toc ul { border-inline-start: 2px solid var(--main-200); }
+  .help-article .docs-toc ul ul { border: 0; padding-inline-start: .75rem; }
+  .help-article .docs-toc a { padding: .4375rem .875rem; margin-inline-start: -2px; border-inline-start: 2px solid transparent; }
+  .help-article .docs-toc ul ul a::before { content: none; }
+  .help-article .docs-toc a[aria-current] { border-color: var(--primary-700); color: var(--primary-700); font-weight: 600; }
 }
 
 @layer content {

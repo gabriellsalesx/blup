@@ -274,6 +274,9 @@ func editSections(site *config.Site) error {
 	if len(missing) == 0 {
 		return ui.Explain(i18n.T("custom.sections"), help+"\n\n"+i18n.T("custom.sections_all"))
 	}
+	if err := ui.Explain(i18n.T("new.sections_about_title"), i18n.T("new.sections_about")); err != nil {
+		return err
+	}
 	var add []string
 	if err := ui.ChooseMany(i18n.T("custom.sections_q"), help, &add, missing...); err != nil {
 		return err

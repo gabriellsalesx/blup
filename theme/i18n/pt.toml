@@ -68,6 +68,16 @@ callout_bug = "Bug"
 callout_example = "Exemplo"
 callout_quote = "Citação"
 
+helpSearch = "Buscar artigos…"
+updatedOn = "Atualizado em {{ . }}"
+lastUpdated = "Última atualização"
+section_help = "Respostas e guias passo a passo."
+section_blog = "Novidades, histórias e anúncios."
+
 [readingTime]
 one = "{{ .Count }} min de leitura"
 other = "{{ .Count }} min de leitura"
+
+[articles]
+one = "{{ .Count }} artigo"
+other = "{{ .Count }} artigos"

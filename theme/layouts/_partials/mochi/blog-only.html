@@ -1,0 +1,5 @@
+{{- /* In Bento, keep only notes of a blog folder (an author page must not
+list docs or help articles); in Mochi every note is a post. */ -}}
+{{- $pages := . -}}
+{{- if eq site.Params.model "bento" }}{{ $pages = where $pages "FirstSection.Params.blup" "blog" }}{{ end -}}
+{{- return $pages -}}

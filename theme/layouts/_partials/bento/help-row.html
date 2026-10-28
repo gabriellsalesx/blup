@@ -1,0 +1,7 @@
+<a class="help-row" href="{{ .RelPermalink }}">
+  <strong>{{ partial "title.html" . }}</strong>
+  {{- with partial "description.html" . }}<span class="help-desc">{{ . }}</span>{{ end }}
+  {{- if not .Lastmod.IsZero }}
+  <small><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>{{ T "updatedOn" (.Lastmod | time.Format ":date_medium") }}</small>
+  {{- end }}
+</a>

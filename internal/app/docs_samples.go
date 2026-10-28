@@ -15,9 +15,9 @@ import (
 // The docs model is made of sections, each a top-level folder whose _index
 // note has the property "blup: docs|roadmap|changelog". Deleting the folder
 // removes the section; adding one (by hand or with the CLI) brings it back.
-var docsKinds = []string{"docs", "roadmap", "changelog"}
+var docsKinds = []string{"docs", "roadmap", "changelog", "help", "blog"}
 
-var kindProperty = regexp.MustCompile(`(?m)^blup:\s*["']?(docs|roadmap|changelog)["']?\s*$`)
+var kindProperty = regexp.MustCompile(`(?m)^blup:\s*["']?(docs|roadmap|changelog|help|blog)["']?\s*$`)
 
 // existingSections maps each section kind found in the site folder to its
 // folder name.
@@ -55,6 +55,28 @@ func writeSection(site *config.Site, kind string) error {
 		"{{date-1}}", today.AddDate(0, -1, 0).Format("2006-01-02"),
 		"{{title}}", site.Title,
 	)
+	if kind == "blog" {
+		// The example posts get two of the theme's covers.
+		for _, name := range []string{"capa-3.jpg", "capa-4.jpg"} {
+			b, err := covers.ReadFile("samples/covers/" + name)
+			if err != nil {
+				return err
+			}
+			dest := filepath.Join(site.ContentDir(), folder, i18n.T("attachments_folder"), name)
+			if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+				return err
+			}
+			if err := os.WriteFile(dest, b, 0o644); err != nil {
+				return err
+			}
+		}
+		r = strings.NewReplacer(
+			"{{date}}", today.Format("2006-01-02"),
+			"{{date-1}}", today.AddDate(0, 0, -7).Format("2006-01-02"),
+			"{{title}}", site.Title,
+			"{{attach}}", i18n.T("attachments_folder"),
+		)
+	}
 	for _, n := range sectionSamples[site.Lang+"/"+kind] {
 		path := filepath.Join(site.ContentDir(), folder, filepath.FromSlash(n.path))
 		if _, err := obsidian.WriteNoteIfMissing(path, r.Replace(n.body)); err != nil {
@@ -319,6 +341,172 @@ date: {{date-1}}
 tags: [Launch]
 ---
 First public version.
+`},
+	},
+	"pt/help": {
+		{"_index.md", `---
+title: Como podemos ajudar?
+linkTitle: Central de ajuda
+blup: help
+weight: 4
+description: Busque na central de ajuda ou navegue pelas coleções abaixo.
+---
+`},
+		{"Primeiros passos/_index.md", `---
+title: Primeiros passos
+description: O básico para começar.
+icon: rocket
+weight: 1
+---
+`},
+		{"Primeiros passos/Criar uma conta.md", `---
+title: Criar uma conta
+description: Do cadastro ao primeiro acesso.
+weight: 1
+---
+## Cadastro
+
+Cada pasta da central vira uma **coleção** e cada nota vira um **artigo**.
+
+## Primeiro acesso
+
+Use a propriedade **description** para o resumo que aparece na lista.
+`},
+		{"Primeiros passos/Convidar a equipe.md", `---
+title: Convidar a equipe
+description: Traga outras pessoas para o seu espaço.
+weight: 2
+---
+## Convites
+
+Escreva aqui o passo a passo.
+`},
+		{"Conta e cobrança/_index.md", `---
+title: Conta e cobrança
+description: Planos, pagamentos e dados da conta.
+icon: credit-card
+weight: 2
+---
+`},
+		{"Conta e cobrança/Trocar de plano.md", `---
+title: Trocar de plano
+description: Como mudar de plano a qualquer momento.
+---
+> [!tip] Dica
+> A propriedade **icon** na nota _index de cada coleção escolhe o ícone: rocket, layout-grid, book-open, circle-help, layers, sliders-horizontal, users, settings, credit-card, shield-check, plug, sparkles, code ou bell.
+`},
+	},
+	"en/help": {
+		{"_index.md", `---
+title: How can we help?
+linkTitle: Help center
+blup: help
+weight: 4
+description: Search the help center, or browse the collections below.
+---
+`},
+		{"Getting started/_index.md", `---
+title: Getting started
+description: The basics to begin.
+icon: rocket
+weight: 1
+---
+`},
+		{"Getting started/Create an account.md", `---
+title: Create an account
+description: From sign-up to the first login.
+weight: 1
+---
+## Sign-up
+
+Every folder in the help center becomes a **collection** and every note an **article**.
+
+## First login
+
+Use the **description** property for the summary shown in the list.
+`},
+		{"Getting started/Invite your team.md", `---
+title: Invite your team
+description: Bring other people into your space.
+weight: 2
+---
+## Invites
+
+Write the steps here.
+`},
+		{"Account and billing/_index.md", `---
+title: Account and billing
+description: Plans, payments and account details.
+icon: credit-card
+weight: 2
+---
+`},
+		{"Account and billing/Change plans.md", `---
+title: Change plans
+description: How to switch plans at any time.
+---
+> [!tip] Tip
+> The **icon** property in each collection's _index note picks its icon: rocket, layout-grid, book-open, circle-help, layers, sliders-horizontal, users, settings, credit-card, shield-check, plug, sparkles, code or bell.
+`},
+	},
+	"pt/blog": {
+		{"_index.md", `---
+title: Blog
+blup: blog
+weight: 5
+description: Novidades, histórias e anúncios do produto.
+---
+Novidades, histórias e anúncios do produto.
+`},
+		{"Bem-vindo ao blog.md", `---
+title: Bem-vindo ao blog
+date: {{date}}
+description: O blog do produto funciona como o tema Mochi, dentro do Bento.
+tags: [Anúncios]
+image: {{attach}}/capa-3.jpg
+---
+Cada nota desta pasta é um post, com capa, tags, sumário e posts relacionados.
+`},
+		{"Como usamos o roadmap.md", `---
+title: Como usamos o roadmap
+date: {{date-1}}
+description: Por dentro de como decidimos o que construir.
+tags: [Produto]
+image: {{attach}}/capa-4.jpg
+---
+## O processo
+
+Escreva aqui.
+`},
+	},
+	"en/blog": {
+		{"_index.md", `---
+title: Blog
+blup: blog
+weight: 5
+description: News, stories and product announcements.
+---
+News, stories and product announcements.
+`},
+		{"Welcome to the blog.md", `---
+title: Welcome to the blog
+date: {{date}}
+description: The product blog works like the Mochi theme, inside Bento.
+tags: [Announcements]
+image: {{attach}}/capa-3.jpg
+---
+Every note in this folder is a post, with a cover, tags, table of contents and related posts.
+`},
+		{"How we use the roadmap.md", `---
+title: How we use the roadmap
+date: {{date-1}}
+description: Inside how we decide what to build.
+tags: [Product]
+image: {{attach}}/capa-4.jpg
+---
+## The process
+
+Write here.
 `},
 	},
 }

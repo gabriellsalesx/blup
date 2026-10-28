@@ -1,11 +1,26 @@
 {{- /* "All" plus the most used tags. Params: current (term page or nil),
-pages (to count tags in, e.g. an author's posts). */ -}}
+base (URL of "All", default the home page), pages (count tags only in these,
+e.g. the posts of a Bento blog; default the whole site). */ -}}
 {{- $cur := .current -}}
-{{- with site.Taxonomies.tags }}
+{{- $base := .base | default site.Home.RelPermalink -}}
+{{- $terms := slice -}}
+{{- if .pages -}}
+  {{- $count := dict -}}
+  {{- $byName := dict -}}
+  {{- range .pages }}{{ range .GetTerms "tags" -}}
+    {{- $count = merge $count (dict .LinkTitle (add 1 (index $count .LinkTitle | default 0))) -}}
+    {{- $byName = merge $byName (dict .LinkTitle .) -}}
+  {{- end }}{{ end -}}
+  {{- range $name, $n := $count }}{{ $terms = $terms | append (dict "page" (index $byName $name) "n" $n) }}{{ end -}}
+  {{- $terms = sort $terms "n" "desc" -}}
+{{- else -}}
+  {{- with site.Taxonomies.tags }}{{ range .ByCount }}{{ $terms = $terms | append (dict "page" .Page "n" .Count) }}{{ end }}{{ end -}}
+{{- end -}}
+{{- with $terms }}
 <nav class="pills" aria-label="{{ T "tags" }}">
-  <a class="pill" href="{{ site.Home.RelPermalink }}"{{ if not $cur }} aria-current="page"{{ end }}>{{ T "allTags" }}</a>
-  {{- range first 8 .ByCount }}
-  <a class="pill" href="{{ .Page.RelPermalink }}"{{ if eq .Page $cur }} aria-current="page"{{ end }}>{{ .Page.LinkTitle }}</a>
+  <a class="pill" href="{{ $base }}"{{ if not $cur }} aria-current="page"{{ end }}>{{ T "allTags" }}</a>
+  {{- range first 8 . }}
+  <a class="pill" href="{{ .page.RelPermalink }}"{{ if eq .page $cur }} aria-current="page"{{ end }}>{{ .page.LinkTitle }}</a>
   {{- end }}
 </nav>
 {{- end -}}

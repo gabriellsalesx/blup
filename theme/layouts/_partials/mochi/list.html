@@ -6,7 +6,10 @@ heading (HTML), pages, current (term for the pills). */ -}}
     {{ partial "mochi/breadcrumb.html" (dict "items" .crumbs) }}
     {{ .heading }}
   </header>
-  {{ partial "mochi/pills.html" (dict "current" .current) }}
+  {{- /* In Bento, "All tags" goes back to the blog folder, not the site home. */}}
+  {{- $base := site.Home.RelPermalink }}
+  {{- if eq site.Params.model "bento" }}{{ with index .pages 0 }}{{ $base = .FirstSection.RelPermalink }}{{ end }}{{ end }}
+  {{ partial "mochi/pills.html" (dict "current" .current "base" $base "pages" (cond (eq site.Params.model "bento") .pages false)) }}
   <div class="post-grid">
     {{- range $pager.Pages }}{{ partial "mochi/card.html" . }}{{ end }}
   </div>

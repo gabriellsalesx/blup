@@ -1,13 +1,14 @@
 {{- $isAuthor := eq .Data.Plural "authors" -}}
+{{- $pages := partial "mochi/blog-only.html" (partial "visible.html" .Pages) -}}
 {{- $parent := .Parent -}}
 {{- $crumbs := slice (dict "name" (cond $isAuthor (T "authors") (T "tags")) "url" $parent.RelPermalink) (dict "name" .LinkTitle) -}}
 {{- $heading := "" -}}
 {{- if $isAuthor -}}
   {{- $a := dict "name" .LinkTitle "avatar" false "initials" "" -}}
-  {{- with index .Pages 0 }}{{ $a = partial "mochi/author.html" . }}{{ end -}}
+  {{- with index $pages 0 }}{{ $a = partial "mochi/author.html" . }}{{ end -}}
   {{- $bio := cond (eq .LinkTitle site.Params.author) site.Params.authorBio "" -}}
   {{- $heading = printf `<div class="author-head">%s<div><h1 class="h1">%s</h1>%s</div></div>` (partial "mochi/avatar.html" (dict "author" $a)) (.LinkTitle | htmlEscape) (cond (ne $bio "") (printf "<p>%s</p>" ($bio | htmlEscape)) "") -}}
 {{- else -}}
   {{- $heading = printf `<h1 class="h1">%s</h1>` (.LinkTitle | htmlEscape) -}}
 {{- end -}}
-{{ partial "mochi/list.html" (dict "page" . "crumbs" $crumbs "heading" ($heading | safeHTML) "pages" (partial "visible.html" .Pages).ByDate.Reverse "current" (cond $isAuthor nil .)) }}
+{{ partial "mochi/list.html" (dict "page" . "crumbs" $crumbs "heading" ($heading | safeHTML) "pages" $pages.ByDate.Reverse "current" (cond $isAuthor nil .)) }}
