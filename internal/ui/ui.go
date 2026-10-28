@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"runtime"
 
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
 	"charm.land/huh/v2/spinner"
 	"charm.land/lipgloss/v2"
@@ -17,8 +19,11 @@ import (
 	"github.com/gabriellsalesx/blup/internal/i18n"
 )
 
-// ErrAborted is returned when the user leaves a prompt with Ctrl+C or Esc.
+// ErrAborted is returned when the user leaves a prompt with Ctrl+C.
 var ErrAborted = huh.ErrUserAborted
+
+// ErrBack is returned when the user presses Esc: go back one step.
+var ErrBack = errors.New("back")
 
 var (
 	accent  = lipgloss.Color("#a78bfa")
@@ -67,7 +72,7 @@ func keymap() *huh.KeyMap {
 	k.Confirm.Toggle.SetHelp("←/→", i18n.T("key.toggle"))
 	k.Confirm.Submit.SetHelp("enter", i18n.T("key.confirm"))
 	k.Confirm.Next.SetHelp("enter", i18n.T("key.confirm"))
-	k.MultiSelect.Toggle.SetHelp("x", i18n.T("key.tick"))
+	k.MultiSelect.Toggle.SetHelp(i18n.T("key.space"), i18n.T("key.tick"))
 	k.MultiSelect.Up.SetHelp("↑", i18n.T("key.up"))
 	k.MultiSelect.Down.SetHelp("↓", i18n.T("key.down"))
 	k.MultiSelect.Filter.SetHelp("/", i18n.T("key.filter"))
@@ -77,15 +82,38 @@ func keymap() *huh.KeyMap {
 	k.MultiSelect.Next.SetHelp("enter", i18n.T("key.confirm"))
 	k.Note.Submit.SetHelp("enter", i18n.T("key.continue"))
 	k.Note.Next.SetHelp("enter", i18n.T("key.continue"))
-	k.Quit.SetHelp("ctrl+c", i18n.T("key.quit"))
+	// Esc leaves the prompt too; run tells it apart from Ctrl+C (ErrBack).
+	k.Quit = key.NewBinding(key.WithKeys("ctrl+c", "esc"), key.WithHelp("esc", i18n.T("key.back")))
 	return k
 }
 
+// theme is huh's Charm theme with a clearer multi-select: ticked options
+// keep the green ✓, unticked ones get a red ✗ instead of a grey dot.
+func theme(isDark bool) *huh.Styles {
+	t := huh.ThemeCharm(isDark)
+	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(red).SetString("✗ ")
+	t.Blurred.UnselectedPrefix = t.Focused.UnselectedPrefix
+	return t
+}
+
 func run(fields ...huh.Field) error {
-	return huh.NewForm(huh.NewGroup(fields...)).
-		WithTheme(huh.ThemeFunc(huh.ThemeCharm)).
+	back := false
+	// Notes which key left the prompt: Esc goes back, Ctrl+C quits.
+	watch := func(_ tea.Model, msg tea.Msg) tea.Msg {
+		if k, ok := msg.(tea.KeyPressMsg); ok {
+			back = k.String() == "esc"
+		}
+		return msg
+	}
+	err := huh.NewForm(huh.NewGroup(fields...)).
+		WithTheme(huh.ThemeFunc(theme)).
 		WithKeyMap(keymap()).
+		WithProgramOptions(tea.WithOutput(os.Stderr), tea.WithFilter(watch)).
 		Run()
+	if back && errors.Is(err, huh.ErrUserAborted) {
+		return ErrBack
+	}
+	return err
 }
 
 // Choose asks the user to pick one option.
@@ -176,8 +204,11 @@ func Interactive() bool {
 	return true
 }
 
-// Aborted reports whether err means the user gave up on a prompt.
-func Aborted(err error) bool { return errors.Is(err, huh.ErrUserAborted) }
+// Aborted reports whether err means the user left a prompt (Esc or Ctrl+C).
+func Aborted(err error) bool { return errors.Is(err, huh.ErrUserAborted) || errors.Is(err, ErrBack) }
+
+// Back reports whether the user pressed Esc to go back one step.
+func Back(err error) bool { return errors.Is(err, ErrBack) }
 
 // OpenBrowser opens url in the default browser, ignoring failures.
 func OpenBrowser(url string) {

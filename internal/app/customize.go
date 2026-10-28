@@ -98,7 +98,7 @@ func editMenu(site *config.Site) error {
 	entries := []entry{{"home", i18n.T("custom.menu_home"), "/"}}
 	authors := obsidian.Sections(site.ContentDir())["authors"]
 	for _, f := range obsidian.Folders(site.ContentDir(), 1) {
-		if f.Path != authors {
+		if f.Path != authors && f.Notes > 0 {
 			entries = append(entries, entry{"page:" + f.Path, f.Path, f.Path})
 		}
 	}

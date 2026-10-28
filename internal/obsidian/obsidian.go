@@ -87,8 +87,9 @@ type Folder struct {
 	Notes int    // Markdown files inside it, recursively
 }
 
-// Folders lists the vault folders (up to depth levels) that contain notes,
-// skipping hidden folders. Paths use forward slashes.
+// Folders lists the vault folders up to depth levels, with how many notes
+// each one has (empty folders too: one just created must show up), skipping
+// hidden folders. Paths use forward slashes.
 func Folders(vault string, depth int) []Folder {
 	counts := map[string]int{}
 	_ = filepath.WalkDir(vault, func(p string, d fs.DirEntry, err error) error {
@@ -98,7 +99,15 @@ func Folders(vault string, depth int) []Folder {
 		if d.IsDir() && p != vault && strings.HasPrefix(d.Name(), ".") {
 			return filepath.SkipDir
 		}
-		if d.IsDir() || !strings.EqualFold(filepath.Ext(p), ".md") {
+		if d.IsDir() {
+			if rel, _ := filepath.Rel(vault, p); rel != "." && strings.Count(filepath.ToSlash(rel), "/") < depth {
+				if _, ok := counts[filepath.ToSlash(rel)]; !ok {
+					counts[filepath.ToSlash(rel)] = 0
+				}
+			}
+			return nil
+		}
+		if !strings.EqualFold(filepath.Ext(p), ".md") {
 			return nil
 		}
 		rel, _ := filepath.Rel(vault, filepath.Dir(p))

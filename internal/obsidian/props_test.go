@@ -55,3 +55,24 @@ func TestSetBody(t *testing.T) {
 		t.Fatalf("got %q", b)
 	}
 }
+
+func TestFoldersIncludesEmpty(t *testing.T) {
+	v := t.TempDir()
+	os.MkdirAll(filepath.Join(v, "Blog", "Posts"), 0o755)
+	os.MkdirAll(filepath.Join(v, "Novo site"), 0o755)
+	os.MkdirAll(filepath.Join(v, ".obsidian"), 0o755)
+	os.WriteFile(filepath.Join(v, "Blog", "Posts", "a.md"), []byte("x"), 0o644)
+	got := map[string]int{}
+	for _, f := range Folders(v, 2) {
+		got[f.Path] = f.Notes
+	}
+	if got["Novo site"] != 0 || got["Blog"] != 1 || got["Blog/Posts"] != 1 {
+		t.Fatalf("folders: %v", got)
+	}
+	if _, ok := got["Novo site"]; !ok {
+		t.Fatal("empty folder missing")
+	}
+	if _, ok := got[".obsidian"]; ok {
+		t.Fatal("hidden folder listed")
+	}
+}
