@@ -25,6 +25,10 @@ From then on, `blup publish` only sends what changed.
 > [!tip] Publishing is always the same
 > You wrote, checked the preview, ran `blup publish`. There is no server to maintain and no database.
 
+## Custom domain
+
+Want an address of your own, like `mysite.com`? Run `blup customize` and choose **Custom domain**. Blup connects the domain where the site is published, shows the DNS record to create where you bought the domain, and turns on HTTPS when everything is ready.
+
 ## What goes online
 
 - Every note in the site folder, except:

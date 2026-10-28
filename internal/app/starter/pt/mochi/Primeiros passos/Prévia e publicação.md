@@ -25,6 +25,10 @@ Das próximas vezes, `blup publicar` só envia o que mudou.
 > [!tip] Publicar é sempre igual
 > Escreveu, conferiu na prévia, rodou `blup publicar`. Não existe servidor para manter nem banco de dados.
 
+## Domínio próprio
+
+Quer um endereço seu, como `meusite.com.br`? Rode `blup personalizar` e escolha **Domínio próprio**. O Blup liga o domínio onde o site está publicado, mostra o registro de DNS para criar onde você comprou o domínio e liga o HTTPS quando tudo estiver pronto.
+
 ## O que vai para o ar
 
 - Todas as notas da pasta do site, menos:

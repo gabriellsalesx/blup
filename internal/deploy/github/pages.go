@@ -145,3 +145,87 @@ func (c *Client) WaitBuild(ctx context.Context, owner, repo, commit string, time
 		}
 	}
 }
+
+// PagesDomain is the custom domain state of a Pages site.
+type PagesDomain struct {
+	CNAME         string
+	HTTPSEnforced bool
+	// CertState is the HTTPS certificate state ("approved" when ready).
+	CertState string
+}
+
+// GetPagesDomain returns the custom domain of owner/repo's Pages site.
+func (c *Client) GetPagesDomain(ctx context.Context, owner, repo string) (PagesDomain, error) {
+	var site struct {
+		CNAME         string `json:"cname"`
+		HTTPSEnforced bool   `json:"https_enforced"`
+		Cert          *struct {
+			State string `json:"state"`
+		} `json:"https_certificate"`
+	}
+	if _, err := c.do(ctx, http.MethodGet, repoPath(owner, repo)+"/pages", nil, &site); err != nil {
+		return PagesDomain{}, pagesErr(err)
+	}
+	d := PagesDomain{CNAME: site.CNAME, HTTPSEnforced: site.HTTPSEnforced}
+	if site.Cert != nil {
+		d.CertState = site.Cert.State
+	}
+	return d, nil
+}
+
+// SetPagesDomain sets the custom domain ("" removes it).
+func (c *Client) SetPagesDomain(ctx context.Context, owner, repo, domain string) error {
+	var cname any
+	if domain != "" {
+		cname = domain
+	}
+	_, err := c.do(ctx, http.MethodPut, repoPath(owner, repo)+"/pages", map[string]any{"cname": cname}, nil)
+	return pagesErr(err)
+}
+
+// EnforceHTTPS turns on "Enforce HTTPS"; GitHub refuses it until the
+// certificate of the custom domain is issued.
+func (c *Client) EnforceHTTPS(ctx context.Context, owner, repo string) error {
+	_, err := c.do(ctx, http.MethodPut, repoPath(owner, repo)+"/pages", map[string]any{"https_enforced": true}, nil)
+	return pagesErr(err)
+}
+
+// DomainHealth is GitHub's DNS check of the custom domain.
+type DomainHealth struct {
+	// Pending: GitHub started the check; ask again in a few seconds.
+	Pending bool
+	// Ready: the DNS points to GitHub Pages and the site is served there.
+	Ready bool
+	// Apex reports whether the domain is a root domain (needs A records).
+	Apex bool
+	// HTTPSEligible: a certificate can be issued.
+	HTTPSEligible bool
+	Reason        string
+}
+
+// PagesHealth runs GitHub's DNS check of the custom domain.
+func (c *Client) PagesHealth(ctx context.Context, owner, repo string) (DomainHealth, error) {
+	var h struct {
+		Domain *struct {
+			IsApexDomain    bool   `json:"is_apex_domain"`
+			IsServedByPages bool   `json:"is_served_by_pages"`
+			IsValid         bool   `json:"is_valid"`
+			IsHTTPSEligible bool   `json:"is_https_eligible"`
+			Reason          string `json:"reason"`
+		} `json:"domain"`
+	}
+	code, err := c.do(ctx, http.MethodGet, repoPath(owner, repo)+"/pages/health", nil, &h)
+	if err != nil {
+		return DomainHealth{}, pagesErr(err)
+	}
+	if code == http.StatusAccepted || h.Domain == nil {
+		return DomainHealth{Pending: true}, nil
+	}
+	d := h.Domain
+	return DomainHealth{
+		Ready:         d.IsValid && d.IsServedByPages,
+		Apex:          d.IsApexDomain,
+		HTTPSEligible: d.IsHTTPSEligible,
+		Reason:        d.Reason,
+	}, nil
+}

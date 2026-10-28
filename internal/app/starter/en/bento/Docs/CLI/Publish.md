@@ -29,11 +29,14 @@ An address like `yourname.github.io/mysite`.
 
 ## Custom domain
 
-Write the domain in the site folder's **blup.toml**:
+To have the site answer at an address of yours, like `mysite.com` or `blog.mysite.com`, run `blup customize` and choose **Custom domain**. Blup:
 
-```toml
-domain = "mysite.com"
-```
+1. asks for the domain;
+2. connects it where the site is published, on Cloudflare Pages or GitHub Pages;
+3. shows the exact DNS record to create where you bought the domain, if one is missing;
+4. turns on HTTPS when everything is ready.
 
-- On GitHub Pages, Blup sets the domain up by itself; point the domain's DNS to GitHub.
-- On Cloudflare Pages, Blup reminds you: add the domain under **Custom domains** in the project, in the Cloudflare dashboard.
+DNS can take from minutes to a few hours. To check, open **Custom domain** again and choose **Check if it is working**; every `blup publish` checks too. The same option changes the domain or goes back to the free address.
+
+> [!tip] Root domain on Cloudflare Pages
+> A root domain (`mysite.com`, without `www` or `blog` in front) on Cloudflare Pages has to be in your Cloudflare account, which is free. If you'd rather not, use `www.mysite.com`.

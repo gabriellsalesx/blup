@@ -117,8 +117,5 @@ func publishCloudflare(ctx context.Context, site *config.Site) (string, error) {
 		return "", err
 	}
 	ui.OK(i18n.T("pub.uploaded", res.Uploaded, res.Skipped))
-	if site.Domain != "" {
-		ui.Hint(i18n.T("cf.domain_hint", site.Domain, project.URL()))
-	}
 	return live, nil
 }

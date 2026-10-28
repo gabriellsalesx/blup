@@ -29,11 +29,14 @@ Endereço como `seunome.github.io/meusite`.
 
 ## Domínio próprio
 
-Escreva o domínio no **blup.toml** da pasta do site:
+Para o site responder num endereço seu, como `meusite.com.br` ou `blog.meusite.com.br`, rode `blup personalizar` e escolha **Domínio próprio**. O Blup:
 
-```toml
-domain = "meusite.com.br"
-```
+1. pergunta o domínio;
+2. liga o domínio onde o site está publicado, no Cloudflare Pages ou no GitHub Pages;
+3. mostra o registro de DNS exato para criar onde você comprou o domínio, se faltar algum;
+4. liga o HTTPS quando estiver tudo pronto.
 
-- No GitHub Pages, o Blup configura o domínio sozinho; aponte o DNS do domínio para o GitHub.
-- No Cloudflare Pages, o Blup avisa: adicione o domínio em **Custom domains** do projeto, no painel da Cloudflare.
+O DNS pode levar de minutos a algumas horas. Para conferir, volte em **Domínio próprio** e escolha **Ver se já está funcionando**; cada `blup publicar` também confere. Pela mesma opção você troca de domínio ou volta ao endereço grátis.
+
+> [!tip] Domínio raiz no Cloudflare Pages
+> Um domínio raiz (`meusite.com.br`, sem `www` ou `blog` na frente) no Cloudflare Pages precisa estar na sua conta Cloudflare, o que é grátis. Se preferir não mudar isso, use `www.meusite.com.br`.

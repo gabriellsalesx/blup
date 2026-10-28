@@ -43,4 +43,4 @@ Blup recognizes the network from the address and uses the right icon: Instagram,
 - Without a logo, the site shows the mascot. Without a favicon, too.
 
 > [!note] What about blup.toml?
-> In the site folder on your computer, **blup.toml** keeps what isn't content: where to publish, the general password and the sync repository. The name and description you gave in the wizard are stored there too, as a fallback, but the _index note is what counts.
+> In the site folder on your computer, **blup.toml** keeps what isn't content: where to publish, the custom domain, the general password and the sync repository. All of it is changed with `blup customize`, without opening the file. The name and description you gave in the wizard are stored there too, as a fallback, but the _index note is what counts.

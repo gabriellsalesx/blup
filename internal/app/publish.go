@@ -51,6 +51,10 @@ func publish(ctx context.Context, g *config.Global, site *config.Site) error {
 		return err
 	}
 	ui.OK(i18n.T("pub.live", ui.Highlight(live)))
+	// A custom domain is connected (or checked) on every publish.
+	if err := connectDomain(ctx, site); err != nil && !ui.Aborted(err) {
+		ui.Warn(describe(err))
+	}
 	if ok, _ := ui.Confirm(i18n.T("pub.open"), "", true); ok {
 		ui.OpenBrowser(live)
 	}

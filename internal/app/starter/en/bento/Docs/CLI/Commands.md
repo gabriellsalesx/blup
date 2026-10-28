@@ -14,7 +14,7 @@ Running just `blup` opens the **menu**: preview, publish, customize, sync, switc
 | `blup new` | `blup novo` | Creates a new site |
 | `blup preview` | `blup ver` | Opens the preview in the browser |
 | `blup publish` | `blup publicar` | Puts the site online |
-| `blup customize` | `blup personalizar` | Menu, sections, social links, logo, favicon, author and general password |
+| `blup customize` | `blup personalizar` | Menu, sections, social links, logo, favicon, author, custom domain and general password |
 | `blup sync` | `blup sincronizar` | Keeps the notes in a private GitHub repository |
 | `blup convert` | `blup converter` | Turns `[[wikilinks]]` into standard links |
 | `blup build` | `blup gerar` | Builds the site into `public/`, with no questions |

@@ -43,4 +43,4 @@ O Blup reconhece a rede pelo endereço e põe o ícone certo: Instagram, X, Link
 - Sem logo, o site mostra o mascote. Sem favicon, também.
 
 > [!note] E o blup.toml?
-> Na pasta do site no computador, o **blup.toml** guarda o que não é conteúdo: onde publicar, a senha geral e o repositório da sincronização. O nome e a descrição que você deu no assistente também ficam lá, como reserva, mas o que vale é a nota _index.
+> Na pasta do site no computador, o **blup.toml** guarda o que não é conteúdo: onde publicar, o domínio próprio, a senha geral e o repositório da sincronização. Tudo isso se muda pelo `blup personalizar`, sem abrir o arquivo. O nome e a descrição que você deu no assistente também ficam lá, como reserva, mas o que vale é a nota _index.
