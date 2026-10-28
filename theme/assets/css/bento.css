@@ -17,9 +17,17 @@ layout. Bundled into one file by css.Build. */
   [data-model="bento"] :is(.hero, .post-hero) { background: transparent; }
 
   /* Second bar on small screens: opens the sidebar. */
-  .docs-subbar { display: flex; align-items: center; gap: .75rem; padding: .75rem var(--gutter); border-block-end: 1px solid color-mix(in srgb, var(--main-900) 6%, transparent); font-size: .875rem; font-weight: 600; color: var(--main-900); }
+  /* It stays under the header while the page scrolls, so the docs menu is
+     always one tap away. */
+  .docs-subbar { position: sticky; top: var(--header-h); z-index: 40; display: flex; align-items: center; gap: .75rem; padding: .75rem var(--gutter); background: var(--main-25); border-block-end: 1px solid color-mix(in srgb, var(--main-900) 6%, transparent); font-size: .875rem; font-weight: 600; color: var(--main-900); }
   .docs-subbar button { display: inline-flex; color: var(--main-500); }
   @media (width >= 64rem) { .docs-subbar { display: none; } }
+  /* Two bars stay on top on small screens: links to a heading land below
+     both of them. */
+  @media (width < 64rem) {
+    html:has(.docs-subbar) { scroll-padding-top: 8rem; }
+    .docs-main .prose :is(h2, h3, h4, h5) { scroll-margin-top: 8rem; }
+  }
 
   /* Docs grid: sidebar, article, table of contents. */
   .docs-shell { display: grid; grid-template-columns: minmax(0, 1fr); }
