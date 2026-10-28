@@ -19,8 +19,9 @@ jobs:
           go-version-file: go.mod
       - name: Hugo for the tests
         run: |
-          curl -fsSL -o hugo.tar.gz https://github.com/gohugoio/hugo/releases/download/v0.169.0/hugo_0.169.0_linux-amd64.tar.gz
-          tar -xzf hugo.tar.gz hugo && sudo mv hugo /usr/local/bin/
+          # outside the checkout: GoReleaser refuses a dirty working tree
+          curl -fsSL -o "$RUNNER_TEMP/hugo.tar.gz" https://github.com/gohugoio/hugo/releases/download/v0.169.0/hugo_0.169.0_linux-amd64.tar.gz
+          tar -xzf "$RUNNER_TEMP/hugo.tar.gz" -C "$RUNNER_TEMP" hugo && sudo mv "$RUNNER_TEMP/hugo" /usr/local/bin/
       - run: go test ./...
       - uses: goreleaser/goreleaser-action@v7
         with:
