@@ -8,5 +8,5 @@
   <div class="changelog">
     {{- range $pager.Pages }}{{ partial "bento/release.html" (dict "page" . "link" true) }}{{ end }}
   </div>
-  <div class="page-wrap">{{ partial "mochi/more.html" $pager }}</div>
+  <div class="page-wrap">{{ partial "mochi/more.html" (dict "pager" $pager "label" (T "loadMoreVersions")) }}</div>
 </main>

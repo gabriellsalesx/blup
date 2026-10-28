@@ -1,0 +1,12 @@
+{{- /* Any Lucide icon by name (lucide.dev/icons), inlined: only the icons a
+page uses end up in it. Params: name, class (optional). Unknown names fall
+back to "circle-help" with a build warning. Data: theme/data/lucide.json
+(Lucide 1.62.0, ISC). */ -}}
+{{- $name := lower (strings.TrimSpace (string .name)) -}}
+{{- $paths := index hugo.Data.lucide $name -}}
+{{- if not $paths -}}
+  {{- warnf "icon %q is not a Lucide icon, using circle-help (see https://lucide.dev/icons)" $name -}}
+  {{- $paths = index hugo.Data.lucide "circle-help" -}}
+{{- end -}}
+<svg class="icon{{ with .class }} {{ . }}{{ end }}" viewBox="0 0 24 24" aria-hidden="true">{{ $paths | safeHTML }}</svg>
+{{- /**/ -}}

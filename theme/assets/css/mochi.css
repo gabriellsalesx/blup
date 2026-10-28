@@ -69,6 +69,7 @@ through light-dark(): the theme switcher only changes color-scheme. */
 }
 
 @layer base {
+  html { background: var(--main-25); }
   body {
     font-family: var(--font);
     font-size: 1rem;
@@ -158,6 +159,8 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .powered { font-size: .875rem; color: var(--main-500); }
   .powered a { text-decoration: underline; }
   .powered a:hover { color: var(--main-600); }
+  .made-with { display: inline-flex; align-items: center; gap: .25rem; vertical-align: bottom; }
+  .made-with .icon { flex-shrink: 0; }
   .socials { display: flex; gap: .5rem; color: var(--main-600); }
   .socials a:hover, .rss:hover { color: var(--main-900); }
   .rss { display: inline-flex; align-items: center; gap: .5rem; font-size: .875rem; color: var(--main-600); width: fit-content; }
@@ -227,6 +230,8 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .avatar { position: relative; width: 3rem; height: 3rem; flex-shrink: 0; border-radius: 50%; overflow: hidden; border: 1px solid var(--main-200); background: var(--main-100); display: grid; place-items: center; font-weight: 600; color: var(--main-600); }
   .avatar img { width: 100%; height: 100%; object-fit: cover; }
   .avatar-sm { width: 2.5rem; height: 2.5rem; font-size: .875rem; }
+  .avatars { display: flex; }
+  .avatars .avatar + .avatar { margin-inline-start: -.75rem; box-shadow: 0 0 0 2px var(--main-25); }
   .byline-name { font-weight: 500; color: var(--main-900); }
   .byline time { display: block; color: var(--main-600); }
   .byline-sm .byline-name, .byline-sm time { font-size: .875rem; }
@@ -258,7 +263,8 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .card p { margin-block-end: 1.25rem; color: var(--main-600); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-grow: 1; }
 
   .load-more { display: flex; justify-content: center; margin-block-start: 3rem; gap: .75rem; }
-  .load-more a { padding: .5rem 1rem; border-radius: .375rem; background: var(--main-200); color: var(--main-800); font-size: .875rem; font-weight: 500; }
+  .load-more a { padding: .5rem 1rem; border-radius: .375rem; background: var(--main-200); color: var(--main-600); font-size: 1rem; }
+  .load-more a[aria-busy="true"] { opacity: .5; pointer-events: none; }
   .load-more a:hover { background: var(--main-300); }
 
   /* Share buttons */
@@ -322,6 +328,10 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .author-head .avatar { width: 5rem; height: 5rem; font-size: 1.75rem; }
   @media (width >= 48rem) { .author-head .avatar { width: 7rem; height: 7rem; font-size: 2.5rem; } }
   .author-head p { margin-block-start: .25rem; font-size: 1.25rem; }
+  .author-head .author-role { font-size: 1rem; color: var(--main-600); }
+  .author-bio { margin-block-start: .5rem; max-width: 40rem; color: var(--main-600); }
+  .author-bio p { font-size: 1.125rem; }
+  .author-head .socials { margin-block-start: .75rem; }
 
   /* Post */
   .post-hero { background: var(--main-100); padding-block: 3rem; margin-block-end: 2.5rem; }
@@ -412,6 +422,8 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .prose li { padding-block: .25em; }
   .prose li::marker { color: var(--main-500); }
   .prose li > ul, .prose li > ol { margin-block-start: .25em; }
+  .prose li:has(> input[type="checkbox"]) { list-style: none; margin-inline-start: -1.5em; }
+  .prose li > input[type="checkbox"] { margin-inline-end: .5em; accent-color: var(--primary-500); vertical-align: -.1em; }
   .prose img { margin-block: 1em; border-radius: .25rem; box-shadow: 0 20px 25px -5px rgb(0 0 0 / .1), 0 8px 10px -6px rgb(0 0 0 / .1); }
   .prose p:has(> img:only-child) { display: contents; }
   .prose blockquote { font-style: italic; font-size: 1.2em; line-height: 1.5; padding: .2em .75em; border-inline-start: 4px solid var(--primary-500); color: var(--main-900); }
@@ -449,5 +461,4 @@ through light-dark(): the theme switcher only changes color-scheme. */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; animation: none !important; }
   }
-  @view-transition { navigation: auto; }
 }

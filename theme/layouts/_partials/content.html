@@ -1,3 +1,4 @@
-{{- /* Rendered content without the leading H1: the layout prints the title. */ -}}
+{{- /* Rendered content without the leading H1 (the layout prints the title)
+and without Obsidian comments. */ -}}
 {{- $c := replaceRE `(?s)^\s*<h1[^>]*>.*?</h1>` "" .Content 1 -}}
-{{- return (safeHTML $c) -}}
+{{- return (safeHTML (partial "uncomment.html" $c)) -}}

@@ -1,0 +1,7 @@
+{{- /* Every author of a page (the "authors" property; a post without it
+belongs to the site's author), as dicts {name, url, avatar, initials, role}. */ -}}
+{{- $terms := .GetTerms "authors" -}}
+{{- $out := slice -}}
+{{- range $terms }}{{ $out = $out | append (partial "mochi/author-card.html" (dict "name" .LinkTitle "url" .RelPermalink)) }}{{ end -}}
+{{- if and (not $out) site.Params.author }}{{ $out = slice (partial "mochi/author-card.html" (dict "name" site.Params.author)) }}{{ end -}}
+{{- return $out -}}

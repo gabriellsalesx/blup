@@ -1,13 +1,14 @@
+{{- $set := partialCached "site/settings.html" . "site" -}}
 <footer class="docs-footer">
   <div class="container">
-    <span>© {{ now.Year }} {{ site.Params.author | default site.Title }} · {{ T "poweredBy" }} <a href="https://gohugo.io" rel="noopener">Hugo</a> + <a href="https://obsidian.md" rel="noopener">Obsidian</a></span>
+    <span>© {{ now.Year }} {{ $set.name }} · {{ T "poweredBy" }} <a class="made-with" href="https://github.com/gabriellsalesx/blup" rel="noopener"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-github"/></svg>Blup</a></span>
     <ul>
       {{- range partial "bento/menu.html" . }}
       <li><a href="{{ .url }}">{{ .name }}</a></li>
       {{- end }}
       {{- with site.Home.OutputFormats.Get "rss" }}<li><a href="{{ .RelPermalink }}">RSS</a></li>{{ end }}
     </ul>
-    {{- with site.Params.social }}
+    {{- with $set.social }}
     <ul class="socials">
       {{- range . }}<li><a href="{{ .url }}" rel="noopener me" aria-label="{{ .name }}"><svg class="icon"><use href="#i-{{ .icon }}"/></svg></a></li>{{ end }}
     </ul>

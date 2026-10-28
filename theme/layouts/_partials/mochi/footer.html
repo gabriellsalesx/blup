@@ -1,9 +1,10 @@
+{{- $set := partialCached "site/settings.html" . "site" -}}
 <footer class="site-footer">
   <div class="container">
-    <a class="brand" href="{{ site.Home.RelPermalink }}" aria-label="{{ site.Title }}">{{ partial "mochi/logo.html" . }}</a>
+    <a class="brand" href="{{ site.Home.RelPermalink }}" aria-label="{{ $set.name }}">{{ partial "mochi/logo.html" . }}</a>
     <div class="footer-row">
-      <p class="powered">© {{ now.Year }} {{ site.Params.author | default site.Title }} · {{ T "poweredBy" }} <a href="https://gohugo.io" rel="noopener">Hugo</a> + <a href="https://obsidian.md" rel="noopener">Obsidian</a></p>
-      {{- with site.Params.social }}
+      <p class="powered">© {{ now.Year }} {{ $set.name }} · {{ T "poweredBy" }} <a class="made-with" href="https://github.com/gabriellsalesx/blup" rel="noopener"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-github"/></svg>Blup</a></p>
+      {{- with $set.social }}
       <ul class="socials">
         {{- range . }}
         <li><a href="{{ .url }}" rel="noopener me" aria-label="{{ .name }}"><svg class="icon"><use href="#i-{{ .icon }}"/></svg></a></li>

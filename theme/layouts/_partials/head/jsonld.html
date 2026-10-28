@@ -1,7 +1,7 @@
 {{- $p := .page -}}
 {{- $graph := slice -}}
 {{- if $p.IsHome -}}
-  {{- $graph = $graph | append (dict "@type" "WebSite" "name" site.Title "url" site.Home.Permalink "description" .desc "inLanguage" site.Language.Locale) -}}
+  {{- $graph = $graph | append (dict "@type" "WebSite" "name" (partialCached "site/settings.html" $p "site").name "url" site.Home.Permalink "description" .desc "inLanguage" site.Language.Locale) -}}
 {{- else if $p.IsPage -}}
   {{- $type := cond (eq site.Params.model "bento") "TechArticle" "BlogPosting" -}}
   {{- $a := dict "@type" $type "headline" .title "description" .desc "image" .img "url" $p.Permalink "mainEntityOfPage" $p.Permalink "inLanguage" site.Language.Locale -}}

@@ -523,3 +523,86 @@ func TestDeviceFlow(t *testing.T) {
 		t.Fatalf("want ErrDeviceExpired, got %v", err)
 	}
 }
+
+func TestEnsureRepoPrivateAndGitData(t *testing.T) {
+	ctx := context.Background()
+	f := newFake(t)
+	c := f.client()
+
+	r, err := c.EnsureRepoWith(ctx, "", "notas", EnsureRepoOptions{Private: true, Empty: true, Description: "Notes"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r.Created || !r.Private {
+		t.Fatalf("repo = %+v", r)
+	}
+	if f.created["private"] != true || f.created["auto_init"] != false || f.created["homepage"] != nil || f.created["description"] != "Notes" {
+		t.Fatalf("create body = %v", f.created)
+	}
+	// Public default still sets homepage.
+	if _, err := c.EnsureRepo(ctx, "", "site"); err != nil {
+		t.Fatal(err)
+	}
+	if f.created["private"] != false || f.created["homepage"] == nil {
+		t.Fatalf("public create body = %v", f.created)
+	}
+
+	// Empty repo without init: reported as missing branch, nothing written.
+	tip, err := c.BranchTip(ctx, "Maria", "notas", "main", nil)
+	if err != nil || tip.Commit != "" {
+		t.Fatalf("tip = %+v, %v", tip, err)
+	}
+	if f.count("PUT ") != 0 {
+		t.Fatal("BranchTip(nil) must not write")
+	}
+	tip, err = c.BranchTip(ctx, "Maria", "notas", "main", &InitFile{Path: ".blup/README.md", Content: []byte("hi\n")})
+	if err != nil || tip.Commit == "" || tip.Tree == "" {
+		t.Fatalf("tip = %+v, %v", tip, err)
+	}
+	files, err := c.ReadTree(ctx, "Maria", "notas", tip.Tree)
+	if err != nil || len(files) != 1 || files[0].Path != ".blup/README.md" || files[0].Mode != "100644" {
+		t.Fatalf("tree = %+v, %v", files, err)
+	}
+
+	bin := []byte{0, 1, 2, 0xff}
+	sha, err := c.CreateBlob(ctx, "Maria", "notas", bin)
+	if err != nil || sha != BlobSHA(bin) {
+		t.Fatal(sha, err)
+	}
+	got, err := c.GetBlob(ctx, "Maria", "notas", sha)
+	if err != nil || string(got) != string(bin) {
+		t.Fatal(got, err)
+	}
+	if c.CanInline(bin) || !c.CanInline([]byte("olá")) || c.CanInline(nil) {
+		t.Fatal("CanInline")
+	}
+	tree, err := c.CreateTree(ctx, "Maria", "notas", tip.Tree, []TreeChange{
+		{Path: "a.md", Content: []byte("# A\n")},
+		{Path: "img/x.bin", SHA: sha},
+		{Path: ".blup/README.md", Delete: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	commit, err := c.CreateCommit(ctx, "Maria", "notas", "sync", tree, []string{tip.Commit})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.UpdateBranch(ctx, "Maria", "notas", "main", commit, false); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.repos["maria/notas"].files("main"); len(got) != 2 || got["a.md"] != "# A\n" {
+		t.Fatalf("files = %v", got)
+	}
+	// A sibling commit is not a fast-forward.
+	other, _ := c.CreateCommit(ctx, "Maria", "notas", "other", tip.Tree, []string{tip.Commit})
+	if err := c.UpdateBranch(ctx, "Maria", "notas", "main", other, false); !errors.Is(err, ErrNotFastForward) {
+		t.Fatalf("want ErrNotFastForward, got %v", err)
+	}
+	if err := c.UpdateBranch(ctx, "Maria", "notas", "main", other, true); !errors.Is(err, ErrNotFastForward) {
+		t.Fatalf("create existing: want ErrNotFastForward, got %v", err)
+	}
+	if err := c.UpdateBranch(ctx, "Maria", "notas", "dev", other, true); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -1,7 +1,7 @@
 <main id="main" class="page-wrap">
   <header class="page-intro">
-    <h1 class="docs-title">{{ .Title | default site.Title }}</h1>
-    {{- with .Description | default site.Params.description }}<p>{{ . }}</p>{{ end }}
+    <h1 class="docs-title">{{ .Title | default (partialCached "site/settings.html" . "site").name }}</h1>
+    {{- with .Description | default (partialCached "site/settings.html" . "site").description }}<p>{{ . }}</p>{{ end }}
     {{- with partial "content.html" . | strings.TrimSpace }}<div class="prose">{{ . | safeHTML }}</div>{{ end }}
   </header>
   <nav class="section-cards" aria-label="{{ T "menu" }}">

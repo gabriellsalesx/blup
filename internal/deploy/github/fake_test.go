@@ -28,6 +28,7 @@ type fakeGitHub struct {
 	calls   []string             // "METHOD path"
 	hook    func(w http.ResponseWriter, r *http.Request) bool
 	inlined []string // paths received with inline content
+	created map[string]any
 }
 
 type fakeRepo struct {
@@ -177,12 +178,19 @@ func (f *fakeGitHub) serve(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, 422, map[string]any{"message": "Repository creation failed.", "errors": []any{map[string]any{"resource": "Repository", "code": "custom", "field": "name", "message": "name already exists on this account"}}})
 			return
 		}
-		if body["private"] != false || body["auto_init"] != true {
-			msg(w, 400, "test expects public auto_init repo")
+		f.created = body
+		priv, _ := body["private"].(bool)
+		if body["private"] == nil || body["auto_init"] == nil {
+			msg(w, 400, "test expects explicit private and auto_init")
 			return
 		}
 		rp := f.addRepo(f.login, name)
-		rp.autoInit()
+		rp.private = priv
+		if body["auto_init"] == true {
+			rp.autoInit()
+		} else {
+			rp.empty = true
+		}
 		writeJSON(w, 201, f.repoJSON(rp))
 		return
 	}
@@ -201,12 +209,15 @@ func (f *fakeGitHub) serve(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, f.repoJSON(rp))
 	case len(rest) >= 1 && rest[0] == "git" && rp.empty:
 		msg(w, 409, "Git Repository is empty.")
-	case len(rest) == 2 && rest[0] == "contents" && r.Method == http.MethodPut:
+	case len(rest) >= 2 && rest[0] == "contents" && r.Method == http.MethodPut:
 		if !rp.empty {
 			msg(w, 422, "Invalid request. \"sha\" wasn't supplied.")
 			return
 		}
-		rp.autoInit()
+		sha := rp.putBlob(mustB64(body["content"].(string)))
+		tree := rp.putTree(map[string]string{strings.Join(rest[1:], "/"): sha})
+		rp.refs[rp.defaultBranch] = rp.putCommit(fakeCommit{tree: tree, message: body["message"].(string)})
+		rp.empty = false
 		writeJSON(w, 201, map[string]any{})
 	case len(rest) >= 4 && rest[0] == "git" && rest[1] == "ref" && rest[2] == "heads" && r.Method == http.MethodGet:
 		br := strings.Join(rest[3:], "/")
@@ -225,6 +236,17 @@ func (f *fakeGitHub) serve(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"sha": rest[2], "tree": map[string]any{"sha": c.tree}})
 	case len(rest) == 3 && rest[0] == "git" && rest[1] == "trees" && r.Method == http.MethodGet:
 		f.getTree(w, r, rp, rest[2])
+	case len(rest) == 3 && rest[0] == "git" && rest[1] == "blobs" && r.Method == http.MethodGet:
+		b, ok := rp.blobs[rest[2]]
+		if !ok {
+			msg(w, 404, "Not Found")
+			return
+		}
+		if r.Header.Get("Accept") != "application/vnd.github.raw+json" {
+			msg(w, 400, "test expects raw media type")
+			return
+		}
+		w.Write(b)
 	case len(rest) == 2 && rest[0] == "git" && rest[1] == "blobs" && r.Method == http.MethodPost:
 		if body["encoding"] != "base64" {
 			msg(w, 422, "encoding")
@@ -254,6 +276,14 @@ func (f *fakeGitHub) serve(w http.ResponseWriter, r *http.Request) {
 			if c, ok := m["content"].(string); ok {
 				flat[p] = rp.putBlob([]byte(c))
 				f.inlined = append(f.inlined, p)
+				continue
+			}
+			if v, ok := m["sha"]; ok && v == nil {
+				if _, ok := flat[p]; !ok {
+					msg(w, 422, "cannot delete missing path "+p)
+					return
+				}
+				delete(flat, p)
 				continue
 			}
 			s, _ := m["sha"].(string)
@@ -290,11 +320,12 @@ func (f *fakeGitHub) serve(w http.ResponseWriter, r *http.Request) {
 			msg(w, 422, "Reference does not exist")
 			return
 		}
-		if body["force"] != true {
-			msg(w, 422, "expected force")
+		newSHA := body["sha"].(string)
+		if body["force"] != true && !rp.isAncestor(rp.refs[br], newSHA) {
+			msg(w, 422, "Update is not a fast forward")
 			return
 		}
-		rp.refs[br] = body["sha"].(string)
+		rp.refs[br] = newSHA
 		writeJSON(w, 200, map[string]any{})
 	case len(rest) == 1 && rest[0] == "pages":
 		f.pages(w, r, rp, body)
@@ -401,4 +432,31 @@ func (f *fakeGitHub) pages(w http.ResponseWriter, r *http.Request, rp *fakeRepo,
 			w.WriteHeader(204)
 		}
 	}
+}
+
+func mustB64(s string) []byte {
+	b, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
+// isAncestor reports whether anc is reachable from c through parents.
+func (r *fakeRepo) isAncestor(anc, c string) bool {
+	seen := map[string]bool{}
+	stack := []string{c}
+	for len(stack) > 0 {
+		x := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if x == anc {
+			return true
+		}
+		if seen[x] {
+			continue
+		}
+		seen[x] = true
+		stack = append(stack, r.commits[x].parents...)
+	}
+	return false
 }

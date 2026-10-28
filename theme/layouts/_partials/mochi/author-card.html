@@ -1,0 +1,15 @@
+{{- /* One author by name, as {name, url, avatar, initials, role}. Params:
+name, url (author page, optional). */ -}}
+{{- $name := .name -}}
+{{- $prof := partialCached "site/author-profile.html" $name $name -}}
+{{- $img := $prof.photo -}}
+{{- /* Without a photo, the site's author gets the theme's character; other
+authors show their initials. */ -}}
+{{- if and (not $img) (eq $name site.Params.author) -}}
+  {{- $img = resources.Get "defaults/avatar.png" -}}
+{{- end -}}
+{{- $avatar := false -}}
+{{- with $img }}{{ $avatar = cond (eq .MediaType.Type "image/svg+xml") . (.Fill "160x160 webp q80") }}{{ end -}}
+{{- $initials := "" -}}
+{{- range first 2 (split $name " ") }}{{ $initials = printf "%s%s" $initials (substr . 0 1 | upper) }}{{ end -}}
+{{- return dict "name" $name "url" (.url | default "") "avatar" $avatar "initials" $initials "role" $prof.role -}}

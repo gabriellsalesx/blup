@@ -35,9 +35,6 @@ func Write(s *config.Site) error {
 	if err := writeTheme(filepath.Join(s.Dir(), "themes", "blup")); err != nil {
 		return err
 	}
-	if err := copyBranding(s); err != nil {
-		return err
-	}
 	b, err := HugoConfig(s, false)
 	if err != nil {
 		return err
@@ -102,15 +99,26 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 		hardWraps = false
 	}
 
-	files := []string{"*.md", "**/*.md", "! .*/**", "! **/.*/**"}
+	// Hugo takes the first pattern that matches a file, so exclusions go
+	// before the patterns that include.
+	skip := []string{"! .*/**", "! **/.*/**"}
+	// The authors folder holds profiles (photo, role, bio), read by the theme
+	// as data from the assets mount, never published as pages.
+	authors := obsidian.Sections(s.ContentDir())["authors"]
+	assetFiles := append([]string{"! **/.*/**"}, globs(Attachments)...)
+	if authors != "" {
+		skip = append(skip, "! "+authors+"/**")
+		assetFiles = append(assetFiles, path.Join(folder, authors)+"/*.md")
+	}
 	if t := obsidian.TemplatesFolder(s.Vault); t != "" {
 		switch {
 		case folder == "":
-			files = append(files, "! "+t+"/**")
+			skip = append(skip, "! "+t+"/**")
 		case strings.HasPrefix(t+"/", folder+"/"):
-			files = append(files, "! "+strings.TrimPrefix(t, folder+"/")+"/**")
+			skip = append(skip, "! "+strings.TrimPrefix(t, folder+"/")+"/**")
 		}
 	}
+	files := append(skip, "*.md", "**/*.md")
 
 	date := []string{"date", "publishDate", "created", ":filename", ":fileModTime"}
 	if s.Model == "bento" {
@@ -155,11 +163,11 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 			},
 			"tableOfContents": map[string]any{"startLevel": 2, "endLevel": 3},
 		},
-		"params": params(s, folder),
+		"params": params(s, folder, authors),
 		"module": map[string]any{
 			"mounts": []mount{
 				{Source: s.ContentDir(), Target: "content", Files: files},
-				{Source: s.Vault, Target: "assets/vault", Files: append(globs(Attachments), "! **/.*/**")},
+				{Source: s.Vault, Target: "assets/vault", Files: assetFiles},
 				{Source: "assets", Target: "assets"},
 				{Source: "layouts", Target: "layouts"},
 				{Source: "static", Target: "static"},
@@ -186,9 +194,6 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 			"target":  map[string]any{"kind": "page"},
 		}}
 	}
-	if menu := menuEntries(s.Menu); len(menu) > 0 {
-		cfg["menus"] = map[string]any{"main": menu}
-	}
 	body, err := toml.Marshal(cfg)
 	if err != nil {
 		return nil, err
@@ -207,94 +212,21 @@ func globs(exts []string) []string {
 	return out
 }
 
-// Branding files the user picked are copied into assets/blup/ so the
-// theme can resize them; params point at the copies.
-const brandingDir = "blup"
-
-func copyBranding(s *config.Site) error {
-	dir := filepath.Join(s.Dir(), "assets", brandingDir)
-	if err := os.RemoveAll(dir); err != nil {
-		return err
-	}
-	for name, src := range map[string]string{"logo": s.Logo, "avatar": s.Avatar} {
-		if src == "" {
-			continue
-		}
-		b, err := os.ReadFile(src)
-		if err != nil {
-			return fmt.Errorf("%s: %w", name, err)
-		}
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return err
-		}
-		dest := filepath.Join(dir, name+strings.ToLower(filepath.Ext(src)))
-		if err := os.WriteFile(dest, b, 0o644); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func brandingAsset(name, src string) string {
-	if src == "" {
-		return ""
-	}
-	return path.Join(brandingDir, name+strings.ToLower(filepath.Ext(src)))
-}
-
-func params(s *config.Site, folder string) map[string]any {
-	p := map[string]any{
+func params(s *config.Site, folder, authors string) map[string]any {
+	// Name, description, logo, favicon, menu and social links are properties
+	// of the site folder's _index note, read by the theme (site/settings.html).
+	return map[string]any{
 		"model":       s.Model,
 		"description": s.Description,
 		"author":      s.Author,
-		"authorBio":   s.AuthorBio,
-		"logo":        brandingAsset("logo", s.Logo),
-		"avatar":      brandingAsset("avatar", s.Avatar),
-		"blup":        map[string]any{"folder": folder},
+		"blup":        map[string]any{"folder": folder, "authors": authorsPath(folder, authors)},
 	}
-	var social []map[string]any
-	for _, so := range s.Social {
-		if so.URL == "" {
-			continue
-		}
-		icon := so.Network
-		if icon == "x" {
-			icon = "x-social"
-		}
-		url := so.URL
-		if so.Network == "mail" && !strings.HasPrefix(url, "mailto:") {
-			url = "mailto:" + url
-		}
-		social = append(social, map[string]any{"name": SocialNames[so.Network], "icon": icon, "url": url})
-	}
-	if len(social) > 0 {
-		p["social"] = social
-	}
-	return p
 }
 
-// SocialNames are the networks the footer has icons for.
-var SocialNames = map[string]string{
-	"github": "GitHub", "x": "X", "instagram": "Instagram", "linkedin": "LinkedIn",
-	"youtube": "YouTube", "facebook": "Facebook", "whatsapp": "WhatsApp", "mail": "E-mail",
-}
-
-// SocialOrder is the order networks are asked and shown.
-var SocialOrder = []string{"instagram", "x", "linkedin", "youtube", "github", "facebook", "whatsapp", "mail"}
-
-func menuEntries(items []config.MenuItem) []map[string]any {
-	var out []map[string]any
-	for i, it := range items {
-		e := map[string]any{"name": it.Name, "weight": (i + 1) * 10, "identifier": fmt.Sprintf("m%d", i)}
-		switch {
-		case it.Page != "":
-			e["pageRef"] = it.Page
-		case it.URL != "":
-			e["url"] = it.URL
-		default:
-			continue
-		}
-		out = append(out, e)
+// authorsPath is the authors folder relative to the vault, "" without one.
+func authorsPath(folder, authors string) string {
+	if authors == "" {
+		return ""
 	}
-	return out
+	return path.Join(folder, authors)
 }

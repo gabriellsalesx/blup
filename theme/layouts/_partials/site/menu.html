@@ -1,0 +1,38 @@
+{{- /* The "menu" property of the home note, one line per item, in order:
+  - Docs                      a folder or note of the site, by name
+  - Guides | Docs             "name shown | folder or note"
+  - Shop | https://shop.com   a link (http, https, mailto or /path)
+"Home"/"Início" is the home page. Returns a slice of dict name, url,
+current, external; empty when the note has no menu. Param: the current page. */ -}}
+{{- $page := . -}}
+{{- $out := slice -}}
+{{- range site.Home.Params.menu -}}
+  {{- $line := strings.TrimSpace (string .) -}}
+  {{- $name := $line -}}
+  {{- $target := $line -}}
+  {{- with findRESubmatch `^(.*?)\s*\|\s*(.+)$` $line 1 }}{{ $name = index (index . 0) 1 }}{{ $target = index (index . 0) 2 }}{{ end -}}
+  {{- $target = replaceRE `^\[\[([^|\]]+)(\|[^\]]*)?\]\]$` "$1" $target -}}
+  {{- $url := "" -}}
+  {{- $dest := false -}}
+  {{- if or (hasPrefix $target "http://") (hasPrefix $target "https://") (hasPrefix $target "mailto:") -}}
+    {{- $url = $target -}}
+  {{- else if hasPrefix $target "/" -}}
+    {{- $url = relURL (strings.TrimPrefix "/" $target) -}}
+  {{- else if in (slice "home" "início" "inicio") (lower $target) -}}
+    {{- $dest = site.Home -}}
+  {{- else -}}
+    {{- $want := lower $target -}}
+    {{- range site.Sections }}{{ if or (eq (lower .Title) $want) (eq (lower .LinkTitle) $want) (and .File (eq (lower .File.Dir) (printf "%s/" $want))) }}{{ $dest = . }}{{ break }}{{ end }}{{ end -}}
+    {{- if not $dest }}{{ range site.RegularPages }}{{ if or (eq (lower .Title) $want) (and .File (eq (lower .File.ContentBaseName) $want)) }}{{ $dest = . }}{{ break }}{{ end }}{{ end }}{{ end -}}
+    {{- if not $dest }}{{ warnf "menu: %q is not a folder or note of the site" $target }}{{ end -}}
+  {{- end -}}
+  {{- with $dest -}}
+    {{- $url = .RelPermalink -}}
+    {{- if eq $name $target }}{{ $name = cond .IsHome $name (.LinkTitle | default (partial "title.html" .)) }}{{ end -}}
+  {{- end -}}
+  {{- if $url -}}
+    {{- $cur := and $dest (or (eq $page $dest) (and (not $dest.IsHome) ($page.IsDescendant $dest))) -}}
+    {{- $out = $out | append (dict "name" $name "url" $url "current" $cur "external" (hasPrefix $url "http")) -}}
+  {{- end -}}
+{{- end -}}
+{{- return $out -}}

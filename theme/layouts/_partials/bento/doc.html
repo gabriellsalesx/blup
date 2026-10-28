@@ -8,6 +8,10 @@
 </div>
 <div class="docs-shell">
   <aside class="docs-sidebar"><nav aria-label="{{ partial "title.html" $root }}">{{ partial "bento/tree.html" (dict "root" $root "current" .) }}</nav></aside>
+  {{- /* Keep the sidebar where it was when a link in it is clicked; on the
+  first visit, bring the current page into view. Inline so it runs before the
+  first paint, without a jump. */}}
+  <script>(()=>{const n=document.querySelector(".docs-sidebar>nav");if(!n)return;try{const y=sessionStorage.getItem("blup-sidebar");if(y!==null)n.scrollTop=+y}catch(e){}const c=n.querySelector("[aria-current=page]");if(c&&(c.offsetTop<n.scrollTop||c.offsetTop+c.offsetHeight>n.scrollTop+n.clientHeight))n.scrollTop=c.offsetTop-n.clientHeight/2;n.addEventListener("click",e=>{if(e.target.closest("a"))try{sessionStorage.setItem("blup-sidebar",n.scrollTop)}catch(e){}})})()</script>
   <div id="docs-drawer" class="docs-drawer" popover>
     <button class="icon-button drawer-close" type="button" popovertarget="docs-drawer" popovertargetaction="hide" aria-label="{{ T "close" }}"><svg class="icon"><use href="#i-x"/></svg></button>
     {{ partial "bento/tree.html" (dict "root" $root "current" .) }}

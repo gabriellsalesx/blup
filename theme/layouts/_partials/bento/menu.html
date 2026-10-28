@@ -1,6 +1,7 @@
 {{- /* Header links: the menu chosen in the CLI, else the site's sections. */ -}}
 {{- $page := . -}}
 {{- $out := slice -}}
+{{- with partial "site/menu.html" . }}{{ $out = . }}{{ else }}
 {{- with site.Menus.main -}}
   {{- range . -}}
     {{- $url := .URL }}{{ with .Page }}{{ $url = .RelPermalink }}{{ end -}}
@@ -12,4 +13,5 @@
     {{- $out = $out | append (dict "name" (.LinkTitle | default (partial "title.html" .)) "url" .RelPermalink "current" (or (eq $page .) ($page.IsDescendant .))) -}}
   {{- end -}}
 {{- end -}}
+{{- end }}
 {{- return $out -}}

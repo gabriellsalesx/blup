@@ -4,7 +4,7 @@
 {{- with .Parent }}{{ if not .IsHome }}{{ $crumbs = $crumbs | append (dict "name" (partial "title.html" .) "url" .RelPermalink) }}{{ end }}{{ end -}}
 {{- if not $crumbs }}{{ $crumbs = slice (dict "name" (T "blog") "url" site.Home.RelPermalink) }}{{ end -}}
 {{- $crumbs = $crumbs | append (dict "name" $title) -}}
-{{- $a := partial "mochi/author.html" . -}}
+{{- $authors := partial "mochi/authors.html" . -}}
 {{- $locked := partial "locked.html" . -}}
 <div class="reading-progress" aria-hidden="true"></div>
 <main id="main">
@@ -30,13 +30,15 @@
       </div>
       {{- end }}{{ end }}{{ end }}
       {{ partial "mochi/share.html" . }}
-      {{- with $a.name }}
+      {{- with $authors }}
       <div class="aside-authors">
         <h2>{{ T "authors" }}</h2>
-        {{- if $a.url }}
-        <a class="byline" href="{{ $a.url }}">{{ partial "mochi/avatar.html" (dict "author" $a) }}<span class="byline-name">{{ $a.name }}</span></a>
+        {{- range . }}
+        {{- if .url }}
+        <a class="byline" href="{{ .url }}">{{ partial "mochi/avatar.html" (dict "author" .) }}<span class="byline-name">{{ .name }}</span></a>
         {{- else }}
-        <div class="byline">{{ partial "mochi/avatar.html" (dict "author" $a) }}<span class="byline-name">{{ $a.name }}</span></div>
+        <div class="byline">{{ partial "mochi/avatar.html" (dict "author" .) }}<span class="byline-name">{{ .name }}</span></div>
+        {{- end }}
         {{- end }}
       </div>
       {{- end }}

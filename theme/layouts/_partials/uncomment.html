@@ -1,0 +1,10 @@
+{{- /* Removes Obsidian comments (%% text %%, inline or over several lines)
+from rendered HTML: they are notes to the writer, hidden in Obsidian's
+reading view too. Code is kept as written: the first alternative consumes
+<pre>/<code> blocks whole, so a %% inside them never starts a comment. */ -}}
+{{- $h := string . -}}
+{{- if strings.Contains $h "%%" -}}
+  {{- $h = replaceRE `(?s)(<(?:pre|code)\b.*?</(?:pre|code)>)|%%.*?%%` "$1" $h -}}
+  {{- $h = replaceRE `<p>(?:\s|<br\s*/?>)*</p>` "" $h -}}
+{{- end -}}
+{{- return $h -}}

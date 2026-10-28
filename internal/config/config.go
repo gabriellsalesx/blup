@@ -46,33 +46,14 @@ type Site struct {
 	Vault       string `toml:"vault"`  // absolute path of the Obsidian vault
 	Folder      string `toml:"folder"` // folder inside the vault published as the site; "" = whole vault
 	Domain      string `toml:"domain,omitempty"`
-	AuthorBio   string `toml:"author_bio,omitempty"`
 	// Password is the general password of protected notes ("password: sim").
 	// It stays in this file, on the user's computer, and is never published.
 	Password string `toml:"password,omitempty"`
-	Logo     string `toml:"logo,omitempty"`   // image file chosen by the user
-	Avatar   string `toml:"avatar,omitempty"` // author photo
-	// Menu is the top menu. Empty means automatic: Home plus the top-level
-	// folders of the site.
-	Menu   []MenuItem `toml:"menu,omitempty"`
-	Social []Social   `toml:"social,omitempty"`
-	Deploy Deploy     `toml:"deploy"`
+	Deploy   Deploy `toml:"deploy"`
+	// Sync is the private GitHub repository the notes are synced with.
+	Sync NoteSync `toml:"sync,omitempty"`
 
 	dir string
-}
-
-// MenuItem is one entry of the top menu: a page of the site (Page, a path
-// such as "/receitas") or an external link (URL).
-type MenuItem struct {
-	Name string `toml:"name"`
-	Page string `toml:"page,omitempty"`
-	URL  string `toml:"url,omitempty"`
-}
-
-// Social is a profile link shown in the footer.
-type Social struct {
-	Network string `toml:"network"` // github, x, instagram, linkedin, youtube, facebook, whatsapp, mail
-	URL     string `toml:"url"`
 }
 
 // Deploy remembers where the site was published.
@@ -86,6 +67,12 @@ type Cloudflare struct {
 	Account   string `toml:"account,omitempty"`
 	Project   string `toml:"project,omitempty"`
 	Subdomain string `toml:"subdomain,omitempty"`
+}
+
+// NoteSync is where "blup sync" keeps a copy of the notes.
+type NoteSync struct {
+	Owner string `toml:"owner,omitempty"`
+	Repo  string `toml:"repo,omitempty"`
 }
 
 type GitHub struct {

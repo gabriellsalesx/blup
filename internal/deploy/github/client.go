@@ -214,11 +214,26 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) (int,
 			return 0, err
 		}
 	}
+	code, data, err := c.send(ctx, method, path, body, "application/vnd.github+json", 64<<20)
+	if err != nil {
+		return code, err
+	}
+	if out != nil && len(data) > 0 {
+		if err := json.Unmarshal(data, out); err != nil {
+			return code, fmt.Errorf("github: %s %s: decoding response: %w", method, path, err)
+		}
+	}
+	return code, nil
+}
+
+// send performs a request with retries and returns the body of the final
+// 2xx response, read up to limit bytes (a longer body is an error).
+func (c *Client) send(ctx context.Context, method, path string, body []byte, accept string, limit int64) (int, []byte, error) {
 	write := method != http.MethodGet && method != http.MethodHead
 	for attempt := 0; ; attempt++ {
 		if write {
 			if err := c.paceWrite(ctx); err != nil {
-				return 0, err
+				return 0, nil, err
 			}
 		}
 		var rd io.Reader
@@ -227,9 +242,9 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) (int,
 		}
 		req, err := http.NewRequestWithContext(ctx, method, c.baseURL()+path, rd)
 		if err != nil {
-			return 0, err
+			return 0, nil, err
 		}
-		req.Header.Set("Accept", "application/vnd.github+json")
+		req.Header.Set("Accept", accept)
 		req.Header.Set("X-GitHub-Api-Version", APIVersion)
 		ua := c.UserAgent
 		if ua == "" {
@@ -245,43 +260,41 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) (int,
 		resp, err := c.httpClient().Do(req)
 		if err != nil {
 			if ctx.Err() != nil {
-				return 0, ctx.Err()
+				return 0, nil, ctx.Err()
 			}
 			// Network error: retry a few times.
 			if attempt >= c.maxRetries() {
-				return 0, fmt.Errorf("github: %s %s: %w", method, path, err)
+				return 0, nil, fmt.Errorf("github: %s %s: %w", method, path, err)
 			}
 			if err := c.doSleep(ctx, backoff(attempt, time.Second)); err != nil {
-				return 0, err
+				return 0, nil, err
 			}
 			continue
 		}
-		data, rerr := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
+		data, rerr := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 		resp.Body.Close()
+		if rerr == nil && int64(len(data)) > limit {
+			return resp.StatusCode, nil, fmt.Errorf("github: %s %s: response larger than %d bytes", method, path, limit)
+		}
 		if rerr != nil {
 			if attempt >= c.maxRetries() {
-				return 0, fmt.Errorf("github: %s %s: %w", method, path, rerr)
+				return 0, nil, fmt.Errorf("github: %s %s: %w", method, path, rerr)
 			}
 			if err := c.doSleep(ctx, backoff(attempt, time.Second)); err != nil {
-				return 0, err
+				return 0, nil, err
 			}
 			continue
 		}
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			if out != nil && len(data) > 0 {
-				if err := json.Unmarshal(data, out); err != nil {
-					return resp.StatusCode, fmt.Errorf("github: %s %s: decoding response: %w", method, path, err)
-				}
-			}
-			return resp.StatusCode, nil
+			return resp.StatusCode, data, nil
 		}
 		apiErr := parseAPIError(method, path, resp, data)
 		wait, retry := c.retryDelay(resp, apiErr, attempt)
 		if !retry || attempt >= c.maxRetries() || wait > c.maxRetryWait() {
-			return resp.StatusCode, apiErr
+			return resp.StatusCode, nil, apiErr
 		}
 		if err := c.doSleep(ctx, wait); err != nil {
-			return 0, err
+			return 0, nil, err
 		}
 	}
 }

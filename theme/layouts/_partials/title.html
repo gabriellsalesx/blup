@@ -9,6 +9,6 @@ ordering prefix ("01 - Install" → "Install"). */ -}}
     {{- $t = .File.ContentBaseName -}}
   {{- end -}}
 {{- end -}}
-{{- if and (not $t) .IsHome -}}{{- $t = site.Title -}}{{- end -}}
+{{- if and (not $t) .IsHome -}}{{- $t = (partialCached "site/settings.html" . "site").name -}}{{- end -}}
 {{- $t = replaceRE `^\d+\s*[-._)]\s*` "" $t -}}
 {{- return $t -}}

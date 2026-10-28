@@ -1,12 +1,13 @@
 {{- /* RSS without hidden notes; protected notes show only their title. */ -}}
+{{- $set := partialCached "site/settings.html" . "site" -}}
 {{- $pages := partial "visible.html" (cond .IsHome site.RegularPages .RegularPagesRecursive) -}}
 {{- $pages = $pages.ByDate.Reverse | first 20 -}}
 {{- printf "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" | safeHTML }}
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ partial "title.html" . }} · {{ site.Title }}{{ end }}</title>
+    <title>{{ if .IsHome }}{{ $set.name }}{{ else }}{{ partial "title.html" . }} · {{ $set.name }}{{ end }}</title>
     <link>{{ .Permalink }}</link>
-    <description>{{ site.Params.description | default site.Title }}</description>
+    <description>{{ $set.description | default $set.name }}</description>
     <language>{{ site.Language.Locale }}</language>
     {{- with $pages }}<lastBuildDate>{{ (index . 0).Date.Format "Mon, 02 Jan 2006 15:04:05 -0700" }}</lastBuildDate>{{ end }}
     {{- with .OutputFormats.Get "rss" }}

@@ -2,14 +2,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="generator" content="Hugo {{ hugo.Version }} + Blup {{ cond (eq site.Params.model "bento") "Bento" "Mochi" }}">
-{{- /* Favicon: the theme's character, or favicon.svg placed in the site's
-assets folder (it overrides the theme's). */ -}}
-{{- with resources.Get "favicon.svg" }}
+{{- /* Favicon: the "favicon" property of the home note (an image in the
+vault: PNG/JPG/WebP are resized, SVG is used as is), else the theme's
+character (or a favicon.svg in the site's assets folder). */ -}}
+{{- $fav := (partialCached "site/settings.html" . "site").favicon -}}
+{{- if $fav }}
+  {{- if eq $fav.MediaType.Type "image/svg+xml" }}
+<link rel="icon" href="{{ $fav.RelPermalink }}" type="image/svg+xml">
+  {{- else }}
+<link rel="icon" href="{{ ($fav.Fill "48x48 png").RelPermalink }}" type="image/png" sizes="48x48">
+<link rel="apple-touch-icon" href="{{ ($fav.Fill "180x180 png").RelPermalink }}">
+  {{- end }}
+{{- else }}
+  {{- with resources.Get "favicon.svg" }}
 <link rel="icon" href="{{ (. | fingerprint).RelPermalink }}" type="image/svg+xml">
-{{- end }}
-{{- with resources.Get "defaults/apple-touch-icon.png" }}
+  {{- end }}
+  {{- with resources.Get "defaults/apple-touch-icon.png" }}
 <link rel="apple-touch-icon" href="{{ .RelPermalink }}">
+  {{- end }}
 {{- end }}
 {{- with site.Home.OutputFormats.Get "rss" }}
-<link rel="alternate" type="application/rss+xml" href="{{ .Permalink }}" title="{{ site.Title }}">
+<link rel="alternate" type="application/rss+xml" href="{{ .Permalink }}" title="{{ (partialCached "site/settings.html" . "site").name }}">
 {{- end }}

@@ -4,10 +4,12 @@
 {{- $crumbs := slice (dict "name" (cond $isAuthor (T "authors") (T "tags")) "url" $parent.RelPermalink) (dict "name" .LinkTitle) -}}
 {{- $heading := "" -}}
 {{- if $isAuthor -}}
-  {{- $a := dict "name" .LinkTitle "avatar" false "initials" "" -}}
-  {{- with index $pages 0 }}{{ $a = partial "mochi/author.html" . }}{{ end -}}
-  {{- $bio := cond (eq .LinkTitle site.Params.author) site.Params.authorBio "" -}}
-  {{- $heading = printf `<div class="author-head">%s<div><h1 class="h1">%s</h1>%s</div></div>` (partial "mochi/avatar.html" (dict "author" $a)) (.LinkTitle | htmlEscape) (cond (ne $bio "") (printf "<p>%s</p>" ($bio | htmlEscape)) "") -}}
+  {{- $prof := partialCached "site/author-profile.html" .LinkTitle .LinkTitle -}}
+  {{- $a := partial "mochi/author-card.html" (dict "name" .LinkTitle) -}}
+  {{- $bio := $prof.bio -}}
+  {{- $social := "" -}}
+  {{- with $prof.social }}{{ $social = printf `<ul class="socials">%s</ul>` (partial "mochi/social-links.html" .) }}{{ end -}}
+  {{- $heading = printf `<div class="author-head">%s<div><h1 class="h1">%s</h1>%s%s%s</div></div>` (partial "mochi/avatar.html" (dict "author" $a)) (.LinkTitle | htmlEscape) (cond (ne $prof.role "") (printf `<p class="author-role">%s</p>` ($prof.role | htmlEscape)) "") (cond (ne (string $bio) "") (printf `<div class="author-bio">%s</div>` $bio) "") $social -}}
 {{- else -}}
   {{- $heading = printf `<h1 class="h1">%s</h1>` (.LinkTitle | htmlEscape) -}}
 {{- end -}}

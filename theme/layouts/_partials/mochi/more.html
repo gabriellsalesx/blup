@@ -1,7 +1,10 @@
-{{- /* Static pagination in the reference's "Load more" style. */ -}}
-{{- if or .HasPrev .HasNext }}
+{{- /* Static pagination in the reference's "Load more" style: blup.js
+brings the next page's items into the list; without JavaScript the link
+opens the next page. Params: pager, label (optional). */ -}}
+{{- $p := .pager -}}
+{{- if or $p.HasPrev $p.HasNext }}
 <nav class="load-more" aria-label="{{ T "pages" }}">
-  {{- with .Prev }}<a href="{{ .URL }}" rel="prev">{{ T "newer" }}</a>{{ end }}
-  {{- with .Next }}<a href="{{ .URL }}" rel="next">{{ T "loadMore" }}</a>{{ end }}
+  {{- with $p.Prev }}<a href="{{ .URL }}" rel="prev">{{ T "newer" }}</a>{{ end }}
+  {{- with $p.Next }}<a href="{{ .URL }}" rel="next">{{ $.label | default (T "loadMore") }}</a>{{ end }}
 </nav>
 {{- end -}}

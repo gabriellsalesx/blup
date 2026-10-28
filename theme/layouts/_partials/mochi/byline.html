@@ -1,7 +1,21 @@
-{{- /* Avatar, author and date. Params: page, size ("sm" or ""), long (date format). */ -}}
+{{- /* Avatar, author and date. Params: page, size ("sm" or ""), long (date format).
+With more than one author the avatars overlap and the names are joined. */ -}}
 {{- $p := .page -}}
-{{- $a := partial "mochi/author.html" $p -}}
+{{- $list := partial "mochi/authors.html" $p -}}
+{{- $a := dict "name" "" -}}{{ with $list }}{{ $a = index . 0 }}{{ end -}}
 {{- $class := printf "byline%s" (cond (ne (.size | default "") "") (printf " byline-%s" .size) "") -}}
+{{- if gt (len $list) 1 -}}
+{{- $names := slice }}{{ range $list }}{{ $names = $names | append .name }}{{ end -}}
+<div class="{{ $class }}">
+  <span class="avatars">{{ range $list }}{{ partial "mochi/avatar.html" (dict "author" . "size" $.size) }}{{ end }}</span>
+  <span>
+    <span class="byline-name">{{ delimit $names ", " (T "andWord") }}</span>
+    {{- if not $p.Date.IsZero }}
+    <time datetime="{{ $p.Date.Format "2006-01-02" }}">{{ $p.Date | time.Format (cond .long ":date_long" ":date_medium") }}</time>
+    {{- end }}
+  </span>
+</div>
+{{- else -}}
 {{- $inner := partial "mochi/byline-inner.html" (dict "author" $a "page" $p "size" .size "long" .long) -}}
 {{- if and $a.name $a.url -}}
 <a class="{{ $class }}" href="{{ $a.url }}">{{ $inner }}</a>
@@ -9,4 +23,5 @@
 <div class="{{ $class }}">{{ $inner }}</div>
 {{- else if not $p.Date.IsZero -}}
 <time class="byline" datetime="{{ $p.Date.Format "2006-01-02" }}">{{ $p.Date | time.Format ":date_long" }}</time>
+{{- end -}}
 {{- end -}}

@@ -1,0 +1,35 @@
+{{- /* Profile of an author from the authors folder (the one whose _index has
+"blup: authors"): a note named after the author, with the properties photo,
+role and social (list of profile URLs) and the bio as its text. Returns a
+dict name, photo (resource or false), role, social, bio (HTML). Param: name. */ -}}
+{{- $name := . -}}
+{{- $out := dict "name" $name "photo" false "role" "" "social" slice "bio" "" -}}
+{{- with site.Params.blup.authors -}}
+  {{- $dir := . -}}
+  {{- $note := resources.Get (printf "vault/%s/%s.md" $dir $name) -}}
+  {{- if not $note -}}
+    {{- range resources.Match (printf "vault/%s/*.md" $dir) -}}
+      {{- if eq (lower (path.BaseName .Name)) (lower $name) }}{{ $note = . }}{{ break }}{{ end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with $note -}}
+    {{- $raw := .Content -}}
+    {{- $fm := dict -}}
+    {{- $body := $raw -}}
+    {{- with findRESubmatch `(?s)^\x{FEFF}?---\r?\n(.*?)\r?\n---\r?\n?(.*)$` $raw 1 -}}
+      {{- $fm = transform.Unmarshal (dict "format" "yaml") (index (index . 0) 1) | default dict -}}
+      {{- $body = index (index . 0) 2 -}}
+    {{- end -}}
+    {{- $photo := false -}}
+    {{- with $fm.photo }}{{ $photo = partial "vault-resource.html" (dict "page" site.Home "path" . "vaultdir" $dir) }}{{ end -}}
+    {{- if not $photo }}{{ with findRESubmatch `!\[[^\]]*\]\(<?([^)>\s]+)` $body 1 }}{{ $photo = partial "vault-resource.html" (dict "page" site.Home "path" (index (index . 0) 1) "vaultdir" $dir) }}{{ end }}{{ end -}}
+    {{- $social := slice -}}
+    {{- range $fm.social -}}
+      {{- $url := strings.TrimSpace (string .) -}}
+      {{- if $url }}{{ $net := partial "site/network.html" $url }}{{ $social = $social | append (dict "name" $net.name "icon" $net.icon "url" $url) }}{{ end -}}
+    {{- end -}}
+    {{- $bio := replaceRE `!\[[^\]]*\]\([^)]*\)` "" $body | strings.TrimSpace -}}
+    {{- $out = dict "name" $name "photo" $photo "role" (string ($fm.role | default "")) "social" $social "bio" ($bio | markdownify) -}}
+  {{- end -}}
+{{- end -}}
+{{- return $out -}}

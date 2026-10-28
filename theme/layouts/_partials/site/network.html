@@ -1,0 +1,17 @@
+{{- /* Social network of a profile URL: dict name, icon (sprite id). */ -}}
+{{- $u := lower . -}}
+{{- $nets := slice
+    (dict "match" "instagram.com" "name" "Instagram" "icon" "instagram")
+    (dict "match" "x.com/" "name" "X" "icon" "x-social")
+    (dict "match" "twitter.com" "name" "X" "icon" "x-social")
+    (dict "match" "linkedin.com" "name" "LinkedIn" "icon" "linkedin")
+    (dict "match" "github.com" "name" "GitHub" "icon" "github")
+    (dict "match" "youtube.com" "name" "YouTube" "icon" "youtube")
+    (dict "match" "youtu.be" "name" "YouTube" "icon" "youtube")
+    (dict "match" "facebook.com" "name" "Facebook" "icon" "facebook")
+    (dict "match" "wa.me" "name" "WhatsApp" "icon" "whatsapp")
+    (dict "match" "whatsapp.com" "name" "WhatsApp" "icon" "whatsapp")
+    (dict "match" "mailto:" "name" "E-mail" "icon" "mail") -}}
+{{- $out := dict "name" "Link" "icon" "link" -}}
+{{- range $nets }}{{ if strings.Contains $u .match }}{{ $out = dict "name" .name "icon" .icon }}{{ break }}{{ end }}{{ end -}}
+{{- return $out -}}

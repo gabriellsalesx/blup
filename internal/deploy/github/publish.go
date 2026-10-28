@@ -390,6 +390,16 @@ func containsPath(files []*localFile, p string) bool {
 // An empty repository (no commits at all) is initialized with a README on
 // its default branch, since the Git Data API refuses to work on it.
 func (c *Client) branchHead(ctx context.Context, owner, repo, branch string) (string, error) {
+	return c.branchHeadInit(ctx, owner, repo, branch, &InitFile{
+		Path:    "README.md",
+		Content: []byte("# " + repo + "\n\nSite published with blup.\n"),
+	})
+}
+
+// branchHeadInit is branchHead with a custom initial file for empty
+// repositories. With init == nil an empty repository yields "" (no branch)
+// and nothing is written.
+func (c *Client) branchHeadInit(ctx context.Context, owner, repo, branch string, init *InitFile) (string, error) {
 	const attempts = 4
 	for attempt := 0; attempt < attempts; attempt++ {
 		var ref struct {
@@ -408,12 +418,16 @@ func (c *Client) branchHead(ctx context.Context, owner, repo, branch string) (st
 			// "Git Repository is empty." Either a repository created
 			// without auto_init, or one created a moment ago whose initial
 			// commit is not visible yet.
+			if init == nil {
+				return "", nil
+			}
 			if attempt == 0 {
-				if err := c.initEmptyRepo(ctx, owner, repo); err != nil {
+				if err := c.initEmptyRepo(ctx, owner, repo, init); err != nil {
 					return "", err
 				}
+				continue // usually visible at once; wait only if not
 			}
-			if err := c.doSleep(ctx, backoff(attempt, time.Second)); err != nil {
+			if err := c.doSleep(ctx, backoff(attempt-1, time.Second)); err != nil {
 				return "", err
 			}
 		default:
@@ -423,11 +437,18 @@ func (c *Client) branchHead(ctx context.Context, owner, repo, branch string) (st
 	return "", errors.New("github: repository is still empty after initialization")
 }
 
-func (c *Client) initEmptyRepo(ctx context.Context, owner, repo string) error {
-	content := "# " + repo + "\n\nSite published with blup.\n"
-	_, err := c.do(ctx, http.MethodPut, repoPath(owner, repo)+"/contents/README.md", map[string]any{
-		"message": "Initialize repository",
-		"content": base64.StdEncoding.EncodeToString([]byte(content)),
+func (c *Client) initEmptyRepo(ctx context.Context, owner, repo string, init *InitFile) error {
+	segs := strings.Split(init.Path, "/")
+	for i, s := range segs {
+		segs[i] = url.PathEscape(s)
+	}
+	message := init.Message
+	if message == "" {
+		message = "Initialize repository"
+	}
+	_, err := c.do(ctx, http.MethodPut, repoPath(owner, repo)+"/contents/"+strings.Join(segs, "/"), map[string]any{
+		"message": message,
+		"content": base64.StdEncoding.EncodeToString(init.Content),
 	}, nil)
 	if statusOf(err) == http.StatusUnprocessableEntity {
 		return nil // README already there: the repository is being initialized
@@ -437,21 +458,36 @@ func (c *Client) initEmptyRepo(ctx context.Context, owner, repo string) error {
 
 // readTree fills out (path -> blob sha) with every blob under treeSHA.
 func (c *Client) readTree(ctx context.Context, owner, repo, treeSHA string, out map[string]string) error {
-	var t struct {
-		Tree []struct {
-			Path string `json:"path"`
-			Type string `json:"type"`
-			SHA  string `json:"sha"`
-		} `json:"tree"`
-		Truncated bool `json:"truncated"`
+	files := map[string]TreeFile{}
+	if err := c.readTreeFiles(ctx, owner, repo, treeSHA, files); err != nil {
+		return err
 	}
+	for p, f := range files {
+		out[p] = f.SHA
+	}
+	return nil
+}
+
+type apiTree struct {
+	Tree []struct {
+		Path string `json:"path"`
+		Mode string `json:"mode"`
+		Type string `json:"type"`
+		SHA  string `json:"sha"`
+	} `json:"tree"`
+	Truncated bool `json:"truncated"`
+}
+
+// readTreeFiles fills out with every blob under treeSHA.
+func (c *Client) readTreeFiles(ctx context.Context, owner, repo, treeSHA string, out map[string]TreeFile) error {
+	var t apiTree
 	if _, err := c.do(ctx, http.MethodGet, repoPath(owner, repo)+"/git/trees/"+treeSHA+"?recursive=1", nil, &t); err != nil {
 		return err
 	}
 	if !t.Truncated {
 		for _, e := range t.Tree {
 			if e.Type == "blob" {
-				out[e.Path] = e.SHA
+				out[e.Path] = TreeFile{Path: e.Path, SHA: e.SHA, Mode: e.Mode}
 			}
 		}
 		return nil
@@ -460,21 +496,15 @@ func (c *Client) readTree(ctx context.Context, owner, repo, treeSHA string, out 
 	return c.walkTree(ctx, owner, repo, treeSHA, "", out)
 }
 
-func (c *Client) walkTree(ctx context.Context, owner, repo, treeSHA, prefix string, out map[string]string) error {
-	var t struct {
-		Tree []struct {
-			Path string `json:"path"`
-			Type string `json:"type"`
-			SHA  string `json:"sha"`
-		} `json:"tree"`
-	}
+func (c *Client) walkTree(ctx context.Context, owner, repo, treeSHA, prefix string, out map[string]TreeFile) error {
+	var t apiTree
 	if _, err := c.do(ctx, http.MethodGet, repoPath(owner, repo)+"/git/trees/"+treeSHA, nil, &t); err != nil {
 		return err
 	}
 	for _, e := range t.Tree {
 		switch e.Type {
 		case "blob":
-			out[prefix+e.Path] = e.SHA
+			out[prefix+e.Path] = TreeFile{Path: prefix + e.Path, SHA: e.SHA, Mode: e.Mode}
 		case "tree":
 			if err := c.walkTree(ctx, owner, repo, e.SHA, prefix+e.Path+"/", out); err != nil {
 				return err

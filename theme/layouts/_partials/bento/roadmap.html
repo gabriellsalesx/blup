@@ -3,7 +3,7 @@
 <main id="main" class="roadmap">
   <header class="roadmap-head">
     <h1>{{ partial "title.html" . }}</h1>
-    {{- with .Description | default (partial "content.html" . | plainify | strings.TrimSpace) }}<p>{{ . }}</p>{{ end }}
+    {{- with .Description | default (partial "content.html" . | plainify | htmlUnescape | strings.TrimSpace) }}<p>{{ . }}</p>{{ end }}
   </header>
   <div class="board">
     {{- range $status := slice "planned" "progress" "done" }}

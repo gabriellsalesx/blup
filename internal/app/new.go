@@ -130,6 +130,9 @@ func newSite(ctx context.Context, g *config.Global) error {
 			}
 		}
 	}
+	if err := writeSiteNotes(site); err != nil {
+		return err
+	}
 	if err := writeTemplates(site); err != nil {
 		ui.Warn(i18n.T("new.templates_failed", err))
 	}
@@ -150,6 +153,14 @@ func newSite(ctx context.Context, g *config.Global) error {
 	}
 	if _, err := ensureHugo(ctx); err != nil {
 		return err
+	}
+
+	// Optional: keep the notes in a private GitHub repository from day one.
+	if ok, err := ui.Confirm(i18n.T("new.sync_q"), i18n.T("new.sync_help"), false); err == nil && ok {
+		if err := syncNotes(ctx, g, site); err != nil && !ui.Aborted(err) {
+			ui.Warn(describe(err))
+			ui.Hint(i18n.T("new.sync_later"))
+		}
 	}
 
 	ui.Explain(i18n.T("new.done_title"), i18n.T("new.done_body", content))

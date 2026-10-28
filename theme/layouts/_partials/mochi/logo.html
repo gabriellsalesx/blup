@@ -1,10 +1,12 @@
-{{- /* Site logo: the image chosen in the CLI, else the theme's character. */ -}}
-{{- with and site.Params.logo (resources.Get site.Params.logo) -}}
+{{- /* Site logo: the "logo" property of the home note (or the one chosen in
+the CLI), else the theme's character. */ -}}
+{{- $set := partialCached "site/settings.html" . "site" -}}
+{{- with $set.logo -}}
   {{- $img := . -}}
   {{- if not (in (slice "image/svg+xml" "image/gif") .MediaType.Type) }}{{ $img = .Resize "x64 webp" }}{{ end -}}
-<img src="{{ $img.RelPermalink }}" alt="{{ site.Title }}" width="{{ $img.Width | default 32 }}" height="{{ $img.Height | default 32 }}">
+<img src="{{ $img.RelPermalink }}" alt="{{ $set.name }}" width="{{ $img.Width | default 32 }}" height="{{ $img.Height | default 32 }}">
 {{- else -}}
   {{- with resources.Get "favicon.svg" -}}
-<img src="{{ (. | fingerprint).RelPermalink }}" alt="{{ site.Title }}" width="32" height="32">
+<img src="{{ (. | fingerprint).RelPermalink }}" alt="{{ $set.name }}" width="32" height="32">
   {{- end -}}
 {{- end -}}

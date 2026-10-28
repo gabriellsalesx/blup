@@ -3,6 +3,7 @@ chosen, Home plus the top-level folders of the site. Returns a slice of
 dicts {name, url, current}. */ -}}
 {{- $page := . -}}
 {{- $out := slice -}}
+{{- with partial "site/menu.html" . }}{{ $out = . }}{{ else }}
 {{- with site.Menus.main -}}
   {{- range . -}}
     {{- $url := .URL -}}
@@ -16,4 +17,5 @@ dicts {name, url, current}. */ -}}
     {{- $out = $out | append (dict "name" (.LinkTitle | default (partial "title.html" .)) "url" .RelPermalink "current" (or (eq $page .) ($page.IsDescendant .))) -}}
   {{- end -}}
 {{- end -}}
+{{- end }}
 {{- return $out -}}

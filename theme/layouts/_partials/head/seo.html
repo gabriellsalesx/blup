@@ -1,5 +1,6 @@
 {{- $title := partial "title.html" . -}}
-{{- $full := cond .IsHome site.Title (printf "%s · %s" $title site.Title) -}}
+{{- $site := (partialCached "site/settings.html" . "site").name -}}
+{{- $full := cond .IsHome $site (printf "%s · %s" $title $site) -}}
 {{- $desc := partial "description.html" . -}}
 {{- $img := "" -}}
 {{- if ne .Kind "404" }}{{ $img = partial "og-image.html" . }}{{ end -}}
@@ -13,7 +14,7 @@
 <meta name="robots" content="noindex">
 {{- end }}
 <meta property="og:type" content="{{ cond $isArticle "article" "website" }}">
-<meta property="og:site_name" content="{{ site.Title }}">
+<meta property="og:site_name" content="{{ $site }}">
 <meta property="og:title" content="{{ $title }}">
 {{- with $desc }}
 <meta property="og:description" content="{{ . }}">

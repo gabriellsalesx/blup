@@ -1,0 +1,2 @@
+{{- /* <li> links for a list of {name, icon, url}. */ -}}
+{{- range . }}<li><a href="{{ .url }}" rel="noopener me" aria-label="{{ .name }}"><svg class="icon"><use href="#i-{{ .icon }}"/></svg></a></li>{{ end -}}

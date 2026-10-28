@@ -18,7 +18,7 @@ assets/og/base.png. Returns an absolute URL. */ -}}
   {{- with $font -}}{{- $opts = merge $opts (dict "font" .) -}}{{- end -}}
   {{- $site := dict "color" "#a1a1aa" "size" 32 "x" 80 "y" 540 -}}
   {{- with $font -}}{{- $site = merge $site (dict "font" .) -}}{{- end -}}
-  {{- $img := $base | images.Filter (images.Text $title $opts) (images.Text site.Title $site) -}}
+  {{- $img := $base | images.Filter (images.Text $title $opts) (images.Text (partialCached "site/settings.html" . "site").name $site) -}}
   {{- $name := path.Join "og" (strings.TrimSuffix "/" .RelPermalink | default "home") -}}
   {{- $name = cond (eq $name "og") "og/home" $name -}}
   {{- $url = ($img | resources.Copy (printf "%s.png" $name)).Permalink -}}

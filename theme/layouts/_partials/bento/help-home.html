@@ -1,7 +1,6 @@
 {{- /* Help center home: search plus one card per collection (subfolder).
-A collection's _index can set "icon" (rocket, layout-grid, book-open,
-circle-help, layers, sliders-horizontal, users, settings, credit-card,
-shield-check, plug, sparkles, code, bell); otherwise icons rotate. */ -}}
+A collection's _index can set "icon" to any Lucide icon name
+(https://lucide.dev/icons); otherwise icons rotate. */ -}}
 {{- $icons := slice "rocket" "layout-grid" "book-open" "circle-help" "layers" "sliders-horizontal" "users" "settings" -}}
 {{- $loose := partial "visible.html" .RegularPages -}}
 <main id="main" class="help">
@@ -16,7 +15,7 @@ shield-check, plug, sparkles, code, bell); otherwise icons rotate. */ -}}
     {{- range $i, $c := .Sections.ByWeight }}
     {{- $n := len (partial "visible.html" $c.RegularPagesRecursive) }}
     <a class="help-card" href="{{ $c.RelPermalink }}">
-      <span class="help-icon"><svg class="icon" aria-hidden="true"><use href="#i-{{ $c.Params.icon | default (index $icons (mod $i (len $icons))) }}"/></svg></span>
+      <span class="help-icon">{{ partial "icon.html" (dict "name" ($c.Params.icon | default (index $icons (mod $i (len $icons))))) }}</span>
       <strong>{{ partial "title.html" $c }}</strong>
       {{- with $c.Description }}<span class="help-desc">{{ . }}</span>{{ end }}
       <small>{{ T "articles" $n }}</small>

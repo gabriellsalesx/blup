@@ -1,8 +1,8 @@
 {{- if partial "locked.html" . }}{{ return T "lockedDescription" }}{{ end -}}
 {{- $d := .Description -}}
 {{- if not $d -}}
-  {{- if .IsHome -}}{{- $d = site.Params.description -}}
-  {{- else -}}{{- $d = .Summary | plainify | htmlUnescape | strings.TrimSpace -}}{{- end -}}
+  {{- if .IsHome -}}{{- $d = (partialCached "site/settings.html" . "site").description -}}
+  {{- else -}}{{- $d = partial "uncomment.html" .Summary | plainify | htmlUnescape | strings.TrimSpace -}}{{- end -}}
 {{- end -}}
 {{- $d = replaceRE `\s+` " " $d | truncate 160 -}}
 {{- return $d -}}

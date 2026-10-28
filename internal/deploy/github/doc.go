@@ -46,6 +46,18 @@
 //     chunk has no base so deleted files disappear).
 //   - Files over 100 MiB are rejected (GitHub's per-file hard limit).
 //
+// # Private repositories and note syncing
+//
+// [Client.EnsureRepoWith] can create a private (and optionally empty)
+// repository; private repositories are free. internal/notesync builds a
+// two-way note sync on the lower-level helpers [Client.BranchTip],
+// [Client.ReadTree], [Client.CreateBlob], [Client.GetBlob],
+// [Client.CreateTree], [Client.CreateCommit] and [Client.UpdateBranch]
+// (never forced; a moved branch yields [ErrNotFastForward]). It needs only
+// Contents read/write (plus Administration read/write to create the
+// repository); Pages is not used. OAuth tokens need the "repo" scope for
+// private repositories.
+//
 // All requests send X-GitHub-Api-Version: 2026-03-10 (current version, see
 // https://docs.github.com/en/rest/about-the-rest-api/api-versions).
 package github

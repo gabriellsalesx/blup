@@ -7,7 +7,7 @@ with the properties button_text and button_link. */ -}}
 {{- end -}}
 <header class="site-header">
   <div class="container">
-    <a class="brand" href="{{ site.Home.RelPermalink }}" aria-label="{{ site.Title }}">{{ partial "mochi/logo.html" . }}</a>
+    <a class="brand" href="{{ site.Home.RelPermalink }}" aria-label="{{ (partialCached "site/settings.html" . "site").name }}">{{ partial "mochi/logo.html" . }}</a>
     <nav class="nav" aria-label="{{ T "menu" }}">
       {{- range $menu }}
       <a href="{{ .url }}"{{ if .current }} aria-current="page"{{ end }}{{ if .external }} rel="noopener"{{ end }}>{{ .name }}</a>

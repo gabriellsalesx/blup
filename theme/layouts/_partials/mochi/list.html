@@ -13,6 +13,6 @@ heading (HTML), pages, current (term for the pills). */ -}}
   <div class="post-grid">
     {{- range $pager.Pages }}{{ partial "mochi/card.html" . }}{{ end }}
   </div>
-  {{ partial "mochi/more.html" $pager }}
+  {{ partial "mochi/more.html" (dict "pager" $pager) }}
   <div class="listing"></div>
 </main>

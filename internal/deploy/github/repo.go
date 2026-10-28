@@ -76,6 +76,25 @@ func repoPath(owner, name string) string {
 // can be created; an existing repository the token cannot push to, or a name
 // that belongs to another account, yields ErrRepoConflict.
 func (c *Client) EnsureRepo(ctx context.Context, owner, name string) (Repo, error) {
+	return c.EnsureRepoWith(ctx, owner, name, EnsureRepoOptions{})
+}
+
+// EnsureRepoOptions tunes EnsureRepoWith. The zero value matches EnsureRepo.
+type EnsureRepoOptions struct {
+	// Private creates the repository as private (free on every GitHub plan).
+	// It has no effect on a repository that already exists: check
+	// Repo.Private in the result.
+	Private bool
+	// Description of a created repository; default "Site published with blup".
+	Description string
+	// Empty creates the repository without an initial commit (no README).
+	// The first BranchTip call with an InitFile initializes it.
+	Empty bool
+}
+
+// EnsureRepoWith is EnsureRepo with options (e.g. a private repository).
+// The homepage is set to the Pages URL only for public repositories.
+func (c *Client) EnsureRepoWith(ctx context.Context, owner, name string, opts EnsureRepoOptions) (Repo, error) {
 	if name == "" {
 		return Repo{}, errors.New("github: repository name is empty")
 	}
@@ -100,15 +119,21 @@ func (c *Client) EnsureRepo(ctx context.Context, owner, name string) (Repo, erro
 	if !strings.EqualFold(owner, login) {
 		return Repo{}, fmt.Errorf("%w: cannot create a repository under %q while logged in as %q", ErrRepoConflict, owner, login)
 	}
+	desc := opts.Description
+	if desc == "" {
+		desc = "Site published with blup"
+	}
 	body := map[string]any{
 		"name":         name,
-		"private":      false,
-		"auto_init":    true,
+		"private":      opts.Private,
+		"auto_init":    !opts.Empty,
 		"has_issues":   false,
 		"has_projects": false,
 		"has_wiki":     false,
-		"description":  "Site published with blup",
-		"homepage":     ExpectedURL(login, name),
+		"description":  desc,
+	}
+	if !opts.Private {
+		body["homepage"] = ExpectedURL(login, name)
 	}
 	_, err = c.do(ctx, http.MethodPost, "/user/repos", body, &r)
 	if err != nil {

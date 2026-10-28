@@ -1,0 +1,28 @@
+{{- /* Site settings. They live in Obsidian, as properties of the home note
+(_index of the site folder); name and description fall back to
+blup.toml (set in the CLI). Use with
+partialCached "site/settings.html" . "site". Returns a dict:
+name, description, author, logo (resource or false), favicon (resource or
+false), social (slice of dict name/icon/url). */ -}}
+{{- $h := site.Home -}}
+{{- $p := $h.Params -}}
+{{- $logo := false -}}
+{{- with $p.logo }}{{ $logo = partial "vault-resource.html" (dict "page" $h "path" .) }}{{ end -}}
+{{- $favicon := false -}}
+{{- with $p.favicon }}{{ $favicon = partial "vault-resource.html" (dict "page" $h "path" .) }}{{ end -}}
+{{- $social := slice -}}
+{{- with $p.social -}}
+  {{- range . -}}
+    {{- $url := strings.TrimSpace (string .) -}}
+    {{- if and $url (not (hasPrefix $url "http")) (not (hasPrefix $url "mailto:")) (strings.Contains $url "@") }}{{ $url = printf "mailto:%s" $url }}{{ end -}}
+    {{- $net := partial "site/network.html" $url -}}
+    {{- if $url }}{{ $social = $social | append (dict "name" $net.name "icon" $net.icon "url" $url) }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+{{- return dict
+    "name" ($p.site_name | default site.Title)
+    "description" ($p.site_description | default site.Params.description)
+    "author" site.Params.author
+    "logo" $logo
+    "favicon" $favicon
+    "social" $social -}}

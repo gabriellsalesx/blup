@@ -1,16 +1,23 @@
-{{- /* Resolves a path written in a note (relative to the note, as Obsidian
-writes it with "relative path" links) to a resource in the vault mount.
-Params: page, path. Returns the resource or nil. */ -}}
-{{- $p := .path -}}
+{{- /* Resolves a path written in a note to a resource in the vault mount.
+Accepts what Obsidian writes: relative paths ("../Anexos/x.png", as links
+with "relative path" format), vault paths, and property links ("[[x.png]]"),
+which are looked up by file name. Params: page, path, vaultdir (optional:
+folder of the note, relative to the vault, when there is no page). Returns
+the resource or false. */ -}}
+{{- $p := strings.TrimSpace (string .path) -}}
+{{- $p = replaceRE `^!?\[\[([^|\]]+)(\|[^\]]*)?\]\]$` "$1" $p -}}
 {{- $u := urls.Parse $p -}}
 {{- $p = $u.Path -}}
 {{- $r := false -}}
-{{- if not $u.IsAbs -}}
+{{- if and $p (not $u.IsAbs) -}}
   {{- $prefix := site.Params.blup.folder | default "" -}}
   {{- $dir := "" -}}
   {{- with .page.File -}}{{- $dir = .Dir -}}{{- end -}}
-  {{- $r = resources.Get (path.Join "vault" $prefix $dir $p) -}}
+  {{- with $.vaultdir }}{{ $r = resources.Get (path.Join "vault" . $p) }}{{ end -}}
+  {{- if not $r }}{{ $r = resources.Get (path.Join "vault" $prefix $dir $p) }}{{ end -}}
   {{- if not $r -}}{{- $r = resources.Get (path.Join "vault" $prefix $p) -}}{{- end -}}
   {{- if not $r -}}{{- $r = resources.Get (path.Join "vault" $p) -}}{{- end -}}
+  {{- if not $r -}}{{- $r = index (resources.Match (printf "vault/**/%s" (path.Base $p))) 0 -}}{{- end -}}
 {{- end -}}
+{{- if not $r }}{{ $r = false }}{{ end -}}
 {{- return $r -}}

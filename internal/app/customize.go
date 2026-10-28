@@ -19,7 +19,8 @@ import (
 )
 
 // customize edits what the site shows besides the notes: top menu, header
-// button, social links, logo, photo and bio. Each change is saved at once.
+// button, social links, logo, favicon and the author. They are properties of
+// notes in Obsidian, so each change is saved there at once.
 func customize(ctx context.Context, _ *config.Global, site *config.Site) error {
 	for {
 		choice := "menu"
@@ -68,26 +69,60 @@ func customize(ctx context.Context, _ *config.Global, site *config.Site) error {
 }
 
 // editMenu lets the user tick which pages appear in the top menu, in the
-// order shown, then add external links.
+// order shown, then add external links and the button at the top right.
+// Everything is saved as properties of the home note (menu, button_text,
+// button_link), which can also be edited in Obsidian.
 func editMenu(site *config.Site) error {
-	type entry struct{ key, name, page string }
-	entries := []entry{{"home", i18n.T("custom.menu_home"), "/"}}
-	for _, f := range obsidian.Folders(site.ContentDir(), 1) {
-		entries = append(entries, entry{"page:/" + f.Path, f.Path, "/" + f.Path})
+	home := homeNotePath(site)
+	note, err := obsidian.ReadNote(home)
+	if err != nil {
+		return err
 	}
-	entries = append(entries, entry{"tags", i18n.T("custom.menu_tags"), "/tags"})
+	type item struct{ name, target string }
+	parse := func(line string) item {
+		name, target, ok := strings.Cut(line, "|")
+		if !ok {
+			target = name
+		}
+		return item{strings.TrimSpace(name), strings.TrimSpace(target)}
+	}
+	var current []item
+	for _, l := range note.List("menu") {
+		current = append(current, parse(l))
+	}
+
+	type entry struct{ key, name, target string }
+	entries := []entry{{"home", i18n.T("custom.menu_home"), "/"}}
+	authors := obsidian.Sections(site.ContentDir())["authors"]
+	for _, f := range obsidian.Folders(site.ContentDir(), 1) {
+		if f.Path != authors {
+			entries = append(entries, entry{"page:" + f.Path, f.Path, f.Path})
+		}
+	}
+	entries = append(entries, entry{"tags", i18n.T("custom.menu_tags"), "/tags/"})
+	same := func(e entry, it item) bool {
+		t := strings.ToLower(strings.Trim(it.target, "/"))
+		switch e.key {
+		case "home":
+			return it.target == "/" || t == "home" || t == "início" || t == "inicio"
+		case "tags":
+			return t == "tags"
+		}
+		return t == strings.ToLower(e.target)
+	}
+	external := func(it item) bool {
+		return strings.HasPrefix(it.target, "http://") || strings.HasPrefix(it.target, "https://") || strings.HasPrefix(it.target, "mailto:")
+	}
 
 	selected := []string{}
-	for _, m := range site.Menu {
-		if m.Page != "" {
-			for _, e := range entries {
-				if e.page == m.Page {
-					selected = append(selected, e.key)
-				}
+	for _, e := range entries {
+		for _, it := range current {
+			if same(e, it) {
+				selected = append(selected, e.key)
 			}
 		}
 	}
-	if len(site.Menu) == 0 {
+	if len(current) == 0 {
 		for _, e := range entries {
 			if e.key != "tags" {
 				selected = append(selected, e.key)
@@ -102,30 +137,30 @@ func editMenu(site *config.Site) error {
 		return err
 	}
 
-	var menu []config.MenuItem
+	var menu []item
 	for _, e := range entries {
 		if !slices.Contains(selected, e.key) {
 			continue
 		}
-		name := e.name
-		for _, m := range site.Menu {
-			if m.Page == e.page && m.Name != "" {
-				name = m.Name // keep a name the user changed before
+		it := item{e.name, e.target}
+		for _, c := range current {
+			if same(e, c) && c.name != "" {
+				it.name = c.name // keep a name the user changed before
 			}
 		}
-		menu = append(menu, config.MenuItem{Name: name, Page: e.page})
+		menu = append(menu, it)
 	}
 	// Keep previous external links unless the user removes them.
-	for _, m := range site.Menu {
-		if m.URL == "" {
+	for _, c := range current {
+		if !external(c) {
 			continue
 		}
-		keep, err := ui.Confirm(i18n.T("custom.menu_keep", m.Name), m.URL, true)
+		keep, err := ui.Confirm(i18n.T("custom.menu_keep", c.name), c.target, true)
 		if err != nil {
 			return err
 		}
 		if keep {
-			menu = append(menu, m)
+			menu = append(menu, c)
 		}
 	}
 	for {
@@ -143,73 +178,182 @@ func editMenu(site *config.Site) error {
 		if err := ui.Ask(i18n.T("custom.link_url"), "", "https://", &link, validURL); err != nil {
 			return err
 		}
-		menu = append(menu, config.MenuItem{Name: strings.TrimSpace(name), URL: strings.TrimSpace(link)})
+		menu = append(menu, item{strings.TrimSpace(name), strings.TrimSpace(link)})
 	}
 
 	// Let the user rename the entries in one pass.
+	lines := make([]string, 0, len(menu))
 	for i := range menu {
-		if err := ui.Ask(i18n.T("custom.menu_rename", i+1), i18n.T("custom.menu_rename_help"), menu[i].Name, &menu[i].Name, notEmpty); err != nil {
+		if err := ui.Ask(i18n.T("custom.menu_rename", i+1), i18n.T("custom.menu_rename_help"), menu[i].name, &menu[i].name, notEmpty); err != nil {
 			return err
 		}
+		lines = append(lines, strings.TrimSpace(menu[i].name)+" | "+menu[i].target)
 	}
-	site.Menu = menu
-	return nil
+
+	text, link := note.String("button_text"), note.String("button_link")
+	if err := ui.Ask(i18n.T("custom.button_text"), i18n.T("custom.button_text_help"), "", &text, nil); err != nil {
+		return err
+	}
+	if strings.TrimSpace(text) != "" {
+		if err := ui.Ask(i18n.T("custom.button_link"), "", "https://", &link, validURL); err != nil {
+			return err
+		}
+	} else {
+		link = ""
+	}
+	return obsidian.SetProperties(home, listProp("menu", lines), textProp("button_text", text), textProp("button_link", link))
 }
 
-func editSocial(site *config.Site) error {
-	current := map[string]string{}
-	for _, s := range site.Social {
-		current[s.Network] = s.URL
+// socialOrder is the order networks are asked; the footer finds each
+// network's icon from the address itself.
+var socialOrder = []struct{ name, match string }{
+	{"Instagram", "instagram.com"}, {"X", "x.com"}, {"LinkedIn", "linkedin.com"},
+	{"YouTube", "youtube.com"}, {"GitHub", "github.com"}, {"Facebook", "facebook.com"},
+	{"WhatsApp", "wa.me"}, {"E-mail", "mailto:"},
+}
+
+func socialNetwork(url string) int {
+	u := strings.ToLower(url)
+	for i, n := range socialOrder {
+		if strings.Contains(u, n.match) || (n.name == "X" && strings.Contains(u, "twitter.com")) ||
+			(n.name == "YouTube" && strings.Contains(u, "youtu.be")) ||
+			(n.name == "WhatsApp" && strings.Contains(u, "whatsapp.com")) ||
+			(n.name == "E-mail" && !strings.Contains(u, "://") && strings.Contains(u, "@")) {
+			return i
+		}
 	}
-	var out []config.Social
-	for _, n := range scaffold.SocialOrder {
-		v := current[n]
-		help := i18n.T("custom.social_help")
+	return -1
+}
+
+// editSocial asks one address per network and saves the "social" property
+// of the home note. Addresses of other sites already there are kept.
+func editSocial(site *config.Site) error {
+	home := homeNotePath(site)
+	note, err := obsidian.ReadNote(home)
+	if err != nil {
+		return err
+	}
+	current := make([]string, len(socialOrder))
+	var others []string
+	for _, u := range note.List("social") {
+		if i := socialNetwork(u); i >= 0 && current[i] == "" {
+			current[i] = strings.TrimPrefix(u, "mailto:")
+		} else {
+			others = append(others, u)
+		}
+	}
+	var out []string
+	for i, n := range socialOrder {
+		v := current[i]
 		check := validURL
-		if n == "mail" {
+		if n.name == "E-mail" {
 			check = func(s string) error {
-				if s != "" && !strings.Contains(s, "@") {
+				if !strings.Contains(s, "@") {
 					return errors.New(i18n.T("custom.bad_email"))
 				}
 				return nil
 			}
 		}
-		if err := ui.Ask(scaffold.SocialNames[n], help, "", &v, optional(check)); err != nil {
+		if err := ui.Ask(n.name, i18n.T("custom.social_help"), "", &v, optional(check)); err != nil {
 			return err
 		}
 		if v = strings.TrimSpace(v); v != "" {
-			out = append(out, config.Social{Network: n, URL: v})
+			if n.name == "E-mail" {
+				v = "mailto:" + v
+			}
+			out = append(out, v)
 		}
 	}
-	site.Social = out
-	return nil
+	return obsidian.SetProperties(home, listProp("social", append(out, others...)))
 }
 
+// editImages copies the logo and favicon into the site's attachments
+// folder and points the home note's properties at them.
 func editImages(site *config.Site) error {
-	for _, it := range []struct {
-		key  string
-		dest *string
-	}{{"custom.logo", &site.Logo}, {"custom.avatar", &site.Avatar}} {
-		v := *it.dest
-		if err := ui.Ask(i18n.T(it.key), i18n.T("custom.image_help"), "~/Imagens/foto.png", &v, optional(validImage)); err != nil {
+	home := homeNotePath(site)
+	for _, key := range []string{"logo", "favicon"} {
+		v := ""
+		if err := ui.Ask(i18n.T("custom."+key), i18n.T("custom.image_help"), "~/Imagens/"+key+".png", &v, optional(validImage)); err != nil {
 			return err
 		}
-		if v = strings.TrimSpace(v); v != "" {
-			v = expandHome(v)
+		if v = strings.TrimSpace(v); v == "" {
+			continue
 		}
-		*it.dest = v
+		link, err := copyAttachment(site, expandHome(v), key)
+		if err != nil {
+			return err
+		}
+		if err := obsidian.SetProperties(home, obsidian.Prop{Key: key, Value: link}); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
+// editAbout changes the site's name and description (home note) and the
+// author: name (blup.toml, the default author of the posts) and the
+// author's note with role, photo and bio.
 func editAbout(site *config.Site) error {
-	if err := ui.Ask(i18n.T("new.description"), i18n.T("new.optional"), "", &site.Description, nil); err != nil {
+	home := homeNotePath(site)
+	note, err := obsidian.ReadNote(home)
+	if err != nil {
 		return err
 	}
-	if err := ui.Ask(i18n.T("new.author"), i18n.T("new.optional"), "", &site.Author, nil); err != nil {
+	name := note.String("site_name")
+	if name == "" {
+		name = site.Title
+	}
+	desc := note.String("site_description")
+	if desc == "" {
+		desc = site.Description
+	}
+	if err := ui.Ask(i18n.T("new.site_title"), i18n.T("new.site_title_help"), "", &name, notEmpty); err != nil {
 		return err
 	}
-	return ui.Ask(i18n.T("custom.bio"), i18n.T("new.optional"), "", &site.AuthorBio, nil)
+	if err := ui.Ask(i18n.T("new.description"), i18n.T("new.optional"), "", &desc, nil); err != nil {
+		return err
+	}
+	site.Title, site.Description = strings.TrimSpace(name), strings.TrimSpace(desc)
+	if err := obsidian.SetProperties(home, textProp("site_name", site.Title), textProp("site_description", site.Description)); err != nil {
+		return err
+	}
+
+	if err := ui.Ask(i18n.T("new.author"), i18n.T("custom.author_help"), "", &site.Author, nil); err != nil {
+		return err
+	}
+	if site.Author = strings.TrimSpace(site.Author); site.Author == "" {
+		return nil
+	}
+	p, err := authorNotePath(site, site.Author)
+	if err != nil {
+		return err
+	}
+	author, err := obsidian.ReadNote(p)
+	if err != nil {
+		return err
+	}
+	role, bio, photo := author.String("role"), strings.TrimSpace(author.Body), ""
+	if err := ui.Ask(i18n.T("custom.role"), i18n.T("new.optional"), "", &role, nil); err != nil {
+		return err
+	}
+	if err := ui.Ask(i18n.T("custom.bio"), i18n.T("new.optional"), "", &bio, nil); err != nil {
+		return err
+	}
+	if err := ui.Ask(i18n.T("custom.avatar"), i18n.T("custom.image_help"), "~/Imagens/foto.png", &photo, optional(validImage)); err != nil {
+		return err
+	}
+	props := []obsidian.Prop{{Key: "role", Value: strings.TrimSpace(role)}}
+	if photo = strings.TrimSpace(photo); photo != "" {
+		link, err := copyAttachment(site, expandHome(photo), safeFileName(site.Author))
+		if err != nil {
+			return err
+		}
+		props = append(props, obsidian.Prop{Key: "photo", Value: link})
+	}
+	if err := obsidian.SetProperties(p, props...); err != nil {
+		return err
+	}
+	return obsidian.SetBody(p, strings.TrimSpace(bio)+"\n")
 }
 
 func validURL(s string) error {
@@ -285,7 +429,7 @@ func editSections(site *config.Site) error {
 		if err := writeSection(site, k); err != nil {
 			return err
 		}
-		ui.OK(i18n.T("custom.section_added", i18n.T("section_folder."+k)))
+		ui.OK(i18n.T("custom.section_added", sectionFolder(site, k)))
 	}
 	return nil
 }

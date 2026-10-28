@@ -72,6 +72,8 @@ func Run(ctx context.Context, args []string) error {
 		return withSite(ctx, &g, args[1:], convertLinks)
 	case "customize", "personalizar":
 		return withSite(ctx, &g, args[1:], customize)
+	case "sync", "sincronizar":
+		return withSite(ctx, &g, args[1:], syncNotes)
 	case "language", "idioma":
 		return chooseLanguage(&g)
 	case "update", "atualizar":
@@ -124,6 +126,7 @@ func menu(ctx context.Context, g *config.Global) error {
 			ui.Option(i18n.T("menu.preview", site.Title), "preview"),
 			ui.Option(i18n.T("menu.publish", site.Title), "publish"),
 			ui.Option(i18n.T("menu.customize"), "customize"),
+			ui.Option(i18n.T("menu.sync"), "sync"),
 			ui.Option(i18n.T("menu.convert"), "convert"),
 		}
 		if len(sites) > 1 {
@@ -144,6 +147,8 @@ func menu(ctx context.Context, g *config.Global) error {
 			err = publish(ctx, g, site)
 		case "customize", "personalizar":
 			err = customize(ctx, g, site)
+		case "sync":
+			err = syncNotes(ctx, g, site)
 		case "convert", "converter":
 			err = convertLinks(ctx, g, site)
 		case "switch":

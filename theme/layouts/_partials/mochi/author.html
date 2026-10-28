@@ -1,15 +1,4 @@
-{{- /* Author of a page as a dict {name, url, avatar, initials}. The site's
-author (set in the CLI) has a photo and bio; others show initials. */ -}}
-{{- $name := "" -}}
-{{- with .GetTerms "authors" }}{{ $name = (index . 0).LinkTitle }}{{ end -}}
-{{- if not $name }}{{ $name = site.Params.author }}{{ end -}}
-{{- $url := "" -}}
-{{- with .GetTerms "authors" }}{{ $url = (index . 0).RelPermalink }}{{ end -}}
-{{- $avatar := false -}}
-{{- if eq $name site.Params.author -}}
-  {{- /* The photo chosen in the CLI, else the theme's default character. */ -}}
-  {{- with or (and site.Params.avatar (resources.Get site.Params.avatar)) (resources.Get "defaults/avatar.png") }}{{ $avatar = .Fill "160x160 webp q80" }}{{ end -}}
-{{- end -}}
-{{- $initials := "" -}}
-{{- range first 2 (split $name " ") }}{{ $initials = printf "%s%s" $initials (substr . 0 1 | upper) }}{{ end -}}
-{{- return dict "name" $name "url" $url "avatar" $avatar "initials" $initials -}}
+{{- /* First author of a page as a dict {name, url, avatar, initials, role}. */ -}}
+{{- $a := dict "name" "" "url" "" "avatar" false "initials" "" "role" "" -}}
+{{- with partial "mochi/authors.html" . }}{{ $a = index . 0 }}{{ end -}}
+{{- return $a -}}
