@@ -13,6 +13,8 @@ export async function init(dialog) {
     out.innerHTML = `<p class="search-status">${t.unavailable}</p>`;
     return;
   }
+  // Enter opens the first result.
+  input.form?.addEventListener("submit", () => out.querySelector("a")?.click());
   let timer;
   input.addEventListener("input", () => {
     clearTimeout(timer);

@@ -65,4 +65,10 @@ async function setup(box) {
   });
 }
 
-document.querySelectorAll("[data-blup-lock]").forEach(setup);
+// Locked posts on the page, and those "load more" brings in later.
+const run = (root) => root.querySelectorAll("[data-blup-lock]:not([data-ready])").forEach((box) => {
+  box.dataset.ready = "";
+  setup(box);
+});
+run(document);
+document.addEventListener("blup:added", (e) => run(e.target));

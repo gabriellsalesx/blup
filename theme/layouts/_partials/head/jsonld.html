@@ -1,13 +1,19 @@
 {{- $p := .page -}}
 {{- $graph := slice -}}
 {{- if $p.IsHome -}}
-  {{- $graph = $graph | append (dict "@type" "WebSite" "name" (partialCached "site/settings.html" $p "site").name "url" site.Home.Permalink "description" .desc "inLanguage" site.Language.Locale) -}}
+  {{- $w := dict "@type" "WebSite" "name" (partialCached "site/settings.html" $p "site").name "url" site.Home.Permalink "inLanguage" site.Language.Locale -}}
+  {{- with .desc }}{{ $w = merge $w (dict "description" .) }}{{ end -}}
+  {{- $graph = $graph | append $w -}}
 {{- else if $p.IsPage -}}
   {{- $type := cond (eq site.Params.model "bento") "TechArticle" "BlogPosting" -}}
-  {{- $a := dict "@type" $type "headline" .title "description" .desc "image" .img "url" $p.Permalink "mainEntityOfPage" $p.Permalink "inLanguage" site.Language.Locale -}}
+  {{- $a := dict "@type" $type "headline" .title "url" $p.Permalink "mainEntityOfPage" $p.Permalink "inLanguage" site.Language.Locale -}}
+  {{- with .desc }}{{ $a = merge $a (dict "description" .) }}{{ end -}}
+  {{- with .img }}{{ $a = merge $a (dict "image" .) }}{{ end -}}
   {{- if not $p.Date.IsZero -}}{{- $a = merge $a (dict "datePublished" ($p.Date.Format "2006-01-02T15:04:05Z07:00")) -}}{{- end -}}
   {{- if not $p.Lastmod.IsZero -}}{{- $a = merge $a (dict "dateModified" ($p.Lastmod.Format "2006-01-02T15:04:05Z07:00")) -}}{{- end -}}
-  {{- with site.Params.author -}}{{- $a = merge $a (dict "author" (dict "@type" "Person" "name" .)) -}}{{- end -}}
+  {{- $people := slice -}}
+  {{- range partial "mochi/authors.html" $p }}{{ $people = $people | append (dict "@type" "Person" "name" .name) }}{{ end -}}
+  {{- with $people }}{{ $a = merge $a (dict "author" .) }}{{ end -}}
   {{- $graph = $graph | append $a -}}
 {{- end -}}
 {{- if not $p.IsHome -}}

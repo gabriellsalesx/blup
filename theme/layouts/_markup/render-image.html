@@ -9,7 +9,16 @@ Obsidian's width syntax in the alt text sets the display size:
   {{- $width = int (index (index . 0) 2) -}}
 {{- end -}}
 {{- with partial "vault-resource.html" (dict "page" .Page "path" .Destination) -}}
-  {{- if in (slice "image/svg+xml" "image/gif") .MediaType.Type -}}
+  {{- if ne .ResourceType "image" -}}
+    {{- /* An embedded PDF, audio or video: the player, or a link. */ -}}
+    {{- if eq .MediaType.MainType "audio" -}}
+<audio controls preload="none" src="{{ .RelPermalink }}"></audio>
+    {{- else if eq .MediaType.MainType "video" -}}
+<video controls preload="metadata" src="{{ .RelPermalink }}"></video>
+    {{- else -}}
+<a href="{{ .RelPermalink }}">{{ $alt | default (path.Base .Name) }}</a>
+    {{- end -}}
+  {{- else if or (in (slice "image/svg+xml" "image/gif") .MediaType.Type) (not (reflect.IsImageResourceProcessable .)) -}}
 <img src="{{ .RelPermalink }}" alt="{{ $alt }}" loading="lazy"{{ with $width }} width="{{ . }}"{{ end }}>
   {{- else -}}
     {{- $img := . -}}

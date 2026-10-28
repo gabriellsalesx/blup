@@ -4,7 +4,11 @@
 <article class="release">
   <div class="release-meta">
     {{- if not $p.Date.IsZero }}<time datetime="{{ $p.Date.Format "2006-01-02" }}">{{ $p.Date | time.Format ":date_long" }}</time>{{ end }}
-    <h2>{{ if .link }}<a href="{{ $p.RelPermalink }}">{{ partial "title.html" $p }}</a>{{ else }}{{ partial "title.html" $p }}{{ end }}</h2>
+    {{- if .link }}
+    <h2><a href="{{ $p.RelPermalink }}">{{ partial "title.html" $p }}</a></h2>
+    {{- else }}
+    <h1>{{ partial "title.html" $p }}</h1>
+    {{- end }}
     {{- with $p.GetTerms "tags" }}
     <ul class="chips">
       {{- range . }}
@@ -14,5 +18,11 @@
     </ul>
     {{- end }}
   </div>
+  {{- if .link }}
+  {{- /* In the list, entries stay out of the search index: each one is
+  found on its own page. */}}
+  {{- if partial "locked.html" $p }}{{ partial "mochi/lock.html" $p }}{{ else }}<div class="prose">{{ partial "content.html" $p }}</div>{{ end }}
+  {{- else }}
   {{ partial "bento/body.html" $p }}
+  {{- end }}
 </article>

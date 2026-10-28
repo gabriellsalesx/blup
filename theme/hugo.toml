@@ -3,4 +3,4 @@
 min = "0.160.0"
 
 [params]
-model = "blog"
+model = "mochi"

@@ -1,5 +1,9 @@
 {{- /* In Bento, keep only notes of a blog folder (an author page must not
 list docs or help articles); in Mochi every note is a post. */ -}}
 {{- $pages := . -}}
-{{- if eq site.Params.model "bento" }}{{ $pages = where $pages "FirstSection.Params.blup" "blog" }}{{ end -}}
+{{- if eq site.Params.model "bento" -}}
+  {{- $blog := first 0 $pages -}}
+  {{- range $pages }}{{ if eq (lower (string .FirstSection.Params.blup)) "blog" }}{{ $blog = $blog | append . }}{{ end }}{{ end -}}
+  {{- $pages = $blog -}}
+{{- end -}}
 {{- return $pages -}}

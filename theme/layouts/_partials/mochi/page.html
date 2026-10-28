@@ -23,7 +23,7 @@
   </header>
   <div class="container post-body">
     <aside class="post-aside">
-      {{- if and (not $locked) (gt (len .Fragments.Headings) 0) }}{{ with .TableOfContents }}{{ if ne . "" }}
+      {{- if and (not $locked) (gt (len .Fragments.Headings) 0) }}{{ with .TableOfContents }}{{ if strings.Contains (string .) "<li" }}
       <div>
         <h2 class="toc-title">{{ T "onThisPage" }}</h2>
         <div class="toc">{{ . }}</div>

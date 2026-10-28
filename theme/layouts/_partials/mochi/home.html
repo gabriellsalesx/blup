@@ -4,6 +4,9 @@
 {{- with $featured }}{{ $rest = complement (slice .) $posts }}{{ end -}}
 {{- $pager := .Paginate $rest -}}
 <main id="main">
+  {{- if gt $pager.PageNumber 1 }}
+  <h1 class="sr-only">{{ (partialCached "site/settings.html" . "site").name }}</h1>
+  {{- end }}
   {{- if eq $pager.PageNumber 1 }}
   <section class="hero">
     <div class="container">

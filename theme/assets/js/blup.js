@@ -29,6 +29,7 @@ document.addEventListener("click", async (e) => {
     return;
   }
   if (e.target.closest("[data-search-open]")) { openSearch(); return; }
+  if (e.target.closest("[data-search-close]")) { e.target.closest("dialog")?.close(); return; }
   const copy = e.target.closest("[data-copy]");
   if (copy) {
     // Feedback where the click happened: the icon turns into a check and a
@@ -67,7 +68,12 @@ async function loadMore(e, link) {
     const doc = new DOMParser().parseFromString(await res.text(), "text/html");
     const next = doc.querySelector(grid.matches(".post-grid") ? ".post-grid" : ".changelog");
     const first = next?.firstElementChild;
+    const scripts = [...(next?.querySelectorAll("script[type=module][src]") ?? [])].map((s) => s.src);
     grid.append(...(next ? next.children : []));
+    // Scripts in the new items (the lock of protected posts) don't run by
+    // themselves: load them and tell them about the new items.
+    await Promise.all(scripts.map((src) => import(src).catch(() => {})));
+    grid.dispatchEvent(new Event("blup:added", { bubbles: true }));
     first?.querySelector(".card-title, h2 a")?.focus({ preventScroll: true });
     const after = doc.querySelector(".load-more a[rel=next]");
     if (after) { link.href = after.href; link.ariaBusy = "false"; }

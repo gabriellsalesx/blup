@@ -7,7 +7,7 @@ a notice; with plain "hugo" (no CLI) it is left out, never published in clear. *
   <p class="locked-note"><svg class="icon icon-sm"><use href="#i-lock"/></svg>{{ T "lockedPreview" }}</p>
   <div class="prose">{{ partial "content.html" . }}</div>
   {{- else }}
-  <form class="lock-form">
+  <form class="lock-form" method="post" onsubmit="event.preventDefault()">
     <span class="lock-icon" aria-hidden="true"><svg class="icon"><use href="#i-lock"/></svg></span>
     <h2>{{ T "lockedTitle" }}</h2>
     <p>{{ T "lockedText" }}</p>

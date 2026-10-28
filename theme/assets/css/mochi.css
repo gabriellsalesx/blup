@@ -178,7 +178,7 @@ through light-dark(): the theme switcher only changes color-scheme. */
     .dropdown { inset: calc(var(--header-h) - .25rem) 1rem auto auto; }
   }
   .dropdown button { display: flex; width: 100%; align-items: center; gap: .75rem; padding: .5rem .75rem; border-radius: .25rem; font-size: .875rem; }
-  .dropdown button:hover, .dropdown button[aria-pressed="true"] { background: var(--main-200); color: var(--main-900); }
+  .dropdown button:hover, .dropdown button[aria-checked="true"] { background: var(--main-200); color: var(--main-900); }
   /* Controls that need JavaScript stay hidden when scripts are blocked;
      the theme then follows the system. */
   :root:not(.js) :is(.theme-picker, [data-search-open], [data-copy]) { display: none; }
@@ -384,7 +384,7 @@ through light-dark(): the theme switcher only changes color-scheme. */
   }
 
   /* Password-protected post */
-  .lock-form { display: grid; justify-items: center; gap: .75rem; text-align: center; padding: 3rem 1.5rem; border: 1px solid var(--main-200); border-radius: var(--radius); background: var(--main-50); }
+  .lock-form { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: .75rem; text-align: center; padding: 3rem 1.5rem; border: 1px solid var(--main-200); border-radius: var(--radius); background: var(--main-50); }
   .lock-form h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.025em; color: var(--main-900); }
   .lock-form p { color: var(--main-600); }
   .lock-icon { display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%; background: var(--main-100); color: var(--main-700); }

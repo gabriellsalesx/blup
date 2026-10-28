@@ -8,7 +8,7 @@ authors: [Blup]
 ---
 Este post foi "escrito" pelo **Blup**, o mascote. A foto e o nome vêm da nota dele na pasta **Autores**, e a propriedade `authors: [Blup]` liga os dois.
 
-## Uma pasta, cinco seções
+## Uma pasta para cada seção
 
 Na raiz da pasta do site, cada pasta com uma nota **_index** e a propriedade **blup** vira uma seção:
 

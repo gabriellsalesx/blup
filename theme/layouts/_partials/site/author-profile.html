@@ -29,7 +29,7 @@ dict name, photo (resource or false), role, social, bio (HTML). Param: name. */ 
       {{- if $url }}{{ $net := partial "site/network.html" $url }}{{ $social = $social | append (dict "name" $net.name "icon" $net.icon "url" $url) }}{{ end -}}
     {{- end -}}
     {{- $bio := replaceRE `!\[[^\]]*\]\([^)]*\)` "" $body | strings.TrimSpace -}}
-    {{- $out = dict "name" $name "photo" $photo "role" (string ($fm.role | default "")) "social" $social "bio" ($bio | markdownify) -}}
+    {{- $out = dict "name" $name "photo" $photo "role" (string ($fm.role | default "")) "social" $social "bio" (partial "uncomment.html" ($bio | markdownify)) -}}
   {{- end -}}
 {{- end -}}
 {{- return $out -}}

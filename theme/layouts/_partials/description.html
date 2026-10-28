@@ -1,8 +1,14 @@
+{{- /* One-line description of a page: the "description" property, else the
+start of the text (without the leading title and Obsidian comments). The
+home falls back to site_description and then to its own text. */ -}}
 {{- if partial "locked.html" . }}{{ return T "lockedDescription" }}{{ end -}}
 {{- $d := .Description -}}
+{{- if and (not $d) .IsHome }}{{ $d = (partialCached "site/settings.html" . "site").description }}{{ end -}}
 {{- if not $d -}}
-  {{- if .IsHome -}}{{- $d = (partialCached "site/settings.html" . "site").description -}}
-  {{- else -}}{{- $d = partial "uncomment.html" .Summary | plainify | htmlUnescape | strings.TrimSpace -}}{{- end -}}
+  {{- $h := cond .IsHome (string .Content) (string .Summary) -}}
+  {{- $h = replaceRE `(?s)^\s*<h1[^>]*>.*?</h1>` "" $h 1 -}}
+  {{- $h = replaceRE `<[^>]+>` " " (partial "uncomment.html" $h) -}}
+  {{- $d = $h | htmlUnescape | strings.TrimSpace -}}
 {{- end -}}
 {{- $d = replaceRE `\s+` " " $d | truncate 160 -}}
 {{- return $d -}}

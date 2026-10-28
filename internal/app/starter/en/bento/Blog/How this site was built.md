@@ -8,7 +8,7 @@ authors: [Blup]
 ---
 This post was "written" by **Blup**, the mascot. The photo and name come from Blup's note in the **Writers** folder, and the `authors: [Blup]` property links the two.
 
-## One folder, five sections
+## One folder per section
 
 At the root of the site folder, each folder with an **_index** note and the **blup** property becomes a section:
 

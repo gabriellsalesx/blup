@@ -1,6 +1,13 @@
 {{- /* RSS without hidden notes; protected notes show only their title. */ -}}
 {{- $set := partialCached "site/settings.html" . "site" -}}
 {{- $pages := partial "visible.html" (cond .IsHome site.RegularPages .RegularPagesRecursive) -}}
+{{- /* In Bento the site, tag and author feeds carry news (blog and
+changelog), not docs or help pages. */ -}}
+{{- if and (eq site.Params.model "bento") (or .IsHome (in (slice "taxonomy" "term") .Kind)) -}}
+  {{- $news := first 0 $pages -}}
+  {{- range $pages }}{{ if in (slice "blog" "changelog") (lower (string .FirstSection.Params.blup)) }}{{ $news = $news | append . }}{{ end }}{{ end -}}
+  {{- $pages = $news -}}
+{{- end -}}
 {{- $pages = $pages.ByDate.Reverse | first 20 -}}
 {{- printf "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" | safeHTML }}
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
@@ -9,7 +16,7 @@
     <link>{{ .Permalink }}</link>
     <description>{{ $set.description | default $set.name }}</description>
     <language>{{ site.Language.Locale }}</language>
-    {{- with $pages }}<lastBuildDate>{{ (index . 0).Date.Format "Mon, 02 Jan 2006 15:04:05 -0700" }}</lastBuildDate>{{ end }}
+    {{- with $pages }}{{ with (index . 0).Date }}{{ if not .IsZero }}<lastBuildDate>{{ .Format "Mon, 02 Jan 2006 15:04:05 -0700" }}</lastBuildDate>{{ end }}{{ end }}{{ end }}
     {{- with .OutputFormats.Get "rss" }}
     <atom:link href="{{ .Permalink }}" rel="self" type="application/rss+xml"/>
     {{- end }}
@@ -17,7 +24,9 @@
     <item>
       <title>{{ partial "title.html" . }}</title>
       <link>{{ .Permalink }}</link>
+      {{- if not .Date.IsZero }}
       <pubDate>{{ .Date.Format "Mon, 02 Jan 2006 15:04:05 -0700" }}</pubDate>
+      {{- end }}
       <guid>{{ .Permalink }}</guid>
       <description>{{ partial "description.html" . }}</description>
     </item>

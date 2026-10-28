@@ -19,6 +19,9 @@ rel="noopener" and open normally. */ -}}
     {{- end -}}
   {{- end -}}
   {{- with $u.Fragment }}{{ $href = printf "%s#%s" $href (anchorize .) }}{{ end -}}
+{{- else if $u.Fragment -}}
+  {{- /* A heading of the same note: "#My%20Part" → "#my-part". */ -}}
+  {{- $href = printf "#%s" (anchorize $u.Fragment) -}}
 {{- end -}}
 <a href="{{ $href }}"{{ with .Title }} title="{{ . }}"{{ end }}{{ if $ext }} rel="noopener"{{ end }}>{{ .Text }}</a>
 {{- /**/ -}}

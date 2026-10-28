@@ -1,4 +1,4 @@
-{{- if and (not (partial "locked.html" .)) (gt (len .Fragments.Headings) 0) }}{{ with .TableOfContents }}{{ if ne . "" }}
+{{- if and (not (partial "locked.html" .)) (gt (len .Fragments.Headings) 0) }}{{ with .TableOfContents }}{{ if strings.Contains (string .) "<li" }}
 <aside class="docs-toc" aria-label="{{ T "onThisPage" }}">
   <h2>{{ T "onThisPage" }}</h2>
   {{ . }}
