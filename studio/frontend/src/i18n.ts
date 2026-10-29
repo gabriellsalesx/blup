@@ -1,6 +1,7 @@
 // The Studio speaks the system's language: Portuguese or English.
 const pt = {
   lang: "pt",
+  term: { button: "Terminal", shell: "Terminal", newShell: "Novo terminal", closeTab: "Fechar", close: "Fechar o terminal", ended: "[o processo terminou]", noAgents: "Nenhuma IA instalada. Conheça:", outside: "Esta nota mudou fora do editor (por exemplo, por uma IA no terminal).", reload: "Carregar a nova", keep: "Manter a minha" },
   look2: { label: "Aparência do Studio", light: "Claro", dark: "Escuro", system: "Automático", pick: "Prefere claro ou escuro? Dá para trocar depois no topo da tela inicial." },
   home: { hint: "Arraste um site para cima de outro para criar uma pasta.", newFolder: "Nova pasta", options: "Opções", moveTo: "Mover para {name}", newFolderWith: "Nova pasta com este site", takeOut: "Tirar da pasta", all: "Todos os sites", rename: "Clique para renomear", ungroup: "Desfazer pasta", folderHint: "Arraste para mudar a ordem. Os sites continuam iguais; a pasta só organiza o Studio.", count: "{n} sites" },
   ob: { newSite: "Criar site novo", newSiteHelp: "Um passo de cada vez, com o tema e as notas de exemplo.", hello: "Oi! Eu sou o Blup.", helloLead: "Vamos criar o seu site juntos. É uma pergunta de cada vez, e dá para mudar tudo depois.", start: "Começar", back: "Voltar", next: "Continuar", cancel: "Cancelar", step: "Passo {n} de {total}",
@@ -48,6 +49,7 @@ const pt = {
 };
 const en: typeof pt = {
   lang: "en",
+  term: { button: "Terminal", shell: "Terminal", newShell: "New terminal", closeTab: "Close", close: "Close the terminal", ended: "[the process ended]", noAgents: "No AI installed. Have a look:", outside: "This note changed outside the editor (for example, by an AI in the terminal).", reload: "Load the new one", keep: "Keep mine" },
   look2: { label: "Studio look", light: "Light", dark: "Dark", system: "Automatic", pick: "Light or dark? You can change it later at the top of the home screen." },
   home: { hint: "Drag a site onto another to make a folder.", newFolder: "New folder", options: "Options", moveTo: "Move to {name}", newFolderWith: "New folder with this site", takeOut: "Take out of the folder", all: "All sites", rename: "Click to rename", ungroup: "Undo folder", folderHint: "Drag to change the order. The sites stay the same; the folder only organizes the Studio.", count: "{n} sites" },
   ob: { newSite: "Create a new site", newSiteHelp: "One step at a time, with the theme and example notes.", hello: "Hi! I'm Blup.", helloLead: "Let's make your site together. One question at a time, and you can change everything later.", start: "Start", back: "Back", next: "Continue", cancel: "Cancel", step: "Step {n} of {total}",

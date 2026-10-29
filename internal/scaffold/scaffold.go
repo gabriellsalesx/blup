@@ -49,6 +49,11 @@ func Write(s *config.Site) error {
 	return os.WriteFile(filepath.Join(s.Dir(), PreviewConfig), b, 0o644)
 }
 
+// AgentGuides are the files at the top of the notes folder that explain
+// Blup to AI agents (Claude Code, Codex, OpenCode, Gemini, Antigravity).
+// They are left out of the site.
+var AgentGuides = []string{"AGENTS.md", "CLAUDE.md", "GEMINI.md"}
+
 // PreviewConfig is the config used by the preview server: the same site
 // plus PreviewStatic, where the preview's search index is written.
 const PreviewConfig = "hugo.preview.toml"
@@ -103,6 +108,10 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 	// Hugo takes the first pattern that matches a file, so exclusions go
 	// before the patterns that include.
 	skip := []string{"! .*/**", "! **/.*/**"}
+	// The guides for AI agents (Blup Studio's terminal) are never pages.
+	for _, f := range AgentGuides {
+		skip = append(skip, "! "+f)
+	}
 	// The authors folder holds profiles (photo, role, bio), read by the theme
 	// as data from the assets mount, never published as pages.
 	authors := obsidian.Sections(s.ContentDir())["authors"]

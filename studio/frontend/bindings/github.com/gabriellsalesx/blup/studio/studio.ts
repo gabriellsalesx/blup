@@ -34,6 +34,13 @@ export function AddSection(kind: string): $CancellablePromise<$models.Node> {
 }
 
 /**
+ * Agents lists the AI agents, and which are installed.
+ */
+export function Agents(): $CancellablePromise<$models.Agent[] | null> {
+    return $Call.ByID(199937956);
+}
+
+/**
  * CheckCookieTool tells whether an ID fits a tool ("" when it does).
  */
 export function CheckCookieTool(key: string, value: string): $CancellablePromise<string> {
@@ -45,6 +52,13 @@ export function CheckCookieTool(key: string, value: string): $CancellablePromise
  */
 export function CheckSiteDir(dir: string): $CancellablePromise<string> {
     return $Call.ByID(1170850648, dir);
+}
+
+/**
+ * CloseTerminal stops a terminal (and what runs in it).
+ */
+export function CloseTerminal(id: string): $CancellablePromise<void> {
+    return $Call.ByID(842547382, id);
 }
 
 /**
@@ -165,6 +179,15 @@ export function OpenKeyPage(account: string): $CancellablePromise<void> {
 }
 
 /**
+ * OpenTerminal starts a shell in the notes folder; with agent ("claude",
+ * "codex"...), the agent starts in it. It writes the guide for agents
+ * (AGENTS.md) the first time. It returns the terminal's id.
+ */
+export function OpenTerminal(agent: string, cols: number, rows: number): $CancellablePromise<string> {
+    return $Call.ByID(4149602410, agent, cols, rows);
+}
+
+/**
  * OpenURL opens an address in the browser.
  */
 export function OpenURL(link: string): $CancellablePromise<void> {
@@ -244,6 +267,13 @@ export function RemoveImage(key: string): $CancellablePromise<void> {
  */
 export function RemoveSection(kind: string): $CancellablePromise<$models.Removed> {
     return $Call.ByID(3602876369, kind);
+}
+
+/**
+ * ResizeTerminal follows the panel's size.
+ */
+export function ResizeTerminal(id: string, cols: number, rows: number): $CancellablePromise<void> {
+    return $Call.ByID(3867034702, id, cols, rows);
 }
 
 /**
@@ -415,4 +445,11 @@ export function Vaults(): $CancellablePromise<$models.Vault[] | null> {
  */
 export function Write(rel: string, text: string): $CancellablePromise<void> {
     return $Call.ByID(600911317, rel, text);
+}
+
+/**
+ * WriteTerminal sends what the user types.
+ */
+export function WriteTerminal(id: string, data: string): $CancellablePromise<void> {
+    return $Call.ByID(1382103265, id, data);
 }

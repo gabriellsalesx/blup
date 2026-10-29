@@ -1,12 +1,15 @@
 <script lang="ts">
   import { onDestroy, tick } from "svelte";
-  import { Open, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
   import Editor from "./Editor.svelte";
   import Props from "./Props.svelte";
   import Preview from "./Preview.svelte";
+  import TerminalPanel from "./TerminalPanel.svelte";
+  import SquareTerminal from "@lucide/svelte/icons/square-terminal";
+  import { Events } from "@wailsio/runtime";
   import LookPanel from "./LookPanel.svelte";
   import SectionsPanel from "./SectionsPanel.svelte";
   import CommentsPanel from "./CommentsPanel.svelte";
@@ -54,6 +57,45 @@
     { key: "publish", label: t.nav.publish, Icon: Upload },
     { key: "trash", label: t.nav.trash, Icon: Trash2 },
   ]);
+
+  // The terminal at the bottom, and its height (dragging its top edge).
+  let termOpen = $state(false);
+  let termHeight = $state(300);
+  function resizeTerm(e: MouseEvent) {
+    const start = e.clientY, h = termHeight;
+    const move = (m: MouseEvent) => (termHeight = Math.min(Math.max(140, h + start - m.clientY), window.innerHeight - 200));
+    const up = () => { removeEventListener("mousemove", move); removeEventListener("mouseup", up); };
+    addEventListener("mousemove", move);
+    addEventListener("mouseup", up);
+  }
+
+  // Notes changed on disk (an agent in the terminal, another editor): the
+  // tree follows; the open note too, unless it has changes of its own.
+  let reloadN = $state(0);
+  let outside = $state(false);
+  const offNotes = Events.On("notesChanged", async (ev: any) => {
+    const list = String(ev.data ?? "").split("\n");
+    try { tree = (await LoadTree()).children ?? []; } catch {}
+    if (!current || !list.some((p) => p.toLowerCase() === current.toLowerCase())) return;
+    const note = await ReadNote(current).catch(() => null);
+    if (!note || note.body === pending) return;
+    if (status === "saved") applyOutside(note);
+    else outside = true;
+  });
+  function applyOutside(note: { body: string; props: Record<string, any> | null; kind: string }) {
+    text = note.body;
+    pending = note.body;
+    noteProps = note.props ?? {};
+    edits = {};
+    status = "saved";
+    outside = false;
+    reloadN++;
+  }
+  async function reloadOutside() {
+    const note = await ReadNote(current).catch(() => null);
+    if (note) applyOutside(note);
+  }
+  onDestroy(() => offNotes());
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pending = ""; // text not saved yet
@@ -167,12 +209,15 @@
   onDestroy(() => clearTimeout(timer));
 </script>
 
+<svelte:window onkeydown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "`") { e.preventDefault(); termOpen = !termOpen; } }} />
+
 <div class="ws" class:no-preview={!previewOn}>
   <header class="bar">
     <button class="btn ghost" onclick={back}><ArrowLeft size={16} aria-hidden="true" />{t.back}</button>
     <strong class="title">{site.title}</strong>
     <span class="status muted">{current ? (status === "saved" ? t.saved : status === "saving" ? t.saving : t.unsaved) : ""}</span>
     <span class="spacer"></span>
+    <button class="btn ghost" class:on={termOpen} onclick={() => (termOpen = !termOpen)} title="Ctrl+`"><SquareTerminal size={15} />{t.term.button}</button>
     <button class="btn ghost" onclick={togglePreview}>{previewOn ? "✓ " : ""}{t.preview}</button>
     <button class="btn ghost" onclick={() => go("publish", "sync")}>{t.sync}</button>
     <button class="btn" onclick={() => go("publish", "publish")}>{t.publish}</button>
@@ -192,9 +237,10 @@
 
   <section class="main" class:scroll={screen !== "write"}>
     {#if error}<p class="error">{t.error}: {error}</p>{/if}
+    {#if outside}<div class="outside"><span>{t.term.outside}</span><button class="btn ghost" onclick={reloadOutside}>{t.term.reload}</button><button class="btn ghost" onclick={() => (outside = false)}>{t.term.keep}</button></div>{/if}
     {#if screen === "write"}
       {#if current}
-        {#key current}
+        {#key current + ":" + reloadN}
           <div class="note">
             <Props props={noteProps} {kind} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} />
             <div class="body"><Editor {text} onChange={changed} onSave={save} /></div>
@@ -226,10 +272,22 @@
       {/if}
     </section>
   {/if}
+  {#if termOpen}
+    <div class="term" style:height="{termHeight}px">
+      <div class="grip" role="separator" aria-orientation="horizontal" onmousedown={resizeTerm}></div>
+      <TerminalPanel onClose={() => (termOpen = false)} />
+    </div>
+  {/if}
 </div>
 
 <style>
-  .ws { height: 100%; display: grid; grid-template-columns: 16rem minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .ws { height: 100%; display: grid; grid-template-columns: 16rem minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .side { grid-row: 2 / 4; }
+  .term { grid-column: 2 / -1; position: relative; min-height: 0; }
+  .grip { position: absolute; z-index: 3; inset-inline: 0; inset-block-start: -3px; height: 6px; cursor: row-resize; }
+  .btn.on { background: var(--soft); }
+  .outside { position: absolute; z-index: 2; inset-inline: 1rem; inset-block-start: .75rem; display: flex; gap: .5rem; align-items: center; padding: .5rem .75rem; border-radius: .5rem; background: var(--soft); font-size: .85rem; }
+  .outside span { flex: 1; }
   .ws.no-preview { grid-template-columns: 16rem minmax(0, 1fr); }
   .bar { grid-column: 1 / -1; display: flex; align-items: center; gap: .75rem; padding: .6rem 1rem; border-block-end: 1px solid var(--line); background: var(--panel); }
   .title { font-size: .95rem; }

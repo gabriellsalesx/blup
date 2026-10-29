@@ -7,6 +7,7 @@ export {
 };
 
 export type {
+    Agent,
     HomeItem,
     Node,
     NoteData,
@@ -16,5 +17,6 @@ export type {
     PropEdit,
     Removed,
     SiteInfo,
+    TermData,
     Vault
 } from "./models.js";

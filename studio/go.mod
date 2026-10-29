@@ -3,6 +3,8 @@ module github.com/gabriellsalesx/blup/studio
 go 1.27.3
 
 require (
+	github.com/aymanbagabas/go-pty v0.2.3
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gabriellsalesx/blup v0.0.0
 	github.com/wailsapp/wails/v3 v3.0.0
 	go.yaml.in/yaml/v3 v3.0.5
@@ -27,6 +29,7 @@ require (
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
+	github.com/creack/pty v1.1.24 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
@@ -41,7 +44,9 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
+	github.com/u-root/u-root v0.16.0 // indirect
 	github.com/xo/terminfo v1.0.0 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/image v0.47.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect

@@ -78,9 +78,11 @@ func (s *Studio) Open(dir string) (Node, error) {
 		return Node{}, err
 	}
 	s.StopPreview()
+	closeTerminals(s)
 	s.mu.Lock()
 	s.site = site
 	s.mu.Unlock()
+	watchNotes(site.ContentDir())
 	return s.Tree()
 }
 
@@ -110,7 +112,7 @@ func (s *Studio) Tree() (Node, error) {
 		var dirs, notes []Node
 		for _, e := range entries {
 			name := e.Name()
-			if strings.HasPrefix(name, ".") {
+			if strings.HasPrefix(name, ".") || (rel == "" && slices.Contains(scaffold.AgentGuides, name)) {
 				continue
 			}
 			p := strings.TrimPrefix(rel+"/"+name, "/")
@@ -253,7 +255,10 @@ func (s *Studio) StopPreview() {
 	s.preview, s.url = nil, ""
 }
 
-func (s *Studio) shutdown() { s.StopPreview() }
+func (s *Studio) shutdown() {
+	s.StopPreview()
+	closeTerminals(s)
+}
 
 // PreviewPage is the preview address of a note's page ("" when the preview
 // is off or the page is unknown). The preview lists every note's page in
