@@ -29,6 +29,14 @@ export interface NoteData {
 }
 
 /**
+ * Places are the suggested folders of a new site.
+ */
+export interface Places {
+    "notes": string;
+    "dir": string;
+}
+
+/**
  * Progress is a line of what a publish or sync is doing.
  */
 export interface Progress {
@@ -68,4 +76,12 @@ export interface SiteInfo {
      * the notes folder
      */
     "folder": string;
+}
+
+/**
+ * Vault is an Obsidian vault found on the computer.
+ */
+export interface Vault {
+    "name": string;
+    "path": string;
 }

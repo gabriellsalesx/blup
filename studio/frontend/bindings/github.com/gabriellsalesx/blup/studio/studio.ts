@@ -41,6 +41,13 @@ export function CheckCookieTool(key: string, value: string): $CancellablePromise
 }
 
 /**
+ * CheckSiteDir tells why a folder can't hold a new site ("" when it can).
+ */
+export function CheckSiteDir(dir: string): $CancellablePromise<string> {
+    return $Call.ByID(1170850648, dir);
+}
+
+/**
  * CloudflareAccounts lists the accounts of the saved Cloudflare key.
  */
 export function CloudflareAccounts(): $CancellablePromise<cfpages$0.Account[] | null> {
@@ -70,6 +77,13 @@ export function Connections(): $CancellablePromise<app$0.Connections> {
 }
 
 /**
+ * CreateSite makes the new site and opens it.
+ */
+export function CreateSite(o: app$0.NewSiteOptions): $CancellablePromise<$models.SiteInfo> {
+    return $Call.ByID(70435005, o);
+}
+
+/**
  * DeleteFromTrash deletes a folder of the trash for good.
  */
 export function DeleteFromTrash(path: string): $CancellablePromise<void> {
@@ -91,6 +105,13 @@ export function EmptyTrash(): $CancellablePromise<void> {
 }
 
 /**
+ * HomeDir is the user's home folder, to show paths as "~/...".
+ */
+export function HomeDir(): $CancellablePromise<string> {
+    return $Call.ByID(2287601764);
+}
+
+/**
  * ImageData is an image of the site as a data: URL, for previews in forms.
  */
 export function ImageData(file: string): $CancellablePromise<string> {
@@ -109,6 +130,14 @@ export function Language(): $CancellablePromise<string> {
  */
 export function LinkedImage(link: string): $CancellablePromise<string> {
     return $Call.ByID(929506664, link);
+}
+
+/**
+ * NeedsLinkAdjust reports whether a folder is an Obsidian vault that saves
+ * [[wikilinks]] (which the web doesn't understand).
+ */
+export function NeedsLinkAdjust(dir: string): $CancellablePromise<boolean> {
+    return $Call.ByID(2232778000, dir);
 }
 
 /**
@@ -140,6 +169,13 @@ export function OpenURL(link: string): $CancellablePromise<void> {
  */
 export function PickCover(): $CancellablePromise<string> {
     return $Call.ByID(551321026);
+}
+
+/**
+ * PickFolder asks for a folder ("" when the user cancels).
+ */
+export function PickFolder(): $CancellablePromise<string> {
+    return $Call.ByID(3605625535);
 }
 
 /**
@@ -289,6 +325,13 @@ export function StopPreview(): $CancellablePromise<void> {
 }
 
 /**
+ * SuggestPlaces suggests where a site named title keeps its notes and files.
+ */
+export function SuggestPlaces(title: string): $CancellablePromise<$models.Places> {
+    return $Call.ByID(3701798176, title);
+}
+
+/**
  * Sync sends and receives the notes (private GitHub repository).
  */
 export function Sync(): $CancellablePromise<app$0.SyncInfo> {
@@ -322,6 +365,20 @@ export function Trash(): $CancellablePromise<app$0.TrashItem[] | null> {
  */
 export function Tree(): $CancellablePromise<$models.Node> {
     return $Call.ByID(1427577990);
+}
+
+/**
+ * VaultFolders lists the top folders of a vault (folders of the notes).
+ */
+export function VaultFolders(vault: string): $CancellablePromise<string[] | null> {
+    return $Call.ByID(927694159, vault);
+}
+
+/**
+ * Vaults lists the Obsidian vaults on this computer.
+ */
+export function Vaults(): $CancellablePromise<$models.Vault[] | null> {
+    return $Call.ByID(469425535);
 }
 
 /**

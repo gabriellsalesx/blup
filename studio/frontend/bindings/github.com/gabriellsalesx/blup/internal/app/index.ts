@@ -4,6 +4,7 @@
 export type {
     Connections,
     MenuItem,
+    NewSiteOptions,
     Section,
     Settings,
     SyncInfo,

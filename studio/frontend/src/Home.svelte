@@ -3,13 +3,13 @@
   import type { SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import { t } from "./i18n";
 
-  let { onOpen }: { onOpen: (s: SiteInfo) => void } = $props();
+  let { onOpen, onNew, onEmpty }: { onOpen: (s: SiteInfo) => void; onNew: () => void; onEmpty: () => void } = $props();
   let sites = $state<SiteInfo[]>([]);
   let loaded = $state(false);
   let error = $state("");
 
   Sites()
-    .then((list) => (sites = list ?? []))
+    .then((list) => { sites = list ?? []; if (!sites.length) onEmpty(); })
     .catch((e) => (error = String(e)))
     .finally(() => (loaded = true));
 </script>
@@ -28,6 +28,14 @@
       <p class="empty muted">{t.noSites}</p>
     {/if}
     <ul>
+      <li>
+        <button class="site new" onclick={onNew}>
+          <img src="/blups/blup.svg" alt="" />
+          <strong>{t.ob.newSite}</strong>
+          <span class="muted">{t.ob.newSiteHelp}</span>
+          <span class="go">+ {t.ob.newSite}</span>
+        </button>
+      </li>
       {#each sites as s (s.dir)}
         <li>
           <button class="site" onclick={() => onOpen(s)}>
@@ -55,6 +63,8 @@
   .kind { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--blue); }
   .path { font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
   .go { margin-block-start: .5rem; font-size: .85rem; font-weight: 600; }
+  .site.new { border-style: dashed; background: transparent; }
+  .site.new img { width: 2.5rem; }
   .empty { padding: 2rem; border: 1px dashed var(--line); border-radius: .75rem; }
   .error { color: var(--red); }
 </style>

@@ -26,6 +26,49 @@ export interface MenuItem {
 }
 
 /**
+ * NewSiteOptions are the answers of the new site screens.
+ */
+export interface NewSiteOptions {
+    /**
+     * an Obsidian vault, or any folder of notes
+     */
+    "vault": string;
+
+    /**
+     * the site's folder inside it ("" for all of it); created when missing
+     */
+    "folder": string;
+
+    /**
+     * where blup.toml and the site's files go
+     */
+    "dir": string;
+
+    /**
+     * mochi or bento
+     */
+    "model": string;
+
+    /**
+     * Bento's parts
+     */
+    "sections": string[] | null;
+    "title": string;
+    "description": string;
+    "author": string;
+
+    /**
+     * pt or en
+     */
+    "lang": string;
+
+    /**
+     * switch an Obsidian vault to links that work on the web
+     */
+    "adjustLinks": boolean;
+}
+
+/**
  * Section is one of Bento's parts.
  */
 export interface Section {
