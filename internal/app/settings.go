@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gabriellsalesx/blup/internal/config"
+	"github.com/gabriellsalesx/blup/internal/i18n"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
 	"github.com/gabriellsalesx/blup/internal/scaffold"
 )
@@ -336,7 +337,7 @@ func RemoveSection(site *config.Site, kind string) (string, error) {
 		return "", errors.New("the site has no " + kind + " section")
 	}
 	src := filepath.Join(site.ContentDir(), filepath.FromSlash(folder))
-	dst := filepath.Join(site.Dir(), ".blup", "trash", time.Now().Format("2006-01-02-150405"), filepath.Base(src))
+	dst := filepath.Join(trashDir(site), time.Now().Format("2006-01-02-150405"), filepath.Base(src))
 	if err := moveDir(src, dst); err != nil {
 		return "", err
 	}
@@ -365,13 +366,12 @@ func RemoveSection(site *config.Site, kind string) (string, error) {
 
 // RestoreSection brings back a section taken off with RemoveSection.
 func RestoreSection(site *config.Site, trashed string) error {
-	root := filepath.Join(site.Dir(), ".blup", "trash") + string(filepath.Separator)
-	if !strings.HasPrefix(trashed, root) {
+	if !inTrash(site, trashed) {
 		return errors.New("not in the Blup trash")
 	}
 	dst := filepath.Join(site.ContentDir(), filepath.Base(trashed))
 	if _, err := os.Stat(dst); err == nil {
-		return errors.New(filepath.Base(trashed) + " already exists in the notes")
+		return errors.New(i18n.T("trash.exists", filepath.Base(trashed)))
 	}
 	if err := moveDir(trashed, dst); err != nil {
 		return err
@@ -417,3 +417,61 @@ func moveDir(src, dst string) error {
 	}
 	return os.RemoveAll(src)
 }
+
+// The Blup trash of a site: folders taken off the site, kept outside the
+// notes (one dated folder per removal) until restored or deleted.
+
+func trashDir(site *config.Site) string { return filepath.Join(site.Dir(), ".blup", "trash") }
+
+func inTrash(site *config.Site, p string) bool {
+	rel, err := filepath.Rel(trashDir(site), p)
+	return err == nil && rel != "." && !strings.HasPrefix(rel, "..") && strings.Count(filepath.ToSlash(rel), "/") == 1
+}
+
+// TrashItem is a folder in the Blup trash.
+type TrashItem struct {
+	Path    string `json:"path"`
+	Name    string `json:"name"`
+	Removed string `json:"removed"` // when, "2006-01-02T15:04:05"
+	Notes   int    `json:"notes"`
+}
+
+// ListTrash lists the trash, newest first.
+func ListTrash(site *config.Site) ([]TrashItem, error) {
+	dates, err := os.ReadDir(trashDir(site))
+	if errors.Is(err, fs.ErrNotExist) {
+		return []TrashItem{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := []TrashItem{}
+	for i := len(dates) - 1; i >= 0; i-- {
+		d := dates[i]
+		when, err := time.ParseInLocation("2006-01-02-150405", d.Name(), time.Local)
+		if !d.IsDir() || err != nil {
+			continue
+		}
+		items, _ := os.ReadDir(filepath.Join(trashDir(site), d.Name()))
+		for _, it := range items {
+			p := filepath.Join(trashDir(site), d.Name(), it.Name())
+			out = append(out, TrashItem{Path: p, Name: it.Name(), Removed: when.Format("2006-01-02T15:04:05"), Notes: obsidian.CountNotes(p)})
+		}
+	}
+	return out, nil
+}
+
+// DeleteFromTrash deletes a folder of the trash for good.
+func DeleteFromTrash(site *config.Site, p string) error {
+	if !inTrash(site, p) {
+		return errors.New("not in the Blup trash")
+	}
+	if err := os.RemoveAll(p); err != nil {
+		return err
+	}
+	os.Remove(filepath.Dir(p)) // the dated folder, once empty
+	return nil
+}
+
+// EmptyTrash deletes everything in the trash.
+func EmptyTrash(site *config.Site) error { return os.RemoveAll(trashDir(site)) }

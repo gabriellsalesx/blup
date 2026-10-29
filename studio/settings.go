@@ -151,3 +151,22 @@ func (s *Studio) RestoreSection(trash string) (Node, error) {
 	}
 	return s.Tree()
 }
+
+// Trash lists the folders taken off the site.
+func (s *Studio) Trash() ([]app.TrashItem, error) {
+	site, err := s.current()
+	if err != nil {
+		return nil, err
+	}
+	return app.ListTrash(site)
+}
+
+// DeleteFromTrash deletes a folder of the trash for good.
+func (s *Studio) DeleteFromTrash(path string) error {
+	return s.with(func(site *config.Site) error { return app.DeleteFromTrash(site, path) })
+}
+
+// EmptyTrash deletes everything in the trash.
+func (s *Studio) EmptyTrash() error {
+	return s.with(func(site *config.Site) error { return app.EmptyTrash(site) })
+}

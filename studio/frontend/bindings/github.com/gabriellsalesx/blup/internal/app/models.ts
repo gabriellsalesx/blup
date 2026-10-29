@@ -113,3 +113,17 @@ export interface Target {
      */
     "url": string;
 }
+
+/**
+ * TrashItem is a folder in the Blup trash.
+ */
+export interface TrashItem {
+    "path": string;
+    "name": string;
+
+    /**
+     * when, "2006-01-02T15:04:05"
+     */
+    "removed": string;
+    "notes": number;
+}

@@ -7,5 +7,6 @@ export type {
     Section,
     Settings,
     SyncInfo,
-    Target
+    Target,
+    TrashItem
 } from "./models.js";

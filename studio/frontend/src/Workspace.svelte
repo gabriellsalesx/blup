@@ -12,6 +12,8 @@
   import CookiesPanel from "./CookiesPanel.svelte";
   import PasswordPanel from "./PasswordPanel.svelte";
   import PublishPanel from "./PublishPanel.svelte";
+  import TrashPanel from "./TrashPanel.svelte";
+  import Trash2 from "@lucide/svelte/icons/trash-2";
   import PenLine from "@lucide/svelte/icons/pen-line";
   import Palette from "@lucide/svelte/icons/palette";
   import LayoutGrid from "@lucide/svelte/icons/layout-grid";
@@ -49,6 +51,7 @@
     { key: "cookies", label: t.nav.cookies, Icon: Cookie },
     { key: "password", label: t.nav.password, Icon: KeyRound },
     { key: "publish", label: t.nav.publish, Icon: Upload },
+    { key: "trash", label: t.nav.trash, Icon: Trash2 },
   ]);
 
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -207,6 +210,7 @@
         {:else if screen === "cookies"}<CookiesPanel {settings} {reload} onOpenNote={openNote} />
         {:else if screen === "password"}<PasswordPanel {settings} {reload} />
         {:else if screen === "publish"}<PublishPanel autostart={autostart} />
+        {:else if screen === "trash"}<TrashPanel {reload} onTree={(n) => (tree = n.children ?? [])} />
         {/if}
       {/key}
     {/if}

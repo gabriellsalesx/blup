@@ -124,3 +124,38 @@ func TestRemoveSection(t *testing.T) {
 		t.Fatal("only the Blup trash can be restored")
 	}
 }
+
+func TestTrash(t *testing.T) {
+	site := settingsSite(t)
+	site.Model = "bento"
+	AddSection(site, "help")
+	trashed, err := RemoveSection(site, "help")
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := ListTrash(site)
+	if err != nil || len(items) != 1 || items[0].Path != trashed || items[0].Notes == 0 {
+		t.Fatalf("trash = %+v, %v", items, err)
+	}
+	// Back with the same name taken: refused, the trash keeps it.
+	AddSection(site, "help")
+	if err := RestoreSection(site, trashed); err == nil {
+		t.Fatal("restoring over an existing folder must be refused")
+	}
+	if err := DeleteFromTrash(site, site.ContentDir()); err == nil {
+		t.Fatal("only the trash can be deleted from")
+	}
+	if err := DeleteFromTrash(site, trashed); err != nil {
+		t.Fatal(err)
+	}
+	if items, _ := ListTrash(site); len(items) != 0 {
+		t.Fatalf("trash = %+v", items)
+	}
+	RemoveSection(site, "help")
+	if err := EmptyTrash(site); err != nil {
+		t.Fatal(err)
+	}
+	if items, _ := ListTrash(site); len(items) != 0 {
+		t.Fatal("trash must be empty")
+	}
+}

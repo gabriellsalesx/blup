@@ -70,10 +70,24 @@ export function Connections(): $CancellablePromise<app$0.Connections> {
 }
 
 /**
+ * DeleteFromTrash deletes a folder of the trash for good.
+ */
+export function DeleteFromTrash(path: string): $CancellablePromise<void> {
+    return $Call.ByID(2758206437, path);
+}
+
+/**
  * Disconnect forgets the key of "github" or "cloudflare".
  */
 export function Disconnect(account: string): $CancellablePromise<void> {
     return $Call.ByID(1930147756, account);
+}
+
+/**
+ * EmptyTrash deletes everything in the trash.
+ */
+export function EmptyTrash(): $CancellablePromise<void> {
+    return $Call.ByID(3532244619);
 }
 
 /**
@@ -293,6 +307,13 @@ export function SyncStatus(): $CancellablePromise<app$0.SyncInfo> {
  */
 export function Target(): $CancellablePromise<app$0.Target> {
     return $Call.ByID(2323651595);
+}
+
+/**
+ * Trash lists the folders taken off the site.
+ */
+export function Trash(): $CancellablePromise<app$0.TrashItem[] | null> {
+    return $Call.ByID(1090934864);
 }
 
 /**
