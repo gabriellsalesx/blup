@@ -22,6 +22,8 @@
   color: var(--text);
   background: var(--bg);
 }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 * { box-sizing: border-box; margin: 0; }
 html, body, #app { height: 100%; }
 body { overflow: hidden; -webkit-font-smoothing: antialiased; }

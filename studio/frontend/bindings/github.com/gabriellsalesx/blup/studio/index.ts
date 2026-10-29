@@ -11,6 +11,7 @@ export type {
     Node,
     NoteData,
     Places,
+    Prefs,
     Progress,
     PropEdit,
     Removed,

@@ -90,3 +90,43 @@ func (s *Studio) SaveLayout(items []HomeItem) error {
 	}
 	return os.WriteFile(f, b, 0o644)
 }
+
+// Prefs are the Studio's own choices (studio-prefs.json).
+type Prefs struct {
+	Theme string `json:"theme"` // "system", "light" or "dark"
+}
+
+func prefsFile() (string, error) {
+	dir, err := config.Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "studio-prefs.json"), nil
+}
+
+// Prefs reads the Studio's choices.
+func (s *Studio) Prefs() Prefs {
+	p := Prefs{Theme: "system"}
+	if f, err := prefsFile(); err == nil {
+		if b, err := os.ReadFile(f); err == nil {
+			_ = json.Unmarshal(b, &p)
+		}
+	}
+	return p
+}
+
+// SavePrefs saves the Studio's choices.
+func (s *Studio) SavePrefs(p Prefs) error {
+	f, err := prefsFile()
+	if err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(f), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(f, b, 0o644)
+}

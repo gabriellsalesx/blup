@@ -4,6 +4,7 @@
   import Ellipsis from "@lucide/svelte/icons/ellipsis";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import { t } from "./i18n";
+  import ThemePicker from "./ThemePicker.svelte";
 
   // The list of sites, organized by the user: drag a site onto another to
   // make a folder, onto a folder to put it inside, onto a card's edge to
@@ -192,6 +193,8 @@
   <header>
     <img src="/blup.svg" alt="" width="40" height="40" />
     <h1>Blup Studio</h1>
+    <span class="spacer"></span>
+    <ThemePicker />
   </header>
 
   {#if open !== null}

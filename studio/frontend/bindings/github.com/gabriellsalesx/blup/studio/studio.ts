@@ -195,6 +195,13 @@ export function PickImage(key: string): $CancellablePromise<string> {
 }
 
 /**
+ * Prefs reads the Studio's choices.
+ */
+export function Prefs(): $CancellablePromise<$models.Prefs> {
+    return $Call.ByID(3884801796);
+}
+
+/**
  * PreviewPage is the preview address of a note's page ("" when the preview
  * is off or the page is unknown). The preview lists every note's page in
  * blup-map.json.
@@ -280,6 +287,13 @@ export function SaveMenu(menu: app$0.MenuItem[] | null, buttonText: string, butt
  */
 export function SaveNote(rel: string, body: string, edits: $models.PropEdit[] | null): $CancellablePromise<void> {
     return $Call.ByID(1907519367, rel, body, edits);
+}
+
+/**
+ * SavePrefs saves the Studio's choices.
+ */
+export function SavePrefs(p: $models.Prefs): $CancellablePromise<void> {
+    return $Call.ByID(3443380611, p);
 }
 
 /**

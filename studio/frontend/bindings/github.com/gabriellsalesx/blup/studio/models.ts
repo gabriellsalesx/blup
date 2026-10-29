@@ -57,6 +57,16 @@ export interface Places {
 }
 
 /**
+ * Prefs are the Studio's own choices (studio-prefs.json).
+ */
+export interface Prefs {
+    /**
+     * "system", "light" or "dark"
+     */
+    "theme": string;
+}
+
+/**
  * Progress is a line of what a publish or sync is doing.
  */
 export interface Progress {
