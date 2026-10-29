@@ -7,6 +7,7 @@ export {
 };
 
 export type {
+    HomeItem,
     Node,
     NoteData,
     Places,

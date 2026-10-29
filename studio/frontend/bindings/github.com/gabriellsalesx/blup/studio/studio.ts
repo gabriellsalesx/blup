@@ -126,6 +126,14 @@ export function Language(): $CancellablePromise<string> {
 }
 
 /**
+ * Layout is the home screen's order, with every known site in it: new
+ * sites at the end, sites that are gone left out.
+ */
+export function Layout(): $CancellablePromise<$models.HomeItem[] | null> {
+    return $Call.ByID(3431707860);
+}
+
+/**
  * LinkedImage is the image of a property ("[[cover.jpg]]") as a data: URL.
  */
 export function LinkedImage(link: string): $CancellablePromise<string> {
@@ -251,6 +259,13 @@ export function SaveAbout(name: string, description: string, author: string): $C
  */
 export function SaveCookies(c: config$0.Cookies, privacyPage: boolean, contact: string): $CancellablePromise<string> {
     return $Call.ByID(1929046414, c, privacyPage, contact);
+}
+
+/**
+ * SaveLayout saves the home screen's order.
+ */
+export function SaveLayout(items: $models.HomeItem[] | null): $CancellablePromise<void> {
+    return $Call.ByID(2023015949, items);
 }
 
 /**

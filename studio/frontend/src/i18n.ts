@@ -1,6 +1,7 @@
 // The Studio speaks the system's language: Portuguese or English.
 const pt = {
   lang: "pt",
+  home: { hint: "Arraste um site para cima de outro para criar uma pasta.", newFolder: "Nova pasta", options: "Opções", moveTo: "Mover para {name}", newFolderWith: "Nova pasta com este site", takeOut: "Tirar da pasta", all: "Todos os sites", rename: "Clique para renomear", ungroup: "Desfazer pasta", folderHint: "Arraste para mudar a ordem. Os sites continuam iguais; a pasta só organiza o Studio.", count: "{n} sites" },
   ob: { newSite: "Criar site novo", newSiteHelp: "Um passo de cada vez, com o tema e as notas de exemplo.", hello: "Oi! Eu sou o Blup.", helloLead: "Vamos criar o seu site juntos. É uma pergunta de cada vez, e dá para mudar tudo depois.", start: "Começar", back: "Voltar", next: "Continuar", cancel: "Cancelar", step: "Passo {n} de {total}",
     themeQ: "Qual tema combina com o seu site?", mochi: "Mochi", mochiFor: "Blog pessoal", mochiAbout: "Para um blog, diário, newsletter ou portfólio de textos.", mochiHas: ["Post em destaque e grade de posts", "Tags, autores e posts relacionados", "Barra de leitura e sumário", "Comentários e reações"], bento: "Bento", bentoFor: "Site de produto", bentoAbout: "Para um app, SaaS, API ou projeto que precisa se explicar.", bentoHas: ["Documentação com menu lateral", "Roadmap com votos", "Changelog e central de ajuda", "Blog do produto"],
     sectionsQ: "Quais partes o site vai ter?", sectionsLead: "Cada parte vem com notas de exemplo que ensinam a usar. Dá para tirar ou pôr depois.", sectionsNone: "Escolha pelo menos uma parte.",
@@ -46,6 +47,7 @@ const pt = {
 };
 const en: typeof pt = {
   lang: "en",
+  home: { hint: "Drag a site onto another to make a folder.", newFolder: "New folder", options: "Options", moveTo: "Move to {name}", newFolderWith: "New folder with this site", takeOut: "Take out of the folder", all: "All sites", rename: "Click to rename", ungroup: "Undo folder", folderHint: "Drag to change the order. The sites stay the same; the folder only organizes the Studio.", count: "{n} sites" },
   ob: { newSite: "Create a new site", newSiteHelp: "One step at a time, with the theme and example notes.", hello: "Hi! I'm Blup.", helloLead: "Let's make your site together. One question at a time, and you can change everything later.", start: "Start", back: "Back", next: "Continue", cancel: "Cancel", step: "Step {n} of {total}",
     themeQ: "Which theme fits your site?", mochi: "Mochi", mochiFor: "Personal blog", mochiAbout: "For a blog, journal, newsletter or writing portfolio.", mochiHas: ["Featured post and a grid of posts", "Tags, authors and related posts", "Reading bar and table of contents", "Comments and reactions"], bento: "Bento", bentoFor: "Product site", bentoAbout: "For an app, SaaS, API or project that needs to explain itself.", bentoHas: ["Docs with a sidebar", "Roadmap with votes", "Changelog and help center", "Product blog"],
     sectionsQ: "Which parts will the site have?", sectionsLead: "Each part comes with example notes that teach how to use it. You can remove or add them later.", sectionsNone: "Pick at least one part.",
