@@ -17,7 +17,8 @@
   import Undo from "@lucide/svelte/icons/undo-2";
   import Redo from "@lucide/svelte/icons/redo-2";
   import { EditorSelection } from "@codemirror/state";
-  import { wrap, prefix, block, link, insert, heading, align, alignAt, headingAt, ALIGN_LINE } from "./mdcommands";
+  import { wrap, prefix, block, link, insert, heading, align, alignAt, headingAt, ALIGN_LINE, callout } from "./mdcommands";
+  import { CALLOUTS, calloutIcon } from "./callouts";
   import { mdExtras } from "./mdextras";
   import Highlighter from "@lucide/svelte/icons/highlighter";
   import AlignLeft from "@lucide/svelte/icons/text-align-start";
@@ -196,11 +197,21 @@
   }
 
   let menuOpen = $state(""); // the toolbar menu open (headings, alignment)
+  // The menu floats over the window (the editor's column would cut it),
+  // under its button, kept inside the window.
+  let menuPos = $state({ x: 0, y: 0 });
+  function openMenu(key: string, btn: HTMLElement) {
+    if (menuOpen === key) { menuOpen = ""; return; }
+    const r = btn.getBoundingClientRect();
+    menuPos = { x: Math.max(8, Math.min(r.left, innerWidth - 232)), y: r.bottom + 4 };
+    menuOpen = key;
+  }
   // What the toolbar shows for the cursor's place: its alignment, its
   // heading level.
   let curAlign = $state<"left" | "center" | "right" | "justify">("left");
   let curHead = $state(0);
-  type MenuItem = { label: string; run: () => void; svg?: string; size?: string };
+  type MenuItem = { label: string; run: () => void; svg?: string; size?: string; tint?: string; check?: () => boolean; keep?: boolean };
+  let calloutFold = $state(false); // new callouts start folded
   // The menus' icons, drawn here (a picture of each choice: where the lines
   // sit, how big the heading is).
   const lines = (x: number[][]) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">${x.map(([a, b], i) => `<path d="M${a} ${5 + i * 4.67}H${b}"/>`).join("")}</svg>`;
@@ -248,7 +259,11 @@
     { key: "olist", label: te.olist, Icon: ListOrdered, run: () => prefix(view, (i) => `${i + 1}. `, LIST) },
     { key: "task", label: te.task, Icon: ListChecks, run: () => prefix(view, "- [ ] ", LIST) },
     { key: "quote", label: te.quote, Icon: Quote, run: () => prefix(view, "> ", QUOTE) },
-    { key: "callout", label: te.callout, Icon: Info, run: () => block(view, `> [!tip] ${te.calloutTitle}\n> ${te.calloutText}`, [9, 9 + te.calloutTitle.length]) },
+    { key: "callout", label: te.callout, Icon: Info, svg: () => calloutIcon(CALLOUTS.find((c) => c.type === "info")!, 17).replace(/stroke="rgb\([^)]*\)"/, 'stroke="currentColor"'), items: [
+      ...CALLOUTS.map((c) => ({ label: t.lang === "pt" ? c.pt : c.en, svg: calloutIcon(c), tint: c.color,
+        run: () => callout(view, c.type, calloutFold ? "-" : "", t.lang === "pt" ? c.pt : c.en, te.calloutText) })),
+      { label: te.foldable, run: () => { calloutFold = !calloutFold; }, check: () => calloutFold, keep: true },
+    ] as MenuItem[] },
     { key: "sep2" },
     { key: "link", label: te.link + " (Ctrl+K)", Icon: Link, run: () => link(view, te.linkText) },
     { key: "image", label: te.image, Icon: ImageIcon, run: pickImage },
@@ -348,12 +363,15 @@
         <!-- A button with a small menu (headings, alignment). -->
         <div class="drop">
           <button class="has-menu" class:on={menuOpen === tool.key} title={tool.label} aria-label={tool.label} aria-haspopup="menu" onmousedown={(e) => e.preventDefault()}
-            onclick={(e) => { e.stopPropagation(); menuOpen = menuOpen === tool.key ? "" : tool.key; }}><span class="now">{@html tool.svg()}</span><ChevronDown size={11} /></button>
+            onclick={(e) => { e.stopPropagation(); openMenu(tool.key, e.currentTarget); }}><span class="now">{@html tool.svg()}</span><ChevronDown size={11} /></button>
           {#if menuOpen === tool.key}
-            <div class="drop-menu" role="menu">
+            <div class="drop-menu" role="menu" style:left="{menuPos.x}px" style:top="{menuPos.y}px">
               {#each tool.items as item (item.label)}
-                <button role="menuitem" onmousedown={(e) => e.preventDefault()} onclick={() => { menuOpen = ""; item.run(); }}>
-                  {#if item.svg}<span class="ico">{@html item.svg}</span>{/if}<span style:font-size={item.size || null} class:big={item.size}>{item.label}</span>
+                {#if item.check}<hr />{/if}
+                <button role={item.check ? "menuitemcheckbox" : "menuitem"} aria-checked={item.check ? item.check() : undefined} onmousedown={(e) => e.preventDefault()}
+                  onclick={(e) => { if (item.keep) e.stopPropagation(); else menuOpen = ""; item.run(); }}>
+                  {#if item.check}<span class="ico box" class:on={item.check()}>{#if item.check()}✓{/if}</span>
+                  {:else if item.svg}<span class="ico" style:--tint={item.tint ?? null} class:tinted={item.tint}>{@html item.svg}</span>{/if}<span style:font-size={item.size || null} class:big={item.size}>{item.label}</span>
                 </button>
               {/each}
             </div>
@@ -388,14 +406,18 @@
   .bar .has-menu .now { display: inline-grid; place-items: center; }
   .bar .has-menu .now :global(svg) { width: 17px; height: 17px; }
   .bar .has-menu.on { background: var(--soft); color: var(--text); }
-  .drop-menu { position: absolute; z-index: 30; inset-block-start: calc(100% + .3rem); inset-inline-start: 0; display: grid; min-width: 11rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); }
+  .drop-menu { position: fixed; z-index: 60; max-height: 70vh; overflow-y: auto; display: grid; min-width: 11rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); }
   /* The whole row is the button: the icon and the text don't take the
      clicks (between them the Linux window missed them). */
-  .drop-menu button { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .55rem; width: 100%; padding: .4rem .6rem; border-radius: .35rem; font-size: .875rem; text-align: start; white-space: nowrap; cursor: pointer; }
+  .drop-menu button { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .55rem; width: 100%; height: auto; place-items: center start; padding: .4rem .6rem; border-radius: .35rem; font-size: .875rem; text-align: start; white-space: nowrap; cursor: pointer; }
   .drop-menu button > :global(*) { pointer-events: none; }
   .drop-menu .ico { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; flex: none; border-radius: .3rem; background: var(--soft); color: var(--text); }
   .drop-menu button:hover { background: var(--soft); }
   .drop-menu .big { font-weight: 700; }
+  .drop-menu .ico.tinted { background: rgb(var(--tint) / .14); }
+  .drop-menu .ico.box { border: 1.5px solid var(--line); background: none; font-size: .8rem; font-weight: 700; }
+  .drop-menu .ico.box.on { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .drop-menu hr { border: 0; border-block-start: 1px solid var(--line); margin: .25rem .2rem; }
   .bar .sep { width: 1px; height: 1.1rem; margin-inline: .3rem; background: var(--line); }
   .editor { flex: 1; min-height: 0; overflow: hidden; }
   .editor :global(.cm-tooltip-autocomplete) { border: 1px solid var(--line); border-radius: .5rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); overflow: hidden; }
@@ -410,6 +432,12 @@
   .editor :global(.cm-content) { max-width: 46rem; margin-inline: auto; padding-inline: 2rem; caret-color: var(--text); }
   .editor.wide :global(.cm-content) { max-width: none; }
   .editor :global(.cm-obs-comment) { opacity: .75; }
+  /* Callouts in their type's color (mdextras.ts), like on the site. */
+  .editor :global(.cm-callout) { background: rgb(var(--c) / .1); border-inline-start: 3px solid rgb(var(--c)); padding-inline-start: .8rem !important; }
+  .editor :global(.cm-callout-head) { color: rgb(var(--c)); font-weight: 700; border-start-start-radius: .3rem; padding-block-start: .3rem; }
+  .editor :global(.cm-callout-end) { padding-block-end: .3rem; border-end-start-radius: .3rem; }
+  .editor :global(.cm-callout-head *) { color: rgb(var(--c)) !important; }
+  .editor :global(.cm-callout :is(span)) { font-style: normal; }
   .editor :global(.cm-highlight) { background: color-mix(in srgb, #facc15 38%, transparent); border-radius: 3px; }
   .editor :global(.cm-align-center) { text-align: center; }
   .editor :global(.cm-align-right) { text-align: end; }

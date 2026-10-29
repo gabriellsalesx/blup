@@ -4,6 +4,9 @@
 import { EditorView, Decoration, type DecorationSet } from "@codemirror/view";
 import { StateField, type EditorState, type Range } from "@codemirror/state";
 import { ALIGN_LINE } from "./mdcommands";
+import { CALLOUTS, CALLOUT_ALIASES } from "./callouts";
+
+const calloutColor = Object.fromEntries(CALLOUTS.map((c) => [c.type, c.color]));
 
 const highlight = Decoration.mark({ class: "cm-highlight" });
 const attr = Decoration.mark({ class: "cm-align-attr" });
@@ -16,6 +19,23 @@ function build(state: EditorState): DecorationSet {
   const text = doc.toString();
   if (text.includes("==")) {
     for (const m of text.matchAll(/==(?=\S)[^=\n]+?==/g)) out.push(highlight.range(m.index!, m.index! + m[0].length));
+  }
+  // Callouts in their type's color, like on the site.
+  if (text.includes("[!")) {
+    for (let n = 1; n <= doc.lines; n++) {
+      const m = doc.line(n).text.match(/^>\s*\[!(\w+)\]/);
+      if (!m) continue;
+      const type = m[1].toLowerCase();
+      const color = calloutColor[CALLOUT_ALIASES[type] ?? type] ?? calloutColor.note;
+      let k = n;
+      for (; k <= doc.lines && doc.line(k).text.startsWith(">"); k++) {
+        const cls = "cm-callout" + (k === n ? " cm-callout-head" : "");
+        out.push(Decoration.line({ class: cls, attributes: { style: `--c: ${color}` } }).range(doc.line(k).from));
+      }
+      const last = doc.line(k - 1);
+      out.push(Decoration.line({ class: "cm-callout-end", attributes: { style: `--c: ${color}` } }).range(last.from));
+      n = k - 1;
+    }
   }
   if (text.includes("{.text-")) {
     for (let n = 1; n <= doc.lines; n++) {

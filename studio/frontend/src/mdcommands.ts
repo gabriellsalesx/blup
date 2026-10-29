@@ -159,3 +159,34 @@ export function alignAt(state: EditorState, pos: number): "left" | "center" | "r
 export function headingAt(state: EditorState, pos: number) {
   return state.doc.lineAt(pos).text.match(/^(#{1,6}) /)?.[1].length ?? 0;
 }
+
+// A callout of type: around the selected lines, or a new one with its
+// title selected. Inside a callout, it changes that callout's type. fold
+// is "" (always open), "-" (starts folded) or "+" (open, can fold), for
+// a new callout.
+export function callout(view: EditorView, type: string, fold: string, title: string, text: string) {
+  const { state } = view;
+  const doc = state.doc;
+  const r = state.selection.main;
+  for (let n = doc.lineAt(r.head).number; n >= 1; n--) {
+    const l = doc.line(n);
+    if (!l.text.startsWith(">")) break;
+    const m = l.text.match(/^(>\s*\[!)(\w+)\]([+-]?)/);
+    if (m) {
+      const from = l.from + m[1].length;
+      view.dispatch({ changes: { from, to: from + m[2].length, insert: type } }); // folding stays as it was
+      view.focus();
+      return;
+    }
+  }
+  const head = `> [!${type}]${fold} `;
+  if (!r.empty) {
+    const first = doc.lineAt(r.from), last = doc.lineAt(r.to);
+    const body = doc.sliceString(first.from, last.to).split("\n").map((l) => (l.trim() ? "> " + l : ">")).join("\n");
+    const insert = head + title + "\n" + body;
+    view.dispatch({ changes: { from: first.from, to: last.to, insert }, selection: EditorSelection.range(first.from + head.length, first.from + head.length + title.length) });
+    view.focus();
+    return;
+  }
+  block(view, `${head}${title}\n> ${text}`, [head.length, head.length + title.length]);
+}
