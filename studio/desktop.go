@@ -57,6 +57,7 @@ func setupDesktop(s *Studio, app *application.App, win *application.WebviewWindo
 	if prefs.ToggleKey != "" && !onHyprland() { // there, Hyprland's own binding calls --toggle
 		_ = setHotkey(prefs.ToggleKey)
 	}
+	go fixBinding(prefs.ToggleKey)
 }
 
 func showWindow() {

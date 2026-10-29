@@ -106,6 +106,7 @@ type Prefs struct {
 	Tray         bool              `json:"tray"`         // minimized, the Studio goes to the tray
 	ToggleKey    string            `json:"toggleKey"`    // global shortcut that shows and hides the Studio
 	Keys         map[string]string `json:"keys"`         // the Studio's shortcuts changed by the user (action -> keys)
+	ShortcutTip  bool              `json:"shortcutTip"`  // the tip about the global shortcut was answered
 }
 
 func prefsFile() (string, error) {

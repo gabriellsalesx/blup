@@ -76,6 +76,12 @@ export interface Hyprland {
      * the keys of that binding
      */
     "keys": string;
+
+    /**
+     * Auto: the Studio writes the binding itself (Omarchy, whose config it
+     * knows). Elsewhere the user pastes Line in their config.
+     */
+    "auto": boolean;
 }
 
 /**
@@ -177,6 +183,11 @@ export interface Prefs {
      * the Studio's shortcuts changed by the user (action -> keys)
      */
     "keys": { [_ in string]?: string } | null;
+
+    /**
+     * the tip about the global shortcut was answered
+     */
+    "shortcutTip": boolean;
 }
 
 /**

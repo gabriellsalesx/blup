@@ -15,6 +15,7 @@
   import Check from "@lucide/svelte/icons/check";
   import ThemePicker from "./ThemePicker.svelte";
   import KeyRecorder from "./KeyRecorder.svelte";
+  import { Clipboard } from "@wailsio/runtime";
   import Keyboard from "@lucide/svelte/icons/keyboard";
   import { ACTIONS, keysOf, type Action } from "./keys";
   import Switch from "./Switch.svelte";
@@ -23,7 +24,7 @@
 
   // The Studio's settings, like Obsidian's: a window with sections on the
   // left. They are the Studio's (and Blup's), not the open site's.
-  let { onClose, onPublish }: { onClose: () => void; onPublish: () => void } = $props();
+  let { onClose, onPublish, start = "general" }: { onClose: () => void; onPublish: () => void; start?: string } = $props();
   const s = t.prefs;
 
   const tabs = [
@@ -46,7 +47,8 @@
   const setToggle = (keys: string) => deskRun(async () => { await SetToggleHotkey(keys); look.toggleKey = keys; hypr = await HyprlandSetup(keys); });
   // On Hyprland (Omarchy) the shortcut is a binding in Hyprland's config,
   // which the Studio writes.
-  let hypr = $state<{ on: boolean; file: string; line: string } | null>(null);
+  let hypr = $state<{ on: boolean; file: string; line: string; auto: boolean } | null>(null);
+  let lineCopied = $state(false);
   HyprlandSetup(look.toggleKey ?? "").then((h) => (hypr = h));
   // The Studio's own shortcuts.
   function setKey(a: Action, keys: string) {
@@ -58,7 +60,7 @@
     setPref("keys", all);
   }
   function resetKeys() { setPref("keys", {}); }
-  let tab = $state("general");
+  let tab = $state(start);
   let version = $state("");
   let lang = $state("");
   let conn = $state<Conn | null>(null);
@@ -178,9 +180,16 @@
           {#if look.toggleKey}<button class="icon-btn" title={k.clear} onclick={() => setToggle("")}><X size={15} /></button>{/if}
         </span>
       </div>
-      {#if hypr?.on}
+      {#if hypr?.on && hypr.auto}
         <p class="muted lead">{k.hyprland.replace("{file}", hypr.file.replace(/^.*\/\.config/, "~/.config"))}</p>
         {#if hypr.line}<code class="line">{hypr.line}</code>{/if}
+      {:else if hypr?.on}
+        <!-- Hyprland that isn't Omarchy: its config is the user's own. -->
+        <p class="muted lead">{k.hyprlandManual}</p>
+        {#if hypr.line}
+          <code class="line">{hypr.line}</code>
+          <button class="btn ghost" onclick={async () => { await Clipboard.SetText(hypr!.line); lineCopied = true; }}>{lineCopied ? k.copied : k.copyLine}</button>
+        {/if}
       {:else}
         <p class="muted lead">{k.wayland}</p>
       {/if}

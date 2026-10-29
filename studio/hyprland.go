@@ -29,6 +29,21 @@ type Hyprland struct {
 	Line  string `json:"line"`  // the binding for the shortcut chosen
 	Bound bool   `json:"bound"` // the file already has the Studio's binding
 	Keys  string `json:"keys"`  // the keys of that binding
+	// Auto: the Studio writes the binding itself (Omarchy, whose config it
+	// knows). Elsewhere the user pastes Line in their config.
+	Auto bool `json:"auto"`
+}
+
+// onOmarchy tells whether Hyprland is Omarchy's, whose bindings file (and
+// its o.bind) the Studio knows how to write.
+func onOmarchy() bool {
+	home, _ := os.UserHomeDir()
+	for _, f := range []string{"hyprland.lua", "hyprland.conf"} {
+		if b, err := os.ReadFile(filepath.Join(home, ".config", "hypr", f)); err == nil && strings.Contains(string(b), "omarchy") {
+			return true
+		}
+	}
+	return false
 }
 
 func hyprFile() (string, bool) {
@@ -68,9 +83,14 @@ func (s *Studio) HyprlandSetup(accel string) Hyprland {
 		return Hyprland{}
 	}
 	file, lua := hyprFile()
-	h := Hyprland{On: true, File: file}
+	h := Hyprland{On: true, File: file, Auto: onOmarchy()}
 	if accel != "" {
-		h.Line = hyprLine(accel, lua)
+		// Outside Omarchy, plain Hyprland syntax to paste in hyprland.conf.
+		h.Line = hyprLine(accel, lua && h.Auto)
+		if !h.Auto {
+			h.Line = strings.TrimSuffix(strings.Replace(h.Line, "bindd = ", "bind = ", 1), " # Blup Studio")
+			h.Line = strings.Replace(h.Line, ", Blup Studio, exec,", ", exec,", 1)
+		}
 	}
 	if b, err := os.ReadFile(file); err == nil {
 		if m := blupLine.Find(b); m != nil {
@@ -81,12 +101,26 @@ func (s *Studio) HyprlandSetup(accel string) Hyprland {
 	return h
 }
 
-// BindHyprland writes the Studio's binding for accel in Hyprland's config
-// (replacing an older one; "" removes it) and reloads Hyprland.
+// BindHyprland saves the shortcut and, on Omarchy, writes it in Hyprland's
+// config (elsewhere the user pastes the line the Shortcuts screen shows).
 func (s *Studio) BindHyprland(accel string) error {
 	if !onHyprland() {
 		return errors.New("not on Hyprland")
 	}
+	p := s.Prefs()
+	p.ToggleKey = accel
+	if err := s.SavePrefs(p); err != nil {
+		return err
+	}
+	if !onOmarchy() {
+		return nil // the Shortcuts screen shows the line to paste
+	}
+	return writeBinding(accel)
+}
+
+// writeBinding puts the Studio's binding for accel in Omarchy's bindings
+// file (replacing an older one; "" removes it) and reloads Hyprland.
+func writeBinding(accel string) error {
 	file, lua := hyprFile()
 	b, err := os.ReadFile(file)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -102,10 +136,25 @@ func (s *Studio) BindHyprland(accel string) error {
 	if err := os.WriteFile(file, []byte(text), 0o644); err != nil {
 		return err
 	}
-	p := s.Prefs()
-	p.ToggleKey = accel
-	if err := s.SavePrefs(p); err != nil {
-		return err
-	}
 	return exec.Command("hyprctl", "reload").Run()
+}
+
+// fixBinding rewrites the Studio's binding when the Studio moved (an
+// update, another install place): the line must run this program.
+func fixBinding(accel string) {
+	if accel == "" || !onHyprland() || !onOmarchy() {
+		return
+	}
+	// Only the app itself (not a test build, like blup-studio-server).
+	if exe, _ := os.Executable(); !strings.HasPrefix(filepath.Base(exe), "blup-studio") || strings.Contains(filepath.Base(exe), "server") {
+		return
+	}
+	file, lua := hyprFile()
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return
+	}
+	if m := blupLine.Find(b); m != nil && strings.TrimSpace(string(m)) != hyprLine(accel, lua) {
+		_ = writeBinding(accel)
+	}
 }

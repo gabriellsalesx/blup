@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from "svelte";
-  import { OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { SetToggleHotkey, HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -171,6 +171,22 @@
     if (prevW) prevW = clampPrev(prevW);
   }
   let prefsOpen = $state(false);
+  let prefsTab = $state("general");
+
+  // Once: the tip about the shortcut that opens the Studio from anywhere.
+  let tipError = $state("");
+  const showTip = $derived(!look.toggleKey && !look.shortcutTip);
+  async function acceptTip() {
+    tipError = "";
+    try {
+      await SetToggleHotkey("Alt+Space");
+      look.toggleKey = "Alt+Space";
+      setPref("shortcutTip", true);
+      const h = await HyprlandSetup("Alt+Space");
+      if (h.on && !h.auto) { prefsTab = "keys"; prefsOpen = true; } // the line to paste
+    } catch (e) { tipError = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
+  function chooseTip() { setPref("shortcutTip", true); prefsTab = "keys"; prefsOpen = true; }
   let previewBusy = $state(false);
 
   // The screen on the right of the menu: writing or a settings panel.
@@ -472,7 +488,22 @@
     </section>
   {/if}
   {#if prefsOpen}
-    <SettingsModal onClose={() => (prefsOpen = false)} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
+    <SettingsModal start={prefsTab} onClose={() => { prefsOpen = false; prefsTab = "general"; }} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
+  {/if}
+  {#if showTip}
+    <div class="tip" role="status">
+      <img src="/blups/blup.svg" alt="" />
+      <div>
+        <b>{t.keys.tipTitle}</b>
+        <p>{t.keys.tipText}</p>
+        {#if tipError}<p class="bad">{tipError}</p>{/if}
+        <div class="tip-actions">
+          <button class="btn" onclick={acceptTip}>{t.keys.tipYes}</button>
+          <button class="btn ghost" onclick={chooseTip}>{t.keys.tipOther}</button>
+          <button class="btn ghost" onclick={() => setPref("shortcutTip", true)}>{t.keys.tipNo}</button>
+        </div>
+      </div>
+    </div>
   {/if}
   {#if menu}
     <FileMenu node={menu.node} x={menu.x} y={menu.y} {current} folders={folders(tree)} onClose={() => (menu = null)} onChanged={menuChanged} onNew={menuNew} />
@@ -492,6 +523,11 @@
   .ws.no-preview { grid-template-columns: 3rem var(--side) minmax(0, 1fr); }
   .ws.no-side { grid-template-columns: 3rem minmax(0, 1fr) var(--prev); }
   /* The edges to drag: a thin line that lights up under the mouse. */
+  .tip { position: fixed; z-index: 30; inset-block-end: 1rem; inset-inline-end: 1rem; display: flex; gap: .8rem; width: min(25rem, calc(100% - 2rem)); padding: .9rem 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); box-shadow: 0 16px 40px rgb(0 0 0 / .3); }
+  .tip img { width: 2.6rem; height: 2.6rem; flex: none; }
+  .tip b { font-size: .95rem; }
+  .tip p { margin-block: .25rem .6rem; font-size: .85rem; color: var(--muted); }
+  .tip-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
   .resizer { position: absolute; z-index: 5; inset-block: 0; width: 7px; cursor: col-resize; }
   .resizer.right { inset-inline-end: -4px; }
   .resizer.left { inset-inline-start: 0; } /* the preview cuts what sticks out */

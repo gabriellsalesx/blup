@@ -85,8 +85,8 @@ export function AutostartEnabled(): $CancellablePromise<boolean> {
 }
 
 /**
- * BindHyprland writes the Studio's binding for accel in Hyprland's config
- * (replacing an older one; "" removes it) and reloads Hyprland.
+ * BindHyprland saves the shortcut and, on Omarchy, writes it in Hyprland's
+ * config (elsewhere the user pastes the line the Shortcuts screen shows).
  */
 export function BindHyprland(accel: string): $CancellablePromise<void> {
     return $Call.ByID(1409658509, accel);
