@@ -1,5 +1,6 @@
 <script lang="ts">
   import Tree from "./Tree.svelte";
+  import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
 
   let { nodes, current, onPick, depth = 0 }: { nodes: Node[]; current: string; onPick: (p: string) => void; depth?: number } = $props();
@@ -13,7 +14,7 @@
     <li>
       {#if n.dir}
         <button class="row folder" style:padding-inline-start="{0.5 + depth * 0.9}rem" onclick={() => (open[n.path] = !isOpen(n))}>
-          <span class="chev" class:open={isOpen(n)}>›</span>{n.name}
+          <span class="chev" class:open={isOpen(n)}><ChevronRight size={14} /></span>{n.name}
         </button>
         {#if isOpen(n) && n.children}
           <Tree nodes={n.children} {current} {onPick} depth={depth + 1} />
@@ -34,6 +35,6 @@
   .folder { font-weight: 600; }
   .note { color: var(--muted); }
   .note.active { background: var(--soft); color: var(--text); font-weight: 600; }
-  .chev { display: inline-block; width: .8rem; color: var(--muted); transition: transform .15s; }
+  .chev { display: inline-grid; place-items: center; width: .9rem; color: var(--muted); transition: transform .15s; }
   .chev.open { transform: rotate(90deg); }
 </style>

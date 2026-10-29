@@ -13,7 +13,36 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as app$0 from "../internal/app/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as config$0 from "../internal/config/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
+
+/**
+ * AddSection adds a Bento section with example notes, and returns the new
+ * tree of notes.
+ */
+export function AddSection(kind: string): $CancellablePromise<$models.Node> {
+    return $Call.ByID(1733728080, kind);
+}
+
+/**
+ * CheckCookieTool tells whether an ID fits a tool ("" when it does).
+ */
+export function CheckCookieTool(key: string, value: string): $CancellablePromise<string> {
+    return $Call.ByID(631204882, key, value);
+}
+
+/**
+ * ImageData is an image of the site as a data: URL, for previews in forms.
+ */
+export function ImageData(file: string): $CancellablePromise<string> {
+    return $Call.ByID(3442883591, file);
+}
 
 /**
  * Open makes dir the open site (stopping the preview of the previous one)
@@ -24,10 +53,75 @@ export function Open(dir: string): $CancellablePromise<$models.Node> {
 }
 
 /**
+ * PickImage asks for an image file and makes it the logo or favicon. It
+ * returns the image's file in the site, "" when the user cancels.
+ */
+export function PickImage(key: string): $CancellablePromise<string> {
+    return $Call.ByID(719333856, key);
+}
+
+/**
  * Read returns a note's text.
  */
 export function Read(rel: string): $CancellablePromise<string> {
     return $Call.ByID(1824482770, rel);
+}
+
+/**
+ * RemoveImage removes the logo or favicon.
+ */
+export function RemoveImage(key: string): $CancellablePromise<void> {
+    return $Call.ByID(2469862723, key);
+}
+
+/**
+ * SaveAbout changes the site's name, description and author.
+ */
+export function SaveAbout(name: string, description: string, author: string): $CancellablePromise<void> {
+    return $Call.ByID(2619745380, name, description, author);
+}
+
+/**
+ * SaveCookies sets the tools, the banner and the privacy policy; it
+ * returns the policy note when the site has one.
+ */
+export function SaveCookies(c: config$0.Cookies, privacyPage: boolean, contact: string): $CancellablePromise<string> {
+    return $Call.ByID(1929046414, c, privacyPage, contact);
+}
+
+/**
+ * SaveMenu sets the top menu and the top right button.
+ */
+export function SaveMenu(menu: app$0.MenuItem[] | null, buttonText: string, buttonLink: string): $CancellablePromise<void> {
+    return $Call.ByID(2518793704, menu, buttonText, buttonLink);
+}
+
+/**
+ * SaveSocial sets the footer's social links.
+ */
+export function SaveSocial(links: string[] | null): $CancellablePromise<void> {
+    return $Call.ByID(3556203008, links);
+}
+
+/**
+ * SetFeedback turns comments and reactions on or off.
+ */
+export function SetFeedback(on: boolean): $CancellablePromise<void> {
+    return $Call.ByID(1040662481, on);
+}
+
+/**
+ * SetPassword sets the general password of protected posts.
+ */
+export function SetPassword(password: string): $CancellablePromise<void> {
+    return $Call.ByID(2274743879, password);
+}
+
+/**
+ * Settings reads the open site's settings.
+ */
+export function Settings(): $CancellablePromise<app$0.Settings> {
+    return $Call.ByID(2509052719);
 }
 
 /**
