@@ -12,6 +12,7 @@
   import Copy from "@lucide/svelte/icons/copy";
   import { Clipboard } from "@wailsio/runtime";
   import { t } from "./i18n";
+  import { toast } from "./toast.svelte";
 
   let { autostart = "" }: { autostart?: string } = $props();
   const p = t.pubs;
@@ -55,9 +56,9 @@
       if (changed) republish = true;
     } catch (e) { derror = msg(e); } finally { dbusy = false; }
   }
-  const setDomain = () => domainRun(() => SetDomain(domainInput), true);
+  const setDomain = () => domainRun(async () => { const st = await SetDomain(domainInput); toast(t.toast.domainSet.replace("{domain}", st.domain)); return st; }, true);
   const checkDomain = () => domainRun(() => CheckDomain());
-  const removeDomain = () => domainRun(async () => { await RemoveDomain(); domainInput = ""; }, true);
+  const removeDomain = () => domainRun(async () => { await RemoveDomain(); domainInput = ""; toast(t.toast.domainRemoved); }, true);
   async function copyRec(i: number, v: string) { await Clipboard.SetText(v); copiedRec = i; setTimeout(() => (copiedRec = -1), 1500); }
 
   const off = Events.On("progress", (ev: any) => { log.push(ev.data as Line); });
@@ -109,7 +110,8 @@
     try {
       target = await SetTarget(target);
       live = await Publish();
-    } catch (e) { error = msg(e); } finally { publishing = false; }
+      toast(t.toast.published);
+    } catch (e) { error = msg(e); toast(t.toast.publishFailed, { kind: "error" }); } finally { publishing = false; }
   }
 
   let ghKey = $state("");
@@ -125,7 +127,7 @@
   }
   async function runSync() {
     syncError = ""; syncing = true;
-    try { sync = await Sync(); } catch (e) { syncError = msg(e); } finally { syncing = false; }
+    try { sync = await Sync(); toast(t.toast.synced); } catch (e) { syncError = msg(e); } finally { syncing = false; }
   }
 
   load().then(() => {

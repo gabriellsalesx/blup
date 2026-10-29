@@ -38,8 +38,13 @@ func (s *Studio) CopyNote(rel string) (string, error) {
 }
 
 // DeleteItem sends a note or folder to the Blup trash.
-func (s *Studio) DeleteItem(rel string) error {
-	return s.with(func(site *config.Site) error { _, err := app.DeleteItem(site, rel); return err })
+// It returns where it went, to undo (RestoreSection).
+func (s *Studio) DeleteItem(rel string) (string, error) {
+	site, err := s.current()
+	if err != nil {
+		return "", err
+	}
+	return app.DeleteItem(site, rel)
 }
 
 // NoteLink is a Markdown link to the note at rel, written from the note at

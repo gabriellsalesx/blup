@@ -5,6 +5,7 @@
   import type { SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import { Sites } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { look, setPref } from "./theme.svelte";
+  import Toaster from "./Toaster.svelte";
 
   // The open site, the new site screens, or the list of sites.
   let site = $state<SiteInfo | null>(null);
@@ -31,3 +32,5 @@
 {:else}
   <Home onOpen={(s) => (site = s)} onNew={() => (creating = true)} onEmpty={() => { hasSites = false; creating = true; }} />
 {/if}
+
+<Toaster />

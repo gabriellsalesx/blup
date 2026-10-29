@@ -47,13 +47,13 @@
     editing = null;
     await load();
     onTree?.();
-  });
+  }, () => t.toast.authorSaved.replace("{name}", form.name.trim()));
   const remove = () => s.run(async () => {
     await DeleteAuthor(editing ?? "");
     editing = null;
     await load();
     onTree?.();
-  });
+  }, t.toast.authorDeleted);
   // A profile: pick the network, then type the rest of the link.
   async function addNetwork(prefix: string) {
     social.push(prefix);
@@ -63,12 +63,15 @@
     el?.focus();
     el?.setSelectionRange(el.value.length, el.value.length);
   }
+  let photoPicked = false;
   const pickPhoto = () => s.run(async () => {
+    photoPicked = false;
     const link = await PickAuthorPhoto(form.name || "author");
     if (!link) return;
+    photoPicked = true;
     form.photo = link;
     photos[link] = await LinkedImage(link).catch(() => "");
-  });
+  }, () => (photoPicked ? t.toast.photoSet : false));
 </script>
 
 <div class="panel">

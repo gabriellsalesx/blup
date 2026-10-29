@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { ForgetSite, Sites, Layout, SaveLayout, HomeDir } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { RestoreSite, ForgetSite, Sites, Layout, SaveLayout, HomeDir } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteInfo, HomeItem } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Ellipsis from "@lucide/svelte/icons/ellipsis";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import { t } from "./i18n";
   import ThemePicker from "./ThemePicker.svelte";
   import DeleteSite from "./DeleteSite.svelte";
+  import { toast, toastError } from "./toast.svelte";
   import Trash from "@lucide/svelte/icons/trash-2";
 
   // The list of sites, organized by the user: drag a site onto another to
@@ -29,9 +30,29 @@
     delete sites[dir];
     save();
     deleting = "";
+  }
+  function deleted(dir: string) {
+    const name = sites[dir]?.title ?? "";
+    gone(dir);
+    toast(t.toast.siteDeleted.replace("{name}", name));
     if (!Object.keys(sites).length) onEmpty();
   }
-  const forget = (dir: string) => ForgetSite(dir).then(() => gone(dir)).catch((e) => (error = String(e)));
+  // Out of the list only: the toast offers to put it back.
+  async function forget(dir: string) {
+    const s = sites[dir];
+    try { await ForgetSite(dir); } catch (e) { toastError(e); return; }
+    gone(dir);
+    toast(t.toast.forgot.replace("{name}", s?.title ?? ""), { action: { label: t.toast.undo, run: () => putBack(dir) } });
+  }
+  async function putBack(dir: string) {
+    try {
+      const s = await RestoreSite(dir);
+      sites[dir] = s;
+      items.push({ site: dir } as HomeItem);
+      save();
+      toast(t.toast.siteBack.replace("{name}", s.title));
+    } catch (e) { toastError(e); }
+  }
 
   Promise.all([Sites(), Layout()])
     .then(([list, layout]) => {
@@ -205,7 +226,7 @@
   {/if}
 {/snippet}
 
-{#if deleting}<DeleteSite dir={deleting} onClose={() => (deleting = "")} onDone={gone} />{/if}
+{#if deleting}<DeleteSite dir={deleting} onClose={() => (deleting = "")} onDone={deleted} />{/if}
 
 <main class="home">
   <header>

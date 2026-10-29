@@ -109,6 +109,7 @@ type Prefs struct {
 	ShortcutTip  bool              `json:"shortcutTip"`  // the tip about the global shortcut was answered
 	LastSite     string            `json:"lastSite"`     // the site open when the Studio closed
 	LastNotes    map[string]string `json:"lastNotes"`    // site folder -> the note open there last
+	Recent       []string          `json:"recent"`       // sites opened lately, newest first (even ones taken out of the list)
 }
 
 func prefsFile() (string, error) {
@@ -130,8 +131,14 @@ func (s *Studio) Prefs() Prefs {
 	return p
 }
 
-// SavePrefs saves the Studio's choices.
+// SavePrefs saves the Studio's choices. The recent sites are the Studio's
+// own (remember): the page's copy may be old, so the saved list is kept.
 func (s *Studio) SavePrefs(p Prefs) error {
+	p.Recent = s.Prefs().Recent
+	return savePrefs(p)
+}
+
+func savePrefs(p Prefs) error {
 	f, err := prefsFile()
 	if err != nil {
 		return err

@@ -19,9 +19,9 @@
   load();
   const when = (d: string) => new Date(d).toLocaleString(t.lang === "pt" ? "pt-BR" : "en", { dateStyle: "medium", timeStyle: "short" });
 
-  const restore = (p: string) => s.run(async () => { onTree(await RestoreSection(p)); await load(); reload(); });
-  const drop = (p: string) => s.run(async () => { await DeleteFromTrash(p); asking = ""; await load(); });
-  const empty = () => s.run(async () => { await EmptyTrash(); askingAll = false; await load(); });
+  const restore = (p: string) => s.run(async () => { onTree(await RestoreSection(p)); await load(); reload(); }, t.toast.restored);
+  const drop = (p: string) => s.run(async () => { await DeleteFromTrash(p); asking = ""; await load(); }, t.toast.deletedForGood);
+  const empty = () => s.run(async () => { await EmptyTrash(); askingAll = false; await load(); }, t.toast.trashEmptied);
 </script>
 
 <div class="panel">

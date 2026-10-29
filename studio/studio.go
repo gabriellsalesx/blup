@@ -84,6 +84,7 @@ func (s *Studio) Open(dir string) (Node, error) {
 	s.site = site
 	s.mu.Unlock()
 	watchNotes(site.ContentDir())
+	s.remember(dir)
 	return s.Tree()
 }
 

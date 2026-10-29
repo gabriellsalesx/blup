@@ -25,8 +25,9 @@
   preview("logo", settings.logo);
   preview("favicon", settings.favicon);
   const img = saver();
-  const pick = (key: "logo" | "favicon") => img.run(async () => { const f = await PickImage(key); if (f) await preview(key, f); });
-  const drop = (key: "logo" | "favicon") => img.run(async () => { await RemoveImage(key); images[key] = ""; });
+  let picked = false;
+  const pick = (key: "logo" | "favicon") => img.run(async () => { picked = false; const f = await PickImage(key); if (f) { picked = true; await preview(key, f); } }, () => (picked ? t.toast.imageSet : false));
+  const drop = (key: "logo" | "favicon") => img.run(async () => { await RemoveImage(key); images[key] = ""; }, t.toast.imageRemoved);
 
   // Menu and button
   let menu = $state<MenuItem[]>((settings.menu ?? []).length ? (settings.menu ?? []).map((m) => ({ ...m })) : (settings.menuOptions ?? []).filter((o) => o.target !== "/tags/").map((o) => ({ ...o })));

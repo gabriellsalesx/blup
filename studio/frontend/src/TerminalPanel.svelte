@@ -15,6 +15,7 @@
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { t } from "./i18n";
   import { look } from "./theme.svelte";
+  import { toast } from "./toast.svelte";
   import { undoHandlers } from "./undo";
 
   // Terminals in tabs, in the notes folder. The AI agents installed get a
@@ -140,7 +141,7 @@
   }
   async function undoAI() {
     if (!review) return;
-    try { await UndoAI(review.tab.id); review.done = true; review.list = []; }
+    try { await UndoAI(review.tab.id); review.done = true; review.list = []; toast(t.toast.aiUndone); }
     catch (e) { review.error = String(e).replace(/^(Runtime)?Error: /, ""); }
   }
   const activeTab = $derived(tabs.find((x) => x.id === active));

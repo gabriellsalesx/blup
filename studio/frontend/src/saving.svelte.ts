@@ -1,18 +1,21 @@
-// A small helper for "Save" buttons: busy, saved and error states.
+// A small helper for "Save" buttons: busy and error states, and a toast
+// when it worked (ok: its text; false for none; default "Saved").
+import { toast } from "./toast.svelte";
+import { t } from "./i18n";
+
 export function saver() {
   const state = $state({ busy: false, ok: false, error: "" });
-  let timer: ReturnType<typeof setTimeout> | undefined;
   return {
     state,
-    async run(fn: () => Promise<unknown>) {
+    async run(fn: () => Promise<unknown>, ok?: string | false | (() => string | false)) {
       state.busy = true;
       state.ok = false;
       state.error = "";
-      clearTimeout(timer);
       try {
         await fn();
         state.ok = true;
-        timer = setTimeout(() => (state.ok = false), 2500);
+        const text = typeof ok === "function" ? ok() : ok;
+        if (text !== false) toast(text ?? t.toast.saved);
       } catch (e) {
         state.error = String(e).replace(/^(Runtime)?Error: /, "");
       } finally {

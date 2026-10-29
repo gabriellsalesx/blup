@@ -14,7 +14,6 @@ import (
 	"sync"
 
 	"github.com/gabriellsalesx/blup/internal/app"
-	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp"
@@ -42,8 +41,13 @@ func (s *Studio) RenameAttachment(old, name string) (string, error) {
 }
 
 // DeleteAttachment moves a file to the trash.
-func (s *Studio) DeleteAttachment(name string) error {
-	return s.with(func(site *config.Site) error { return app.DeleteAttachment(site, name) })
+// It returns where it went, to undo (RestoreSection).
+func (s *Studio) DeleteAttachment(name string) (string, error) {
+	site, err := s.current()
+	if err != nil {
+		return "", err
+	}
+	return app.DeleteAttachment(site, name)
 }
 
 // AddAttachments asks for files on the computer and copies them in.

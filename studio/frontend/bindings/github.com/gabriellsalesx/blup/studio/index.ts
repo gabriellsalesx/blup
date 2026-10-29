@@ -17,6 +17,7 @@ export type {
     Prefs,
     Progress,
     PropEdit,
+    RecentSite,
     Removed,
     SiteInfo,
     TermData,

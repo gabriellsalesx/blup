@@ -188,8 +188,9 @@ export function CurrentDomain(): $CancellablePromise<string> {
 
 /**
  * DeleteAttachment moves a file to the trash.
+ * It returns where it went, to undo (RestoreSection).
  */
-export function DeleteAttachment(name: string): $CancellablePromise<void> {
+export function DeleteAttachment(name: string): $CancellablePromise<string> {
     return $Call.ByID(1632964280, name);
 }
 
@@ -209,8 +210,9 @@ export function DeleteFromTrash(path: string): $CancellablePromise<void> {
 
 /**
  * DeleteItem sends a note or folder to the Blup trash.
+ * It returns where it went, to undo (RestoreSection).
  */
-export function DeleteItem(rel: string): $CancellablePromise<void> {
+export function DeleteItem(rel: string): $CancellablePromise<string> {
     return $Call.ByID(2432960566, rel);
 }
 
@@ -466,6 +468,14 @@ export function ReadNote(rel: string): $CancellablePromise<$models.NoteData> {
 }
 
 /**
+ * RecentSites lists the sites opened lately that still exist, newest
+ * first, to find one taken out of the list.
+ */
+export function RecentSites(): $CancellablePromise<$models.RecentSite[] | null> {
+    return $Call.ByID(1290051883);
+}
+
+/**
  * RemoveDomain goes back to the free address.
  */
 export function RemoveDomain(): $CancellablePromise<void> {
@@ -514,6 +524,13 @@ export function ResizeTerminal(id: string, cols: number, rows: number): $Cancell
  */
 export function RestoreSection(trash: string): $CancellablePromise<$models.Node> {
     return $Call.ByID(247957095, trash);
+}
+
+/**
+ * RestoreSite puts a site back in the list (after "remove from the list").
+ */
+export function RestoreSite(dir: string): $CancellablePromise<$models.SiteInfo> {
+    return $Call.ByID(3299675627, dir);
 }
 
 /**

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Clipboard } from "@wailsio/runtime";
-  import { RenameItem, MoveItem, CopyNote, DeleteItem, NoteLink, OpenInObsidian, ShowInFolder } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { RestoreSection, RenameItem, MoveItem, CopyNote, DeleteItem, NoteLink, OpenInObsidian, ShowInFolder } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import FilePlus from "@lucide/svelte/icons/file-plus";
   import FolderPlus from "@lucide/svelte/icons/folder-plus";
@@ -12,6 +12,7 @@
   import Pencil from "@lucide/svelte/icons/pencil";
   import Trash from "@lucide/svelte/icons/trash-2";
   import { t } from "./i18n";
+  import { toast, toastError } from "./toast.svelte";
 
   // The right-click menu of the file explorer, and its small dialogs
   // (rename, move to, delete).
@@ -34,13 +35,20 @@
     error = "";
     try { await fn(); } catch (e) { error = msg(e); }
   }
-  const rename = () => run(async () => { const to = await RenameItem(node.path, name); onChanged({ from: node.path, to }); });
-  const move = (f: string) => run(async () => { const to = await MoveItem(node.path, f); onChanged({ from: node.path, to }); });
-  const remove = () => run(async () => { await DeleteItem(node.path); onChanged({ from: node.path, to: null }); });
-  const copy = () => run(async () => { const to = await CopyNote(node.path); onChanged({ from: "", to, open: to }); });
+  const base = (p: string) => p.split("/").pop()!.replace(/\.md$/, "");
+  const rename = () => run(async () => { const to = await RenameItem(node.path, name); onChanged({ from: node.path, to }); toast(t.toast.noteRenamed.replace("{name}", base(to))); });
+  const move = (f: string) => run(async () => { const to = await MoveItem(node.path, f); onChanged({ from: node.path, to }); toast(t.toast.noteMoved.replace("{folder}", f || m.top)); });
+  // To the Blup trash, with Undo in the toast (the tree follows the files).
+  const remove = () => run(async () => {
+    const where = await DeleteItem(node.path);
+    onChanged({ from: node.path, to: null });
+    toast(t.toast.noteDeleted.replace("{name}", node.name), { action: { label: t.toast.undo, run: () => RestoreSection(where).catch(toastError) } });
+  });
+  const copy = () => run(async () => { const to = await CopyNote(node.path); onChanged({ from: "", to, open: to }); toast(t.toast.noteCopied.replace("{name}", base(to))); });
   async function copyLink() {
     await Clipboard.SetText(await NoteLink(node.path, current));
     copied = true;
+    toast(t.toast.linkCopied);
     setTimeout(onClose, 700);
   }
   const parent = node.path.includes("/") ? node.path.slice(0, node.path.lastIndexOf("/")) : "";

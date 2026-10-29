@@ -198,6 +198,11 @@ export interface Prefs {
      * site folder -> the note open there last
      */
     "lastNotes": { [_ in string]?: string } | null;
+
+    /**
+     * sites opened lately, newest first (even ones taken out of the list)
+     */
+    "recent": string[] | null;
 }
 
 /**
@@ -218,6 +223,21 @@ export interface Progress {
 export interface PropEdit {
     "key": string;
     "value": any;
+}
+
+/**
+ * RecentSite is a site opened lately; Listed tells if it is in the list.
+ */
+export interface RecentSite {
+    "dir": string;
+    "title": string;
+    "model": string;
+
+    /**
+     * the notes folder
+     */
+    "folder": string;
+    "listed": boolean;
 }
 
 /**

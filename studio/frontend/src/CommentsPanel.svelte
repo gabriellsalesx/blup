@@ -8,6 +8,7 @@
   import External from "@lucide/svelte/icons/external-link";
   import Loader from "@lucide/svelte/icons/loader-circle";
   import { t } from "./i18n";
+  import { toast } from "./toast.svelte";
 
   // Comments, in three steps the first time: the GitHub key, the public
   // repository Blup creates, and the login app installed on it (so people
@@ -30,8 +31,8 @@
     busy = true; error = "";
     try { await fn(); } catch (e) { error = msg(e); } finally { busy = false; }
   }
-  const connect = () => run(async () => { await ConnectGitHub(key); key = ""; github = (await Connections()).github ?? ""; });
-  const create = () => run(async () => { setup = await SetupFeedback(); on = true; reload(); });
+  const connect = () => run(async () => { await ConnectGitHub(key); key = ""; github = (await Connections()).github ?? ""; toast(t.toast.connected); });
+  const create = () => run(async () => { setup = await SetupFeedback(); on = true; reload(); toast(t.toast.commentsOn); });
   const checkApp = () => run(async () => { setup = await FeedbackState(); });
   const repo = $derived(setup?.repo || settings.feedbackRepo);
 </script>
@@ -65,7 +66,7 @@
     </section>
   {:else}
     <section class="card">
-      <Switch label={c.on} bind:checked={on} disabled={s.state.busy} onchange={(v) => s.run(async () => { await SetFeedback(v); reload(); })} />
+      <Switch label={c.on} bind:checked={on} disabled={s.state.busy} onchange={(v) => s.run(async () => { await SetFeedback(v); reload(); }, v ? t.toast.commentsOn : t.toast.commentsOff)} />
       <p>{c.repo}: <button class="link" onclick={() => OpenURL(`https://github.com/${repo}`)}>{repo} <External size={13} /></button></p>
       <div class="actions"><Saved state={s.state} /></div>
     </section>

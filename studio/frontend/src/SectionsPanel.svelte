@@ -13,20 +13,20 @@
   let asking = $state(""); // the section waiting for "remove?"
   let undo = $state<{ kind: string; trash: string } | null>(null);
 
-  const add = (kind: string) => s.run(async () => { onTree(await AddSection(kind)); undo = null; reload(); });
+  const add = (kind: string) => s.run(async () => { onTree(await AddSection(kind)); undo = null; reload(); }, t.toast.sectionAdded);
   const remove = (kind: string) => s.run(async () => {
     const r = await RemoveSection(kind);
     onTree(r.tree);
     undo = { kind, trash: r.trash };
     asking = "";
     reload();
-  });
+  }, false); // the notice with Undo above says it
   const restore = () => s.run(async () => {
     if (!undo) return;
     onTree(await RestoreSection(undo.trash));
     undo = null;
     reload();
-  });
+  }, t.toast.sectionBack);
 </script>
 
 <div class="panel">

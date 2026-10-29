@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { OpenExisting, HomeDir, Vaults, VaultFolders, SuggestPlaces, CheckSiteDir, NeedsLinkAdjust, PickFolder, CreateSite } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
-  import type { SiteInfo, Vault } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
+  import { RecentSites, RestoreSite, OpenExisting, HomeDir, Vaults, VaultFolders, SuggestPlaces, CheckSiteDir, NeedsLinkAdjust, PickFolder, CreateSite } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import type { SiteInfo, Vault, RecentSite } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Switch from "./Switch.svelte";
   import Check from "@lucide/svelte/icons/check";
   import Loader from "@lucide/svelte/icons/loader-circle";
@@ -72,7 +72,22 @@
 
   // Already have a site (made with the CLI or on another computer)?
   let openMsg = $state("");
+  // "I already have a site": the sites opened lately first (one taken out
+  // of the list is easy to find there), then a folder to pick.
+  let recent = $state<RecentSite[] | null>(null);
+  async function haveSite() {
+    const list = (await RecentSites().catch(() => [])) ?? [];
+    if (!list.length) { openExisting(); return; }
+    recent = list;
+  }
+  async function openRecent(r: RecentSite) {
+    try {
+      if (!r.listed) await RestoreSite(r.dir);
+      onDone(r);
+    } catch (e) { openMsg = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
   async function openExisting() {
+    recent = null;
     openMsg = "";
     try {
       const f = await OpenExisting();
@@ -136,8 +151,22 @@
       <h1>{o.hello}</h1>
       <p class="lead">{o.helloLead}</p>
       <button class="btn big" onclick={next}>{o.start}</button>
-      <button class="link-btn" onclick={openExisting}>{o.haveSite}</button>
+      <button class="link-btn" onclick={haveSite}>{o.haveSite}</button>
       {#if openMsg}<p class="muted small">{openMsg}</p>{/if}
+      {#if recent}
+        <div class="recent">
+          <b>{o.recentTitle}</b>
+          <ul>
+            {#each recent as r (r.dir)}
+              <li><button onclick={() => openRecent(r)}>
+                <span class="r-name">{r.title}{#if !r.listed}<span class="r-off">{o.outOfList}</span>{/if}</span>
+                <small class="muted">{short(r.folder)}</small>
+              </button></li>
+            {/each}
+          </ul>
+          <button class="btn ghost" onclick={openExisting}>{o.findSiteFolder}</button>
+        </div>
+      {/if}
     </div>
   {:else if step === "done"}
     <div class="hello">
@@ -310,6 +339,14 @@
   dt { color: var(--muted); }
   dd { margin: 0; font-weight: 600; min-width: 0; }
   .nav { display: flex; justify-content: space-between; align-items: center; }
+  .recent { display: grid; gap: .6rem; width: min(28rem, 100%); margin-block-start: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); text-align: start; }
+  .recent ul { list-style: none; padding: 0; display: grid; gap: .2rem; max-height: 16rem; overflow: auto; }
+  .recent li button { display: grid; gap: .1rem; width: 100%; padding: .5rem .65rem; border-radius: .45rem; text-align: start; }
+  .recent li button:hover { background: var(--soft); }
+  .r-name { display: flex; align-items: center; gap: .5rem; font-weight: 600; font-size: .9rem; }
+  .r-off { padding: .05rem .45rem; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: .7rem; font-weight: 600; }
+  .recent small { font-size: .75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .recent > .btn { justify-self: start; }
   .link-btn { margin-block-start: .75rem; color: var(--blue); font-size: .9rem; font-weight: 600; }
   .link-btn:hover { text-decoration: underline; }
   .small { font-size: .85rem; margin-block-start: .5rem; max-width: 28rem; }

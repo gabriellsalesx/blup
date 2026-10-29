@@ -24,8 +24,8 @@
     </label>
     <div class="actions">
       <Saved state={s.state} />
-      {#if settings.hasPassword}<button class="btn ghost" disabled={s.state.busy} onclick={() => s.run(async () => { await SetPassword(""); reload(); })}>{t.remove}</button>{/if}
-      <button class="btn" disabled={s.state.busy || !pw} onclick={() => s.run(async () => { await SetPassword(pw); pw = ""; reload(); })}>{t.save}</button>
+      {#if settings.hasPassword}<button class="btn ghost" disabled={s.state.busy} onclick={() => s.run(async () => { await SetPassword(""); reload(); }, t.toast.pwRemoved)}>{t.remove}</button>{/if}
+      <button class="btn" disabled={s.state.busy || !pw} onclick={() => s.run(async () => { await SetPassword(pw); pw = ""; reload(); }, t.toast.pwSaved)}>{t.save}</button>
     </div>
   </section>
 </div>

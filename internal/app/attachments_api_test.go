@@ -37,7 +37,7 @@ func TestAttachments(t *testing.T) {
 	if err != nil || len(added) != 1 || added[0] != "sobra 2.pdf" {
 		t.Fatalf("add: %v %v", added, err)
 	}
-	if err := DeleteAttachment(site, "sobra.pdf"); err != nil {
+	if _, err := DeleteAttachment(site, "sobra.pdf"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, folder, "sobra.pdf")); err == nil {

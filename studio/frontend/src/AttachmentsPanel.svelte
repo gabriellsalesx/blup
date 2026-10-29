@@ -1,10 +1,11 @@
 <script lang="ts">
   import { Clipboard } from "@wailsio/runtime";
-  import { Attachments, AddAttachments, RenameAttachment, DeleteAttachment, OpenAttachment, Thumbnail } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { RestoreSection, Attachments, AddAttachments, RenameAttachment, DeleteAttachment, OpenAttachment, Thumbnail } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Attachment } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Saved from "./Saved.svelte";
   import { saver } from "./saving.svelte";
   import { t } from "./i18n";
+  import { toast, toastError } from "./toast.svelte";
   import Upload from "@lucide/svelte/icons/upload";
   import FileText from "@lucide/svelte/icons/file-text";
   import Music from "@lucide/svelte/icons/music";
@@ -45,7 +46,8 @@
   const icons = { pdf: FileText, audio: Music, video: Video, other: FileIcon } as const;
 
   function show(a: Attachment) { open = a; newName = stem(a.name); asking = false; copied = false; }
-  const add = () => s.run(async () => { await AddAttachments(); await load(); });
+  let added = 0;
+  const add = () => s.run(async () => { added = ((await AddAttachments()) ?? []).length; await load(); }, () => (added ? t.toast.filesAdded.replace("{n}", String(added)) : false));
   const rename = () => s.run(async () => {
     if (!open || newName.trim() === stem(open.name)) return;
     const old = open.name;
@@ -53,12 +55,21 @@
     thumbs[name] = thumbs[old];
     await load();
     open = list.find((a) => a.name === name) ?? null;
-  });
-  const remove = () => s.run(async () => { if (!open) return; await DeleteAttachment(open.name); open = null; await load(); });
+  }, t.toast.renamed);
+  // Deleted: to the Blup trash, with Undo in the toast.
+  const remove = () => s.run(async () => {
+    if (!open) return;
+    const name = open.name;
+    const where = await DeleteAttachment(name);
+    open = null;
+    await load();
+    toast(t.toast.fileDeleted.replace("{name}", name), { action: { label: t.toast.undo, run: () => RestoreSection(where).then(load).catch(toastError) } });
+  }, false);
   async function copy() {
     if (!open) return;
     await Clipboard.SetText(open.kind === "image" ? `![[${open.name}]]` : `[[${open.name}]]`);
     copied = true;
+    toast(t.toast.copiedToPaste);
   }
 </script>
 

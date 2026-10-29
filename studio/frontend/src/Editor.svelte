@@ -14,6 +14,7 @@
   import { undo, redo, undoDepth, redoDepth } from "@codemirror/commands";
   import { undoHandlers } from "./undo";
   import { tables } from "./table";
+  import { toast } from "./toast.svelte";
   import ContextMenu, { type MenuEntry } from "./ContextMenu.svelte";
   import NotePicker from "./NotePicker.svelte";
   import { Clipboard } from "@wailsio/runtime";
@@ -263,6 +264,7 @@
           r.readAsDataURL(f);
         });
         insert(view, await PasteImage(note, name, data) + "\n", true);
+        toast(t.toast.imagePasted);
       } catch (e) {
         onError?.(String(e).replace(/^(Runtime)?Error: /, ""));
       }

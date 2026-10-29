@@ -159,9 +159,8 @@ func RenameAttachment(site *config.Site, old, name string) (string, error) {
 }
 
 // DeleteAttachment moves a file to the Blup trash.
-func DeleteAttachment(site *config.Site, name string) error {
-	_, err := toTrash(site, attachmentsFolder(site)+"/"+filepath.Base(name))
-	return err
+func DeleteAttachment(site *config.Site, name string) (string, error) {
+	return toTrash(site, attachmentsFolder(site)+"/"+filepath.Base(name))
 }
 
 // AddAttachments copies files into the attachments folder (a taken name

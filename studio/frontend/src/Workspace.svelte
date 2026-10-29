@@ -14,6 +14,7 @@
   import CircleHelp from "@lucide/svelte/icons/circle-question-mark";
   import { look, setPref } from "./theme.svelte";
   import { ACTIONS, comboOf, keysOf, type Action } from "./keys";
+  import { toast } from "./toast.svelte";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import PanelLeft from "@lucide/svelte/icons/panel-left";
   import Files from "@lucide/svelte/icons/files";
@@ -500,7 +501,7 @@
   {#if prefsOpen}
     <SettingsModal start={prefsTab} onClose={() => { prefsOpen = false; prefsTab = "general"; }} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
   {/if}
-  {#if deletingSite}<DeleteSite dir={deletingSite} onClose={() => (deletingSite = "")} onDone={() => { deletingSite = ""; loadSites(); }} />{/if}
+  {#if deletingSite}<DeleteSite dir={deletingSite} onClose={() => (deletingSite = "")} onDone={(dir) => { const name = others.find((o) => o.dir === dir)?.title ?? ""; deletingSite = ""; loadSites(); toast(t.toast.siteDeleted.replace("{name}", name)); }} />{/if}
   {#if showTip}
     <!-- Centered like a modal, so it isn't missed. -->
     <div class="tip-shade" role="presentation"></div>

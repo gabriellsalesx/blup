@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/gabriellsalesx/blup/internal/app"
@@ -144,4 +145,46 @@ func (s *Studio) closeIfOpen(dir string) {
 	s.mu.Lock()
 	s.site = nil
 	s.mu.Unlock()
+}
+
+// RecentSite is a site opened lately; Listed tells if it is in the list.
+type RecentSite struct {
+	SiteInfo
+	Listed bool `json:"listed"`
+}
+
+const maxRecent = 12
+
+// remember puts dir first in the recent sites.
+func (s *Studio) remember(dir string) {
+	p := s.Prefs()
+	p.Recent = append([]string{dir}, slices.DeleteFunc(p.Recent, func(d string) bool { return d == dir })...)
+	if len(p.Recent) > maxRecent {
+		p.Recent = p.Recent[:maxRecent]
+	}
+	_ = savePrefs(p)
+}
+
+// RecentSites lists the sites opened lately that still exist, newest
+// first, to find one taken out of the list.
+func (s *Studio) RecentSites() []RecentSite {
+	g, _ := config.LoadGlobal()
+	out := []RecentSite{}
+	for _, dir := range s.Prefs().Recent {
+		site, err := config.LoadSite(dir)
+		if err != nil {
+			continue
+		}
+		out = append(out, RecentSite{SiteInfo: info(site), Listed: slices.Contains(g.Sites, dir)})
+	}
+	return out
+}
+
+// RestoreSite puts a site back in the list (after "remove from the list").
+func (s *Studio) RestoreSite(dir string) (SiteInfo, error) {
+	site, err := config.LoadSite(dir)
+	if err != nil {
+		return SiteInfo{}, err
+	}
+	return info(site), app.RememberSite(dir)
 }

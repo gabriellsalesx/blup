@@ -16,6 +16,7 @@
   import ThemePicker from "./ThemePicker.svelte";
   import KeyRecorder from "./KeyRecorder.svelte";
   import { Clipboard } from "@wailsio/runtime";
+  import { toast } from "./toast.svelte";
   import Keyboard from "@lucide/svelte/icons/keyboard";
   import { ACTIONS, keysOf, type Action } from "./keys";
   import Switch from "./Switch.svelte";
@@ -42,9 +43,9 @@
   AutostartEnabled().then((v) => (autostart = v));
   let deskError = $state("");
   const deskRun = async (fn: () => Promise<void>) => { deskError = ""; try { await fn(); } catch (e) { deskError = String(e).replace(/^(Runtime)?Error: /, ""); } };
-  const setAutostart = (v: boolean) => deskRun(async () => { await SetAutostart(v); autostart = v; });
-  const setTray = (v: boolean) => deskRun(async () => { await SetTray(v); look.tray = v; });
-  const setToggle = (keys: string) => deskRun(async () => { await SetToggleHotkey(keys); look.toggleKey = keys; hypr = await HyprlandSetup(keys); });
+  const setAutostart = (v: boolean) => deskRun(async () => { await SetAutostart(v); autostart = v; toast(v ? t.toast.autostartOn : t.toast.autostartOff); });
+  const setTray = (v: boolean) => deskRun(async () => { await SetTray(v); look.tray = v; toast(v ? t.toast.trayOn : t.toast.trayOff); });
+  const setToggle = (keys: string) => deskRun(async () => { await SetToggleHotkey(keys); look.toggleKey = keys; hypr = await HyprlandSetup(keys); toast(keys ? t.toast.shortcutSet.replace("{keys}", keys) : t.toast.shortcutOff); });
   // On Hyprland (Omarchy) the shortcut is a binding in Hyprland's config,
   // which the Studio writes.
   let hypr = $state<{ on: boolean; file: string; line: string; auto: boolean } | null>(null);
@@ -58,6 +59,7 @@
     for (const x of ACTIONS) if (x.key !== a && keysOf(all, x.key) === keys) all[x.key] = "";
     all[a] = keys;
     setPref("keys", all);
+    toast(keys ? t.toast.shortcutSet.replace("{keys}", keys) : t.toast.shortcutOff);
   }
   function resetKeys() { setPref("keys", {}); }
   let tab = $state(start);
