@@ -202,6 +202,7 @@
 
       {#if step === "kind"}
         <h1>{o.kindQ}</h1>
+        <img class="kind-scene" src="/scenes/tipo-de-site.webp" alt="" />
         <div class="kinds">
           {#each CATEGORIES as c (c.key)}
             <button class="kind-card" class:on={category === c.key} onclick={() => pickCategory(c.key)}>
@@ -336,6 +337,7 @@
   .stepno { font-size: .8rem; font-weight: 600; }
   .bar { height: .35rem; border-radius: 999px; background: var(--line); overflow: hidden; margin-block-start: -.75rem; }
   .bar span { display: block; height: 100%; background: var(--blue); transition: width .3s; }
+  .kind-scene { width: 100%; aspect-ratio: 16 / 6.5; object-fit: cover; object-position: center 55%; border: 1px solid var(--line); border-radius: .9rem; background: #f8f8f8; }
   .kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
   .kind-card { position: relative; display: grid; justify-items: center; gap: .5rem; padding: 2rem 1.5rem 1.6rem; border: 1px solid var(--line); border-radius: .9rem; background: var(--panel); text-align: center; transition: border-color .15s, transform .15s; }
   .kind-card:hover { border-color: var(--blue); transform: translateY(-2px); }
