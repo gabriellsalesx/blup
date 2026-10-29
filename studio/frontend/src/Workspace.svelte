@@ -12,7 +12,7 @@
   import SettingsModal, { DOCS } from "./SettingsModal.svelte";
   import Gear from "@lucide/svelte/icons/settings";
   import CircleHelp from "@lucide/svelte/icons/circle-question-mark";
-  import { look } from "./theme.svelte";
+  import { look, setPref } from "./theme.svelte";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import PanelLeft from "@lucide/svelte/icons/panel-left";
   import Files from "@lucide/svelte/icons/files";
@@ -112,6 +112,44 @@
   let previewURL = $state("");
   let previewSrc = $state(""); // the page shown: the open note's, when known
   let previewOn = $state(!look.previewOff);
+
+  // The files panel and the preview are as wide as the user drags them
+  // (their edge, like Obsidian), within limits that keep the editor usable;
+  // saved in the Studio's choices. A double-click goes back to the default.
+  const SIDE = 256, SIDE_MIN = 180, SIDE_MAX = 480, PREV_MIN = 300, EDITOR_MIN = 360, RIBBON = 48;
+  let sideW = $state(look.sideWidth || SIDE);
+  let prevW = $state(look.previewWidth || 0); // 0: half of the room
+  let resizing = $state(false);
+  let previewEl = $state<HTMLElement>();
+  const room = () => window.innerWidth - RIBBON;
+  const clampSide = (w: number) => Math.round(Math.min(Math.max(w, SIDE_MIN), SIDE_MAX, room() - EDITOR_MIN - (previewOn ? PREV_MIN : 0)));
+  const clampPrev = (w: number) => Math.round(Math.min(Math.max(w, PREV_MIN), room() - (sideOpen ? sideW : 0) - EDITOR_MIN));
+  function drag(e: MouseEvent, which: "side" | "preview") {
+    e.preventDefault();
+    const x0 = e.clientX, w0 = which === "side" ? sideW : prevW || previewEl?.getBoundingClientRect().width || PREV_MIN;
+    resizing = true;
+    const move = (m: MouseEvent) => {
+      if (which === "side") sideW = clampSide(w0 + m.clientX - x0);
+      else prevW = clampPrev(w0 - (m.clientX - x0));
+    };
+    const up = () => {
+      resizing = false;
+      removeEventListener("mousemove", move);
+      removeEventListener("mouseup", up);
+      setPref(which === "side" ? "sideWidth" : "previewWidth", which === "side" ? sideW : prevW);
+    };
+    addEventListener("mousemove", move);
+    addEventListener("mouseup", up);
+  }
+  function resetWidth(which: "side" | "preview") {
+    if (which === "side") { sideW = SIDE; setPref("sideWidth", 0); }
+    else { prevW = 0; setPref("previewWidth", 0); }
+  }
+  // A smaller window keeps the editor's room.
+  function fit() {
+    sideW = clampSide(sideW);
+    if (prevW) prevW = clampPrev(prevW);
+  }
   let prefsOpen = $state(false);
   let previewBusy = $state(false);
 
@@ -292,9 +330,9 @@
   onDestroy(() => clearTimeout(timer));
 </script>
 
-<svelte:window onkeydown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "`") { e.preventDefault(); termOpen = !termOpen; } }} onclick={() => (switching = false)} />
+<svelte:window onresize={fit} onkeydown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "`") { e.preventDefault(); termOpen = !termOpen; } }} onclick={() => (switching = false)} />
 
-<div class="ws" class:no-preview={!previewOn} class:no-side={!sideOpen}>
+<div class="ws" class:no-preview={!previewOn} class:no-side={!sideOpen} class:resizing style:--side="{sideW}px" style:--prev={prevW ? `${prevW}px` : "minmax(0, 1fr)"}>
   <!-- The ribbon, like Obsidian's: icons only, the name on hover. -->
   <nav class="ribbon">
     <button class="rib" title={t.side.toggle} onclick={() => (sideOpen = !sideOpen)}><PanelLeft size={19} strokeWidth={1.75} /></button>
@@ -308,6 +346,7 @@
 
   {#if sideOpen}
     <aside class="side">
+      <div class="resizer right" role="separator" aria-orientation="vertical" aria-label={t.side.resize} title={t.side.resize} onmousedown={(e) => drag(e, "side")} ondblclick={() => resetWidth("side")}></div>
       <div class="side-tabs">
         <button class="tab" class:on={sideTab === "files"} title={t.side.files} onclick={() => (sideTab = "files")}><Files size={17} strokeWidth={1.75} /></button>
         <button class="tab" class:on={sideTab === "search"} title={t.side.search} onclick={() => (sideTab = "search")}><Search size={17} strokeWidth={1.75} /></button>
@@ -399,7 +438,8 @@
   </section>
 
   {#if previewOn}
-    <section class="preview">
+    <section class="preview" bind:this={previewEl}>
+      <div class="resizer left" role="separator" aria-orientation="vertical" aria-label={t.side.resize} title={t.side.resize} onmousedown={(e) => drag(e, "preview")} ondblclick={() => resetWidth("preview")}></div>
       {#if previewURL}
         <Preview src={previewSrc || previewURL} title={t.preview} />
       {:else}
@@ -424,9 +464,18 @@
 <style>
   /* Columns: ribbon, files, editor, preview. The top bar starts after the
      files; the terminal sits under the editor and the preview. */
-  .ws { height: 100%; display: grid; grid-template-columns: 3rem 16rem minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
-  .ws.no-preview { grid-template-columns: 3rem 16rem minmax(0, 1fr); }
-  .ws.no-side { grid-template-columns: 3rem minmax(0, 1fr) minmax(0, 1fr); }
+  .ws { height: 100%; display: grid; grid-template-columns: 3rem var(--side) minmax(0, 1fr) var(--prev); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .ws.no-preview { grid-template-columns: 3rem var(--side) minmax(0, 1fr); }
+  .ws.no-side { grid-template-columns: 3rem minmax(0, 1fr) var(--prev); }
+  /* The edges to drag: a thin line that lights up under the mouse. */
+  .resizer { position: absolute; z-index: 5; inset-block: 0; width: 7px; cursor: col-resize; }
+  .resizer.right { inset-inline-end: -4px; }
+  .resizer.left { inset-inline-start: 0; } /* the preview cuts what sticks out */
+  .resizer.left::after { inset-inline-start: 0; }
+  .resizer::after { content: ""; position: absolute; inset-block: 0; inset-inline-start: 3px; width: 2px; background: transparent; transition: background .1s; }
+  .resizer:hover::after, .ws.resizing .resizer:active::after { background: var(--blue); }
+  .ws.resizing { cursor: col-resize; user-select: none; }
+  .ws.resizing :global(iframe) { pointer-events: none; }
   .ws.no-side.no-preview { grid-template-columns: 3rem minmax(0, 1fr); }
   .ribbon { grid-row: 1 / -1; grid-column: 1; display: flex; flex-direction: column; align-items: center; gap: .2rem; padding-block: .6rem; border-inline-end: 1px solid var(--line); background: var(--panel); }
   .rib { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: .45rem; color: var(--muted); }
@@ -434,7 +483,7 @@
   .rib.active { background: var(--soft); color: var(--text); }
   .sep { width: 1.4rem; height: 1px; margin-block: .35rem; background: var(--line); }
   .grow { flex: 1; }
-  .side { grid-row: 1 / -1; grid-column: 2; display: flex; flex-direction: column; min-height: 0; border-inline-end: 1px solid var(--line); background: var(--panel); }
+  .side { position: relative; grid-row: 1 / -1; grid-column: 2; display: flex; flex-direction: column; min-height: 0; border-inline-end: 1px solid var(--line); background: var(--panel); }
   .side-tabs { display: flex; gap: .2rem; padding: .55rem .6rem; border-block-end: 1px solid var(--line); }
   .tab { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .4rem; color: var(--muted); }
   .tab:hover, .tab.on { background: var(--soft); color: var(--text); }
@@ -468,7 +517,7 @@
   .spacer { flex: 1; }
   .main { grid-row: 2; position: relative; overflow: hidden; background: var(--panel); }
   .main.scroll { overflow: auto; background: var(--bg); }
-  .preview { grid-row: 2; overflow: hidden; border-inline-start: 1px solid var(--line); background: var(--bg); }
+  .preview { position: relative; grid-row: 2; overflow: hidden; border-inline-start: 1px solid var(--line); background: var(--bg); }
   .term { grid-row: 3; grid-column: 3 / -1; position: relative; min-height: 0; }
   .ws.no-side .term { grid-column: 2 / -1; }
   .term.min { display: none; }

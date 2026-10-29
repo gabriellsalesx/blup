@@ -110,6 +110,16 @@ export interface Prefs {
      * words added to the dictionary
      */
     "words": string[] | null;
+
+    /**
+     * the files panel, in px (0 = the default)
+     */
+    "sideWidth": number;
+
+    /**
+     * the preview, in px (0 = half of the room)
+     */
+    "previewWidth": number;
 }
 
 /**
