@@ -494,7 +494,9 @@
     <SettingsModal start={prefsTab} onClose={() => { prefsOpen = false; prefsTab = "general"; }} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
   {/if}
   {#if showTip}
-    <div class="tip" role="status">
+    <!-- Centered like a modal, so it isn't missed. -->
+    <div class="tip-shade" role="presentation"></div>
+    <div class="tip" role="dialog" aria-modal="true" aria-label={t.keys.tipTitle}>
       <img src="/blups/blup.svg" alt="" />
       <div>
         <b>{t.keys.tipTitle}</b>
@@ -524,11 +526,12 @@
   .ws.no-preview { grid-template-columns: 3rem var(--side) minmax(0, 1fr); }
   .ws.no-side { grid-template-columns: 3rem minmax(0, 1fr) var(--prev); }
   /* The edges to drag: a thin line that lights up under the mouse. */
-  .tip { position: fixed; z-index: 30; inset-block-end: 1rem; inset-inline-end: 1rem; display: flex; gap: .8rem; width: min(25rem, calc(100% - 2rem)); padding: .9rem 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); box-shadow: 0 16px 40px rgb(0 0 0 / .3); }
-  .tip img { width: 2.6rem; height: 2.6rem; flex: none; }
-  .tip b { font-size: .95rem; }
-  .tip p { margin-block: .25rem .6rem; font-size: .85rem; color: var(--muted); }
-  .tip-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .tip-shade { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / .45); }
+  .tip { position: fixed; z-index: 41; inset: 0; margin: auto; height: fit-content; display: grid; justify-items: center; gap: .9rem; width: min(26rem, calc(100% - 2rem)); padding: 1.75rem 1.5rem 1.5rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); text-align: center; }
+  .tip img { width: 4rem; height: 4rem; }
+  .tip b { font-size: 1.1rem; }
+  .tip p { margin-block: .4rem 1rem; font-size: .9rem; color: var(--muted); }
+  .tip-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; }
   .resizer { position: absolute; z-index: 5; inset-block: 0; width: 7px; cursor: col-resize; }
   .resizer.right { inset-inline-end: -4px; }
   .resizer.left { inset-inline-start: 0; } /* the preview cuts what sticks out */
