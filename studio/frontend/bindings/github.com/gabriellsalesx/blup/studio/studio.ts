@@ -45,11 +45,26 @@ export function ImageData(file: string): $CancellablePromise<string> {
 }
 
 /**
+ * LinkedImage is the image of a property ("[[cover.jpg]]") as a data: URL.
+ */
+export function LinkedImage(link: string): $CancellablePromise<string> {
+    return $Call.ByID(929506664, link);
+}
+
+/**
  * Open makes dir the open site (stopping the preview of the previous one)
  * and returns its notes.
  */
 export function Open(dir: string): $CancellablePromise<$models.Node> {
     return $Call.ByID(2984394386, dir);
+}
+
+/**
+ * PickCover asks for an image, copies it into the site and returns the
+ * link for the "image" property ("" when the user cancels).
+ */
+export function PickCover(): $CancellablePromise<string> {
+    return $Call.ByID(551321026);
 }
 
 /**
@@ -65,6 +80,13 @@ export function PickImage(key: string): $CancellablePromise<string> {
  */
 export function Read(rel: string): $CancellablePromise<string> {
     return $Call.ByID(1824482770, rel);
+}
+
+/**
+ * ReadNote returns a note's properties and text.
+ */
+export function ReadNote(rel: string): $CancellablePromise<$models.NoteData> {
+    return $Call.ByID(1809443230, rel);
 }
 
 /**
@@ -94,6 +116,13 @@ export function SaveCookies(c: config$0.Cookies, privacyPage: boolean, contact: 
  */
 export function SaveMenu(menu: app$0.MenuItem[] | null, buttonText: string, buttonLink: string): $CancellablePromise<void> {
     return $Call.ByID(2518793704, menu, buttonText, buttonLink);
+}
+
+/**
+ * SaveNote saves a note's text and the properties changed in the form.
+ */
+export function SaveNote(rel: string, body: string, edits: $models.PropEdit[] | null): $CancellablePromise<void> {
+    return $Call.ByID(1907519367, rel, body, edits);
 }
 
 /**

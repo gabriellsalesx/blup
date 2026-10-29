@@ -307,3 +307,19 @@ func SetFeedback(site *config.Site, on bool) error {
 	site.Feedback.Enabled = on
 	return saved(site)
 }
+
+// AttachmentFile is the file of an image property ("[[cover.jpg]]").
+func AttachmentFile(site *config.Site, prop string) string { return attachmentFile(site, prop) }
+
+// AddImage copies an image into the site's attachments folder, keeping its
+// name, and returns the link to use in a property ("[[name.jpg]]").
+func AddImage(site *config.Site, src string) (string, error) {
+	if err := validImage(src); err != nil {
+		return "", err
+	}
+	name := safeFileName(strings.TrimSuffix(filepath.Base(src), filepath.Ext(src)))
+	if name == "" {
+		name = "image"
+	}
+	return copyAttachment(site, src, name)
+}

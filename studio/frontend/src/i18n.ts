@@ -1,5 +1,7 @@
 // The Studio speaks the system's language: Portuguese or English.
 const pt = {
+  lang: "pt",
+  props: { title: "Propriedades", titleField: "Título", description: "Descrição", descriptionHelp: "Aparece nas listas, no Google e ao compartilhar.", date: "Data", tags: "Tags", addTag: "Escreva e aperte Enter", cover: "Capa", draft: "Rascunho", draftHelp: "Só na prévia, nunca publicado.", hidden: "Escondida", hiddenHelp: "Publicada, mas fora das listas e do Google.", password: "Senha", pwNone: "Sem senha", pwGeneral: "Senha geral do site", pwOwn: "Senha própria", pwOwnField: "Senha deste post", status: "Coluna", category: "Categoria", more: "Mais opções", authors: "Autores", addAuthor: "Nome e Enter", weight: "Ordem", weightHelp: "Menor aparece primeiro nos menus." },
   sites: "Seus sites",
   sitesHelp: "Abra um site para escrever, ver a prévia e publicar.",
   noSites: "Nenhum site ainda. Crie um com o Blup no terminal (blup novo) e ele aparece aqui.",
@@ -35,6 +37,8 @@ const pt = {
   pub: { title: "Publicar", lead: "Em breve aqui: escolher Cloudflare ou GitHub Pages, conectar a conta e publicar com um botão. Por enquanto, use blup publicar no terminal." },
 };
 const en: typeof pt = {
+  lang: "en",
+  props: { title: "Properties", titleField: "Title", description: "Description", descriptionHelp: "Shows in lists, on Google and when shared.", date: "Date", tags: "Tags", addTag: "Type and press Enter", cover: "Cover", draft: "Draft", draftHelp: "Only in the preview, never published.", hidden: "Hidden", hiddenHelp: "Published, but out of lists and Google.", password: "Password", pwNone: "No password", pwGeneral: "Site's general password", pwOwn: "Its own password", pwOwnField: "This post's password", status: "Column", category: "Category", more: "More options", authors: "Authors", addAuthor: "Name and Enter", weight: "Order", weightHelp: "Lower shows first in menus." },
   sites: "Your sites",
   sitesHelp: "Open a site to write, preview and publish.",
   noSites: "No sites yet. Make one with Blup in the terminal (blup new) and it shows up here.",

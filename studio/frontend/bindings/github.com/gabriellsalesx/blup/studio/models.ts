@@ -16,6 +16,28 @@ export interface Node {
 }
 
 /**
+ * NoteData is a note split for the editor.
+ */
+export interface NoteData {
+    "props": { [_ in string]?: any } | null;
+    "body": string;
+
+    /**
+     * section of the note (Bento): docs, roadmap...
+     */
+    "kind": string;
+}
+
+/**
+ * PropEdit is a property changed in the form; a nil, empty or false value
+ * removes it.
+ */
+export interface PropEdit {
+    "key": string;
+    "value": any;
+}
+
+/**
  * SiteInfo describes a site in the list.
  */
 export interface SiteInfo {

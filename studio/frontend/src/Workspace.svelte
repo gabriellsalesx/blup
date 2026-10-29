@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import { Open, Read, Write, StartPreview, StopPreview, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { Open, ReadNote, SaveNote, StartPreview, StopPreview, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
   import Editor from "./Editor.svelte";
+  import Props from "./Props.svelte";
   import LookPanel from "./LookPanel.svelte";
   import SectionsPanel from "./SectionsPanel.svelte";
   import CommentsPanel from "./CommentsPanel.svelte";
@@ -26,6 +27,9 @@
   let tree = $state<Node[]>([]);
   let current = $state(""); // path of the open note
   let text = $state("");
+  let noteProps = $state<Record<string, any>>({});
+  let kind = $state("");
+  let edits: Record<string, any> = {}; // properties changed since the last save
   let status = $state<"saved" | "saving" | "unsaved">("saved");
   let error = $state("");
   let previewURL = $state("");
@@ -79,7 +83,9 @@
     clearTimeout(timer);
     status = "saving";
     try {
-      await Write(current, pending);
+      const changed = edits;
+      edits = {};
+      await SaveNote(current, pending, Object.entries(changed).map(([key, value]) => ({ key, value })));
       status = "saved";
     } catch (e) {
       status = "unsaved";
@@ -90,6 +96,15 @@
   // Saved by itself a moment after typing stops; the preview follows.
   function changed(v: string) {
     pending = v;
+    later();
+  }
+
+  function editProp(key: string, value: any) {
+    edits[key] = value;
+    later();
+  }
+
+  function later() {
     status = "unsaved";
     clearTimeout(timer);
     timer = setTimeout(save, 700);
@@ -99,7 +114,11 @@
     if (path === current) return;
     await save();
     try {
-      text = await Read(path);
+      const note = await ReadNote(path);
+      text = note.body;
+      noteProps = note.props ?? {};
+      kind = note.kind;
+      edits = {};
       pending = text;
       current = path;
       status = "saved";
@@ -151,7 +170,10 @@
     {#if screen === "write"}
       {#if current}
         {#key current}
-          <Editor {text} onChange={changed} onSave={save} />
+          <div class="note">
+            <Props props={noteProps} {kind} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} />
+            <div class="body"><Editor {text} onChange={changed} onSave={save} /></div>
+          </div>
         {/key}
       {:else}
         <p class="hint muted">{t.pickNote}</p>
@@ -192,6 +214,8 @@
   .nav { display: flex; align-items: center; gap: .6rem; padding: .45rem .6rem; border-radius: .45rem; font-size: .875rem; font-weight: 500; color: var(--muted); text-align: start; }
   .nav:hover { background: var(--soft); color: var(--text); }
   .nav.active { background: var(--soft); color: var(--text); font-weight: 600; }
+  .note { height: 100%; display: flex; flex-direction: column; }
+  .body { flex: 1; min-height: 0; }
   .main.scroll { overflow: auto; background: var(--bg); }
   .side h2 { padding-inline: .5rem; margin-block-end: .5rem; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
   .main { position: relative; overflow: hidden; background: var(--panel); }

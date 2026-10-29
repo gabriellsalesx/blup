@@ -5,6 +5,7 @@ go 1.27.3
 require (
 	github.com/gabriellsalesx/blup v0.0.0
 	github.com/wailsapp/wails/v3 v3.0.0
+	go.yaml.in/yaml/v3 v3.0.5
 )
 
 require (
@@ -41,7 +42,6 @@ require (
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/xo/terminfo v1.0.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/image v0.47.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect

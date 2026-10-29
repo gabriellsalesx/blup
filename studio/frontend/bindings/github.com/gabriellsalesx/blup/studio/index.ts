@@ -8,5 +8,7 @@ export {
 
 export type {
     Node,
+    NoteData,
+    PropEdit,
     SiteInfo
 } from "./models.js";
