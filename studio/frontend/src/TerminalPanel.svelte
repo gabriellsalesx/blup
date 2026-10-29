@@ -163,7 +163,13 @@
         <div class="tab" class:on={tab.id === active} role="tab" tabindex="-1" aria-selected={tab.id === active} oncontextmenu={(e) => showMenu(e, tab, false)}>
           {#if renaming === tab.uid}
             <input class="rename" type="text" value={tab.title} use:focusSelect
-              onkeydown={(e) => { if (e.key === "Enter") { tab.title = e.currentTarget.value.trim() || tab.title; renaming = 0; tab.term.focus(); } if (e.key === "Escape") renaming = 0; }}
+              onkeydown={(e) => {
+                // The Enter stays here: the terminal only gets the focus
+                // after it, or it would run an empty line.
+                if (e.key === "Enter" || e.key === "Escape") { e.preventDefault(); e.stopPropagation(); }
+                if (e.key === "Enter") { tab.title = e.currentTarget.value.trim() || tab.title; renaming = 0; setTimeout(() => tab.term.focus(), 50); }
+                if (e.key === "Escape") { renaming = 0; setTimeout(() => tab.term.focus(), 50); }
+              }}
               onblur={(e) => { tab.title = e.currentTarget.value.trim() || tab.title; renaming = 0; }} />
           {:else}
             <button class="pick" onclick={() => (active = tab.id)} ondblclick={() => (renaming = tab.uid)}>
