@@ -42,6 +42,12 @@
   function password() {
     onEdit("password", pwMode === "none" ? null : pwMode === "general" ? (t.lang === "pt" ? "sim" : "yes") : pwOwn);
   }
+  // The switch turns the password on (the site's general one first).
+  let pwOn = $state(pwMode !== "none");
+  function togglePassword(on: boolean) {
+    pwMode = on ? (pwMode === "none" ? "general" : pwMode) : "none";
+    password();
+  }
 
   // A chips field: Enter or comma adds, × removes.
   let tagInput = $state("");
@@ -93,21 +99,23 @@
           </div>
         </div>
 
+        <!-- On/off choices, one per row, like the settings. -->
         <div class="wide switches">
           <Switch label={p.draft} help={p.draftHelp} bind:checked={draft} onchange={(v) => onEdit("draft", v)} />
           <Switch label={p.hidden} help={p.hiddenHelp} bind:checked={hidden} onchange={(v) => onEdit("hidden", v)} />
+          <Switch label={p.password} help={p.pwHelp} bind:checked={pwOn} onchange={togglePassword} />
+          {#if pwOn}
+            <div class="pw">
+              <div class="seg" role="radiogroup" aria-label={p.password}>
+                <button role="radio" aria-checked={pwMode === "general"} class:on={pwMode === "general"} onclick={() => { pwMode = "general"; password(); }}>{p.pwGeneral}</button>
+                <button role="radio" aria-checked={pwMode === "own"} class:on={pwMode === "own"} onclick={() => { pwMode = "own"; password(); }}>{p.pwOwn}</button>
+              </div>
+              {#if pwMode === "own"}
+                <input type="text" bind:value={pwOwn} oninput={password} placeholder={p.pwOwnField} aria-label={p.pwOwnField} />
+              {:else}<small class="muted">{p.pwGeneralHelp}</small>{/if}
+            </div>
+          {/if}
         </div>
-
-        <label class="field"><span>{p.password}</span>
-          <select bind:value={pwMode} onchange={password}>
-            <option value="none">{p.pwNone}</option>
-            <option value="general">{p.pwGeneral}</option>
-            <option value="own">{p.pwOwn}</option>
-          </select>
-        </label>
-        {#if pwMode === "own"}
-          <label class="field"><span>{p.pwOwnField}</span><input type="text" bind:value={pwOwn} oninput={password} /></label>
-        {/if}
       {/if}
 
       <button class="more wide" onclick={() => (more = !more)}>{more ? "−" : "+"} {p.more}</button>
@@ -127,7 +135,7 @@
 </section>
 
 <style>
-  .props { border-block-end: 1px solid var(--line); background: var(--bg); max-height: 55%; overflow: auto; flex: none; }
+  .props { border-block-end: 1px solid var(--line); background: var(--bg); max-height: 75%; overflow: auto; flex: none; scrollbar-gutter: stable; }
   .head { display: flex; align-items: center; gap: .4rem; width: 100%; padding: .6rem 1.25rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
   .chev { display: inline-grid; transition: transform .15s; }
   .chev.closed { transform: rotate(-90deg); }
@@ -141,6 +149,14 @@
   .cover { display: flex; align-items: center; gap: .75rem; }
   .thumb { width: 6rem; height: 3.5rem; display: grid; place-items: center; border: 1px dashed var(--line); border-radius: .4rem; overflow: hidden; font-size: .7rem; }
   .thumb img { width: 100%; height: 100%; object-fit: cover; }
-  .switches { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
+  .switches { display: grid; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); }
+  .switches > :global(.switch), .switches > .pw { padding: .75rem 1rem; }
+  .switches > :global(.switch + .switch) { border-block-start: 1px solid var(--line); }
+  .switches > .pw { display: grid; gap: .5rem; padding-block-start: 0; }
+  .pw input { max-width: 22rem; }
+  .pw small { font-size: .8rem; }
+  .seg { justify-self: start; display: inline-flex; gap: .2rem; padding: .2rem; border: 1px solid var(--line); border-radius: .55rem; }
+  .seg button { padding: .3rem .7rem; border-radius: .4rem; font-size: .82rem; font-weight: 600; color: var(--muted); }
+  .seg button.on { background: var(--soft); color: var(--text); }
   .more { justify-self: start; font-size: .8rem; font-weight: 600; color: var(--blue); }
 </style>
