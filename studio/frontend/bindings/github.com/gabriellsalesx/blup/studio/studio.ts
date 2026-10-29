@@ -34,6 +34,13 @@ export function AIChanges(id: string): $CancellablePromise<app$0.Change[] | null
 }
 
 /**
+ * AddAttachments asks for files on the computer and copies them in.
+ */
+export function AddAttachments(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(3008400949);
+}
+
+/**
  * AddSection adds a Bento section with example notes, and returns the new
  * tree of notes.
  */
@@ -46,6 +53,13 @@ export function AddSection(kind: string): $CancellablePromise<$models.Node> {
  */
 export function Agents(): $CancellablePromise<$models.Agent[] | null> {
     return $Call.ByID(199937956);
+}
+
+/**
+ * Attachments lists the site's attachments and the notes using each one.
+ */
+export function Attachments(): $CancellablePromise<app$0.Attachment[] | null> {
+    return $Call.ByID(3523381996);
 }
 
 /**
@@ -141,6 +155,13 @@ export function CreateNote(folder: string, name: string): $CancellablePromise<st
  */
 export function CreateSite(o: app$0.NewSiteOptions): $CancellablePromise<$models.SiteInfo> {
     return $Call.ByID(70435005, o);
+}
+
+/**
+ * DeleteAttachment moves a file to the trash.
+ */
+export function DeleteAttachment(name: string): $CancellablePromise<void> {
+    return $Call.ByID(1632964280, name);
 }
 
 /**
@@ -251,6 +272,13 @@ export function NoteLink(rel: string, $from: string): $CancellablePromise<string
  */
 export function Open(dir: string): $CancellablePromise<$models.Node> {
     return $Call.ByID(2984394386, dir);
+}
+
+/**
+ * OpenAttachment opens a file in the computer's own app for it.
+ */
+export function OpenAttachment(name: string): $CancellablePromise<void> {
+    return $Call.ByID(1254002543, name);
 }
 
 /**
@@ -381,6 +409,13 @@ export function RemoveImage(key: string): $CancellablePromise<void> {
  */
 export function RemoveSection(kind: string): $CancellablePromise<$models.Removed> {
     return $Call.ByID(3602876369, kind);
+}
+
+/**
+ * RenameAttachment renames a file and fixes the notes that use it.
+ */
+export function RenameAttachment(old: string, name: string): $CancellablePromise<string> {
+    return $Call.ByID(2976971137, old, name);
 }
 
 /**
@@ -553,6 +588,14 @@ export function SyncStatus(): $CancellablePromise<app$0.SyncInfo> {
  */
 export function Target(): $CancellablePromise<app$0.Target> {
     return $Call.ByID(2323651595);
+}
+
+/**
+ * Thumbnail is a small preview of an image attachment, as a data: URL ("" for
+ * files it can't draw). SVGs come as they are.
+ */
+export function Thumbnail(name: string): $CancellablePromise<string> {
+    return $Call.ByID(630207794, name);
 }
 
 /**

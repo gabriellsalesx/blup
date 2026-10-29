@@ -6,6 +6,29 @@
 import * as config$0 from "../config/models.js";
 
 /**
+ * Attachment is a file of the attachments folder.
+ */
+export interface Attachment {
+    "name": string;
+
+    /**
+     * full path
+     */
+    "file": string;
+    "size": number;
+
+    /**
+     * "image", "pdf", "audio", "video" or "other"
+     */
+    "kind": string;
+
+    /**
+     * notes that point to it
+     */
+    "uses": string[] | null;
+}
+
+/**
  * Author is an author of the site.
  */
 export interface Author {

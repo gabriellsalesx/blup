@@ -105,6 +105,7 @@ func (s *Studio) Tree() (Node, error) {
 	}
 	root := site.ContentDir()
 	authors := app.AuthorsFolder(site)
+	attachments := app.AttachmentsFolder(site) // its own screen too
 	var walk func(dir, rel string) ([]Node, error)
 	walk = func(dir, rel string) ([]Node, error) {
 		entries, err := os.ReadDir(dir)
@@ -114,8 +115,8 @@ func (s *Studio) Tree() (Node, error) {
 		var dirs, notes []Node
 		for _, e := range entries {
 			name := e.Name()
-			// The authors folder has its own screen (Authors).
-			if strings.HasPrefix(name, ".") || (rel == "" && (slices.Contains(scaffold.AgentGuides, name) || (authors != "" && name == authors))) {
+			// The authors and attachments folders have their own screens.
+			if strings.HasPrefix(name, ".") || (rel == "" && (slices.Contains(scaffold.AgentGuides, name) || (authors != "" && name == authors) || name == attachments)) {
 				continue
 			}
 			p := strings.TrimPrefix(rel+"/"+name, "/")
