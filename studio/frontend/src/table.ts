@@ -155,47 +155,31 @@ class TableWidget extends WidgetType {
       });
       table.append(tr);
     });
-    // On the right edge, + and − for the last column; on the bottom edge,
-    // the same for the last row.
+    // Bars on the edges, shown on hover: + on the right and at the bottom
+    // add a column and a row; − on the left and at the top take the last
+    // column and the last row away.
     const cols = t.aligns.length, rows = t.rows.length;
-    const colCtl = controls("cm-md-ctl col", [
-      button("+", L.addCol, () => { const n = read(); n.rows.forEach((r) => r.push("")); n.aligns.push("---"); write(n, [0, n.aligns.length - 1]); }),
-      button("−", L.delLastCol, cols > 1 ? () => { const n = read(); n.rows.forEach((r) => r.pop()); n.aligns.pop(); write(n); (wrap as any).cmWidget.draw(wrap, view); } : null),
-    ]);
-    const rowCtl = controls("cm-md-ctl row", [
-      button("+", L.addRow, () => { const n = read(); n.rows.push(Array(n.aligns.length).fill("")); write(n, [n.rows.length - 1, 0]); }),
-      button("−", L.delLastRow, rows > 2 ? () => { const n = read(); n.rows.pop(); write(n); (wrap as any).cmWidget.draw(wrap, view); } : null),
-    ]);
-    if (!(wrap as any).cmLeave) {
-      (wrap as any).cmLeave = true;
-      wrap.addEventListener("focusout", (e) => {
-        if ((wrap as any).cmDirty && !wrap.contains(e.relatedTarget as Node)) (wrap as any).cmSave?.();
-      });
-    }
-    (wrap as any).cmSave = () => write(read());
+    const redraw = () => (wrap as any).cmWidget.draw(wrap, view);
+    const addCol = bar("right", "+", L.addCol, () => { const n = read(); n.rows.forEach((r) => r.push("")); n.aligns.push("---"); write(n, [0, n.aligns.length - 1]); });
+    const addRow = bar("bottom", "+", L.addRow, () => { const n = read(); n.rows.push(Array(n.aligns.length).fill("")); write(n, [n.rows.length - 1, 0]); });
+    const delCol = bar("left", "−", L.delLastCol, cols > 1 ? () => { const n = read(); n.rows.forEach((r) => r.pop()); n.aligns.pop(); write(n); redraw(); } : null);
+    const delRow = bar("top", "−", L.delLastRow, rows > 2 ? () => { const n = read(); n.rows.pop(); write(n); redraw(); } : null);
     const inner = document.createElement("div");
     inner.className = "cm-md-table-inner";
     inner.append(table);
-    wrap.append(inner, colCtl, rowCtl);
+    wrap.append(delRow, delCol, inner, addCol, addRow);
   }
 }
 
-function button(sign: string, title: string, run: (() => void) | null) {
+function bar(side: string, sign: string, title: string, run: (() => void) | null) {
   const b = document.createElement("button");
-  b.className = "cm-md-btn";
+  b.className = "cm-md-bar " + side;
   b.title = title;
   b.textContent = sign;
   b.addEventListener("mousedown", (e) => e.preventDefault());
   if (run) b.addEventListener("click", run);
   else b.disabled = true;
   return b;
-}
-
-function controls(cls: string, buttons: HTMLElement[]) {
-  const d = document.createElement("div");
-  d.className = cls;
-  d.append(...buttons);
-  return d;
 }
 
 // The small menu of a cell (danger items in red).
