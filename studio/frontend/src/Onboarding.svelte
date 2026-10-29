@@ -72,14 +72,10 @@
 
   // Already have a site (made with the CLI or on another computer)?
   let openMsg = $state("");
-  // "I already have a site": the sites opened lately first (one taken out
-  // of the list is easy to find there), then a folder to pick.
-  let recent = $state<RecentSite[] | null>(null);
-  async function haveSite() {
-    const list = (await RecentSites().catch(() => [])) ?? [];
-    if (!list.length) { openExisting(); return; }
-    recent = list;
-  }
+  // The sites opened lately, under "I already have a site" (one taken out
+  // of the list is easy to find there); the link picks a folder.
+  let recent = $state<RecentSite[]>([]);
+  RecentSites().then((list) => (recent = list ?? [])).catch(() => {});
   async function openRecent(r: RecentSite) {
     try {
       if (!r.listed) await RestoreSite(r.dir);
@@ -87,7 +83,6 @@
     } catch (e) { openMsg = String(e).replace(/^(Runtime)?Error: /, ""); }
   }
   async function openExisting() {
-    recent = null;
     openMsg = "";
     try {
       const f = await OpenExisting();
@@ -151,9 +146,9 @@
       <h1>{o.hello}</h1>
       <p class="lead">{o.helloLead}</p>
       <button class="btn big" onclick={next}>{o.start}</button>
-      <button class="link-btn" onclick={haveSite}>{o.haveSite}</button>
+      <button class="link-btn" onclick={openExisting}>{o.haveSite}</button>
       {#if openMsg}<p class="muted small">{openMsg}</p>{/if}
-      {#if recent}
+      {#if recent.length}
         <div class="recent">
           <b>{o.recentTitle}</b>
           <ul>
@@ -164,7 +159,6 @@
               </button></li>
             {/each}
           </ul>
-          <button class="btn ghost" onclick={openExisting}>{o.findSiteFolder}</button>
         </div>
       {/if}
     </div>
