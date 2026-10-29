@@ -5,7 +5,6 @@
   import Check from "@lucide/svelte/icons/check";
   import Loader from "@lucide/svelte/icons/loader-circle";
   import { t } from "./i18n";
-  import ThemePicker from "./ThemePicker.svelte";
 
   // The new site screens: one question per step, like "blup new".
   let { onDone, onCancel, canCancel }: { onDone: (s: SiteInfo) => void; onCancel: () => void; canCancel: boolean } = $props();
@@ -125,8 +124,6 @@
       <img class="bounce big" src="/blups/blup.svg" alt="" />
       <h1>{o.hello}</h1>
       <p class="lead">{o.helloLead}</p>
-      <p class="muted pick">{t.look2.pick}</p>
-      <ThemePicker big />
       <button class="btn big" onclick={next}>{o.start}</button>
     </div>
   {:else if step === "done"}
@@ -256,7 +253,6 @@
   .hello { display: grid; justify-items: center; gap: 1rem; text-align: center; max-width: 34rem; }
   .hello h1 { font-size: 2rem; font-weight: 800; letter-spacing: -.03em; }
   .lead { color: var(--muted); font-size: 1.05rem; }
-  .pick { font-size: .9rem; margin-block-start: .5rem; }
   .big { width: 7.5rem; height: auto; }
   .btn.big { width: auto; padding: .75rem 1.6rem; font-size: 1rem; }
   .crowd { display: flex; gap: .5rem; align-items: flex-end; }
