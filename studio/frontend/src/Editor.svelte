@@ -367,7 +367,10 @@
   .bar .has-menu { display: flex; gap: .05rem; width: auto; padding-inline: .35rem; }
   .bar .has-menu.on { background: var(--soft); color: var(--text); }
   .drop-menu { position: absolute; z-index: 30; inset-block-start: calc(100% + .3rem); inset-inline-start: 0; display: grid; min-width: 11rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); }
-  .drop-menu button { display: flex; align-items: center; gap: .55rem; padding: .4rem .6rem; border-radius: .35rem; font-size: .875rem; text-align: start; white-space: nowrap; }
+  /* The whole row is the button: the icon and the text don't take the
+     clicks (between them the Linux window missed them). */
+  .drop-menu button { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .55rem; width: 100%; padding: .4rem .6rem; border-radius: .35rem; font-size: .875rem; text-align: start; white-space: nowrap; cursor: pointer; }
+  .drop-menu button > :global(*) { pointer-events: none; }
   .drop-menu .ico { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; flex: none; border-radius: .3rem; background: var(--soft); color: var(--text); }
   .drop-menu button:hover { background: var(--soft); }
   .drop-menu .big { font-weight: 700; }

@@ -303,6 +303,7 @@
   .ai { position: relative; }
   .add-menu { position: absolute; z-index: 10; inset-block-start: calc(100% + .3rem); inset-inline-end: 0; display: grid; min-width: 12rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .22); }
   .add-menu button { display: flex; align-items: center; gap: .55rem; padding: .42rem .6rem; border-radius: .35rem; font-size: .85rem; text-align: start; white-space: nowrap; }
+  .add-menu button > :global(*) { pointer-events: none; } /* the whole row takes the click */
   .add-menu button :global(svg) { color: var(--muted); }
   .add-menu button:hover { background: var(--soft); }
   .add-menu small { padding: .3rem .6rem; font-size: .75rem; }

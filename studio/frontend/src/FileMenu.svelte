@@ -111,6 +111,7 @@
   .shade.dim { background: rgb(0 0 0 / .35); }
   .menu { position: fixed; z-index: 41; display: grid; min-width: 15rem; padding: .3rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .22); }
   .menu button { display: flex; align-items: center; gap: .6rem; padding: .42rem .6rem; border-radius: .35rem; font-size: .875rem; text-align: start; }
+  .menu button > :global(*) { pointer-events: none; } /* the whole row takes the click */
   .menu button :global(svg) { color: var(--muted); }
   .menu button:hover { background: var(--soft); }
   .menu .danger, .menu .danger :global(svg) { color: var(--red); }

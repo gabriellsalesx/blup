@@ -103,26 +103,39 @@ const ALIGN_END = /\s*\{\.text-(center|right|justify)\}\s*$/;
 export function align(view: EditorView, cls: string | null) {
   const { state } = view;
   const doc = state.doc;
-  let line = doc.lineAt(state.selection.main.head);
-  if (ALIGN_LINE.test(line.text) && line.number > 1) line = doc.line(line.number - 1);
-  if (/^#{1,6} /.test(line.text)) {
-    const text = line.text.replace(ALIGN_END, "");
-    view.dispatch({ changes: { from: line.from, to: line.to, insert: text + (cls ? ` {.${cls}}` : "") } });
-    view.focus();
-    return;
+  const HEAD = /^#{1,6} /;
+  const breaks = (text: string) => !text.trim() || ALIGN_LINE.test(text) || HEAD.test(text);
+  const changes: { from: number; to?: number; insert?: string }[] = [];
+  const done = new Set<number>();
+  // Every paragraph and heading the selection touches (all of them when
+  // everything is selected).
+  for (const r of state.selection.ranges) {
+    for (let n = doc.lineAt(r.from).number; n <= doc.lineAt(r.to).number; n++) {
+      let line = doc.line(n);
+      if (ALIGN_LINE.test(line.text)) {
+        if (n === 1) continue;
+        line = doc.line(n - 1);
+      }
+      if (!line.text.trim() || done.has(line.number)) continue;
+      if (HEAD.test(line.text)) {
+        done.add(line.number);
+        const text = line.text.replace(ALIGN_END, "");
+        changes.push({ from: line.from, to: line.to, insert: text + (cls ? ` {.${cls}}` : "") });
+        continue;
+      }
+      let start = line, end = line;
+      while (start.number > 1 && !breaks(doc.line(start.number - 1).text)) start = doc.line(start.number - 1);
+      while (end.number < doc.lines && !breaks(doc.line(end.number + 1).text)) end = doc.line(end.number + 1);
+      for (let k = start.number; k <= end.number; k++) done.add(k);
+      const next = end.number < doc.lines ? doc.line(end.number + 1) : null;
+      if (next && ALIGN_LINE.test(next.text)) {
+        done.add(next.number);
+        changes.push(cls ? { from: next.from, to: next.to, insert: `{.${cls}}` } : { from: end.to, to: next.to });
+      } else if (cls) {
+        changes.push({ from: end.to, insert: `\n{.${cls}}` });
+      }
+    }
   }
-  if (!line.text.trim()) return;
-  let end = line;
-  while (end.number < doc.lines) {
-    const next = doc.line(end.number + 1);
-    if (!next.text.trim() || ALIGN_LINE.test(next.text)) break;
-    end = next;
-  }
-  const next = end.number < doc.lines ? doc.line(end.number + 1) : null;
-  if (next && ALIGN_LINE.test(next.text)) {
-    view.dispatch({ changes: cls ? { from: next.from, to: next.to, insert: `{.${cls}}` } : { from: end.to, to: next.to } });
-  } else if (cls) {
-    view.dispatch({ changes: { from: end.to, insert: `\n{.${cls}}` } });
-  }
+  if (changes.length) view.dispatch({ changes });
   view.focus();
 }
