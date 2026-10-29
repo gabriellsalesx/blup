@@ -210,13 +210,21 @@ function menu(e: MouseEvent, items: ([string, (() => void) | null, boolean?] | n
 export function tables(labels: TableText) {
   const build = (state: EditorState, raw: number | null): DecorationSet => {
     const b = new RangeSetBuilder<Decoration>();
+    const doc = state.doc;
+    let last = -1; // where the previous table ended: tables never overlap
     syntaxTree(state).iterate({
       enter: (n) => {
         if (n.name !== "Table") return;
-        if (raw !== null && raw >= n.from && raw <= n.to) return false;
-        // Whole lines only: a block widget covers its lines.
-        const from = state.doc.lineAt(n.from).from, to = state.doc.lineAt(n.to).to;
-        b.add(from, to, Decoration.replace({ widget: new TableWidget(state.sliceDoc(from, to), from, labels), block: true }));
+        if (n.from <= last || (raw !== null && raw >= n.from && raw <= n.to)) return false;
+        // Whole lines, and every row line after it (a tree still parsing
+        // may stop short): a block widget covers its lines.
+        const first = doc.lineAt(n.from);
+        let end = doc.lineAt(n.to);
+        while (end.number < doc.lines && /^\s*\|/.test(doc.line(end.number + 1).text)) end = doc.line(end.number + 1);
+        // A table has a header and a |---| line; anything less stays text.
+        if (end.number === first.number || !/^\s*\|?\s*:?-+/.test(doc.line(first.number + 1).text)) return false;
+        b.add(first.from, end.to, Decoration.replace({ widget: new TableWidget(state.sliceDoc(first.from, end.to), first.from, labels), block: true }));
+        last = end.to;
         return false;
       },
     });

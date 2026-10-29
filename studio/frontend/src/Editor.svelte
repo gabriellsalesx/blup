@@ -349,15 +349,17 @@
   .editor :global(.cm-md-table th) { background: var(--soft); font-weight: 700; }
   .editor :global(.cm-md-table :is(th, td):focus) { box-shadow: inset 0 0 0 2px var(--blue); }
   .editor :global(.cm-md-table th:empty::before) { content: attr(data-placeholder); color: var(--muted); font-weight: 500; }
-  .editor :global(.cm-md-bar) { display: grid; place-items: center; padding: 0; border-radius: .35rem; background: var(--soft); color: var(--muted); font-size: .85rem; font-weight: 700; line-height: 1; opacity: 0; transition: opacity .12s, background .12s; }
+  .editor :global(.cm-md-bar) { display: grid; place-items: center; padding: 0; border-radius: .35rem; background: var(--soft); color: var(--muted); font-size: .85rem; font-weight: 700; line-height: 1; visibility: hidden; }
   .editor :global(.cm-md-bar.top) { grid-area: 1 / 2; }
   .editor :global(.cm-md-bar.left) { grid-area: 2 / 1; }
   .editor :global(.cm-md-bar.right) { grid-area: 2 / 3; }
   .editor :global(.cm-md-bar.bottom) { grid-area: 3 / 2; }
-  .editor :global(.cm-md-table:hover .cm-md-bar), .editor :global(.cm-md-table:focus-within .cm-md-bar) { opacity: 1; }
+  /* No fade: the bars just show while the mouse or the cursor is in the
+     table (a fade flickered in the Linux window). */
+  .editor :global(.cm-md-table:hover .cm-md-bar), .editor :global(.cm-md-table:focus-within .cm-md-bar) { visibility: visible; }
   .editor :global(.cm-md-bar:hover:not(:disabled)) { background: var(--blue); color: #fff; }
   .editor :global(.cm-md-bar.top:hover:not(:disabled)), .editor :global(.cm-md-bar.left:hover:not(:disabled)) { background: var(--red); }
-  .editor :global(.cm-md-table:hover .cm-md-bar:disabled) { opacity: .3; cursor: default; }
+  .editor :global(.cm-md-bar:disabled) { opacity: .3; cursor: default; }
   :global(.cm-md-menu) { position: fixed; z-index: 70; display: grid; min-width: 13rem; padding: .3rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .28); }
   :global(.cm-md-menu button) { padding: .4rem .6rem; border-radius: .35rem; font-size: .85rem; text-align: start; }
   :global(.cm-md-menu button:hover:not(:disabled)) { background: var(--soft); }
