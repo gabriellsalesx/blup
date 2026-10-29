@@ -17,7 +17,14 @@
   import Undo from "@lucide/svelte/icons/undo-2";
   import Redo from "@lucide/svelte/icons/redo-2";
   import { EditorSelection } from "@codemirror/state";
-  import { wrap, prefix, block, link, insert } from "./mdcommands";
+  import { wrap, prefix, block, link, insert, heading, align } from "./mdcommands";
+  import { mdExtras } from "./mdextras";
+  import Highlighter from "@lucide/svelte/icons/highlighter";
+  import AlignLeft from "@lucide/svelte/icons/text-align-start";
+  import AlignCenter from "@lucide/svelte/icons/text-align-center";
+  import AlignRight from "@lucide/svelte/icons/text-align-end";
+  import AlignJustify from "@lucide/svelte/icons/text-align-justify";
+  import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { PasteImage, PickNoteImage } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import Bold from "@lucide/svelte/icons/bold";
   import Italic from "@lucide/svelte/icons/italic";
@@ -191,6 +198,9 @@
     } catch (e) { onError?.(String(e).replace(/^(Runtime)?Error: /, "")); }
   }
 
+  let menuOpen = $state(""); // the toolbar menu open (headings, alignment)
+  type MenuItem = { label: string; run: () => void; Icon?: typeof Bold; size?: string };
+
   // A new table, with the cursor in its first empty cell.
   function newTable() {
     block(view, `| ${te.col} 1 | ${te.col} 2 |\n| --- | --- |\n|   |   |`);
@@ -208,10 +218,20 @@
     { key: "undo", label: te.undo + " (Ctrl+Z)", Icon: Undo, run: () => { undo(view); view.focus(); } },
     { key: "redo", label: te.redo + " (Ctrl+Shift+Z)", Icon: Redo, run: () => { redo(view); view.focus(); } },
     { key: "sep0" },
-    { key: "heading", label: te.heading, Icon: Heading, run: () => prefix(view, "## ", H) },
+    { key: "heading", label: te.heading, Icon: Heading, items: [
+      { label: te.normal, run: () => heading(view, 0), size: "" },
+      ...[1, 2, 3, 4].map((n) => ({ label: te.headingN.replace("{n}", String(n)), run: () => heading(view, n), size: ["", "1.35em", "1.2em", "1.08em", "1em"][n] })),
+    ] as MenuItem[] },
     { key: "bold", label: te.bold + " (Ctrl+B)", Icon: Bold, run: () => wrap(view, "**", te.boldText) },
     { key: "italic", label: te.italic + " (Ctrl+I)", Icon: Italic, run: () => wrap(view, "*", te.italicText) },
     { key: "strike", label: te.strike, Icon: Strike, run: () => wrap(view, "~~", te.strikeText) },
+    { key: "mark", label: te.highlight, Icon: Highlighter, run: () => wrap(view, "==", te.highlightText) },
+    { key: "align", label: te.align, Icon: AlignLeft, items: [
+      { label: te.alignLeft, Icon: AlignLeft, run: () => align(view, null) },
+      { label: te.alignCenter, Icon: AlignCenter, run: () => align(view, "text-center") },
+      { label: te.alignRight, Icon: AlignRight, run: () => align(view, "text-right") },
+      { label: te.alignJustify, Icon: AlignJustify, run: () => align(view, "text-justify") },
+    ] as MenuItem[] },
     { key: "sep1" },
     { key: "list", label: te.list, Icon: List, run: () => prefix(view, "- ", LIST) },
     { key: "olist", label: te.olist, Icon: ListOrdered, run: () => prefix(view, (i) => `${i + 1}. `, LIST) },
@@ -236,6 +256,7 @@
         syntaxHighlighting(markdownStyle),
         EditorView.lineWrapping,
         commentField,
+        mdExtras,
         tables(t.editor.tableUi),
         EditorView.contentAttributes.of({ spellcheck: "false" }), // ours, below
         spellcheck,
@@ -291,12 +312,27 @@
   });
 </script>
 
-<svelte:window onclick={() => (fix = null)} onkeydown={(e) => e.key === "Escape" && (fix = null)} />
+<svelte:window onclick={() => { fix = null; menuOpen = ""; }} onkeydown={(e) => e.key === "Escape" && (fix = null)} />
 
 <div class="wrap">
   <div class="bar" role="toolbar" aria-label={te.toolbar}>
     {#each tools as tool (tool.key)}
-      {#if tool.Icon}
+      {#if tool.items}
+        <!-- A button with a small menu (headings, alignment). -->
+        <div class="drop">
+          <button class="has-menu" class:on={menuOpen === tool.key} title={tool.label} aria-label={tool.label} aria-haspopup="menu" onmousedown={(e) => e.preventDefault()}
+            onclick={(e) => { e.stopPropagation(); menuOpen = menuOpen === tool.key ? "" : tool.key; }}><tool.Icon size={16} strokeWidth={1.9} /><ChevronDown size={11} /></button>
+          {#if menuOpen === tool.key}
+            <div class="drop-menu" role="menu">
+              {#each tool.items as item (item.label)}
+                <button role="menuitem" onmousedown={(e) => e.preventDefault()} onclick={() => { menuOpen = ""; item.run(); }}>
+                  {#if item.Icon}<item.Icon size={15} />{/if}<span style:font-size={item.size || null} class:big={item.size}>{item.label}</span>
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {:else if tool.Icon}
         <button title={tool.label} aria-label={tool.label} onmousedown={(e) => e.preventDefault()} onclick={tool.run}><tool.Icon size={16} strokeWidth={1.9} /></button>
       {:else}<span class="sep"></span>{/if}
     {/each}
@@ -320,6 +356,14 @@
   .bar { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .1rem; padding: .3rem .6rem; border-block-end: 1px solid var(--line); background: var(--panel); }
   .bar button { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: .35rem; color: var(--muted); }
   .bar button:hover { background: var(--soft); color: var(--text); }
+  .drop { position: relative; }
+  .bar .has-menu { display: flex; gap: .05rem; width: auto; padding-inline: .35rem; }
+  .bar .has-menu.on { background: var(--soft); color: var(--text); }
+  .drop-menu { position: absolute; z-index: 30; inset-block-start: calc(100% + .3rem); inset-inline-start: 0; display: grid; min-width: 11rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); }
+  .drop-menu button { display: flex; align-items: center; gap: .55rem; padding: .4rem .6rem; border-radius: .35rem; font-size: .875rem; text-align: start; white-space: nowrap; }
+  .drop-menu button :global(svg) { color: var(--muted); }
+  .drop-menu button:hover { background: var(--soft); }
+  .drop-menu .big { font-weight: 700; }
   .bar .sep { width: 1px; height: 1.1rem; margin-inline: .3rem; background: var(--line); }
   .editor { flex: 1; min-height: 0; overflow: hidden; }
   .editor :global(.cm-tooltip-autocomplete) { border: 1px solid var(--line); border-radius: .5rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); overflow: hidden; }
@@ -334,6 +378,11 @@
   .editor :global(.cm-content) { max-width: 46rem; margin-inline: auto; padding-inline: 2rem; caret-color: var(--text); }
   .editor.wide :global(.cm-content) { max-width: none; }
   .editor :global(.cm-obs-comment) { opacity: .75; }
+  .editor :global(.cm-highlight) { background: color-mix(in srgb, #facc15 38%, transparent); border-radius: 3px; }
+  .editor :global(.cm-align-center) { text-align: center; }
+  .editor :global(.cm-align-right) { text-align: end; }
+  .editor :global(.cm-align-justify) { text-align: justify; }
+  .editor :global(.cm-align-attr) { color: var(--muted); font-size: .8em; opacity: .7; }
   /* A misspelled word: highlighted in red, like a marker pen. */
   .editor :global(.cm-misspelled) { background: color-mix(in srgb, var(--red) 24%, transparent); border-radius: 3px; box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--red) 70%, transparent); }
   .editor :global(.cm-completionIcon) { display: none; }

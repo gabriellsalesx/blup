@@ -160,6 +160,9 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 		"markup": map[string]any{
 			"goldmark": map[string]any{
 				"renderer": map[string]any{"hardWraps": hardWraps},
+				// Block attributes align text: a {.text-center} line under a
+				// paragraph (or after a heading) centers it.
+				"parser": map[string]any{"attribute": map[string]any{"block": true, "title": true}},
 				"extensions": map[string]any{
 					"extras": map[string]any{"mark": map[string]any{"enable": true}},
 					"passthrough": map[string]any{

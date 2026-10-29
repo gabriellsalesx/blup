@@ -40,9 +40,9 @@ export async function suggest(word: string): Promise<string[]> {
 const WORD = /\p{L}[\p{L}\p{M}'’-]*\p{L}|\p{L}/gu;
 // Not words to check: code, links' addresses, raw HTML, front matter.
 const SKIP = new Set(["FencedCode", "CodeBlock", "InlineCode", "CodeText", "URL", "Autolink", "HTMLTag", "HTMLBlock", "LinkLabel", "Comment", "CommentBlock"]);
-// Also wikilinks, addresses, math, e-mails, HTML, callout types ([!tip])
+// Also attributes ({.text-center}), wikilinks, addresses, math, e-mails, HTML, callout types ([!tip])
 // and file names (logo.png).
-const SKIP_TEXT = /\[\[[^\]]*\]\]|\[![^\]]*\]|https?:\/\/\S+|\$[^$\n]+\$|\S+@\S+\.\S+|<[^>]+>|[\p{L}\d_-]+\.[a-z0-9]{2,4}\b/gu;
+const SKIP_TEXT = /\{\.[^}\n]*\}|\[\[[^\]]*\]\]|\[![^\]]*\]|https?:\/\/\S+|\$[^$\n]+\$|\S+@\S+\.\S+|<[^>]+>|[\p{L}\d_-]+\.[a-z0-9]{2,4}\b/gu;
 
 function words(view: EditorView) {
   const out: { from: number; to: number; word: string }[] = [];

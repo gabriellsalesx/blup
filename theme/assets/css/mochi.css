@@ -442,6 +442,11 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .prose a:hover { text-decoration-color: var(--main-900); }
   .prose strong { color: var(--main-900); font-weight: 600; }
   .prose mark { background: color-mix(in srgb, #facc15 40%, transparent); color: inherit; border-radius: .125rem; padding: 0 .125rem; }
+  /* Alignment from the editor ({.text-center} under a paragraph). */
+  .prose .text-center { text-align: center; }
+  .prose .text-right { text-align: end; }
+  .prose .text-justify { text-align: justify; }
+  .prose .text-center > img, .prose img.text-center { margin-inline: auto; }
   .prose ul, .prose ol { padding-inline-start: 1.5em; }
   .prose ul { list-style: disc; }
   .prose ol { list-style: decimal; }

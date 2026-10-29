@@ -77,3 +77,52 @@ export function insert(view: EditorView, text: string, ownLine = false) {
   view.dispatch({ changes: { from: r.from, to: r.to, insert: text }, selection: EditorSelection.cursor(r.from + text.length) });
   view.focus();
 }
+
+// The heading level of the lines (0 = plain text).
+export function heading(view: EditorView, level: number) {
+  const { state } = view;
+  const lines = new Set<number>();
+  for (const r of state.selection.ranges) {
+    for (let n = state.doc.lineAt(r.from).number; n <= state.doc.lineAt(r.to).number; n++) lines.add(n);
+  }
+  const changes = [...lines].map((n) => {
+    const l = state.doc.line(n);
+    const old = l.text.match(/^#{1,6} /)?.[0] ?? "";
+    return { from: l.from, to: l.from + old.length, insert: level ? "#".repeat(level) + " " : "" };
+  });
+  const set = state.changes(changes);
+  view.dispatch({ changes: set, selection: state.selection.map(set, 1) });
+  view.focus();
+}
+
+// Alignment of the paragraph (or heading) at the cursor: a {.text-center}
+// line under the paragraph, or at the end of a heading; null = the normal
+// (left) alignment.
+export const ALIGN_LINE = /^\{\.text-(center|right|justify)\}\s*$/;
+const ALIGN_END = /\s*\{\.text-(center|right|justify)\}\s*$/;
+export function align(view: EditorView, cls: string | null) {
+  const { state } = view;
+  const doc = state.doc;
+  let line = doc.lineAt(state.selection.main.head);
+  if (ALIGN_LINE.test(line.text) && line.number > 1) line = doc.line(line.number - 1);
+  if (/^#{1,6} /.test(line.text)) {
+    const text = line.text.replace(ALIGN_END, "");
+    view.dispatch({ changes: { from: line.from, to: line.to, insert: text + (cls ? ` {.${cls}}` : "") } });
+    view.focus();
+    return;
+  }
+  if (!line.text.trim()) return;
+  let end = line;
+  while (end.number < doc.lines) {
+    const next = doc.line(end.number + 1);
+    if (!next.text.trim() || ALIGN_LINE.test(next.text)) break;
+    end = next;
+  }
+  const next = end.number < doc.lines ? doc.line(end.number + 1) : null;
+  if (next && ALIGN_LINE.test(next.text)) {
+    view.dispatch({ changes: cls ? { from: next.from, to: next.to, insert: `{.${cls}}` } : { from: end.to, to: next.to } });
+  } else if (cls) {
+    view.dispatch({ changes: { from: end.to, insert: `\n{.${cls}}` } });
+  }
+  view.focus();
+}
