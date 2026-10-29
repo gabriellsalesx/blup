@@ -16,7 +16,7 @@ import (
 func TestStarter(t *testing.T) {
 	out := os.Getenv("BLUP_STARTER_OUT")
 	for _, lang := range []string{"pt", "en"} {
-		for _, model := range []string{"mochi", "bento"} {
+		for _, model := range []string{"mochi", "bento", "nori"} {
 			vault := t.TempDir()
 			if out != "" {
 				vault = filepath.Join(out, lang+"-"+model, "vault")

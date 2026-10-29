@@ -22,6 +22,7 @@ import (
 // opening the notes in Obsidian to see how each page is made.
 //
 //	starter/<lang>/<model>/  notes, copied into the site folder as they are
+//	                         (Nori's tutorial teaches Blup Studio, the others the CLI)
 //	starter/covers/          images the notes point to ([[name.jpg]])
 //
 // In the bento model each top-level folder is a section (its _index has
@@ -49,12 +50,7 @@ func starterRoot(site *config.Site) string {
 	if lang != "pt" {
 		lang = "en"
 	}
-	// Nori is a personal blog too: it starts with Mochi's tutorial.
-	model := site.Model
-	if model == "nori" {
-		model = "mochi"
-	}
-	return path.Join("starter", lang, model)
+	return path.Join("starter", lang, site.Model)
 }
 
 // starterSections maps each section kind of the starter to its folder.
