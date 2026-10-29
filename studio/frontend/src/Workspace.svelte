@@ -29,6 +29,8 @@
   import PasswordPanel from "./PasswordPanel.svelte";
   import PublishPanel from "./PublishPanel.svelte";
   import TrashPanel from "./TrashPanel.svelte";
+  import AuthorsPanel from "./AuthorsPanel.svelte";
+  import Users from "@lucide/svelte/icons/users";
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import PenLine from "@lucide/svelte/icons/pen-line";
   import Palette from "@lucide/svelte/icons/palette";
@@ -160,6 +162,7 @@
   const screens = $derived([
     { key: "write", label: t.nav.write, Icon: PenLine },
     { key: "look", label: t.nav.look, Icon: Palette },
+    { key: "authors", label: t.nav.authors, Icon: Users },
     ...(site.model === "bento" ? [{ key: "sections", label: t.nav.sections, Icon: LayoutGrid }] : []),
     { key: "comments", label: t.nav.comments, Icon: MessageCircle },
     { key: "cookies", label: t.nav.cookies, Icon: Cookie },
@@ -431,6 +434,7 @@
         {:else if screen === "cookies"}<CookiesPanel {settings} {reload} onOpenNote={openNote} />
         {:else if screen === "password"}<PasswordPanel {settings} {reload} />
         {:else if screen === "publish"}<PublishPanel autostart={autostart} />
+        {:else if screen === "authors"}<AuthorsPanel onTree={async () => (tree = (await LoadTree()).children ?? [])} />
         {:else if screen === "trash"}<TrashPanel {reload} onTree={(n) => (tree = n.children ?? [])} />
         {/if}
       {/key}

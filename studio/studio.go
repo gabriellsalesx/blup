@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/hugo"
 	"github.com/gabriellsalesx/blup/internal/scaffold"
@@ -103,6 +104,7 @@ func (s *Studio) Tree() (Node, error) {
 		return Node{}, err
 	}
 	root := site.ContentDir()
+	authors := app.AuthorsFolder(site)
 	var walk func(dir, rel string) ([]Node, error)
 	walk = func(dir, rel string) ([]Node, error) {
 		entries, err := os.ReadDir(dir)
@@ -112,7 +114,8 @@ func (s *Studio) Tree() (Node, error) {
 		var dirs, notes []Node
 		for _, e := range entries {
 			name := e.Name()
-			if strings.HasPrefix(name, ".") || (rel == "" && slices.Contains(scaffold.AgentGuides, name)) {
+			// The authors folder has its own screen (Authors).
+			if strings.HasPrefix(name, ".") || (rel == "" && (slices.Contains(scaffold.AgentGuides, name) || (authors != "" && name == authors))) {
 				continue
 			}
 			p := strings.TrimPrefix(rel+"/"+name, "/")

@@ -57,6 +57,13 @@ export function AuthorNames(): $CancellablePromise<string[] | null> {
 }
 
 /**
+ * Authors lists the site's authors.
+ */
+export function Authors(): $CancellablePromise<app$0.Author[] | null> {
+    return $Call.ByID(3461477834);
+}
+
+/**
  * CheckCookieTool tells whether an ID fits a tool ("" when it does).
  */
 export function CheckCookieTool(key: string, value: string): $CancellablePromise<string> {
@@ -134,6 +141,13 @@ export function CreateNote(folder: string, name: string): $CancellablePromise<st
  */
 export function CreateSite(o: app$0.NewSiteOptions): $CancellablePromise<$models.SiteInfo> {
     return $Call.ByID(70435005, o);
+}
+
+/**
+ * DeleteAuthor moves the author's note to the trash.
+ */
+export function DeleteAuthor(name: string): $CancellablePromise<void> {
+    return $Call.ByID(2382969126, name);
 }
 
 /**
@@ -271,6 +285,14 @@ export function PasteImage(note: string, name: string, data: string): $Cancellab
 }
 
 /**
+ * PickAuthorPhoto asks for a picture and returns the link for the author's
+ * photo ("" when the user cancels).
+ */
+export function PickAuthorPhoto(name: string): $CancellablePromise<string> {
+    return $Call.ByID(1003733496, name);
+}
+
+/**
  * PickCover asks for an image, copies it into the site and returns the
  * link for the "image" property ("" when the user cancels).
  */
@@ -380,6 +402,13 @@ export function RestoreSection(trash: string): $CancellablePromise<$models.Node>
  */
 export function SaveAbout(name: string, description: string, author: string): $CancellablePromise<void> {
     return $Call.ByID(2619745380, name, description, author);
+}
+
+/**
+ * SaveAuthor creates (old "") or updates an author.
+ */
+export function SaveAuthor(old: string, a: app$0.Author): $CancellablePromise<void> {
+    return $Call.ByID(1485168776, old, a);
 }
 
 /**

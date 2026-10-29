@@ -6,6 +6,35 @@
 import * as config$0 from "../config/models.js";
 
 /**
+ * Author is an author of the site.
+ */
+export interface Author {
+    "name": string;
+    "role": string;
+
+    /**
+     * the property's link ([[ana.jpg]])
+     */
+    "photo": string;
+
+    /**
+     * profile URLs
+     */
+    "social": string[] | null;
+    "bio": string;
+
+    /**
+     * posts that list this author
+     */
+    "posts": number;
+
+    /**
+     * the site's own author (blup.toml)
+     */
+    "main": boolean;
+}
+
+/**
  * Change is a note or file that differs from a snapshot.
  */
 export interface Change {
