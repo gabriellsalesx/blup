@@ -19,8 +19,8 @@
     bento: { key: "bento", blup: "turma-4", name: o.bento, kind: o.bentoFor, about: o.bentoAbout, has: o.bentoHas },
   };
   const CATEGORIES = [
-    { key: "blog", blup: "turma-3", name: o.catBlog, about: o.catBlogAbout, themes: ["mochi"] },
-    { key: "product", blup: "turma-4", name: o.catProduct, about: o.catProductAbout, themes: ["bento"] },
+    { key: "blog", blup: "turma-3", scene: "blog-pessoal", name: o.catBlog, about: o.catBlogAbout, themes: ["mochi"] },
+    { key: "product", blup: "turma-4", scene: "site-de-produto", name: o.catProduct, about: o.catProductAbout, themes: ["bento"] },
   ];
   let category = $state("");
   let model = $state("");
@@ -202,11 +202,10 @@
 
       {#if step === "kind"}
         <h1>{o.kindQ}</h1>
-        <img class="kind-scene" src="/scenes/tipo-de-site.webp" alt="" />
         <div class="kinds">
           {#each CATEGORIES as c (c.key)}
             <button class="kind-card" class:on={category === c.key} onclick={() => pickCategory(c.key)}>
-              <img class:bounce={category === c.key} src="/blups/{c.blup}.svg" alt="" />
+              <img class="scene" src="/scenes/{c.scene}.svg" alt="" />
               <b>{c.name}</b>
               <p>{c.about}</p>
               <small class="muted">{c.themes.length === 1 ? o.oneTheme : o.nThemes.replace("{n}", String(c.themes.length))}</small>
@@ -337,12 +336,11 @@
   .stepno { font-size: .8rem; font-weight: 600; }
   .bar { height: .35rem; border-radius: 999px; background: var(--line); overflow: hidden; margin-block-start: -.75rem; }
   .bar span { display: block; height: 100%; background: var(--blue); transition: width .3s; }
-  .kind-scene { width: 100%; aspect-ratio: 16 / 6.5; object-fit: cover; object-position: center 55%; border: 1px solid var(--line); border-radius: .9rem; background: #f8f8f8; }
   .kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
   .kind-card { position: relative; display: grid; justify-items: center; gap: .5rem; padding: 2rem 1.5rem 1.6rem; border: 1px solid var(--line); border-radius: .9rem; background: var(--panel); text-align: center; transition: border-color .15s, transform .15s; }
   .kind-card:hover { border-color: var(--blue); transform: translateY(-2px); }
   .kind-card.on { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
-  .kind-card img { width: 4.5rem; height: 4.5rem; margin-block-end: .4rem; }
+  .kind-card .scene { width: 100%; max-width: 20rem; aspect-ratio: 320 / 200; margin-block-end: .4rem; }
   .kind-card b { font-size: 1.15rem; }
   .kind-card p { font-size: .9rem; color: var(--muted); }
   .kind-card small { font-size: .78rem; }
