@@ -1,6 +1,7 @@
 package app
 
 import (
+	"embed"
 	"errors"
 	"io/fs"
 	"os"
@@ -18,6 +19,47 @@ import (
 // bio as the text), which is what the theme reads. Renaming an author also
 // renames it in the posts' "authors" lists.
 
+// An author saved without a photo gets a Blup as one, taking turns: the
+// first author the first Blup, the next one the second, and so on. Sending
+// a picture of their own replaces it.
+//
+//go:embed avatars/*.svg
+var avatarFiles embed.FS
+
+var avatars = []string{"blup.svg", "turma-3.svg", "turma-4.svg", "turma-1.svg", "turma-6.svg"}
+
+// NextAvatar is the Blup the next author without a photo gets.
+func NextAvatar(site *config.Site) string {
+	n := 0
+	if folder := obsidian.Sections(site.ContentDir())["authors"]; folder != "" {
+		entries, _ := os.ReadDir(filepath.Join(site.ContentDir(), filepath.FromSlash(folder)))
+		for _, e := range entries {
+			if !e.IsDir() && strings.EqualFold(filepath.Ext(e.Name()), ".md") && !strings.HasPrefix(e.Name(), "_") {
+				n++
+			}
+		}
+	}
+	return avatars[n%len(avatars)]
+}
+
+// blupAvatar writes the Blup into the attachments, named after the author,
+// and returns the link for the photo property.
+func blupAvatar(site *config.Site, name, avatar string) (string, error) {
+	b, err := avatarFiles.ReadFile("avatars/" + avatar)
+	if err != nil {
+		return "", err
+	}
+	file := safeFileName(name) + ".svg"
+	dir := filepath.Join(site.ContentDir(), attachmentsFolder(site))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(dir, file), b, 0o644); err != nil {
+		return "", err
+	}
+	return "[[" + file + "]]", nil
+}
+
 // Author is an author of the site.
 type Author struct {
 	Name   string   `json:"name"`
@@ -25,8 +67,9 @@ type Author struct {
 	Photo  string   `json:"photo"`  // the property's link ([[ana.jpg]])
 	Social []string `json:"social"` // profile URLs
 	Bio    string   `json:"bio"`
-	Posts  int      `json:"posts"` // posts that list this author
-	Main   bool     `json:"main"`  // the site's own author (blup.toml)
+	Posts  int      `json:"posts"`  // posts that list this author
+	Main   bool     `json:"main"`   // the site's own author (blup.toml)
+	Avatar string   `json:"avatar"` // without a photo: the Blup it gets when saved
 }
 
 // ListAuthors lists the authors with a note, and the site's author.
@@ -71,6 +114,9 @@ func ListAuthors(site *config.Site) ([]Author, error) {
 	for i := range out {
 		if out[i].Social == nil {
 			out[i].Social = []string{}
+		}
+		if out[i].Photo == "" {
+			out[i].Avatar = avatars[i%len(avatars)]
 		}
 	}
 	return out, nil
@@ -120,6 +166,18 @@ func SaveAuthor(site *config.Site, old string, a Author) error {
 	if old == "" || !strings.EqualFold(old, name) {
 		if list, _ := ListAuthors(site); slices.ContainsFunc(list, func(x Author) bool { return strings.EqualFold(x.Name, name) && !strings.EqualFold(x.Name, old) }) {
 			return errors.New(name + " already exists")
+		}
+	}
+	if strings.TrimSpace(a.Photo) == "" {
+		avatar := NextAvatar(site)
+		if old != "" { // an existing author keeps the Blup it was shown with
+			list, _ := ListAuthors(site)
+			if i := slices.IndexFunc(list, func(x Author) bool { return strings.EqualFold(x.Name, old) }); i >= 0 {
+				avatar = list[i].Avatar
+			}
+		}
+		if a.Photo, err = blupAvatar(site, name, avatar); err != nil {
+			return err
 		}
 	}
 	p, err := authorNotePath(site, firstOf(old, name))

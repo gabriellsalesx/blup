@@ -33,6 +33,13 @@ func TestAuthors(t *testing.T) {
 	if err := SaveAuthor(site, "", Author{Name: "bruno"}); err == nil {
 		t.Fatal("a taken name was accepted")
 	}
+	// Without a photo, a Blup is the photo (one after the other).
+	if n := read(t, root, "Escritores/Bruno.md"); !strings.Contains(n, "[[Bruno.svg]]") {
+		t.Fatalf("no avatar: %s", n)
+	}
+	if b := read(t, root, attachmentsFolder(site)+"/Bruno.svg"); !strings.Contains(b, "<svg") {
+		t.Fatal("avatar file missing")
+	}
 	if err := DeleteAuthor(site, "Bruno"); err != nil {
 		t.Fatal(err)
 	}

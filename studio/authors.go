@@ -42,3 +42,13 @@ func (s *Studio) PickAuthorPhoto(name string) (string, error) {
 	}
 	return app.AuthorPhoto(site, name, path)
 }
+
+// NextAuthorAvatar is the Blup a new author without a photo gets (a file
+// of the frontend's /blups).
+func (s *Studio) NextAuthorAvatar() string {
+	site, err := s.current()
+	if err != nil {
+		return "blup.svg"
+	}
+	return app.NextAvatar(site)
+}

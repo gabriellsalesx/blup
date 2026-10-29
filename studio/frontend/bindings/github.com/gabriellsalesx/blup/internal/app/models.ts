@@ -32,6 +32,11 @@ export interface Author {
      * the site's own author (blup.toml)
      */
     "main": boolean;
+
+    /**
+     * without a photo: the Blup it gets when saved
+     */
+    "avatar": string;
 }
 
 /**

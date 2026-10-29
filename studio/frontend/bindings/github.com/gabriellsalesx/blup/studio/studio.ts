@@ -230,6 +230,14 @@ export function NeedsLinkAdjust(dir: string): $CancellablePromise<boolean> {
 }
 
 /**
+ * NextAuthorAvatar is the Blup a new author without a photo gets (a file
+ * of the frontend's /blups).
+ */
+export function NextAuthorAvatar(): $CancellablePromise<string> {
+    return $Call.ByID(2282409169);
+}
+
+/**
  * NoteLink is a Markdown link to the note at rel, written from the note at
  * from ("" for the top of the notes): [Name](../Folder/Name.md).
  */
