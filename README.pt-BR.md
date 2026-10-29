@@ -154,4 +154,6 @@ O Blup baixa o Hugo e o Pagefind sozinho na primeira vez que precisa (versões f
 
 ## Licença
 
-[MIT](LICENSE). Os ícones são da [Lucide](https://lucide.dev) (ISC, veja `theme/licenses`).
+[GNU AGPL-3.0](LICENSE): você pode usar, estudar, modificar e compartilhar o Blup; se compartilhar uma versão modificada, ou oferecê-la como serviço pela internet, compartilha o código dela sob a mesma licença. As versões até a v0.6.x saíram sob a licença MIT e continuam assim.
+
+As partes de terceiros mantêm as próprias licenças: veja [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Os ícones são da [Lucide](https://lucide.dev) (ISC, veja `theme/licenses`).
