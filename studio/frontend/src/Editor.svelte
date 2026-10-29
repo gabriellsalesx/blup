@@ -340,18 +340,20 @@
   .editor :global(.cm-tooltip-autocomplete > ul > li[aria-selected]::after) { content: "Tab"; float: inline-end; margin-inline-start: 1rem; padding: 0 .35rem; border: 1px solid var(--line); border-radius: .3rem; font-size: .7rem; color: var(--muted); }
   .editor :global(.cm-completionLabel) { font-weight: 500; }
   /* Tables drawn as tables (table.ts). */
-  .editor :global(.cm-md-table) { position: relative; display: inline-block; max-width: 100%; padding: .4rem 1.6rem 1.6rem 0; }
-  .editor :global(.cm-md-table-inner) { position: relative; display: flex; overflow-x: auto; }
+  .editor :global(.cm-md-table) { display: inline-grid; grid-template-columns: minmax(0, auto) 1.8rem; grid-template-rows: auto 1.8rem; max-width: 100%; padding-block-start: .4rem; }
+  .editor :global(.cm-md-table-inner) { min-width: 0; overflow-x: auto; }
   .editor :global(.cm-md-table table) { border-collapse: collapse; font-size: .95em; }
   .editor :global(.cm-md-table th), .editor :global(.cm-md-table td) { min-width: 6rem; padding: .4rem .7rem; border: 1px solid var(--line); vertical-align: top; outline: none; white-space: pre-wrap; }
   .editor :global(.cm-md-table th) { background: var(--soft); font-weight: 700; }
   .editor :global(.cm-md-table :is(th, td):focus) { box-shadow: inset 0 0 0 2px var(--blue); }
   .editor :global(.cm-md-table th:empty::before) { content: attr(data-placeholder); color: var(--muted); font-weight: 500; }
-  .editor :global(.cm-md-add) { position: absolute; display: grid; place-items: center; border-radius: .35rem; background: var(--soft); color: var(--muted); font-weight: 700; opacity: 0; transition: opacity .12s; }
-  .editor :global(.cm-md-add:hover) { background: var(--blue); color: #fff; }
-  .editor :global(.cm-md-add.col) { inset-block: .4rem 1.6rem; inset-inline-end: .2rem; width: 1.2rem; }
-  .editor :global(.cm-md-add.row) { inset-inline: 0 1.6rem; inset-block-end: .2rem; height: 1.2rem; }
-  .editor :global(.cm-md-table:hover .cm-md-add) { opacity: 1; }
+  /* The + and − on the right and bottom edges, shown on hover. */
+  .editor :global(.cm-md-ctl) { display: flex; align-items: center; justify-content: center; gap: .3rem; opacity: 0; transition: opacity .12s; }
+  .editor :global(.cm-md-ctl.col) { flex-direction: column; }
+  .editor :global(.cm-md-table:hover .cm-md-ctl), .editor :global(.cm-md-table:focus-within .cm-md-ctl) { opacity: 1; }
+  .editor :global(.cm-md-btn) { display: grid; place-items: center; width: 1.3rem; height: 1.3rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--muted); font-size: .9rem; font-weight: 700; line-height: 1; }
+  .editor :global(.cm-md-btn:hover:not(:disabled)) { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .editor :global(.cm-md-btn:disabled) { opacity: .35; }
   :global(.cm-md-menu) { position: fixed; z-index: 70; display: grid; min-width: 13rem; padding: .3rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .28); }
   :global(.cm-md-menu button) { padding: .4rem .6rem; border-radius: .35rem; font-size: .85rem; text-align: start; }
   :global(.cm-md-menu button:hover:not(:disabled)) { background: var(--soft); }

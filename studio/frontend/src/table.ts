@@ -9,7 +9,7 @@ import { syntaxTree } from "@codemirror/language";
 
 export type TableText = {
   addRowAbove: string; addRowBelow: string; addColLeft: string; addColRight: string;
-  delRow: string; delCol: string; delTable: string; asText: string; addRow: string; addCol: string; header: string;
+  delRow: string; delCol: string; delTable: string; asText: string; addRow: string; addCol: string; header: string; delLastRow: string; delLastCol: string;
 };
 
 type Table = { aligns: string[]; rows: string[][] }; // rows[0] is the header
@@ -155,8 +155,17 @@ class TableWidget extends WidgetType {
       });
       table.append(tr);
     });
-    const addCol = button("cm-md-add col", L.addCol, () => { const n = read(); n.rows.forEach((r) => r.push("")); n.aligns.push("---"); write(n, [0, n.aligns.length - 1]); });
-    const addRow = button("cm-md-add row", L.addRow, () => { const n = read(); n.rows.push(Array(n.aligns.length).fill("")); write(n, [n.rows.length - 1, 0]); });
+    // On the right edge, + and − for the last column; on the bottom edge,
+    // the same for the last row.
+    const cols = t.aligns.length, rows = t.rows.length;
+    const colCtl = controls("cm-md-ctl col", [
+      button("+", L.addCol, () => { const n = read(); n.rows.forEach((r) => r.push("")); n.aligns.push("---"); write(n, [0, n.aligns.length - 1]); }),
+      button("−", L.delLastCol, cols > 1 ? () => { const n = read(); n.rows.forEach((r) => r.pop()); n.aligns.pop(); write(n); (wrap as any).cmWidget.draw(wrap, view); } : null),
+    ]);
+    const rowCtl = controls("cm-md-ctl row", [
+      button("+", L.addRow, () => { const n = read(); n.rows.push(Array(n.aligns.length).fill("")); write(n, [n.rows.length - 1, 0]); }),
+      button("−", L.delLastRow, rows > 2 ? () => { const n = read(); n.rows.pop(); write(n); (wrap as any).cmWidget.draw(wrap, view); } : null),
+    ]);
     if (!(wrap as any).cmLeave) {
       (wrap as any).cmLeave = true;
       wrap.addEventListener("focusout", (e) => {
@@ -167,18 +176,26 @@ class TableWidget extends WidgetType {
     const inner = document.createElement("div");
     inner.className = "cm-md-table-inner";
     inner.append(table);
-    wrap.append(inner, addCol, addRow);
+    wrap.append(inner, colCtl, rowCtl);
   }
 }
 
-function button(cls: string, title: string, run: () => void) {
+function button(sign: string, title: string, run: (() => void) | null) {
   const b = document.createElement("button");
-  b.className = cls;
+  b.className = "cm-md-btn";
   b.title = title;
-  b.textContent = "+";
+  b.textContent = sign;
   b.addEventListener("mousedown", (e) => e.preventDefault());
-  b.addEventListener("click", run);
+  if (run) b.addEventListener("click", run);
+  else b.disabled = true;
   return b;
+}
+
+function controls(cls: string, buttons: HTMLElement[]) {
+  const d = document.createElement("div");
+  d.className = cls;
+  d.append(...buttons);
+  return d;
 }
 
 // The small menu of a cell (danger items in red).
