@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=Blup Studio
+Comment=Write in Markdown, preview and publish your site
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/blup-studio %u
+Terminal=false
+Type=Application
+Icon=blup-studio
+Categories=Utility;
+StartupWMClass=blup-studio
+
+ 
