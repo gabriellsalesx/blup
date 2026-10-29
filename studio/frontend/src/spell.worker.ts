@@ -19,7 +19,8 @@ let lang = "pt";
 let words: string[] = [];
 // Words every Blup site uses that the dictionaries don't have.
 const BUILT_IN: Record<string, string[]> = {
-  all: ["Blup", "Studio", "Obsidian", "Hugo", "GitHub", "Cloudflare", "Markdown", "YouTube", "Instagram", "WhatsApp", "TikTok", "LinkedIn", "Google", "Pagefind", "Bento", "Mochi", "frontmatter", "wikilink", "wikilinks", "callout", "callouts", "changelog", "roadmap", "favicon", "PWA", "RSS", "SEO", "Tangled", "Bluesky", "Mastodon", "Codex", "Claude", "OpenCode", "Gemini", "Antigravity"],
+  all: ["Blup", "Studio", "Obsidian", "Hugo", "GitHub", "Cloudflare", "Markdown", "YouTube", "Instagram", "WhatsApp", "TikTok", "LinkedIn", "Google", "Pagefind", "Bento", "Mochi", "frontmatter", "wikilink", "wikilinks", "callout", "callouts", "changelog", "roadmap", "favicon", "PWA", "RSS", "SEO", "Tangled", "Bluesky", "Mastodon", "Codex", "Claude", "OpenCode", "Gemini", "Antigravity",
+    "Facebook", "Twitter", "Threads", "Gmail", "Outlook", "Spotify", "Netflix", "Pinterest", "Telegram", "Discord", "Slack", "Notion", "Figma", "Canva", "Shopify", "WordPress", "Substack", "Medium", "Reddit", "Twitch", "Kindle", "iPhone", "iPad", "Android", "Windows", "macOS", "Linux", "ChatGPT", "OpenAI", "Anthropic", "Pix", "Mercado", "Hotmart", "Kiwify"],
   pt: ["post", "posts", "blog", "blogs", "site", "sites", "link", "links", "email", "e-mail", "online", "feed", "tag", "tags", "layout", "login", "app", "apps", "download", "upload", "newsletter", "podcast", "template", "templates", "dashboard", "backup", "cookie", "cookies", "slug", "deploy", "markdown", "vault", "plugin", "plugins", "card", "cards", "banner", "player", "chat"],
 };
 

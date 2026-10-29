@@ -86,7 +86,9 @@
   let host: HTMLDivElement;
   // Right-click on an underlined word: the dictionary's suggestions.
   let fix = $state<{ from: number; to: number; word: string; x: number; y: number; list: string[] | null } | null>(null);
+  let mouseButton = 0;
   async function onMenu(e: MouseEvent) {
+    closeCompletion(view);
     const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
     const w = pos == null ? null : wordAt(view, pos);
     if (!w) return; // the system's menu
@@ -314,6 +316,7 @@
           { key: "Escape", run: (v) => (completionStatus(v.state) === "active" ? closeCompletion(v) : false) },
         ])),
         EditorView.domEventHandlers({
+          mousedown: (e) => { mouseButton = e.button; return false; },
           paste: (e) => {
             const files = images(e.clipboardData?.files);
             if (!files.length) return false;
@@ -336,8 +339,9 @@
             curAlign = alignAt(u.state, head);
             curHead = headingAt(u.state, head);
           }
-          // A click on a word in red opens its corrections.
-          if (!u.docChanged && u.transactions.some((tr) => tr.isUserEvent("select.pointer"))) {
+          // A click on a word in red opens its corrections (a right-click
+          // has its own menu, onMenu).
+          if (!u.docChanged && mouseButton !== 2 && u.transactions.some((tr) => tr.isUserEvent("select.pointer"))) {
             const sel = u.state.selection.main;
             if (sel.empty && wordAt(u.view, sel.head)) setTimeout(() => startCompletion(u.view), 0);
           }
