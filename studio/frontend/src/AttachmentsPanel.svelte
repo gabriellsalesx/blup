@@ -97,7 +97,10 @@
   {@const Icon = icons[open.kind as keyof typeof icons] ?? FileIcon}
   <div class="shade" role="presentation" onclick={() => (open = null)}></div>
   <div class="dialog" role="dialog" aria-modal="true" aria-label={open.name}>
-    <button class="close" title={t.sec.cancel} onclick={() => (open = null)}><X size={18} /></button>
+    <header class="head">
+      <h2>{open.name}</h2>
+      <button class="close" title={an.close} aria-label={an.close} onclick={() => (open = null)}><X size={18} /></button>
+    </header>
     <div class="big">{#if open.kind === "image" && thumbs[open.name]}<img src={thumbs[open.name]} alt="" />{:else}<Icon size={48} strokeWidth={1.4} />{/if}</div>
     <label class="field"><span>{an.name}</span>
       <div class="row"><input type="text" bind:value={newName} onkeydown={(e) => e.key === "Enter" && rename()} /><span class="muted">{ext(open.name)}</span>
@@ -140,8 +143,11 @@
   .tile small.unused { color: var(--red); }
   .empty { padding: 2rem; border: 1px dashed var(--line); border-radius: .75rem; text-align: center; }
   .shade { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / .45); }
-  .dialog { position: fixed; z-index: 41; inset-block-start: 6%; inset-inline: 0; margin-inline: auto; width: min(34rem, calc(100% - 2rem)); max-height: 88%; overflow: auto; display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
-  .close { position: absolute; inset-block-start: .7rem; inset-inline-end: .7rem; display: grid; place-items: center; padding: .3rem; border-radius: .4rem; color: var(--muted); }
+  /* Centered in the window, like the settings. */
+  .dialog { position: fixed; z-index: 41; inset: 0; margin: auto; width: min(34rem, calc(100% - 2rem)); height: fit-content; max-height: calc(100% - 2rem); overflow: auto; display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
+  .head { display: flex; align-items: center; gap: .75rem; margin-block-end: -.25rem; }
+  .head h2 { flex: 1; min-width: 0; font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .close { flex: none; display: grid; place-items: center; padding: .3rem; border-radius: .4rem; color: var(--muted); }
   .close:hover { background: var(--soft); color: var(--text); }
   .big { display: grid; place-items: center; min-height: 8rem; max-height: 18rem; border-radius: .6rem; overflow: hidden; background: var(--soft); color: var(--muted); }
   .big img { max-width: 100%; max-height: 18rem; object-fit: contain; }
