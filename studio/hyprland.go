@@ -139,8 +139,9 @@ func writeBinding(accel string) error {
 	return exec.Command("hyprctl", "reload").Run()
 }
 
-// fixBinding rewrites the Studio's binding when the Studio moved (an
-// update, another install place): the line must run this program.
+// fixBinding writes the Studio's binding when it is missing (the default
+// shortcut on a first run) or when the Studio moved (an update, another
+// install place): the line must run this program.
 func fixBinding(accel string) {
 	if accel == "" || !onHyprland() || !onOmarchy() {
 		return
@@ -151,10 +152,11 @@ func fixBinding(accel string) {
 	}
 	file, lua := hyprFile()
 	b, err := os.ReadFile(file)
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return
 	}
-	if m := blupLine.Find(b); m != nil && strings.TrimSpace(string(m)) != hyprLine(accel, lua) {
+	// Missing (the default shortcut, first run) or pointing elsewhere.
+	if m := blupLine.Find(b); m == nil || strings.TrimSpace(string(m)) != hyprLine(accel, lua) {
 		_ = writeBinding(accel)
 	}
 }

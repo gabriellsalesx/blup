@@ -121,7 +121,7 @@ func prefsFile() (string, error) {
 
 // Prefs reads the Studio's choices.
 func (s *Studio) Prefs() Prefs {
-	p := Prefs{Theme: "system", EditorFont: 16, EditorWidth: "narrow", Spellcheck: true, TermFont: 13}
+	p := Prefs{Theme: "system", EditorFont: 16, EditorWidth: "narrow", Spellcheck: true, TermFont: 13, ToggleKey: "Alt+Space"}
 	if f, err := prefsFile(); err == nil {
 		if b, err := os.ReadFile(f); err == nil {
 			_ = json.Unmarshal(b, &p)

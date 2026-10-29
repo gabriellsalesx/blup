@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from "svelte";
-  import { SetToggleHotkey, HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -174,19 +174,13 @@
   let prefsOpen = $state(false);
   let prefsTab = $state("general");
 
-  // Once: the tip about the shortcut that opens the Studio from anywhere.
-  let tipError = $state("");
-  const showTip = $derived(!look.toggleKey && !look.shortcutTip);
-  async function acceptTip() {
-    tipError = "";
-    try {
-      await SetToggleHotkey("Alt+Space");
-      look.toggleKey = "Alt+Space";
-      setPref("shortcutTip", true);
-      const h = await HyprlandSetup("Alt+Space");
-      if (h.on && !h.auto) { prefsTab = "keys"; prefsOpen = true; } // the line to paste
-    } catch (e) { tipError = String(e).replace(/^(Runtime)?Error: /, ""); }
-  }
+  // Once: the tip about the shortcut (Alt+Space by default) that shows and
+  // hides the Studio from anywhere. On a Hyprland that isn't Omarchy, the
+  // user pastes a line first: the tip leads there.
+  const showTip = $derived(!!look.toggleKey && !look.shortcutTip);
+  let manual = $state(false);
+  HyprlandSetup(look.toggleKey ?? "").then((h) => (manual = h.on && !h.auto)).catch(() => {});
+  function okTip() { setPref("shortcutTip", true); }
   function chooseTip() { setPref("shortcutTip", true); prefsTab = "keys"; prefsOpen = true; }
   let previewBusy = $state(false);
 
@@ -504,12 +498,10 @@
       <img src="/blups/blup.svg" alt="" />
       <div>
         <b>{t.keys.tipTitle}</b>
-        <p>{t.keys.tipText}</p>
-        {#if tipError}<p class="bad">{tipError}</p>{/if}
+        <p>{(manual ? t.keys.tipManual : t.keys.tipText).replace("{keys}", (look.toggleKey ?? "").replace("Space", t.keys.space))}</p>
         <div class="tip-actions">
-          <button class="btn" onclick={acceptTip}>{t.keys.tipYes}</button>
-          <button class="btn ghost" onclick={chooseTip}>{t.keys.tipOther}</button>
-          <button class="btn ghost" onclick={() => setPref("shortcutTip", true)}>{t.keys.tipNo}</button>
+          {#if manual}<button class="btn" onclick={chooseTip}>{t.keys.tipHow}</button>
+          {:else}<button class="btn" onclick={okTip}>{t.keys.tipOk}</button><button class="btn ghost" onclick={chooseTip}>{t.keys.tipOther}</button>{/if}
         </div>
       </div>
     </div>
