@@ -153,13 +153,16 @@
     try { tree = (await LoadTree()).children ?? []; } catch {}
     if (!current || !list.some((p) => p.toLowerCase() === current.toLowerCase())) return;
     const note = await ReadNote(current).catch(() => null);
-    if (!note || note.body === pending) return;
+    // Our own saves come back here too: only a text that is neither what
+    // we wrote last nor what is being typed came from outside.
+    if (!note || same(note.body, pending) || same(note.body, written)) return;
     if (status === "saved") applyOutside(note);
     else outside = true;
   });
   function applyOutside(note: { body: string; props: Record<string, any> | null; kind: string }) {
     text = note.body;
     pending = note.body;
+    written = note.body;
     noteProps = note.props ?? {};
     edits = {};
     status = "saved";
@@ -174,6 +177,8 @@
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pending = ""; // text not saved yet
+  let written = ""; // the text the editor wrote to disk last
+  const same = (a: string, b: string) => a.trimEnd() === b.trimEnd();
 
   Open(site.dir)
     .then((root) => {
@@ -209,6 +214,7 @@
     try {
       const changed = edits;
       edits = {};
+      written = pending;
       await SaveNote(current, pending, Object.entries(changed).map(([key, value]) => ({ key, value })));
       status = "saved";
     } catch (e) {
@@ -244,6 +250,7 @@
       kind = note.kind;
       edits = {};
       pending = text;
+      written = text;
       current = path;
       reveal(path);
       follow(path);
