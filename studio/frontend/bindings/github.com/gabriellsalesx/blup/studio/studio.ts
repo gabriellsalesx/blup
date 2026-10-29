@@ -76,6 +76,15 @@ export function PickImage(key: string): $CancellablePromise<string> {
 }
 
 /**
+ * PreviewPage is the preview address of a note's page ("" when the preview
+ * is off or the page is unknown). The preview lists every note's page in
+ * blup-map.json.
+ */
+export function PreviewPage(rel: string): $CancellablePromise<string> {
+    return $Call.ByID(722390029, rel);
+}
+
+/**
  * Read returns a note's text.
  */
 export function Read(rel: string): $CancellablePromise<string> {

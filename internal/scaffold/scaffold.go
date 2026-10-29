@@ -195,6 +195,14 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 		}
 		home = append(home, "blupfeedback")
 	}
+	if preview {
+		// blup-map.json: the page of each note, so Blup Studio's preview
+		// follows the note being edited.
+		formats["blupmap"] = map[string]any{
+			"mediaType": "application/json", "baseName": "blup-map", "isPlainText": true, "notAlternative": true,
+		}
+		home = append(home, "blupmap")
+	}
 	cfg["outputFormats"] = formats
 	cfg["outputs"] = map[string]any{"home": home}
 	if preview {

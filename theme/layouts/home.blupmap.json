@@ -1,0 +1,9 @@
+{{- /* Preview only: the page of each note (its file, relative to the notes
+folder, with "/"), read by Blup Studio to show the note being edited. */ -}}
+{{- $out := slice -}}
+{{- range $p := site.Pages -}}
+  {{- with $p.File -}}
+    {{- $out = $out | append (dict "file" (replace .Path "\\" "/") "url" $p.RelPermalink) -}}
+  {{- end -}}
+{{- end -}}
+{{- $out | jsonify -}}

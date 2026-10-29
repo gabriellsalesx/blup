@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import { Open, ReadNote, SaveNote, StartPreview, StopPreview, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { Open, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -33,6 +33,7 @@
   let status = $state<"saved" | "saving" | "unsaved">("saved");
   let error = $state("");
   let previewURL = $state("");
+  let previewSrc = $state(""); // the page shown: the open note's, when known
   let previewOn = $state(true);
   let previewBusy = $state(false);
 
@@ -65,6 +66,8 @@
     previewBusy = true;
     try {
       previewURL = await StartPreview();
+      previewSrc = previewURL;
+      if (current) follow(current);
     } catch (e) {
       error = String(e);
       previewOn = false;
@@ -107,7 +110,7 @@
   function later() {
     status = "unsaved";
     clearTimeout(timer);
-    timer = setTimeout(save, 700);
+    timer = setTimeout(save, 300);
   }
 
   async function pick(path: string) {
@@ -121,11 +124,19 @@
       edits = {};
       pending = text;
       current = path;
+      follow(path);
       status = "saved";
       error = "";
     } catch (e) {
       error = String(e);
     }
+  }
+
+  // The preview shows the page of the note being edited.
+  async function follow(path: string) {
+    if (!previewURL) return;
+    const url = await PreviewPage(path).catch(() => "");
+    if (url && path === current) previewSrc = url;
   }
 
   async function openNote(path: string) {
@@ -194,7 +205,7 @@
   {#if previewOn}
     <section class="preview">
       {#if previewURL}
-        <iframe src={previewURL} title={t.preview}></iframe>
+        <iframe src={previewSrc || previewURL} title={t.preview}></iframe>
       {:else}
         <p class="hint muted">{previewBusy ? t.previewStarting : t.previewOff}</p>
       {/if}

@@ -3,8 +3,11 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -246,3 +249,40 @@ func (s *Studio) StopPreview() {
 
 func (s *Studio) shutdown() { s.StopPreview() }
 
+// PreviewPage is the preview address of a note's page ("" when the preview
+// is off or the page is unknown). The preview lists every note's page in
+// blup-map.json.
+func (s *Studio) PreviewPage(rel string) (string, error) {
+	s.mu.Lock()
+	base := s.url
+	s.mu.Unlock()
+	if base == "" {
+		return "", nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimSuffix(base, "/")+"/blup-map.json", nil)
+	if err != nil {
+		return "", err
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	var pages []struct{ File, URL string }
+	if err := json.NewDecoder(res.Body).Decode(&pages); err != nil {
+		return "", nil
+	}
+	for _, p := range pages {
+		if strings.EqualFold(p.File, rel) {
+			u, err := url.Parse(base)
+			if err != nil {
+				return "", err
+			}
+			u.Path = p.URL
+			return u.String(), nil
+		}
+	}
+	return "", nil
+}
