@@ -122,10 +122,7 @@
       </div>
       <div class="item">
         <div class="text"><b>{s.code}</b><small>{s.codeHelp}</small></div>
-        <span class="keyrow">
-          <button class="btn ghost" onclick={() => OpenURL("https://github.com/gabriellsalesx/blup/blob/main/THIRD_PARTY_NOTICES.md")}>{s.licenses}</button>
-          <button class="btn ghost" onclick={() => OpenURL("https://github.com/gabriellsalesx/blup")}>GitHub</button>
-        </span>
+        <button class="btn ghost" onclick={() => OpenURL("https://github.com/gabriellsalesx/blup")}>GitHub</button>
       </div>
     {:else if tab === "look"}
       <div class="item">
