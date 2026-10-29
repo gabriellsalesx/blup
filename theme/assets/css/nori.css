@@ -21,7 +21,6 @@ neutral palette and layout. Bundled into one file by css.Build. */
     --panel: light-dark(#ffffff, #141414);
     --panel-hover: light-dark(#fafafa, #1a1a1a);
     --ring: light-dark(rgb(10 10 10 / .1), rgb(237 237 237 / .1));
-    --brand: light-dark(#5750f1, #6a63f0);
     --column: 36rem;
   }
 }
@@ -58,7 +57,7 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-feed .copy-tip { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
   /* Boxes: white on the gray page, a hairline ring around them. */
-  .nori-featured, .nori-list, .nori-cta { background: var(--panel); border-radius: .5rem; box-shadow: 0 0 0 1px var(--ring); }
+  .nori-featured, .nori-list { background: var(--panel); border-radius: .5rem; box-shadow: 0 0 0 1px var(--ring); }
 
   .nori-featured { display: flex; flex-direction: column; gap: 5px; margin-block-end: 1.5rem; padding: 4px; border-radius: calc(.5rem + 4px); transition: background-color .15s; }
   .nori-featured:hover { background: var(--panel-hover); }
@@ -103,15 +102,6 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-author { display: inline-flex; align-items: center; gap: .375rem; color: var(--main-900); }
   a.nori-author:hover, .nori-tag:hover { text-decoration: underline; }
   .nori-tag { color: var(--main-600); }
-
-  /* The box at the end of a post: dotted, fading in from the top. */
-  .nori-cta { position: relative; isolation: isolate; overflow: clip; display: flex; flex-direction: column; align-items: center; gap: 1.25rem; margin-block-start: 3rem; padding: 2rem 1.25rem; text-align: center; background: color-mix(in srgb, var(--main-100) 50%, transparent); }
-  .nori-cta::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; --dot: 2px; --pitch: 8px; background-image: conic-gradient(at var(--dot) var(--dot), transparent 75%, var(--main-200) 0), conic-gradient(at var(--dot) var(--dot), transparent 75%, var(--main-200) 0); background-size: var(--pitch) var(--pitch); background-position: 0 0, calc(var(--pitch) / 2) calc(var(--pitch) / 2); mask-image: linear-gradient(#0000, #000); }
-  .nori-cta p { font-size: 1.25rem; font-weight: 500; line-height: 1.75rem; color: var(--main-900); text-wrap: balance; }
-  .nori-cta p span { color: var(--main-600); }
-  .nori-button { display: inline-flex; align-items: center; gap: .375rem; padding: .375rem .75rem; border-radius: .5rem; font-size: .875rem; font-weight: 500; color: #fff; background: linear-gradient(color-mix(in oklch, var(--brand), white 15%), var(--brand)); box-shadow: 0 0 0 1px color-mix(in oklch, var(--brand), black 10%), inset 0 1px color-mix(in oklch, var(--brand), white 30%); transition: scale .15s; }
-  .nori-button:hover { background: var(--brand); }
-  .nori-button:active { scale: .97; }
 
   .nori-author-head { display: grid; justify-items: start; gap: .5rem; }
   .nori-author-head .avatar { width: 4rem; height: 4rem; }

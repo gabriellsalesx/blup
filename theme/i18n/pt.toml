@@ -118,8 +118,6 @@ fbTop = "Mais votado"
 
 noriFeedCopy = "Copiar o endereço do feed"
 noriFeedCopied = "Copiado"
-noriFollow = "Assinar o feed"
-noriCta = "Acompanhe os próximos posts de {{ . }}."
 [readingTime]
 one = "{{ .Count }} min de leitura"
 other = "{{ .Count }} min de leitura"
