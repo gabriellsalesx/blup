@@ -11,6 +11,10 @@
   import { spellcheck, wordAt, suggest, addWord, complete, skipAt } from "./spell";
   import { autocompletion, startCompletion, acceptCompletion, completionStatus, closeCompletion, moveCompletionSelection, type CompletionContext, type Completion } from "@codemirror/autocomplete";
   import { Prec } from "@codemirror/state";
+  import { undo, redo } from "@codemirror/commands";
+  import { undoHandlers } from "./undo";
+  import Undo from "@lucide/svelte/icons/undo-2";
+  import Redo from "@lucide/svelte/icons/redo-2";
   import { EditorSelection } from "@codemirror/state";
   import { wrap, prefix, block, link, insert } from "./mdcommands";
   import { PasteImage, PickNoteImage } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
@@ -189,6 +193,9 @@
   // The formatting bar.
   const H = /^#{1,6} /, LIST = /^(\s*)([-*+] \[[ x]\] |[-*+] |\d+\. )/, QUOTE = /^> ?/;
   const tools = [
+    { key: "undo", label: te.undo + " (Ctrl+Z)", Icon: Undo, run: () => { undo(view); view.focus(); } },
+    { key: "redo", label: te.redo + " (Ctrl+Shift+Z)", Icon: Redo, run: () => { redo(view); view.focus(); } },
+    { key: "sep0" },
     { key: "heading", label: te.heading, Icon: Heading, run: () => prefix(view, "## ", H) },
     { key: "bold", label: te.bold + " (Ctrl+B)", Icon: Bold, run: () => wrap(view, "**", te.boldText) },
     { key: "italic", label: te.italic + " (Ctrl+I)", Icon: Italic, run: () => wrap(view, "*", te.italicText) },
@@ -260,7 +267,14 @@
       ],
     });
     view.focus();
-    return () => view.destroy();
+    // Ctrl+Z from the window (see undo.ts) undoes in the editor.
+    const onUndo = (cmd: "undo" | "redo") => {
+      if (!view.hasFocus) return false;
+      (cmd === "undo" ? undo : redo)(view);
+      return true;
+    };
+    undoHandlers.add(onUndo);
+    return () => { undoHandlers.delete(onUndo); view.destroy(); };
   });
 </script>
 
