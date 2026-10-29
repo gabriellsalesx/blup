@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"time"
 
@@ -127,7 +128,17 @@ func publishGitHub(ctx context.Context, site *config.Site) (string, error) {
 		}
 	}
 	d.Owner = login
+	return deployGitHub(ctx, site, c, login)
+}
 
+// deployGitHub builds the site and publishes it to the GitHub Pages
+// repository already chosen (site.Deploy.GitHub), without questions.
+func deployGitHub(ctx context.Context, site *config.Site, c *github.Client, login string) (string, error) {
+	d := &site.Deploy.GitHub
+	if d.Repo == "" {
+		return "", errors.New(i18n.T("pub.not_set"))
+	}
+	d.Owner = login
 	if err := ui.Spin(ctx, i18n.T("gh.repo_preparing"), func(ctx context.Context) error {
 		_, err := c.EnsureRepo(ctx, login, d.Repo)
 		return err

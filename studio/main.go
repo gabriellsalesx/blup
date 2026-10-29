@@ -7,6 +7,11 @@ package main
 import (
 	"embed"
 	"log"
+	"os"
+	"strings"
+
+	"github.com/gabriellsalesx/blup/internal/config"
+	"github.com/gabriellsalesx/blup/internal/i18n"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -15,7 +20,16 @@ import (
 var assets embed.FS
 
 func main() {
-	studio := &Studio{}
+	// The Studio speaks the language chosen in Blup (blup language), else
+	// the system's.
+	lang := "en"
+	if g, err := config.LoadGlobal(); err == nil && g.Lang != "" {
+		lang = g.Lang
+	} else if strings.HasPrefix(strings.ToLower(os.Getenv("LANG")), "pt") {
+		lang = "pt"
+	}
+	i18n.Set(i18n.Lang(lang))
+	studio := &Studio{lang: lang}
 	app := application.New(application.Options{
 		Name:        "Blup Studio",
 		Description: "Write in Markdown, preview and publish your site",

@@ -6,6 +6,17 @@
 import * as config$0 from "../config/models.js";
 
 /**
+ * Connections tells which accounts Blup has a key for. GitHub is the
+ * account's login ("" without a key); GitHubError says why it could not be
+ * checked (no internet, revoked key).
+ */
+export interface Connections {
+    "github": string;
+    "githubError": string;
+    "cloudflare": boolean;
+}
+
+/**
  * MenuItem is an entry of the top menu: a name and where it leads (a
  * folder of the site, "/", "/tags/" or an address).
  */
@@ -72,4 +83,33 @@ export interface Settings {
     "feedback": boolean;
     "feedbackRepo": string;
     "hasPassword": boolean;
+}
+
+/**
+ * SyncInfo is what a sync would do (counts), or did.
+ */
+export interface SyncInfo {
+    "repo": string;
+    "send": number;
+    "receive": number;
+    "conflicts": string[] | null;
+    "upToDate": boolean;
+    "trashCount": number;
+    "trash": string;
+}
+
+/**
+ * Target is where the site is published: "cloudflare" (Account, Project)
+ * or "github" (Repo).
+ */
+export interface Target {
+    "provider": string;
+    "account": string;
+    "project": string;
+    "repo": string;
+
+    /**
+     * URL is the site's address, once published (read only).
+     */
+    "url": string;
 }

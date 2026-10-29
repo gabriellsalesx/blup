@@ -29,6 +29,17 @@ export interface NoteData {
 }
 
 /**
+ * Progress is a line of what a publish or sync is doing.
+ */
+export interface Progress {
+    /**
+     * step, spin, ok, warn, error, hint
+     */
+    "kind": string;
+    "text": string;
+}
+
+/**
  * PropEdit is a property changed in the form; a nil, empty or false value
  * removes it.
  */

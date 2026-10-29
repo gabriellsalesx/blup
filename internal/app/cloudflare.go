@@ -93,9 +93,20 @@ func publishCloudflare(ctx context.Context, site *config.Site) (string, error) {
 		}
 	}
 
+	return deployCloudflare(ctx, site, c)
+}
+
+// deployCloudflare builds the site and sends it to the Cloudflare Pages
+// project already chosen (site.Deploy.Cloudflare), without questions.
+func deployCloudflare(ctx context.Context, site *config.Site, c *cfpages.Client) (string, error) {
+	d := &site.Deploy.Cloudflare
+	if d.Account == "" || d.Project == "" {
+		return "", errors.New(i18n.T("pub.not_set"))
+	}
 	// The real address can differ from the name: when "name.pages.dev" is
 	// taken elsewhere, Cloudflare adds a suffix. It is needed before building.
 	var project cfpages.Project
+	var err error
 	if err := ui.Spin(ctx, i18n.T("cf.preparing"), func(ctx context.Context) error {
 		project, err = c.EnsureProject(ctx, d.Account, d.Project)
 		return err

@@ -14,7 +14,7 @@ export function saver() {
         state.ok = true;
         timer = setTimeout(() => (state.ok = false), 2500);
       } catch (e) {
-        state.error = String(e).replace(/^Error: /, "");
+        state.error = String(e).replace(/^(Runtime)?Error: /, "");
       } finally {
         state.busy = false;
       }

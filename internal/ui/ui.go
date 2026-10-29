@@ -39,23 +39,58 @@ var (
 	box     = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(accent).Padding(0, 2)
 )
 
+// Report, when set, receives the progress lines instead of the terminal:
+// kind is "step", "ok", "warn", "error", "hint" or "spin". Blup Studio
+// sets it to show what a publish or sync is doing in its window.
+var Report func(kind, text string)
+
 // Banner prints a framed heading.
 func Banner(text string) { fmt.Println(box.Render(title.Render(text))) }
 
 // Step prints a section heading.
-func Step(text string) { fmt.Println("\n" + title.Render("› "+text)) }
+func Step(text string) {
+	if Report != nil {
+		Report("step", text)
+		return
+	}
+	fmt.Println("\n" + title.Render("› "+text))
+}
 
 // OK prints a success line.
-func OK(text string) { fmt.Println(okStyle.Render("✓ ") + text) }
+func OK(text string) {
+	if Report != nil {
+		Report("ok", text)
+		return
+	}
+	fmt.Println(okStyle.Render("✓ ") + text)
+}
 
 // Warn prints a warning line.
-func Warn(text string) { fmt.Println(warn.Render("! ") + text) }
+func Warn(text string) {
+	if Report != nil {
+		Report("warn", text)
+		return
+	}
+	fmt.Println(warn.Render("! ") + text)
+}
 
 // Error prints an error line.
-func Error(text string) { fmt.Fprintln(os.Stderr, errS.Render("✗ ")+text) }
+func Error(text string) {
+	if Report != nil {
+		Report("error", text)
+		return
+	}
+	fmt.Fprintln(os.Stderr, errS.Render("✗ ")+text)
+}
 
 // Hint prints muted helper text.
-func Hint(text string) { fmt.Println(hint.Render(text)) }
+func Hint(text string) {
+	if Report != nil {
+		Report("hint", text)
+		return
+	}
+	fmt.Println(hint.Render(text))
+}
 
 // Highlight returns text in the accent colour.
 func Highlight(text string) string { return title.Render(text) }
@@ -186,6 +221,10 @@ func Explain(heading, body string) error {
 
 // Spin runs fn with a spinner titled msg (a plain line without a terminal).
 func Spin(ctx context.Context, msg string, fn func(ctx context.Context) error) error {
+	if Report != nil {
+		Report("spin", msg)
+		return fn(ctx)
+	}
 	if !Interactive() {
 		fmt.Println("… " + msg)
 		return fn(ctx)

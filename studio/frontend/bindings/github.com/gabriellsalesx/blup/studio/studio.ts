@@ -17,6 +17,9 @@ import * as app$0 from "../internal/app/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as config$0 from "../internal/config/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as cfpages$0 from "../internal/deploy/cfpages/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -38,10 +41,53 @@ export function CheckCookieTool(key: string, value: string): $CancellablePromise
 }
 
 /**
+ * CloudflareAccounts lists the accounts of the saved Cloudflare key.
+ */
+export function CloudflareAccounts(): $CancellablePromise<cfpages$0.Account[] | null> {
+    return $Call.ByID(4050939365);
+}
+
+/**
+ * ConnectCloudflare checks and saves a Cloudflare key; it returns the
+ * accounts it can publish to.
+ */
+export function ConnectCloudflare(token: string): $CancellablePromise<cfpages$0.Account[] | null> {
+    return $Call.ByID(3728971643, token);
+}
+
+/**
+ * ConnectGitHub checks and saves a GitHub key; it returns the login.
+ */
+export function ConnectGitHub(token: string): $CancellablePromise<string> {
+    return $Call.ByID(1234186695, token);
+}
+
+/**
+ * Connections tells which accounts are connected.
+ */
+export function Connections(): $CancellablePromise<app$0.Connections> {
+    return $Call.ByID(3928773415);
+}
+
+/**
+ * Disconnect forgets the key of "github" or "cloudflare".
+ */
+export function Disconnect(account: string): $CancellablePromise<void> {
+    return $Call.ByID(1930147756, account);
+}
+
+/**
  * ImageData is an image of the site as a data: URL, for previews in forms.
  */
 export function ImageData(file: string): $CancellablePromise<string> {
     return $Call.ByID(3442883591, file);
+}
+
+/**
+ * Language is the Studio's language: "pt" or "en".
+ */
+export function Language(): $CancellablePromise<string> {
+    return $Call.ByID(2596583864);
 }
 
 /**
@@ -57,6 +103,21 @@ export function LinkedImage(link: string): $CancellablePromise<string> {
  */
 export function Open(dir: string): $CancellablePromise<$models.Node> {
     return $Call.ByID(2984394386, dir);
+}
+
+/**
+ * OpenKeyPage opens, in the browser, the form for a new key of "github" or
+ * "cloudflare", with the right permissions ticked.
+ */
+export function OpenKeyPage(account: string): $CancellablePromise<void> {
+    return $Call.ByID(2833939930, account);
+}
+
+/**
+ * OpenURL opens an address in the browser.
+ */
+export function OpenURL(link: string): $CancellablePromise<void> {
+    return $Call.ByID(1468396923, link);
 }
 
 /**
@@ -82,6 +143,13 @@ export function PickImage(key: string): $CancellablePromise<string> {
  */
 export function PreviewPage(rel: string): $CancellablePromise<string> {
     return $Call.ByID(722390029, rel);
+}
+
+/**
+ * Publish builds the open site and puts it online; it returns the address.
+ */
+export function Publish(): $CancellablePromise<string> {
+    return $Call.ByID(448515553);
 }
 
 /**
@@ -156,6 +224,13 @@ export function SetPassword(password: string): $CancellablePromise<void> {
 }
 
 /**
+ * SetTarget saves where the open site is published.
+ */
+export function SetTarget(t: app$0.Target): $CancellablePromise<app$0.Target> {
+    return $Call.ByID(149790763, t);
+}
+
+/**
  * Settings reads the open site's settings.
  */
 export function Settings(): $CancellablePromise<app$0.Settings> {
@@ -182,6 +257,27 @@ export function StartPreview(): $CancellablePromise<string> {
  */
 export function StopPreview(): $CancellablePromise<void> {
     return $Call.ByID(1945773422);
+}
+
+/**
+ * Sync sends and receives the notes (private GitHub repository).
+ */
+export function Sync(): $CancellablePromise<app$0.SyncInfo> {
+    return $Call.ByID(2376889985);
+}
+
+/**
+ * SyncStatus tells what syncing the notes would send and receive.
+ */
+export function SyncStatus(): $CancellablePromise<app$0.SyncInfo> {
+    return $Call.ByID(2157542883);
+}
+
+/**
+ * Target is where the open site is published.
+ */
+export function Target(): $CancellablePromise<app$0.Target> {
+    return $Call.ByID(2323651595);
 }
 
 /**

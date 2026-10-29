@@ -25,6 +25,7 @@ import (
 // Studio is what the window calls: the sites, their notes and the preview.
 // One site is open at a time.
 type Studio struct {
+	lang    string // "pt" or "en"
 	mu      sync.Mutex
 	site    *config.Site
 	preview *exec.Cmd
@@ -286,3 +287,6 @@ func (s *Studio) PreviewPage(rel string) (string, error) {
 	}
 	return "", nil
 }
+
+// Language is the Studio's language: "pt" or "en".
+func (s *Studio) Language() string { return s.lang }

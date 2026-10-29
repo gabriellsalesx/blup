@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, tick } from "svelte";
   import { Open, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
@@ -139,6 +139,16 @@
     if (url && path === current) previewSrc = url;
   }
 
+  // The top buttons open the Publish screen and start right away.
+  let autostart = $state("");
+  async function go(where: string, start: string) {
+    await save();
+    autostart = start;
+    screen = "";
+    await tick();
+    screen = where;
+  }
+
   async function openNote(path: string) {
     screen = "write";
     await pick(path);
@@ -160,14 +170,14 @@
     <span class="status muted">{current ? (status === "saved" ? t.saved : status === "saving" ? t.saving : t.unsaved) : ""}</span>
     <span class="spacer"></span>
     <button class="btn ghost" onclick={togglePreview}>{previewOn ? "✓ " : ""}{t.preview}</button>
-    <button class="btn ghost" disabled title={t.soon}>{t.sync}</button>
-    <button class="btn" disabled title={t.soon}>{t.publish}</button>
+    <button class="btn ghost" onclick={() => go("publish", "sync")}>{t.sync}</button>
+    <button class="btn" onclick={() => go("publish", "publish")}>{t.publish}</button>
   </header>
 
   <aside class="side">
     <nav>
       {#each screens as { key, label, Icon } (key)}
-        <button class="nav" class:active={screen === key} onclick={async () => { await save(); screen = key; error = ""; }}><Icon size={17} strokeWidth={1.75} aria-hidden="true" />{label}</button>
+        <button class="nav" class:active={screen === key} onclick={async () => { await save(); autostart = ""; screen = key; error = ""; }}><Icon size={17} strokeWidth={1.75} aria-hidden="true" />{label}</button>
       {/each}
     </nav>
     {#if screen === "write"}
@@ -196,7 +206,7 @@
         {:else if screen === "comments"}<CommentsPanel {settings} {reload} />
         {:else if screen === "cookies"}<CookiesPanel {settings} {reload} onOpenNote={openNote} />
         {:else if screen === "password"}<PasswordPanel {settings} {reload} />
-        {:else if screen === "publish"}<PublishPanel />
+        {:else if screen === "publish"}<PublishPanel autostart={autostart} />
         {/if}
       {/key}
     {/if}
