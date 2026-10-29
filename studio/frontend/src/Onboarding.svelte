@@ -16,10 +16,11 @@
   type Theme = { key: string; blup: string; name: string; kind: string; about: string; has: string[] };
   const THEMES: Record<string, Theme> = {
     mochi: { key: "mochi", blup: "turma-3", name: o.mochi, kind: o.mochiFor, about: o.mochiAbout, has: o.mochiHas },
+    nori: { key: "nori", blup: "turma-2", name: o.nori, kind: o.noriFor, about: o.noriAbout, has: o.noriHas },
     bento: { key: "bento", blup: "turma-4", name: o.bento, kind: o.bentoFor, about: o.bentoAbout, has: o.bentoHas },
   };
   const CATEGORIES = [
-    { key: "blog", blup: "turma-3", scene: "blog-pessoal", name: o.catBlog, about: o.catBlogAbout, themes: ["mochi"] },
+    { key: "blog", blup: "turma-3", scene: "blog-pessoal", name: o.catBlog, about: o.catBlogAbout, themes: ["nori", "mochi"] },
     { key: "product", blup: "turma-4", scene: "site-de-produto", name: o.catProduct, about: o.catProductAbout, themes: ["bento"] },
   ];
   let category = $state("");
@@ -292,7 +293,7 @@
         <h1>{o.reviewQ}</h1>
         <p class="lead">{o.reviewLead}</p>
         <div class="card review">
-          <img class="mascot-r" src="/blups/{model === 'bento' ? 'turma-4' : 'turma-3'}.svg" alt="" />
+          <img class="mascot-r" src="/blups/{THEMES[model]?.blup ?? 'turma-3'}.svg" alt="" />
           <dl>
             <dt>{o.name}</dt><dd>{title}</dd>
             <dt>{o.theme}</dt><dd>{CATEGORIES.find((c) => c.key === category)?.name} · {THEMES[model]?.name}{model === "bento" ? ` · ${sections.length}` : ""}</dd>

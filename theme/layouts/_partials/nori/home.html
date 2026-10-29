@@ -1,0 +1,18 @@
+{{- $set := partialCached "site/settings.html" . "site" -}}
+{{- $posts := partial "mochi/posts.html" . -}}
+{{- $featured := index (where $posts "Params.featured" true) 0 | default (index $posts 0) -}}
+{{- $rest := $posts -}}
+{{- with $featured }}{{ $rest = complement (slice .) $posts }}{{ end -}}
+{{- $pager := .Paginate $rest -}}
+{{- $lede := partial "content.html" . | plainify | htmlUnescape | strings.TrimSpace | default $set.description -}}
+<main id="main" class="nori-main">
+  <div class="nori-column">
+    {{- if eq $pager.PageNumber 1 }}
+    {{ partial "nori/head.html" (dict "title" (.Title | default $set.name) "lede" $lede) }}
+    {{- with $featured }}{{ partial "nori/featured.html" . }}{{ end }}
+    {{- else }}
+    <h1 class="sr-only">{{ $set.name }}</h1>
+    {{- end }}
+    {{ partial "nori/list.html" (dict "pager" $pager) }}
+  </div>
+</main>

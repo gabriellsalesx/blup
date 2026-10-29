@@ -116,6 +116,10 @@ fbDeleteQ = "Delete this comment?"
 fbReply = "Reply"
 fbTop = "Most voted"
 
+noriFeedCopy = "Copy the feed address"
+noriFeedCopied = "Copied"
+noriFollow = "Subscribe to the feed"
+noriCta = "Follow the next posts from {{ . }}."
 [readingTime]
 one = "{{ .Count }} min read"
 other = "{{ .Count }} min read"

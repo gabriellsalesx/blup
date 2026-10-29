@@ -43,7 +43,7 @@ type Site struct {
 	Description string `toml:"description"`
 	Author      string `toml:"author"`
 	Lang        string `toml:"lang"`   // "pt" or "en": language of the site itself
-	Model       string `toml:"model"`  // theme: "mochi" (personal blog) or "bento" (SaaS)
+	Model       string `toml:"model"`  // theme: "mochi" or "nori" (personal blog), "bento" (SaaS)
 	Vault       string `toml:"vault"`  // absolute path of the Obsidian vault
 	Folder      string `toml:"folder"` // folder inside the vault published as the site; "" = whole vault
 	Domain      string `toml:"domain,omitempty"`
@@ -205,7 +205,7 @@ func (c Credentials) Save() error { return save("credentials.toml", c, 0o600) }
 type UnknownModelError struct{ Model string }
 
 func (e UnknownModelError) Error() string {
-	return fmt.Sprintf("unknown theme %q in %s: use mochi or bento", e.Model, SiteFile)
+	return fmt.Sprintf("unknown theme %q in %s: use mochi, nori or bento", e.Model, SiteFile)
 }
 
 // LoadSite reads dir/blup.toml.
@@ -221,7 +221,7 @@ func LoadSite(dir string) (*Site, error) {
 	if s.Version > SiteVersion {
 		return nil, ErrNewerSite
 	}
-	if s.Model != "mochi" && s.Model != "bento" {
+	if s.Model != "mochi" && s.Model != "bento" && s.Model != "nori" {
 		return nil, UnknownModelError{Model: s.Model}
 	}
 	return s, nil

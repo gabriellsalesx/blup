@@ -1,0 +1,14 @@
+{{- /* One post in the list: title and date, description and authors. */ -}}
+{{- $title := partial "title.html" . -}}
+<li>
+  <a class="nori-row" href="{{ .RelPermalink }}">
+    <span class="nori-row-top">
+      <span class="nori-row-title">{{ if partial "locked.html" . }}<svg class="icon icon-sm lock-badge" aria-label="{{ T "lockedTitle" }}"><use href="#i-lock"/></svg>{{ end }}<h2>{{ $title }}</h2></span>
+      {{ partial "nori/date.html" . }}
+    </span>
+    <span class="nori-row-bottom">
+      <span class="nori-row-desc">{{ partial "description.html" . }}</span>
+      {{ partial "nori/avatars.html" . }}
+    </span>
+  </a>
+</li>

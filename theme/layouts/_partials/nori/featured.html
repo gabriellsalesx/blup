@@ -1,0 +1,16 @@
+{{- /* The newest (or "featured") post: author, date, title, description and cover. */ -}}
+{{- $title := partial "title.html" . -}}
+{{- $authors := partial "mochi/authors.html" . -}}
+<a class="nori-featured" href="{{ .RelPermalink }}">
+  <div class="nori-featured-text">
+    <span class="nori-featured-meta">
+      <span class="nori-who">{{ partial "nori/avatars.html" . }}{{ range $i, $a := $authors }}{{ if $i }}, {{ end }}{{ $a.name }}{{ end }}</span>
+      {{ partial "nori/date.html" . }}
+    </span>
+    <span class="nori-featured-title">{{ if partial "locked.html" . }}<svg class="icon icon-sm lock-badge" aria-label="{{ T "lockedTitle" }}"><use href="#i-lock"/></svg>{{ end }}{{ $title }}</span>
+    {{- with partial "description.html" . }}<span class="nori-featured-desc">{{ . }}</span>{{ end }}
+  </div>
+  {{- with partial "mochi/cover.html" . }}
+  <div class="nori-featured-media">{{ partial "mochi/picture.html" (dict "img" . "w" 640 "ratio" "40:21" "alt" "" "eager" true) }}</div>
+  {{- end }}
+</a>

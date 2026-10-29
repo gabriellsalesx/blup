@@ -1,7 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="generator" content="Hugo {{ hugo.Version }} + Blup {{ cond (eq site.Params.model "bento") "Bento" "Mochi" }}">
+<meta name="generator" content="Hugo {{ hugo.Version }} + Blup {{ site.Params.model | default "mochi" | strings.FirstUpper }}">
 {{- /* Favicon: the "favicon" property of the home note (an image in the
 vault: PNG/JPG/WebP are resized, SVG is used as is), else the theme's
 character (or a favicon.svg in the site's assets folder). */ -}}

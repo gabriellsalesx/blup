@@ -1,0 +1,19 @@
+{{- $isAuthor := eq .Data.Plural "authors" -}}
+{{- $pager := .Paginate (partial "mochi/blog-only.html" (partial "visible.html" .Pages)).ByDate.Reverse -}}
+<main id="main" class="nori-main">
+  <div class="nori-column">
+    {{- if $isAuthor }}
+    {{- $prof := partialCached "site/author-profile.html" .LinkTitle .LinkTitle }}
+    <header class="nori-head nori-author-head">
+      {{ partial "mochi/avatar.html" (dict "author" (partial "mochi/author-card.html" (dict "name" .LinkTitle))) }}
+      <h1 class="nori-title">{{ .LinkTitle }}</h1>
+      {{- with $prof.role }}<p class="nori-lede">{{ . }}</p>{{ end }}
+      {{- with $prof.bio }}<div class="nori-bio">{{ . }}</div>{{ end }}
+      {{- with $prof.social }}<ul class="socials">{{ partial "mochi/social-links.html" . }}</ul>{{ end }}
+    </header>
+    {{- else }}
+    {{ partial "nori/head.html" (dict "title" (printf "#%s" .LinkTitle) "lede" (T "tags")) }}
+    {{- end }}
+    {{ partial "nori/list.html" (dict "pager" $pager) }}
+  </div>
+</main>

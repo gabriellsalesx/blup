@@ -1,0 +1,8 @@
+{{- /* A boxed list of posts with "load more" (blup.js appends the next
+page's rows to .post-grid). Params: pager. */ -}}
+{{- with .pager.Pages }}
+<ul class="nori-list post-grid">
+  {{- range . }}{{ partial "nori/row.html" . }}{{ end }}
+</ul>
+{{- end }}
+{{ partial "mochi/more.html" (dict "pager" .pager) }}

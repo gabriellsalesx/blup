@@ -1,0 +1,16 @@
+{{- /* Title of a listing page, its lede and the feed button (on the
+title's line when there is no lede). Params: title, lede. */ -}}
+<header class="nori-head">
+  {{- if .lede }}
+  <h1 class="nori-title">{{ .title }}</h1>
+  <div class="nori-lede-row">
+    <p class="nori-lede">{{ .lede }}</p>
+    {{ partial "nori/feed.html" . }}
+  </div>
+  {{- else }}
+  <div class="nori-lede-row">
+    <h1 class="nori-title">{{ .title }}</h1>
+    {{ partial "nori/feed.html" . }}
+  </div>
+  {{- end }}
+</header>

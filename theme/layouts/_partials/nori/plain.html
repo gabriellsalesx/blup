@@ -1,0 +1,10 @@
+{{- /* A page that is not a post, such as the privacy policy. */ -}}
+<main id="main" class="nori-main">
+  <article class="nori-column">
+    <header class="nori-post-head">
+      <h1 class="nori-title">{{ partial "title.html" . }}</h1>
+      {{- with .Description }}<p class="nori-lede">{{ . }}</p>{{ end }}
+    </header>
+    <div class="prose nori-prose">{{ partial "content.html" . }}</div>
+  </article>
+</main>

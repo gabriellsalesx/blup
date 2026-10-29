@@ -1,0 +1,4 @@
+{{- /* Small overlapping avatars of a post's authors. */ -}}
+{{- with partial "mochi/authors.html" . }}
+<span class="nori-avatars">{{ range . }}{{ partial "mochi/avatar.html" (dict "author" .) }}{{ end }}</span>
+{{- end -}}

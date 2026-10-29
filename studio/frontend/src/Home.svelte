@@ -183,7 +183,7 @@
   let home = $state("");
   HomeDir().then((h) => (home = h));
   const short = (v: string) => (home && v.startsWith(home) ? "~" + v.slice(home.length) : v);
-  const blupOf = (s?: SiteInfo) => (s?.model === "bento" ? "turma-4" : "turma-3");
+  const blupOf = (s?: SiteInfo) => ({ bento: "turma-4", nori: "turma-2" })[s?.model ?? ""] ?? "turma-3";
   const folders = $derived(items.filter((i) => i.folder));
   const focus = (el: HTMLInputElement) => { el.focus(); el.select(); };
 </script>

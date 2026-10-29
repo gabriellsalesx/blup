@@ -264,9 +264,9 @@ func feedbackClient(ctx context.Context) (*github.Client, error) {
 }
 
 // fbText is the message for the site's model: Bento has roadmap votes and
-// changelog reactions, Mochi only posts ("<key>_mochi").
+// changelog reactions, the blogs (Mochi, Nori) only posts ("<key>_mochi").
 func fbText(site *config.Site, key string, args ...any) string {
-	if site.Model == "mochi" {
+	if site.Model != "bento" {
 		key += "_mochi"
 	}
 	return i18n.T(key, args...)

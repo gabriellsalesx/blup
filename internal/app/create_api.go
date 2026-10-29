@@ -76,7 +76,10 @@ func CreateSite(g *config.Global, o NewSiteOptions) (*config.Site, error) {
 		return nil, errors.New(i18n.T("required"))
 	}
 	if o.Model != "bento" {
-		o.Model, o.Sections = "mochi", nil
+		if o.Model != "nori" {
+			o.Model = "mochi"
+		}
+		o.Sections = nil
 	} else if len(o.Sections) == 0 {
 		return nil, errors.New(i18n.T("new.sections_none"))
 	}

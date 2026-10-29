@@ -49,7 +49,12 @@ func starterRoot(site *config.Site) string {
 	if lang != "pt" {
 		lang = "en"
 	}
-	return path.Join("starter", lang, site.Model)
+	// Nori is a personal blog too: it starts with Mochi's tutorial.
+	model := site.Model
+	if model == "nori" {
+		model = "mochi"
+	}
+	return path.Join("starter", lang, model)
 }
 
 // starterSections maps each section kind of the starter to its folder.

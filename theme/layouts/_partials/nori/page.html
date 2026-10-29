@@ -1,0 +1,45 @@
+{{- /* The privacy policy (blup: privacy): a plain page, not a post. */ -}}
+{{- if eq (lower (string .Params.blup)) "privacy" }}{{ partial "nori/plain.html" . }}{{ else -}}
+{{- $title := partial "title.html" . -}}
+{{- $authors := partial "mochi/authors.html" . -}}
+{{- $set := partialCached "site/settings.html" . "site" -}}
+<main id="main" class="nori-main">
+  <article class="nori-column">
+    <header class="nori-post-head">
+      {{- with partial "mochi/cover.html" . }}
+      <div class="nori-cover">{{ partial "mochi/picture.html" (dict "img" . "w" 640 "ratio" "40:21" "alt" $title "eager" true) }}</div>
+      {{- end }}
+      <h1 class="nori-title">{{ $title }}</h1>
+      {{- with .Description }}<p class="nori-lede">{{ . }}</p>{{ end }}
+      <p class="nori-byline nori-meta">
+        {{- range $authors }}
+        {{- if .url }}<a class="nori-author" href="{{ .url }}">{{ partial "mochi/avatar.html" (dict "author" .) }}{{ .name }}</a>
+        {{- else }}<span class="nori-author">{{ partial "mochi/avatar.html" (dict "author" .) }}{{ .name }}</span>{{ end }}
+        {{- end }}
+        {{ partial "nori/date.html" . }}
+        {{- range .GetTerms "tags" }}<a class="nori-tag" href="{{ .RelPermalink }}">#{{ .LinkTitle }}</a>{{ end }}
+      </p>
+    </header>
+    {{- if partial "locked.html" . }}
+    {{ partial "mochi/lock.html" . }}
+    {{- else }}
+    <div class="prose nori-prose"{{ if not .Params.hidden }} data-pagefind-body data-pagefind-meta="title:{{ $title }}"{{ end }}>
+      {{ partial "content.html" . }}
+    </div>
+    {{- end }}
+    {{- /* The box at the end: the header button set on the home note
+    (button_text, button_link) or, without one, the site's feed. */}}
+    {{- $btn := dict -}}
+    {{- with site.Home.Params }}{{ if and .button_text .button_link }}{{ $btn = dict "label" .button_text "url" .button_link }}{{ end }}{{ end -}}
+    {{- if not $btn.url }}{{ with site.Home.OutputFormats.Get "rss" }}{{ $btn = dict "label" (T "noriFollow") "url" .RelPermalink "icon" "rss" }}{{ end }}{{ end -}}
+    {{- with $btn.url }}
+    <aside class="nori-cta">
+      <p>{{ with $set.description }}<span>{{ . }}</span><br>{{ end }}{{ T "noriCta" $set.name }}</p>
+      <a class="nori-button" href="{{ . }}"{{ if hasPrefix . "http" }} rel="noopener"{{ end }}>{{ with $btn.icon }}<svg class="icon icon-sm"><use href="#i-{{ . }}"/></svg>{{ end }}{{ $btn.label }}<svg class="icon icon-sm"><use href="#i-chevron-right"/></svg></a>
+    </aside>
+    {{- end }}
+    {{- /* Reactions and comments (GitHub issues). */}}
+    {{ partial "bento/feedback.html" . }}
+  </article>
+</main>
+{{- end -}}

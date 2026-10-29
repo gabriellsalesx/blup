@@ -1,0 +1,13 @@
+{{- /* "Feed" next to the page's lede: copies the RSS address (readers
+paste it in their feed reader); the label turns into "Copied". */ -}}
+{{- with site.Home.OutputFormats.Get "rss" }}
+<span class="nori-feed">
+  <button type="button" data-copy="{{ .Permalink }}" data-copied="{{ T "noriFeedCopied" }}" data-failed="{{ T "copyFailed" }}" aria-label="{{ T "noriFeedCopy" }}">
+    <svg class="icon icon-sm icon-link"><use href="#i-rss"/></svg>
+    <svg class="icon icon-sm icon-check" aria-hidden="true"><use href="#i-check"/></svg>
+    <span class="feed-label" aria-hidden="true">Feed</span>
+    <span class="feed-done" aria-hidden="true">{{ T "noriFeedCopied" }}</span>
+  </button>
+  <span class="copy-tip" role="status" aria-live="polite"></span>
+</span>
+{{- end -}}

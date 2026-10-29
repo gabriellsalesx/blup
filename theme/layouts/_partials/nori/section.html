@@ -1,0 +1,8 @@
+{{- $pager := .Paginate (partial "visible.html" .RegularPagesRecursive).ByDate.Reverse -}}
+{{- $lede := partial "content.html" . | plainify | htmlUnescape | strings.TrimSpace -}}
+<main id="main" class="nori-main">
+  <div class="nori-column">
+    {{ partial "nori/head.html" (dict "title" (partial "title.html" .) "lede" $lede) }}
+    {{ partial "nori/list.html" (dict "pager" $pager) }}
+  </div>
+</main>

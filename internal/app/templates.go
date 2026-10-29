@@ -23,7 +23,7 @@ func writeTemplates(site *config.Site) error {
 			return err
 		}
 	}
-	list := templates[site.Lang+"/"+site.Model]
+	list := templates[site.Lang+"/mochi"] // Mochi and Nori: blog posts
 	if site.Model == "bento" {
 		list = docsTemplates[site.Lang]
 	}

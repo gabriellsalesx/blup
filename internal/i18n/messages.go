@@ -246,6 +246,7 @@ Usage:
 
 		"model.mochi": "Mochi (personal blog)",
 		"model.bento": "Bento (SaaS site)",
+		"model.nori":  "Nori (personal blog)",
 
 		"new.title":                "New site",
 		"new.vault":                "Which vault will become a site?",
@@ -651,6 +652,7 @@ Uso:
 
 		"model.mochi": "Mochi (blog pessoal)",
 		"model.bento": "Bento (site de SaaS)",
+		"model.nori":  "Nori (blog pessoal)",
 
 		"new.title":                "Site novo",
 		"new.vault":                "Qual vault vai virar site?",

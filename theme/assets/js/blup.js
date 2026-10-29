@@ -36,7 +36,9 @@ document.addEventListener("click", async (e) => {
     // small bubble (also read by screen readers) says it worked.
     const tip = copy.parentElement.querySelector(".copy-tip");
     let ok = true;
-    try { await navigator.clipboard.writeText(copy.dataset.copy); } catch { ok = false; }
+    // Relative addresses (a site without its domain yet) become full ones.
+    const text = new URL(copy.dataset.copy, location.href).href;
+    try { await navigator.clipboard.writeText(text); } catch { ok = false; }
     const state = ok ? "copied" : "copy-failed";
     copy.classList.remove("copied", "copy-failed");
     copy.classList.add(state);
@@ -46,7 +48,7 @@ document.addEventListener("click", async (e) => {
       copy.classList.remove(state);
       if (tip) tip.textContent = "";
     }, 2000);
-    if (!ok) prompt(copy.dataset.failed, copy.dataset.copy); // copy by hand
+    if (!ok) prompt(copy.dataset.failed, text); // copy by hand
   }
   const more = e.target.closest(".load-more a[rel=next]");
   if (more) loadMore(e, more);
