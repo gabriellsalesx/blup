@@ -46,6 +46,11 @@ func setupDesktop(s *Studio, app *application.App, win *application.WebviewWindo
 	menu.AddSeparator()
 	menu.Add(labels[1]).OnClick(func(*application.Context) { app.Quit() })
 	desk.tray = app.SystemTray.New().SetIcon(trayIcon).SetMenu(menu)
+	if runtime.GOOS == "linux" {
+		// The tray item's name (Wails says "Wails" otherwise). On macOS a
+		// label would show as text next to the icon, so only here.
+		desk.tray.SetLabel("Blup Studio")
+	}
 	desk.tray.SetTooltip("Blup Studio")
 	desk.tray.OnClick(toggleWindow)
 	if !prefs.Tray {
