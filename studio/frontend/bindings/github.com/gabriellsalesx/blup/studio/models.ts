@@ -49,6 +49,14 @@ export interface PropEdit {
 }
 
 /**
+ * Removed is a section taken off the site: where it went, and the notes.
+ */
+export interface Removed {
+    "trash": string;
+    "tree": Node;
+}
+
+/**
  * SiteInfo describes a site in the list.
  */
 export interface SiteInfo {

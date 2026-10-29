@@ -122,3 +122,32 @@ func (s *Studio) with(fn func(*config.Site) error) error {
 	}
 	return fn(site)
 }
+
+// Removed is a section taken off the site: where it went, and the notes.
+type Removed struct {
+	Trash string `json:"trash"`
+	Tree  Node   `json:"tree"`
+}
+
+// RemoveSection takes a Bento section off (its folder goes to the Blup
+// trash, so it can come back).
+func (s *Studio) RemoveSection(kind string) (Removed, error) {
+	site, err := s.current()
+	if err != nil {
+		return Removed{}, err
+	}
+	trash, err := app.RemoveSection(site, kind)
+	if err != nil {
+		return Removed{}, err
+	}
+	tree, err := s.Tree()
+	return Removed{trash, tree}, err
+}
+
+// RestoreSection brings a removed section back.
+func (s *Studio) RestoreSection(trash string) (Node, error) {
+	if err := s.with(func(site *config.Site) error { return app.RestoreSection(site, trash) }); err != nil {
+		return Node{}, err
+	}
+	return s.Tree()
+}

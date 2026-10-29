@@ -11,5 +11,6 @@ export type {
     NoteData,
     Progress,
     PropEdit,
+    Removed,
     SiteInfo
 } from "./models.js";

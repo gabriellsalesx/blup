@@ -174,6 +174,21 @@ export function RemoveImage(key: string): $CancellablePromise<void> {
 }
 
 /**
+ * RemoveSection takes a Bento section off (its folder goes to the Blup
+ * trash, so it can come back).
+ */
+export function RemoveSection(kind: string): $CancellablePromise<$models.Removed> {
+    return $Call.ByID(3602876369, kind);
+}
+
+/**
+ * RestoreSection brings a removed section back.
+ */
+export function RestoreSection(trash: string): $CancellablePromise<$models.Node> {
+    return $Call.ByID(247957095, trash);
+}
+
+/**
  * SaveAbout changes the site's name, description and author.
  */
 export function SaveAbout(name: string, description: string, author: string): $CancellablePromise<void> {

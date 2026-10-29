@@ -2,10 +2,12 @@ package app
 
 import (
 	"errors"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
@@ -322,4 +324,96 @@ func AddImage(site *config.Site, src string) (string, error) {
 		name = "image"
 	}
 	return copyAttachment(site, src, name)
+}
+
+// RemoveSection takes a Bento section off the site: its folder goes to the
+// Blup trash of the site (.blup/trash, outside the notes) and the menu
+// stops pointing to it. It returns the folder in the trash, for
+// RestoreSection.
+func RemoveSection(site *config.Site, kind string) (string, error) {
+	folder, ok := existingSections(site)[kind]
+	if !ok {
+		return "", errors.New("the site has no " + kind + " section")
+	}
+	src := filepath.Join(site.ContentDir(), filepath.FromSlash(folder))
+	dst := filepath.Join(site.Dir(), ".blup", "trash", time.Now().Format("2006-01-02-150405"), filepath.Base(src))
+	if err := moveDir(src, dst); err != nil {
+		return "", err
+	}
+	// The menu entry of the section would lead nowhere.
+	note, err := obsidian.ReadNote(homeNotePath(site))
+	if err != nil {
+		return dst, err
+	}
+	var menu []string
+	for _, l := range note.List("menu") {
+		_, target, ok := strings.Cut(l, "|")
+		if !ok {
+			target = l
+		}
+		if !strings.EqualFold(strings.Trim(strings.TrimSpace(target), "/"), folder) {
+			menu = append(menu, l)
+		}
+	}
+	if len(menu) != len(note.List("menu")) {
+		if err := obsidian.SetProperties(homeNotePath(site), listProp("menu", menu)); err != nil {
+			return dst, err
+		}
+	}
+	return dst, saved(site)
+}
+
+// RestoreSection brings back a section taken off with RemoveSection.
+func RestoreSection(site *config.Site, trashed string) error {
+	root := filepath.Join(site.Dir(), ".blup", "trash") + string(filepath.Separator)
+	if !strings.HasPrefix(trashed, root) {
+		return errors.New("not in the Blup trash")
+	}
+	dst := filepath.Join(site.ContentDir(), filepath.Base(trashed))
+	if _, err := os.Stat(dst); err == nil {
+		return errors.New(filepath.Base(trashed) + " already exists in the notes")
+	}
+	if err := moveDir(trashed, dst); err != nil {
+		return err
+	}
+	os.Remove(filepath.Dir(trashed)) // the empty dated folder
+	return saved(site)
+}
+
+// moveDir moves a folder, copying it when it goes to another disk.
+func moveDir(src, dst string) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	if err := os.Rename(src, dst); err == nil {
+		return nil
+	}
+	err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(src, p)
+		target := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		in, err := os.Open(p)
+		if err != nil {
+			return err
+		}
+		defer in.Close()
+		out, err := os.Create(target)
+		if err != nil {
+			return err
+		}
+		if _, err := io.Copy(out, in); err != nil {
+			out.Close()
+			return err
+		}
+		return out.Close()
+	})
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(src)
 }

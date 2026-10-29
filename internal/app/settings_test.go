@@ -88,3 +88,39 @@ func TestSaveCookies(t *testing.T) {
 		t.Fatal("comments can't be turned on without their repository")
 	}
 }
+
+func TestRemoveSection(t *testing.T) {
+	site := settingsSite(t)
+	site.Model = "bento"
+	if err := AddSection(site, "roadmap"); err != nil {
+		t.Fatal(err)
+	}
+	folder := existingSections(site)["roadmap"]
+	if folder == "" {
+		t.Fatal("roadmap not added")
+	}
+	SaveMenu(site, []MenuItem{{"Início", "/"}, {"Roadmap", folder}}, "", "")
+
+	trashed, err := RemoveSection(site, "roadmap")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := existingSections(site)["roadmap"]; ok {
+		t.Fatal("the section must be gone from the notes")
+	}
+	if _, err := os.Stat(filepath.Join(trashed, "_index.md")); err != nil {
+		t.Fatal("the section must be in the trash:", err)
+	}
+	if s, _ := LoadSettings(site); len(s.Menu) != 1 {
+		t.Fatalf("menu = %+v", s.Menu)
+	}
+	if err := RestoreSection(site, trashed); err != nil {
+		t.Fatal(err)
+	}
+	if existingSections(site)["roadmap"] != folder {
+		t.Fatal("the section must be back")
+	}
+	if err := RestoreSection(site, "/etc"); err == nil {
+		t.Fatal("only the Blup trash can be restored")
+	}
+}
