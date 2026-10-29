@@ -6,6 +6,7 @@
   import Tree from "./Tree.svelte";
   import Editor from "./Editor.svelte";
   import Props from "./Props.svelte";
+  import Preview from "./Preview.svelte";
   import LookPanel from "./LookPanel.svelte";
   import SectionsPanel from "./SectionsPanel.svelte";
   import CommentsPanel from "./CommentsPanel.svelte";
@@ -219,7 +220,7 @@
   {#if previewOn}
     <section class="preview">
       {#if previewURL}
-        <iframe src={previewSrc || previewURL} title={t.preview}></iframe>
+        <Preview src={previewSrc || previewURL} title={t.preview} />
       {:else}
         <p class="hint muted">{previewBusy ? t.previewStarting : t.previewOff}</p>
       {/if}
@@ -244,7 +245,7 @@
   .main.scroll { overflow: auto; background: var(--bg); }
   .side h2 { padding-inline: .5rem; margin-block-end: .5rem; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
   .main { position: relative; overflow: hidden; background: var(--panel); }
-  .preview { overflow: hidden; border-inline-start: 1px solid var(--line); background: #fff; }
+  .preview { overflow: hidden; border-inline-start: 1px solid var(--line); background: var(--bg); }
   iframe { width: 100%; height: 100%; border: 0; }
   .hint { padding: 3rem 2rem; text-align: center; }
   .error { position: absolute; inset-inline: 1rem; inset-block-start: .75rem; z-index: 2; padding: .6rem .9rem; border-radius: .5rem; background: var(--soft); color: var(--red); font-size: .85rem; }

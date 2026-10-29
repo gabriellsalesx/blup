@@ -1,0 +1,86 @@
+<script lang="ts">
+  import { onDestroy } from "svelte";
+  import { Events } from "@wailsio/runtime";
+
+  // The live preview without flashes: a rebuilt page loads in a hidden
+  // frame, scrolls to where the reader was, and only then takes the place
+  // of the visible one. Each frame's address carries a mark (_blup) that the
+  // preview pages send back with their scroll (a script the theme adds in
+  // preview mode only), so the Studio knows which frame is talking.
+  let { src, title }: { src: string; title: string } = $props();
+
+  let seq = 0;
+  const mark = () => String(++seq);
+  const withMark = (url: string, m: string) => url + (url.includes("?") ? "&" : "?") + "_blup=" + m;
+
+  const first = mark();
+  let frames = $state<{ src: string; mark: string }[]>([{ src: withMark(src, first), mark: first }, { src: "", mark: "" }]);
+  let active = $state(0);
+  let pending: { idx: number; y: number; timer: ReturnType<typeof setTimeout> } | null = null;
+  let path = ""; // the page shown (the reader may follow links inside)
+  let y = 0; // its scroll
+
+  const origin = () => { try { return new URL(src).origin; } catch { return ""; } };
+
+  function load(url: string, scroll: number) {
+    if (!url) return;
+    if (pending) clearTimeout(pending.timer);
+    const idx = 1 - active;
+    const m = mark();
+    frames[idx] = { src: withMark(url, m), mark: m };
+    // A page without the preview script (an error page): swap anyway.
+    pending = { idx, y: scroll, timer: setTimeout(() => swap(idx), 4000) };
+  }
+  function swap(idx: number) {
+    if (!pending || pending.idx !== idx) return;
+    clearTimeout(pending.timer);
+    pending = null;
+    active = idx;
+  }
+
+  function onMessage(e: MessageEvent) {
+    const d = e.data;
+    if (!d || typeof d.blup !== "string") return;
+    const m = new URLSearchParams(d.q || "").get("_blup");
+    const idx = frames.findIndex((f) => f.mark && f.mark === m);
+    if (idx < 0) return;
+    if (pending && idx === pending.idx) {
+      if (d.blup === "loaded") (e.source as Window | null)?.postMessage({ blup: "scrollTo", y: pending.y }, "*");
+      else if (d.blup === "ready") { path = d.path; y = d.y; swap(idx); }
+    } else if (idx === active) {
+      path = d.path;
+      y = d.y;
+    }
+  }
+
+  // A note was saved and the site rebuilt: same page, same place.
+  const off = Events.On("previewChanged", () => load(path ? origin() + path : src, y));
+  onDestroy(() => { off(); if (pending) clearTimeout(pending.timer); });
+
+  // Another note was opened: its page, from the top.
+  let shown = src;
+  $effect(() => {
+    if (src && src !== shown) {
+      shown = src;
+      path = "";
+      y = 0;
+      load(src, 0);
+    }
+  });
+</script>
+
+<svelte:window onmessage={onMessage} />
+
+<div class="frames">
+  {#each frames as f, i (i)}
+    {#if f.src}<iframe src={f.src} {title} class:hidden={i !== active}></iframe>{/if}
+  {/each}
+</div>
+
+<style>
+  .frames { position: relative; width: 100%; height: 100%; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  /* Transparent, not invisible: the browser keeps painting it, so it is
+     ready the moment it swaps in. */
+  .hidden { opacity: 0; pointer-events: none; z-index: -1; }
+</style>

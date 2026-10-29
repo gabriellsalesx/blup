@@ -20,6 +20,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/hugo"
 	"github.com/gabriellsalesx/blup/internal/scaffold"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // Studio is what the window calls: the sites, their notes and the preview.
@@ -196,7 +197,7 @@ func (s *Studio) StartPreview() (string, error) {
 		return "", err
 	}
 	cmd := bin.Command(ctx, site.Dir(), "server", "--config", scaffold.PreviewConfig, "--renderToMemory", "--buildDrafts",
-		"--navigateToChanged", "--bind", "127.0.0.1", "--baseURL", "http://localhost/", "--logLevel", "warn")
+		"--disableLiveReload", "--bind", "127.0.0.1", "--baseURL", "http://localhost/", "--logLevel", "info")
 	cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=preview")
 	pr, pw := io.Pipe()
 	cmd.Stdout, cmd.Stderr = pw, pw
@@ -212,11 +213,15 @@ func (s *Studio) StartPreview() (string, error) {
 		sent := false
 		for sc.Scan() {
 			line := sc.Text()
-			if !sent && serverURL.MatchString(line) {
+			switch {
+			case !sent && serverURL.MatchString(line):
 				found <- serverURL.FindString(line)
 				sent = true
-			} else if !sent {
+			case !sent:
 				log.WriteString(line + "\n")
+			case strings.Contains(line, "Total in"):
+				// A rebuild is done: the window swaps in the new page.
+				application.Get().Event.Emit("previewChanged", "")
 			}
 		}
 		if !sent {
