@@ -1,4 +1,7 @@
 {{- $a := .author -}}
-<span class="avatar{{ with .size }} avatar-{{ . }}{{ end }}" aria-hidden="true">
+{{- /* A drawing (SVG, like the Blups Studio gives authors without a photo)
+shows whole in its own shape; a photo fills the circle. */ -}}
+{{- $drawing := false }}{{ with $a.avatar }}{{ $drawing = eq .MediaType.SubType "svg" }}{{ end -}}
+<span class="avatar{{ with .size }} avatar-{{ . }}{{ end }}{{ if $drawing }} avatar-drawing{{ end }}" aria-hidden="true">
   {{- with $a.avatar }}<img src="{{ .RelPermalink }}" alt="" width="80" height="80" loading="lazy">{{ else }}{{ $a.initials }}{{ end -}}
 </span>
