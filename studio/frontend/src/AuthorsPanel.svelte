@@ -126,7 +126,9 @@
   .avatar { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 999px; overflow: hidden; background: var(--soft); color: var(--muted); font-weight: 700; font-size: .9rem; flex: none; }
   .avatar.big { width: 4.5rem; height: 4.5rem; font-size: 1.3rem; }
   .avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .avatar img.blup { object-fit: contain; padding: .15rem; background: color-mix(in srgb, var(--blue) 12%, transparent); }
+  /* The Blup drawings have room around them: a bit bigger fills the circle. */
+  .avatar img.blup { object-fit: contain; transform: scale(1.3) translateY(4%); }
+  .avatar:has(img.blup) { background: color-mix(in srgb, var(--blue) 12%, transparent); }
   .who { display: grid; gap: .15rem; min-width: 0; }
   .who b { display: flex; align-items: center; gap: .5rem; }
   .badge { padding: .1rem .5rem; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: .7rem; font-weight: 600; }

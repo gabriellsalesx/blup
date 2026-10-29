@@ -26,7 +26,8 @@ import (
 //go:embed avatars/*.svg
 var avatarFiles embed.FS
 
-var avatars = []string{"blup.svg", "turma-3.svg", "turma-4.svg", "turma-1.svg", "turma-6.svg"}
+var avatars = []string{"blup.svg", "turma-3.svg", "turma-4.svg", "turma-1.svg", "turma-6.svg",
+	"turma-2.svg", "turma-5.svg", "turma-8.svg", "turma-7.svg"}
 
 // NextAvatar is the Blup the next author without a photo gets.
 func NextAvatar(site *config.Site) string {
