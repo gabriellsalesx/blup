@@ -87,15 +87,17 @@
   // Right-click on an underlined word: the dictionary's suggestions.
   let fix = $state<{ from: number; to: number; word: string; x: number; y: number; list: string[] | null } | null>(null);
   let mouseButton = 0;
+  // The suggestions come first, then the corrections list (if open) gives
+  // way to the menu in one go: no blink between the two.
   async function onMenu(e: MouseEvent) {
-    closeCompletion(view);
     const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
     const w = pos == null ? null : wordAt(view, pos);
-    if (!w) return; // the system's menu
+    if (!w) { closeCompletion(view); return; } // the system's menu
     e.preventDefault();
-    fix = { ...w, x: Math.min(e.clientX, innerWidth - 240), y: Math.min(e.clientY, innerHeight - 260), list: null };
+    const at = { x: Math.min(e.clientX, innerWidth - 240), y: Math.min(e.clientY, innerHeight - 260) };
     const list = await suggest(w.word);
-    if (fix?.from === w.from) fix.list = list;
+    closeCompletion(view);
+    fix = { ...w, ...at, list };
   }
   function replace(s: string) {
     if (!fix) return;
@@ -316,7 +318,16 @@
           { key: "Escape", run: (v) => (completionStatus(v.state) === "active" ? closeCompletion(v) : false) },
         ])),
         EditorView.domEventHandlers({
-          mousedown: (e) => { mouseButton = e.button; return false; },
+          // A right-click on a word in red doesn't move the cursor (that
+          // would close the corrections list before the menu shows).
+          mousedown: (e, v) => {
+            mouseButton = e.button;
+            if (e.button !== 2) return false;
+            const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
+            if (pos == null || !wordAt(v, pos)) return false;
+            e.preventDefault();
+            return true;
+          },
           paste: (e) => {
             const files = images(e.clipboardData?.files);
             if (!files.length) return false;
