@@ -8,6 +8,7 @@ import (
 	"embed"
 	"log"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -39,8 +40,14 @@ func main() {
 		OnShutdown:  studio.shutdown,
 		// Opening it again shows the window already running.
 		SingleInstance: &application.SingleInstanceOptions{
-			UniqueID:               "dev.blup.studio",
-			OnSecondInstanceLaunch: func(application.SecondInstanceData) { showWindow() },
+			UniqueID: "dev.blup.studio",
+			OnSecondInstanceLaunch: func(d application.SecondInstanceData) {
+				if slices.Contains(d.Args, toggleArg) {
+					toggleWindow() // a shortcut of the desktop (Hyprland) called it
+				} else {
+					showWindow()
+				}
+			},
 		},
 	})
 	trayOn = func() bool { return studio.Prefs().Tray }

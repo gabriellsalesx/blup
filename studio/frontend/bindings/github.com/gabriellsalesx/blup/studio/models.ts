@@ -52,6 +52,33 @@ export interface HomeItem {
 }
 
 /**
+ * Hyprland describes the Hyprland setup for the Shortcuts screen.
+ */
+export interface Hyprland {
+    "on": boolean;
+
+    /**
+     * the config file the binding goes in
+     */
+    "file": string;
+
+    /**
+     * the binding for the shortcut chosen
+     */
+    "line": string;
+
+    /**
+     * the file already has the Studio's binding
+     */
+    "bound": boolean;
+
+    /**
+     * the keys of that binding
+     */
+    "keys": string;
+}
+
+/**
  * Node is a folder or a note of the site.
  */
 export interface Node {

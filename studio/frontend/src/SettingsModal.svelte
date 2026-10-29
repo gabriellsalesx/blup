@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Settings from "@lucide/svelte/icons/settings";
@@ -43,7 +43,11 @@
   const deskRun = async (fn: () => Promise<void>) => { deskError = ""; try { await fn(); } catch (e) { deskError = String(e).replace(/^(Runtime)?Error: /, ""); } };
   const setAutostart = (v: boolean) => deskRun(async () => { await SetAutostart(v); autostart = v; });
   const setTray = (v: boolean) => deskRun(async () => { await SetTray(v); look.tray = v; });
-  const setToggle = (keys: string) => deskRun(async () => { await SetToggleHotkey(keys); look.toggleKey = keys; });
+  const setToggle = (keys: string) => deskRun(async () => { await SetToggleHotkey(keys); look.toggleKey = keys; hypr = await HyprlandSetup(keys); });
+  // On Hyprland (Omarchy) the shortcut is a binding in Hyprland's config,
+  // which the Studio writes.
+  let hypr = $state<{ on: boolean; file: string; line: string } | null>(null);
+  HyprlandSetup(look.toggleKey ?? "").then((h) => (hypr = h));
   // The Studio's own shortcuts.
   function setKey(a: Action, keys: string) {
     const all: Record<string, string> = {};
@@ -174,7 +178,12 @@
           {#if look.toggleKey}<button class="icon-btn" title={k.clear} onclick={() => setToggle("")}><X size={15} /></button>{/if}
         </span>
       </div>
-      <p class="muted lead">{k.wayland}</p>
+      {#if hypr?.on}
+        <p class="muted lead">{k.hyprland.replace("{file}", hypr.file.replace(/^.*\/\.config/, "~/.config"))}</p>
+        {#if hypr.line}<code class="line">{hypr.line}</code>{/if}
+      {:else}
+        <p class="muted lead">{k.wayland}</p>
+      {/if}
       {#if deskError}<p class="bad">{deskError}</p>{/if}
       <h3>{k.appTitle}</h3>
       {#each ACTIONS as a (a.key)}
@@ -239,6 +248,7 @@
   .chip { display: inline-flex; align-items: center; gap: .25rem; padding: .2rem .3rem .2rem .6rem; border: 1px solid var(--line); border-radius: 999px; font-size: .8rem; }
   .chip button { display: inline-grid; place-items: center; padding: .15rem; border-radius: 999px; color: var(--muted); }
   .chip button:hover { background: var(--soft); color: var(--text); }
+  .line { display: block; padding: .5rem .7rem; border-radius: .4rem; background: var(--soft); font-size: .75rem; word-break: break-all; }
   .keyrow { display: inline-flex; align-items: center; gap: .3rem; }
   .item.fixed { padding-block: .55rem; }
   .fixed-keys { display: inline-flex; gap: .25rem; }

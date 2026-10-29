@@ -85,6 +85,14 @@ export function AutostartEnabled(): $CancellablePromise<boolean> {
 }
 
 /**
+ * BindHyprland writes the Studio's binding for accel in Hyprland's config
+ * (replacing an older one; "" removes it) and reloads Hyprland.
+ */
+export function BindHyprland(accel: string): $CancellablePromise<void> {
+    return $Call.ByID(1409658509, accel);
+}
+
+/**
  * CheckCookieTool tells whether an ID fits a tool ("" when it does).
  */
 export function CheckCookieTool(key: string, value: string): $CancellablePromise<string> {
@@ -232,6 +240,14 @@ export function FeedbackState(): $CancellablePromise<app$0.FeedbackSetup> {
  */
 export function HomeDir(): $CancellablePromise<string> {
     return $Call.ByID(2287601764);
+}
+
+/**
+ * HyprlandSetup tells whether the Studio runs on Hyprland and the binding
+ * for accel.
+ */
+export function HyprlandSetup(accel: string): $CancellablePromise<$models.Hyprland> {
+    return $Call.ByID(1002180047, accel);
 }
 
 /**

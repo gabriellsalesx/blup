@@ -54,7 +54,7 @@ func setupDesktop(s *Studio, app *application.App, win *application.WebviewWindo
 			win.Hide()
 		}
 	})
-	if prefs.ToggleKey != "" {
+	if prefs.ToggleKey != "" && !onHyprland() { // there, Hyprland's own binding calls --toggle
 		_ = setHotkey(prefs.ToggleKey)
 	}
 }
@@ -147,6 +147,9 @@ func (s *Studio) SetTray(on bool) error {
 // SetToggleHotkey registers the global shortcut that shows and hides the
 // Studio ("" removes it) and saves it.
 func (s *Studio) SetToggleHotkey(accel string) error {
+	if onHyprland() {
+		return s.BindHyprland(accel)
+	}
 	if err := setHotkey(accel); err != nil {
 		return err
 	}

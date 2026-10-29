@@ -10,6 +10,7 @@ export type {
     Agent,
     Found,
     HomeItem,
+    Hyprland,
     Node,
     NoteData,
     Places,
