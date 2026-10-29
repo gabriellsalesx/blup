@@ -30,6 +30,10 @@ Arraste a imagem para a nota. O Blup:
 
 ![O Blup no terminal](../../Anexos/blup-terminal.jpg)
 
+## Vídeos do YouTube
+
+Cole o link do vídeo como imagem: `![Como publicar](https://www.youtube.com/watch?v=...)`. No site vira o player. Com o banner de cookies ligado, o vídeo espera o aceite; veja [Cookies e estatísticas](../Configuração/Cookies%20e%20estatísticas.md).
+
 ## Outros anexos
 
 PDFs, áudios, vídeos e arquivos ZIP do cofre também podem ser linkados: `[Manual em PDF](../../Anexos/manual.pdf)`. Eles são publicados junto com o site.

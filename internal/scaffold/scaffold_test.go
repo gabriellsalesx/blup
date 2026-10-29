@@ -147,3 +147,26 @@ func TestBuildWithoutCLI(t *testing.T) {
 		t.Fatal("manifest leaked the password without the CLI")
 	}
 }
+
+func TestCookieParams(t *testing.T) {
+	if p := cookieParams(config.Cookies{}); len(p) != 0 {
+		t.Fatalf("nothing set: %v", p)
+	}
+	// The privacy link only matters with the banner.
+	if p := cookieParams(config.Cookies{Privacy: "https://x.dev/p"}); len(p) != 0 {
+		t.Fatalf("privacy without banner: %v", p)
+	}
+	p := cookieParams(config.Cookies{
+		Banner: true, Privacy: "https://x.dev/p", GoogleAnalytics: "G-AB12CD", TagManager: "GTM-AB12CD", MetaPixel: "123456",
+		Umami: "u-id", Plausible: "x.dev", PlausibleScript: "https://stats.x.dev/js/script.js",
+	})
+	if p["banner"] != true || p["privacy"] != "https://x.dev/p" || p["google_analytics"] != "G-AB12CD" || p["meta_pixel"] != "123456" || p["google_tag_manager"] != "GTM-AB12CD" {
+		t.Fatalf("params = %v", p)
+	}
+	if u := p["umami"].(map[string]any); u["id"] != "u-id" || u["src"] != config.UmamiCloudScript {
+		t.Fatalf("umami = %v", u)
+	}
+	if pl := p["plausible"].(map[string]any); pl["domain"] != "x.dev" || pl["src"] != "https://stats.x.dev/js/script.js" {
+		t.Fatalf("plausible = %v", pl)
+	}
+}

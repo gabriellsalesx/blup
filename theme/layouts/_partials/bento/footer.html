@@ -7,6 +7,10 @@
       <li><a href="{{ .url }}">{{ .name }}</a></li>
       {{- end }}
       {{- with site.Home.OutputFormats.Get "rss" }}<li><a href="{{ .RelPermalink }}">RSS</a></li>{{ end }}
+      {{- /* Shown by pwa.js when the browser can install the site as an app. */}}
+      {{- with partialCached "site/privacy.html" . "privacy" }}<li><a href="{{ .RelPermalink }}">{{ T "ckPrivacy" }}</a></li>{{ end }}
+      {{- with site.Params.blup.cookies }}{{ if .banner }}<li><button type="button" class="install-app" data-consent-open>{{ T "ckFooter" }}</button></li>{{ end }}{{ end }}
+      <li><button type="button" class="install-app" data-install hidden><svg class="icon icon-sm" aria-hidden="true"><use href="#i-download"/></svg>{{ T "installApp" }}</button></li>
     </ul>
     {{- with $set.social }}
     <ul class="socials">

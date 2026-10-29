@@ -12,6 +12,7 @@
   {{ partial (printf "%s/header.html" $model) . }}
   {{ block "main" . }}{{ end }}
   {{ partial (printf "%s/footer.html" $model) . }}
+  {{- partial "consent.html" . }}
   {{- partial "mochi/scripts.html" . }}
 </body>
 </html>

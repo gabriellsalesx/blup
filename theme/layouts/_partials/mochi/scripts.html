@@ -1,7 +1,13 @@
 {{- $js := resources.Get "js/blup.js" | js.Build (dict "minify" true "format" "esm") | fingerprint -}}
 <script type="module" src="{{ $js.RelPermalink }}"></script>
-{{- /* Bento feedback (votes, reactions, comments from GitHub issues). */}}
-{{- if and (eq site.Params.model "bento") site.Params.blup.feedback }}
+{{- /* Published sites: the offline copy (service worker) and the "install
+app" button. Not in the preview, which changes all the time. */}}
+{{- if eq (os.Getenv "HUGO_BLUP_MODE") "publish" }}
+{{- $pwa := resources.Get "js/pwa.js" | js.Build (dict "minify" true "format" "esm") | fingerprint }}
+<script type="module" src="{{ $pwa.RelPermalink }}" data-sw="{{ "sw.js" | relURL }}" data-scope="{{ site.Home.RelPermalink }}"></script>
+{{- end }}
+{{- /* Feedback (votes, reactions, comments from GitHub issues). */}}
+{{- if site.Params.blup.feedback }}
 {{- $fb := resources.Get "js/feedback.js" | js.Build (dict "minify" true "format" "esm") | fingerprint }}
 {{- /* api: the login service, set by the CLI while its GitHub App is on the
 repository; without it, voting and commenting link to GitHub. */}}

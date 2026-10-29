@@ -1,0 +1,8 @@
+{{- /* Publishes the favicon as blup-icon.<ext>: the CLI makes the app icons
+and favicon.ico from it, then deletes it (internal/pwa). Call with
+partialCached. */ -}}
+{{- with or (partialCached "site/settings.html" . "site").favicon (resources.Get "favicon.svg") -}}
+  {{- $ext := path.Ext .Name | default ".png" -}}
+  {{- $copy := . | resources.Copy (printf "blup-icon%s" $ext) -}}
+  {{- $copy.Publish -}}
+{{- end -}}

@@ -6,21 +6,39 @@
 vault: PNG/JPG/WebP are resized, SVG is used as is), else the theme's
 character (or a favicon.svg in the site's assets folder). */ -}}
 {{- $fav := (partialCached "site/settings.html" . "site").favicon -}}
+{{- /* Published sites are installable apps: the CLI makes favicon.ico and
+the icons of every device from the favicon after the build (internal/pwa). */ -}}
+{{- $app := eq (os.Getenv "HUGO_BLUP_MODE") "publish" -}}
+{{- if $app }}
+<link rel="icon" href="{{ "favicon.ico" | relURL }}" sizes="32x32">
+{{- end }}
 {{- if $fav }}
   {{- if eq $fav.MediaType.Type "image/svg+xml" }}
 <link rel="icon" href="{{ $fav.RelPermalink }}" type="image/svg+xml">
   {{- else }}
 <link rel="icon" href="{{ ($fav.Fill "48x48 png").RelPermalink }}" type="image/png" sizes="48x48">
+    {{- if not $app }}
 <link rel="apple-touch-icon" href="{{ ($fav.Fill "180x180 png").RelPermalink }}">
+    {{- end }}
   {{- end }}
 {{- else }}
   {{- with resources.Get "favicon.svg" }}
 <link rel="icon" href="{{ (. | fingerprint).RelPermalink }}" type="image/svg+xml">
   {{- end }}
-  {{- with resources.Get "defaults/apple-touch-icon.png" }}
+  {{- if not $app }}
+    {{- with resources.Get "defaults/apple-touch-icon.png" }}
 <link rel="apple-touch-icon" href="{{ .RelPermalink }}">
+    {{- end }}
   {{- end }}
 {{- end }}
+{{- if $app }}
+<link rel="apple-touch-icon" href="{{ "icons/apple-touch-icon.png" | relURL }}">
+<link rel="manifest" href="{{ "manifest.json" | relURL }}">
+{{- partialCached "pwa-source.html" . "pwa" }}
+{{- end }}
+<meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-title" content="{{ (partialCached "site/settings.html" . "site").name }}">
 {{- with site.Home.OutputFormats.Get "rss" }}
 <link rel="alternate" type="application/rss+xml" href="{{ .Permalink }}" title="{{ (partialCached "site/settings.html" . "site").name }}">
 {{- end }}

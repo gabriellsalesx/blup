@@ -26,8 +26,9 @@ func customize(ctx context.Context, _ *config.Global, site *config.Site) error {
 		choice := "menu"
 		opts := []huh.Option[string]{ui.Option(i18n.T("custom.menu"), "menu")}
 		if site.Model == "bento" {
-			opts = append(opts, ui.Option(i18n.T("custom.sections"), "sections"), ui.Option(i18n.T("custom.feedback"), "feedback"))
+			opts = append(opts, ui.Option(i18n.T("custom.sections"), "sections"))
 		}
+		opts = append(opts, ui.Option(fbText(site, "custom.feedback"), "feedback"), ui.Option(i18n.T("custom.cookies"), "cookies"))
 		if err := ui.Choose(i18n.T("custom.q"), i18n.T("custom.help"), &choice, append(opts,
 			ui.Option(i18n.T("custom.social"), "social"),
 			ui.Option(i18n.T("custom.images"), "images"),
@@ -54,6 +55,8 @@ func customize(ctx context.Context, _ *config.Global, site *config.Site) error {
 			err = editDomain(ctx, site)
 		case "feedback":
 			err = editFeedback(ctx, site)
+		case "cookies":
+			err = editCookies(site)
 		case "password":
 			err = editPassword(site)
 		}

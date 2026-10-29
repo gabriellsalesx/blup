@@ -53,11 +53,43 @@ type Site struct {
 	Deploy   Deploy `toml:"deploy"`
 	// Sync is the private GitHub repository the notes are synced with.
 	Sync NoteSync `toml:"sync,omitempty"`
-	// Feedback: votes, reactions and comments (Bento) in GitHub issues of a
-	// public repository.
+	// Feedback: votes, reactions and comments in GitHub issues of a public
+	// repository.
 	Feedback Feedback `toml:"feedback,omitempty"`
+	// Cookies: visitor statistics and ads tools, and the consent banner
+	// that loads them only after the visitor accepts.
+	Cookies Cookies `toml:"cookies,omitempty"`
 
 	dir string
+}
+
+// Cookies are the third-party tools of the site and the consent banner.
+// Each tool is on when its ID is set.
+type Cookies struct {
+	// Banner asks visitors before loading the tools and YouTube videos.
+	// Without it, they load at once.
+	Banner bool `toml:"banner,omitempty"`
+	// Privacy is the address of the site's privacy policy, linked from the
+	// banner.
+	Privacy         string `toml:"privacy,omitempty"`
+	GoogleAnalytics string `toml:"google_analytics,omitempty"`   // measurement ID, G-XXXXXXX
+	TagManager      string `toml:"google_tag_manager,omitempty"` // container ID, GTM-XXXXXXX
+	MetaPixel       string `toml:"meta_pixel,omitempty"`         // pixel ID
+	Umami           string `toml:"umami,omitempty"`              // website ID
+	UmamiScript     string `toml:"umami_script,omitempty"`       // self-hosted script; "" = Umami Cloud
+	Plausible       string `toml:"plausible,omitempty"`          // site domain
+	PlausibleScript string `toml:"plausible_script,omitempty"`   // self-hosted script; "" = plausible.io
+}
+
+// Default scripts of the hosted tools.
+const (
+	UmamiCloudScript = "https://cloud.umami.is/script.js"
+	PlausibleScript  = "https://plausible.io/js/script.js"
+)
+
+// Tools reports whether any tool is on.
+func (c Cookies) Tools() bool {
+	return c.GoogleAnalytics != "" || c.TagManager != "" || c.MetaPixel != "" || c.Umami != "" || c.Plausible != ""
 }
 
 // Deploy remembers where the site was published.

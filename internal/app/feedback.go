@@ -263,12 +263,18 @@ func feedbackClient(ctx context.Context) (*github.Client, error) {
 	return c, err
 }
 
+// fbText is the message for the site's model: Bento has roadmap votes and
+// changelog reactions, Mochi only posts ("<key>_mochi").
+func fbText(site *config.Site, key string, args ...any) string {
+	if site.Model == "mochi" {
+		key += "_mochi"
+	}
+	return i18n.T(key, args...)
+}
+
 // editFeedback turns feedback on or off (customize, and the new site wizard).
 func editFeedback(ctx context.Context, site *config.Site) error {
-	if site.Model != "bento" {
-		return ui.Explain(i18n.T("fb.title"), i18n.T("fb.bento_only"))
-	}
-	if err := ui.Explain(i18n.T("fb.title"), i18n.T("fb.about", feedbackRepoName(site))); err != nil {
+	if err := ui.Explain(i18n.T("fb.title"), fbText(site, "fb.about", feedbackRepoName(site))); err != nil {
 		return err
 	}
 	on, err := ui.Confirm(i18n.T("fb.q"), "", site.Feedback.Enabled || site.Feedback.Repo == "")

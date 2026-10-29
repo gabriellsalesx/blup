@@ -3,6 +3,7 @@
 package scaffold
 
 import (
+	"cmp"
 	"fmt"
 	"io/fs"
 	"os"
@@ -181,7 +182,12 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 	formats := map[string]any{"bluplocks": map[string]any{
 		"mediaType": "application/json", "baseName": "blup-locks", "isPlainText": true, "notAlternative": true,
 	}}
-	home := []string{"html", "rss", "bluplocks"}
+	// manifest.json makes the site an installable app; the CLI adds the
+	// icons and the offline copy after the build (internal/pwa).
+	formats["blupmanifest"] = map[string]any{
+		"mediaType": "application/json", "baseName": "manifest", "isPlainText": true, "notAlternative": true,
+	}
+	home := []string{"html", "rss", "bluplocks", "blupmanifest"}
 	if feedbackOn(s) {
 		// Pages that get a feedback issue, read by the CLI (internal/app/feedback.go).
 		formats["blupfeedback"] = map[string]any{
@@ -237,11 +243,41 @@ func blupParams(s *config.Site, folder, authors string) map[string]any {
 	if feedbackOn(s) {
 		p["feedback"] = s.Feedback.Owner + "/" + s.Feedback.Repo
 	}
+	if c := cookieParams(s.Cookies); len(c) > 0 {
+		p["cookies"] = c
+	}
 	return p
 }
 
-// feedbackOn: votes, reactions and comments exist only in the Bento model.
-func feedbackOn(s *config.Site) bool { return s.Model == "bento" && s.Feedback.On() }
+// cookieParams: the tools and the banner, for the theme (consent.html).
+func cookieParams(c config.Cookies) map[string]any {
+	p := map[string]any{}
+	if c.Banner {
+		p["banner"] = true
+		if c.Privacy != "" {
+			p["privacy"] = c.Privacy
+		}
+	}
+	if c.GoogleAnalytics != "" {
+		p["google_analytics"] = c.GoogleAnalytics
+	}
+	if c.TagManager != "" {
+		p["google_tag_manager"] = c.TagManager
+	}
+	if c.MetaPixel != "" {
+		p["meta_pixel"] = c.MetaPixel
+	}
+	if c.Umami != "" {
+		p["umami"] = map[string]any{"id": c.Umami, "src": cmp.Or(c.UmamiScript, config.UmamiCloudScript)}
+	}
+	if c.Plausible != "" {
+		p["plausible"] = map[string]any{"domain": c.Plausible, "src": cmp.Or(c.PlausibleScript, config.PlausibleScript)}
+	}
+	return p
+}
+
+// feedbackOn: votes, reactions and comments (both models).
+func feedbackOn(s *config.Site) bool { return s.Feedback.On() }
 
 // authorsPath is the authors folder relative to the vault, "" without one.
 func authorsPath(folder, authors string) string {

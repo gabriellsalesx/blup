@@ -1,0 +1,5 @@
+{{- /* The privacy policy: the note with "blup: privacy" (Blup writes a
+template when the cookie tools are turned on). Returns the page or false. */ -}}
+{{- $p := false -}}
+{{- range where site.Pages "Params.blup" "privacy" }}{{ $p = . }}{{ break }}{{ end -}}
+{{- return $p -}}

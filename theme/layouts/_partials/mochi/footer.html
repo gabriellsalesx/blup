@@ -12,8 +12,15 @@
       </ul>
       {{- end }}
     </div>
-    {{- with site.Home.OutputFormats.Get "rss" }}
-    <a class="rss" href="{{ .RelPermalink }}"><svg class="icon icon-sm"><use href="#i-rss"/></svg>RSS</a>
-    {{- end }}
+    {{- /* One row: RSS, the privacy policy, cookie choices and "install app"
+    (shown by pwa.js when the browser can install the site). */}}
+    <div class="footer-links">
+      {{- with site.Home.OutputFormats.Get "rss" }}
+      <a class="rss" href="{{ .RelPermalink }}"><svg class="icon icon-sm"><use href="#i-rss"/></svg>RSS</a>
+      {{- end }}
+      {{- with partialCached "site/privacy.html" . "privacy" }}<a class="rss" href="{{ .RelPermalink }}">{{ T "ckPrivacy" }}</a>{{ end }}
+      {{- with site.Params.blup.cookies }}{{ if .banner }}<button type="button" class="install-app" data-consent-open>{{ T "ckFooter" }}</button>{{ end }}{{ end }}
+      <button type="button" class="install-app" data-install hidden><svg class="icon icon-sm" aria-hidden="true"><use href="#i-download"/></svg>{{ T "installApp" }}</button>
+    </div>
   </div>
 </footer>

@@ -30,6 +30,10 @@ Drag the image into the note. Blup:
 
 ![Blup at the terminal](../../Attachments/blup-terminal.jpg)
 
+## YouTube videos
+
+Paste the video link as an image: `![How to publish](https://www.youtube.com/watch?v=...)`. On the site it becomes the player. With the cookie banner on, the video waits for consent; see [Cookies and statistics](../Configuration/Cookies%20and%20statistics.md).
+
 ## Other attachments
 
 PDFs, audio, video and ZIP files from the vault can be linked too: `[PDF manual](../../Attachments/manual.pdf)`. They are published along with the site.

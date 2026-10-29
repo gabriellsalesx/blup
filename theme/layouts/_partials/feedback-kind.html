@@ -1,0 +1,11 @@
+{{- /* Which pages get votes, reactions and comments, and of what kind: in
+Bento, roadmap items, changelog entries and blog posts; in Mochi, every post
+(every note is one). "" for the rest. */ -}}
+{{- $k := "" -}}
+{{- if eq site.Params.model "bento" -}}
+  {{- $k = partial "bento/kind.html" . -}}
+  {{- if not (in (slice "roadmap" "changelog" "blog") $k) }}{{ $k = "" }}{{ end -}}
+{{- else if and .IsPage (ne (lower (string .Params.blup)) "privacy") -}}
+  {{- $k = "blog" -}}
+{{- end -}}
+{{- return $k -}}

@@ -1,0 +1,60 @@
+{{- /* Cookies: the site's statistics and ads tools (blup customize) and the
+consent banner. With the banner, consent.js loads the tools and YouTube
+videos only after the visitor accepts; "Cookies" in the footer reopens the
+choices. Without it, the tools load at once. Our own code, inspired by the
+hugocodex cookie consent add-on. */ -}}
+{{- with site.Params.blup.cookies -}}
+{{- $c := . -}}
+{{- $stats := slice -}}
+{{- if $c.google_analytics }}{{ $stats = $stats | append "Google Analytics" }}{{ end -}}
+{{- if $c.google_tag_manager }}{{ $stats = $stats | append "Google Tag Manager" }}{{ end -}}
+{{- if $c.umami }}{{ $stats = $stats | append "Umami" }}{{ end -}}
+{{- if $c.plausible }}{{ $stats = $stats | append "Plausible" }}{{ end -}}
+{{- $ads := slice -}}
+{{- if $c.meta_pixel }}{{ $ads = $ads | append "Meta Pixel" }}{{ end -}}
+{{- if $c.google_tag_manager }}{{ $ads = $ads | append "Google Tag Manager" }}{{ end -}}
+{{- if $c.banner }}
+<section class="consent" data-consent-banner hidden aria-labelledby="consent-title">
+  <h2 id="consent-title">{{ T "ckTitle" }}</h2>
+  {{- $policy := $c.privacy }}{{ if not $policy }}{{ with partialCached "site/privacy.html" . "privacy" }}{{ $policy = .RelPermalink }}{{ end }}{{ end }}
+  <p>{{ T "ckText" }}{{ with $policy }} <a href="{{ . }}">{{ T "ckPrivacy" }}</a>{{ end }}</p>
+  <div class="consent-actions">
+    <button type="button" class="button" data-consent-all>{{ T "ckAcceptAll" }}</button>
+    <button type="button" class="button button-ghost" data-consent-none>{{ T "ckReject" }}</button>
+    <button type="button" class="consent-link" data-consent-open>{{ T "ckChoose" }}</button>
+  </div>
+</section>
+<dialog class="consent-dialog" data-consent-dialog aria-labelledby="consent-dialog-title">
+  <form method="dialog">
+    <h2 id="consent-dialog-title">{{ T "ckDialogTitle" }}</h2>
+    <label class="consent-option">
+      <input type="checkbox" checked disabled>
+      <span><b>{{ T "ckNecessary" }}</b>{{ T "ckNecessaryText" }}</span>
+    </label>
+    {{- with $stats }}
+    <label class="consent-option">
+      <input type="checkbox" name="statistics">
+      <span><b>{{ T "ckStatistics" }}</b>{{ T "ckStatisticsText" (dict "Tools" (delimit . ", ")) }}</span>
+    </label>
+    {{- end }}
+    {{- with $ads }}
+    <label class="consent-option">
+      <input type="checkbox" name="marketing">
+      <span><b>{{ T "ckMarketing" }}</b>{{ T "ckMarketingText" (dict "Tools" (delimit . ", ")) }}</span>
+    </label>
+    {{- end }}
+    <label class="consent-option">
+      <input type="checkbox" name="media">
+      <span><b>{{ T "ckMedia" }}</b>{{ T "ckMediaText" }}</span>
+    </label>
+    <div class="consent-actions">
+      <button type="submit" class="button" value="save">{{ T "ckSave" }}</button>
+      <button type="submit" class="button button-ghost" value="all">{{ T "ckAcceptAll" }}</button>
+    </div>
+  </form>
+</dialog>
+{{- end }}
+{{- $tools := dict "banner" (or $c.banner false) "google_analytics" ($c.google_analytics | default "") "google_tag_manager" ($c.google_tag_manager | default "") "meta_pixel" ($c.meta_pixel | default "") "umami" ($c.umami | default dict) "plausible" ($c.plausible | default dict) -}}
+{{- $js := resources.Get "js/consent.js" | js.Build (dict "minify" true "format" "esm") | fingerprint }}
+<script type="module" src="{{ $js.RelPermalink }}" data-consent="{{ $tools | jsonify }}"></script>
+{{- end -}}

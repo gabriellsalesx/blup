@@ -1,13 +1,14 @@
-{{- /* Pages that get feedback (votes, reactions, comments) in the Bento
-model: roadmap items, changelog entries and blog posts. Only written when the
+{{- /* Pages that get feedback (votes, reactions, comments): roadmap items,
+changelog entries and blog posts in Bento, every post in Mochi (see
+feedback-kind.html). Only written when the
 CLI builds for publishing with feedback on; the CLI reads it, opens a GitHub
 issue for each page, writes the site's address to the repository (the login
 service checks it) and deletes the file. */ -}}
 {{- $out := slice -}}
-{{- if and (eq site.Params.model "bento") site.Params.blup.feedback (eq (os.Getenv "HUGO_BLUP_MODE") "publish") -}}
+{{- if and site.Params.blup.feedback (eq (os.Getenv "HUGO_BLUP_MODE") "publish") -}}
   {{- range $p := site.RegularPages -}}
-    {{- $k := partial "bento/kind.html" $p -}}
-    {{- if and $p.File (in (slice "roadmap" "changelog" "blog") $k) (not $p.Params.hidden) -}}
+    {{- $k := partial "feedback-kind.html" $p -}}
+    {{- if and $p.File $k (not $p.Params.hidden) -}}
       {{- $out = $out | append (dict "key" (partial "bento/feedback-key.html" $p) "kind" $k "title" (partial "title.html" $p) "url" $p.Permalink) -}}
     {{- end -}}
   {{- end -}}

@@ -1,3 +1,5 @@
+{{- /* The privacy policy (blup: privacy): a plain page, not a post. */ -}}
+{{- if eq (lower (string .Params.blup)) "privacy" }}{{ partial "mochi/plain.html" . }}{{ else -}}
 {{- $title := partial "title.html" . -}}
 {{- $cover := partial "mochi/cover.html" . -}}
 {{- $crumbs := slice -}}
@@ -56,8 +58,8 @@
         <h2>{{ T "shareArticle" }}</h2>
         {{ partial "mochi/share.html" . }}
       </footer>
-      {{- /* Bento blog posts: votes, reactions and comments (GitHub issues). */}}
-      {{- if eq site.Params.model "bento" }}{{ partial "bento/feedback.html" . }}{{ end }}
+      {{- /* Blog posts (both models): reactions and comments (GitHub issues). */}}
+      {{ partial "bento/feedback.html" . }}
     </article>
   </div>
   {{- /* Related by tags first, completed with the newest posts. */}}
@@ -75,3 +77,4 @@
   </section>
   {{- end }}
 </main>
+{{- end -}}

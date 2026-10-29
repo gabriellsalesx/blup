@@ -23,7 +23,9 @@ Não precisa saber programar. O Blup faz uma pergunta de cada vez, cada uma com 
 - **Do jeito do Obsidian**: propriedades, imagens, links entre notas, callouts, fórmulas, notas de rodapé, tarefas e `%%comentários%%` que não vão para o site.
 - **Embutido**: busca no site, tema claro e escuro, imagens em WebP, imagem de compartilhamento para cada página, RSS e mapa do site.
 - **Posts com senha**, criptografados quando o site é gerado. Sem servidor.
-- **Comentários e reações** no Bento: votos no roadmap, reações no changelog e comentários nos posts, guardados em issues de um repositório público `<site>-feedback` que o Blup cria. Quem visita entra com o GitHub e participa sem sair do site (pelo [blup-api](https://github.com/gabriellsalesx/blup-api)). Liga e desliga em `blup personalizar`.
+- **Comentários e reações** nos dois temas: reações e comentários nos posts e, no Bento, também votos no roadmap e reações no changelog, guardados em issues de um repositório público `<site>-feedback` que o Blup cria. Quem visita entra com o GitHub e participa sem sair do site (pelo [blup-api](https://github.com/gabriellsalesx/blup-api)). Liga e desliga em `blup personalizar`.
+- **Cookies e estatísticas**: Google Analytics, Google Tag Manager, Meta Pixel, Umami e Plausible pelo `blup personalizar`, com banner de cookies opcional que só carrega o que a pessoa aceitar (vídeos do YouTube nas notas também esperam o aceite) e uma página de política de privacidade de modelo, escrita a partir das ferramentas, para editar no Obsidian.
+- **Instala como app** no celular e no computador e **abre sem internet**: o Blup faz os ícones de cada aparelho (inclusive o `favicon.ico`) a partir do favicon do site.
 - **Autores**: uma nota por pessoa, com foto, cargo, redes e bio.
 - **Offline primeiro**: as notas ficam no seu computador. Sincronize com um repositório privado no GitHub quando tiver internet e continue em outro computador. Sem git.
 - **Hospedagem grátis** no Cloudflare Pages (`seusite.pages.dev`) ou no GitHub Pages, e domínio próprio se você quiser.
@@ -141,6 +143,7 @@ O Blup baixa o Hugo e o Pagefind sozinho na primeira vez que precisa (versões f
 | `internal/deploy/github`, `internal/deploy/cfpages` | GitHub Pages e Cloudflare Pages pelas APIs, sem git nem wrangler |
 | `internal/notesync` | sincronização das notas com um repositório privado |
 | `internal/lock` | criptografia dos posts com senha |
+| `internal/pwa` | ícones do app, `favicon.ico` e a cópia offline (service worker) |
 | `theme/` | o tema Hugo, embutido no executável |
 
 ### Publicar uma versão

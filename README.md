@@ -23,7 +23,9 @@ You don't need to know how to code. Blup asks one question at a time, each with 
 - **Write the Obsidian way**: properties, images, links between notes, callouts, math, footnotes, tasks and `%%comments%%` that never reach the site.
 - **Built in**: site search, light and dark mode, images resized to WebP, a share image for every page, RSS and sitemap.
 - **Password protected posts**, encrypted when the site is built. No server involved.
-- **Comments and reactions** on Bento: roadmap votes, changelog reactions and post comments, kept in issues of a public `<site>-feedback` repository Blup creates. Visitors sign in with GitHub and take part without leaving the site (through [blup-api](https://github.com/gabriellsalesx/blup-api)). Turn them on and off in `blup customize`.
+- **Comments and reactions** in both themes: reactions and comments on posts and, in Bento, roadmap votes and changelog reactions too, kept in issues of a public `<site>-feedback` repository Blup creates. Visitors sign in with GitHub and take part without leaving the site (through [blup-api](https://github.com/gabriellsalesx/blup-api)). Turn them on and off in `blup customize`.
+- **Cookies and statistics**: Google Analytics, Google Tag Manager, Meta Pixel, Umami and Plausible from `blup customize`, with an optional cookie banner that only loads what visitors accept (YouTube videos in notes wait for consent too), and a template privacy policy page, written from the tools, to edit in Obsidian.
+- **Installs as an app** on phones and computers and **opens offline**: Blup makes the icon of every device (`favicon.ico` included) from the site's favicon.
 - **Authors**: one note per person, with photo, role, links and bio.
 - **Offline first**: your notes stay on your computer. Sync them with a private GitHub repository when you're back online, and pick up on another computer. No git needed.
 - **Free hosting** on Cloudflare Pages (`yoursite.pages.dev`) or GitHub Pages, and your own domain if you want one.
@@ -141,6 +143,7 @@ Blup downloads Hugo and Pagefind by itself the first time it needs them (pinned 
 | `internal/deploy/github`, `internal/deploy/cfpages` | GitHub Pages and Cloudflare Pages through their APIs, no git or wrangler |
 | `internal/notesync` | notes sync with a private repository |
 | `internal/lock` | encryption of password protected posts |
+| `internal/pwa` | app icons, `favicon.ico` and the offline copy (service worker) |
 | `theme/` | the Hugo theme, embedded in the binary |
 
 ### Releasing a version

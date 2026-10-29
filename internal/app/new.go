@@ -177,15 +177,13 @@ func newSite(ctx context.Context, g *config.Global) error {
 		return err
 	}
 
-	// Optional (Bento): votes, reactions and comments in GitHub issues.
-	if site.Model == "bento" {
-		if ok, err := ui.Confirm(i18n.T("fb.new_q"), i18n.T("fb.new_help", feedbackRepoName(site)), false); err == nil && ok {
-			if err := enableFeedback(ctx, site); err != nil && !ui.Aborted(err) {
-				ui.Warn(describe(err))
-			} else if err == nil {
-				_ = site.Save()
-				_ = scaffold.Write(site)
-			}
+	// Optional: votes, reactions and comments in GitHub issues.
+	if ok, err := ui.Confirm(fbText(site, "fb.new_q"), i18n.T("fb.new_help", feedbackRepoName(site)), false); err == nil && ok {
+		if err := enableFeedback(ctx, site); err != nil && !ui.Aborted(err) {
+			ui.Warn(describe(err))
+		} else if err == nil {
+			_ = site.Save()
+			_ = scaffold.Write(site)
 		}
 	}
 

@@ -1,0 +1,10 @@
+{{- /* A page that is not a post, such as the privacy policy: title,
+description and text, without byline, sharing or comments. */ -}}
+<main id="main">
+  <article class="container plain-page">
+    {{ partial "mochi/breadcrumb.html" (dict "items" (slice (dict "name" (partial "title.html" .)))) }}
+    <h1 class="plain-title">{{ partial "title.html" . }}</h1>
+    {{- with .Description }}<p class="plain-lead">{{ . }}</p>{{ end }}
+    <div class="prose">{{ partial "content.html" . }}</div>
+  </article>
+</main>

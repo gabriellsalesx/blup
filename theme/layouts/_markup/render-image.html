@@ -8,6 +8,24 @@ Obsidian's width syntax in the alt text sets the display size:
   {{- $alt = index (index . 0) 1 -}}
   {{- $width = int (index (index . 0) 2) -}}
 {{- end -}}
+{{- /* A YouTube video (![](https://youtube.com/watch?v=...), as Obsidian
+embeds it): the player, from youtube-nocookie.com. With the cookie banner,
+a button loads it until the visitor accepts videos (consent.js). */ -}}
+{{- $yt := "" -}}
+{{- with findRESubmatch `^https?://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?(?:.*&)?v=|shorts/|embed/|live/)|youtu\.be/)([\w-]{11})` .Destination 1 -}}
+  {{- $yt = index (index . 0) 1 -}}
+{{- end -}}
+{{- if $yt -}}
+  {{- $src := printf "https://www.youtube-nocookie.com/embed/%s" $yt -}}
+  {{- $ask := false }}{{ with site.Params.blup.cookies }}{{ $ask = .banner }}{{ end -}}
+<span class="embed"{{ if $ask }} data-embed="{{ $src }}" data-embed-title="{{ $alt | default "YouTube" }}"{{ end }}>
+  {{- if $ask -}}
+  <span class="embed-ask"><button type="button" class="button" data-embed-load><svg class="icon icon-sm" aria-hidden="true"><use href="#i-youtube"/></svg>{{ T "ckLoadVideo" }}</button><small>{{ T "ckVideoNote" }}</small></span>
+  {{- else -}}
+  <iframe src="{{ $src }}" title="{{ $alt | default "YouTube" }}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+  {{- end -}}
+</span>
+{{- else -}}
 {{- with partial "vault-resource.html" (dict "page" .Page "path" .Destination) -}}
   {{- if ne .ResourceType "image" -}}
     {{- /* An embedded PDF, audio or video: the player, or a link. */ -}}
@@ -37,4 +55,5 @@ Obsidian's width syntax in the alt text sets the display size:
   {{- end -}}
 {{- else -}}
 <img src="{{ .Destination | safeURL }}" alt="{{ $alt }}"{{ with $width }} width="{{ . }}"{{ end }} loading="lazy">
+{{- end -}}
 {{- end -}}

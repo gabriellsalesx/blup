@@ -15,6 +15,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/i18n"
 	"github.com/gabriellsalesx/blup/internal/lock"
 	"github.com/gabriellsalesx/blup/internal/pagefind"
+	"github.com/gabriellsalesx/blup/internal/pwa"
 	"github.com/gabriellsalesx/blup/internal/scaffold"
 	"github.com/gabriellsalesx/blup/internal/ui"
 )
@@ -96,6 +97,10 @@ func build(ctx context.Context, site *config.Site, baseURL string) (string, erro
 	}
 	ui.OK(i18n.T("build.done"))
 	searchIndex(ctx, out)
+	// Last: the offline copy lists every file of the finished site.
+	if err := pwa.Write(out); err != nil {
+		ui.Warn(i18n.T("pwa.failed", describe(err)))
+	}
 	return out, nil
 }
 
