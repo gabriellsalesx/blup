@@ -235,7 +235,10 @@ export function tables(labels: TableText) {
         syntaxTree(tr.state).iterate({ from: raw, to: raw, enter: (n) => { if (n.name === "Table" && head >= n.from && head <= n.to) inside = true; } });
         if (!inside && tr.selection) raw = null;
       }
-      if (!tr.docChanged && raw === v.raw && !tr.effects.length) return v;
+      // The tables come from the syntax tree, which may still be parsing:
+      // a newer tree redraws them too.
+      const reparsed = syntaxTree(tr.state) !== syntaxTree(tr.startState);
+      if (!tr.docChanged && !reparsed && raw === v.raw && !tr.effects.length) return v;
       return { raw, deco: build(tr.state, raw) };
     },
     provide: (f) => EditorView.decorations.from(f, (v) => v.deco),
