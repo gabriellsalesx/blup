@@ -9,7 +9,7 @@
   let { props, kind, isIndex, onEdit }: { props: Record<string, any>; kind: string; isIndex: boolean; onEdit: (key: string, value: any) => void } = $props();
 
   const p = t.props;
-  let open = $state(true);
+  let open = $state(false);
   let more = $state(false);
   const list = (v: any): string[] => (Array.isArray(v) ? v.map(String) : v ? [String(v)] : []);
 
