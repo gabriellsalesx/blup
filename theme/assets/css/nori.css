@@ -41,7 +41,7 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-head { margin-block-end: 2rem; }
   .nori-title { font-size: 1.875rem; font-weight: 600; line-height: 2.25rem; letter-spacing: -.01em; color: var(--main-900); text-wrap: balance; }
   .nori-lede-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-block-start: .25rem; }
-  .nori-lede { font-size: 1.875rem; font-weight: 600; line-height: 2.25rem; letter-spacing: -.01em; color: var(--main-400); text-wrap: balance; }
+  .nori-lede { font-size: 1.875rem; font-weight: 600; line-height: 2.25rem; letter-spacing: -.01em; color: var(--main-400); }
   .nori-meta { font-size: .8125rem; line-height: 1.25rem; color: var(--main-600); font-variant-numeric: tabular-nums; }
 
   .nori-feed { position: relative; display: flex; align-items: center; height: 2.25rem; flex-shrink: 0; }

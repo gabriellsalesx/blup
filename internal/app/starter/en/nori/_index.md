@@ -14,7 +14,7 @@ social:
 button_text:
 button_link:
 ---
-This blog comes with a Blup tutorial built in. Read the posts and open the notes in Blup Studio to see how each page was made. Then edit them and start writing your own.
+Ideas, notes and what's next.
 
 %%
 This block is a comment (the text between the two pairs of percent signs): you only see it while editing, never on the site.

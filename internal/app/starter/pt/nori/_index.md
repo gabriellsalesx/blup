@@ -14,7 +14,7 @@ social:
 button_text:
 button_link:
 ---
-Este blog já vem com um tutorial do Blup. Leia os posts e abra as notas no Blup Studio para ver como cada página foi feita. Depois é só editar e escrever as suas.
+Ideias, notas e o que vier.
 
 %%
 Este bloco é um comentário (o texto entre os dois pares de sinais de porcentagem): aparece só no editor do Studio, nunca no site.
