@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
