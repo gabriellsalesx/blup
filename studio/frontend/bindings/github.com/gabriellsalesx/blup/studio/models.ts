@@ -135,6 +135,21 @@ export interface Prefs {
      * the preview, in px (0 = half of the room)
      */
     "previewWidth": number;
+
+    /**
+     * minimized, the Studio goes to the tray
+     */
+    "tray": boolean;
+
+    /**
+     * global shortcut that shows and hides the Studio
+     */
+    "toggleKey": string;
+
+    /**
+     * the Studio's shortcuts changed by the user (action -> keys)
+     */
+    "keys": { [_ in string]?: string } | null;
 }
 
 /**

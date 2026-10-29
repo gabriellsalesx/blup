@@ -78,6 +78,13 @@ export function Authors(): $CancellablePromise<app$0.Author[] | null> {
 }
 
 /**
+ * AutostartEnabled tells whether the Studio opens with the computer.
+ */
+export function AutostartEnabled(): $CancellablePromise<boolean> {
+    return $Call.ByID(594746212);
+}
+
+/**
  * CheckCookieTool tells whether an ID fits a tool ("" when it does).
  */
 export function CheckCookieTool(key: string, value: string): $CancellablePromise<string> {
@@ -535,6 +542,13 @@ export function SaveSocial(links: string[] | null): $CancellablePromise<void> {
 }
 
 /**
+ * SetAutostart makes the Studio open (in the tray) when the computer starts.
+ */
+export function SetAutostart(on: boolean): $CancellablePromise<void> {
+    return $Call.ByID(972087711, on);
+}
+
+/**
  * SetDomain saves and connects a custom domain.
  */
 export function SetDomain(value: string): $CancellablePromise<app$0.DomainStatus> {
@@ -568,6 +582,21 @@ export function SetPassword(password: string): $CancellablePromise<void> {
  */
 export function SetTarget(t: app$0.Target): $CancellablePromise<app$0.Target> {
     return $Call.ByID(149790763, t);
+}
+
+/**
+ * SetToggleHotkey registers the global shortcut that shows and hides the
+ * Studio ("" removes it) and saves it.
+ */
+export function SetToggleHotkey(accel: string): $CancellablePromise<void> {
+    return $Call.ByID(1510764604, accel);
+}
+
+/**
+ * SetTray turns the tray icon on or off (and saves the choice).
+ */
+export function SetTray(on: boolean): $CancellablePromise<void> {
+    return $Call.ByID(983500742, on);
 }
 
 /**

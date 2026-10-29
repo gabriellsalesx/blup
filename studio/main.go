@@ -37,8 +37,15 @@ func main() {
 		Assets:      application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
 		Mac:         application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
 		OnShutdown:  studio.shutdown,
+		// Opening it again shows the window already running.
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID:               "dev.blup.studio",
+			OnSecondInstanceLaunch: func(application.SecondInstanceData) { showWindow() },
+		},
 	})
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
+	trayOn = func() bool { return studio.Prefs().Tray }
+	hidden := startHidden(os.Args) && studio.Prefs().Tray
+	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "Blup Studio",
 		Width:            1360,
 		Height:           860,
@@ -46,7 +53,13 @@ func main() {
 		MinHeight:        560,
 		BackgroundColour: application.NewRGB(250, 250, 250),
 		URL:              "/",
+		Hidden:           hidden, // opened with the computer: straight to the tray
 	})
+	trayLabels := [2]string{"Open Blup Studio", "Quit"}
+	if lang == "pt" {
+		trayLabels = [2]string{"Abrir o Blup Studio", "Sair"}
+	}
+	setupDesktop(studio, app, win, trayLabels)
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}

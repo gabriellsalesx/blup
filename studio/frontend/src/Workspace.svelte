@@ -13,6 +13,7 @@
   import Gear from "@lucide/svelte/icons/settings";
   import CircleHelp from "@lucide/svelte/icons/circle-question-mark";
   import { look, setPref } from "./theme.svelte";
+  import { ACTIONS, comboOf, keysOf, type Action } from "./keys";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import PanelLeft from "@lucide/svelte/icons/panel-left";
   import Files from "@lucide/svelte/icons/files";
@@ -149,6 +150,21 @@
     if (which === "side") { sideW = SIDE; setPref("sideWidth", 0); }
     else { prevW = 0; setPref("previewWidth", 0); }
   }
+  // The Studio's shortcuts (Settings > Shortcuts).
+  function shortcut(e: KeyboardEvent) {
+    const combo = comboOf(e);
+    if (!combo) return;
+    const a = ACTIONS.find((x) => keysOf(look.keys, x.key) === combo)?.key as Action | undefined;
+    if (!a) return;
+    e.preventDefault();
+    if (a === "terminal") termOpen = !termOpen;
+    else if (a === "preview") togglePreview();
+    else if (a === "sidebar") sideOpen = !sideOpen;
+    else if (a === "settings") prefsOpen = true;
+    else if (a === "search") { sideOpen = true; sideTab = "search"; }
+    else if (a === "newNote") { sideOpen = true; sideTab = "files"; screen = "write"; startCreate("note"); }
+  }
+
   // A smaller window keeps the editor's room.
   function fit() {
     sideW = clampSide(sideW);
@@ -336,7 +352,7 @@
   onDestroy(() => clearTimeout(timer));
 </script>
 
-<svelte:window onresize={fit} onkeydown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "`") { e.preventDefault(); termOpen = !termOpen; } }} onclick={() => (switching = false)} />
+<svelte:window onresize={fit} onkeydown={shortcut} onclick={() => (switching = false)} />
 
 <div class="ws" class:no-preview={!previewOn} class:no-side={!sideOpen} class:resizing style:--side="{sideW}px" style:--prev={prevW ? `${prevW}px` : "minmax(0, 1fr)"}>
   <!-- The ribbon, like Obsidian's: icons only, the name on hover. -->
@@ -347,7 +363,7 @@
       <button class="rib" class:active={screen === key} title={label} onclick={async () => { await save(); autostart = ""; screen = key; error = ""; }}><Icon size={19} strokeWidth={1.75} /></button>
     {/each}
     <span class="grow"></span>
-    <button class="rib" class:active={termOpen} title={t.term.button + " (Ctrl+\u0060)"} onclick={() => (termOpen = !termOpen)}><SquareTerminal size={19} strokeWidth={1.75} /></button>
+    <button class="rib" class:active={termOpen} title={t.term.button + (keysOf(look.keys, "terminal") ? ` (${keysOf(look.keys, "terminal")})` : "")} onclick={() => (termOpen = !termOpen)}><SquareTerminal size={19} strokeWidth={1.75} /></button>
   </nav>
 
   {#if sideOpen}

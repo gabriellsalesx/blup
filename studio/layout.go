@@ -93,16 +93,19 @@ func (s *Studio) SaveLayout(items []HomeItem) error {
 
 // Prefs are the Studio's own choices (studio-prefs.json).
 type Prefs struct {
-	Theme        string   `json:"theme"`       // "system", "light" or "dark"
-	EditorFont   int      `json:"editorFont"`  // the editor's text size, in px
-	EditorWidth  string   `json:"editorWidth"` // "narrow" (a readable line) or "wide"
-	Spellcheck   bool     `json:"spellcheck"`
-	PreviewOff   bool     `json:"previewOff"`   // open sites without the preview
-	TermFont     int      `json:"termFont"`     // the terminal's text size, in px
-	SpellLang    string   `json:"spellLang"`    // the spell check's dictionary: "pt", "en" or "es" ("" = the Studio's language)
-	Words        []string `json:"words"`        // words added to the dictionary
-	SideWidth    int      `json:"sideWidth"`    // the files panel, in px (0 = the default)
-	PreviewWidth int      `json:"previewWidth"` // the preview, in px (0 = half of the room)
+	Theme        string            `json:"theme"`       // "system", "light" or "dark"
+	EditorFont   int               `json:"editorFont"`  // the editor's text size, in px
+	EditorWidth  string            `json:"editorWidth"` // "narrow" (a readable line) or "wide"
+	Spellcheck   bool              `json:"spellcheck"`
+	PreviewOff   bool              `json:"previewOff"`   // open sites without the preview
+	TermFont     int               `json:"termFont"`     // the terminal's text size, in px
+	SpellLang    string            `json:"spellLang"`    // the spell check's dictionary: "pt", "en" or "es" ("" = the Studio's language)
+	Words        []string          `json:"words"`        // words added to the dictionary
+	SideWidth    int               `json:"sideWidth"`    // the files panel, in px (0 = the default)
+	PreviewWidth int               `json:"previewWidth"` // the preview, in px (0 = half of the room)
+	Tray         bool              `json:"tray"`         // minimized, the Studio goes to the tray
+	ToggleKey    string            `json:"toggleKey"`    // global shortcut that shows and hides the Studio
+	Keys         map[string]string `json:"keys"`         // the Studio's shortcuts changed by the user (action -> keys)
 }
 
 func prefsFile() (string, error) {

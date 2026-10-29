@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Settings from "@lucide/svelte/icons/settings";
@@ -14,6 +14,9 @@
   import X from "@lucide/svelte/icons/x";
   import Check from "@lucide/svelte/icons/check";
   import ThemePicker from "./ThemePicker.svelte";
+  import KeyRecorder from "./KeyRecorder.svelte";
+  import Keyboard from "@lucide/svelte/icons/keyboard";
+  import { ACTIONS, keysOf, type Action } from "./keys";
   import Switch from "./Switch.svelte";
   import { look, setPref, spellLang } from "./theme.svelte";
   import { t } from "./i18n";
@@ -29,7 +32,28 @@
     { key: "editor", label: s.editor, Icon: PenLine },
     { key: "accounts", label: s.accounts, Icon: KeyRound },
     { key: "terminal", label: s.terminal, Icon: SquareTerminal },
+    { key: "keys", label: t.keys.title, Icon: Keyboard },
   ];
+  const k = t.keys;
+
+  // The desktop: opening with the computer, the tray, the global shortcut.
+  let autostart = $state(false);
+  AutostartEnabled().then((v) => (autostart = v));
+  let deskError = $state("");
+  const deskRun = async (fn: () => Promise<void>) => { deskError = ""; try { await fn(); } catch (e) { deskError = String(e).replace(/^(Runtime)?Error: /, ""); } };
+  const setAutostart = (v: boolean) => deskRun(async () => { await SetAutostart(v); autostart = v; });
+  const setTray = (v: boolean) => deskRun(async () => { await SetTray(v); look.tray = v; });
+  const setToggle = (keys: string) => deskRun(async () => { await SetToggleHotkey(keys); look.toggleKey = keys; });
+  // The Studio's own shortcuts.
+  function setKey(a: Action, keys: string) {
+    const all: Record<string, string> = {};
+    for (const [x, v] of Object.entries(look.keys ?? {})) all[x] = v ?? "";
+    // The same keys can't do two things: the other action loses them.
+    for (const x of ACTIONS) if (x.key !== a && keysOf(all, x.key) === keys) all[x.key] = "";
+    all[a] = keys;
+    setPref("keys", all);
+  }
+  function resetKeys() { setPref("keys", {}); }
   let tab = $state("general");
   let version = $state("");
   let lang = $state("");
@@ -66,6 +90,9 @@
     <button class="close" title={t.sec.cancel} onclick={onClose}><X size={18} /></button>
     {#if tab === "general"}
       <h2>{s.general}</h2>
+      <div class="item"><Switch label={k.autostart} help={k.autostartHelp} checked={autostart} onchange={setAutostart} /></div>
+      <div class="item"><Switch label={k.tray} help={k.trayHelp} checked={!!look.tray} onchange={setTray} /></div>
+      {#if deskError}<p class="bad">{deskError}</p>{/if}
       <div class="item">
         <div class="text"><b>{s.version}</b><small>Blup Studio {version}</small></div>
         <button class="btn ghost" onclick={() => OpenURL("https://getblup.pages.dev/bento/changelog/")}>{s.news}</button>
@@ -137,6 +164,34 @@
           {:else}<button class="btn ghost" onclick={onPublish}>{s.connect}</button>{/if}
         </div>
       {/if}
+    {:else if tab === "keys"}
+      <h2>{k.title}</h2>
+      <h3>{k.globalTitle}</h3>
+      <div class="item">
+        <div class="text"><b>{k.toggle}</b><small>{look.tray ? k.toggleHelpTray : k.toggleHelp}</small></div>
+        <span class="keyrow">
+          <KeyRecorder value={look.toggleKey ?? ""} onChange={setToggle} />
+          {#if look.toggleKey}<button class="icon-btn" title={k.clear} onclick={() => setToggle("")}><X size={15} /></button>{/if}
+        </span>
+      </div>
+      <p class="muted lead">{k.wayland}</p>
+      {#if deskError}<p class="bad">{deskError}</p>{/if}
+      <h3>{k.appTitle}</h3>
+      {#each ACTIONS as a (a.key)}
+        <div class="item">
+          <div class="text"><b>{k.actions[a.key]}</b>{#if keysOf(look.keys, a.key) !== a.keys}<small>{k.default}: {a.keys}</small>{/if}</div>
+          <span class="keyrow">
+            <KeyRecorder value={keysOf(look.keys, a.key)} onChange={(v) => setKey(a.key, v)} />
+            {#if keysOf(look.keys, a.key)}<button class="icon-btn" title={k.clear} onclick={() => setKey(a.key, "")}><X size={15} /></button>{/if}
+          </span>
+        </div>
+      {/each}
+      <div class="item"><span></span><button class="btn ghost" onclick={resetKeys}>{k.reset}</button></div>
+      <h3>{k.editorTitle}</h3>
+      <p class="muted lead">{k.editorHelp}</p>
+      {#each k.editorKeys as [label, keys] (label)}
+        <div class="item fixed"><div class="text"><b>{label}</b></div><span class="fixed-keys">{#each keys.split("+") as part, i (i)}<kbd>{part}</kbd>{/each}</span></div>
+      {/each}
     {:else}
       <h2>{s.terminal}</h2>
       <div class="item">
@@ -184,5 +239,9 @@
   .chip { display: inline-flex; align-items: center; gap: .25rem; padding: .2rem .3rem .2rem .6rem; border: 1px solid var(--line); border-radius: 999px; font-size: .8rem; }
   .chip button { display: inline-grid; place-items: center; padding: .15rem; border-radius: 999px; color: var(--muted); }
   .chip button:hover { background: var(--soft); color: var(--text); }
+  .keyrow { display: inline-flex; align-items: center; gap: .3rem; }
+  .item.fixed { padding-block: .55rem; }
+  .fixed-keys { display: inline-flex; gap: .25rem; }
+  .fixed-keys kbd { padding: .1rem .4rem; border: 1px solid var(--line); border-block-end-width: 2px; border-radius: .3rem; background: var(--soft); font-family: inherit; font-size: .78rem; font-weight: 600; }
   .ok { color: var(--green, #16a34a); display: inline-grid; }
 </style>
