@@ -9,7 +9,7 @@
   import { StateField, RangeSetBuilder, type EditorState } from "@codemirror/state";
   import { look, setPref } from "./theme.svelte";
   import { spellcheck, wordAt, suggest, addWord, complete, skipAt } from "./spell";
-  import { autocompletion, acceptCompletion, completionStatus, closeCompletion, moveCompletionSelection, type CompletionContext, type Completion } from "@codemirror/autocomplete";
+  import { autocompletion, startCompletion, acceptCompletion, completionStatus, closeCompletion, moveCompletionSelection, type CompletionContext, type Completion } from "@codemirror/autocomplete";
   import { Prec } from "@codemirror/state";
   import { EditorSelection } from "@codemirror/state";
   import { wrap, prefix, block, link, insert } from "./mdcommands";
@@ -125,6 +125,7 @@
   // when it is misspelled, then words of this note and of the dictionary
   // that start with it. Tab puts the chosen one in place.
   async function wordSuggestions(ctx: CompletionContext) {
+    if (ctx.view && wordAt(ctx.view, ctx.pos)) return null; // fixSuggestions
     const m = ctx.matchBefore(/\p{L}[\p{L}\p{M}'’-]*/u);
     if (!m || m.to - m.from < 3 || !look.spellcheck || skipAt(ctx.view!, ctx.pos)) return null;
     if (!ctx.explicit && ctx.state.sliceDoc(m.to, m.to + 1).match(/\p{L}/u)) return null; // inside a word
@@ -144,6 +145,17 @@
     for (const w of new Set(inNote)) if (w.toLowerCase().startsWith(low) && w.length > word.length) add(w, "text", te.inNote, 50);
     r.words.forEach((w, i) => add(w, "text", "", 20 - i));
     return options.length ? { from: m.from, options: options.slice(0, 10), filter: false } : null;
+  }
+
+  // The cursor on a word marked in red (a click on it, or typing in it):
+  // its corrections, and Tab swaps the whole word.
+  async function fixSuggestions(ctx: CompletionContext) {
+    const w = ctx.view && wordAt(ctx.view, ctx.pos);
+    if (!w || !look.spellcheck) return null;
+    const list = await suggest(w.word);
+    if (ctx.aborted || !list.length) return null;
+    const fixes = [...list.filter((x) => !x.includes(" ")), ...list.filter((x) => x.includes(" "))].slice(0, 6);
+    return { from: w.from, to: w.to, options: fixes.map((label, i) => ({ label, type: "fix", detail: te.fix, boost: 99 - i })), filter: false };
   }
 
   // Images pasted or dropped on the note go to the attachments folder; the
@@ -213,7 +225,7 @@
           { key: "Mod-i", preventDefault: true, run: (v) => (wrap(v, "*", te.italicText), true) },
           { key: "Mod-k", preventDefault: true, run: (v) => (link(v, te.linkText), true) },
         ]),
-        autocompletion({ override: [noteLinks, wordSuggestions], icons: false, defaultKeymap: false, activateOnTypingDelay: 150 }),
+        autocompletion({ override: [noteLinks, fixSuggestions, wordSuggestions], icons: false, defaultKeymap: false, activateOnTypingDelay: 150 }),
         // Tab takes the suggestion; Enter stays a new line.
         Prec.highest(keymap.of([
           { key: "Tab", run: (v) => (completionStatus(v.state) === "active" ? acceptCompletion(v) : false) },
@@ -237,7 +249,14 @@
             return true;
           },
         }),
-        EditorView.updateListener.of((u) => { if (u.docChanged) onChange(u.state.doc.toString()); }),
+        EditorView.updateListener.of((u) => {
+          if (u.docChanged) onChange(u.state.doc.toString());
+          // A click on a word in red opens its corrections.
+          if (!u.docChanged && u.transactions.some((tr) => tr.isUserEvent("select.pointer"))) {
+            const sel = u.state.selection.main;
+            if (sel.empty && wordAt(u.view, sel.head)) setTimeout(() => startCompletion(u.view), 0);
+          }
+        }),
       ],
     });
     view.focus();
