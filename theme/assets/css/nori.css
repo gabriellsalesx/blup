@@ -28,14 +28,22 @@ neutral palette and layout. Bundled into one file by css.Build. */
 @layer layout {
   /* Logo on the left, the menu in the middle, search and theme on the
      right (the menu opens from a button on small screens). */
-  .nori-header { display: flex; align-items: center; gap: 1rem; height: var(--header-h); margin-block-start: .75rem; padding-inline: 1.25rem; }
+  /* It stays on top while the page scrolls, like Mochi's, on the page's
+     own color (a hairline shows once the page moves under it). */
+  .nori-header { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 1rem; height: calc(var(--header-h) + .75rem); padding: .75rem 1.25rem 0; background: var(--main-25); }
+  @supports (animation-timeline: scroll()) {
+    .nori-header { animation: nori-lift linear both; animation-timeline: scroll(); animation-range: 0 4rem; }
+    @keyframes nori-lift { to { box-shadow: 0 1px 0 var(--main-200); } }
+  }
   @media (width >= 48rem) { .nori-header { padding-inline: 2.5rem; } }
   .nori-header .nav { gap: .25rem; }
   .nori-header .nav a { padding: .375rem .75rem; font-size: .875rem; color: var(--main-600); }
   .nori-header .nav a:hover, .nori-header .nav a[aria-current] { color: var(--main-900); }
   .nori-header .button { padding: .375rem .875rem; font-size: .875rem; background: var(--main-900); color: var(--main-25); }
   .nori-header .menu-toggle { color: var(--main-600); }
-  .nori-header ~ .mobile-menu, .nori-header .mobile-menu { inset-block-start: calc(var(--header-h) + .75rem); }
+  .nori-header .mobile-menu { inset-block-start: calc(var(--header-h) + .75rem); }
+  /* Mochi's reading bar, right under Nori's taller header. */
+  [data-model="nori"] .reading-progress { inset-block-start: calc(var(--header-h) + .75rem); z-index: 51; }
   .nori-header .brand { gap: .375rem; font-size: 1.0625rem; font-weight: 600; letter-spacing: -.01em; color: var(--main-900); }
   .nori-header .brand img { height: 1.5rem; margin: 0; }
   .nori-header .header-actions { margin: 0 0 0 auto; gap: .25rem; }
@@ -125,7 +133,13 @@ neutral palette and layout. Bundled into one file by css.Build. */
   /* Footer: one centered row of small links on the box color. */
   .nori-footer { margin-block-start: 2rem; padding: 1rem 1.5rem calc(env(safe-area-inset-bottom) + 1rem); border-block-start: 1px solid var(--main-200); background: var(--panel); }
   .nori-footer-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .25rem 1rem; max-width: 80rem; margin-inline: auto; font-size: .75rem; line-height: 1rem; color: var(--main-600); }
-  .nori-footer-row > :is(a, button) { color: var(--main-600); font-size: inherit; }
+  .nori-footer-row > :is(a, button) { display: inline-flex; align-items: center; gap: .25rem; color: var(--main-600); font-size: inherit; }
+  .nori-footer-row > button[hidden] { display: none; }
+  .nori-footer-brand > span { display: inline-flex; align-items: center; gap: .25rem; }
+  .nori-footer .made-with { display: inline-flex; align-items: center; gap: .25rem; }
+  .nori-footer .made-with:hover { color: var(--main-900); }
+  .nori-footer .socials { gap: .25rem; }
+  .nori-footer .socials a { display: flex; padding: .125rem; }
   .nori-footer-row > :is(a, button):hover { color: var(--main-900); text-decoration: underline; }
   .nori-footer-brand { order: 99; display: flex; width: 100%; align-items: center; justify-content: center; gap: .5rem; }
   .nori-footer-brand img { height: 1.25rem; width: auto; opacity: .7; }

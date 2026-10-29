@@ -29,6 +29,7 @@ Este post, por exemplo, está na pasta **Primeiros passos**. Por isso ele aparec
 - Capas e imagens redimensionadas sozinhas.
 - Página de cada tag e de cada autor.
 - Comentários e reações no fim dos posts.
+- Barra de leitura no topo dos posts, que mostra quanto falta.
 - Callouts, fórmulas, tabelas e código.
 - Posts protegidos por senha.
 - Feed RSS, com um botão para copiar o endereço.

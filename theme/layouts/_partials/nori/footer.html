@@ -1,22 +1,23 @@
-{{- /* One centered row: logo and ©, the menu, the social links, RSS, the
-privacy policy, cookie choices and "install app" (shown by pwa.js). */ -}}
+{{- /* One centered row with the same items as Mochi's footer: logo, ©,
+"Made with Blup", social icons, RSS, the privacy policy, cookie choices
+and "install app" (shown by pwa.js). The menu lives in the header. */ -}}
 {{- $set := partialCached "site/settings.html" . "site" -}}
 <footer class="nori-footer">
   <div class="nori-footer-row">
     <div class="nori-footer-brand">
       <a href="{{ site.Home.RelPermalink }}" aria-label="{{ $set.name }}">{{ partial "mochi/logo.html" . }}</a>
-      <span>© {{ now.Year }} {{ $set.name }}.</span>
+      <span>© {{ now.Year }} {{ $set.name }} · {{ T "poweredBy" }} <a class="made-with" href="https://github.com/gabriellsalesx/blup" rel="noopener"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-github"/></svg>Blup</a></span>
     </div>
-    {{- range partial "mochi/menu.html" . }}
-    <a href="{{ .url }}"{{ if .current }} aria-current="page"{{ end }}{{ if .external }} rel="noopener"{{ end }}>{{ .name }}</a>
+    {{- with $set.social }}
+    <ul class="socials">
+      {{- range . }}
+      <li><a href="{{ .url }}" rel="noopener me" aria-label="{{ .name }}"><svg class="icon icon-sm"><use href="#i-{{ .icon }}"/></svg></a></li>
+      {{- end }}
+    </ul>
     {{- end }}
-    {{- range $set.social }}
-    <a href="{{ .url }}" rel="noopener me">{{ .name }}</a>
-    {{- end }}
-    {{- with site.Home.OutputFormats.Get "rss" }}<a href="{{ .RelPermalink }}">RSS</a>{{ end }}
+    {{- with site.Home.OutputFormats.Get "rss" }}<a href="{{ .RelPermalink }}"><svg class="icon icon-sm"><use href="#i-rss"/></svg>RSS</a>{{ end }}
     {{- with partialCached "site/privacy.html" . "privacy" }}<a href="{{ .RelPermalink }}">{{ T "ckPrivacy" }}</a>{{ end }}
     {{- with site.Params.blup.cookies }}{{ if .banner }}<button type="button" data-consent-open>{{ T "ckFooter" }}</button>{{ end }}{{ end }}
-    <button type="button" data-install hidden>{{ T "installApp" }}</button>
-    <a href="https://github.com/gabriellsalesx/blup" rel="noopener">{{ T "poweredBy" }} Blup</a>
+    <button type="button" data-install hidden><svg class="icon icon-sm" aria-hidden="true"><use href="#i-download"/></svg>{{ T "installApp" }}</button>
   </div>
 </footer>

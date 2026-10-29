@@ -29,6 +29,7 @@ This post, for example, is in the **Getting started** folder. That is why it sho
 - Covers and images resized for you.
 - A page for each tag and each author.
 - Comments and reactions at the end of the posts.
+- A reading bar at the top of the posts, showing how much is left.
 - Callouts, math, tables and code.
 - Password protected posts.
 - RSS feed, with a button that copies its address.

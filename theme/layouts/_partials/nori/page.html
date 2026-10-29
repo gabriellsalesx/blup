@@ -2,6 +2,7 @@
 {{- if eq (lower (string .Params.blup)) "privacy" }}{{ partial "nori/plain.html" . }}{{ else -}}
 {{- $title := partial "title.html" . -}}
 {{- $authors := partial "mochi/authors.html" . -}}
+<div class="reading-progress" aria-hidden="true"></div>
 <main id="main" class="nori-main">
   <article class="nori-column">
     <header class="nori-post-head">
