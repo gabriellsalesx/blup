@@ -163,11 +163,14 @@ class TableWidget extends WidgetType {
     const addCol = bar("right", "+", L.addCol, () => { const n = read(); n.rows.forEach((r) => r.push("")); n.aligns.push("---"); write(n, [0, n.aligns.length - 1]); });
     const addRow = bar("bottom", "+", L.addRow, () => { const n = read(); n.rows.push(Array(n.aligns.length).fill("")); write(n, [n.rows.length - 1, 0]); });
     const delCol = bar("left", "−", L.delLastCol, cols > 1 ? () => { const n = read(); n.rows.forEach((r) => r.pop()); n.aligns.pop(); write(n); redraw(); } : null);
+    // In the corner between the two −: the bin deletes the whole table
+    // (Ctrl+Z brings it back).
+    const bin = bar("corner", "bin", L.delTable, () => { const from = (wrap as any).cmWidget.from; view.dispatch({ changes: { from, to: from + ((wrap as any).cmText as string).length, insert: "" } }); view.focus(); });
     const delRow = bar("top", "−", L.delLastRow, rows > 2 ? () => { const n = read(); n.rows.pop(); write(n); redraw(); } : null);
     const inner = document.createElement("div");
     inner.className = "cm-md-table-inner";
     inner.append(table);
-    wrap.append(delRow, delCol, inner, addCol, addRow);
+    wrap.append(bin, delRow, delCol, inner, addCol, addRow);
   }
 }
 
@@ -176,7 +179,7 @@ function bar(side: string, sign: string, title: string, run: (() => void) | null
   b.className = "cm-md-bar " + side;
   b.title = title;
   // Drawn, not typed: a + or − glyph never sits in the exact middle.
-  const path = sign === "+" ? "M12 5v14M5 12h14" : "M5 12h14";
+  const path = sign === "+" ? "M12 5v14M5 12h14" : sign === "bin" ? "M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" : "M5 12h14";
   b.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="${path}"/></svg>`;
   b.addEventListener("mousedown", (e) => e.preventDefault());
   if (run) b.addEventListener("click", run);
