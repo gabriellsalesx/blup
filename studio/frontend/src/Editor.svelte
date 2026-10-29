@@ -13,6 +13,7 @@
   import { Prec } from "@codemirror/state";
   import { undo, redo } from "@codemirror/commands";
   import { undoHandlers } from "./undo";
+  import { tables } from "./table";
   import Undo from "@lucide/svelte/icons/undo-2";
   import Redo from "@lucide/svelte/icons/redo-2";
   import { EditorSelection } from "@codemirror/state";
@@ -190,6 +191,17 @@
     } catch (e) { onError?.(String(e).replace(/^(Runtime)?Error: /, "")); }
   }
 
+  // A new table, with the cursor in its first empty cell.
+  function newTable() {
+    block(view, `| ${te.col} 1 | ${te.col} 2 |\n| --- | --- |\n|   |   |`);
+    const at = view.state.selection.main.head;
+    setTimeout(() => {
+      let best: HTMLElement | null = null;
+      for (const el of host.querySelectorAll<HTMLElement>(".cm-md-table")) if ((el as any).cmWidget?.from <= at) best = el;
+      best?.querySelector<HTMLElement>('[data-r="1"][data-c="0"]')?.focus();
+    }, 30);
+  }
+
   // The formatting bar.
   const H = /^#{1,6} /, LIST = /^(\s*)([-*+] \[[ x]\] |[-*+] |\d+\. )/, QUOTE = /^> ?/;
   const tools = [
@@ -210,7 +222,7 @@
     { key: "link", label: te.link + " (Ctrl+K)", Icon: Link, run: () => link(view, te.linkText) },
     { key: "image", label: te.image, Icon: ImageIcon, run: pickImage },
     { key: "code", label: te.code, Icon: Code, run: () => wrap(view, "`", te.codeText) },
-    { key: "table", label: te.table, Icon: Table, run: () => block(view, `| ${te.col} 1 | ${te.col} 2 |\n| --- | --- |\n|  |  |`) },
+    { key: "table", label: te.table, Icon: Table, run: newTable },
     { key: "hr", label: te.hr, Icon: Minus, run: () => block(view, "---") },
   ];
 
@@ -224,6 +236,7 @@
         syntaxHighlighting(markdownStyle),
         EditorView.lineWrapping,
         commentField,
+        tables(t.editor.tableUi),
         EditorView.contentAttributes.of({ spellcheck: "false" }), // ours, below
         spellcheck,
         keymap.of([
@@ -326,6 +339,25 @@
   .editor :global(.cm-completionIcon) { display: none; }
   .editor :global(.cm-tooltip-autocomplete > ul > li[aria-selected]::after) { content: "Tab"; float: inline-end; margin-inline-start: 1rem; padding: 0 .35rem; border: 1px solid var(--line); border-radius: .3rem; font-size: .7rem; color: var(--muted); }
   .editor :global(.cm-completionLabel) { font-weight: 500; }
+  /* Tables drawn as tables (table.ts). */
+  .editor :global(.cm-md-table) { position: relative; display: inline-block; max-width: 100%; padding: .4rem 1.6rem 1.6rem 0; }
+  .editor :global(.cm-md-table-inner) { position: relative; display: flex; overflow-x: auto; }
+  .editor :global(.cm-md-table table) { border-collapse: collapse; font-size: .95em; }
+  .editor :global(.cm-md-table th), .editor :global(.cm-md-table td) { min-width: 6rem; padding: .4rem .7rem; border: 1px solid var(--line); vertical-align: top; outline: none; white-space: pre-wrap; }
+  .editor :global(.cm-md-table th) { background: var(--soft); font-weight: 700; }
+  .editor :global(.cm-md-table :is(th, td):focus) { box-shadow: inset 0 0 0 2px var(--blue); }
+  .editor :global(.cm-md-table th:empty::before) { content: attr(data-placeholder); color: var(--muted); font-weight: 500; }
+  .editor :global(.cm-md-add) { position: absolute; display: grid; place-items: center; border-radius: .35rem; background: var(--soft); color: var(--muted); font-weight: 700; opacity: 0; transition: opacity .12s; }
+  .editor :global(.cm-md-add:hover) { background: var(--blue); color: #fff; }
+  .editor :global(.cm-md-add.col) { inset-block: .4rem 1.6rem; inset-inline-end: .2rem; width: 1.2rem; }
+  .editor :global(.cm-md-add.row) { inset-inline: 0 1.6rem; inset-block-end: .2rem; height: 1.2rem; }
+  .editor :global(.cm-md-table:hover .cm-md-add) { opacity: 1; }
+  :global(.cm-md-menu) { position: fixed; z-index: 70; display: grid; min-width: 13rem; padding: .3rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .28); }
+  :global(.cm-md-menu button) { padding: .4rem .6rem; border-radius: .35rem; font-size: .85rem; text-align: start; }
+  :global(.cm-md-menu button:hover:not(:disabled)) { background: var(--soft); }
+  :global(.cm-md-menu button:disabled) { opacity: .4; }
+  :global(.cm-md-menu button.danger) { color: var(--red); }
+  :global(.cm-md-menu hr) { border: 0; border-block-start: 1px solid var(--line); margin: .25rem .2rem; }
   .fix { position: fixed; z-index: 50; display: grid; min-width: 13rem; padding: .3rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .28); }
   .fix button { padding: .4rem .6rem; border-radius: .35rem; font-size: .85rem; text-align: start; }
   .fix button:hover { background: var(--soft); }
