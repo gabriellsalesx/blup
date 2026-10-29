@@ -32,6 +32,7 @@
   import TrashPanel from "./TrashPanel.svelte";
   import AuthorsPanel from "./AuthorsPanel.svelte";
   import AttachmentsPanel from "./AttachmentsPanel.svelte";
+  import DeleteSite from "./DeleteSite.svelte";
   import Paperclip from "@lucide/svelte/icons/paperclip";
   import Users from "@lucide/svelte/icons/users";
   import Trash2 from "@lucide/svelte/icons/trash-2";
@@ -173,6 +174,7 @@
   }
   let prefsOpen = $state(false);
   let prefsTab = $state("general");
+  let deletingSite = $state(""); // a site in the delete window (from the switcher)
 
   // Once: the tip about the shortcut (Alt+Space by default) that shows and
   // hides the Studio from anywhere. On a Hyprland that isn't Omarchy, the
@@ -429,7 +431,12 @@
         <button class="foot" title={t.prefs.gear} onclick={() => (prefsOpen = true)}><Gear size={17} strokeWidth={1.75} /></button>
         {#if switching}
           <div class="vault-menu" role="menu">
-            {#each others as o (o.dir)}<button onclick={async () => { await save(); StopPreview(); onSwitch(o); }}>{o.title}</button>{/each}
+            {#each others as o (o.dir)}
+              <div class="vault-row">
+                <button onclick={async () => { await save(); StopPreview(); onSwitch(o); }}>{o.title}</button>
+                <button class="vault-del" title={t.del.deleteSite.replace("{name}", o.title)} aria-label={t.del.deleteSite.replace("{name}", o.title)} onclick={(e) => { e.stopPropagation(); switching = false; deletingSite = o.dir; }}><Trash2 size={15} /></button>
+              </div>
+            {/each}
             <button class="all" onclick={back}>{t.side.allSites}</button>
           </div>
         {/if}
@@ -493,6 +500,7 @@
   {#if prefsOpen}
     <SettingsModal start={prefsTab} onClose={() => { prefsOpen = false; prefsTab = "general"; }} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
   {/if}
+  {#if deletingSite}<DeleteSite dir={deletingSite} onClose={() => (deletingSite = "")} onDone={() => { deletingSite = ""; loadSites(); }} />{/if}
   {#if showTip}
     <!-- Centered like a modal, so it isn't missed. -->
     <div class="tip-shade" role="presentation"></div>
@@ -572,6 +580,10 @@
   .vault-menu { position: absolute; z-index: 6; inset-inline: .6rem; inset-block-end: calc(100% - .2rem); display: grid; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .18); }
   .vault-menu button { text-align: start; padding: .45rem .6rem; border-radius: .35rem; font-size: .875rem; }
   .vault-menu button:hover { background: var(--soft); }
+  .vault-row { display: flex; align-items: center; }
+  .vault-row > button:first-child { flex: 1; min-width: 0; text-align: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vault-del { display: grid; place-items: center; flex: none; width: 1.9rem !important; padding: .35rem !important; color: var(--muted); }
+  .vault-del:hover { color: var(--red); }
   .vault-menu .all { border-block-start: 1px solid var(--line); margin-block-start: .2rem; padding-block-start: .55rem; color: var(--muted); }
   .bar { grid-row: 1; grid-column: 3 / -1; display: flex; align-items: center; gap: .6rem; padding: .55rem 1rem; border-block-end: 1px solid var(--line); background: var(--panel); min-width: 0; }
   .ws.no-side .bar { grid-column: 2 / -1; }

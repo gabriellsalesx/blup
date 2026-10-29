@@ -95,6 +95,27 @@ export interface DNSRecord {
 }
 
 /**
+ * DeleteChoice is what to delete.
+ */
+export interface DeleteChoice {
+    "site": boolean;
+    "notes": boolean;
+    "published": boolean;
+    "syncRepo": boolean;
+    "feedback": boolean;
+}
+
+/**
+ * DeleteProblem is a part that couldn't be deleted, and where to do it by
+ * hand.
+ */
+export interface DeleteProblem {
+    "part": string;
+    "err": string;
+    "link": string;
+}
+
+/**
  * DomainStatus is where a custom domain stands.
  */
 export interface DomainStatus {
@@ -252,6 +273,27 @@ export interface Settings {
     "feedback": boolean;
     "feedbackRepo": string;
     "hasPassword": boolean;
+}
+
+/**
+ * SiteParts is what a site is made of, for the "delete" window.
+ */
+export interface SiteParts {
+    "title": string;
+    "siteDir": string;
+    "notesDir": string;
+
+    /**
+     * a folder Blup made for this site (else a vault the user already had)
+     */
+    "notesOwned": boolean;
+
+    /**
+     * "Cloudflare Pages: projeto" or "GitHub Pages: dono/repo"
+     */
+    "published": string;
+    "syncRepo": string;
+    "feedback": string;
 }
 
 /**

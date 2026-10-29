@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -105,4 +108,40 @@ func (s *Studio) OpenExisting() (*Found, error) {
 	}
 	i := info(site)
 	return &Found{Site: &i}, nil
+}
+
+// SiteParts lists what the site in dir is made of, for the delete window.
+func (s *Studio) SiteParts(dir string) (app.SiteParts, error) { return app.PartsOf(dir) }
+
+// ForgetSite takes a site out of the list without deleting anything.
+func (s *Studio) ForgetSite(dir string) error {
+	s.closeIfOpen(dir)
+	return app.ForgetSite(dir)
+}
+
+// DeleteSite deletes the parts chosen of the site in dir (folders to the
+// system's trash; online parts for good). Parts that couldn't be deleted
+// come back with a link to do it by hand.
+func (s *Studio) DeleteSite(dir string, choice app.DeleteChoice) ([]app.DeleteProblem, error) {
+	s.closeIfOpen(dir)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	return app.DeleteSite(ctx, dir, choice)
+}
+
+// closeIfOpen closes the site in dir when it is the open one (its preview,
+// terminals and file watcher hold its folders).
+func (s *Studio) closeIfOpen(dir string) {
+	s.mu.Lock()
+	open := s.site != nil && filepath.Clean(s.site.Dir()) == filepath.Clean(dir)
+	s.mu.Unlock()
+	if !open {
+		return
+	}
+	s.StopPreview()
+	closeTerminals(s)
+	watchNotes("")
+	s.mu.Lock()
+	s.site = nil
+	s.mu.Unlock()
 }

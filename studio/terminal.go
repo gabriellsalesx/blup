@@ -231,6 +231,9 @@ func watchNotes(root string) {
 		watcher.Close()
 		watcher = nil
 	}
+	if root == "" { // no site open: nothing to watch
+		return
+	}
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return

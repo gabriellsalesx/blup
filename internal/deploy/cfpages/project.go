@@ -139,3 +139,13 @@ func ProjectNameFromTitle(title string) string {
 	}
 	return s
 }
+
+// DeleteProject deletes a Pages project and every deployment of it (the
+// site goes offline). A missing project is not an error.
+func (c *Client) DeleteProject(ctx context.Context, accountID, name string) error {
+	_, err := c.do(ctx, http.MethodDelete, projectPath(accountID, name), "", nil, "", nil)
+	if errors.Is(err, ErrNotFound) {
+		return nil
+	}
+	return err
+}

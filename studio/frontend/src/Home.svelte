@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { Sites, Layout, SaveLayout, HomeDir } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { ForgetSite, Sites, Layout, SaveLayout, HomeDir } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteInfo, HomeItem } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Ellipsis from "@lucide/svelte/icons/ellipsis";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import { t } from "./i18n";
   import ThemePicker from "./ThemePicker.svelte";
+  import DeleteSite from "./DeleteSite.svelte";
+  import Trash from "@lucide/svelte/icons/trash-2";
 
   // The list of sites, organized by the user: drag a site onto another to
   // make a folder, onto a folder to put it inside, onto a card's edge to
@@ -20,6 +22,16 @@
   let open = $state<string | null>(null); // the open folder's name
   let menu = $state(""); // the site whose "⋯" menu is open
   let renaming = $state("");
+  let deleting = $state(""); // the site in the delete window
+  // A site out of the list (deleted, or only taken out).
+  function gone(dir: string) {
+    take(dir);
+    delete sites[dir];
+    save();
+    deleting = "";
+    if (!Object.keys(sites).length) onEmpty();
+  }
+  const forget = (dir: string) => ForgetSite(dir).then(() => gone(dir)).catch((e) => (error = String(e)));
 
   Promise.all([Sites(), Layout()])
     .then(([list, layout]) => {
@@ -184,11 +196,16 @@
             {#each folders as f (f.folder)}<button onclick={() => moveTo(dir, f.folder!)}>{h.moveTo.replace("{name}", f.folder!)}</button>{/each}
             <button onclick={() => newFolderWith(dir)}>{h.newFolderWith}</button>
           {/if}
+          <hr />
+          <button onclick={() => { menu = ""; forget(dir); }}>{t.del.forget}</button>
+          <button class="danger" onclick={() => { menu = ""; deleting = dir; }}><Trash size={15} />{t.del.deleteMenu}</button>
         </div>
       {/if}
     </div>
   {/if}
 {/snippet}
+
+{#if deleting}<DeleteSite dir={deleting} onClose={() => (deleting = "")} onDone={gone} />{/if}
 
 <main class="home">
   <header>
@@ -290,4 +307,6 @@
   .spacer { flex: 1; }
   .hint { font-size: .85rem; }
   .error { color: var(--red); }
+  .menu hr { border: 0; border-block-start: 1px solid var(--line); margin: .25rem .2rem; }
+  .menu .danger { display: flex; align-items: center; gap: .45rem; color: var(--red); }
 </style>

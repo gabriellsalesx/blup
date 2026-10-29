@@ -2,6 +2,7 @@ package github
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -70,5 +71,16 @@ func (c *Client) UpdateIssue(ctx context.Context, owner, repo string, number int
 	_, err := c.do(ctx, http.MethodPatch, fmt.Sprintf("%s/issues/%d", repoPath(owner, repo), number), map[string]any{
 		"title": title, "body": body,
 	}, nil)
+	return err
+}
+
+// DeleteRepo deletes a repository for good. It needs the key's
+// "Administration: write" permission (ErrPermission without it). A missing
+// repository is not an error.
+func (c *Client) DeleteRepo(ctx context.Context, owner, repo string) error {
+	_, err := c.do(ctx, http.MethodDelete, repoPath(owner, repo), nil, nil)
+	if errors.Is(err, ErrNotFound) {
+		return nil
+	}
 	return err
 }

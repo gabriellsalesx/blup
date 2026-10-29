@@ -215,6 +215,15 @@ export function DeleteItem(rel: string): $CancellablePromise<void> {
 }
 
 /**
+ * DeleteSite deletes the parts chosen of the site in dir (folders to the
+ * system's trash; online parts for good). Parts that couldn't be deleted
+ * come back with a link to do it by hand.
+ */
+export function DeleteSite(dir: string, choice: app$0.DeleteChoice): $CancellablePromise<app$0.DeleteProblem[] | null> {
+    return $Call.ByID(164179262, dir, choice);
+}
+
+/**
  * Disconnect forgets the key of "github" or "cloudflare".
  */
 export function Disconnect(account: string): $CancellablePromise<void> {
@@ -233,6 +242,13 @@ export function EmptyTrash(): $CancellablePromise<void> {
  */
 export function FeedbackState(): $CancellablePromise<app$0.FeedbackSetup> {
     return $Call.ByID(2575762882);
+}
+
+/**
+ * ForgetSite takes a site out of the list without deleting anything.
+ */
+export function ForgetSite(dir: string): $CancellablePromise<void> {
+    return $Call.ByID(1236305264, dir);
 }
 
 /**
@@ -634,6 +650,13 @@ export function SetupFeedback(): $CancellablePromise<app$0.FeedbackSetup> {
  */
 export function ShowInFolder(rel: string): $CancellablePromise<void> {
     return $Call.ByID(2352234608, rel);
+}
+
+/**
+ * SiteParts lists what the site in dir is made of, for the delete window.
+ */
+export function SiteParts(dir: string): $CancellablePromise<app$0.SiteParts> {
+    return $Call.ByID(2477315545, dir);
 }
 
 /**
