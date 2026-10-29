@@ -260,8 +260,10 @@
     { key: "task", label: te.task, Icon: ListChecks, run: () => prefix(view, "- [ ] ", LIST) },
     { key: "quote", label: te.quote, Icon: Quote, run: () => prefix(view, "> ", QUOTE) },
     { key: "callout", label: te.callout, Icon: Info, svg: () => calloutIcon(CALLOUTS.find((c) => c.type === "info")!, 17).replace(/stroke="rgb\([^)]*\)"/, 'stroke="currentColor"'), items: [
-      ...CALLOUTS.map((c) => ({ label: t.lang === "pt" ? c.pt : c.en, svg: calloutIcon(c), tint: c.color,
-        run: () => callout(view, c.type, calloutFold ? "-" : "", t.lang === "pt" ? c.pt : c.en, te.calloutText) })),
+      // The quote callout is the one with a source (the plain quote is the
+      // ❝ button): its title asks for the author.
+      ...CALLOUTS.map((c) => ({ label: c.type === "quote" ? te.quoteSource : t.lang === "pt" ? c.pt : c.en, svg: calloutIcon(c), tint: c.color,
+        run: () => callout(view, c.type, calloutFold ? "-" : "", c.type === "quote" ? te.sourceTitle : t.lang === "pt" ? c.pt : c.en, te.calloutText) })),
       { label: te.foldable, run: () => { calloutFold = !calloutFold; }, check: () => calloutFold, keep: true },
     ] as MenuItem[] },
     { key: "sep2" },
