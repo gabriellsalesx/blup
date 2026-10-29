@@ -14,6 +14,21 @@
   import { undo, redo, undoDepth, redoDepth } from "@codemirror/commands";
   import { undoHandlers } from "./undo";
   import { tables } from "./table";
+  import ContextMenu, { type MenuEntry } from "./ContextMenu.svelte";
+  import NotePicker from "./NotePicker.svelte";
+  import { Clipboard } from "@wailsio/runtime";
+  import LinkIcon from "@lucide/svelte/icons/link-2";
+  import External from "@lucide/svelte/icons/external-link";
+  import Brush from "@lucide/svelte/icons/paintbrush";
+  import Pilcrow from "@lucide/svelte/icons/pilcrow";
+  import ListPlus from "@lucide/svelte/icons/list-plus";
+  import Scissors from "@lucide/svelte/icons/scissors";
+  import CopyIcon from "@lucide/svelte/icons/copy";
+  import Paste from "@lucide/svelte/icons/clipboard-paste";
+  import PastePlain from "@lucide/svelte/icons/clipboard-type";
+  import SelectAll from "@lucide/svelte/icons/square-dashed";
+  import CommentIcon from "@lucide/svelte/icons/eye-off";
+  import CodeBlock from "@lucide/svelte/icons/square-code";
   import Undo from "@lucide/svelte/icons/undo-2";
   import Redo from "@lucide/svelte/icons/redo-2";
   import { EditorSelection } from "@codemirror/state";
@@ -87,12 +102,73 @@
   // Right-click on an underlined word: the dictionary's suggestions.
   let fix = $state<{ from: number; to: number; word: string; x: number; y: number; list: string[] | null } | null>(null);
   let mouseButton = 0;
+
+  // The editor's right-click menu, like Obsidian's.
+  let ctx = $state<{ x: number; y: number } | null>(null);
+  let picking = $state(false); // the note picker of "Link to a note"
+  const sel = () => view.state.selection.main;
+  const selected = () => view.state.sliceDoc(sel().from, sel().to);
+  function linkToNote(n: { name: string; path: string }) {
+    picking = false;
+    const count = notes.filter((x) => x.name === n.name).length;
+    const target = count > 1 ? n.path.replace(/\.md$/, "") : n.name;
+    const text = selected();
+    insert(view, text && text !== target ? `[[${target}|${text}]]` : `[[${target}]]`);
+  }
+  async function copySel(cut: boolean) {
+    await Clipboard.SetText(selected());
+    if (cut) view.dispatch({ changes: { from: sel().from, to: sel().to, insert: "" } });
+    view.focus();
+  }
+  async function paste(plain: boolean) {
+    let text = await Clipboard.Text().catch(() => "");
+    if (plain) text = text.replace(/[*_~`#>]|\[([^\]]*)\]\([^)]*\)/g, (m, link) => link ?? "");
+    insert(view, text);
+  }
+  const menuItems = (): MenuEntry[] => {
+    const has = !sel().empty;
+    return [
+      { label: te.linkNote, Icon: LinkIcon, run: () => (picking = true) },
+      { label: te.linkOut, Icon: External, run: () => link(view, te.linkText), hint: "Ctrl+K" },
+      "sep",
+      { label: te.format, Icon: Brush, sub: [
+        { label: te.bold, Icon: Bold, run: () => wrap(view, "**", te.boldText), hint: "Ctrl+B" },
+        { label: te.italic, Icon: Italic, run: () => wrap(view, "*", te.italicText), hint: "Ctrl+I" },
+        { label: te.strike, Icon: Strike, run: () => wrap(view, "~~", te.strikeText) },
+        { label: te.highlight, Icon: Highlighter, run: () => wrap(view, "==", te.highlightText) },
+        { label: te.code, Icon: Code, run: () => wrap(view, "`", te.codeText) },
+        { label: te.commentText, Icon: CommentIcon, run: () => wrap(view, "%%", te.commentPh) },
+      ] },
+      { label: te.paragraph, Icon: Pilcrow, sub: [
+        { label: te.normal, run: () => heading(view, 0) },
+        ...[1, 2, 3, 4].map((n) => ({ label: te.headingN.replace("{n}", String(n)), run: () => heading(view, n) })),
+        "sep",
+        { label: te.list, Icon: List, run: () => prefix(view, "- ", LIST) },
+        { label: te.olist, Icon: ListOrdered, run: () => prefix(view, (i) => `${i + 1}. `, LIST) },
+        { label: te.task, Icon: ListChecks, run: () => prefix(view, "- [ ] ", LIST) },
+        { label: te.quote, Icon: Quote, run: () => prefix(view, "> ", QUOTE) },
+      ] },
+      { label: te.insertMenu, Icon: ListPlus, sub: [
+        { label: te.table, Icon: Table, run: newTable },
+        { label: te.callout, Icon: Info, run: () => callout(view, "tip", calloutFold ? "-" : "", t.lang === "pt" ? "Dica" : "Tip", te.calloutText) },
+        { label: te.image, Icon: ImageIcon, run: pickImage },
+        { label: te.codeBlock, Icon: CodeBlock, run: () => block(view, "```\n\n```", [4, 4]) },
+        { label: te.hr, Icon: Minus, run: () => block(view, "---") },
+      ] },
+      "sep",
+      { label: te.cut, Icon: Scissors, run: () => copySel(true), disabled: !has, hint: "Ctrl+X" },
+      { label: te.copy, Icon: CopyIcon, run: () => copySel(false), disabled: !has, hint: "Ctrl+C" },
+      { label: te.paste, Icon: Paste, run: () => paste(false), hint: "Ctrl+V" },
+      { label: te.pastePlain, Icon: PastePlain, run: () => paste(true) },
+      { label: te.selectAll, Icon: SelectAll, run: () => { view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } }); view.focus(); }, hint: "Ctrl+A" },
+    ];
+  };
   // The suggestions come first, then the corrections list (if open) gives
   // way to the menu in one go: no blink between the two.
   async function onMenu(e: MouseEvent) {
     const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
     const w = pos == null ? null : wordAt(view, pos);
-    if (!w) { closeCompletion(view); return; } // the system's menu
+    if (!w) { e.preventDefault(); closeCompletion(view); ctx = { x: e.clientX, y: e.clientY }; return; }
     e.preventDefault();
     const at = { x: Math.min(e.clientX, innerWidth - 240), y: Math.min(e.clientY, innerHeight - 260) };
     const list = await suggest(w.word);
@@ -320,13 +396,16 @@
           { key: "Escape", run: (v) => (completionStatus(v.state) === "active" ? closeCompletion(v) : false) },
         ])),
         EditorView.domEventHandlers({
-          // A right-click on a word in red doesn't move the cursor (that
-          // would close the corrections list before the menu shows).
+          // A right-click on a word in red, or on the selection, doesn't move
+          // the cursor (that would close the corrections list, or lose the
+          // selection, before the menu shows).
           mousedown: (e, v) => {
             mouseButton = e.button;
             if (e.button !== 2) return false;
             const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
-            if (pos == null || !wordAt(v, pos)) return false;
+            const inSel = pos != null && v.state.selection.ranges.some((r) => !r.empty && pos >= r.from && pos <= r.to);
+            // A right-click on the selection keeps it (the menu acts on it).
+            if (pos == null || (!inSel && !wordAt(v, pos))) return false;
             e.preventDefault();
             return true;
           },
@@ -406,6 +485,9 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="editor" oncontextmenu={onMenu} class:wide={look.editorWidth === "wide"} style:--size="{look.editorFont}px" bind:this={host}></div>
 </div>
+
+{#if ctx}<ContextMenu x={ctx.x} y={ctx.y} items={menuItems()} onClose={() => { ctx = null; view.focus(); }} />{/if}
+{#if picking}<NotePicker {notes} onPick={linkToNote} onClose={() => { picking = false; view.focus(); }} />{/if}
 
 {#if fix}
   <div class="fix" role="menu" tabindex="-1" style:left="{fix.x}px" style:top="{fix.y}px" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>

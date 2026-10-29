@@ -7,6 +7,7 @@
   // The open site, the new site screens, or the list of sites.
   let site = $state<SiteInfo | null>(null);
   let creating = $state(false);
+  let startFolder = $state(""); // notes picked in "open a site" that had no site yet
   let hasSites = $state(true);
 </script>
 
@@ -15,7 +16,7 @@
     <Workspace {site} onBack={() => (site = null)} onSwitch={(s) => (site = s)} />
   {/key}
 {:else if creating}
-  <Onboarding canCancel={hasSites} onCancel={() => (creating = false)} onDone={(s) => { creating = false; site = s; }} />
+  <Onboarding {startFolder} canCancel={hasSites} onCancel={() => (creating = false)} onDone={(s) => { creating = false; site = s; }} />
 {:else}
-  <Home onOpen={(s) => (site = s)} onNew={() => (creating = true)} onEmpty={() => { hasSites = false; creating = true; }} />
+  <Home onOpen={(s) => (site = s)} onNew={(folder = "") => { startFolder = folder; creating = true; }} onEmpty={() => { hasSites = false; creating = true; }} />
 {/if}

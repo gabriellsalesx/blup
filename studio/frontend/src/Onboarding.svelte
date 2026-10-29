@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { HomeDir, Vaults, VaultFolders, SuggestPlaces, CheckSiteDir, NeedsLinkAdjust, PickFolder, CreateSite } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { OpenExisting, HomeDir, Vaults, VaultFolders, SuggestPlaces, CheckSiteDir, NeedsLinkAdjust, PickFolder, CreateSite } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteInfo, Vault } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Switch from "./Switch.svelte";
   import Check from "@lucide/svelte/icons/check";
@@ -7,7 +7,8 @@
   import { t } from "./i18n";
 
   // The new site screens: one question per step, like "blup new".
-  let { onDone, onCancel, canCancel }: { onDone: (s: SiteInfo) => void; onCancel: () => void; canCancel: boolean } = $props();
+  // startFolder: notes to make the site of (picked in "open a site").
+  let { onDone, onCancel, canCancel, startFolder = "" }: { onDone: (s: SiteInfo) => void; onCancel: () => void; canCancel: boolean; startFolder?: string } = $props();
   const o = t.ob;
 
   let step = $state("hello");
@@ -17,9 +18,9 @@
   let description = $state("");
   let author = $state("");
   let lang = $state(t.lang);
-  let where = $state<"new" | "vault" | "pick">("new");
+  let where = $state<"new" | "vault" | "pick">(startFolder ? "pick" : "new");
   let newFolder = $state("");
-  let pickedFolder = $state("");
+  let pickedFolder = $state(startFolder);
   let vaults = $state<Vault[]>([]);
   let vault = $state("");
   let folders = $state<string[]>([]);
@@ -69,6 +70,17 @@
     if (step === "notes") return (where === "new" ? !!newFolder : where === "pick" ? !!pickedFolder : !!vault) && !dirProblem;
     return true;
   });
+
+  // Already have a site (made with the CLI or on another computer)?
+  let openMsg = $state("");
+  async function openExisting() {
+    openMsg = "";
+    try {
+      const f = await OpenExisting();
+      if (f?.site) onDone(f.site);
+      else if (f?.folder) { where = "pick"; pickedFolder = f.folder; openMsg = o.noSiteHere; }
+    } catch (e) { openMsg = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
 
   async function next() {
     error = "";
@@ -125,6 +137,8 @@
       <h1>{o.hello}</h1>
       <p class="lead">{o.helloLead}</p>
       <button class="btn big" onclick={next}>{o.start}</button>
+      <button class="link-btn" onclick={openExisting}>{o.haveSite}</button>
+      {#if openMsg}<p class="muted small">{openMsg}</p>{/if}
     </div>
   {:else if step === "done"}
     <div class="hello">
@@ -297,4 +311,7 @@
   dt { color: var(--muted); }
   dd { margin: 0; font-weight: 600; min-width: 0; }
   .nav { display: flex; justify-content: space-between; align-items: center; }
+  .link-btn { margin-block-start: .75rem; color: var(--blue); font-size: .9rem; font-weight: 600; }
+  .link-btn:hover { text-decoration: underline; }
+  .small { font-size: .85rem; margin-block-start: .5rem; max-width: 28rem; }
 </style>

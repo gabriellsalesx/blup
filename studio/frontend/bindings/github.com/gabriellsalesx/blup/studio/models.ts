@@ -17,6 +17,21 @@ export interface Agent {
 }
 
 /**
+ * Found is what OpenExisting found in the folder the user picked.
+ */
+export interface Found {
+    /**
+     * the site, now in Blup's list
+     */
+    "site": SiteInfo | null;
+
+    /**
+     * the folder picked, when no site matched
+     */
+    "folder": string;
+}
+
+/**
  * HomeItem is a site, or a folder of sites, on the home screen.
  */
 export interface HomeItem {

@@ -8,6 +8,7 @@ export {
 
 export type {
     Agent,
+    Found,
     HomeItem,
     Node,
     NoteData,

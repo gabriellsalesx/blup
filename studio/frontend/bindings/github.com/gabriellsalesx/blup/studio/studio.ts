@@ -282,6 +282,15 @@ export function OpenAttachment(name: string): $CancellablePromise<void> {
 }
 
 /**
+ * OpenExisting asks for a folder (a site's own folder or its notes) and
+ * finds its Blup site. Without one, Folder lets the user make a site of
+ * those notes. Nil when the user cancels.
+ */
+export function OpenExisting(): $CancellablePromise<$models.Found | null> {
+    return $Call.ByID(4098855315);
+}
+
+/**
  * OpenInObsidian opens the note (or folder) in Obsidian.
  */
 export function OpenInObsidian(rel: string): $CancellablePromise<void> {

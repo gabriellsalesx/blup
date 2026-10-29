@@ -77,3 +77,32 @@ func (s *Studio) HomeDir() string {
 	home, _ := os.UserHomeDir()
 	return home
 }
+
+// Found is what OpenExisting found in the folder the user picked.
+type Found struct {
+	Site   *SiteInfo `json:"site"`   // the site, now in Blup's list
+	Folder string    `json:"folder"` // the folder picked, when no site matched
+}
+
+// OpenExisting asks for a folder (a site's own folder or its notes) and
+// finds its Blup site. Without one, Folder lets the user make a site of
+// those notes. Nil when the user cancels.
+func (s *Studio) OpenExisting() (*Found, error) {
+	dir, err := s.PickFolder()
+	if err != nil || dir == "" {
+		return nil, err
+	}
+	siteDir := app.FindSite(dir)
+	if siteDir == "" {
+		return &Found{Folder: dir}, nil
+	}
+	site, err := config.LoadSite(siteDir)
+	if err != nil {
+		return nil, err
+	}
+	if err := app.RememberSite(siteDir); err != nil {
+		return nil, err
+	}
+	i := info(site)
+	return &Found{Site: &i}, nil
+}
