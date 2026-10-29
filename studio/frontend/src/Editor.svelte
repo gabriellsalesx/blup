@@ -349,7 +349,7 @@
   .editor :global(.cm-md-table th) { background: var(--soft); font-weight: 700; }
   .editor :global(.cm-md-table :is(th, td):focus) { box-shadow: inset 0 0 0 2px var(--blue); }
   .editor :global(.cm-md-table th:empty::before) { content: attr(data-placeholder); color: var(--muted); font-weight: 500; }
-  .editor :global(.cm-md-bar) { display: grid; place-items: center; border-radius: .35rem; background: var(--soft); color: var(--muted); font-size: .85rem; font-weight: 700; line-height: 1; opacity: 0; transition: opacity .12s, background .12s; }
+  .editor :global(.cm-md-bar) { display: grid; place-items: center; padding: 0; border-radius: .35rem; background: var(--soft); color: var(--muted); font-size: .85rem; font-weight: 700; line-height: 1; opacity: 0; transition: opacity .12s, background .12s; }
   .editor :global(.cm-md-bar.top) { grid-area: 1 / 2; }
   .editor :global(.cm-md-bar.left) { grid-area: 2 / 1; }
   .editor :global(.cm-md-bar.right) { grid-area: 2 / 3; }

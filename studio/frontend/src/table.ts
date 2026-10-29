@@ -175,7 +175,9 @@ function bar(side: string, sign: string, title: string, run: (() => void) | null
   const b = document.createElement("button");
   b.className = "cm-md-bar " + side;
   b.title = title;
-  b.textContent = sign;
+  // Drawn, not typed: a + or − glyph never sits in the exact middle.
+  const path = sign === "+" ? "M12 5v14M5 12h14" : "M5 12h14";
+  b.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="${path}"/></svg>`;
   b.addEventListener("mousedown", (e) => e.preventDefault());
   if (run) b.addEventListener("click", run);
   else b.disabled = true;

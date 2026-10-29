@@ -8,6 +8,10 @@ import { installUndo } from "./undo";
 
 installUndo();
 
-Promise.all([Language().then(setLanguage), loadTheme()])
+// The language first: the spell check's dictionary follows it.
+Language()
+  .then(setLanguage)
+  .catch(() => {})
+  .then(loadTheme)
   .catch(() => {})
   .finally(() => mount(App, { target: document.getElementById("app")! }));
