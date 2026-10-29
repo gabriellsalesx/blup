@@ -128,3 +128,21 @@ export function wordAt(view: EditorView, pos: number): { from: number; to: numbe
   const { from, to } = hit as { from: number; to: number };
   return { from, to, word: view.state.sliceDoc(from, to) };
 }
+
+// Words for the word being typed: corrections when it is misspelled, then
+// dictionary words that start with it.
+export async function complete(word: string): Promise<{ fixes: string[]; words: string[] }> {
+  if (!enabled) return { fixes: [], words: [] };
+  const r = await ask({ type: "complete", word });
+  return { fixes: r.fixes ?? [], words: r.words ?? [] };
+}
+
+// Inside code, a link's address or a wikilink nothing is suggested.
+export function skipAt(view: EditorView, pos: number) {
+  let skip = false;
+  for (let n: any = syntaxTree(view.state).resolveInner(pos, -1); n; n = n.parent) if (SKIP.has(n.name)) skip = true;
+  const line = view.state.doc.lineAt(pos);
+  const before = line.text.slice(0, pos - line.from);
+  const ticks = (before.match(/`/g) ?? []).length;
+  return skip || ticks % 2 === 1 || /\[\[[^\]]*$|https?:\/\/\S*$/.test(before);
+}

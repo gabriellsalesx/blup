@@ -8,8 +8,9 @@
   import { tags } from "@lezer/highlight";
   import { StateField, RangeSetBuilder, type EditorState } from "@codemirror/state";
   import { look, setPref } from "./theme.svelte";
-  import { spellcheck, wordAt, suggest, addWord } from "./spell";
-  import { autocompletion, type CompletionContext } from "@codemirror/autocomplete";
+  import { spellcheck, wordAt, suggest, addWord, complete, skipAt } from "./spell";
+  import { autocompletion, acceptCompletion, completionStatus, closeCompletion, moveCompletionSelection, type CompletionContext, type Completion } from "@codemirror/autocomplete";
+  import { Prec } from "@codemirror/state";
   import { EditorSelection } from "@codemirror/state";
   import { wrap, prefix, block, link, insert } from "./mdcommands";
   import { PasteImage, PickNoteImage } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
@@ -120,6 +121,31 @@
     return { from: m.from + 2, options, validFor: /^[^\]\n|#]*$/ };
   }
 
+  // While a word is typed (3 letters or more), like VS Code: corrections
+  // when it is misspelled, then words of this note and of the dictionary
+  // that start with it. Tab puts the chosen one in place.
+  async function wordSuggestions(ctx: CompletionContext) {
+    const m = ctx.matchBefore(/\p{L}[\p{L}\p{M}'’-]*/u);
+    if (!m || m.to - m.from < 3 || !look.spellcheck || skipAt(ctx.view!, ctx.pos)) return null;
+    if (!ctx.explicit && ctx.state.sliceDoc(m.to, m.to + 1).match(/\p{L}/u)) return null; // inside a word
+    const word = m.text;
+    const r = await complete(word);
+    if (ctx.aborted) return null;
+    const seen = new Set<string>([word]);
+    const options: Completion[] = [];
+    const add = (label: string, type: string, detail: string, boost: number) => {
+      if (seen.has(label)) return;
+      seen.add(label);
+      options.push({ label, type, detail, boost });
+    };
+    r.fixes.forEach((w, i) => add(w, "fix", te.fix, 99 - i));
+    const inNote = ctx.state.doc.toString().match(/\p{L}[\p{L}\p{M}'’-]{3,}/gu) ?? [];
+    const low = word.toLowerCase();
+    for (const w of new Set(inNote)) if (w.toLowerCase().startsWith(low) && w.length > word.length) add(w, "text", te.inNote, 50);
+    r.words.forEach((w, i) => add(w, "text", "", 20 - i));
+    return options.length ? { from: m.from, options: options.slice(0, 10), filter: false } : null;
+  }
+
   // Images pasted or dropped on the note go to the attachments folder; the
   // note gets their Markdown.
   async function addImages(files: File[], at?: number) {
@@ -187,7 +213,14 @@
           { key: "Mod-i", preventDefault: true, run: (v) => (wrap(v, "*", te.italicText), true) },
           { key: "Mod-k", preventDefault: true, run: (v) => (link(v, te.linkText), true) },
         ]),
-        autocompletion({ override: [noteLinks], icons: false }),
+        autocompletion({ override: [noteLinks, wordSuggestions], icons: false, defaultKeymap: false, activateOnTypingDelay: 150 }),
+        // Tab takes the suggestion; Enter stays a new line.
+        Prec.highest(keymap.of([
+          { key: "Tab", run: (v) => (completionStatus(v.state) === "active" ? acceptCompletion(v) : false) },
+          { key: "ArrowDown", run: (v) => (completionStatus(v.state) === "active" ? moveCompletionSelection(true)(v) : false) },
+          { key: "ArrowUp", run: (v) => (completionStatus(v.state) === "active" ? moveCompletionSelection(false)(v) : false) },
+          { key: "Escape", run: (v) => (completionStatus(v.state) === "active" ? closeCompletion(v) : false) },
+        ])),
         EditorView.domEventHandlers({
           paste: (e) => {
             const files = images(e.clipboardData?.files);
@@ -255,7 +288,11 @@
   .editor :global(.cm-content) { max-width: 46rem; margin-inline: auto; padding-inline: 2rem; caret-color: var(--text); }
   .editor.wide :global(.cm-content) { max-width: none; }
   .editor :global(.cm-obs-comment) { opacity: .75; }
-  .editor :global(.cm-misspelled) { text-decoration: underline wavy var(--red); text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-skip-ink: none; }
+  /* A misspelled word: highlighted in red, like a marker pen. */
+  .editor :global(.cm-misspelled) { background: color-mix(in srgb, var(--red) 24%, transparent); border-radius: 3px; box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--red) 70%, transparent); }
+  .editor :global(.cm-completionIcon) { display: none; }
+  .editor :global(.cm-tooltip-autocomplete > ul > li[aria-selected]::after) { content: "Tab"; float: inline-end; margin-inline-start: 1rem; padding: 0 .35rem; border: 1px solid var(--line); border-radius: .3rem; font-size: .7rem; color: var(--muted); }
+  .editor :global(.cm-completionLabel) { font-weight: 500; }
   .fix { position: fixed; z-index: 50; display: grid; min-width: 13rem; padding: .3rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .28); }
   .fix button { padding: .4rem .6rem; border-radius: .35rem; font-size: .85rem; text-align: start; }
   .fix button:hover { background: var(--soft); }
