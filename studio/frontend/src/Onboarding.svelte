@@ -11,7 +11,25 @@
   const o = t.ob;
 
   let step = $state("hello");
-  let model = $state<"" | "mochi" | "bento">("");
+  // First the kind of site (a category), then a theme of that kind. A new
+  // theme only needs a line in THEMES and its key in a category.
+  type Theme = { key: string; blup: string; name: string; kind: string; about: string; has: string[] };
+  const THEMES: Record<string, Theme> = {
+    mochi: { key: "mochi", blup: "turma-3", name: o.mochi, kind: o.mochiFor, about: o.mochiAbout, has: o.mochiHas },
+    bento: { key: "bento", blup: "turma-4", name: o.bento, kind: o.bentoFor, about: o.bentoAbout, has: o.bentoHas },
+  };
+  const CATEGORIES = [
+    { key: "blog", blup: "turma-3", name: o.catBlog, about: o.catBlogAbout, themes: ["mochi"] },
+    { key: "product", blup: "turma-4", name: o.catProduct, about: o.catProductAbout, themes: ["bento"] },
+  ];
+  let category = $state("");
+  let model = $state("");
+  const catThemes = $derived((CATEGORIES.find((c) => c.key === category)?.themes ?? []).map((k) => THEMES[k]));
+  function pickCategory(key: string) {
+    category = key;
+    const list = CATEGORIES.find((c) => c.key === key)!.themes;
+    if (!list.includes(model)) model = list.length === 1 ? list[0] : "";
+  }
   let sections = $state<string[]>(["docs", "roadmap", "changelog", "help", "blog"]);
   let title = $state("");
   let description = $state("");
@@ -35,7 +53,7 @@
   Vaults().then((v) => { vaults = v ?? []; if (vaults.length) { vault = vaults[0].path; loadFolders(); } });
   async function loadFolders() { folders = (await VaultFolders(vault)) ?? []; }
 
-  const steps = $derived(["hello", "theme", ...(model === "bento" ? ["sections"] : []), "name", "notes", "review"]);
+  const steps = $derived(["hello", "kind", "theme", ...(model === "bento" ? ["sections"] : []), "name", "notes", "review"]);
   const index = $derived(steps.indexOf(step));
   const total = $derived(steps.length - 1);
 
@@ -63,6 +81,7 @@
   });
 
   const ready = $derived.by(() => {
+    if (step === "kind") return !!category;
     if (step === "theme") return !!model;
     if (step === "sections") return sections.length > 0;
     if (step === "name") return !!title.trim();
@@ -181,11 +200,24 @@
       <p class="stepno muted">{o.step.replace("{n}", String(index)).replace("{total}", String(total))}</p>
       <div class="bar"><span style:width="{(index / total) * 100}%"></span></div>
 
-      {#if step === "theme"}
+      {#if step === "kind"}
+        <h1>{o.kindQ}</h1>
+        <div class="kinds">
+          {#each CATEGORIES as c (c.key)}
+            <button class="kind-card" class:on={category === c.key} onclick={() => pickCategory(c.key)}>
+              <img class:bounce={category === c.key} src="/blups/{c.blup}.svg" alt="" />
+              <b>{c.name}</b>
+              <p>{c.about}</p>
+              <small class="muted">{c.themes.length === 1 ? o.oneTheme : o.nThemes.replace("{n}", String(c.themes.length))}</small>
+              {#if category === c.key}<span class="picked"><Check size={16} /></span>{/if}
+            </button>
+          {/each}
+        </div>
+      {:else if step === "theme"}
         <h1>{o.themeQ}</h1>
-        <div class="themes">
-          {#each [["mochi", "turma-3", o.mochi, o.mochiFor, o.mochiAbout, o.mochiHas], ["bento", "turma-4", o.bento, o.bentoFor, o.bentoAbout, o.bentoHas]] as [key, blup, name, kind, about, has] (key)}
-            <button class="theme" class:on={model === key} onclick={() => (model = key as "mochi" | "bento")}>
+        <div class="themes" class:single={catThemes.length === 1}>
+          {#each catThemes.map((x) => [x.key, x.blup, x.name, x.kind, x.about, x.has] as const) as [key, blup, name, kind, about, has] (key)}
+            <button class="theme" class:on={model === key} onclick={() => (model = key)}>
               <div class="shot"><img src="/themes/{key}.webp" alt="" /><img class="mascot" class:bounce={model === key} src="/blups/{blup}.svg" alt="" /></div>
               <div class="info">
                 <span class="kind">{kind}</span>
@@ -263,7 +295,7 @@
           <img class="mascot-r" src="/blups/{model === 'bento' ? 'turma-4' : 'turma-3'}.svg" alt="" />
           <dl>
             <dt>{o.name}</dt><dd>{title}</dd>
-            <dt>{o.theme}</dt><dd>{model === "bento" ? `${o.bento} · ${sections.length}` : o.mochi}</dd>
+            <dt>{o.theme}</dt><dd>{CATEGORIES.find((c) => c.key === category)?.name} · {THEMES[model]?.name}{model === "bento" ? ` · ${sections.length}` : ""}</dd>
             <dt>{o.notes}</dt><dd><code>{short(target.vault)}{target.folder ? "/" + target.folder : ""}</code></dd>
             <dt>{o.files}</dt><dd><code title={dir}>{short(dir)}</code></dd>
           </dl>
@@ -304,6 +336,15 @@
   .stepno { font-size: .8rem; font-weight: 600; }
   .bar { height: .35rem; border-radius: 999px; background: var(--line); overflow: hidden; margin-block-start: -.75rem; }
   .bar span { display: block; height: 100%; background: var(--blue); transition: width .3s; }
+  .kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .kind-card { position: relative; display: grid; justify-items: center; gap: .5rem; padding: 2rem 1.5rem 1.6rem; border: 1px solid var(--line); border-radius: .9rem; background: var(--panel); text-align: center; transition: border-color .15s, transform .15s; }
+  .kind-card:hover { border-color: var(--blue); transform: translateY(-2px); }
+  .kind-card.on { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
+  .kind-card img { width: 4.5rem; height: 4.5rem; margin-block-end: .4rem; }
+  .kind-card b { font-size: 1.15rem; }
+  .kind-card p { font-size: .9rem; color: var(--muted); }
+  .kind-card small { font-size: .78rem; }
+  .themes.single { grid-template-columns: minmax(0, 26rem); justify-content: center; }
   .themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
   .theme { position: relative; display: grid; text-align: start; border: 1px solid var(--line); border-radius: .9rem; background: var(--panel); overflow: hidden; transition: border-color .15s, transform .15s, box-shadow .15s; }
   .theme:hover { transform: translateY(-2px); }
