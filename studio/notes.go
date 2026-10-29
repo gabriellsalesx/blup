@@ -1,7 +1,11 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gabriellsalesx/blup/internal/app"
@@ -186,4 +190,53 @@ func (s *Studio) LinkedImage(link string) (string, error) {
 		return "", nil
 	}
 	return s.ImageData(f)
+}
+
+// CreateNote makes a note named name in folder (relative to the notes
+// folder, "" for the top), with its title, and returns its path. A taken
+// name gets a number.
+func (s *Studio) CreateNote(folder, name string) (string, error) {
+	return s.create(folder, name, false)
+}
+
+// CreateFolder makes a folder in folder and returns its path.
+func (s *Studio) CreateFolder(folder, name string) (string, error) {
+	return s.create(folder, name, true)
+}
+
+func (s *Studio) create(folder, name string, dir bool) (string, error) {
+	name = strings.TrimSpace(strings.Map(func(r rune) rune {
+		if strings.ContainsRune(`/\:*?"<>|#^[]`, r) {
+			return -1
+		}
+		return r
+	}, name))
+	if name == "" || strings.HasPrefix(name, ".") {
+		return "", errors.New("invalid name")
+	}
+	name = strings.TrimSuffix(name, ".md")
+	for i := 1; ; i++ {
+		base := name
+		if i > 1 {
+			base = fmt.Sprintf("%s %d", name, i)
+		}
+		rel := strings.TrimPrefix(folder+"/"+base, "/")
+		if !dir {
+			rel += ".md"
+		}
+		p, err := s.notePath(rel)
+		if err != nil {
+			return "", err
+		}
+		if _, err := os.Stat(p); err == nil {
+			continue
+		}
+		if dir {
+			return rel, os.MkdirAll(p, 0o755)
+		}
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			return "", err
+		}
+		return rel, os.WriteFile(p, []byte("---\ntitle: "+strconv.Quote(base)+"\n---\n\n"), 0o644)
+	}
 }

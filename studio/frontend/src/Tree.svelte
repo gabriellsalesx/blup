@@ -3,25 +3,28 @@
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
 
-  let { nodes, current, onPick, depth = 0 }: { nodes: Node[]; current: string; onPick: (p: string) => void; depth?: number } = $props();
-  // Folders start open at the top level.
-  let open = $state<Record<string, boolean>>({});
-  const isOpen = (n: Node) => open[n.path] ?? depth === 0;
+  // The notes, like Obsidian's file explorer: folders open and close (open
+  // is shared, so "collapse all" works), a vertical guide line inside each
+  // open folder; clicking a folder also makes it the place for new notes.
+  let { nodes, current, folder, open, onPick, onFolder, depth = 0 }: {
+    nodes: Node[]; current: string; folder: string; open: Record<string, boolean>;
+    onPick: (p: string) => void; onFolder: (p: string) => void; depth?: number;
+  } = $props();
 </script>
 
-<ul>
+<ul class:nested={depth > 0}>
   {#each nodes as n (n.path)}
     <li>
       {#if n.dir}
-        <button class="row folder" style:padding-inline-start="{0.5 + depth * 0.9}rem" onclick={() => (open[n.path] = !isOpen(n))}>
-          <span class="chev" class:open={isOpen(n)}><ChevronRight size={14} /></span>{n.name}
+        <button class="row" class:selected={n.path === folder} onclick={() => { open[n.path] = !open[n.path]; onFolder(n.path); }}>
+          <span class="chev" class:open={open[n.path]}><ChevronRight size={14} /></span><span class="name">{n.name}</span>
         </button>
-        {#if isOpen(n) && n.children}
-          <Tree nodes={n.children} {current} {onPick} depth={depth + 1} />
+        {#if open[n.path] && n.children}
+          <Tree nodes={n.children} {current} {folder} {open} {onPick} {onFolder} depth={depth + 1} />
         {/if}
       {:else}
-        <button class="row note" class:active={n.path === current} style:padding-inline-start="{1.4 + depth * 0.9}rem" onclick={() => onPick(n.path)}>
-          {n.name}
+        <button class="row note" class:active={n.path === current} onclick={() => onPick(n.path)}>
+          <span class="name">{n.name}</span>
         </button>
       {/if}
     </li>
@@ -30,11 +33,14 @@
 
 <style>
   ul { list-style: none; padding: 0; }
-  .row { display: flex; align-items: center; gap: .35rem; width: 100%; text-align: start; padding-block: .3rem; padding-inline-end: .5rem; border-radius: .375rem; font-size: .875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row:hover { background: var(--soft); }
-  .folder { font-weight: 600; }
-  .note { color: var(--muted); }
-  .note.active { background: var(--soft); color: var(--text); font-weight: 600; }
-  .chev { display: inline-grid; place-items: center; width: .9rem; color: var(--muted); transition: transform .15s; }
+  /* The guide line of an open folder, under its chevron. */
+  ul.nested { margin-inline-start: .95rem; padding-inline-start: .35rem; border-inline-start: 1px solid var(--line); }
+  .row { display: flex; align-items: center; gap: .3rem; width: 100%; text-align: start; padding: .28rem .5rem .28rem .3rem; border-radius: .35rem; font-size: .875rem; color: var(--text); opacity: .85; }
+  .row:hover { background: var(--soft); opacity: 1; }
+  .row.note { padding-inline-start: 1.55rem; color: var(--muted); opacity: 1; }
+  .row.note:hover { color: var(--text); }
+  .row.note.active, .row.selected { background: var(--soft); color: var(--text); opacity: 1; }
+  .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chev { display: inline-grid; place-items: center; width: 1rem; flex: none; color: var(--muted); transition: transform .15s; }
   .chev.open { transform: rotate(90deg); }
 </style>

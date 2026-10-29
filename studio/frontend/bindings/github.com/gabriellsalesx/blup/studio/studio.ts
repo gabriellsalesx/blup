@@ -91,6 +91,22 @@ export function Connections(): $CancellablePromise<app$0.Connections> {
 }
 
 /**
+ * CreateFolder makes a folder in folder and returns its path.
+ */
+export function CreateFolder(folder: string, name: string): $CancellablePromise<string> {
+    return $Call.ByID(2789593198, folder, name);
+}
+
+/**
+ * CreateNote makes a note named name in folder (relative to the notes
+ * folder, "" for the top), with its title, and returns its path. A taken
+ * name gets a number.
+ */
+export function CreateNote(folder: string, name: string): $CancellablePromise<string> {
+    return $Call.ByID(1198333690, folder, name);
+}
+
+/**
  * CreateSite makes the new site and opens it.
  */
 export function CreateSite(o: app$0.NewSiteOptions): $CancellablePromise<$models.SiteInfo> {

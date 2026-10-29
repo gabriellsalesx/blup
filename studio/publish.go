@@ -129,4 +129,3 @@ func (s *Studio) Sync() (app.SyncInfo, error) {
 	})
 	return info, err
 }
-

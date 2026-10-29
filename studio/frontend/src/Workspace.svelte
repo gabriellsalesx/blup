@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from "svelte";
-  import { Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -9,6 +9,13 @@
   import Preview from "./Preview.svelte";
   import TerminalPanel from "./TerminalPanel.svelte";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
+  import PanelLeft from "@lucide/svelte/icons/panel-left";
+  import Files from "@lucide/svelte/icons/files";
+  import Search from "@lucide/svelte/icons/search";
+  import SquarePen from "@lucide/svelte/icons/square-pen";
+  import FolderPlus from "@lucide/svelte/icons/folder-plus";
+  import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
+  import ChevronsDownUp from "@lucide/svelte/icons/chevrons-down-up";
   import { Events } from "@wailsio/runtime";
   import LookPanel from "./LookPanel.svelte";
   import SectionsPanel from "./SectionsPanel.svelte";
@@ -28,7 +35,42 @@
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import { t } from "./i18n";
 
-  let { site, onBack }: { site: SiteInfo; onBack: () => void } = $props();
+  let { site, onBack, onSwitch }: { site: SiteInfo; onBack: () => void; onSwitch: (s: SiteInfo) => void } = $props();
+
+  // The files panel, like Obsidian's: tabs (files, search), tools (new
+  // note, new folder, expand, collapse), the tree and the site switcher.
+  let sideOpen = $state(true);
+  let sideTab = $state<"files" | "search">("files");
+  let openMap = $state<Record<string, boolean>>({});
+  let folder = $state(""); // where new notes go: the folder clicked last
+  let creating = $state<"note" | "folder" | null>(null);
+  let newName = $state("");
+  let query = $state("");
+  let switching = $state(false);
+  let others = $state<SiteInfo[]>([]);
+
+  const flat = (nodes: Node[]): Node[] => nodes.flatMap((n) => (n.dir ? flat(n.children ?? []) : [n]));
+  const folders = (nodes: Node[]): string[] => nodes.flatMap((n) => (n.dir ? [n.path, ...folders(n.children ?? [])] : []));
+  const found = $derived.by(() => (query.trim() ? flat(tree).filter((n) => n.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 80) : []));
+  function expandAll() { for (const f of folders(tree)) openMap[f] = true; }
+  function reveal(path: string) {
+    const parts = path.split("/").slice(0, -1);
+    for (let i = 1; i <= parts.length; i++) openMap[parts.slice(0, i).join("/")] = true;
+    folder = parts.join("/");
+  }
+  function startCreate(kind: "note" | "folder") { newName = ""; creating = kind; }
+  async function finishCreate() {
+    const kind = creating, name = newName.trim();
+    creating = null;
+    if (!kind || !name) return;
+    try {
+      const rel = kind === "note" ? await CreateNote(folder, name) : await CreateFolder(folder, name);
+      tree = (await LoadTree()).children ?? [];
+      if (kind === "note") { reveal(rel); screen = "write"; await pick(rel); }
+      else { reveal(rel + "/x"); folder = rel; }
+    } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
+  async function loadSites() { others = ((await Sites().catch(() => [])) ?? []).filter((o) => o.dir !== site.dir); }
 
   let tree = $state<Node[]>([]);
   let current = $state(""); // path of the open note
@@ -173,6 +215,7 @@
       edits = {};
       pending = text;
       current = path;
+      reveal(path);
       follow(path);
       status = "saved";
       error = "";
@@ -212,31 +255,81 @@
   onDestroy(() => clearTimeout(timer));
 </script>
 
-<svelte:window onkeydown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "`") { e.preventDefault(); termOpen = !termOpen; } }} />
+<svelte:window onkeydown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "`") { e.preventDefault(); termOpen = !termOpen; } }} onclick={() => (switching = false)} />
 
-<div class="ws" class:no-preview={!previewOn}>
+<div class="ws" class:no-preview={!previewOn} class:no-side={!sideOpen}>
+  <!-- The ribbon, like Obsidian's: icons only, the name on hover. -->
+  <nav class="ribbon">
+    <button class="rib" title={t.side.toggle} onclick={() => (sideOpen = !sideOpen)}><PanelLeft size={19} strokeWidth={1.75} /></button>
+    <span class="sep"></span>
+    {#each screens as { key, label, Icon } (key)}
+      <button class="rib" class:active={screen === key} title={label} onclick={async () => { await save(); autostart = ""; screen = key; error = ""; }}><Icon size={19} strokeWidth={1.75} /></button>
+    {/each}
+    <span class="grow"></span>
+    <button class="rib" class:active={termOpen} title={t.term.button + " (Ctrl+\u0060)"} onclick={() => (termOpen = !termOpen)}><SquareTerminal size={19} strokeWidth={1.75} /></button>
+  </nav>
+
+  {#if sideOpen}
+    <aside class="side">
+      <div class="side-tabs">
+        <button class="tab" class:on={sideTab === "files"} title={t.side.files} onclick={() => (sideTab = "files")}><Files size={17} strokeWidth={1.75} /></button>
+        <button class="tab" class:on={sideTab === "search"} title={t.side.search} onclick={() => (sideTab = "search")}><Search size={17} strokeWidth={1.75} /></button>
+      </div>
+      {#if sideTab === "files"}
+        <div class="side-tools">
+          <button title={t.side.newNote} onclick={() => startCreate("note")}><SquarePen size={17} strokeWidth={1.75} /></button>
+          <button title={t.side.newFolder} onclick={() => startCreate("folder")}><FolderPlus size={17} strokeWidth={1.75} /></button>
+          <button title={t.side.expand} onclick={expandAll}><ChevronsUpDown size={17} strokeWidth={1.75} /></button>
+          <button title={t.side.collapse} onclick={() => (openMap = {})}><ChevronsDownUp size={17} strokeWidth={1.75} /></button>
+        </div>
+        {#if creating}
+          <div class="create">
+            <small class="muted">{creating === "note" ? t.side.noteIn : t.side.folderIn} {folder || site.title}</small>
+            <!-- svelte-ignore a11y_autofocus -->
+            <input type="text" autofocus bind:value={newName} placeholder={creating === "note" ? t.side.notePh : t.side.folderPh}
+              onkeydown={(e) => { if (e.key === "Enter") finishCreate(); if (e.key === "Escape") creating = null; }} onblur={() => setTimeout(() => (creating = null), 150)} />
+          </div>
+        {/if}
+        <div class="files">
+          <Tree nodes={tree} {current} {folder} open={openMap} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} />
+        </div>
+      {:else}
+        <div class="side-search">
+          <!-- svelte-ignore a11y_autofocus -->
+          <input type="text" autofocus bind:value={query} placeholder={t.side.searchPh} />
+          <ul>
+            {#each found as n (n.path)}
+              <li><button class="hit" class:active={n.path === current} onclick={() => { screen = "write"; pick(n.path); }}><span>{n.name}</span><small class="muted">{n.path.split("/").slice(0, -1).join(" / ")}</small></button></li>
+            {/each}
+            {#if query.trim() && !found.length}<li class="muted none">{t.side.nothing}</li>{/if}
+          </ul>
+        </div>
+      {/if}
+      <!-- The site switcher, like Obsidian's vault switcher. -->
+      <div class="switcher">
+        <button class="vault" onclick={(e) => { e.stopPropagation(); switching = !switching; if (switching) loadSites(); }}><ChevronsUpDown size={15} /><span>{site.title}</span></button>
+        {#if switching}
+          <div class="vault-menu" role="menu">
+            {#each others as o (o.dir)}<button onclick={async () => { await save(); StopPreview(); onSwitch(o); }}>{o.title}</button>{/each}
+            <button class="all" onclick={back}>{t.side.allSites}</button>
+          </div>
+        {/if}
+      </div>
+    </aside>
+  {/if}
+
   <header class="bar">
-    <button class="btn ghost" onclick={back}><ArrowLeft size={16} aria-hidden="true" />{t.back}</button>
-    <strong class="title">{site.title}</strong>
-    <span class="status muted">{current ? (status === "saved" ? t.saved : status === "saving" ? t.saving : t.unsaved) : ""}</span>
+    {#if screen === "write" && current}
+      <span class="crumbs muted">{current.split("/").slice(0, -1).join(" / ")}{current.includes("/") ? " / " : ""}</span><strong class="title">{current.split("/").pop()?.replace(/\.md$/, "")}</strong>
+      <span class="status muted">{status === "saved" ? t.saved : status === "saving" ? t.saving : t.unsaved}</span>
+    {:else}
+      <strong class="title">{site.title}</strong>
+    {/if}
     <span class="spacer"></span>
-    <button class="btn ghost" class:on={termOpen} onclick={() => (termOpen = !termOpen)} title="Ctrl+`"><SquareTerminal size={15} />{t.term.button}</button>
     <button class="btn ghost" onclick={togglePreview}>{previewOn ? "✓ " : ""}{t.preview}</button>
     <button class="btn ghost" onclick={() => go("publish", "sync")}>{t.sync}</button>
     <button class="btn" onclick={() => go("publish", "publish")}>{t.publish}</button>
   </header>
-
-  <aside class="side">
-    <nav>
-      {#each screens as { key, label, Icon } (key)}
-        <button class="nav" class:active={screen === key} onclick={async () => { await save(); autostart = ""; screen = key; error = ""; }}><Icon size={17} strokeWidth={1.75} aria-hidden="true" />{label}</button>
-      {/each}
-    </nav>
-    {#if screen === "write"}
-      <h2>{t.notes}</h2>
-      <Tree nodes={tree} {current} onPick={pick} />
-    {/if}
-  </aside>
 
   <section class="main" class:scroll={screen !== "write"}>
     {#if error}<p class="error">{t.error}: {error}</p>{/if}
@@ -284,31 +377,59 @@
 </div>
 
 <style>
-  .ws { height: 100%; display: grid; grid-template-columns: 16rem minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
-  .side { grid-row: 2 / 4; }
-  .term { grid-column: 2 / -1; position: relative; min-height: 0; }
-  .term.min { display: none; }
-  .grip { position: absolute; z-index: 3; inset-inline: 0; inset-block-start: -3px; height: 6px; cursor: row-resize; }
-  .btn.on { background: var(--soft); }
-  .outside { position: absolute; z-index: 2; inset-inline: 1rem; inset-block-start: .75rem; display: flex; gap: .5rem; align-items: center; padding: .5rem .75rem; border-radius: .5rem; background: var(--soft); font-size: .85rem; }
-  .outside span { flex: 1; }
-  .ws.no-preview { grid-template-columns: 16rem minmax(0, 1fr); }
-  .bar { grid-column: 1 / -1; display: flex; align-items: center; gap: .75rem; padding: .6rem 1rem; border-block-end: 1px solid var(--line); background: var(--panel); }
-  .title { font-size: .95rem; }
+  /* Columns: ribbon, files, editor, preview. The top bar starts after the
+     files; the terminal sits under the editor and the preview. */
+  .ws { height: 100%; display: grid; grid-template-columns: 3rem 16rem minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .ws.no-preview { grid-template-columns: 3rem 16rem minmax(0, 1fr); }
+  .ws.no-side { grid-template-columns: 3rem minmax(0, 1fr) minmax(0, 1fr); }
+  .ws.no-side.no-preview { grid-template-columns: 3rem minmax(0, 1fr); }
+  .ribbon { grid-row: 1 / -1; grid-column: 1; display: flex; flex-direction: column; align-items: center; gap: .2rem; padding-block: .6rem; border-inline-end: 1px solid var(--line); background: var(--panel); }
+  .rib { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: .45rem; color: var(--muted); }
+  .rib:hover { background: var(--soft); color: var(--text); }
+  .rib.active { background: var(--soft); color: var(--text); }
+  .sep { width: 1.4rem; height: 1px; margin-block: .35rem; background: var(--line); }
+  .grow { flex: 1; }
+  .side { grid-row: 1 / -1; grid-column: 2; display: flex; flex-direction: column; min-height: 0; border-inline-end: 1px solid var(--line); background: var(--panel); }
+  .side-tabs { display: flex; gap: .2rem; padding: .55rem .6rem; border-block-end: 1px solid var(--line); }
+  .tab { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .4rem; color: var(--muted); }
+  .tab:hover, .tab.on { background: var(--soft); color: var(--text); }
+  .side-tools { display: flex; justify-content: center; gap: .3rem; padding: .45rem; }
+  .side-tools button { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .4rem; color: var(--muted); }
+  .side-tools button:hover { background: var(--soft); color: var(--text); }
+  .create { display: grid; gap: .25rem; padding: .25rem .6rem .5rem; }
+  .create small { font-size: .72rem; }
+  .files { flex: 1; min-height: 0; overflow: auto; padding: 0 .4rem .75rem; }
+  .side-search { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .5rem; padding: .6rem; }
+  .side-search ul { list-style: none; padding: 0; overflow: auto; }
+  .hit { display: grid; width: 100%; text-align: start; padding: .35rem .5rem; border-radius: .35rem; font-size: .875rem; }
+  .hit small { font-size: .72rem; }
+  .hit:hover, .hit.active { background: var(--soft); }
+  .none { padding: .5rem; font-size: .85rem; }
+  .switcher { position: relative; padding: .45rem .6rem; border-block-start: 1px solid var(--line); }
+  .vault { display: flex; align-items: center; gap: .45rem; width: 100%; padding: .4rem .5rem; border-radius: .4rem; font-size: .875rem; font-weight: 600; text-align: start; }
+  .vault span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vault:hover { background: var(--soft); }
+  .vault-menu { position: absolute; z-index: 6; inset-inline: .6rem; inset-block-end: calc(100% - .2rem); display: grid; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .18); }
+  .vault-menu button { text-align: start; padding: .45rem .6rem; border-radius: .35rem; font-size: .875rem; }
+  .vault-menu button:hover { background: var(--soft); }
+  .vault-menu .all { border-block-start: 1px solid var(--line); margin-block-start: .2rem; padding-block-start: .55rem; color: var(--muted); }
+  .bar { grid-row: 1; grid-column: 3 / -1; display: flex; align-items: center; gap: .6rem; padding: .55rem 1rem; border-block-end: 1px solid var(--line); background: var(--panel); min-width: 0; }
+  .ws.no-side .bar { grid-column: 2 / -1; }
+  .crumbs { font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+  .title { font-size: .95rem; white-space: nowrap; }
   .status { font-size: .8rem; }
   .spacer { flex: 1; }
-  .side { overflow: auto; padding: 1rem .5rem; border-inline-end: 1px solid var(--line); }
-  nav { display: grid; gap: .1rem; margin-block-end: 1.25rem; }
-  .nav { display: flex; align-items: center; gap: .6rem; padding: .45rem .6rem; border-radius: .45rem; font-size: .875rem; font-weight: 500; color: var(--muted); text-align: start; }
-  .nav:hover { background: var(--soft); color: var(--text); }
-  .nav.active { background: var(--soft); color: var(--text); font-weight: 600; }
+  .main { grid-row: 2; position: relative; overflow: hidden; background: var(--panel); }
+  .main.scroll { overflow: auto; background: var(--bg); }
+  .preview { grid-row: 2; overflow: hidden; border-inline-start: 1px solid var(--line); background: var(--bg); }
+  .term { grid-row: 3; grid-column: 3 / -1; position: relative; min-height: 0; }
+  .ws.no-side .term { grid-column: 2 / -1; }
+  .term.min { display: none; }
+  .grip { position: absolute; z-index: 3; inset-inline: 0; inset-block-start: -3px; height: 6px; cursor: row-resize; }
+  .outside { position: absolute; z-index: 2; inset-inline: 1rem; inset-block-start: .75rem; display: flex; gap: .5rem; align-items: center; padding: .5rem .75rem; border-radius: .5rem; background: var(--soft); font-size: .85rem; }
+  .outside span { flex: 1; }
   .note { height: 100%; display: flex; flex-direction: column; }
   .body { flex: 1; min-height: 0; }
-  .main.scroll { overflow: auto; background: var(--bg); }
-  .side h2 { padding-inline: .5rem; margin-block-end: .5rem; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-  .main { position: relative; overflow: hidden; background: var(--panel); }
-  .preview { overflow: hidden; border-inline-start: 1px solid var(--line); background: var(--bg); }
-  iframe { width: 100%; height: 100%; border: 0; }
   .hint { padding: 3rem 2rem; text-align: center; }
   .error { position: absolute; inset-inline: 1rem; inset-block-start: .75rem; z-index: 2; padding: .6rem .9rem; border-radius: .5rem; background: var(--soft); color: var(--red); font-size: .85rem; }
 </style>

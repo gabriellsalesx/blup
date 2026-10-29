@@ -1,6 +1,7 @@
 // The Studio speaks the system's language: Portuguese or English.
 const pt = {
   lang: "pt",
+  side: { toggle: "Mostrar ou esconder o painel", files: "Arquivos", search: "Buscar", newNote: "Nova nota", newFolder: "Nova pasta", expand: "Expandir tudo", collapse: "Recolher tudo", noteIn: "Nova nota em", folderIn: "Nova pasta em", notePh: "Nome da nota e Enter", folderPh: "Nome da pasta e Enter", searchPh: "Buscar notas…", nothing: "Nenhuma nota com esse nome.", allSites: "Todos os sites" },
   term: { button: "Terminal", shell: "Terminal", newShell: "Novo terminal", closeTab: "Fechar", close: "Minimizar (os terminais continuam rodando)", ended: "[o processo terminou]", noAgents: "Nenhuma IA instalada. Conheça:", outside: "Esta nota mudou fora do editor (por exemplo, por uma IA no terminal).", reload: "Carregar a nova", keep: "Manter a minha" },
   look2: { label: "Aparência do Studio", light: "Claro", dark: "Escuro", system: "Automático", pick: "Prefere claro ou escuro? Dá para trocar depois no topo da tela inicial." },
   home: { hint: "Arraste um site para cima de outro para criar uma pasta.", newFolder: "Nova pasta", options: "Opções", moveTo: "Mover para {name}", newFolderWith: "Nova pasta com este site", takeOut: "Tirar da pasta", all: "Todos os sites", rename: "Clique para renomear", ungroup: "Desfazer pasta", folderHint: "Arraste para mudar a ordem. Os sites continuam iguais; a pasta só organiza o Studio.", count: "{n} sites" },
@@ -49,6 +50,7 @@ const pt = {
 };
 const en: typeof pt = {
   lang: "en",
+  side: { toggle: "Show or hide the panel", files: "Files", search: "Search", newNote: "New note", newFolder: "New folder", expand: "Expand all", collapse: "Collapse all", noteIn: "New note in", folderIn: "New folder in", notePh: "Note name and Enter", folderPh: "Folder name and Enter", searchPh: "Search notes…", nothing: "No note with that name.", allSites: "All sites" },
   term: { button: "Terminal", shell: "Terminal", newShell: "New terminal", closeTab: "Close", close: "Minimize (the terminals keep running)", ended: "[the process ended]", noAgents: "No AI installed. Have a look:", outside: "This note changed outside the editor (for example, by an AI in the terminal).", reload: "Load the new one", keep: "Keep mine" },
   look2: { label: "Studio look", light: "Light", dark: "Dark", system: "Automatic", pick: "Light or dark? You can change it later at the top of the home screen." },
   home: { hint: "Drag a site onto another to make a folder.", newFolder: "New folder", options: "Options", moveTo: "Move to {name}", newFolderWith: "New folder with this site", takeOut: "Take out of the folder", all: "All sites", rename: "Click to rename", ungroup: "Undo folder", folderHint: "Drag to change the order. The sites stay the same; the folder only organizes the Studio.", count: "{n} sites" },

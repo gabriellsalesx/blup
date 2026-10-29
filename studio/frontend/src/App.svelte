@@ -11,7 +11,9 @@
 </script>
 
 {#if site}
-  <Workspace {site} onBack={() => (site = null)} />
+  {#key site.dir}
+    <Workspace {site} onBack={() => (site = null)} onSwitch={(s) => (site = s)} />
+  {/key}
 {:else if creating}
   <Onboarding canCancel={hasSites} onCancel={() => (creating = false)} onDone={(s) => { creating = false; site = s; }} />
 {:else}
