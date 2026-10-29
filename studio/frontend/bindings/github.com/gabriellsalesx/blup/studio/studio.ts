@@ -214,6 +214,13 @@ export function EmptyTrash(): $CancellablePromise<void> {
 }
 
 /**
+ * FeedbackState says whether the comments login app is installed.
+ */
+export function FeedbackState(): $CancellablePromise<app$0.FeedbackSetup> {
+    return $Call.ByID(2575762882);
+}
+
+/**
  * HomeDir is the user's home folder, to show paths as "~/...".
  */
 export function HomeDir(): $CancellablePromise<string> {
@@ -568,6 +575,13 @@ export function SetTarget(t: app$0.Target): $CancellablePromise<app$0.Target> {
  */
 export function Settings(): $CancellablePromise<app$0.Settings> {
     return $Call.ByID(2509052719);
+}
+
+/**
+ * SetupFeedback creates the comments repository and turns comments on.
+ */
+export function SetupFeedback(): $CancellablePromise<app$0.FeedbackSetup> {
+    return $Call.ByID(1548027100);
 }
 
 /**

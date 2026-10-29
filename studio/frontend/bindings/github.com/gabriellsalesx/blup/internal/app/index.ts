@@ -8,6 +8,7 @@ export type {
     Connections,
     DNSRecord,
     DomainStatus,
+    FeedbackSetup,
     MenuItem,
     NewSiteOptions,
     Section,

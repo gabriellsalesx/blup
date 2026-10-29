@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"mime"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -169,4 +171,26 @@ func (s *Studio) DeleteFromTrash(path string) error {
 // EmptyTrash deletes everything in the trash.
 func (s *Studio) EmptyTrash() error {
 	return s.with(func(site *config.Site) error { return app.EmptyTrash(site) })
+}
+
+// SetupFeedback creates the comments repository and turns comments on.
+func (s *Studio) SetupFeedback() (app.FeedbackSetup, error) {
+	site, err := s.current()
+	if err != nil {
+		return app.FeedbackSetup{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	return app.SetupFeedback(ctx, site)
+}
+
+// FeedbackState says whether the comments login app is installed.
+func (s *Studio) FeedbackState() (app.FeedbackSetup, error) {
+	site, err := s.current()
+	if err != nil {
+		return app.FeedbackSetup{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	return app.FeedbackState(ctx, site)
 }

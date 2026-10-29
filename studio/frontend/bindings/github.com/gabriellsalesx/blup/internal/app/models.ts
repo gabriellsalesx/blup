@@ -122,6 +122,27 @@ export interface DomainStatus {
 }
 
 /**
+ * FeedbackSetup is where the comments setup stands.
+ */
+export interface FeedbackSetup {
+    /**
+     * owner/repo
+     */
+    "repo": string;
+
+    /**
+     * the login app is installed on it
+     */
+    "app": boolean;
+
+    /**
+     * where to install it
+     */
+    "installURL": string;
+    "appName": string;
+}
+
+/**
  * MenuItem is an entry of the top menu: a name and where it leads (a
  * folder of the site, "/", "/tags/" or an address).
  */
