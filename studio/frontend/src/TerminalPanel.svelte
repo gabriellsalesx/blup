@@ -9,12 +9,14 @@
   import Sparkles from "@lucide/svelte/icons/sparkles";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import X from "@lucide/svelte/icons/x";
+  import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { t } from "./i18n";
 
   // Terminals in tabs, in the notes folder. The AI agents installed get a
   // button each; the agent starts inside a shell, so the tab stays when it
   // quits.
-  let { onClose }: { onClose: () => void } = $props();
+  // onClose only hides the panel: the terminals keep running.
+  let { onClose, visible = true }: { onClose: () => void; visible?: boolean } = $props();
   const tt = t.term;
 
   type Tab = { id: string; title: string; term: Terminal; fit: FitAddon; el: HTMLDivElement | null; ended: boolean };
@@ -96,7 +98,7 @@
   // Follow the panel's size.
   const ro = new ResizeObserver(() => tabs.find((x) => x.id === active)?.fit.fit());
   $effect(() => { if (host) ro.observe(host); });
-  $effect(() => { const tab = tabs.find((x) => x.id === active); if (tab) tick().then(() => { tab.fit.fit(); tab.term.focus(); }); });
+  $effect(() => { const tab = tabs.find((x) => x.id === active); if (tab && visible) tick().then(() => { tab.fit.fit(); tab.term.focus(); }); });
 
   onDestroy(() => { off(); ro.disconnect(); for (const tab of tabs) close(tab); });
 
@@ -124,7 +126,7 @@
         {#each missing.slice(0, 3) as a (a.key)}<button class="link" onclick={() => OpenURL(a.site)}>{a.name}</button>{/each}
       {/if}
     </div>
-    <button class="close" title={tt.close} onclick={onClose}><X size={16} /></button>
+    <button class="close" title={tt.close} onclick={onClose}><ChevronDown size={18} /></button>
   </header>
   {#if error}<p class="bad err">{error}</p>{/if}
   <div class="host" bind:this={host}>

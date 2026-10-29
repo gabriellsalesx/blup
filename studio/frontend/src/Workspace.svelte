@@ -60,6 +60,9 @@
 
   // The terminal at the bottom, and its height (dragging its top edge).
   let termOpen = $state(false);
+  // Once opened, the terminals stay alive: closing the panel only hides it.
+  let termStarted = $state(false);
+  $effect(() => { if (termOpen) termStarted = true; });
   let termHeight = $state(300);
   function resizeTerm(e: MouseEvent) {
     const start = e.clientY, h = termHeight;
@@ -272,10 +275,10 @@
       {/if}
     </section>
   {/if}
-  {#if termOpen}
-    <div class="term" style:height="{termHeight}px">
+  {#if termStarted}
+    <div class="term" class:min={!termOpen} style:height="{termHeight}px">
       <div class="grip" role="separator" aria-orientation="horizontal" onmousedown={resizeTerm}></div>
-      <TerminalPanel onClose={() => (termOpen = false)} />
+      <TerminalPanel visible={termOpen} onClose={() => (termOpen = false)} />
     </div>
   {/if}
 </div>
@@ -284,6 +287,7 @@
   .ws { height: 100%; display: grid; grid-template-columns: 16rem minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
   .side { grid-row: 2 / 4; }
   .term { grid-column: 2 / -1; position: relative; min-height: 0; }
+  .term.min { display: none; }
   .grip { position: absolute; z-index: 3; inset-inline: 0; inset-block-start: -3px; height: 6px; cursor: row-resize; }
   .btn.on { background: var(--soft); }
   .outside { position: absolute; z-index: 2; inset-inline: 1rem; inset-block-start: .75rem; display: flex; gap: .5rem; align-items: center; padding: .5rem .75rem; border-radius: .5rem; background: var(--soft); font-size: .85rem; }
