@@ -8,6 +8,7 @@
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Sparkles from "@lucide/svelte/icons/sparkles";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
+  import Plus from "@lucide/svelte/icons/plus";
   import X from "@lucide/svelte/icons/x";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { t } from "./i18n";
@@ -25,6 +26,7 @@
   let active = $state("");
   let agents = $state<Agent[]>([]);
   let error = $state("");
+  let adding = $state(false); // the "+" menu: a terminal or an AI
   let host: HTMLDivElement;
 
   Agents().then((a) => (agents = a ?? []));
@@ -110,6 +112,8 @@
   tick().then(() => { if (!tabs.length) open(); });
 </script>
 
+<svelte:window onclick={() => (adding = false)} />
+
 <section class="term-panel">
   <header>
     <div class="tabs">
@@ -119,17 +123,24 @@
           <button class="x" title={tt.closeTab} onclick={() => close(tab)}><X size={12} /></button>
         </div>
       {/each}
-      <button class="add" title={tt.newShell} onclick={() => open()}><SquareTerminal size={15} /></button>
+      <div class="plus">
+        <button class="add" title={tt.add} onclick={(e) => { e.stopPropagation(); adding = !adding; }}><Plus size={16} /></button>
+        {#if adding}
+          <div class="add-menu" role="menu">
+            <button onclick={() => { adding = false; open(); }}><SquareTerminal size={15} />{tt.shell}</button>
+            {#if installed.length}<hr />{/if}
+            {#each installed as a (a.key)}
+              <button onclick={() => { adding = false; open(a.key, a.name); }}><Sparkles size={15} />{a.name}</button>
+            {/each}
+            {#if !installed.length && missing.length}
+              <hr /><small class="muted">{tt.noAgents}</small>
+              {#each missing.slice(0, 3) as a (a.key)}<button class="link" onclick={() => OpenURL(a.site)}>{a.name}</button>{/each}
+            {/if}
+          </div>
+        {/if}
+      </div>
     </div>
-    <div class="agents">
-      {#each installed as a (a.key)}
-        <button class="agent" onclick={() => open(a.key, a.name)}><Sparkles size={13} />{a.name}</button>
-      {/each}
-      {#if !installed.length && agents.length}
-        <span class="muted none">{tt.noAgents}</span>
-        {#each missing.slice(0, 3) as a (a.key)}<button class="link" onclick={() => OpenURL(a.site)}>{a.name}</button>{/each}
-      {/if}
-    </div>
+    <span class="grow"></span>
     <button class="close" title={tt.close} onclick={onClose}><ChevronDown size={18} /></button>
   </header>
   {#if error}<p class="bad err">{error}</p>{/if}
@@ -145,17 +156,21 @@
      an error line above it). */
   .term-panel { display: flex; flex-direction: column; height: 100%; background: var(--panel); border-block-start: 1px solid var(--line); }
   header { display: flex; align-items: center; gap: .75rem; padding: .3rem .6rem; border-block-end: 1px solid var(--line); }
-  .tabs { display: flex; align-items: center; gap: .2rem; min-width: 0; overflow: auto; }
+  .tabs { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem; min-width: 0; }
   .tab { display: flex; align-items: center; border-radius: .4rem; font-size: .8rem; color: var(--muted); }
   .tab > button:first-child { padding: .3rem .1rem .3rem .6rem; white-space: nowrap; }
   .tab.on { background: var(--soft); color: var(--text); font-weight: 600; }
   .x, .add, .close { display: inline-grid; place-items: center; padding: .3rem; border-radius: .35rem; color: var(--muted); }
   .x:hover, .add:hover, .close:hover { color: var(--text); background: var(--soft); }
-  .agents { display: flex; align-items: center; gap: .35rem; margin-inline-start: auto; flex-wrap: wrap; }
-  .agent { display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .6rem; border: 1px solid var(--line); border-radius: 999px; font-size: .78rem; font-weight: 600; }
-  .agent:hover { border-color: var(--blue); color: var(--blue); }
-  .none { font-size: .78rem; }
-  .link { font-size: .78rem; color: var(--blue); text-decoration: underline; }
+  .grow { flex: 1; }
+  .plus { position: relative; }
+  .add-menu { position: absolute; z-index: 10; inset-block-start: calc(100% + .3rem); inset-inline-start: 0; display: grid; min-width: 12rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .22); }
+  .add-menu button { display: flex; align-items: center; gap: .55rem; padding: .42rem .6rem; border-radius: .35rem; font-size: .85rem; text-align: start; white-space: nowrap; }
+  .add-menu button :global(svg) { color: var(--muted); }
+  .add-menu button:hover { background: var(--soft); }
+  .add-menu hr { border: 0; border-block-start: 1px solid var(--line); margin: .25rem .2rem; }
+  .add-menu small { padding: .3rem .6rem; font-size: .75rem; }
+  .link { color: var(--blue); }
   .err { padding: .4rem .8rem; font-size: .8rem; }
   .host { position: relative; flex: 1; min-height: 0; }
   .xterm-box { position: absolute; inset: .4rem .2rem .2rem .6rem; }
