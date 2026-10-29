@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { EditorView, basicSetup } from "codemirror";
-  import { keymap } from "@codemirror/view";
+  import { keymap, Decoration, type DecorationSet } from "@codemirror/view";
   import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
   import { languages } from "@codemirror/language-data";
   import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
   import { tags } from "@lezer/highlight";
-  import { Compartment } from "@codemirror/state";
+  import { Compartment, StateField, RangeSetBuilder, type EditorState } from "@codemirror/state";
   import { look } from "./theme.svelte";
   import { t } from "./i18n";
 
@@ -24,6 +24,26 @@
     { tag: [tags.processingInstruction, tags.meta, tags.contentSeparator], color: "var(--muted)" },
     { tag: tags.quote, color: "var(--muted)", fontStyle: "italic" },
   ]);
+
+  // Obsidian comments (%% text %%, on one line or several) never reach the
+  // site: they show faded and in italics, with a hint on hover. Code keeps
+  // its %% as written, like the theme does.
+  const commentMark = Decoration.mark({ class: "cm-obs-comment", attributes: { title: t.editor.comment } });
+  function comments(state: EditorState): DecorationSet {
+    const b = new RangeSetBuilder<Decoration>();
+    const doc = state.doc.toString();
+    if (doc.includes("%%")) {
+      for (const m of doc.matchAll(/(```[\s\S]*?```|`[^`\n]*`)|%%[\s\S]*?%%/g)) {
+        if (!m[1]) b.add(m.index!, m.index! + m[0].length, commentMark);
+      }
+    }
+    return b.finish();
+  }
+  const commentField = StateField.define<DecorationSet>({
+    create: comments,
+    update: (deco, tr) => (tr.docChanged ? comments(tr.state) : deco),
+    provide: (f) => EditorView.decorations.from(f),
+  });
 
   // A Markdown editor. onChange gets every edit; onSave, Ctrl/Cmd+S.
   let { text, onChange, onSave }: { text: string; onChange: (v: string) => void; onSave: () => void } = $props();
@@ -43,6 +63,7 @@
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         syntaxHighlighting(markdownStyle),
         EditorView.lineWrapping,
+        commentField,
         spell.of(spellAttrs()),
         keymap.of([{ key: "Mod-s", preventDefault: true, run: () => (onSave(), true) }]),
         EditorView.updateListener.of((u) => { if (u.docChanged) onChange(u.state.doc.toString()); }),
@@ -62,6 +83,8 @@
   .editor :global(.cm-scroller) { font-family: "Inter", ui-sans-serif, system-ui, sans-serif; line-height: 1.7; padding: 2rem 0; }
   .editor :global(.cm-content) { max-width: 46rem; margin-inline: auto; padding-inline: 2rem; caret-color: var(--text); }
   .editor.wide :global(.cm-content) { max-width: none; }
+  .editor :global(.cm-obs-comment) { opacity: .75; }
+  .editor :global(.cm-obs-comment), .editor :global(.cm-obs-comment *) { color: var(--muted) !important; font-style: italic; }
   .editor :global(.cm-gutters) { display: none; }
   .editor :global(.cm-activeLine) { background: transparent; }
   .editor :global(.cm-line) { color: var(--text); }
