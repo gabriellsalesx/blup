@@ -91,6 +91,13 @@ export function Connections(): $CancellablePromise<app$0.Connections> {
 }
 
 /**
+ * CopyNote makes a copy of a note next to it.
+ */
+export function CopyNote(rel: string): $CancellablePromise<string> {
+    return $Call.ByID(2428963207, rel);
+}
+
+/**
  * CreateFolder makes a folder in folder and returns its path.
  */
 export function CreateFolder(folder: string, name: string): $CancellablePromise<string> {
@@ -118,6 +125,13 @@ export function CreateSite(o: app$0.NewSiteOptions): $CancellablePromise<$models
  */
 export function DeleteFromTrash(path: string): $CancellablePromise<void> {
     return $Call.ByID(2758206437, path);
+}
+
+/**
+ * DeleteItem sends a note or folder to the Blup trash.
+ */
+export function DeleteItem(rel: string): $CancellablePromise<void> {
+    return $Call.ByID(2432960566, rel);
 }
 
 /**
@@ -171,6 +185,13 @@ export function LinkedImage(link: string): $CancellablePromise<string> {
 }
 
 /**
+ * MoveItem moves a note or folder into folder (links follow).
+ */
+export function MoveItem(rel: string, folder: string): $CancellablePromise<string> {
+    return $Call.ByID(2636608032, rel, folder);
+}
+
+/**
  * NeedsLinkAdjust reports whether a folder is an Obsidian vault that saves
  * [[wikilinks]] (which the web doesn't understand).
  */
@@ -179,11 +200,26 @@ export function NeedsLinkAdjust(dir: string): $CancellablePromise<boolean> {
 }
 
 /**
+ * NoteLink is a Markdown link to the note at rel, written from the note at
+ * from ("" for the top of the notes): [Name](../Folder/Name.md).
+ */
+export function NoteLink(rel: string, $from: string): $CancellablePromise<string> {
+    return $Call.ByID(56273166, rel, $from);
+}
+
+/**
  * Open makes dir the open site (stopping the preview of the previous one)
  * and returns its notes.
  */
 export function Open(dir: string): $CancellablePromise<$models.Node> {
     return $Call.ByID(2984394386, dir);
+}
+
+/**
+ * OpenInObsidian opens the note (or folder) in Obsidian.
+ */
+export function OpenInObsidian(rel: string): $CancellablePromise<void> {
+    return $Call.ByID(2099748360, rel);
 }
 
 /**
@@ -286,6 +322,14 @@ export function RemoveSection(kind: string): $CancellablePromise<$models.Removed
 }
 
 /**
+ * RenameItem renames a note or folder (links to it follow); it returns the
+ * new path.
+ */
+export function RenameItem(rel: string, name: string): $CancellablePromise<string> {
+    return $Call.ByID(330308203, rel, name);
+}
+
+/**
  * ResizeTerminal follows the panel's size.
  */
 export function ResizeTerminal(id: string, cols: number, rows: number): $CancellablePromise<void> {
@@ -375,6 +419,13 @@ export function SetTarget(t: app$0.Target): $CancellablePromise<app$0.Target> {
  */
 export function Settings(): $CancellablePromise<app$0.Settings> {
     return $Call.ByID(2509052719);
+}
+
+/**
+ * ShowInFolder opens the system's file manager where the note is.
+ */
+export function ShowInFolder(rel: string): $CancellablePromise<void> {
+    return $Call.ByID(2352234608, rel);
 }
 
 /**

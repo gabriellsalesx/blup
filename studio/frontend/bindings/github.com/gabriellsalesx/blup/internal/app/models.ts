@@ -169,4 +169,10 @@ export interface TrashItem {
      */
     "removed": string;
     "notes": number;
+
+    /**
+     * where it was in the notes
+     */
+    "origin": string;
+    "dir": boolean;
 }

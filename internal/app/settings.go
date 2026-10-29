@@ -336,9 +336,8 @@ func RemoveSection(site *config.Site, kind string) (string, error) {
 	if !ok {
 		return "", errors.New("the site has no " + kind + " section")
 	}
-	src := filepath.Join(site.ContentDir(), filepath.FromSlash(folder))
-	dst := filepath.Join(trashDir(site), time.Now().Format("2006-01-02-150405"), filepath.Base(src))
-	if err := moveDir(src, dst); err != nil {
+	dst, err := toTrash(site, folder)
+	if err != nil {
 		return "", err
 	}
 	// The menu entry of the section would lead nowhere.
@@ -369,14 +368,18 @@ func RestoreSection(site *config.Site, trashed string) error {
 	if !inTrash(site, trashed) {
 		return errors.New("not in the Blup trash")
 	}
-	dst := filepath.Join(site.ContentDir(), filepath.Base(trashed))
+	back := trashOrigin(trashed)
+	if back == "" {
+		back = filepath.Base(trashed)
+	}
+	dst := filepath.Join(site.ContentDir(), filepath.FromSlash(back))
 	if _, err := os.Stat(dst); err == nil {
-		return errors.New(i18n.T("trash.exists", filepath.Base(trashed)))
+		return errors.New(i18n.T("trash.exists", back))
 	}
 	if err := moveDir(trashed, dst); err != nil {
 		return err
 	}
-	os.Remove(filepath.Dir(trashed)) // the empty dated folder
+	os.RemoveAll(filepath.Dir(trashed)) // the dated folder and its .origin
 	return saved(site)
 }
 
@@ -434,6 +437,8 @@ type TrashItem struct {
 	Name    string `json:"name"`
 	Removed string `json:"removed"` // when, "2006-01-02T15:04:05"
 	Notes   int    `json:"notes"`
+	Origin  string `json:"origin"` // where it was in the notes
+	Dir     bool   `json:"dir"`
 }
 
 // ListTrash lists the trash, newest first.
@@ -448,14 +453,23 @@ func ListTrash(site *config.Site) ([]TrashItem, error) {
 	out := []TrashItem{}
 	for i := len(dates) - 1; i >= 0; i-- {
 		d := dates[i]
-		when, err := time.ParseInLocation("2006-01-02-150405", d.Name(), time.Local)
+		stamp, _, _ := strings.Cut(d.Name(), ".")
+		when, err := time.ParseInLocation("2006-01-02-150405", stamp, time.Local)
 		if !d.IsDir() || err != nil {
 			continue
 		}
 		items, _ := os.ReadDir(filepath.Join(trashDir(site), d.Name()))
 		for _, it := range items {
+			if strings.HasPrefix(it.Name(), ".") {
+				continue
+			}
 			p := filepath.Join(trashDir(site), d.Name(), it.Name())
-			out = append(out, TrashItem{Path: p, Name: it.Name(), Removed: when.Format("2006-01-02T15:04:05"), Notes: obsidian.CountNotes(p)})
+			notes := 1
+			if it.IsDir() {
+				notes = obsidian.CountNotes(p)
+			}
+			out = append(out, TrashItem{Path: p, Name: strings.TrimSuffix(it.Name(), ".md"), Removed: when.Format("2006-01-02T15:04:05"),
+				Notes: notes, Origin: firstOf(trashOrigin(p), it.Name()), Dir: it.IsDir()})
 		}
 	}
 	return out, nil
@@ -466,11 +480,7 @@ func DeleteFromTrash(site *config.Site, p string) error {
 	if !inTrash(site, p) {
 		return errors.New("not in the Blup trash")
 	}
-	if err := os.RemoveAll(p); err != nil {
-		return err
-	}
-	os.Remove(filepath.Dir(p)) // the dated folder, once empty
-	return nil
+	return os.RemoveAll(filepath.Dir(p)) // with its .origin
 }
 
 // EmptyTrash deletes everything in the trash.

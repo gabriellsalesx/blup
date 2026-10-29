@@ -3,6 +3,7 @@
   import type { TrashItem } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Folder from "@lucide/svelte/icons/folder";
+  import FileText from "@lucide/svelte/icons/file-text";
   import Saved from "./Saved.svelte";
   import { saver } from "./saving.svelte";
   import { t } from "./i18n";
@@ -31,8 +32,8 @@
   {:else}
     {#each items as it (it.path)}
       <section class="card item">
-        <span class="ico"><Folder size={20} /></span>
-        <div class="field"><span>{it.name}</span><small>{tr.removedAt} {when(it.removed)} · {tr.notes.replace("{n}", String(it.notes))}</small></div>
+        <span class="ico">{#if it.dir}<Folder size={20} />{:else}<FileText size={20} />{/if}</span>
+        <div class="field"><span>{it.name}</span><small>{tr.removedAt} {when(it.removed)}{it.dir ? " · " + tr.notes.replace("{n}", String(it.notes)) : ""}</small><small>{tr.from} {it.origin.includes("/") ? it.origin.slice(0, it.origin.lastIndexOf("/")).replaceAll("/", " / ") : t.menu.top}</small></div>
         {#if asking === it.path}
           <div class="row">
             <span class="q">{tr.deleteQ}</span>

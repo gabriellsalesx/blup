@@ -6,9 +6,10 @@
   // The notes, like Obsidian's file explorer: folders open and close (open
   // is shared, so "collapse all" works), a vertical guide line inside each
   // open folder; clicking a folder also makes it the place for new notes.
-  let { nodes, current, folder, open, onPick, onFolder, depth = 0 }: {
+  // Right-click opens the item's menu (onMenu).
+  let { nodes, current, folder, open, onPick, onFolder, onMenu, depth = 0 }: {
     nodes: Node[]; current: string; folder: string; open: Record<string, boolean>;
-    onPick: (p: string) => void; onFolder: (p: string) => void; depth?: number;
+    onPick: (p: string) => void; onFolder: (p: string) => void; onMenu: (n: Node, e: MouseEvent) => void; depth?: number;
   } = $props();
 </script>
 
@@ -16,14 +17,14 @@
   {#each nodes as n (n.path)}
     <li>
       {#if n.dir}
-        <button class="row" class:selected={n.path === folder} onclick={() => { open[n.path] = !open[n.path]; onFolder(n.path); }}>
+        <button class="row" class:selected={n.path === folder} onclick={() => { open[n.path] = !open[n.path]; onFolder(n.path); }} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
           <span class="chev" class:open={open[n.path]}><ChevronRight size={14} /></span><span class="name">{n.name}</span>
         </button>
         {#if open[n.path] && n.children}
-          <Tree nodes={n.children} {current} {folder} {open} {onPick} {onFolder} depth={depth + 1} />
+          <Tree nodes={n.children} {current} {folder} {open} {onPick} {onFolder} {onMenu} depth={depth + 1} />
         {/if}
       {:else}
-        <button class="row note" class:active={n.path === current} onclick={() => onPick(n.path)}>
+        <button class="row note" class:active={n.path === current} onclick={() => onPick(n.path)} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
           <span class="name">{n.name}</span>
         </button>
       {/if}

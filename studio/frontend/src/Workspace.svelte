@@ -8,6 +8,7 @@
   import Props from "./Props.svelte";
   import Preview from "./Preview.svelte";
   import TerminalPanel from "./TerminalPanel.svelte";
+  import FileMenu from "./FileMenu.svelte";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import PanelLeft from "@lucide/svelte/icons/panel-left";
   import Files from "@lucide/svelte/icons/files";
@@ -59,6 +60,30 @@
     folder = parts.join("/");
   }
   function startCreate(kind: "note" | "folder") { newName = ""; creating = kind; }
+
+  // The right-click menu of a note or folder.
+  let menu = $state<{ node: Node; x: number; y: number } | null>(null);
+  async function openMenu(node: Node, e: MouseEvent) {
+    await save();
+    menu = { node, x: e.clientX, y: e.clientY };
+  }
+  // After a rename, move, copy or delete: the tree follows, and so does the
+  // open note (its new path, or nothing when it went to the trash).
+  async function menuChanged({ from, to, open }: { from: string; to: string | null; open?: string }) {
+    menu = null;
+    error = "";
+    tree = (await LoadTree().catch(() => null))?.children ?? tree;
+    const inside = from && (current === from || current.startsWith(from + "/"));
+    if (inside && to === null) { current = ""; text = ""; pending = ""; status = "saved"; }
+    else if (inside && to) { current = to + current.slice(from.length); reveal(current); follow(current); }
+    if (to && !open) reveal(to);
+    if (open) { reveal(open); screen = "write"; await pick(open); }
+  }
+  async function menuNew(kind: "note" | "folder", f: string) {
+    folder = f;
+    openMap[f] = true;
+    startCreate(kind);
+  }
   async function finishCreate() {
     const kind = creating, name = newName.trim();
     creating = null;
@@ -291,7 +316,7 @@
           </div>
         {/if}
         <div class="files">
-          <Tree nodes={tree} {current} {folder} open={openMap} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} />
+          <Tree nodes={tree} {current} {folder} open={openMap} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} onMenu={openMenu} />
         </div>
       {:else}
         <div class="side-search">
@@ -367,6 +392,9 @@
         <p class="hint muted">{previewBusy ? t.previewStarting : t.previewOff}</p>
       {/if}
     </section>
+  {/if}
+  {#if menu}
+    <FileMenu node={menu.node} x={menu.x} y={menu.y} {current} folders={folders(tree)} onClose={() => (menu = null)} onChanged={menuChanged} onNew={menuNew} />
   {/if}
   {#if termStarted}
     <div class="term" class:min={!termOpen} style:height="{termHeight}px">
