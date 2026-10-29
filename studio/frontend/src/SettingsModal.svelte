@@ -92,10 +92,14 @@
       <button class:on={tab === key} onclick={() => (tab = key)}><Icon size={16} />{label}</button>
     {/each}
   </nav>
-  <div class="body">
-    <button class="close" title={t.sec.cancel} onclick={onClose}><X size={18} /></button>
+  <div class="side">
+    <!-- The title and the X stay put; only what's below scrolls. -->
+    <header class="head">
+      <h2>{tabs.find((x) => x.key === tab)?.label}</h2>
+      <button class="close" title={t.attach.close} aria-label={t.attach.close} onclick={onClose}><X size={18} /></button>
+    </header>
+    <div class="body">
     {#if tab === "general"}
-      <h2>{s.general}</h2>
       <div class="item"><Switch label={k.autostart} help={k.autostartHelp} checked={autostart} onchange={setAutostart} /></div>
       <div class="item"><Switch label={k.tray} help={k.trayHelp} checked={!!look.tray} onchange={setTray} /></div>
       {#if deskError}<p class="bad">{deskError}</p>{/if}
@@ -119,7 +123,6 @@
         <button class="btn ghost" onclick={() => OpenURL("https://github.com/gabriellsalesx/blup")}>GitHub</button>
       </div>
     {:else if tab === "look"}
-      <h2>{s.look}</h2>
       <div class="item">
         <div class="text"><b>{s.theme}</b><small>{s.themeHelp}</small></div>
         <ThemePicker />
@@ -136,7 +139,6 @@
         </div>
       </div>
     {:else if tab === "editor"}
-      <h2>{s.editor}</h2>
       <div class="item"><Switch label={s.spell} help={s.spellHelp} checked={look.spellcheck} onchange={(v) => setPref("spellcheck", v)} /></div>
       <div class="item">
         <div class="text"><b>{s.spellLang}</b><small>{s.spellLangHelp}</small></div>
@@ -155,7 +157,6 @@
       </div>
       <div class="item"><Switch label={s.preview} help={s.previewHelp} checked={!look.previewOff} onchange={(v) => setPref("previewOff", !v)} /></div>
     {:else if tab === "accounts"}
-      <h2>{s.accounts}</h2>
       <p class="muted lead">{s.accountsHelp}</p>
       {#if error}<p class="bad">{error}</p>{/if}
       {#if conn}
@@ -171,7 +172,6 @@
         </div>
       {/if}
     {:else if tab === "keys"}
-      <h2>{k.title}</h2>
       <h3>{k.globalTitle}</h3>
       <div class="item">
         <div class="text"><b>{k.toggle}</b><small>{look.tray ? k.toggleHelpTray : k.toggleHelp}</small></div>
@@ -211,7 +211,6 @@
         <div class="item fixed"><div class="text"><b>{label}</b></div><span class="fixed-keys">{#each keys.split("+") as part, i (i)}<kbd>{part}</kbd>{/each}</span></div>
       {/each}
     {:else}
-      <h2>{s.terminal}</h2>
       <div class="item">
         <div class="text"><b>{s.font}</b><small>{look.termFont}px</small></div>
         <input type="range" min="11" max="20" value={look.termFont} oninput={(e) => setPref("termFont", +e.currentTarget.value)} />
@@ -226,6 +225,7 @@
         </div>
       {/each}
     {/if}
+    </div>
   </div>
 </div>
 
@@ -237,8 +237,11 @@
   nav button { display: flex; align-items: center; gap: .55rem; padding: .45rem .6rem; border-radius: .4rem; font-size: .875rem; color: var(--muted); text-align: start; }
   nav button:hover { background: var(--soft); color: var(--text); }
   nav button.on { background: var(--soft); color: var(--text); font-weight: 600; }
-  .body { position: relative; overflow: auto; padding: 1.5rem 2rem 2rem; }
-  .close { position: absolute; inset-block-start: .8rem; inset-inline-end: .8rem; display: grid; place-items: center; padding: .3rem; border-radius: .4rem; color: var(--muted); }
+  .side { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+  .head { display: flex; align-items: center; gap: 1rem; padding: 1.1rem 1rem .6rem 2rem; border-block-end: 1px solid var(--line); }
+  .head h2 { flex: 1; margin: 0; }
+  .body { overflow: auto; padding: 1rem 2rem 2rem; }
+  .close { flex: none; display: grid; place-items: center; padding: .3rem; border-radius: .4rem; color: var(--muted); }
   .close:hover { background: var(--soft); color: var(--text); }
   h2 { font-size: 1.15rem; font-weight: 700; margin-block-end: .75rem; }
   h3 { font-size: .95rem; font-weight: 700; margin-block: 1.25rem .25rem; }
