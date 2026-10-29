@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { PickCover, LinkedImage } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { AuthorNames, PickCover, LinkedImage } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import Switch from "./Switch.svelte";
   import X from "@lucide/svelte/icons/x";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
@@ -61,6 +61,35 @@
     if (which === "tags") { if (!tags.includes(v)) tags.push(v); tagInput = ""; onEdit("tags", [...tags]); }
     else { if (!authors.includes(v)) authors.push(v); authorInput = ""; onEdit("authors", [...authors]); }
   }
+  // The authors the site knows (a note in the authors folder, or the site's
+  // author): suggested while typing, so the name matches and the photo shows.
+  let known = $state<string[]>([]);
+  AuthorNames().then((n) => (known = n ?? []));
+  let authorFocus = $state(false);
+  let authorPick = $state(-1);
+  const authorOpts = $derived(known.filter((n) => !authors.includes(n) && n.toLowerCase().includes(authorInput.trim().toLowerCase())).slice(0, 8));
+  const unknownAuthors = $derived(authors.filter((a) => !known.some((k) => k.toLowerCase() === a.toLowerCase())));
+  function addAuthor(name: string) {
+    if (!authors.includes(name)) authors.push(name);
+    authorInput = "";
+    authorPick = -1;
+    onEdit("authors", [...authors]);
+  }
+  function authorKey(e: KeyboardEvent) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const n = authorOpts.length;
+      if (n) authorPick = e.key === "ArrowDown" ? (authorPick + 1) % n : authorPick <= 0 ? n - 1 : authorPick - 1;
+      return;
+    }
+    if (e.key === "Enter" && authorPick >= 0 && authorOpts[authorPick]) { e.preventDefault(); addAuthor(authorOpts[authorPick]); return; }
+    if (e.key === "Escape") { authorFocus = false; return; }
+    addChip(e, "authors");
+  }
+  // Order only matters where pages are not listed by date: a folder's
+  // _index (the menu) and Bento's docs, help center and roadmap.
+  const ordered = $derived(isIndex || ["docs", "help", "roadmap"].includes(kind));
+
   const statuses = t.lang === "pt" ? ["planejado", "em andamento", "concluído"] : ["planned", "in progress", "done"];
 </script>
 
@@ -122,13 +151,21 @@
       {#if more}
         {#if !isIndex}
           <div class="field wide"><span>{p.authors}</span>
-            <div class="chips">
+            <div class="chips suggest">
               {#each authors as a, i (a)}<span class="chip">{a}<button title={t.remove} onclick={() => { authors.splice(i, 1); onEdit("authors", [...authors]); }}><X size={12} /></button></span>{/each}
-              <input type="text" bind:value={authorInput} onkeydown={(e) => addChip(e, "authors")} placeholder={p.addAuthor} />
+              <input type="text" bind:value={authorInput} onkeydown={authorKey} oninput={() => (authorPick = -1)} onfocus={() => (authorFocus = true)} onblur={() => setTimeout(() => (authorFocus = false), 150)} placeholder={known.length ? p.pickAuthor : p.addAuthor} />
+              {#if authorFocus && authorOpts.length}
+                <ul class="opts" role="listbox">
+                  {#each authorOpts as n, i (n)}<li><button role="option" aria-selected={i === authorPick} class:on={i === authorPick} onmousedown={(e) => e.preventDefault()} onclick={() => addAuthor(n)}>{n}</button></li>{/each}
+                </ul>
+              {/if}
             </div>
+            {#if unknownAuthors.length}<small>{p.unknownAuthor.replace("{names}", unknownAuthors.join(", "))}</small>{/if}
           </div>
         {/if}
-        <label class="field"><span>{p.weight}</span><input type="number" min="0" bind:value={weight} oninput={() => onEdit("weight", Number(weight) || 0)} /><small>{p.weightHelp}</small></label>
+        {#if ordered}
+          <label class="field"><span>{p.weight}</span><input type="number" min="0" bind:value={weight} oninput={() => onEdit("weight", Number(weight) || 0)} /><small>{isIndex ? p.weightHelp : p.weightHelpPage}</small></label>
+        {/if}
       {/if}
     </div>
   {/if}
@@ -158,5 +195,9 @@
   .seg { justify-self: start; display: inline-flex; gap: .2rem; padding: .2rem; border: 1px solid var(--line); border-radius: .55rem; }
   .seg button { padding: .3rem .7rem; border-radius: .4rem; font-size: .82rem; font-weight: 600; color: var(--muted); }
   .seg button.on { background: var(--soft); color: var(--text); }
+  /* In the flow (the panel scrolls and would cut a floating list). */
+  .opts { flex-basis: 100%; list-style: none; margin: 0; padding: .3rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); }
+  .opts button { width: 100%; padding: .4rem .6rem; border-radius: .35rem; text-align: start; font-size: .875rem; }
+  .opts button:hover, .opts button.on { background: var(--soft); }
   .more { justify-self: start; font-size: .8rem; font-weight: 600; color: var(--blue); }
 </style>

@@ -274,3 +274,30 @@ func (s *Studio) PickNoteImage(note string) (string, error) {
 	}
 	return app.PasteImage(site, note, filepath.Base(path), b)
 }
+
+// AuthorNames are the authors with a note in the site's authors folder,
+// and the site's own author, for the Authors field's suggestions.
+func (s *Studio) AuthorNames() []string {
+	site, err := s.current()
+	if err != nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	out := []string{}
+	add := func(name string) {
+		if name = strings.TrimSpace(name); name != "" && !seen[strings.ToLower(name)] {
+			seen[strings.ToLower(name)] = true
+			out = append(out, name)
+		}
+	}
+	if folder := obsidian.Sections(site.ContentDir())["authors"]; folder != "" {
+		entries, _ := os.ReadDir(filepath.Join(site.ContentDir(), filepath.FromSlash(folder)))
+		for _, e := range entries {
+			if name := e.Name(); !e.IsDir() && strings.HasSuffix(strings.ToLower(name), ".md") && !strings.HasPrefix(name, "_") {
+				add(strings.TrimSuffix(name, filepath.Ext(name)))
+			}
+		}
+	}
+	add(site.Author)
+	return out
+}

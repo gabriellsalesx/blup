@@ -49,6 +49,14 @@ export function Agents(): $CancellablePromise<$models.Agent[] | null> {
 }
 
 /**
+ * AuthorNames are the authors with a note in the site's authors folder,
+ * and the site's own author, for the Authors field's suggestions.
+ */
+export function AuthorNames(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(621144471);
+}
+
+/**
  * CheckCookieTool tells whether an ID fits a tool ("" when it does).
  */
 export function CheckCookieTool(key: string, value: string): $CancellablePromise<string> {
