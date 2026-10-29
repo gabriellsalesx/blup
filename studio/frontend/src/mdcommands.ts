@@ -1,7 +1,7 @@
 // The formatting bar's commands, on the selection (or the word or line at
 // the cursor): marks around inline text, prefixes at the start of lines.
 import type { EditorView } from "@codemirror/view";
-import { EditorSelection } from "@codemirror/state";
+import { EditorSelection, type EditorState } from "@codemirror/state";
 
 // Puts mark around the selection, or takes it off when it is already there.
 export function wrap(view: EditorView, mark: string, placeholder = "") {
@@ -138,4 +138,24 @@ export function align(view: EditorView, cls: string | null) {
   }
   if (changes.length) view.dispatch({ changes });
   view.focus();
+}
+
+// The alignment and heading level where the cursor is, for the toolbar.
+export function alignAt(state: EditorState, pos: number): "left" | "center" | "right" | "justify" {
+  const doc = state.doc;
+  let line = doc.lineAt(pos);
+  if (ALIGN_LINE.test(line.text) && line.number > 1) line = doc.line(line.number - 1);
+  if (/^#{1,6} /.test(line.text)) return (line.text.match(/\{\.text-(center|right|justify)\}\s*$/)?.[1] as any) ?? "left";
+  if (!line.text.trim()) return "left";
+  let end = line;
+  while (end.number < doc.lines) {
+    const next = doc.line(end.number + 1);
+    if (ALIGN_LINE.test(next.text)) return next.text.match(ALIGN_LINE)![1] as any;
+    if (!next.text.trim() || /^#{1,6} /.test(next.text)) break;
+    end = next;
+  }
+  return "left";
+}
+export function headingAt(state: EditorState, pos: number) {
+  return state.doc.lineAt(pos).text.match(/^(#{1,6}) /)?.[1].length ?? 0;
 }

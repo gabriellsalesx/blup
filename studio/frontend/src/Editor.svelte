@@ -17,7 +17,7 @@
   import Undo from "@lucide/svelte/icons/undo-2";
   import Redo from "@lucide/svelte/icons/redo-2";
   import { EditorSelection } from "@codemirror/state";
-  import { wrap, prefix, block, link, insert, heading, align } from "./mdcommands";
+  import { wrap, prefix, block, link, insert, heading, align, alignAt, headingAt, ALIGN_LINE } from "./mdcommands";
   import { mdExtras } from "./mdextras";
   import Highlighter from "@lucide/svelte/icons/highlighter";
   import AlignLeft from "@lucide/svelte/icons/text-align-start";
@@ -196,6 +196,10 @@
   }
 
   let menuOpen = $state(""); // the toolbar menu open (headings, alignment)
+  // What the toolbar shows for the cursor's place: its alignment, its
+  // heading level.
+  let curAlign = $state<"left" | "center" | "right" | "justify">("left");
+  let curHead = $state(0);
   type MenuItem = { label: string; run: () => void; svg?: string; size?: string };
   // The menus' icons, drawn here (a picture of each choice: where the lines
   // sit, how big the heading is).
@@ -225,7 +229,7 @@
     { key: "undo", label: te.undo + " (Ctrl+Z)", Icon: Undo, run: () => { undo(view); view.focus(); } },
     { key: "redo", label: te.redo + " (Ctrl+Shift+Z)", Icon: Redo, run: () => { redo(view); view.focus(); } },
     { key: "sep0" },
-    { key: "heading", label: te.heading, Icon: Heading, items: [
+    { key: "heading", label: te.heading, Icon: Heading, svg: () => (curHead ? textIcon("H" + curHead, 11) : textIcon("H", 17)), items: [
       { label: te.normal, run: () => heading(view, 0), size: "", svg: textIcon("¶", 15) },
       ...[1, 2, 3, 4].map((n) => ({ label: te.headingN.replace("{n}", String(n)), run: () => heading(view, n), size: ["", "1.35em", "1.2em", "1.08em", "1em"][n], svg: textIcon("H" + n, 11) })),
     ] as MenuItem[] },
@@ -233,7 +237,7 @@
     { key: "italic", label: te.italic + " (Ctrl+I)", Icon: Italic, run: () => wrap(view, "*", te.italicText) },
     { key: "strike", label: te.strike, Icon: Strike, run: () => wrap(view, "~~", te.strikeText) },
     { key: "mark", label: te.highlight, Icon: Highlighter, run: () => wrap(view, "==", te.highlightText) },
-    { key: "align", label: te.align, Icon: AlignLeft, items: [
+    { key: "align", label: te.align, Icon: AlignLeft, svg: () => alignIcons[curAlign], items: [
       { label: te.alignLeft, svg: alignIcons.left, run: () => align(view, null) },
       { label: te.alignCenter, svg: alignIcons.center, run: () => align(view, "text-center") },
       { label: te.alignRight, svg: alignIcons.right, run: () => align(view, "text-right") },
@@ -276,6 +280,17 @@
         autocompletion({ override: [noteLinks, fixSuggestions, wordSuggestions], icons: false, defaultKeymap: false, activateOnTypingDelay: 150 }),
         // Tab takes the suggestion; Enter stays a new line.
         Prec.highest(keymap.of([
+          // Enter at the end of an aligned paragraph: the new line goes after
+          // its hidden {.text-center}, which stays with the paragraph.
+          { key: "Enter", run: (v) => {
+            const sel = v.state.selection.main, line = v.state.doc.lineAt(sel.head);
+            if (!sel.empty || sel.head !== line.to) return false;
+            // The cursor is before the hidden mark, or (End) just after it.
+            const next = ALIGN_LINE.test(line.text) ? line : line.number < v.state.doc.lines ? v.state.doc.line(line.number + 1) : null;
+            if (!next || !ALIGN_LINE.test(next.text)) return false;
+            v.dispatch({ changes: { from: next.to, insert: "\n\n" }, selection: { anchor: next.to + 2 }, scrollIntoView: true });
+            return true;
+          } },
           { key: "Tab", run: (v) => (completionStatus(v.state) === "active" ? acceptCompletion(v) : false) },
           { key: "ArrowDown", run: (v) => (completionStatus(v.state) === "active" ? moveCompletionSelection(true)(v) : false) },
           { key: "ArrowUp", run: (v) => (completionStatus(v.state) === "active" ? moveCompletionSelection(false)(v) : false) },
@@ -299,6 +314,11 @@
         }),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) onChange(u.state.doc.toString());
+          if (u.docChanged || u.selectionSet) {
+            const head = u.state.selection.main.head;
+            curAlign = alignAt(u.state, head);
+            curHead = headingAt(u.state, head);
+          }
           // A click on a word in red opens its corrections.
           if (!u.docChanged && u.transactions.some((tr) => tr.isUserEvent("select.pointer"))) {
             const sel = u.state.selection.main;
@@ -328,7 +348,7 @@
         <!-- A button with a small menu (headings, alignment). -->
         <div class="drop">
           <button class="has-menu" class:on={menuOpen === tool.key} title={tool.label} aria-label={tool.label} aria-haspopup="menu" onmousedown={(e) => e.preventDefault()}
-            onclick={(e) => { e.stopPropagation(); menuOpen = menuOpen === tool.key ? "" : tool.key; }}><tool.Icon size={16} strokeWidth={1.9} /><ChevronDown size={11} /></button>
+            onclick={(e) => { e.stopPropagation(); menuOpen = menuOpen === tool.key ? "" : tool.key; }}><span class="now">{@html tool.svg()}</span><ChevronDown size={11} /></button>
           {#if menuOpen === tool.key}
             <div class="drop-menu" role="menu">
               {#each tool.items as item (item.label)}
@@ -365,6 +385,8 @@
   .bar button:hover { background: var(--soft); color: var(--text); }
   .drop { position: relative; }
   .bar .has-menu { display: flex; gap: .05rem; width: auto; padding-inline: .35rem; }
+  .bar .has-menu .now { display: inline-grid; place-items: center; }
+  .bar .has-menu .now :global(svg) { width: 17px; height: 17px; }
   .bar .has-menu.on { background: var(--soft); color: var(--text); }
   .drop-menu { position: absolute; z-index: 30; inset-block-start: calc(100% + .3rem); inset-inline-start: 0; display: grid; min-width: 11rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); }
   /* The whole row is the button: the icon and the text don't take the
