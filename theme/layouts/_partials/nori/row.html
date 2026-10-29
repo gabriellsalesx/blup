@@ -1,6 +1,7 @@
 {{- /* One post in the list: title and date, description and authors. */ -}}
 {{- $title := partial "title.html" . -}}
-<li>
+{{- $n := partial "bento/feedback-id.html" . }}
+<li{{ with $n }} data-fb-issue="{{ . }}" data-fb-mode="row"{{ end }}>
   <a class="nori-row" href="{{ .RelPermalink }}">
     <span class="nori-row-top">
       <span class="nori-row-title">{{ if partial "locked.html" . }}<svg class="icon icon-sm lock-badge" aria-label="{{ T "lockedTitle" }}"><use href="#i-lock"/></svg>{{ end }}<h2>{{ $title }}</h2></span>

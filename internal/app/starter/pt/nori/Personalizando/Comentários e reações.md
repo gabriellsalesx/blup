@@ -28,6 +28,8 @@ Por fim, publique de novo para os comentários aparecerem no site.
 
 No fim de cada post ficam as reações, os comentários e uma caixa para comentar, que aceita Markdown. Clique numa reação para somar a sua ou no botão de carinha para escolher outra; clicar de novo desfaz.
 
+Na página inicial, quando os posts já têm reações e comentários, aparecem as abas **Mais recente**, **Principais** (os posts com mais reações) e **Discussões** (os com mais comentários), logo acima da lista.
+
 Para responder alguém, clique em **Responder** no comentário: a caixa já vem com um trecho citado e a menção à pessoa, e o GitHub avisa ela (notificação e, se ela quiser, e-mail). Como dono do repositório, você é avisado de todo comentário novo.
 
 ## Quem pode participar

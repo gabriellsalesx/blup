@@ -428,6 +428,53 @@ async function run() {
     if (back) node.scrollIntoView({ block: "start" });
   }
   sortBoard();
+  sortTabs(issues);
+}
+
+// sortTabs: Nori's "Latest / Top / Discussions" tabs above the list of
+// posts. They show only when the posts have reactions and comments; Top
+// orders by reactions and Discussions by comments, after bringing in the
+// posts of the next pages (the list is paginated).
+function sortTabs(issues) {
+  const bar = document.querySelector("[data-fb-tabs]");
+  const list = document.querySelector(".nori-list");
+  if (!bar || !list) return;
+  const all = [...issues.values()];
+  if (!all.some((i) => i.data.reactions?.total_count) || !all.some((i) => i.data.comments)) return;
+  const score = (li, kind) => {
+    const i = issues.get(Number(li.dataset.fbIssue));
+    if (!i) return 0;
+    return kind === "top" ? i.data.reactions?.total_count || 0 : i.data.comments || 0;
+  };
+  let order = 0;
+  const number = () => list.querySelectorAll(":scope > li:not([data-order])").forEach((li) => { li.dataset.order = order++; });
+  number();
+  let loaded = null;
+  const loadAll = () => (loaded ||= (async () => {
+    let next = document.querySelector(".load-more a[rel=next]");
+    while (next) {
+      const doc = new DOMParser().parseFromString(await (await fetch(next.href)).text(), "text/html");
+      list.append(...doc.querySelectorAll(".nori-list > li"));
+      next = doc.querySelector(".load-more a[rel=next]");
+    }
+    document.querySelector(".load-more")?.remove();
+    number();
+  })());
+  bar.addEventListener("click", async (e) => {
+    const tab = e.target.closest("[data-fb-sort]");
+    if (!tab || tab.getAttribute("aria-selected") === "true") return;
+    bar.querySelectorAll("[data-fb-sort]").forEach((b) => b.setAttribute("aria-selected", String(b === tab)));
+    const kind = tab.dataset.fbSort;
+    if (kind !== "recent") {
+      list.setAttribute("aria-busy", "true");
+      try { await loadAll(); } catch {}
+      list.removeAttribute("aria-busy");
+    }
+    const rows = [...list.children];
+    rows.sort((a, b) => (kind === "recent" ? 0 : score(b, kind) - score(a, kind)) || a.dataset.order - b.dataset.order);
+    list.append(...rows);
+  });
+  bar.hidden = false;
 }
 
 run();

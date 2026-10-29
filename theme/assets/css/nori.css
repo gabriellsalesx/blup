@@ -26,11 +26,19 @@ neutral palette and layout. Bundled into one file by css.Build. */
 }
 
 @layer layout {
-  .nori-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.75rem 1.25rem 0; }
+  /* Logo on the left, the menu in the middle, search and theme on the
+     right (the menu opens from a button on small screens). */
+  .nori-header { display: flex; align-items: center; gap: 1rem; height: var(--header-h); margin-block-start: .75rem; padding-inline: 1.25rem; }
   @media (width >= 48rem) { .nori-header { padding-inline: 2.5rem; } }
+  .nori-header .nav { gap: .25rem; }
+  .nori-header .nav a { padding: .375rem .75rem; font-size: .875rem; color: var(--main-600); }
+  .nori-header .nav a:hover, .nori-header .nav a[aria-current] { color: var(--main-900); }
+  .nori-header .button { padding: .375rem .875rem; font-size: .875rem; background: var(--main-900); color: var(--main-25); }
+  .nori-header .menu-toggle { color: var(--main-600); }
+  .nori-header ~ .mobile-menu, .nori-header .mobile-menu { inset-block-start: calc(var(--header-h) + .75rem); }
   .nori-header .brand { gap: .375rem; font-size: 1.0625rem; font-weight: 600; letter-spacing: -.01em; color: var(--main-900); }
   .nori-header .brand img { height: 1.5rem; margin: 0; }
-  .nori-header .header-actions { margin: 0; gap: .25rem; }
+  .nori-header .header-actions { margin: 0 0 0 auto; gap: .25rem; }
   .nori-header .theme-picker { margin: 0; }
 
   .nori-main { padding: 3rem 1.25rem 4rem; }
@@ -70,6 +78,13 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-featured-media { overflow: clip; border-radius: .5rem; box-shadow: 0 0 0 1px var(--ring); }
   .nori-featured-media img { width: 100%; aspect-ratio: 40 / 21; object-fit: cover; }
 
+  /* Tabs above the list: a small segmented control. */
+  .nori-tabs { display: flex; width: fit-content; gap: .125rem; margin-block-end: 1rem; padding: .25rem; border: 1px solid var(--main-200); border-radius: .625rem; background: var(--panel); }
+  .nori-tabs[hidden] { display: none; }
+  .nori-tabs button { padding: .375rem .75rem; border-radius: .375rem; font-size: .875rem; font-weight: 600; color: var(--main-500); transition: background-color .15s, color .15s; }
+  .nori-tabs button:hover { color: var(--main-900); }
+  .nori-tabs button[aria-selected="true"] { background: var(--main-100); color: var(--main-900); }
+  .nori-list[aria-busy="true"] { opacity: .6; }
   .nori-list { overflow: clip; }
   .nori-list.post-grid { display: block; }
   .nori-list > li + li { border-block-start: 1px solid var(--main-200); }

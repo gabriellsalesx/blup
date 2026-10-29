@@ -118,6 +118,10 @@ fbTop = "Mais votado"
 
 noriFeedCopy = "Copiar o endereço do feed"
 noriFeedCopied = "Copiado"
+noriSort = "Ordem dos posts"
+noriRecent = "Mais recente"
+noriTop = "Principais"
+noriTalk = "Discussões"
 [readingTime]
 one = "{{ .Count }} min de leitura"
 other = "{{ .Count }} min de leitura"

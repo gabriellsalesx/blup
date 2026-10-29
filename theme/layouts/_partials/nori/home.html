@@ -10,6 +10,15 @@
     {{- if eq $pager.PageNumber 1 }}
     {{ partial "nori/head.html" (dict "title" (.Title | default $set.name) "lede" $lede) }}
     {{- with $featured }}{{ partial "nori/featured.html" . }}{{ end }}
+    {{- /* Newest, most reacted and most commented: feedback.js shows the
+    tabs only when the posts have reactions and comments. */}}
+    {{- if site.Params.blup.feedback }}
+    <div class="nori-tabs" role="tablist" aria-label="{{ T "noriSort" }}" data-fb-tabs hidden>
+      <button type="button" role="tab" aria-selected="true" data-fb-sort="recent">{{ T "noriRecent" }}</button>
+      <button type="button" role="tab" aria-selected="false" data-fb-sort="top">{{ T "noriTop" }}</button>
+      <button type="button" role="tab" aria-selected="false" data-fb-sort="talk">{{ T "noriTalk" }}</button>
+    </div>
+    {{- end }}
     {{- else }}
     <h1 class="sr-only">{{ $set.name }}</h1>
     {{- end }}

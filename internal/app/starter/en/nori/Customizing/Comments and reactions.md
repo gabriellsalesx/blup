@@ -24,6 +24,8 @@ Last step: **publish again** so the comments show on the site.
 
 At the end of each post come the reactions, the comments and a box to comment, which takes Markdown. Click a reaction to add yours, or the smiley button to pick another one; clicking again takes it back.
 
+On the home page, once the posts have reactions and comments, the tabs **Latest**, **Top** (the posts with the most reactions) and **Discussions** (the ones with the most comments) show up right above the list.
+
 To answer someone, click **Reply** on their comment: the box comes with a quote and a mention of that person, and GitHub lets them know (a notification and, if they want, an email). As the repository owner, you hear about every new comment.
 
 ## Who can take part

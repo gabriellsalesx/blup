@@ -1,6 +1,17 @@
 {{- $set := partialCached "site/settings.html" . "site" -}}
+{{- $menu := partial "mochi/menu.html" . -}}
+{{- /* Optional header button, set on the home note (button_text, button_link). */ -}}
+{{- $button := dict -}}
+{{- with site.Home.Params -}}
+  {{- if and .button_text .button_link }}{{ $button = dict "label" .button_text "url" .button_link }}{{ end -}}
+{{- end -}}
 <header class="nori-header">
   <a class="brand" href="{{ site.Home.RelPermalink }}">{{ partial "mochi/logo.html" . }}<span>{{ $set.name }}</span></a>
+  <nav class="nav" aria-label="{{ T "menu" }}">
+    {{- range $menu }}
+    <a href="{{ .url }}"{{ if .current }} aria-current="page"{{ end }}{{ if .external }} rel="noopener"{{ end }}>{{ .name }}</a>
+    {{- end }}
+  </nav>
   <div class="header-actions">
     <button class="icon-button" type="button" data-search-open aria-label="{{ T "search" }}"><svg class="icon"><use href="#i-search"/></svg></button>
     <div class="theme-picker">
@@ -15,6 +26,27 @@
         <button type="button" role="menuitemradio" data-set-theme="system"><svg class="icon"><use href="#i-monitor"/></svg>{{ T "themeSystem" }}</button>
       </div>
     </div>
+    {{- with $button }}{{ if .label }}
+    <a class="button header-cta" href="{{ .url }}"{{ if hasPrefix .url "http" }} rel="noopener"{{ end }}>{{ .label }}</a>
+    {{- end }}{{ end }}
+    {{- if $menu }}
+    <button class="icon-button menu-toggle" type="button" popovertarget="mobile-menu" aria-label="{{ T "menu" }}">
+      <svg class="icon icon-open"><use href="#i-menu"/></svg>
+      <svg class="icon icon-close"><use href="#i-x"/></svg>
+    </button>
+    {{- end }}
   </div>
+  {{- if $menu }}
+  <nav id="mobile-menu" class="mobile-menu" popover aria-label="{{ T "menu" }}">
+    <ul>
+      {{- range $menu }}
+      <li><a href="{{ .url }}"{{ if .current }} aria-current="page"{{ end }}>{{ .name }}</a></li>
+      {{- end }}
+    </ul>
+    {{- with $button }}{{ if .label }}
+    <div class="mobile-cta"><a class="button" href="{{ .url }}">{{ .label }}</a></div>
+    {{- end }}{{ end }}
+  </nav>
+  {{- end }}
 </header>
 {{ partial "mochi/search.html" . }}
