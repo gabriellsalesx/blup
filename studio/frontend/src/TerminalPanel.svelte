@@ -21,12 +21,12 @@
   let { onClose, visible = true }: { onClose: () => void; visible?: boolean } = $props();
   const tt = t.term;
 
-  type Tab = { id: string; title: string; term: Terminal; fit: FitAddon; el: HTMLDivElement | null; ended: boolean };
+  type Tab = { id: string; title: string; ai: boolean; term: Terminal; fit: FitAddon; el: HTMLDivElement | null; ended: boolean };
   let tabs = $state<Tab[]>([]);
   let active = $state("");
   let agents = $state<Agent[]>([]);
   let error = $state("");
-  let adding = $state(false); // the "+" menu: a terminal or an AI
+  let adding = $state(false); // the AI menu (the sparkles)
   let host: HTMLDivElement;
 
   Agents().then((a) => (agents = a ?? []));
@@ -59,7 +59,7 @@
     const term = new Terminal({ fontFamily: "ui-monospace, 'JetBrains Mono', Menlo, monospace", fontSize: look.termFont || 13, cursorBlink: true, theme: colors(), allowProposedApi: true });
     const fit = new FitAddon();
     term.loadAddon(fit);
-    const tab: Tab = { id: "", title, term, fit, el: null, ended: false };
+    const tab: Tab = { id: "", title, ai: !!agent, term, fit, el: null, ended: false };
     tabs.push(tab);
     const idx = tabs.length - 1;
     await tick();
@@ -115,33 +115,37 @@
 <svelte:window onclick={() => (adding = false)} />
 
 <section class="term-panel">
+  <!-- Tabs on the left; on the right, a new terminal (+), the AIs
+       (sparkles) and minimize. -->
   <header>
     <div class="tabs">
       {#each tabs as tab, i (i)}
         <div class="tab" class:on={tab.id === active}>
-          <button onclick={() => (active = tab.id)}>{tab.title}{tab.ended ? " ·" : ""}</button>
+          <button class="pick" onclick={() => (active = tab.id)}>
+            <span class="ico">{#if tab.ai}<Sparkles size={12} />{:else}<SquareTerminal size={12} />{/if}</span>{tab.title}{tab.ended ? " ·" : ""}
+          </button>
           <button class="x" title={tt.closeTab} onclick={() => close(tab)}><X size={12} /></button>
         </div>
       {/each}
-      <div class="plus">
-        <button class="add" title={tt.add} onclick={(e) => { e.stopPropagation(); adding = !adding; }}><Plus size={16} /></button>
+    </div>
+    <div class="tools">
+      <button class="tool" title={tt.newShell} onclick={() => open()}><Plus size={17} /></button>
+      <div class="ai">
+        <button class="tool" class:on={adding} title={tt.ai} onclick={(e) => { e.stopPropagation(); adding = !adding; }}><Sparkles size={16} /></button>
         {#if adding}
           <div class="add-menu" role="menu">
-            <button onclick={() => { adding = false; open(); }}><SquareTerminal size={15} />{tt.shell}</button>
-            {#if installed.length}<hr />{/if}
             {#each installed as a (a.key)}
               <button onclick={() => { adding = false; open(a.key, a.name); }}><Sparkles size={15} />{a.name}</button>
             {/each}
-            {#if !installed.length && missing.length}
-              <hr /><small class="muted">{tt.noAgents}</small>
+            {#if !installed.length}
+              <small class="muted">{tt.noAgents}</small>
               {#each missing.slice(0, 3) as a (a.key)}<button class="link" onclick={() => OpenURL(a.site)}>{a.name}</button>{/each}
             {/if}
           </div>
         {/if}
       </div>
+      <button class="tool" title={tt.close} onclick={onClose}><ChevronDown size={17} /></button>
     </div>
-    <span class="grow"></span>
-    <button class="close" title={tt.close} onclick={onClose}><ChevronDown size={18} /></button>
   </header>
   {#if error}<p class="bad err">{error}</p>{/if}
   <div class="host" bind:this={host}>
@@ -155,20 +159,23 @@
   /* A column: the terminal's area takes all the room left (with or without
      an error line above it). */
   .term-panel { display: flex; flex-direction: column; height: 100%; background: var(--panel); border-block-start: 1px solid var(--line); }
-  header { display: flex; align-items: center; gap: .75rem; padding: .3rem .6rem; border-block-end: 1px solid var(--line); }
-  .tabs { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem; min-width: 0; }
-  .tab { display: flex; align-items: center; border-radius: .4rem; font-size: .8rem; color: var(--muted); }
-  .tab > button:first-child { padding: .3rem .1rem .3rem .6rem; white-space: nowrap; }
-  .tab.on { background: var(--soft); color: var(--text); font-weight: 600; }
-  .x, .add, .close { display: inline-grid; place-items: center; padding: .3rem; border-radius: .35rem; color: var(--muted); }
-  .x:hover, .add:hover, .close:hover { color: var(--text); background: var(--soft); }
-  .grow { flex: 1; }
-  .plus { position: relative; }
-  .add-menu { position: absolute; z-index: 10; inset-block-start: calc(100% + .3rem); inset-inline-start: 0; display: grid; min-width: 12rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .22); }
+  header { display: flex; align-items: stretch; min-height: 2.4rem; border-block-end: 1px solid var(--line); }
+  .tabs { display: flex; flex-wrap: wrap; min-width: 0; flex: 1; }
+  .tab { display: flex; align-items: center; gap: .2rem; padding-inline: .7rem .4rem; border-inline-end: 1px solid var(--line); font-size: .82rem; color: var(--muted); }
+  .tab.on { background: var(--soft); color: var(--text); }
+  .pick { display: flex; align-items: center; gap: .5rem; padding-block: .45rem; white-space: nowrap; }
+  .ico { display: inline-grid; place-items: center; width: 1.15rem; height: 1.15rem; border-radius: .25rem; background: var(--line); color: var(--text); }
+  .x { display: inline-grid; place-items: center; padding: .25rem; border-radius: .3rem; color: var(--muted); opacity: 0; }
+  .tab:hover .x, .tab.on .x { opacity: 1; }
+  .x:hover { color: var(--text); background: var(--line); }
+  .tools { display: flex; align-items: center; gap: .1rem; padding-inline: .5rem; border-inline-start: 1px solid var(--line); }
+  .tool { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: .35rem; color: var(--muted); }
+  .tool:hover, .tool.on { color: var(--text); background: var(--soft); }
+  .ai { position: relative; }
+  .add-menu { position: absolute; z-index: 10; inset-block-start: calc(100% + .3rem); inset-inline-end: 0; display: grid; min-width: 12rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .22); }
   .add-menu button { display: flex; align-items: center; gap: .55rem; padding: .42rem .6rem; border-radius: .35rem; font-size: .85rem; text-align: start; white-space: nowrap; }
   .add-menu button :global(svg) { color: var(--muted); }
   .add-menu button:hover { background: var(--soft); }
-  .add-menu hr { border: 0; border-block-start: 1px solid var(--line); margin: .25rem .2rem; }
   .add-menu small { padding: .3rem .6rem; font-size: .75rem; }
   .link { color: var(--blue); }
   .err { padding: .4rem .8rem; font-size: .8rem; }
