@@ -7,8 +7,7 @@
   import { t } from "./i18n";
 
   // The new site screens: one question per step, like "blup new".
-  // startFolder: notes to make the site of (picked in "open a site").
-  let { onDone, onCancel, canCancel, startFolder = "" }: { onDone: (s: SiteInfo) => void; onCancel: () => void; canCancel: boolean; startFolder?: string } = $props();
+  let { onDone, onCancel, canCancel }: { onDone: (s: SiteInfo) => void; onCancel: () => void; canCancel: boolean } = $props();
   const o = t.ob;
 
   let step = $state("hello");
@@ -18,9 +17,9 @@
   let description = $state("");
   let author = $state("");
   let lang = $state(t.lang);
-  let where = $state<"new" | "vault" | "pick">(startFolder ? "pick" : "new");
+  let where = $state<"new" | "vault" | "pick">("new");
   let newFolder = $state("");
-  let pickedFolder = $state(startFolder);
+  let pickedFolder = $state("");
   let vaults = $state<Vault[]>([]);
   let vault = $state("");
   let folders = $state<string[]>([]);

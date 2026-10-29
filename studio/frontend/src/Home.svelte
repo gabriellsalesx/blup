@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { OpenExisting, Sites, Layout, SaveLayout, HomeDir } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { Sites, Layout, SaveLayout, HomeDir } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteInfo, HomeItem } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Ellipsis from "@lucide/svelte/icons/ellipsis";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
@@ -9,19 +9,8 @@
   // The list of sites, organized by the user: drag a site onto another to
   // make a folder, onto a folder to put it inside, onto a card's edge to
   // change the order. The "⋯" menu does the same without dragging.
-  let { onOpen, onNew, onEmpty }: { onOpen: (s: SiteInfo) => void; onNew: (folder?: string) => void; onEmpty: () => void } = $props();
+  let { onOpen, onNew, onEmpty }: { onOpen: (s: SiteInfo) => void; onNew: () => void; onEmpty: () => void } = $props();
 
-  // A site made elsewhere (the CLI, another computer): its folder or its
-  // notes. Notes without a site can become one.
-  let noSite = $state("");
-  async function openExisting() {
-    error = "";
-    try {
-      const f = await OpenExisting();
-      if (f?.site) onOpen(f.site);
-      else if (f?.folder) noSite = f.folder;
-    } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
-  }
   const h = t.home;
 
   let sites = $state<Record<string, SiteInfo>>({});
@@ -231,23 +220,11 @@
       <h2>{t.sites}</h2>
       <p class="muted">{t.sitesHelp} {items.length > 1 ? h.hint : ""}</p>
       {#if error}<p class="error">{t.error}: {error}</p>{/if}
-      {#if noSite}
-        <div class="nosite">
-          <p>{t.ob.noSite.replace("{folder}", short(noSite))}</p>
-          <button class="btn ghost" onclick={() => (noSite = "")}>{t.ob.cancel}</button>
-          <button class="btn" onclick={() => onNew(noSite)}>{t.ob.makeSite}</button>
-        </div>
-      {/if}
       <div class="grid">
-        <button class="site new" onclick={() => onNew()}>
+        <button class="site new" onclick={onNew}>
           <img src="/blups/blup.svg" alt="" />
           <strong>{t.ob.newSite}</strong>
           <span class="muted">{t.ob.newSiteHelp}</span>
-        </button>
-        <button class="site new" onclick={openExisting}>
-          <img src="/blups/turma-3.svg" alt="" />
-          <strong>{t.ob.openSite}</strong>
-          <span class="muted">{t.ob.openSiteHelp}</span>
         </button>
         {#each items as it (keyOf(it))}
           {#if it.folder}
@@ -313,6 +290,4 @@
   .spacer { flex: 1; }
   .hint { font-size: .85rem; }
   .error { color: var(--red); }
-  .nosite { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-block-end: 1rem; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--soft); }
-  .nosite p { flex: 1; min-width: 14rem; font-size: .9rem; }
 </style>
