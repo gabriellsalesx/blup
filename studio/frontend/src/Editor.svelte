@@ -109,12 +109,20 @@
   let picking = $state(false); // the note picker of "Link to a note"
   const sel = () => view.state.selection.main;
   const selected = () => view.state.sliceDoc(sel().from, sel().to);
+  // A link to another note in the format the site understands: a Markdown
+  // link with the path relative to this note ([Name](../Folder/Name.md)).
+  function noteHref(target: string) {
+    const from = note.split("/").slice(0, -1);
+    const to = target.split("/");
+    let i = 0;
+    while (i < from.length && i < to.length - 1 && from[i] === to[i]) i++;
+    const parts = [...from.slice(i).map(() => ".."), ...to.slice(i)];
+    return parts.map((p) => p.replace(/%/g, "%25").replace(/ /g, "%20").replace(/\(/g, "%28").replace(/\)/g, "%29")).join("/");
+  }
+  const mdLink = (text: string, n: { path: string }) => `[${text.replace(/[[\]]/g, "\\$&")}](${noteHref(n.path)})`;
   function linkToNote(n: { name: string; path: string }) {
     picking = false;
-    const count = notes.filter((x) => x.name === n.name).length;
-    const target = count > 1 ? n.path.replace(/\.md$/, "") : n.name;
-    const text = selected();
-    insert(view, text && text !== target ? `[[${target}|${text}]]` : `[[${target}]]`);
+    insert(view, mdLink(selected() || n.name, n));
   }
   async function copySel(cut: boolean) {
     await Clipboard.SetText(selected());
@@ -191,21 +199,19 @@
   }
   let view: EditorView;
 
-  // [[ lists the notes, like Obsidian; the link takes the note's name (its
-  // path when two notes share it).
+  // [[ lists the notes, like Obsidian; the chosen one becomes a Markdown
+  // link ([Name](path.md)), which the site turns into a link.
   function noteLinks(ctx: CompletionContext) {
     const m = ctx.matchBefore(/\[\[[^\]\n|#]*/);
     if (!m) return null;
-    const count = new Map<string, number>();
-    for (const n of notes) count.set(n.name, (count.get(n.name) ?? 0) + 1);
     const options = notes.filter((n) => n.name !== "_index").map((n) => {
-      const target = (count.get(n.name) ?? 0) > 1 ? n.path.replace(/\.md$/, "") : n.name;
       const folder = n.path.includes("/") ? n.path.slice(0, n.path.lastIndexOf("/")) : "";
       return {
         label: n.name, detail: folder, type: "text",
         apply: (v: EditorView, _c: unknown, from: number, to: number) => {
           const close = v.state.sliceDoc(to, to + 2) === "]]" ? 2 : v.state.sliceDoc(to, to + 1) === "]" ? 1 : 0;
-          v.dispatch({ changes: { from, to: to + close, insert: target + "]]" }, selection: EditorSelection.cursor(from + target.length + 2) });
+          const link = mdLink(n.name, n);
+          v.dispatch({ changes: { from: from - 2, to: to + close, insert: link }, selection: EditorSelection.cursor(from - 2 + link.length) });
         },
       };
     });

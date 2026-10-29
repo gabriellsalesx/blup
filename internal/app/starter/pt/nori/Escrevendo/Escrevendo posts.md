@@ -25,7 +25,9 @@ O Studio guarda tudo no topo da própria nota. Abra este post e veja as propried
 
 ## Links entre notas
 
-Na barra de formatação, clique em **Link para outra nota** e escolha a nota. Ou digite `[[` no texto: o Studio sugere as notas pelo nome.
+Na barra de formatação, clique em **Link para outra nota** e escolha a nota. Ou digite `[[` no texto: o Studio sugere as notas pelo nome, e o Tab escolhe a nota.
+
+Na nota, o link fica gravado assim: `[Formatação que funciona](Formatação%20que%20funciona.md)`.
 
 No site, ele vira o link da página. Exemplo: [Formatação que funciona](Formatação%20que%20funciona.md).
 

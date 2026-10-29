@@ -28,7 +28,7 @@ Open this post in the Studio to see its properties filled in.
 
 ## Links between notes
 
-Right-click in the text and choose **Link to another note**, then find the note by name. Or type `[[` and pick the note from the list. On the site, it becomes the page link. Example: [Formatting that works](Formatting%20that%20works.md).
+Right-click in the text and choose **Link to another note**, then find the note by name. Or type `[[` and pick the note from the list (Tab picks it). In the note, the link is saved like this: `[Formatting that works](Formatting%20that%20works.md)`. On the site, it becomes the page link. Example: [Formatting that works](Formatting%20that%20works.md).
 
 For a link to another website, select the text and use **Link** in the formatting bar (or Ctrl+K).
 
