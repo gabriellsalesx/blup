@@ -11,6 +11,7 @@
   import X from "@lucide/svelte/icons/x";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { t } from "./i18n";
+  import { look } from "./theme.svelte";
 
   // Terminals in tabs, in the notes folder. The AI agents installed get a
   // button each; the agent starts inside a shell, so the tab stays when it
@@ -53,7 +54,7 @@
 
   async function open(agent = "", title = tt.shell) {
     error = "";
-    const term = new Terminal({ fontFamily: "ui-monospace, 'JetBrains Mono', Menlo, monospace", fontSize: 13, cursorBlink: true, theme: colors(), allowProposedApi: true });
+    const term = new Terminal({ fontFamily: "ui-monospace, 'JetBrains Mono', Menlo, monospace", fontSize: look.termFont || 13, cursorBlink: true, theme: colors(), allowProposedApi: true });
     const fit = new FitAddon();
     term.loadAddon(fit);
     const tab: Tab = { id: "", title, term, fit, el: null, ended: false };
@@ -99,6 +100,9 @@
   const ro = new ResizeObserver(() => tabs.find((x) => x.id === active)?.fit.fit());
   $effect(() => { if (host) ro.observe(host); });
   $effect(() => { const tab = tabs.find((x) => x.id === active); if (tab && visible) tick().then(() => { tab.fit.fit(); tab.term.focus(); }); });
+
+  // The text size follows the settings.
+  $effect(() => { const size = look.termFont || 13; for (const tab of tabs) { tab.term.options.fontSize = size; tab.fit.fit(); } });
 
   onDestroy(() => { off(); ro.disconnect(); for (const tab of tabs) close(tab); });
 

@@ -93,7 +93,12 @@ func (s *Studio) SaveLayout(items []HomeItem) error {
 
 // Prefs are the Studio's own choices (studio-prefs.json).
 type Prefs struct {
-	Theme string `json:"theme"` // "system", "light" or "dark"
+	Theme       string `json:"theme"`       // "system", "light" or "dark"
+	EditorFont  int    `json:"editorFont"`  // the editor's text size, in px
+	EditorWidth string `json:"editorWidth"` // "narrow" (a readable line) or "wide"
+	Spellcheck  bool   `json:"spellcheck"`
+	PreviewOff  bool   `json:"previewOff"` // open sites without the preview
+	TermFont    int    `json:"termFont"`   // the terminal's text size, in px
 }
 
 func prefsFile() (string, error) {
@@ -106,7 +111,7 @@ func prefsFile() (string, error) {
 
 // Prefs reads the Studio's choices.
 func (s *Studio) Prefs() Prefs {
-	p := Prefs{Theme: "system"}
+	p := Prefs{Theme: "system", EditorFont: 16, EditorWidth: "narrow", Spellcheck: true, TermFont: 13}
 	if f, err := prefsFile(); err == nil {
 		if b, err := os.ReadFile(f); err == nil {
 			_ = json.Unmarshal(b, &p)

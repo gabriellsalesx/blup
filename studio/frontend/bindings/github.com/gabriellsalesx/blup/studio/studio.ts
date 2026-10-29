@@ -401,6 +401,14 @@ export function SetFeedback(on: boolean): $CancellablePromise<void> {
 }
 
 /**
+ * SetLanguage changes the language of Blup and the Studio ("pt" or "en").
+ * The window reloads to show it.
+ */
+export function SetLanguage(lang: string): $CancellablePromise<void> {
+    return $Call.ByID(1491808472, lang);
+}
+
+/**
  * SetPassword sets the general password of protected posts.
  */
 export function SetPassword(password: string): $CancellablePromise<void> {
@@ -505,6 +513,13 @@ export function VaultFolders(vault: string): $CancellablePromise<string[] | null
  */
 export function Vaults(): $CancellablePromise<$models.Vault[] | null> {
     return $Call.ByID(469425535);
+}
+
+/**
+ * Version is the Studio's version (set at build time, like the CLI's).
+ */
+export function Version(): $CancellablePromise<string> {
+    return $Call.ByID(1372021014);
 }
 
 /**

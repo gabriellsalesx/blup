@@ -1,7 +1,9 @@
-// Light, dark or the system's: the Studio's look, saved in its choices.
+// The Studio's own choices (light or dark, the editor, the terminal), saved
+// in studio-prefs.json.
 import { Prefs, SavePrefs } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+import type { Prefs as P } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
 
-export const look = $state({ theme: "system" });
+export const look = $state<P>({ theme: "system", editorFont: 16, editorWidth: "narrow", spellcheck: true, previewOff: false, termFont: 13 });
 
 function apply() {
   const root = document.documentElement;
@@ -10,12 +12,15 @@ function apply() {
 }
 
 export async function loadTheme() {
-  try { look.theme = (await Prefs()).theme || "system"; } catch {}
+  try { Object.assign(look, await Prefs()); } catch {}
+  look.theme ||= "system";
   apply();
 }
 
-export function setTheme(theme: string) {
-  look.theme = theme;
+export function setPref<K extends keyof P>(key: K, value: P[K]) {
+  look[key] = value;
   apply();
-  SavePrefs({ theme }).catch(() => {});
+  SavePrefs({ ...look }).catch(() => {});
 }
+
+export const setTheme = (theme: string) => setPref("theme", theme);

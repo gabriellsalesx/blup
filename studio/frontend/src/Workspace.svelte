@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from "svelte";
-  import { Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -9,6 +9,10 @@
   import Preview from "./Preview.svelte";
   import TerminalPanel from "./TerminalPanel.svelte";
   import FileMenu from "./FileMenu.svelte";
+  import SettingsModal, { DOCS } from "./SettingsModal.svelte";
+  import Gear from "@lucide/svelte/icons/settings";
+  import CircleHelp from "@lucide/svelte/icons/circle-question-mark";
+  import { look } from "./theme.svelte";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import PanelLeft from "@lucide/svelte/icons/panel-left";
   import Files from "@lucide/svelte/icons/files";
@@ -107,7 +111,8 @@
   let error = $state("");
   let previewURL = $state("");
   let previewSrc = $state(""); // the page shown: the open note's, when known
-  let previewOn = $state(true);
+  let previewOn = $state(!look.previewOff);
+  let prefsOpen = $state(false);
   let previewBusy = $state(false);
 
   // The screen on the right of the menu: writing or a settings panel.
@@ -333,6 +338,8 @@
       <!-- The site switcher, like Obsidian's vault switcher. -->
       <div class="switcher">
         <button class="vault" onclick={(e) => { e.stopPropagation(); switching = !switching; if (switching) loadSites(); }}><ChevronsUpDown size={15} /><span>{site.title}</span></button>
+        <button class="foot" title={t.prefs.helpIcon} onclick={() => OpenURL(DOCS)}><CircleHelp size={17} strokeWidth={1.75} /></button>
+        <button class="foot" title={t.prefs.gear} onclick={() => (prefsOpen = true)}><Gear size={17} strokeWidth={1.75} /></button>
         {#if switching}
           <div class="vault-menu" role="menu">
             {#each others as o (o.dir)}<button onclick={async () => { await save(); StopPreview(); onSwitch(o); }}>{o.title}</button>{/each}
@@ -393,6 +400,9 @@
       {/if}
     </section>
   {/if}
+  {#if prefsOpen}
+    <SettingsModal onClose={() => (prefsOpen = false)} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
+  {/if}
   {#if menu}
     <FileMenu node={menu.node} x={menu.x} y={menu.y} {current} folders={folders(tree)} onClose={() => (menu = null)} onChanged={menuChanged} onNew={menuNew} />
   {/if}
@@ -433,8 +443,10 @@
   .hit small { font-size: .72rem; }
   .hit:hover, .hit.active { background: var(--soft); }
   .none { padding: .5rem; font-size: .85rem; }
-  .switcher { position: relative; padding: .45rem .6rem; border-block-start: 1px solid var(--line); }
-  .vault { display: flex; align-items: center; gap: .45rem; width: 100%; padding: .4rem .5rem; border-radius: .4rem; font-size: .875rem; font-weight: 600; text-align: start; }
+  .switcher { position: relative; display: flex; align-items: center; gap: .15rem; padding: .45rem .6rem; border-block-start: 1px solid var(--line); }
+  .foot { display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: .4rem; color: var(--muted); }
+  .foot:hover { background: var(--soft); color: var(--text); }
+  .vault { display: flex; align-items: center; gap: .45rem; flex: 1; min-width: 0; padding: .4rem .5rem; border-radius: .4rem; font-size: .875rem; font-weight: 600; text-align: start; }
   .vault span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vault:hover { background: var(--soft); }
   .vault-menu { position: absolute; z-index: 6; inset-inline: .6rem; inset-block-end: calc(100% - .2rem); display: grid; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .18); }

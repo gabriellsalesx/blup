@@ -6,6 +6,9 @@
   import { languages } from "@codemirror/language-data";
   import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
   import { tags } from "@lezer/highlight";
+  import { Compartment } from "@codemirror/state";
+  import { look } from "./theme.svelte";
+  import { t } from "./i18n";
 
   // Markdown colors from the Studio's tokens, readable in light and dark.
   const markdownStyle = HighlightStyle.define([
@@ -25,6 +28,10 @@
   // A Markdown editor. onChange gets every edit; onSave, Ctrl/Cmd+S.
   let { text, onChange, onSave }: { text: string; onChange: (v: string) => void; onSave: () => void } = $props();
   let host: HTMLDivElement;
+  // The spell check follows the settings while the note is open.
+  const spell = new Compartment();
+  const spellAttrs = () => EditorView.contentAttributes.of({ spellcheck: String(look.spellcheck), lang: t.lang === "pt" ? "pt-BR" : "en" });
+  $effect(() => { const ext = spellAttrs(); view?.dispatch({ effects: spell.reconfigure(ext) }); });
   let view: EditorView;
 
   onMount(() => {
@@ -36,6 +43,7 @@
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         syntaxHighlighting(markdownStyle),
         EditorView.lineWrapping,
+        spell.of(spellAttrs()),
         keymap.of([{ key: "Mod-s", preventDefault: true, run: () => (onSave(), true) }]),
         EditorView.updateListener.of((u) => { if (u.docChanged) onChange(u.state.doc.toString()); }),
       ],
@@ -45,14 +53,15 @@
   });
 </script>
 
-<div class="editor" bind:this={host}></div>
+<div class="editor" class:wide={look.editorWidth === "wide"} style:--size="{look.editorFont}px" bind:this={host}></div>
 
 <style>
   .editor { height: 100%; overflow: hidden; }
-  .editor :global(.cm-editor) { height: 100%; background: var(--panel); font-size: 1rem; }
+  .editor :global(.cm-editor) { height: 100%; background: var(--panel); font-size: var(--size, 1rem); }
   .editor :global(.cm-editor.cm-focused) { outline: none; }
   .editor :global(.cm-scroller) { font-family: "Inter", ui-sans-serif, system-ui, sans-serif; line-height: 1.7; padding: 2rem 0; }
   .editor :global(.cm-content) { max-width: 46rem; margin-inline: auto; padding-inline: 2rem; caret-color: var(--text); }
+  .editor.wide :global(.cm-content) { max-width: none; }
   .editor :global(.cm-gutters) { display: none; }
   .editor :global(.cm-activeLine) { background: transparent; }
   .editor :global(.cm-line) { color: var(--text); }

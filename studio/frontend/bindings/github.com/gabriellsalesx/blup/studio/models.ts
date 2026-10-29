@@ -79,6 +79,27 @@ export interface Prefs {
      * "system", "light" or "dark"
      */
     "theme": string;
+
+    /**
+     * the editor's text size, in px
+     */
+    "editorFont": number;
+
+    /**
+     * "narrow" (a readable line) or "wide"
+     */
+    "editorWidth": string;
+    "spellcheck": boolean;
+
+    /**
+     * open sites without the preview
+     */
+    "previewOff": boolean;
+
+    /**
+     * the terminal's text size, in px
+     */
+    "termFont": number;
 }
 
 /**
