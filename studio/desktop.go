@@ -3,6 +3,10 @@ package main
 import (
 	_ "embed"
 	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"slices"
 	"sync"
 
@@ -58,6 +62,7 @@ func setupDesktop(s *Studio, app *application.App, win *application.WebviewWindo
 		_ = setHotkey(prefs.ToggleKey)
 	}
 	go fixBinding(prefs.ToggleKey)
+	go fixAutostart(app)
 }
 
 func showWindow() {
@@ -108,13 +113,51 @@ func setHotkey(accel string) error {
 	return nil
 }
 
+// autostartID names the Studio's entry (on Linux, the .desktop file).
+const autostartID = "blup-studio"
+
 // AutostartEnabled tells whether the Studio opens with the computer.
 func (s *Studio) AutostartEnabled() bool {
 	if desk.app == nil {
 		return false
 	}
 	on, _ := desk.app.Autostart.IsEnabled()
-	return on
+	return on || linuxAutostartFile() != ""
+}
+
+// linuxAutostartFile is the Studio's .desktop file in the autostart folder
+// ("" when there is none, or not on Linux).
+func linuxAutostartFile() string {
+	if runtime.GOOS != "linux" {
+		return ""
+	}
+	dir := os.Getenv("XDG_CONFIG_HOME")
+	if dir == "" {
+		home, _ := os.UserHomeDir()
+		dir = filepath.Join(home, ".config")
+	}
+	f := filepath.Join(dir, "autostart", autostartID+".desktop")
+	if _, err := os.Stat(f); err != nil {
+		return ""
+	}
+	return f
+}
+
+// fixAutostart points the "open with the computer" entry at this program
+// again when the Studio moved (an update, another install place): the old
+// one would run nothing at login.
+func fixAutostart(app *application.App) {
+	f := linuxAutostartFile()
+	if f == "" {
+		return
+	}
+	exe, err := os.Executable()
+	if err != nil || strings.Contains(filepath.Base(exe), "server") {
+		return
+	}
+	if b, err := os.ReadFile(f); err == nil && !strings.Contains(string(b), exe) {
+		_ = app.Autostart.EnableWithOptions(application.AutostartOptions{Identifier: autostartID, Arguments: []string{hiddenArg}})
+	}
 }
 
 // SetAutostart makes the Studio open (in the tray) when the computer starts.
@@ -123,9 +166,12 @@ func (s *Studio) SetAutostart(on bool) error {
 		return errors.New("not available")
 	}
 	if !on {
+		if f := linuxAutostartFile(); f != "" {
+			_ = os.Remove(f) // also an entry left by an older install place
+		}
 		return desk.app.Autostart.Disable()
 	}
-	return desk.app.Autostart.EnableWithOptions(application.AutostartOptions{Identifier: "blup-studio", Arguments: []string{hiddenArg}})
+	return desk.app.Autostart.EnableWithOptions(application.AutostartOptions{Identifier: autostartID, Arguments: []string{hiddenArg}})
 }
 
 // SetTray turns the tray icon on or off (and saves the choice).
