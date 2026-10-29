@@ -28,10 +28,25 @@
   const installed = $derived(agents.filter((a) => a.installed));
   const missing = $derived(agents.filter((a) => !a.installed));
 
-  const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  // The theme's colors, resolved: the variables hold light-dark(...), which
+  // the terminal can't read, so a probe element turns them into rgb().
+  function resolve(value: string) {
+    const probe = document.createElement("span");
+    probe.style.color = value;
+    document.body.append(probe);
+    const rgb = getComputedStyle(probe).color;
+    probe.remove();
+    return rgb;
+  }
   function colors() {
-    const panel = getComputedStyle(host ?? document.body).backgroundColor;
-    return { background: panel, foreground: css("--text") || "#18181b", cursor: css("--text") || "#18181b", selectionBackground: "rgba(59,130,246,.35)" };
+    const background = resolve("var(--panel)");
+    const foreground = resolve("var(--text)");
+    const [r, g, b] = (background.match(/\d+/g) ?? ["255", "255", "255"]).map(Number);
+    const dark = r * 0.299 + g * 0.587 + b * 0.114 < 128;
+    const palette = dark
+      ? { black: "#3f3f46", red: "#f87171", green: "#4ade80", yellow: "#facc15", blue: "#60a5fa", magenta: "#c084fc", cyan: "#22d3ee", white: "#e4e4e7", brightBlack: "#71717a", brightRed: "#fca5a5", brightGreen: "#86efac", brightYellow: "#fde047", brightBlue: "#93c5fd", brightMagenta: "#d8b4fe", brightCyan: "#67e8f9", brightWhite: "#fafafa" }
+      : { black: "#18181b", red: "#b91c1c", green: "#15803d", yellow: "#a16207", blue: "#1d4ed8", magenta: "#7e22ce", cyan: "#0e7490", white: "#52525b", brightBlack: "#71717a", brightRed: "#dc2626", brightGreen: "#16a34a", brightYellow: "#ca8a04", brightBlue: "#2563eb", brightMagenta: "#9333ea", brightCyan: "#0891b2", brightWhite: "#27272a" };
+    return { background, foreground, cursor: foreground, cursorAccent: background, selectionBackground: "rgba(59,130,246,.35)", ...palette };
   }
 
   async function open(agent = "", title = tt.shell) {
@@ -120,7 +135,9 @@
 </section>
 
 <style>
-  .term-panel { display: grid; grid-template-rows: auto auto minmax(0, 1fr); height: 100%; background: var(--panel); border-block-start: 1px solid var(--line); }
+  /* A column: the terminal's area takes all the room left (with or without
+     an error line above it). */
+  .term-panel { display: flex; flex-direction: column; height: 100%; background: var(--panel); border-block-start: 1px solid var(--line); }
   header { display: flex; align-items: center; gap: .75rem; padding: .3rem .6rem; border-block-end: 1px solid var(--line); }
   .tabs { display: flex; align-items: center; gap: .2rem; min-width: 0; overflow: auto; }
   .tab { display: flex; align-items: center; border-radius: .4rem; font-size: .8rem; color: var(--muted); }
@@ -134,8 +151,8 @@
   .none { font-size: .78rem; }
   .link { font-size: .78rem; color: var(--blue); text-decoration: underline; }
   .err { padding: .4rem .8rem; font-size: .8rem; }
-  .host { position: relative; min-height: 0; padding: .4rem .2rem .2rem .6rem; }
+  .host { position: relative; flex: 1; min-height: 0; }
   .xterm-box { position: absolute; inset: .4rem .2rem .2rem .6rem; }
   .xterm-box.hidden { visibility: hidden; }
-  .host :global(.xterm), .host :global(.xterm-viewport) { background: transparent !important; }
+  .host :global(.xterm-viewport) { background: transparent !important; }
 </style>
