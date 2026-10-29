@@ -107,6 +107,8 @@ type Prefs struct {
 	ToggleKey    string            `json:"toggleKey"`    // global shortcut that shows and hides the Studio
 	Keys         map[string]string `json:"keys"`         // the Studio's shortcuts changed by the user (action -> keys)
 	ShortcutTip  bool              `json:"shortcutTip"`  // the tip about the global shortcut was answered
+	LastSite     string            `json:"lastSite"`     // the site open when the Studio closed
+	LastNotes    map[string]string `json:"lastNotes"`    // site folder -> the note open there last
 }
 
 func prefsFile() (string, error) {

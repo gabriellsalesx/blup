@@ -63,6 +63,7 @@
   const folders = (nodes: Node[]): string[] => nodes.flatMap((n) => (n.dir ? [n.path, ...folders(n.children ?? [])] : []));
   const found = $derived.by(() => (query.trim() ? flat(tree).filter((n) => n.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 80) : []));
   function expandAll() { for (const f of folders(tree)) openMap[f] = true; }
+  const anyOpen = $derived(Object.values(openMap).some(Boolean));
   function reveal(path: string) {
     const parts = path.split("/").slice(0, -1);
     for (let i = 1; i <= parts.length; i++) openMap[parts.slice(0, i).join("/")] = true;
@@ -260,6 +261,9 @@
     .then((root) => {
       tree = root.children ?? [];
       reload();
+      // The note open when the Studio last closed on this site.
+      const last = look.lastNotes?.[site.dir];
+      if (last && flat(tree).some((n) => n.path === last)) pick(last);
       if (previewOn) startPreview();
     })
     .catch((e) => (error = String(e)));
@@ -328,6 +332,7 @@
       pending = text;
       written = text;
       current = path;
+      if (look.lastNotes?.[site.dir] !== path) setPref("lastNotes", { ...(look.lastNotes ?? {}), [site.dir]: path });
       reveal(path);
       follow(path);
       status = "saved";
@@ -393,8 +398,12 @@
         <div class="side-tools">
           <button title={t.side.newNote} onclick={() => startCreate("note")}><SquarePen size={17} strokeWidth={1.75} /></button>
           <button title={t.side.newFolder} onclick={() => startCreate("folder")}><FolderPlus size={17} strokeWidth={1.75} /></button>
-          <button title={t.side.expand} onclick={expandAll}><ChevronsUpDown size={17} strokeWidth={1.75} /></button>
-          <button title={t.side.collapse} onclick={() => (openMap = {})}><ChevronsDownUp size={17} strokeWidth={1.75} /></button>
+          <!-- One button: collapse when a folder is open, else expand. -->
+          {#if anyOpen}
+            <button title={t.side.collapse} onclick={() => (openMap = {})}><ChevronsDownUp size={17} strokeWidth={1.75} /></button>
+          {:else}
+            <button title={t.side.expand} onclick={expandAll}><ChevronsUpDown size={17} strokeWidth={1.75} /></button>
+          {/if}
         </div>
         {#if creating}
           <div class="create">

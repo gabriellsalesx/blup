@@ -188,6 +188,16 @@ export interface Prefs {
      * the tip about the global shortcut was answered
      */
     "shortcutTip": boolean;
+
+    /**
+     * the site open when the Studio closed
+     */
+    "lastSite": string;
+
+    /**
+     * site folder -> the note open there last
+     */
+    "lastNotes": { [_ in string]?: string } | null;
 }
 
 /**

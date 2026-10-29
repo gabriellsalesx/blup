@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -36,6 +37,9 @@ type desktop struct {
 
 var desk desktop
 
+// quitting is set by "Quit" in the tray's menu: then closing really closes.
+var quitting atomic.Bool
+
 // setupDesktop wires the tray, the minimize hook and the saved shortcut.
 func setupDesktop(s *Studio, app *application.App, win *application.WebviewWindow, labels [2]string) {
 	desk.app, desk.win = app, win
@@ -44,7 +48,7 @@ func setupDesktop(s *Studio, app *application.App, win *application.WebviewWindo
 	menu := application.NewMenu()
 	menu.Add(labels[0]).OnClick(func(*application.Context) { showWindow() })
 	menu.AddSeparator()
-	menu.Add(labels[1]).OnClick(func(*application.Context) { app.Quit() })
+	menu.Add(labels[1]).OnClick(func(*application.Context) { quitting.Store(true); app.Quit() })
 	desk.tray = app.SystemTray.New().SetIcon(trayIcon).SetMenu(menu)
 	if runtime.GOOS == "linux" {
 		// The tray item's name (Wails says "Wails" otherwise). On macOS a
@@ -56,6 +60,15 @@ func setupDesktop(s *Studio, app *application.App, win *application.WebviewWindo
 	if !prefs.Tray {
 		desk.tray.Hide()
 	}
+
+	// With the tray on, closing the window only hides it (like minimizing):
+	// the terminals and AIs keep running. "Quit" in the tray's menu quits.
+	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		if !quitting.Load() && s.Prefs().Tray {
+			e.Cancel()
+			win.Hide()
+		}
+	})
 
 	// Minimized, it goes to the tray (when that is on).
 	win.OnWindowEvent(events.Common.WindowMinimise, func(*application.WindowEvent) {
