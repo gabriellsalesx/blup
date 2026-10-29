@@ -115,14 +115,16 @@
     <div class="actions">
       {#if !asking}
         <button class="btn ghost danger-text" onclick={() => (asking = true)}>{an.delete}</button>
+        <span class="grow"></span>
+        <button class="btn ghost" onclick={() => open && OpenAttachment(open.name)}>{an.openApp}</button>
+        <button class="btn" onclick={copy}>{copied ? an.copied : an.copy}</button>
       {:else}
+        <!-- Asking to delete: only the question and its answers. -->
         <span class="q">{open.uses?.length ? an.deleteUsedQ.replace("{n}", String(open.uses.length)) : an.deleteQ}</span>
+        <span class="grow"></span>
         <button class="btn ghost" onclick={() => (asking = false)}>{t.sec.cancel}</button>
         <button class="btn danger" onclick={remove}>{an.delete}</button>
       {/if}
-      <span class="grow"></span>
-      <button class="btn ghost" onclick={() => open && OpenAttachment(open.name)}>{an.openApp}</button>
-      <button class="btn" onclick={copy}>{copied ? an.copied : an.copy}</button>
     </div>
   </div>
 {/if}
