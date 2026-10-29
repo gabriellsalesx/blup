@@ -156,4 +156,6 @@ Blup downloads Hugo and Pagefind by itself the first time it needs them (pinned 
 
 [GNU AGPL-3.0](LICENSE): you can use, study, change and share Blup; if you share a changed version, or offer it as a service over a network, you share its source under the same license. Versions up to v0.6.x were released under MIT and stay so.
 
+To contribute, see [CONTRIBUTING.md](CONTRIBUTING.md): pull requests need the [CLA](CLA.md), signed once with one click.
+
 Third-party parts keep their own licenses: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The icons are from [Lucide](https://lucide.dev) (ISC, see `theme/licenses`).
