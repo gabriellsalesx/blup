@@ -21,9 +21,6 @@
   import { mdExtras } from "./mdextras";
   import Highlighter from "@lucide/svelte/icons/highlighter";
   import AlignLeft from "@lucide/svelte/icons/text-align-start";
-  import AlignCenter from "@lucide/svelte/icons/text-align-center";
-  import AlignRight from "@lucide/svelte/icons/text-align-end";
-  import AlignJustify from "@lucide/svelte/icons/text-align-justify";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { PasteImage, PickNoteImage } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import Bold from "@lucide/svelte/icons/bold";
@@ -199,7 +196,17 @@
   }
 
   let menuOpen = $state(""); // the toolbar menu open (headings, alignment)
-  type MenuItem = { label: string; run: () => void; Icon?: typeof Bold; size?: string };
+  type MenuItem = { label: string; run: () => void; svg?: string; size?: string };
+  // The menus' icons, drawn here (a picture of each choice: where the lines
+  // sit, how big the heading is).
+  const lines = (x: number[][]) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">${x.map(([a, b], i) => `<path d="M${a} ${5 + i * 4.67}H${b}"/>`).join("")}</svg>`;
+  const alignIcons = {
+    left: lines([[3, 21], [3, 15], [3, 19], [3, 12]]),
+    center: lines([[3, 21], [7, 17], [5, 19], [8, 16]]),
+    right: lines([[3, 21], [9, 21], [5, 21], [12, 21]]),
+    justify: lines([[3, 21], [3, 21], [3, 21], [3, 14]]),
+  };
+  const textIcon = (label: string, size: number) => `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><text x="12" y="16.5" text-anchor="middle" font-size="${size}" font-weight="700" fill="currentColor" font-family="Inter, system-ui, sans-serif">${label}</text></svg>`;
 
   // A new table, with the cursor in its first empty cell.
   function newTable() {
@@ -219,18 +226,18 @@
     { key: "redo", label: te.redo + " (Ctrl+Shift+Z)", Icon: Redo, run: () => { redo(view); view.focus(); } },
     { key: "sep0" },
     { key: "heading", label: te.heading, Icon: Heading, items: [
-      { label: te.normal, run: () => heading(view, 0), size: "" },
-      ...[1, 2, 3, 4].map((n) => ({ label: te.headingN.replace("{n}", String(n)), run: () => heading(view, n), size: ["", "1.35em", "1.2em", "1.08em", "1em"][n] })),
+      { label: te.normal, run: () => heading(view, 0), size: "", svg: textIcon("¶", 15) },
+      ...[1, 2, 3, 4].map((n) => ({ label: te.headingN.replace("{n}", String(n)), run: () => heading(view, n), size: ["", "1.35em", "1.2em", "1.08em", "1em"][n], svg: textIcon("H" + n, 11) })),
     ] as MenuItem[] },
     { key: "bold", label: te.bold + " (Ctrl+B)", Icon: Bold, run: () => wrap(view, "**", te.boldText) },
     { key: "italic", label: te.italic + " (Ctrl+I)", Icon: Italic, run: () => wrap(view, "*", te.italicText) },
     { key: "strike", label: te.strike, Icon: Strike, run: () => wrap(view, "~~", te.strikeText) },
     { key: "mark", label: te.highlight, Icon: Highlighter, run: () => wrap(view, "==", te.highlightText) },
     { key: "align", label: te.align, Icon: AlignLeft, items: [
-      { label: te.alignLeft, Icon: AlignLeft, run: () => align(view, null) },
-      { label: te.alignCenter, Icon: AlignCenter, run: () => align(view, "text-center") },
-      { label: te.alignRight, Icon: AlignRight, run: () => align(view, "text-right") },
-      { label: te.alignJustify, Icon: AlignJustify, run: () => align(view, "text-justify") },
+      { label: te.alignLeft, svg: alignIcons.left, run: () => align(view, null) },
+      { label: te.alignCenter, svg: alignIcons.center, run: () => align(view, "text-center") },
+      { label: te.alignRight, svg: alignIcons.right, run: () => align(view, "text-right") },
+      { label: te.alignJustify, svg: alignIcons.justify, run: () => align(view, "text-justify") },
     ] as MenuItem[] },
     { key: "sep1" },
     { key: "list", label: te.list, Icon: List, run: () => prefix(view, "- ", LIST) },
@@ -326,7 +333,7 @@
             <div class="drop-menu" role="menu">
               {#each tool.items as item (item.label)}
                 <button role="menuitem" onmousedown={(e) => e.preventDefault()} onclick={() => { menuOpen = ""; item.run(); }}>
-                  {#if item.Icon}<item.Icon size={15} />{/if}<span style:font-size={item.size || null} class:big={item.size}>{item.label}</span>
+                  {#if item.svg}<span class="ico">{@html item.svg}</span>{/if}<span style:font-size={item.size || null} class:big={item.size}>{item.label}</span>
                 </button>
               {/each}
             </div>
@@ -361,7 +368,7 @@
   .bar .has-menu.on { background: var(--soft); color: var(--text); }
   .drop-menu { position: absolute; z-index: 30; inset-block-start: calc(100% + .3rem); inset-inline-start: 0; display: grid; min-width: 11rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); }
   .drop-menu button { display: flex; align-items: center; gap: .55rem; padding: .4rem .6rem; border-radius: .35rem; font-size: .875rem; text-align: start; white-space: nowrap; }
-  .drop-menu button :global(svg) { color: var(--muted); }
+  .drop-menu .ico { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; flex: none; border-radius: .3rem; background: var(--soft); color: var(--text); }
   .drop-menu button:hover { background: var(--soft); }
   .drop-menu .big { font-weight: 700; }
   .bar .sep { width: 1px; height: 1.1rem; margin-inline: .3rem; background: var(--line); }
