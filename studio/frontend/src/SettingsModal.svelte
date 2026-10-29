@@ -15,7 +15,7 @@
   import Check from "@lucide/svelte/icons/check";
   import ThemePicker from "./ThemePicker.svelte";
   import Switch from "./Switch.svelte";
-  import { look, setPref } from "./theme.svelte";
+  import { look, setPref, spellLang } from "./theme.svelte";
   import { t } from "./i18n";
 
   // The Studio's settings, like Obsidian's: a window with sections on the
@@ -105,6 +105,21 @@
     {:else if tab === "editor"}
       <h2>{s.editor}</h2>
       <div class="item"><Switch label={s.spell} help={s.spellHelp} checked={look.spellcheck} onchange={(v) => setPref("spellcheck", v)} /></div>
+      <div class="item">
+        <div class="text"><b>{s.spellLang}</b><small>{s.spellLangHelp}</small></div>
+        <select value={spellLang()} disabled={!look.spellcheck} onchange={(e) => setPref("spellLang", e.currentTarget.value)}>
+          <option value="pt">Português (Brasil)</option>
+          <option value="en">English (US)</option>
+          <option value="es">Español</option>
+        </select>
+      </div>
+      <div class="item column">
+        <div class="text"><b>{s.myWords}</b><small>{s.myWordsHelp}</small></div>
+        <div class="chips">
+          {#each look.words ?? [] as w (w)}<span class="chip">{w}<button title={t.sec.cancel} onclick={() => { setPref("words", (look.words ?? []).filter((x) => x !== w)); }}><X size={12} /></button></span>{/each}
+          {#if !(look.words ?? []).length}<small class="muted">{s.noWords}</small>{/if}
+        </div>
+      </div>
       <div class="item"><Switch label={s.preview} help={s.previewHelp} checked={!look.previewOff} onchange={(v) => setPref("previewOff", !v)} /></div>
     {:else if tab === "accounts"}
       <h2>{s.accounts}</h2>
@@ -164,5 +179,10 @@
   .seg { display: inline-flex; gap: .2rem; padding: .2rem; border: 1px solid var(--line); border-radius: .6rem; }
   .seg button { padding: .35rem .7rem; border-radius: .45rem; font-size: .85rem; font-weight: 600; color: var(--muted); }
   .seg button.on { background: var(--soft); color: var(--text); }
+  .item.column { flex-direction: column; align-items: stretch; gap: .6rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .chip { display: inline-flex; align-items: center; gap: .25rem; padding: .2rem .3rem .2rem .6rem; border: 1px solid var(--line); border-radius: 999px; font-size: .8rem; }
+  .chip button { display: inline-grid; place-items: center; padding: .15rem; border-radius: 999px; color: var(--muted); }
+  .chip button:hover { background: var(--soft); color: var(--text); }
   .ok { color: var(--green, #16a34a); display: inline-grid; }
 </style>

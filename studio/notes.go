@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -239,4 +240,37 @@ func (s *Studio) create(folder, name string, dir bool) (string, error) {
 		}
 		return rel, os.WriteFile(p, []byte("---\ntitle: "+strconv.Quote(base)+"\n---\n\n"), 0o644)
 	}
+}
+
+// PasteImage saves an image pasted or dropped on note (its bytes in
+// base64) and returns the Markdown that shows it.
+func (s *Studio) PasteImage(note, name, data string) (string, error) {
+	site, err := s.current()
+	if err != nil {
+		return "", err
+	}
+	b, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return "", err
+	}
+	return app.PasteImage(site, note, name, b)
+}
+
+// PickNoteImage asks for an image on the computer and adds it to note,
+// like PasteImage. "" when nothing was picked.
+func (s *Studio) PickNoteImage(note string) (string, error) {
+	site, err := s.current()
+	if err != nil {
+		return "", err
+	}
+	path, err := application.Get().Dialog.OpenFile().SetTitle("Blup Studio").
+		AddFilter("Images", "*.png;*.jpg;*.jpeg;*.webp;*.gif;*.svg;*.avif").PromptForSingleSelection()
+	if err != nil || path == "" {
+		return "", err
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return app.PasteImage(site, note, filepath.Base(path), b)
 }

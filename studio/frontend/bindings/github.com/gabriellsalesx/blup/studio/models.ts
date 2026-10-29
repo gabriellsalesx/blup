@@ -100,6 +100,16 @@ export interface Prefs {
      * the terminal's text size, in px
      */
     "termFont": number;
+
+    /**
+     * the spell check's dictionary: "pt", "en" or "es" ("" = the Studio's language)
+     */
+    "spellLang": string;
+
+    /**
+     * words added to the dictionary
+     */
+    "words": string[] | null;
 }
 
 /**

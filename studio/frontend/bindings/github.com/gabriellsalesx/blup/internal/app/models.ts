@@ -6,6 +6,18 @@
 import * as config$0 from "../config/models.js";
 
 /**
+ * Change is a note or file that differs from a snapshot.
+ */
+export interface Change {
+    "path": string;
+
+    /**
+     * "added", "changed" or "removed"
+     */
+    "kind": string;
+}
+
+/**
  * Connections tells which accounts Blup has a key for. GitHub is the
  * account's login ("" without a key); GitHubError says why it could not be
  * checked (no internet, revoked key).

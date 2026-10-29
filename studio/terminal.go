@@ -16,6 +16,7 @@ import (
 	"github.com/aymanbagabas/go-pty"
 	"github.com/fsnotify/fsnotify"
 	"github.com/gabriellsalesx/blup/internal/app"
+	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -67,8 +68,9 @@ func (s *Studio) Agents() []Agent {
 }
 
 type term struct {
-	pty pty.Pty
-	cmd *pty.Cmd
+	pty  pty.Pty
+	cmd  *pty.Cmd
+	snap string // the notes before an AI agent started (app.TakeSnapshot)
 }
 
 var (
@@ -109,6 +111,12 @@ func (s *Studio) OpenTerminal(agent string, cols, rows int) (string, error) {
 			return "", errors.New("unknown agent " + agent)
 		}
 	}
+	snap := ""
+	if run != "" {
+		if snap, err = app.TakeSnapshot(site); err != nil {
+			return "", err
+		}
+	}
 	p, err := pty.New()
 	if err != nil {
 		return "", err
@@ -127,7 +135,7 @@ func (s *Studio) OpenTerminal(agent string, cols, rows int) (string, error) {
 	termsMu.Lock()
 	termSeq++
 	id := strconv.Itoa(termSeq)
-	terms[id] = &term{p, c}
+	terms[id] = &term{p, c, snap}
 	termsMu.Unlock()
 
 	emit := func(d TermData) { application.Get().Event.Emit("term", d) }
@@ -283,4 +291,38 @@ func watchNotes(root string) {
 			}
 		}
 	}()
+}
+
+func (s *Studio) snapshot(id string) (*config.Site, string, error) {
+	site, err := s.current()
+	if err != nil {
+		return nil, "", err
+	}
+	termsMu.Lock()
+	t := terms[id]
+	termsMu.Unlock()
+	if t == nil || t.snap == "" {
+		return nil, "", errors.New("no snapshot for this terminal")
+	}
+	return site, t.snap, nil
+}
+
+// AIChanges lists what changed in the notes since the AI agent of
+// terminal id started.
+func (s *Studio) AIChanges(id string) ([]app.Change, error) {
+	site, snap, err := s.snapshot(id)
+	if err != nil {
+		return nil, err
+	}
+	return app.SnapshotChanges(site, snap)
+}
+
+// UndoAI puts the notes back as they were when the AI agent of terminal id
+// started; files it created go to the trash.
+func (s *Studio) UndoAI(id string) error {
+	site, snap, err := s.snapshot(id)
+	if err != nil {
+		return err
+	}
+	return app.UndoSnapshot(site, snap)
 }

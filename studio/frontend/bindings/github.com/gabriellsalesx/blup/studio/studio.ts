@@ -26,6 +26,14 @@ import * as cfpages$0 from "../internal/deploy/cfpages/models.js";
 import * as $models from "./models.js";
 
 /**
+ * AIChanges lists what changed in the notes since the AI agent of
+ * terminal id started.
+ */
+export function AIChanges(id: string): $CancellablePromise<app$0.Change[] | null> {
+    return $Call.ByID(2409118025, id);
+}
+
+/**
  * AddSection adds a Bento section with example notes, and returns the new
  * tree of notes.
  */
@@ -247,6 +255,14 @@ export function OpenURL(link: string): $CancellablePromise<void> {
 }
 
 /**
+ * PasteImage saves an image pasted or dropped on note (its bytes in
+ * base64) and returns the Markdown that shows it.
+ */
+export function PasteImage(note: string, name: string, data: string): $CancellablePromise<string> {
+    return $Call.ByID(1052281330, note, name, data);
+}
+
+/**
  * PickCover asks for an image, copies it into the site and returns the
  * link for the "image" property ("" when the user cancels).
  */
@@ -267,6 +283,14 @@ export function PickFolder(): $CancellablePromise<string> {
  */
 export function PickImage(key: string): $CancellablePromise<string> {
     return $Call.ByID(719333856, key);
+}
+
+/**
+ * PickNoteImage asks for an image on the computer and adds it to note,
+ * like PasteImage. "" when nothing was picked.
+ */
+export function PickNoteImage(note: string): $CancellablePromise<string> {
+    return $Call.ByID(259528032, note);
 }
 
 /**
@@ -499,6 +523,14 @@ export function Trash(): $CancellablePromise<app$0.TrashItem[] | null> {
  */
 export function Tree(): $CancellablePromise<$models.Node> {
     return $Call.ByID(1427577990);
+}
+
+/**
+ * UndoAI puts the notes back as they were when the AI agent of terminal id
+ * started; files it created go to the trash.
+ */
+export function UndoAI(id: string): $CancellablePromise<void> {
+    return $Call.ByID(440093366, id);
 }
 
 /**

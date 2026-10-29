@@ -4,11 +4,13 @@
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import "@xterm/xterm/css/xterm.css";
-  import { Agents, OpenTerminal, WriteTerminal, ResizeTerminal, CloseTerminal, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { AIChanges, UndoAI, Agents, OpenTerminal, WriteTerminal, ResizeTerminal, CloseTerminal, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Sparkles from "@lucide/svelte/icons/sparkles";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import Plus from "@lucide/svelte/icons/plus";
+  import History from "@lucide/svelte/icons/history";
+  import type { Change } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import X from "@lucide/svelte/icons/x";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { t } from "./i18n";
@@ -127,6 +129,21 @@
     const r = ctxEl.getBoundingClientRect();
     if (r.bottom > innerHeight - 8) ctxEl.style.top = Math.max(8, innerHeight - r.height - 8) + "px";
   });
+  // What an AI changed in the notes since its tab opened, and undoing it
+  // (the Studio copies the notes before an AI starts).
+  let review = $state<{ tab: Tab; list: Change[] | null; error: string; done: boolean; asking: boolean } | null>(null);
+  async function showChanges(tab: Tab) {
+    review = { tab, list: null, error: "", done: false, asking: false };
+    try { review.list = (await AIChanges(tab.id)) ?? []; }
+    catch (e) { review.error = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
+  async function undoAI() {
+    if (!review) return;
+    try { await UndoAI(review.tab.id); review.done = true; review.list = []; }
+    catch (e) { review.error = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
+  const activeTab = $derived(tabs.find((x) => x.id === active));
+
   const focusSelect = (el: HTMLInputElement) => { el.focus(); el.select(); };
 
   const decode = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -181,6 +198,7 @@
       {/each}
     </div>
     <div class="tools">
+      {#if activeTab?.ai}<button class="tool" title={tt.changes} onclick={() => showChanges(activeTab)}><History size={16} /></button>{/if}
       <button class="tool" title={tt.newShell} onclick={() => open()}><Plus size={17} /></button>
       <div class="ai">
         <button class="tool" class:on={adding} title={tt.ai} onclick={(e) => { e.stopPropagation(); adding = !adding; }}><Sparkles size={16} /></button>
@@ -216,6 +234,7 @@
         <button onclick={() => act((tab, at) => { tab.term.clear(); tab.term.focus(); })}>{tt.clear}</button>
         <hr />
       {/if}
+      {#if tab.ai}<button onclick={() => act((tab, at) => showChanges(tab))}>{tt.changes}</button><hr />{/if}
       <button onclick={() => act((tab, at) => (renaming = tab.uid))}>{tt.rename}</button>
       <button onclick={() => act((tab, at) => open(tab.agent, tab.title))}>{tt.duplicate}</button>
       <button onclick={() => act((tab, at) => restart(tab))}>{tt.restart}</button>
@@ -228,6 +247,31 @@
     </div>
   {/if}
 </section>
+
+{#if review}
+  <div class="shade" role="presentation" onclick={() => (review = null)}></div>
+  <div class="review" role="dialog" aria-modal="true">
+    <h2>{tt.changesTitle.replace("{name}", review.tab.title)}</h2>
+    <p class="muted">{tt.changesLead}</p>
+    {#if review.error}<p class="bad">{review.error}</p>
+    {:else if review.list === null}<p class="muted">…</p>
+    {:else if review.done}<p class="good">{tt.undone}</p>
+    {:else if !review.list.length}<p class="muted">{tt.noChanges}</p>
+    {:else}
+      <ul>
+        {#each review.list as c (c.path)}<li><span class="kind {c.kind}">{tt[c.kind as "added" | "changed" | "removed"]}</span>{c.path}</li>{/each}
+      </ul>
+    {/if}
+    <div class="actions">
+      {#if review.asking}<span class="muted q">{tt.undoQ}</span>{/if}
+      <button class="btn ghost" onclick={() => (review = null)}>{review.done || !review.list?.length ? tt.closeDialog : t.sec.cancel}</button>
+      {#if review.list?.length && !review.done}
+        {#if review.asking}<button class="btn danger-btn" onclick={undoAI}>{tt.undo}</button>
+        {:else}<button class="btn" onclick={() => review && (review.asking = true)}>{tt.undo}</button>{/if}
+      {/if}
+    </div>
+  </div>
+{/if}
 
 <style>
   /* A column: the terminal's area takes all the room left (with or without
@@ -252,6 +296,20 @@
   .add-menu button:hover { background: var(--soft); }
   .add-menu small { padding: .3rem .6rem; font-size: .75rem; }
   .link { color: var(--blue); }
+  .shade { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / .45); }
+  .review { position: fixed; z-index: 61; inset-block-start: 12%; inset-inline: 0; margin-inline: auto; width: min(34rem, calc(100% - 2rem)); display: grid; gap: .75rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); box-shadow: 0 20px 50px rgb(0 0 0 / .3); }
+  .review h2 { font-size: 1rem; font-weight: 700; }
+  .review p { font-size: .85rem; }
+  .review ul { list-style: none; padding: 0; max-height: 18rem; overflow: auto; display: grid; gap: .3rem; font-size: .85rem; }
+  .review li { display: flex; gap: .6rem; align-items: center; }
+  .kind { flex: none; min-width: 5.5rem; padding: .1rem .45rem; border-radius: 999px; font-size: .72rem; font-weight: 700; text-align: center; background: var(--soft); }
+  .kind.added { color: var(--green, #16a34a); }
+  .kind.changed { color: var(--blue); }
+  .kind.removed { color: var(--red); }
+  .good { color: var(--green, #16a34a); }
+  .actions { display: flex; justify-content: flex-end; align-items: center; gap: .5rem; }
+  .q { font-size: .85rem; margin-inline-end: auto; }
+  .danger-btn { background: var(--red); color: #fff; }
   .rename { width: 9rem; padding: .2rem .4rem; font-size: .82rem; color: var(--text); }
   .ctx { position: fixed; z-index: 50; display: grid; min-width: 15rem; padding: .3rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .28); }
   .ctx .head { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .15rem .5rem; margin: .1rem .1rem .3rem; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .45rem; font-size: .85rem; }
