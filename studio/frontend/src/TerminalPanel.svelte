@@ -51,7 +51,7 @@
     const palette = dark
       ? { black: "#3f3f46", red: "#f87171", green: "#4ade80", yellow: "#facc15", blue: "#60a5fa", magenta: "#c084fc", cyan: "#22d3ee", white: "#e4e4e7", brightBlack: "#71717a", brightRed: "#fca5a5", brightGreen: "#86efac", brightYellow: "#fde047", brightBlue: "#93c5fd", brightMagenta: "#d8b4fe", brightCyan: "#67e8f9", brightWhite: "#fafafa" }
       : { black: "#18181b", red: "#b91c1c", green: "#15803d", yellow: "#a16207", blue: "#1d4ed8", magenta: "#7e22ce", cyan: "#0e7490", white: "#52525b", brightBlack: "#71717a", brightRed: "#dc2626", brightGreen: "#16a34a", brightYellow: "#ca8a04", brightBlue: "#2563eb", brightMagenta: "#9333ea", brightCyan: "#0891b2", brightWhite: "#27272a" };
-    return { background, foreground, cursor: foreground, cursorAccent: background, selectionBackground: "rgba(59,130,246,.35)", ...palette };
+    return { background, foreground, cursor: foreground, cursorAccent: background, selectionBackground: "rgba(59,130,246,.4)", selectionInactiveBackground: "rgba(59,130,246,.4)", ...palette };
   }
 
   let uids = 0;
@@ -206,7 +206,7 @@
       {#if menu.inside}
         <button disabled={!tab.term.hasSelection()} onclick={() => act((tab, at) => copy(tab))}>{tt.copy}<kbd>Ctrl+Shift+C</kbd></button>
         <button onclick={() => act((tab, at) => paste(tab))}>{tt.paste}<kbd>Ctrl+Shift+V</kbd></button>
-        <button onclick={() => act((tab, at) => { tab.term.selectAll(); })}>{tt.selectAll}</button>
+        <button onclick={() => act((tab, at) => { tab.term.selectAll(); tab.term.focus(); })}>{tt.selectAll}</button>
         <button onclick={() => act((tab, at) => { tab.term.clear(); tab.term.focus(); })}>{tt.clear}</button>
         <hr />
       {/if}
@@ -218,7 +218,6 @@
       <button disabled={tabs.length < 2} onclick={() => act((tab, at) => closeMany(tabs.filter((x) => x !== tab)))}>{tt.closeOthers}</button>
       <button disabled={menuAt < 1} onclick={() => act((tab, at) => closeMany(tabs.slice(0, at)))}>{tt.closeLeft}</button>
       <button disabled={menuAt >= tabs.length - 1} onclick={() => act((tab, at) => closeMany(tabs.slice(at + 1)))}>{tt.closeRight}</button>
-      <button disabled={!tabs.some((x) => x.ended)} onclick={() => act((tab, at) => closeMany(tabs.filter((x) => x.ended)))}>{tt.closeEnded}</button>
       <button onclick={() => act((tab, at) => closeMany([...tabs]))}>{tt.closeAll}</button>
     </div>
   {/if}
@@ -247,7 +246,7 @@
   .add-menu button:hover { background: var(--soft); }
   .add-menu small { padding: .3rem .6rem; font-size: .75rem; }
   .link { color: var(--blue); }
-  .rename { width: 9rem; padding: .2rem .4rem; font-size: .82rem; }
+  .rename { width: 9rem; padding: .2rem .4rem; font-size: .82rem; color: var(--text); }
   .ctx { position: fixed; z-index: 50; display: grid; min-width: 15rem; padding: .3rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .28); }
   .ctx .head { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .15rem .5rem; margin: .1rem .1rem .3rem; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .45rem; font-size: .85rem; }
   .ctx .head small { grid-column: 2; font-size: .75rem; }

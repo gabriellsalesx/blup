@@ -27,6 +27,8 @@
 * { box-sizing: border-box; margin: 0; }
 html, body, #app { height: 100%; }
 body { overflow: hidden; -webkit-font-smoothing: antialiased; }
+/* The same clear selection everywhere (fields, panels), as in the editor. */
+::selection { background: color-mix(in srgb, var(--blue) 35%, transparent); color: inherit; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 .btn { display: inline-flex; align-items: center; gap: .5rem; padding: .45rem .9rem; border-radius: .5rem; font-weight: 600; font-size: .875rem; background: var(--accent); color: var(--on-accent); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
