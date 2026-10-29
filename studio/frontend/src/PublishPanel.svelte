@@ -1,14 +1,16 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { Events } from "@wailsio/runtime";
-  import { Connections, OpenKeyPage, OpenURL, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, SyncStatus, Sync } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
-  import type { Connections as Conn, Target as Dest, SyncInfo } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import { CurrentDomain, SetDomain, CheckDomain, RemoveDomain, Connections, OpenKeyPage, OpenURL, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, SyncStatus, Sync } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import type { Connections as Conn, Target as Dest, SyncInfo, DomainStatus } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Account } from "../bindings/github.com/gabriellsalesx/blup/internal/deploy/cfpages/models";
   import Check from "@lucide/svelte/icons/check";
   import Alert from "@lucide/svelte/icons/circle-alert";
   import Loader from "@lucide/svelte/icons/loader-circle";
   import External from "@lucide/svelte/icons/external-link";
   import Refresh from "@lucide/svelte/icons/refresh-cw";
+  import Copy from "@lucide/svelte/icons/copy";
+  import { Clipboard } from "@wailsio/runtime";
   import { t } from "./i18n";
 
   let { autostart = "" }: { autostart?: string } = $props();
@@ -29,6 +31,34 @@
   let sync = $state<SyncInfo | null>(null);
   let syncing = $state(false);
   let syncError = $state("");
+
+  // The custom domain: typed here, connected where the site is published;
+  // the DNS records still missing are listed to copy.
+  const dm = t.domain;
+  let domain = $state("");
+  let domainInput = $state("");
+  let editingDomain = $state(false);
+  let dstatus = $state<DomainStatus | null>(null);
+  let dbusy = $state(false);
+  let derror = $state("");
+  let askRemove = $state(false);
+  let republish = $state(false);
+  let copiedRec = $state(-1);
+  CurrentDomain().then((d) => { domain = d; domainInput = d; });
+  async function domainRun(fn: () => Promise<DomainStatus | void>, changed = false) {
+    dbusy = true; derror = "";
+    try {
+      const st = await fn();
+      dstatus = st ?? null;
+      domain = st ? st.domain : "";
+      editingDomain = false; askRemove = false;
+      if (changed) republish = true;
+    } catch (e) { derror = msg(e); } finally { dbusy = false; }
+  }
+  const setDomain = () => domainRun(() => SetDomain(domainInput), true);
+  const checkDomain = () => domainRun(() => CheckDomain());
+  const removeDomain = () => domainRun(async () => { await RemoveDomain(); domainInput = ""; }, true);
+  async function copyRec(i: number, v: string) { await Clipboard.SetText(v); copiedRec = i; setTimeout(() => (copiedRec = -1), 1500); }
 
   const off = Events.On("progress", (ev: any) => { log.push(ev.data as Line); });
   onDestroy(() => off());
@@ -175,6 +205,62 @@
     {/if}
 
     <section class="card">
+      <h2>{dm.title}</h2>
+      <p>{dm.help}</p>
+      {#if !domain || editingDomain}
+        <div class="row">
+          <input type="text" bind:value={domainInput} placeholder="meusite.com.br" onkeydown={(e) => e.key === "Enter" && setDomain()} />
+          <button class="btn" disabled={dbusy || !domainInput.trim()} onclick={setDomain}>{dbusy ? dm.connecting : dm.connect}</button>
+          {#if editingDomain}<button class="btn ghost" onclick={() => { editingDomain = false; domainInput = domain; }}>{t.sec.cancel}</button>{/if}
+        </div>
+        <small class="muted">{dm.inputHelp}</small>
+      {:else}
+        <div class="row status">
+          <div class="field"><span>{domain}</span>
+            {#if dstatus?.state === "active"}<small class="good"><Check size={13} /> {dm.active}{dstatus.https ? " · HTTPS" : ""}</small>
+            {:else if dstatus?.state === "unpublished"}<small>{dm.unpublished}</small>
+            {:else if dstatus?.state === "waiting"}<small>{dm.waiting}</small>
+            {:else if dstatus?.state === "dns" || dstatus?.state === "apex-cloudflare"}<small class="warn">{dm.missing}</small>
+            {:else}<small class="muted">{dm.saved}</small>{/if}
+          </div>
+          <span class="spacer"></span>
+          <button class="btn ghost" disabled={dbusy} onclick={checkDomain}>{#if dbusy}<span class="spin"><Loader size={14} /></span>{:else}<Refresh size={14} />{/if}{dm.check}</button>
+          <button class="btn ghost" onclick={() => (editingDomain = true)}>{dm.change}</button>
+        </div>
+        {#if dstatus?.state === "apex-cloudflare"}
+          <p class="box">{dm.apexCf.replace("{domain}", domain)}</p>
+          <p>{dm.apexCfWww.replace("{www}", dstatus.www)}</p>
+        {:else if dstatus?.state === "dns"}
+          <p>{dm.dnsHelp}</p>
+        {/if}
+        {#if dstatus?.records?.length && (dstatus.state === "dns" || dstatus.state === "apex-cloudflare")}
+          <table class="dns">
+            <thead><tr><th>{dm.type}</th><th>{dm.name}</th><th>{dm.value}</th><th></th></tr></thead>
+            <tbody>
+              {#each dstatus.records as r, i (i)}
+                <tr><td>{r.type}</td><td><code>{r.name}</code></td><td><code>{r.value}</code></td>
+                  <td><button class="icon-btn" title={dm.copy} onclick={() => copyRec(i, r.value)}>{#if copiedRec === i}<Check size={14} />{:else}<Copy size={14} />{/if}</button></td></tr>
+              {/each}
+            </tbody>
+          </table>
+          <small class="muted">{dm.dnsTime}</small>
+        {/if}
+        {#if dstatus?.message}<small class="muted">{dstatus.message}</small>{/if}
+        <div class="actions">
+          {#if askRemove}
+            <span class="muted q">{dm.removeQ.replace("{domain}", domain)}</span>
+            <button class="btn ghost" onclick={() => (askRemove = false)}>{t.sec.cancel}</button>
+            <button class="btn danger" disabled={dbusy} onclick={removeDomain}>{dm.remove}</button>
+          {:else}
+            <button class="btn ghost danger-text" onclick={() => (askRemove = true)}>{dm.remove}</button>
+          {/if}
+        </div>
+      {/if}
+      {#if derror}<p class="bad">{derror}</p>{/if}
+      {#if republish}<p class="box">{dm.republish}</p>{/if}
+    </section>
+
+    <section class="card">
       <h2>{p.syncTitle}</h2>
       <p>{p.syncHelp}</p>
       {#if !conn.github}
@@ -226,4 +312,13 @@
   .spin { display: inline-grid; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .sum { color: var(--text); }
+  .good { display: inline-flex; align-items: center; gap: .25rem; color: #16a34a; }
+  .warn { color: #b45309; }
+  .dns { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .dns th { text-align: start; font-size: .75rem; color: var(--muted); font-weight: 600; padding: .3rem .5rem; }
+  .dns td { padding: .45rem .5rem; border-block-start: 1px solid var(--line); }
+  .dns code { font-size: .85rem; user-select: all; }
+  .q { font-size: .85rem; }
+  .danger-text { color: var(--red); }
+  .btn.danger { background: var(--red); color: #fff; }
 </style>

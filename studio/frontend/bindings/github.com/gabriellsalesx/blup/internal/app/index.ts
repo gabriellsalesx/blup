@@ -6,6 +6,8 @@ export type {
     Author,
     Change,
     Connections,
+    DNSRecord,
+    DomainStatus,
     MenuItem,
     NewSiteOptions,
     Section,

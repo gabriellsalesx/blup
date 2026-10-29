@@ -85,6 +85,13 @@ export function CheckCookieTool(key: string, value: string): $CancellablePromise
 }
 
 /**
+ * CheckDomain connects the domain again and says where it stands.
+ */
+export function CheckDomain(): $CancellablePromise<app$0.DomainStatus> {
+    return $Call.ByID(3221178750);
+}
+
+/**
  * CheckSiteDir tells why a folder can't hold a new site ("" when it can).
  */
 export function CheckSiteDir(dir: string): $CancellablePromise<string> {
@@ -155,6 +162,13 @@ export function CreateNote(folder: string, name: string): $CancellablePromise<st
  */
 export function CreateSite(o: app$0.NewSiteOptions): $CancellablePromise<$models.SiteInfo> {
     return $Call.ByID(70435005, o);
+}
+
+/**
+ * CurrentDomain is the site's custom domain ("" for the free address).
+ */
+export function CurrentDomain(): $CancellablePromise<string> {
+    return $Call.ByID(31178783);
 }
 
 /**
@@ -406,6 +420,13 @@ export function ReadNote(rel: string): $CancellablePromise<$models.NoteData> {
 }
 
 /**
+ * RemoveDomain goes back to the free address.
+ */
+export function RemoveDomain(): $CancellablePromise<void> {
+    return $Call.ByID(1901298994);
+}
+
+/**
  * RemoveImage removes the logo or favicon.
  */
 export function RemoveImage(key: string): $CancellablePromise<void> {
@@ -504,6 +525,13 @@ export function SavePrefs(p: $models.Prefs): $CancellablePromise<void> {
  */
 export function SaveSocial(links: string[] | null): $CancellablePromise<void> {
     return $Call.ByID(3556203008, links);
+}
+
+/**
+ * SetDomain saves and connects a custom domain.
+ */
+export function SetDomain(value: string): $CancellablePromise<app$0.DomainStatus> {
+    return $Call.ByID(2274237710, value);
 }
 
 /**

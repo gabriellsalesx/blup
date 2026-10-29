@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/deploy/cfpages"
@@ -128,4 +129,46 @@ func (s *Studio) Sync() (app.SyncInfo, error) {
 		return err
 	})
 	return info, err
+}
+
+// CurrentDomain is the site's custom domain ("" for the free address).
+func (s *Studio) CurrentDomain() string {
+	site, err := s.current()
+	if err != nil {
+		return ""
+	}
+	return site.Domain
+}
+
+// SetDomain saves and connects a custom domain.
+func (s *Studio) SetDomain(value string) (app.DomainStatus, error) {
+	site, err := s.current()
+	if err != nil {
+		return app.DomainStatus{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	return app.SetDomain(ctx, site, value)
+}
+
+// CheckDomain connects the domain again and says where it stands.
+func (s *Studio) CheckDomain() (app.DomainStatus, error) {
+	site, err := s.current()
+	if err != nil {
+		return app.DomainStatus{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	return app.CheckDomain(ctx, site)
+}
+
+// RemoveDomain goes back to the free address.
+func (s *Studio) RemoveDomain() error {
+	site, err := s.current()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	return app.RemoveDomain(ctx, site)
 }

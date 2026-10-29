@@ -86,6 +86,42 @@ export interface Connections {
 }
 
 /**
+ * DNSRecord is a record to create where the domain was bought.
+ */
+export interface DNSRecord {
+    "type": string;
+    "name": string;
+    "value": string;
+}
+
+/**
+ * DomainStatus is where a custom domain stands.
+ */
+export interface DomainStatus {
+    "domain": string;
+
+    /**
+     * State: "none" (no domain), "unpublished" (connected on the first
+     * publish), "active", "dns" (records to create), "waiting" (the host
+     * is setting it up) or "apex-cloudflare" (a root domain on Cloudflare
+     * Pages: it must be added to the Cloudflare account).
+     */
+    "state": string;
+    "records": DNSRecord[] | null;
+
+    /**
+     * for apex-cloudflare: the www. address that works with a record
+     */
+    "www": string;
+    "message": string;
+
+    /**
+     * GitHub: HTTPS is on
+     */
+    "https": boolean;
+}
+
+/**
  * MenuItem is an entry of the top menu: a name and where it leads (a
  * folder of the site, "/", "/tags/" or an address).
  */
