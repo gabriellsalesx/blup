@@ -11,7 +11,7 @@
   import { spellcheck, wordAt, suggest, addWord, complete, skipAt } from "./spell";
   import { autocompletion, startCompletion, acceptCompletion, completionStatus, closeCompletion, moveCompletionSelection, type CompletionContext, type Completion } from "@codemirror/autocomplete";
   import { Prec } from "@codemirror/state";
-  import { undo, redo } from "@codemirror/commands";
+  import { undo, redo, undoDepth, redoDepth } from "@codemirror/commands";
   import { undoHandlers } from "./undo";
   import { tables } from "./table";
   import Undo from "@lucide/svelte/icons/undo-2";
@@ -214,6 +214,8 @@
   // heading level.
   let curAlign = $state<"left" | "center" | "right" | "justify">("left");
   let curHead = $state(0);
+  // Undo and redo are greyed out when there is nothing to undo or redo.
+  let canUndo = $state(false), canRedo = $state(false);
   type MenuItem = { label: string; run: () => void; svg?: string; size?: string; tint?: string; check?: () => boolean; keep?: boolean };
   let calloutFold = $state(false); // new callouts start folded
   // The menus' icons, drawn here (a picture of each choice: where the lines
@@ -241,8 +243,8 @@
   // The formatting bar.
   const H = /^#{1,6} /, LIST = /^(\s*)([-*+] \[[ x]\] |[-*+] |\d+\. )/, QUOTE = /^> ?/;
   const tools = [
-    { key: "undo", label: te.undo + " (Ctrl+Z)", Icon: Undo, run: () => { undo(view); view.focus(); } },
-    { key: "redo", label: te.redo + " (Ctrl+Shift+Z)", Icon: Redo, run: () => { redo(view); view.focus(); } },
+    { key: "undo", label: te.undo + " (Ctrl+Z)", Icon: Undo, run: () => { undo(view); view.focus(); }, off: () => !canUndo },
+    { key: "redo", label: te.redo + " (Ctrl+Shift+Z)", Icon: Redo, run: () => { redo(view); view.focus(); }, off: () => !canRedo },
     { key: "sep0" },
     { key: "heading", label: te.heading, Icon: Heading, svg: () => (curHead ? textIcon("H" + curHead, 11) : textIcon("H", 17)), items: [
       { label: te.normal, run: () => heading(view, 0), size: "", svg: textIcon("¶", 15) },
@@ -345,6 +347,8 @@
         }),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) onChange(u.state.doc.toString());
+          canUndo = undoDepth(u.state) > 0;
+          canRedo = redoDepth(u.state) > 0;
           if (u.docChanged || u.selectionSet) {
             const head = u.state.selection.main.head;
             curAlign = alignAt(u.state, head);
@@ -395,7 +399,7 @@
           {/if}
         </div>
       {:else if tool.Icon}
-        <button title={tool.label} aria-label={tool.label} onmousedown={(e) => e.preventDefault()} onclick={tool.run}><tool.Icon size={16} strokeWidth={1.9} /></button>
+        <button title={tool.label} aria-label={tool.label} disabled={tool.off?.()} onmousedown={(e) => e.preventDefault()} onclick={tool.run}><tool.Icon size={16} strokeWidth={1.9} /></button>
       {:else}<span class="sep"></span>{/if}
     {/each}
   </div>
@@ -417,7 +421,8 @@
   .wrap { height: 100%; display: flex; flex-direction: column; }
   .bar { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .1rem; padding: .3rem .6rem; border-block-end: 1px solid var(--line); background: var(--panel); }
   .bar button { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: .35rem; color: var(--muted); }
-  .bar button:hover { background: var(--soft); color: var(--text); }
+  .bar button:hover:not(:disabled) { background: var(--soft); color: var(--text); }
+  .bar button:disabled { opacity: .35; cursor: default; }
   .drop { position: relative; }
   .bar .has-menu { display: flex; gap: .05rem; width: auto; padding-inline: .35rem; }
   .bar .has-menu .now { display: inline-grid; place-items: center; }
