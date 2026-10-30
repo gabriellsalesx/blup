@@ -90,9 +90,13 @@
   {:else}
     <!-- Rebuilt with the language just chosen. -->
     {#key lang}
-      {#if step === "github" || step === "password"}<button class="skip" onclick={next}>{t.wel.skip}</button>{/if}
       <div class="center">
-        <div class="dots" aria-hidden="true">{#each steps.slice(1) as s, i (s)}<span class:on={i < index}></span>{/each}</div>
+        <!-- The progress, and skipping (discreet, but right where the eyes are). -->
+        <div class="top">
+          <span></span>
+          <div class="dots" aria-hidden="true">{#each steps.slice(1) as s, i (s)}<span class:on={i < index}></span>{/each}</div>
+          {#if step === "github" || step === "password"}<button class="skip" onclick={next}>{t.wel.skip}</button>{:else}<span></span>{/if}
+        </div>
 
         {#if step === "github"}
           <img class="scene" src="/scenes/boas-vindas-github.svg" alt="" />
@@ -209,8 +213,8 @@
   .bounce { animation: bounce 1.6s ease-in-out infinite; }
   @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
   .nav { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-block-start: .5rem; }
-  /* Skipping is discreet, at the top, as in most apps. */
-  .skip { position: absolute; inset-block-start: 1.1rem; inset-inline-end: 1.4rem; padding: .35rem .6rem; border-radius: .4rem; color: var(--muted); font-size: .9rem; font-weight: 600; }
+  .top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; }
+  .skip { justify-self: end; padding: .3rem .6rem; border-radius: .4rem; color: var(--muted); font-size: .9rem; font-weight: 600; }
   .skip:hover { color: var(--text); background: var(--soft); }
   .btn.big { padding: .75rem 1.6rem; font-size: 1rem; }
   .bad { color: var(--red); font-size: .9rem; }
