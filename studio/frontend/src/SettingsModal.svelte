@@ -152,7 +152,21 @@
   let playing = $state("");
   let player: HTMLAudioElement | null = null;
   let blobURL = "";
-  const stopSample = () => { player?.pause(); player = null; if (blobURL) URL.revokeObjectURL(blobURL); blobURL = ""; };
+  // How much of the sample has played (0 to 1), for the ring around ▶.
+  let played = $state(0);
+  let frame = 0;
+  const tick = () => {
+    if (player && player.duration > 0) played = Math.min(1, player.currentTime / player.duration);
+    frame = requestAnimationFrame(tick);
+  };
+  const stopSample = () => {
+    player?.pause();
+    player = null;
+    cancelAnimationFrame(frame);
+    played = 0;
+    if (blobURL) URL.revokeObjectURL(blobURL);
+    blobURL = "";
+  };
   async function listen(id: string) {
     const again = playing === id;
     stopSample();
@@ -165,8 +179,9 @@
       blobURL = URL.createObjectURL(new Blob([await res.arrayBuffer()], { type: "audio/mpeg" }));
       if (playing !== id) return stopSample(); // another one was tapped meanwhile
       player = new Audio(blobURL);
-      player.onended = () => { if (playing === id) playing = ""; };
+      player.onended = () => { if (playing === id) { played = 1; setTimeout(() => { if (playing === id) { playing = ""; played = 0; } }, 250); } };
       await player.play();
+      frame = requestAnimationFrame(tick);
     } catch (e) {
       if (playing === id) playing = "";
       toast(`${lv.noSample} ${String(e).replace(/^(Runtime)?Error: /, "")}`, { kind: "error" });
@@ -325,8 +340,13 @@
                     {#if engine === "local"}<small class="muted">{v.female ? lv.female : lv.male}</small>{/if}
                     {#if !v.ready}<small class="muted">{engine === "local" ? lv.needInstall : lv.needKey}</small>{/if}
                   </label>
-                  <button class="icon-btn" title={playing === v.id ? lv.stop : lv.listen} aria-label="{playing === v.id ? lv.stop : lv.listen}: {v.name}" onclick={() => listen(v.id)}>
-                    {#if playing === v.id}<Pause size={15} />{:else}<Play size={15} />{/if}
+                  <button class="icon-btn listen" class:playing={playing === v.id} title={playing === v.id ? lv.stop : lv.listen} aria-label="{playing === v.id ? lv.stop : lv.listen}: {v.name}" onclick={() => listen(v.id)}>
+                    <!-- The ring fills as the sample plays. -->
+                    <svg class="ring" viewBox="0 0 36 36" aria-hidden="true">
+                      <circle class="track" cx="18" cy="18" r="16" />
+                      {#if playing === v.id}<circle class="fill" cx="18" cy="18" r="16" pathLength="100" stroke-dasharray="{played * 100} 100" />{/if}
+                    </svg>
+                    {#if playing === v.id}<Pause size={13} />{:else}<Play size={13} />{/if}
                   </button>
                 </div>
               {/each}
@@ -428,6 +448,12 @@
   .voice label { display: flex; align-items: center; gap: .6rem; flex: 1; min-width: 0; cursor: pointer; }
   .voice.off label { cursor: default; }
   .voice label small { font-size: .78rem; }
+  .listen { position: relative; width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: 50%; }
+  .listen .ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; }
+  .listen .ring circle { fill: none; stroke-width: 2.5; }
+  .listen .ring .track { stroke: var(--line); }
+  .listen .ring .fill { stroke: var(--blue); stroke-linecap: round; }
+  .listen.playing { color: var(--blue); }
   .keyform input { flex: 1; font-family: ui-monospace, monospace; }
   input[type="range"] { width: 11rem; accent-color: var(--blue); }
   .seg { display: inline-flex; gap: .2rem; padding: .2rem; border: 1px solid var(--line); border-radius: .6rem; }
