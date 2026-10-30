@@ -1,0 +1,44 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "blup-cloud",
+	"main": "worker/index.ts",
+	"compatibility_date": "2026-10-28",
+	// Better Auth usa AsyncLocalStorage.
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": { "enabled": true },
+	"upload_source_maps": true,
+	// O painel (SvelteKit estático) é servido como assets; só a API passa
+	// pelo Worker.
+	"assets": {
+		"directory": "./build",
+		"not_found_handling": "single-page-application",
+		"binding": "ASSETS",
+		"run_worker_first": ["/api/*"]
+	},
+	// Os IDs reais ficam fora do repositório público: troque na hora de
+	// publicar (npx wrangler d1 create blup-cloud).
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "blup-cloud",
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "migrations"
+		}
+	],
+	"r2_buckets": [{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" }],
+	"send_email": [{ "name": "EMAIL" }],
+	"ratelimits": [
+		// Pedidos de código por e-mail: por IP, por minuto.
+		{ "name": "OTP_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }
+	],
+	"vars": {
+		// Sem domínio ainda: em produção troque pelo endereço do Blup Cloud.
+		"APP_URL": "http://localhost:8787",
+		"PASSKEY_RP_ID": "localhost",
+		"MAIL_FROM": "Blup <login@example.com>",
+		// Chave de site de TESTE do Turnstile (pública, sempre aprova).
+		"TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+		// "log" mostra o código no terminal em vez de mandar e-mail.
+		"EMAIL_MODE": "log"
+	}
+}

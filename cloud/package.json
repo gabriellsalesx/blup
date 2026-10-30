@@ -1,0 +1,42 @@
+{
+  "name": "blup-cloud",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  },
+  "scripts": {
+    "dev": "vite build && wrangler dev",
+    "build": "vite build",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc -p worker/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "types": "wrangler types worker/worker-configuration.d.ts --env-interface CloudflareBindings",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "deploy": "vite build && wrangler deploy",
+    "db:auth-schema": "npx auth@latest generate --adapter drizzle --dialect sqlite --config worker/auth.cli.ts --output worker/db/auth-schema.ts --yes"
+  },
+  "dependencies": {
+    "@better-auth/passkey": "^1.7.14",
+    "better-auth": "^1.7.14",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.14",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@lucide/svelte": "^1.65.0",
+    "@sveltejs/adapter-static": "^4.0.1",
+    "@sveltejs/kit": "^3.1.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "drizzle-kit": "^0.31.11",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.7",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.156.0"
+  }
+}

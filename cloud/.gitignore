@@ -1,0 +1,10 @@
+node_modules/
+build/
+.svelte-kit/
+.wrangler/
+# Segredos locais: nunca no git (o repositório é público).
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
