@@ -3,9 +3,9 @@
 
 export type Role = "support" | "admin";
 export type StaffMe = { email: string; role: Role };
-export type UserRow = { id: string; email: string; createdAt: string; banned: boolean; plan: string };
+export type UserRow = { id: string; email: string | null; createdAt: string; banned: boolean; plan: string };
 export type UserDetail = {
-	user: { id: string; email: string; emailVerified: boolean; createdAt: string; banned: boolean; banReason: string | null };
+	user: { id: string; email: string | null; emailVerified: boolean; createdAt: string; banned: boolean; banReason: string | null };
 	plan: { label: string; status: string | null; periodEnd: string | null; cancelAtPeriodEnd: boolean };
 	stripeUrl: string | null;
 	sessions: { id: string; createdAt: string; expiresAt: string; ipAddress: string | null; userAgent: string | null }[];

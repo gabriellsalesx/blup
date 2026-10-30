@@ -4,7 +4,7 @@ export type Limits = { storageMB: number; sites: number; aiCredits: number };
 export type PlanInfo = { name: string; label: string; priceCents: number; limits: Limits; perks: string[] };
 export type Me = {
 	id: string;
-	email: string;
+	email: string | null; // null: an account made with a passkey, no e-mail linked yet
 	name: string;
 	createdAt: string;
 	plan: { name: string; label: string; limits: Limits; status: string | null; renewsAt: string | null; cancelsAtPeriodEnd: boolean };

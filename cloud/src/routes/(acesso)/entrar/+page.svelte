@@ -66,6 +66,20 @@
 		goto("/conta", { replaceState: true });
 	}
 
+	// A new account with a passkey only (the e-mail can be linked later).
+	async function createWithPasskey() {
+		error = "";
+		const { error: err } = await authClient.passkey.addPasskey({
+			name: "Blup Cloud",
+			createSession: true,
+			fetchOptions: { headers: { "x-captcha-response": captcha } },
+		});
+		captcha = "";
+		if (widgetId) window.turnstile?.reset(widgetId);
+		if (err) return (error = cancelled(err) ? "" : message(err));
+		goto("/conta", { replaceState: true });
+	}
+
 	async function passkey() {
 		error = "";
 		const { error: err } = await authClient.signIn.passkey();
@@ -91,6 +105,10 @@
 			<KeyRound class="size-4" />
 			Entrar com passkey
 		</Button>
+		<p class="mt-4 text-center text-sm text-neutral-500">
+			Prefere sem e-mail?
+			<button class="font-semibold text-blup hover:underline disabled:opacity-50" type="button" disabled={!captcha} onclick={createWithPasskey}>Criar conta com passkey</button>
+		</p>
 	{:else}
 		<p class="mt-1 text-center text-sm text-neutral-500">Digite o código que mandamos para <b class="text-neutral-800 dark:text-neutral-200">{email}</b>. Ele vale por 10 minutos.</p>
 		<form class="mt-6 grid gap-3" onsubmit={signIn}>

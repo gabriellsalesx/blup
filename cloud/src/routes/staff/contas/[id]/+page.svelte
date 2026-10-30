@@ -37,7 +37,7 @@
 
 {#if d}
 	<div class="mt-3 flex flex-wrap items-center gap-3">
-		<h1 class="text-2xl font-extrabold tracking-tight">{d.user.email}</h1>
+		<h1 class="text-2xl font-extrabold tracking-tight">{d.user.email ?? "Sem e-mail (só passkey)"}</h1>
 		{#if d.user.banned}<span class="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">Bloqueada</span>{/if}
 	</div>
 	<p class="mt-1 text-sm text-neutral-500">Criada em {when(d.user.createdAt)} · <code class="text-xs">{d.user.id}</code></p>
@@ -114,10 +114,10 @@
 	<Modal bind:open={delOpen} title="Excluir a conta">
 		<p class="text-sm text-neutral-500">Cancela a assinatura no Stripe e apaga a conta, as sessões e as passkeys. Não dá para desfazer.</p>
 		<form class="mt-4 grid gap-3" onsubmit={async (e) => { e.preventDefault(); delOpen = false; busy = true; try { await staffApi.remove(id); toast("Conta excluída"); goto("/staff"); } catch { toast("Não deu certo. Tente de novo.", { kind: "error" }); } finally { busy = false; } }}>
-			<Field label={`Digite ${d.user.email} para confirmar`} bind:value={confirmEmail} autocomplete="off" />
+			<Field label={`Digite ${d.user.email ?? d.user.id} para confirmar`} bind:value={confirmEmail} autocomplete="off" />
 			<div class="flex justify-end gap-2">
 				<Button variant="secondary" type="button" onclick={() => (delOpen = false)}>Cancelar</Button>
-				<Button class="bg-red-600! text-white!" disabled={confirmEmail.trim().toLowerCase() !== d.user.email.toLowerCase()}>Excluir</Button>
+				<Button class="bg-red-600! text-white!" disabled={confirmEmail.trim().toLowerCase() !== (d.user.email ?? d.user.id).toLowerCase()}>Excluir</Button>
 			</div>
 		</form>
 	</Modal>

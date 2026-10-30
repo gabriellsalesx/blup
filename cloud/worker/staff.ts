@@ -8,6 +8,7 @@ import { zValidator } from "@hono/zod-validator";
 import { db } from "./auth";
 import { passkey, session, staff, staffLog, subscription, user } from "./db/schema";
 import { planNamed } from "./plans";
+import { hasEmail } from "./auth-options";
 
 // The staff area (support and administration). In production Cloudflare
 // Access stands in front of /staff and /api/staff; here the Worker checks
@@ -83,7 +84,7 @@ export const staffApi = new Hono<App>()
 		const subs = rows.length
 			? await db.select({ ref: subscription.referenceId, plan: subscription.plan }).from(subscription).where(and(inArray(subscription.referenceId, rows.map((r) => r.id)), inArray(subscription.status, ACTIVE)))
 			: [];
-		return c.json(rows.map((r) => ({ ...r, plan: planNamed(subs.find((s) => s.ref === r.id)?.plan).label })));
+		return c.json(rows.map((r) => ({ ...r, email: hasEmail(r.email) ? r.email : null, plan: planNamed(subs.find((s) => s.ref === r.id)?.plan).label })));
 	})
 
 	.get("/users/:id", async (c) => {
@@ -99,7 +100,7 @@ export const staffApi = new Hono<App>()
 		const active = subs.find((s) => ACTIVE.includes(s.status));
 		const stripeMode = c.env.STRIPE_SECRET_KEY.startsWith("sk_live_") ? "" : "test/";
 		return c.json({
-			user: { id: u.id, email: u.email, emailVerified: u.emailVerified, createdAt: u.createdAt, banned: u.banned, banReason: u.banReason },
+			user: { id: u.id, email: hasEmail(u.email) ? u.email : null, emailVerified: u.emailVerified, createdAt: u.createdAt, banned: u.banned, banReason: u.banReason },
 			plan: { label: planNamed(active?.plan).label, status: active?.status ?? null, periodEnd: active?.periodEnd ?? null, cancelAtPeriodEnd: !!active?.cancelAtPeriodEnd },
 			stripeUrl: u.stripeCustomerId ? `https://dashboard.stripe.com/${stripeMode}customers/${u.stripeCustomerId}` : null,
 			sessions,
@@ -153,7 +154,7 @@ export const staffApi = new Hono<App>()
 		await db.delete(subscription).where(eq(subscription.referenceId, id));
 		await db.delete(user).where(eq(user.id, id));
 		// The account's e-mail stays in the log only as the action's detail.
-		await log(c.get("staff").email, "user.delete", id, u.email);
+		await log(c.get("staff").email, "user.delete", id, hasEmail(u.email) ? u.email : "sem e-mail (só passkey)");
 		return c.json({ ok: true });
 	})
 

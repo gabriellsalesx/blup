@@ -7,7 +7,7 @@ A conta do Blup na nuvem: cadastro, login, planos e (em breve) a sincronização
 | Parte | Escolha |
 |---|---|
 | API | [Hono](https://hono.dev) no Worker, validação com Zod |
-| Login | [Better Auth](https://www.better-auth.com): código por e-mail (`emailOTP`, cria a conta) e passkey (`@better-auth/passkey`). Sem senha |
+| Login | [Better Auth](https://www.better-auth.com): código por e-mail (`emailOTP`, cria a conta) e passkey (`@better-auth/passkey`), que também cria conta sozinha. Sem senha |
 | Proteção | Turnstile no pedido de código e Rate Limiting dos Workers |
 | Dados | D1 com Drizzle ORM; R2 para as notas (cifradas no computador da pessoa) |
 | E-mail | Email Service da Cloudflare (precisa do plano Workers Paid) |
@@ -32,6 +32,12 @@ npm run dev                      # http://localhost:8787
 Com `EMAIL_MODE=log` (o padrão no `wrangler.jsonc`), o código de login aparece no terminal em vez de ir por e-mail. As chaves do Turnstile no repositório são as de **teste** da Cloudflare, que sempre aprovam.
 
 Abra pelo endereço `http://localhost:8787` (não `127.0.0.1`): a passkey e a origem confiável do login usam `localhost`.
+
+## Conta só com passkey
+
+- "Criar conta com passkey" cria a conta sem e-mail (o Better Auth exige um, então ela ganha um endereço em `sem-email.blup.invalid`, domínio que nunca recebe e-mail). A conta só é criada depois que a passkey é confirmada, com Turnstile e limite por IP.
+- No Perfil, "Vincular" manda um código para o e-mail novo e liga ele à conta. Depois disso a pessoa entra tanto pela passkey quanto pelo código.
+- Sem e-mail não dá para assinar (recibos e recuperação da conta). Trocar um e-mail já vinculado é pelo suporte, por enquanto.
 
 ## Planos e Stripe
 

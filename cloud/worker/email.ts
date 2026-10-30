@@ -1,12 +1,17 @@
+import { hasEmail } from "./auth-options";
+
 // The sign-in code by e-mail, through Cloudflare's Email Service. With
 // EMAIL_MODE=log (development) the code only shows in the terminal.
 
 const subjects: Record<string, string> = {
 	"sign-in": "Seu código para entrar no Blup",
 	"email-verification": "Confirme seu e-mail no Blup",
+	"change-email": "Confirme o e-mail da sua conta do Blup",
 };
 
 export async function sendCode(env: Cloudflare.Env, email: string, code: string, kind: string) {
+	// An account without e-mail yet (passkey only): nothing to send.
+	if (!hasEmail(email)) return;
 	if (env.EMAIL_MODE === "log") {
 		console.log(`[blup] código de ${kind} para ${email}: ${code}`);
 		return;

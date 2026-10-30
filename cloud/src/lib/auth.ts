@@ -20,6 +20,8 @@ export function message(err: { code?: string; message?: string } | null | undefi
 			return "Muitas tentativas. Peça um novo código.";
 		case "TOO_MANY_REQUESTS":
 			return "Muitos pedidos. Espere um minuto.";
+		case "EMAIL_REQUIRED":
+			return "Vincule um e-mail no Perfil antes de assinar.";
 		case "MISSING_RESPONSE":
 		case "VERIFICATION_FAILED":
 			return "Não deu para confirmar que você não é um robô. Tente de novo.";

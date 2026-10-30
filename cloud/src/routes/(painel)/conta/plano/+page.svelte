@@ -50,7 +50,11 @@
 				{#each p.perks as perk (perk)}<li class="flex items-start gap-2"><Check class="mt-0.5 size-4 shrink-0 text-green-600" />{perk}</li>{/each}
 			</ul>
 			{#if !mine && p.priceCents && !paid}
-				<Button class="mt-5" {busy} onclick={() => subscribe(p.name)}>Assinar o {p.label}</Button>
+				{#if data.me.email}
+					<Button class="mt-5" {busy} onclick={() => subscribe(p.name)}>Assinar o {p.label}</Button>
+				{:else}
+					<p class="mt-5 text-sm text-neutral-500"><a class="font-semibold text-blup hover:underline" href="/conta">Vincule um e-mail</a> para assinar: é por ele que chegam os recibos.</p>
+				{/if}
 			{/if}
 		</div>
 	{/each}

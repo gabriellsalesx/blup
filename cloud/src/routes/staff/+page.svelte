@@ -39,7 +39,7 @@
 					{#each rows as r (r.id)}
 						<tr class="border-t border-neutral-200 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900">
 							<td class="px-4 py-2.5">
-								<a class="font-semibold hover:underline" href="/staff/contas/{r.id}">{r.email}</a>
+								<a class="font-semibold hover:underline" href="/staff/contas/{r.id}">{r.email ?? "Sem e-mail (só passkey)"}</a>
 								{#if r.banned}<span class="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">Bloqueada</span>{/if}
 							</td>
 							<td class="px-4 py-2.5">{r.plan}</td>

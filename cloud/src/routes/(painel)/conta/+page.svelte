@@ -17,6 +17,14 @@
 	let name = $state("");
 	let delOpen = $state(false);
 	let confirmEmail = $state("");
+	// Linking an e-mail (accounts made with a passkey): the address, then the
+	// code sent to it.
+	let linkOpen = $state(false);
+	let linkStep = $state<"email" | "code">("email");
+	let newEmail = $state("");
+	let linkCode = $state("");
+	// What to type to confirm deleting: the e-mail, or a word when there is none.
+	const confirmWord = $derived(data.me.email ?? "EXCLUIR");
 
 	const date = (d: Date | string) => new Date(d).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" });
 
@@ -26,6 +34,26 @@
 		if (error) return toast(message(error), { kind: "error" });
 		nameOpen = false;
 		toast("Nome salvo");
+		await invalidateAll();
+	}
+
+	async function sendLinkCode(e: SubmitEvent) {
+		e.preventDefault();
+		busy = true;
+		const { error } = await authClient.emailOtp.requestEmailChange({ newEmail: newEmail.trim() });
+		busy = false;
+		if (error) return toast(message(error), { kind: "error" });
+		linkStep = "code";
+	}
+
+	async function linkEmail(e: SubmitEvent) {
+		e.preventDefault();
+		busy = true;
+		const { error } = await authClient.emailOtp.changeEmail({ newEmail: newEmail.trim(), otp: linkCode.trim() });
+		busy = false;
+		if (error) return toast(message(error), { kind: "error" });
+		linkOpen = false;
+		toast("E-mail vinculado");
 		await invalidateAll();
 	}
 
@@ -72,7 +100,13 @@
 		{#snippet action()}<Button variant="secondary" onclick={() => { name = data.me.name; nameOpen = true; }}>Alterar</Button>{/snippet}
 	</Row>
 
-	<Row title="E-mail" value={data.me.email} help="É para ele que mandamos o código de entrar." />
+	{#if data.me.email}
+		<Row title="E-mail" value={data.me.email} help="É para ele que mandamos o código de entrar." />
+	{:else}
+		<Row title="E-mail" value="Nenhum e-mail" help="Vincule um e-mail para entrar por código, assinar um plano e recuperar a conta se perder o aparelho da passkey.">
+			{#snippet action()}<Button onclick={() => { newEmail = ""; linkCode = ""; linkStep = "email"; linkOpen = true; }}>Vincular</Button>{/snippet}
+		</Row>
+	{/if}
 
 	<Row title="Passkeys" help="Entre com a digital, o rosto ou o PIN do aparelho, sem esperar o código por e-mail.">
 		{#snippet action()}<Button variant="secondary" {busy} onclick={addPasskey}>Adicionar</Button>{/snippet}
@@ -108,13 +142,35 @@
 	</form>
 </Modal>
 
+<Modal bind:open={linkOpen} title="Vincular e-mail">
+	{#if linkStep === "email"}
+		<form class="grid gap-3" onsubmit={sendLinkCode}>
+			<p class="text-sm text-neutral-500">Mandamos um código para confirmar que o e-mail é seu.</p>
+			<Field label="E-mail" type="email" autocomplete="email" required bind:value={newEmail} />
+			<div class="flex justify-end gap-2">
+				<Button variant="secondary" type="button" onclick={() => (linkOpen = false)}>Cancelar</Button>
+				<Button {busy} disabled={!newEmail.trim()}>Receber código</Button>
+			</div>
+		</form>
+	{:else}
+		<form class="grid gap-3" onsubmit={linkEmail}>
+			<p class="text-sm text-neutral-500">Digite o código que mandamos para <b>{newEmail}</b>.</p>
+			<Field class="text-center text-2xl font-bold tracking-[0.5em]" inputmode="numeric" autocomplete="one-time-code" maxlength={6} aria-label="Código" required bind:value={linkCode} />
+			<div class="flex justify-end gap-2">
+				<Button variant="secondary" type="button" onclick={() => (linkStep = "email")}>Voltar</Button>
+				<Button {busy} disabled={linkCode.trim().length < 6}>Vincular</Button>
+			</div>
+		</form>
+	{/if}
+</Modal>
+
 <Modal bind:open={delOpen} title="Excluir a conta">
 	<p class="text-sm text-neutral-500">Não dá para desfazer. A assinatura é cancelada na hora e as notas da nuvem são apagadas (as do seu computador continuam lá).</p>
 	<form class="mt-4 grid gap-3" onsubmit={deleteAccount}>
-		<Field label={`Digite ${data.me.email} para confirmar`} autocomplete="off" bind:value={confirmEmail} />
+		<Field label={`Digite ${confirmWord} para confirmar`} autocomplete="off" bind:value={confirmEmail} />
 		<div class="flex justify-end gap-2">
 			<Button variant="secondary" type="button" onclick={() => (delOpen = false)}>Cancelar</Button>
-			<Button class="bg-red-700! text-white!" {busy} disabled={confirmEmail.trim().toLowerCase() !== data.me.email.toLowerCase()}>Excluir</Button>
+			<Button class="bg-red-700! text-white!" {busy} disabled={confirmEmail.trim().toLowerCase() !== confirmWord.toLowerCase()}>Excluir</Button>
 		</div>
 	</form>
 </Modal>
