@@ -92,12 +92,14 @@
   let aiKey = $state("");
   let aiBusy = $state(false);
   let aiError = $state("");
-  let voices = $state<string[]>([]);
-  AIConnected().then((v) => (aiOn = v)).catch(() => (aiOn = false));
-  Voices().then((v) => (voices = v ?? []));
+  // The voice for each site language (the default first in each list).
+  let voices = $state<Record<string, { id: string; name: string }[]>>({ pt: [], en: [] });
+  const loadVoices = () => { for (const l of ["pt", "en"]) Voices(l).then((v) => (voices[l] = v ?? [])).catch(() => {}); };
+  AIConnected().then((v) => { aiOn = v; if (v) loadVoices(); }).catch(() => (aiOn = false));
+  const setVoice = (lang: string, id: string) => { setPref("voices", { ...(look.voices ?? {}), [lang]: id }); toast(ai.voiceSet); };
   async function connectAI() {
     aiBusy = true; aiError = "";
-    try { await ConnectAI(aiKey); aiOn = true; aiKey = ""; toast(ai.connected); }
+    try { await ConnectAI(aiKey); aiOn = true; aiKey = ""; toast(ai.connected); loadVoices(); }
     catch (e) { aiError = String(e).includes("invalid key") ? ai.badKey : String(e).replace(/^(Runtime)?Error: /, ""); }
     aiBusy = false;
   }
@@ -213,12 +215,14 @@
       {/if}
       <h3>{ai.narration}</h3>
       <p class="muted lead">{ai.narrationHelp}</p>
-      <div class="item">
-        <div class="text"><b>{ai.voice}</b><small>{ai.voiceHelp}</small></div>
-        <select value={look.voice || voices[0] || ""} onchange={(e) => setPref("voice", e.currentTarget.value)}>
-          {#each voices as v (v)}<option value={v}>{v[0].toUpperCase() + v.slice(1)}</option>{/each}
-        </select>
-      </div>
+      {#each [["pt", ai.voicePt], ["en", ai.voiceEn]] as [l, label] (l)}
+        <div class="item">
+          <div class="text"><b>{label}</b><small>{ai.voiceHelp}</small></div>
+          <select value={look.voices?.[l] || voices[l][0]?.id || ""} disabled={!voices[l].length} onchange={(e) => setVoice(l, e.currentTarget.value)}>
+            {#each voices[l] as v (v.id)}<option value={v.id}>{v.name}</option>{/each}
+          </select>
+        </div>
+      {/each}
     {:else if tab === "keys"}
       <h3>{k.globalTitle}</h3>
       <div class="item">

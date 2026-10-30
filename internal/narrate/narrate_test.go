@@ -117,6 +117,10 @@ func TestSpeak(t *testing.T) {
 			return
 		}
 		switch r.URL.Path {
+		case "/models":
+			w.Write([]byte(`{"data":[{"id":"other/tts","supported_voices":["x"]},{"id":"microsoft/mai-voice-2.1","supported_voices":["en-US-Ethan:MAI-Voice-2.1","pt-BR-Caio:MAI-Voice-2.1","pt-BR-Luana:MAI-Voice-2.1"]}]}`))
+		case "/gone/models":
+			w.Write([]byte(`{"data":[{"id":"other/tts"}]}`))
 		case "/key":
 			w.Write([]byte(`{"data":{"label":"x"}}`))
 		case "/audio/speech":
@@ -131,18 +135,31 @@ func TestSpeak(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := &Client{Key: "k1", BaseURL: srv.URL}
-	audio, err := c.Speak(context.Background(), "Olá", "nova", "Leia em português.")
+	audio, err := c.Speak(context.Background(), "Olá", "pt-BR-Luana:MAI-Voice-2.1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(audio) == 0 || calls != 2 {
 		t.Errorf("audio %d bytes after %d calls (one retry expected)", len(audio), calls)
 	}
-	if got["model"] != Model || got["input"] != "Olá" || got["voice"] != "nova" || got["response_format"] != "mp3" {
+	if got["model"] != Model || got["input"] != "Olá" || got["voice"] != "pt-BR-Luana:MAI-Voice-2.1" || got["response_format"] != "mp3" {
 		t.Errorf("request body: %v", got)
 	}
 	if err := c.CheckKey(context.Background()); err != nil {
 		t.Errorf("CheckKey: %v", err)
+	}
+	if v, err := c.Voices(context.Background(), "pt"); err != nil || len(v) != 2 || v[0] != "pt-BR-Luana:MAI-Voice-2.1" {
+		t.Errorf("voices pt: %v %v", v, err)
+	}
+	if v, _ := c.Voices(context.Background(), "en"); len(v) != 1 || VoiceName(v[0]) != "Ethan" {
+		t.Errorf("voices en: %v", v)
+	}
+	gone := &Client{Key: "k1", BaseURL: srv.URL + "/gone"}
+	if _, err := gone.Voices(context.Background(), "pt"); !errors.Is(err, ErrModelGone) {
+		t.Errorf("want ErrModelGone, got %v", err)
+	}
+	if VoiceFor("pt", "en-US-Ethan:MAI-Voice-2.1") != "pt-BR-Luana:MAI-Voice-2.1" || VoiceFor("en", "en-US-Ethan:MAI-Voice-2.1") != "en-US-Ethan:MAI-Voice-2.1" {
+		t.Error("VoiceFor")
 	}
 	bad := &Client{Key: "nope", BaseURL: srv.URL}
 	if err := bad.CheckKey(context.Background()); !errors.Is(err, ErrInvalidKey) {

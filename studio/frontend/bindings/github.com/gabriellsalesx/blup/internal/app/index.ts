@@ -19,5 +19,6 @@ export type {
     SiteParts,
     SyncInfo,
     Target,
-    TrashItem
+    TrashItem,
+    Voice
 } from "./models.js";

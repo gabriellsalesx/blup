@@ -356,3 +356,11 @@ export interface TrashItem {
     "origin": string;
     "dir": boolean;
 }
+
+/**
+ * Voice is a narration voice.
+ */
+export interface Voice {
+    "id": string;
+    "name": string;
+}

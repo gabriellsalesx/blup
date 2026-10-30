@@ -35,8 +35,11 @@ func (s *Studio) OpenAIKeyPage() { s.OpenURL(narrate.KeyPage) }
 // for the player of the properties.
 func (s *Studio) LinkedAudio(link string) (string, error) { return s.LinkedImage(link) }
 
-// Voices lists the narration voices, the default first.
-func (s *Studio) Voices() []string { return narrate.Voices }
+// Voices lists the narration voices for sites in lang ("pt" or "en"), the
+// default first.
+func (s *Studio) Voices(lang string) ([]app.Voice, error) {
+	return app.NarrationVoices(context.Background(), lang)
+}
 
 // NarrationHash is the fingerprint of what the note reads now (compared
 // with its audio_hash to tell an out of date narration).
@@ -48,12 +51,14 @@ func (s *Studio) NarrationHash(rel string) (string, error) {
 	return app.NarrationHash(site, rel)
 }
 
-// Narrate reads the note aloud and saves the MP3 in the attachments.
-func (s *Studio) Narrate(rel, voice string) (app.Narration, error) {
+// Narrate reads the note aloud, with the voice chosen for the site's
+// language, and saves the MP3 in the attachments.
+func (s *Studio) Narrate(rel string) (app.Narration, error) {
 	site, err := s.current()
 	if err != nil {
 		return app.Narration{}, err
 	}
+	voice := s.Prefs().Voices[site.Lang]
 	return app.Narrate(context.Background(), site, rel, voice, func(done, total int) {
 		application.Get().Event.Emit("narrate", NarrateProgress{rel, done, total})
 	})

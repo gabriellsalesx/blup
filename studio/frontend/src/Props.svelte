@@ -1,7 +1,6 @@
 <script lang="ts">
   import { AuthorNames, PickCover, LinkedImage, LinkedAudio, AIConnected, Narrate, NarrationHash } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { Events } from "@wailsio/runtime";
-  import { look } from "./theme.svelte";
   import { toast } from "./toast.svelte";
   import AudioLines from "@lucide/svelte/icons/audio-lines";
   import Switch from "./Switch.svelte";
@@ -68,7 +67,7 @@
   async function narrate() {
     narrating = { done: 0, total: 0 };
     try {
-      const r = await Narrate(note, look.voice ?? "");
+      const r = await Narrate(note);
       audio = r.link; audioHash = r.hash; nowHash = r.hash;
       onEdit("audio", r.link);
       onEdit("audio_hash", r.hash);

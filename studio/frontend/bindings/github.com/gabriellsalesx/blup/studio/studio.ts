@@ -327,10 +327,11 @@ export function MoveItem(rel: string, folder: string): $CancellablePromise<strin
 }
 
 /**
- * Narrate reads the note aloud and saves the MP3 in the attachments.
+ * Narrate reads the note aloud, with the voice chosen for the site's
+ * language, and saves the MP3 in the attachments.
  */
-export function Narrate(rel: string, voice: string): $CancellablePromise<app$0.Narration> {
-    return $Call.ByID(3876254213, rel, voice);
+export function Narrate(rel: string): $CancellablePromise<app$0.Narration> {
+    return $Call.ByID(3876254213, rel);
 }
 
 /**
@@ -824,10 +825,11 @@ export function Version(): $CancellablePromise<string> {
 }
 
 /**
- * Voices lists the narration voices, the default first.
+ * Voices lists the narration voices for sites in lang ("pt" or "en"), the
+ * default first.
  */
-export function Voices(): $CancellablePromise<string[] | null> {
-    return $Call.ByID(766145645);
+export function Voices(lang: string): $CancellablePromise<app$0.Voice[] | null> {
+    return $Call.ByID(766145645, lang);
 }
 
 /**

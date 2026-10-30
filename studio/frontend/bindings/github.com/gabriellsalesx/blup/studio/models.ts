@@ -214,9 +214,9 @@ export interface Prefs {
     "recent": string[] | null;
 
     /**
-     * the narration's voice ("" = the first of narrate.Voices)
+     * the narration's voice for each site language ("pt", "en"); missing = the default
      */
-    "voice": string;
+    "voices": { [_ in string]?: string } | null;
 }
 
 /**

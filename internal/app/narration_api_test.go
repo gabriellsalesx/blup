@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -27,8 +26,8 @@ func TestNarrate(t *testing.T) {
 		var req map[string]string
 		json.NewDecoder(r.Body).Decode(&req)
 		inputs = append(inputs, req["input"])
-		if !strings.Contains(req["instructions"], "português") {
-			t.Errorf("instructions not in the site's language: %q", req["instructions"])
+		if req["voice"] != "pt-BR-Luana:MAI-Voice-2.1" {
+			t.Errorf("voice not in the site's language: %q", req["voice"])
 		}
 		w.Write(fakeMP3())
 	}))

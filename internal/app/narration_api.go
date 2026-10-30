@@ -37,6 +37,27 @@ func AIConnected() (bool, error) {
 	return creds.OpenRouterToken != "", err
 }
 
+// NarrationVoices lists the voices for a site in lang ("pt" or "en"), the
+// default first, as {id, name}.
+func NarrationVoices(ctx context.Context, lang string) ([]Voice, error) {
+	creds, err := config.LoadCredentials()
+	if err != nil {
+		return nil, err
+	}
+	ids, err := (&narrate.Client{Key: creds.OpenRouterToken, BaseURL: openRouterURL}).Voices(ctx, lang)
+	out := make([]Voice, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, Voice{ID: id, Name: narrate.VoiceName(id)})
+	}
+	return out, err
+}
+
+// Voice is a narration voice.
+type Voice struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // ConnectOpenRouter checks an OpenRouter key and saves it.
 func ConnectOpenRouter(ctx context.Context, key string) error {
 	key = strings.TrimSpace(key)
@@ -113,20 +134,18 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 	if strings.Count(text, " ") < 3 {
 		return Narration{}, errors.New(byLang(site, "A nota ainda não tem texto para narrar.", "The note has no text to narrate yet."))
 	}
-	if !contains(narrate.Voices, voice) {
-		voice = narrate.Voices[0]
-	}
+	voice = narrate.VoiceFor(site.Lang, voice)
 	parts := narrate.Split(text, narrate.MaxPart)
 	client := &narrate.Client{Key: creds.OpenRouterToken, BaseURL: openRouterURL}
-	instructions := byLang(site,
-		"Narre em português do Brasil, com voz calma, natural e clara, como um podcast. Respeite a pontuação e faça pausas curtas entre os parágrafos.",
-		"Narrate in English with a calm, natural and clear voice, like a podcast. Follow the punctuation and pause briefly between paragraphs.")
 	audio := make([][]byte, 0, len(parts))
 	for i, part := range parts {
 		if progress != nil {
 			progress(i, len(parts))
 		}
-		a, err := client.Speak(ctx, part, voice, instructions)
+		a, err := client.Speak(ctx, part, voice)
+		if errors.Is(err, narrate.ErrModelGone) {
+			return Narration{}, errors.New(byLang(site, "O modelo de voz saiu do OpenRouter. Atualize o Blup para usar o novo.", "The voice model left OpenRouter. Update Blup to use the new one."))
+		}
 		if err != nil {
 			return Narration{}, err
 		}
