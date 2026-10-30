@@ -29,7 +29,8 @@
 
   // The Studio's settings, like Obsidian's: a window with sections on the
   // left. They are the Studio's (and Blup's), not the open site's.
-  let { onClose, onPublish, start = "general" }: { onClose: () => void; onPublish: () => void; start?: string } = $props();
+  // siteLang is the open site's language: the AI tab shows only its voices.
+  let { onClose, onPublish, start = "general", siteLang = "" }: { onClose: () => void; onPublish: () => void; start?: string; siteLang?: string } = $props();
   const s = t.prefs;
 
   const tabs = [
@@ -310,7 +311,7 @@
       {/if}
       <h3>{ai.narration}</h3>
       <p class="muted lead">{ai.narrationHelp}</p>
-      {#each [["pt", ai.voicePt], ["en", ai.voiceEn]] as [l, label] (l)}
+      {#each [["pt", ai.voicePt], ["en", ai.voiceEn]].filter(([l]) => !siteLang || l === (siteLang === "pt" ? "pt" : "en")) as [l, label] (l)}
         <div class="voices" role="radiogroup" aria-label={label}>
           <b>{label}</b>
           {#each [["local", lv.groupLocal], ["openrouter", lv.groupOpenRouter]] as [engine, group] (engine)}

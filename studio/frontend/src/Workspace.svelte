@@ -499,7 +499,7 @@
     </section>
   {/if}
   {#if prefsOpen}
-    <SettingsModal start={prefsTab} onClose={() => { prefsOpen = false; prefsTab = "general"; }} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
+    <SettingsModal start={prefsTab} siteLang={settings?.lang} onClose={() => { prefsOpen = false; prefsTab = "general"; }} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
   {/if}
   {#if deletingSite}<DeleteSite dir={deletingSite} onClose={() => (deletingSite = "")} onDone={(dir) => { const name = others.find((o) => o.dir === dir)?.title ?? ""; deletingSite = ""; loadSites(); toast(t.toast.siteDeleted.replace("{name}", name)); }} />{/if}
   {#if showTip}
