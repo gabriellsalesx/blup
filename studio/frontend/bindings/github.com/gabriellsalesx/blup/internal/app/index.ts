@@ -13,6 +13,7 @@ export type {
     FeedbackSetup,
     LocalVoice,
     MenuItem,
+    ModelOption,
     Narration,
     NewSiteOptions,
     Section,

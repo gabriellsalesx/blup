@@ -22,9 +22,9 @@ const DefaultBaseURL = "https://openrouter.ai/api/v1"
 // KeyPage is where a new OpenRouter key is made.
 const KeyPage = "https://openrouter.ai/settings/keys"
 
-// Model is the voice model used: Microsoft's MAI-Voice-2.1, with native
-// voices for each language (pt-BR-Luana, en-US-Harper...).
-const Model = "microsoft/mai-voice-2.1"
+// DefaultModel is the recommended voice model: Microsoft's MAI-Voice-2.1,
+// with native voices for each language (pt-BR-Luana, en-US-Harper...).
+const DefaultModel = "microsoft/mai-voice-2.1"
 
 // locales maps a site language to the voices' locale.
 var locales = map[string]string{"pt": "pt-BR", "en": "en-US"}
@@ -32,8 +32,14 @@ var locales = map[string]string{"pt": "pt-BR", "en": "en-US"}
 // defaultVoices are the voices used until the user picks another.
 var defaultVoices = map[string]string{"pt": "pt-BR-Luana:MAI-Voice-2.1", "en": "en-US-Harper:MAI-Voice-2.1"}
 
-// knownVoices are Model's voices for each language, used when OpenRouter's
-// list can't be read.
+// knownVoices are DefaultModel's voices for each language, used when
+// OpenRouter's list can't be read.
+// Known is DefaultModel with its known voices, for when OpenRouter's list
+// can't be read.
+func Known() ModelInfo {
+	return ModelInfo{ID: DefaultModel, Name: "Microsoft AI: MAI-Voice-2.1", PerThousand: 0.022, Voices: append(append([]string{}, knownVoices["pt"]...), knownVoices["en"]...)}
+}
+
 var knownVoices = map[string][]string{
 	"pt": {"pt-BR-Luana:MAI-Voice-2.1", "pt-BR-Caio:MAI-Voice-2.1", "pt-BR-Rafael:MAI-Voice-2.1", "pt-BR-Pedro:MAI-Voice-2.1", "pt-BR-Harper:MAI-Voice-2.1", "pt-BR-Grant:MAI-Voice-2.1"},
 	"en": {"en-US-Harper:MAI-Voice-2.1", "en-US-Olivia:MAI-Voice-2.1", "en-US-Iris:MAI-Voice-2.1", "en-US-Ethan:MAI-Voice-2.1", "en-US-Grant:MAI-Voice-2.1", "en-US-Jasper:MAI-Voice-2.1", "en-US-Sage:MAI-Voice-2.1"},
@@ -66,8 +72,7 @@ func VoiceName(voice string) string {
 	return name
 }
 
-// ErrModelGone means OpenRouter no longer offers Model: a newer Blup picks
-// another one.
+// ErrModelGone means OpenRouter no longer offers the model asked for.
 var ErrModelGone = errors.New("openrouter: the voice model is no longer offered")
 
 var (
@@ -116,64 +121,15 @@ func (c *Client) CheckKey(ctx context.Context) error {
 	return nil
 }
 
-// Voices lists Model's voices for a site in lang, read from OpenRouter's
-// list of models (the known ones when it can't be read). ErrModelGone when
-// the model left the list.
-func (c *Client) Voices(ctx context.Context, lang string) ([]string, error) {
-	prefix := locales[langOf(lang)] + "-"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base()+"/models?output_modalities=speech", nil)
-	if err != nil {
-		return nil, err
+// Speak reads text aloud with a model and voice ("" for the model's
+// default) and returns the audio as MP3. Busy or failing servers are tried
+// again a few times.
+func (c *Client) Speak(ctx context.Context, model, text, voice string) ([]byte, error) {
+	req := map[string]any{"model": model, "input": text, "response_format": "mp3"}
+	if voice != "" {
+		req["voice"] = voice
 	}
-	c.headers(req)
-	res, err := c.client().Do(req)
-	if err != nil {
-		return knownVoices[langOf(lang)], nil
-	}
-	defer res.Body.Close()
-	var list struct {
-		Data []struct {
-			ID     string   `json:"id"`
-			Voices []string `json:"supported_voices"`
-		} `json:"data"`
-	}
-	if res.StatusCode != http.StatusOK || json.NewDecoder(res.Body).Decode(&list) != nil || len(list.Data) == 0 {
-		return knownVoices[langOf(lang)], nil
-	}
-	for _, m := range list.Data {
-		if m.ID != Model {
-			continue
-		}
-		var out []string
-		for _, v := range m.Voices {
-			if strings.HasPrefix(v, prefix) {
-				out = append(out, v)
-			}
-		}
-		if len(out) == 0 {
-			return knownVoices[langOf(lang)], nil
-		}
-		// The default first.
-		def := DefaultVoice(lang)
-		for i, v := range out {
-			if v == def {
-				out[0], out[i] = out[i], out[0]
-			}
-		}
-		return out, nil
-	}
-	return nil, ErrModelGone
-}
-
-// Speak reads text aloud with voice and returns the audio as MP3. Busy or
-// failing servers are tried again a few times.
-func (c *Client) Speak(ctx context.Context, text, voice string) ([]byte, error) {
-	body, err := json.Marshal(map[string]any{
-		"model":           Model,
-		"input":           text,
-		"voice":           voice,
-		"response_format": "mp3",
-	})
+	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}

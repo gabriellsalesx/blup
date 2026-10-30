@@ -58,9 +58,20 @@ func (s *Studio) ConnectAI(key string) error {
 func (s *Studio) OpenAIKeyPage() { s.OpenURL(narrate.KeyPage) }
 
 // Voices lists the narration voices for sites in lang ("pt" or "en"): the
-// local ones, then OpenRouter's.
-func (s *Studio) Voices(lang string) ([]app.Voice, error) {
-	return app.NarrationVoices(context.Background(), lang)
+// local ones, then those of the OpenRouter model ("" for the recommended).
+func (s *Studio) Voices(lang, model string) ([]app.Voice, error) {
+	return app.NarrationVoices(context.Background(), lang, model)
+}
+
+// VoiceModels lists OpenRouter's voice models that can read sites in lang.
+func (s *Studio) VoiceModels(lang string) ([]app.ModelOption, error) {
+	return app.NarrationModels(context.Background(), lang)
+}
+
+// PreviewVoice is a sample of an OpenRouter voice without a recorded one
+// (made once, then kept). Base64 MP3 in the JSON answer.
+func (s *Studio) PreviewVoice(lang, choice string) ([]byte, error) {
+	return app.PreviewVoice(context.Background(), lang, choice)
 }
 
 // NarrationHash is the fingerprint of what the note reads now (compared

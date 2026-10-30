@@ -501,6 +501,14 @@ export function PreviewPage(rel: string): $CancellablePromise<string> {
 }
 
 /**
+ * PreviewVoice is a sample of an OpenRouter voice without a recorded one
+ * (made once, then kept). Base64 MP3 in the JSON answer.
+ */
+export function PreviewVoice(lang: string, choice: string): $CancellablePromise<string | null> {
+    return $Call.ByID(1509035240, lang, choice);
+}
+
+/**
  * Publish builds the open site and puts it online; it returns the address.
  */
 export function Publish(): $CancellablePromise<string> {
@@ -841,11 +849,18 @@ export function Version(): $CancellablePromise<string> {
 }
 
 /**
- * Voices lists the narration voices for sites in lang ("pt" or "en"): the
- * local ones, then OpenRouter's.
+ * VoiceModels lists OpenRouter's voice models that can read sites in lang.
  */
-export function Voices(lang: string): $CancellablePromise<app$0.Voice[] | null> {
-    return $Call.ByID(766145645, lang);
+export function VoiceModels(lang: string): $CancellablePromise<app$0.ModelOption[] | null> {
+    return $Call.ByID(3909428702, lang);
+}
+
+/**
+ * Voices lists the narration voices for sites in lang ("pt" or "en"): the
+ * local ones, then those of the OpenRouter model ("" for the recommended).
+ */
+export function Voices(lang: string, model: string): $CancellablePromise<app$0.Voice[] | null> {
+    return $Call.ByID(766145645, lang, model);
 }
 
 /**

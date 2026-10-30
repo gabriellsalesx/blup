@@ -119,7 +119,7 @@ func TestSpeak(t *testing.T) {
 		}
 		switch r.URL.Path {
 		case "/models":
-			w.Write([]byte(`{"data":[{"id":"other/tts","supported_voices":["x"]},{"id":"microsoft/mai-voice-2.1","supported_voices":["en-US-Ethan:MAI-Voice-2.1","pt-BR-Caio:MAI-Voice-2.1","pt-BR-Luana:MAI-Voice-2.1"]}]}`))
+			w.Write([]byte(`{"data":[{"id":"other/tts","name":"Other","supported_voices":["x"]},{"id":"google/gemini-tts","name":"Gemini"},{"id":"elevenlabs/eleven","name":"Eleven","description":"supports 90+ languages","supported_voices":["sarah"]},{"id":"microsoft/mai-voice-2.1","name":"MAI","pricing":{"prompt":"0.000022"},"supported_voices":["en-US-Ethan:MAI-Voice-2.1","pt-BR-Caio:MAI-Voice-2.1","pt-BR-Luana:MAI-Voice-2.1"]}]}`))
 		case "/gone/models":
 			w.Write([]byte(`{"data":[{"id":"other/tts"}]}`))
 		case "/key":
@@ -136,28 +136,32 @@ func TestSpeak(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := &Client{Key: "k1", BaseURL: srv.URL}
-	audio, err := c.Speak(context.Background(), "Olá", "pt-BR-Luana:MAI-Voice-2.1")
+	audio, err := c.Speak(context.Background(), DefaultModel, "Olá", "pt-BR-Luana:MAI-Voice-2.1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(audio) == 0 || calls != 2 {
 		t.Errorf("audio %d bytes after %d calls (one retry expected)", len(audio), calls)
 	}
-	if got["model"] != Model || got["input"] != "Olá" || got["voice"] != "pt-BR-Luana:MAI-Voice-2.1" || got["response_format"] != "mp3" {
+	if got["model"] != DefaultModel || got["input"] != "Olá" || got["voice"] != "pt-BR-Luana:MAI-Voice-2.1" || got["response_format"] != "mp3" {
 		t.Errorf("request body: %v", got)
 	}
 	if err := c.CheckKey(context.Background()); err != nil {
 		t.Errorf("CheckKey: %v", err)
 	}
-	if v, err := c.Voices(context.Background(), "pt"); err != nil || len(v) != 2 || v[0] != "pt-BR-Luana:MAI-Voice-2.1" {
-		t.Errorf("voices pt: %v %v", v, err)
+	models, err := c.Models(context.Background())
+	if err != nil || len(models) != 3 || models[0].ID != DefaultModel {
+		t.Fatalf("models (recommended first, no raw-audio ones): %+v %v", models, err)
 	}
-	if v, _ := c.Voices(context.Background(), "en"); len(v) != 1 || VoiceName(v[0]) != "Ethan" {
+	if v := VoicesFor(models[0], "pt"); len(v) != 2 || v[0] != "pt-BR-Luana:MAI-Voice-2.1" {
+		t.Errorf("voices pt: %v", v)
+	}
+	if v := VoicesFor(models[0], "en"); len(v) != 1 || VoiceName(v[0]) != "Ethan" {
 		t.Errorf("voices en: %v", v)
 	}
 	gone := &Client{Key: "k1", BaseURL: srv.URL + "/gone"}
-	if _, err := gone.Voices(context.Background(), "pt"); !errors.Is(err, ErrModelGone) {
-		t.Errorf("want ErrModelGone, got %v", err)
+	if m, err := gone.Models(context.Background()); err != nil || len(m) != 1 {
+		t.Errorf("gone: %v %v", m, err)
 	}
 	if VoiceFor("pt", "en-US-Ethan:MAI-Voice-2.1") != "pt-BR-Luana:MAI-Voice-2.1" || VoiceFor("en", "en-US-Ethan:MAI-Voice-2.1") != "en-US-Ethan:MAI-Voice-2.1" {
 		t.Error("VoiceFor")
@@ -165,5 +169,29 @@ func TestSpeak(t *testing.T) {
 	bad := &Client{Key: "nope", BaseURL: srv.URL}
 	if err := bad.CheckKey(context.Background()); !errors.Is(err, ErrInvalidKey) {
 		t.Errorf("want ErrInvalidKey, got %v", err)
+	}
+}
+
+func TestVoiceLang(t *testing.T) {
+	for v, want := range map[string]string{
+		"pt-BR-Luana:MAI-Voice-2.1": "pt", "en-US-Harper:MAI-Voice-2.1": "en",
+		"aura-2-thalia-en": "en", "pf_dora": "pt", "am_michael": "en",
+		"en_paul_happy": "en", "gb_jane_sad": "en", "fr_marie_happy": "fr",
+		"English_radiant_girl": "en", "sarah": "", "voice_3150": "",
+	} {
+		if got := voiceLang(v); got != want {
+			t.Errorf("voiceLang(%q) = %q, want %q", v, got, want)
+		}
+	}
+	multi := ModelInfo{ID: "x/y", Multilingual: true, Voices: []string{"sarah", "en_paul", "fr_marie"}}
+	if got := VoicesFor(multi, "pt"); len(got) != 1 || got[0] != "sarah" {
+		t.Errorf("multilingual pt: %v", got)
+	}
+	english := ModelInfo{ID: "x/z", Voices: []string{"tara", "leah"}}
+	if len(VoicesFor(english, "pt")) != 0 || len(VoicesFor(english, "en")) != 2 {
+		t.Error("an English-only model reads only English sites")
+	}
+	if got := VoicesFor(ModelInfo{ID: "f/s", Multilingual: true}, "pt"); len(got) != 1 || got[0] != "" {
+		t.Errorf("no named voices: %v", got)
 	}
 }

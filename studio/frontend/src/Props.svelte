@@ -87,6 +87,7 @@
       onEdit("audio_hash", r.hash);
       onEdit("audio_seconds", Math.round(r.seconds));
       toast(n.done.replace("{min}", String(Math.max(1, Math.round(r.seconds / 60)))).replace("{mb}", (r.bytes / 1048576).toFixed(1)));
+      if (r.used) toast(n.usedOther.replace("{voice}", r.used), { kind: "info", ms: 9000 });
     } catch (e) {
       toast(String(e).includes("no OpenRouter key") ? n.needKey : String(e).replace(/^(Runtime)?Error: /, ""), { kind: "error" });
       aiOn = (await AIConnected().catch(() => false)) || (await LocalVoice().catch(() => null))?.installed === true;

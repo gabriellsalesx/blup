@@ -22,14 +22,17 @@ func fakeMP3() []byte {
 func TestNarrate(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("XDG_CACHE_HOME", t.TempDir()) // no local voice
-	var inputs []string
+	var inputs, voices []string
+	var models []byte = []byte(`{"data":[{"id":"microsoft/mai-voice-2.1","name":"MAI","pricing":{"prompt":"0.000022"},"supported_voices":["pt-BR-Luana:MAI-Voice-2.1","pt-BR-Caio:MAI-Voice-2.1","en-US-Harper:MAI-Voice-2.1"]},{"id":"elevenlabs/eleven","name":"Eleven","description":"90+ languages","pricing":{"prompt":"0.00004"},"supported_voices":["sarah"]}]}`)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/models" {
+			w.Write(models)
+			return
+		}
 		var req map[string]string
 		json.NewDecoder(r.Body).Decode(&req)
 		inputs = append(inputs, req["input"])
-		if req["voice"] != "pt-BR-Luana:MAI-Voice-2.1" {
-			t.Errorf("voice not in the site's language: %q", req["voice"])
-		}
+		voices = append(voices, req["model"]+"|"+req["voice"])
 		w.Write(fakeMP3())
 	}))
 	defer srv.Close()
@@ -82,6 +85,22 @@ func TestNarrate(t *testing.T) {
 		t.Fatalf("taken name: %+v %v", n3, err)
 	}
 
+	if voices[0] != "microsoft/mai-voice-2.1|pt-BR-Luana:MAI-Voice-2.1" {
+		t.Fatalf("default voice: %v", voices)
+	}
+
+	// A chosen model that left OpenRouter doesn't stop the narration: the
+	// recommended voice reads it, and the result says so.
+	voices = nil
+	if n, err := Narrate(context.Background(), site, "Post.md", "gone/model|x", nil); err != nil || n.Used == "" || voices[0] != "microsoft/mai-voice-2.1|pt-BR-Luana:MAI-Voice-2.1" {
+		t.Fatalf("fallback: %+v %v %v", n, err, voices)
+	}
+	// Another model works when chosen, with its voice.
+	voices = nil
+	if n, err := Narrate(context.Background(), site, "Post.md", "elevenlabs/eleven|sarah", nil); err != nil || n.Used != "" || voices[0] != "elevenlabs/eleven|sarah" {
+		t.Fatalf("other model: %+v %v %v", n, err, voices)
+	}
+
 	write(t, root, "Secreto.md", "---\npassword: sim\n---\nTexto secreto que não pode virar áudio.\n")
 	if _, err := Narrate(context.Background(), site, "Secreto.md", "nova", nil); err == nil {
 		t.Fatal("a locked post was narrated")
@@ -91,11 +110,12 @@ func TestNarrate(t *testing.T) {
 func TestVoiceFor(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir()) // no local voice installed
 	cases := []struct{ lang, chosen, want string }{
-		{"pt", "", "pt-BR-Luana:MAI-Voice-2.1"},
-		{"pt", "pt-BR-Caio:MAI-Voice-2.1", "pt-BR-Caio:MAI-Voice-2.1"},
-		{"en", "pt-BR-Caio:MAI-Voice-2.1", "en-US-Harper:MAI-Voice-2.1"},
+		{"pt", "", "microsoft/mai-voice-2.1|pt-BR-Luana:MAI-Voice-2.1"},
+		{"pt", "pt-BR-Caio:MAI-Voice-2.1", "microsoft/mai-voice-2.1|pt-BR-Caio:MAI-Voice-2.1"},
+		{"en", "pt-BR-Caio:MAI-Voice-2.1", "microsoft/mai-voice-2.1|en-US-Harper:MAI-Voice-2.1"},
+		{"pt", "elevenlabs/eleven|sarah", "elevenlabs/eleven|sarah"},
 		{"pt", "kokoro:pf_dora", "kokoro:pf_dora"},
-		{"en", "kokoro:pf_dora", "en-US-Harper:MAI-Voice-2.1"},
+		{"en", "kokoro:pf_dora", "microsoft/mai-voice-2.1|en-US-Harper:MAI-Voice-2.1"},
 		{"en", "kokoro:bm_george", "kokoro:bm_george"},
 	}
 	for _, c := range cases {

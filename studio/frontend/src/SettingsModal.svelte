@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, LocalVoice, InstallLocalVoice, RemoveLocalVoice } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Settings from "@lucide/svelte/icons/settings";
@@ -103,14 +103,29 @@
   // The voices for each site language: the local ones (Kokoro), then
   // OpenRouter's. The chosen one is look.voices[lang]; without a choice
   // (or one that can't narrate now), the first that can.
-  type Voice = { id: string; name: string; engine: string; female: boolean; ready: boolean };
+  // OpenRouter voices are "<model>|<voice>"; older choices are a MAI-Voice
+  // name alone. The user picks the model too (OpenRouter's list changes).
+  type Voice = { id: string; name: string; engine: string; female: boolean; ready: boolean; sample: boolean };
+  type Model = { id: string; name: string; perPost: number; recommended: boolean; voices: number };
+  const DEFAULT_MODEL = "microsoft/mai-voice-2.1";
+  const norm = (id = "") => (id && !id.includes("|") && !id.startsWith("kokoro:") ? `${DEFAULT_MODEL}|${id}` : id);
   let voices = $state<Record<string, Voice[]>>({ pt: [], en: [] });
-  const loadVoices = () => { for (const l of ["pt", "en"]) Voices(l).then((v) => (voices[l] = v ?? [])).catch(() => {}); };
+  let models = $state<Record<string, Model[]>>({ pt: [], en: [] });
+  const modelOf = (l: string) => { const c = norm(look.voices?.[l]); return c.includes("|") ? c.split("|")[0] : DEFAULT_MODEL; };
+  let model = $state<Record<string, string>>({ pt: modelOf("pt"), en: modelOf("en") });
+  const loadVoices = () => {
+    for (const l of ["pt", "en"]) {
+      Voices(l, model[l]).then((v) => (voices[l] = v ?? [])).catch(() => {});
+      VoiceModels(l).then((m) => (models[l] = m ?? [])).catch(() => {});
+    }
+  };
   loadVoices();
+  const pickModel = (l: string, id: string) => { model[l] = id; Voices(l, id).then((v) => (voices[l] = v ?? [])).catch(() => {}); };
+  const price = (m: Model) => (m.perPost > 0 ? `US$ ${m.perPost.toFixed(2).replace(".", t.lang === "pt" ? "," : ".")}/post` : lv.otherPrice);
   AIConnected().then((v) => (aiOn = v)).catch(() => (aiOn = false));
   const chosen = (l: string) => {
     const list = voices[l];
-    const pick = list.find((v) => v.id === look.voices?.[l]);
+    const pick = list.find((v) => v.id === norm(look.voices?.[l]));
     return pick?.ready ? pick.id : (list.find((v) => v.ready) ?? pick ?? list.find((v) => v.engine === "openrouter"))?.id ?? "";
   };
   const setVoice = (lang: string, id: string) => { setPref("voices", { ...(look.voices ?? {}), [lang]: id }); toast(ai.voiceSet); };
@@ -145,7 +160,21 @@
   }
 
   // Samples bundled with the Studio (public/voices): one sentence each.
-  const sample = (id: string) => `/voices/${id.startsWith("kokoro:") ? id.replace(":", "-") : id.split(":")[0].toLowerCase()}.mp3`;
+  const sample = (id: string) => `/voices/${id.startsWith("kokoro:") ? id.replace(":", "-") : (id.split("|")[1] ?? id).split(":")[0].toLowerCase()}.mp3`;
+  // Voices of other models have no recorded sample: OpenRouter makes one
+  // (a fraction of a cent, once; the Studio keeps it).
+  async function sampleBytes(v: Voice, lang: string): Promise<ArrayBuffer> {
+    if (v.sample) {
+      const res = await fetch(sample(v.id));
+      if (!res.ok) throw new Error(lv.noSample);
+      return res.arrayBuffer();
+    }
+    const b64 = await PreviewVoice(lang, v.id);
+    const bin = atob(b64 ?? "");
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out.buffer;
+  }
   // The file is read whole and played from memory (a blob: address): the
   // window's web view on Linux (WebKitGTK) can't stream audio from the
   // app's own wails:// addresses.
@@ -167,16 +196,15 @@
     if (blobURL) URL.revokeObjectURL(blobURL);
     blobURL = "";
   };
-  async function listen(id: string) {
+  async function listen(v: Voice, lang: string) {
+    const id = v.id;
     const again = playing === id;
     stopSample();
     playing = "";
     if (again) return;
     playing = id;
     try {
-      const res = await fetch(sample(id));
-      if (!res.ok) throw new Error(lv.noSample);
-      blobURL = URL.createObjectURL(new Blob([await res.arrayBuffer()], { type: "audio/mpeg" }));
+      blobURL = URL.createObjectURL(new Blob([await sampleBytes(v, lang)], { type: "audio/mpeg" }));
       if (playing !== id) return stopSample(); // another one was tapped meanwhile
       player = new Audio(blobURL);
       player.onended = () => { if (playing === id) { played = 1; setTimeout(() => { if (playing === id) { playing = ""; played = 0; } }, 250); } };
@@ -330,8 +358,16 @@
         <div class="voices" role="radiogroup" aria-label={label}>
           <b>{label}</b>
           {#each [["local", lv.groupLocal], ["openrouter", lv.groupOpenRouter]] as [engine, group] (engine)}
-            {#if voices[l].some((v) => v.engine === engine)}
+            {#if voices[l].some((v) => v.engine === engine) || engine === "openrouter"}
               <small class="muted group">{group}</small>
+              {#if engine === "openrouter" && models[l].length}
+                <label class="model">
+                  <span>{lv.model}</span>
+                  <select value={model[l]} onchange={(e) => pickModel(l, e.currentTarget.value)}>
+                    {#each models[l] as m (m.id)}<option value={m.id}>{m.name.replace(/^[^:]+:\s*/, "")}{m.recommended ? ` (${lv.recommended})` : ""} · {price(m)}</option>{/each}
+                  </select>
+                </label>
+              {/if}
               {#each voices[l].filter((v) => v.engine === engine) as v (v.id)}
                 <div class="voice" class:off={!v.ready} class:on={chosen(l) === v.id}>
                   <label>
@@ -340,7 +376,7 @@
                     {#if engine === "local"}<small class="muted">{v.female ? lv.female : lv.male}</small>{/if}
                     {#if !v.ready}<small class="muted">{engine === "local" ? lv.needInstall : lv.needKey}</small>{/if}
                   </label>
-                  <button class="icon-btn listen" class:playing={playing === v.id} title={playing === v.id ? lv.stop : lv.listen} aria-label="{playing === v.id ? lv.stop : lv.listen}: {v.name}" onclick={() => listen(v.id)}>
+                  <button class="icon-btn listen" class:playing={playing === v.id} title={playing === v.id ? lv.stop : v.sample ? lv.listen : lv.listenMake} aria-label="{playing === v.id ? lv.stop : lv.listen}: {v.name}" onclick={() => listen(v, l)}>
                     <!-- The ring fills as the sample plays. -->
                     <svg class="ring" viewBox="0 0 36 36" aria-hidden="true">
                       <circle class="track" cx="18" cy="18" r="16" />
@@ -444,6 +480,8 @@
   .voices .group { margin-block: .5rem .1rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
   .voice { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .3rem .5rem; border-radius: .45rem; }
   .voice.on { background: var(--soft); }
+  .model { display: flex; align-items: center; gap: .6rem; margin-block: .2rem .4rem; padding-inline: .5rem; font-size: .85rem; }
+  .model select { flex: 1; min-width: 0; }
   .voice.off label { opacity: .55; }
   .voice label { display: flex; align-items: center; gap: .6rem; flex: 1; min-width: 0; cursor: pointer; }
   .voice.off label { cursor: default; }

@@ -183,6 +183,21 @@ export interface MenuItem {
 }
 
 /**
+ * ModelOption is an OpenRouter voice model for a site's language.
+ */
+export interface ModelOption {
+    "id": string;
+    "name": string;
+
+    /**
+     * US$ for a post of about 7,000 characters (0: priced otherwise)
+     */
+    "perPost": number;
+    "recommended": boolean;
+    "voices": number;
+}
+
+/**
  * Narration is a narration just made: the property value that links it
  * ("[[name.mp3]]"), the fingerprint of the text it reads (audio_hash), its
  * length and size.
@@ -192,6 +207,11 @@ export interface Narration {
     "hash": string;
     "seconds": number;
     "bytes": number;
+
+    /**
+     * the voice used instead of the chosen one, when it left OpenRouter
+     */
+    "used": string;
 }
 
 /**
@@ -369,7 +389,8 @@ export interface TrashItem {
 
 /**
  * Voice is a narration voice: Engine "local" (on the computer) or
- * "openrouter"; Ready when it can narrate now (installed, or a key saved).
+ * "openrouter"; Ready when it can narrate now (installed, or a key saved);
+ * Sample when the Studio has a recorded sample (else one is made on demand).
  */
 export interface Voice {
     "id": string;
@@ -377,4 +398,5 @@ export interface Voice {
     "engine": string;
     "female": boolean;
     "ready": boolean;
+    "sample": boolean;
 }
