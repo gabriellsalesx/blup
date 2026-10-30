@@ -1,10 +1,12 @@
 import type { BetterAuthOptions } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP, captcha } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { stripe } from "@better-auth/stripe";
 import Stripe from "stripe";
 import { PLANS } from "./plans";
+import { v7 as uuidv7 } from "uuid";
 
 // Blup Cloud's sign in: only a code by e-mail (which also creates the
 // account) and passkeys, which a signed in person can add. Shared by the
@@ -18,6 +20,7 @@ export type AuthConfig = {
 	turnstileSecret: string;
 	stripeSecret: string;
 	stripeWebhookSecret: string;
+	isBanned: (userId: string) => Promise<boolean>;
 	sendCode: (email: string, code: string, kind: string) => void;
 };
 
@@ -32,8 +35,29 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 		secret: cfg.secret,
 		trustedOrigins: [cfg.appUrl],
 		database: drizzleAdapter(db, { provider: "sqlite", schema }),
+		// UUIDv7 (RFC 9562): time-ordered, so new rows land at the end of the
+		// D1 index, and not guessable. The uuid package keeps a counter within
+		// the millisecond (Workers freeze Date.now() during a request) and
+		// draws the rest from crypto.getRandomValues.
+		advanced: { database: { generateId: () => uuidv7() } },
 		// No passwords: codes and passkeys only.
 		emailAndPassword: { enabled: false },
+		// A blocked account (by the staff) can't sign in.
+		user: {
+			additionalFields: {
+				banned: { type: "boolean", defaultValue: false, input: false },
+				banReason: { type: "string", required: false, input: false },
+			},
+		},
+		databaseHooks: {
+			session: {
+				create: {
+					before: async (session) => {
+						if (await cfg.isBanned(session.userId)) throw new APIError("FORBIDDEN", { message: "Esta conta está bloqueada. Fale com o suporte.", code: "BANNED" });
+					},
+				},
+			},
+		},
 		plugins: [
 			emailOTP({
 				otpLength: 6,

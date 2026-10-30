@@ -47,6 +47,26 @@ CREATE TABLE `session` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `session_token_unique` ON `session` (`token`);--> statement-breakpoint
 CREATE INDEX `session_userId_idx` ON `session` (`user_id`);--> statement-breakpoint
+CREATE TABLE `subscription` (
+	`id` text PRIMARY KEY NOT NULL,
+	`plan` text NOT NULL,
+	`reference_id` text NOT NULL,
+	`stripe_customer_id` text,
+	`stripe_subscription_id` text,
+	`status` text DEFAULT 'incomplete' NOT NULL,
+	`period_start` integer,
+	`period_end` integer,
+	`trial_start` integer,
+	`trial_end` integer,
+	`cancel_at_period_end` integer DEFAULT false,
+	`cancel_at` integer,
+	`canceled_at` integer,
+	`ended_at` integer,
+	`seats` integer,
+	`billing_interval` text,
+	`stripe_schedule_id` text
+);
+--> statement-breakpoint
 CREATE TABLE `user` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -54,7 +74,10 @@ CREATE TABLE `user` (
 	`email_verified` integer DEFAULT false NOT NULL,
 	`image` text,
 	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
-	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`stripe_customer_id` text,
+	`banned` integer DEFAULT false NOT NULL,
+	`ban_reason` text
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `user_email_unique` ON `user` (`email`);--> statement-breakpoint
@@ -67,4 +90,22 @@ CREATE TABLE `verification` (
 	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL
 );
 --> statement-breakpoint
-CREATE INDEX `verification_identifier_idx` ON `verification` (`identifier`);
+CREATE INDEX `verification_identifier_idx` ON `verification` (`identifier`);--> statement-breakpoint
+CREATE TABLE `staff` (
+	`email` text PRIMARY KEY NOT NULL,
+	`role` text NOT NULL,
+	`added_by` text NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `staff_log` (
+	`id` integer PRIMARY KEY NOT NULL,
+	`staff_email` text NOT NULL,
+	`action` text NOT NULL,
+	`user_id` text,
+	`detail` text,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `staff_log_created_idx` ON `staff_log` (`created_at`);--> statement-breakpoint
+CREATE INDEX `staff_log_user_idx` ON `staff_log` (`user_id`);

@@ -17,6 +17,8 @@ export const user = sqliteTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   stripeCustomerId: text("stripe_customer_id"),
+  banned: integer("banned", { mode: "boolean" }).default(false).notNull(),
+  banReason: text("ban_reason"),
 });
 
 export const session = sqliteTable(

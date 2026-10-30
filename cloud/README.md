@@ -40,6 +40,19 @@ Abra pelo endereço `http://localhost:8787` (não `127.0.0.1`): a passkey e a or
 - Webhook no computador: `stripe listen --forward-to localhost:8787/api/auth/stripe/webhook` e copie o `whsec_...` para `STRIPE_WEBHOOK_SECRET`. Em produção, o webhook aponta para `https://<domínio>/api/auth/stripe/webhook` com os eventos `checkout.session.completed` e `customer.subscription.created`, `.updated` e `.deleted`.
 - O cliente do Stripe só é criado no primeiro pagamento: contas grátis nunca chegam ao Stripe.
 
+## Staff (suporte e administração)
+
+- Painel em `/staff` e API em `/api/staff`. Em produção, crie no Cloudflare Access uma aplicação para esses dois caminhos e libere só os e-mails da equipe. O Worker confere o token do Access de novo (`ACCESS_TEAM_DOMAIN` e `ACCESS_AUD`) e o papel na tabela `staff`.
+- O primeiro admin é o `STAFF_OWNER_EMAIL` (secret). Os outros entram pela tela Equipe.
+- Papéis: **Suporte** vê contas, encerra sessões e remove passkeys perdidas. **Admin** também bloqueia, exclui contas (cancelando no Stripe) e cuida da equipe.
+- Toda ação fica na tabela `staff_log`. A staff nunca lê notas (são cifradas no computador da pessoa) e nunca entra como o usuário.
+- No computador, `STAFF_DEV_EMAIL` em `.dev.vars` deixa entrar sem o Access, só pelo `localhost`.
+
+## IDs
+
+- Tabelas do Better Auth (conta, sessão, passkey, assinatura): **UUIDv7** (RFC 9562) em texto, gerado pelo pacote `uuid` (contador dentro do milissegundo, já que o Worker congela o `Date.now()` durante o pedido, e aleatório de `crypto.getRandomValues`). Ordenado no índice do D1 e impossível de adivinhar.
+- Tabelas internas de volume alto (registro da staff e, depois, a sincronização): `INTEGER PRIMARY KEY`, o próprio rowid do SQLite, sem índice extra nem `AUTOINCREMENT`.
+
 ## Banco
 
 - Mudou plugin do Better Auth: `npm run db:auth-schema` (gera `worker/db/auth-schema.ts`).

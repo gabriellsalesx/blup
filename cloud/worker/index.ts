@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { auth, db, type Session } from "./auth";
 import { subscription } from "./db/schema";
 import { PLANS, planNamed } from "./plans";
+import { staffApi } from "./staff";
 import { SEND_CODE_PATH } from "./auth-options";
 
 type App = { Bindings: Cloudflare.Env; Variables: { session: Session | null } };
@@ -52,6 +53,8 @@ const routes = app
 			plan: { name: plan.name, label: plan.label, limits: plan.limits, status: sub?.status ?? null, renewsAt: sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!sub?.cancelAtPeriodEnd },
 		});
 	});
+
+app.route("/staff", staffApi);
 
 app.notFound((c) => c.json({ code: "NOT_FOUND" }, 404));
 app.onError((err, c) => {
