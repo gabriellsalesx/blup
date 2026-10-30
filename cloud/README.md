@@ -59,6 +59,11 @@ Abra pelo endereço `http://localhost:8787` (não `127.0.0.1`): a passkey e a or
 - Tabelas do Better Auth (conta, sessão, passkey, assinatura): **UUIDv7** (RFC 9562) em texto, gerado pelo pacote `uuid` (contador dentro do milissegundo, já que o Worker congela o `Date.now()` durante o pedido, e aleatório de `crypto.getRandomValues`). Ordenado no índice do D1 e impossível de adivinhar.
 - Tabelas internas de volume alto (registro da staff e, depois, a sincronização): `INTEGER PRIMARY KEY`, o próprio rowid do SQLite, sem índice extra nem `AUTOINCREMENT`.
 
+## Paginação
+
+- Toda lista que pode crescer usa paginação por cursor (`src/lib/pager.svelte.ts` com o componente `Pager.svelte`), nunca `OFFSET`: o D1 cobra cada linha lida, e o `OFFSET` lê (e cobra) todas as linhas que pula.
+- A API responde `{ items, nextCursor }`. O cursor é a chave do último item: os IDs UUIDv7 e os inteiros do registro seguem a ordem de criação, então a próxima página é um intervalo na chave primária.
+
 ## Banco
 
 - Mudou plugin do Better Auth: `npm run db:auth-schema` (gera `worker/db/auth-schema.ts`).

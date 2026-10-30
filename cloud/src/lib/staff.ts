@@ -1,3 +1,5 @@
+import type { Page } from "./pager.svelte.ts";
+
 // The staff area's calls (/api/staff). Cloudflare Access is in front in
 // production; on this computer, STAFF_DEV_EMAIL lets you in.
 
@@ -13,6 +15,7 @@ export type UserDetail = {
 	history: LogRow[];
 };
 export type LogRow = { id: number; staffEmail: string; action: string; userId: string | null; detail: string | null; createdAt: string };
+export type Stats = { total: number; recent: number; banned: number; plans: { name: string; label: string; count: number }[] };
 export type Team = { owner: string | null; staff: { email: string; role: Role; addedBy: string; createdAt: string }[] };
 
 export class StaffError extends Error {
@@ -35,7 +38,8 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 export const staffApi = {
 	me: () => call<StaffMe>("GET", "/me"),
-	users: (q: string) => call<UserRow[]>("GET", `/users?q=${encodeURIComponent(q)}`),
+	stats: () => call<Stats>("GET", "/stats"),
+	users: (q: string, cursor: string | null) => call<Page<UserRow>>("GET", `/users?q=${encodeURIComponent(q)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`),
 	user: (id: string) => call<UserDetail>("GET", `/users/${encodeURIComponent(id)}`),
 	revokeSessions: (id: string) => call<{ revoked: number }>("POST", `/users/${encodeURIComponent(id)}/sessions/revoke`),
 	removePasskey: (id: string, pid: string) => call("DELETE", `/users/${encodeURIComponent(id)}/passkeys/${encodeURIComponent(pid)}`),
@@ -45,7 +49,7 @@ export const staffApi = {
 	team: () => call<Team>("GET", "/team"),
 	setMember: (email: string, role: Role) => call("POST", "/team", { email, role }),
 	removeMember: (email: string) => call("DELETE", `/team/${encodeURIComponent(email)}`),
-	log: () => call<LogRow[]>("GET", "/log"),
+	log: (cursor: string | null) => call<Page<LogRow>>("GET", `/log${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
 };
 
 export const roleLabel = (r: Role) => (r === "admin" ? "Admin" : "Suporte");

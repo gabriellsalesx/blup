@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { and, desc, eq, inArray, like, or } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, like, lt, or, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -61,6 +61,13 @@ const log = (email: string, action: string, userId: string | null, detail?: stri
 
 const ACTIVE = ["active", "trialing", "past_due"];
 
+// Pages by cursor, not OFFSET: D1 bills every row a query reads, and an
+// OFFSET reads (and bills) all the rows it skips. The cursor is the last
+// item's key: UUIDv7 account IDs and the log's integer IDs both follow
+// creation order, so "older than the cursor" is a range on the primary key.
+const PAGE = 25;
+const pageSize = (v: string | undefined) => Math.min(100, Math.max(1, Number(v) || PAGE));
+
 // A JSON body checked by a Zod schema; a bad one answers 400 with the
 // fields that failed (not Zod's whole report).
 const body = <T extends z.ZodType>(schema: T) =>
@@ -72,19 +79,42 @@ export const staffApi = new Hono<App>()
 	.use(onStaff)
 	.get("/me", (c) => c.json(c.get("staff")))
 
-	// Accounts: by e-mail (its start) or by ID.
+	// How many accounts, per plan (a count reads every account: fine for
+	// the staff's occasional look).
+	.get("/stats", async (c) => {
+		const week = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+		const [[{ total }], [{ recent }], [{ banned }], paid] = await Promise.all([
+			db.select({ total: count() }).from(user),
+			db.select({ recent: count() }).from(user).where(gte(user.createdAt, week)),
+			db.select({ banned: count() }).from(user).where(eq(user.banned, true)),
+			db.select({ plan: subscription.plan, n: sql<number>`count(distinct ${subscription.referenceId})` }).from(subscription).where(inArray(subscription.status, ACTIVE)).groupBy(subscription.plan),
+		]);
+		const paying = paid.reduce((sum, p) => sum + p.n, 0);
+		return c.json({
+			total,
+			recent,
+			banned,
+			plans: [{ name: "free", label: planNamed("free").label, count: total - paying }, ...paid.map((p) => ({ name: p.plan, label: planNamed(p.plan).label, count: p.n }))],
+		});
+	})
+
+	// Accounts, newest first: by e-mail (its start) or by ID, a page at a time.
 	.get("/users", async (c) => {
 		const q = (c.req.query("q") ?? "").trim().toLowerCase();
-		const rows = await db
+		const cursor = c.req.query("cursor");
+		const size = pageSize(c.req.query("limit"));
+		const found = await db
 			.select({ id: user.id, email: user.email, createdAt: user.createdAt, banned: user.banned })
 			.from(user)
-			.where(q ? or(eq(user.id, q), like(user.email, `${q.replace(/[%_]/g, "")}%`)) : undefined)
-			.orderBy(desc(user.createdAt))
-			.limit(25);
+			.where(and(q ? or(eq(user.id, q), like(user.email, `${q.replace(/[%_]/g, "")}%`)) : undefined, cursor ? lt(user.id, cursor) : undefined))
+			.orderBy(desc(user.id))
+			.limit(size + 1);
+		const rows = found.slice(0, size);
+		const nextCursor = found.length > size ? rows[rows.length - 1].id : null;
 		const subs = rows.length
 			? await db.select({ ref: subscription.referenceId, plan: subscription.plan }).from(subscription).where(and(inArray(subscription.referenceId, rows.map((r) => r.id)), inArray(subscription.status, ACTIVE)))
 			: [];
-		return c.json(rows.map((r) => ({ ...r, email: hasEmail(r.email) ? r.email : null, plan: planNamed(subs.find((s) => s.ref === r.id)?.plan).label })));
+		return c.json({ items: rows.map((r) => ({ ...r, email: hasEmail(r.email) ? r.email : null, plan: planNamed(subs.find((s) => s.ref === r.id)?.plan).label })), nextCursor });
 	})
 
 	.get("/users/:id", async (c) => {
@@ -177,4 +207,10 @@ export const staffApi = new Hono<App>()
 		return c.json({ ok: true });
 	})
 
-	.get("/log", adminOnly, async (c) => c.json(await db.select().from(staffLog).orderBy(desc(staffLog.createdAt)).limit(100)));
+	.get("/log", adminOnly, async (c) => {
+		const cursor = Number(c.req.query("cursor")) || 0;
+		const size = pageSize(c.req.query("limit"));
+		const found = await db.select().from(staffLog).where(cursor ? lt(staffLog.id, cursor) : undefined).orderBy(desc(staffLog.id)).limit(size + 1);
+		const rows = found.slice(0, size);
+		return c.json({ items: rows, nextCursor: found.length > size ? String(rows[rows.length - 1].id) : null });
+	});
