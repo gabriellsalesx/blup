@@ -145,18 +145,33 @@
 
   // Samples bundled with the Studio (public/voices): one sentence each.
   const sample = (id: string) => `/voices/${id.startsWith("kokoro:") ? id.replace(":", "-") : id.split(":")[0].toLowerCase()}.mp3`;
+  // The file is read whole and played from memory (a blob: address): the
+  // window's web view on Linux (WebKitGTK) can't stream audio from the
+  // app's own wails:// addresses.
   let playing = $state("");
   let player: HTMLAudioElement | null = null;
-  function listen(id: string) {
-    player?.pause();
-    if (playing === id) { playing = ""; return; }
-    player = new Audio(sample(id));
-    player.onended = () => (playing = "");
-    player.onerror = () => { playing = ""; toast(lv.noSample, { kind: "error" }); };
+  let blobURL = "";
+  const stopSample = () => { player?.pause(); player = null; if (blobURL) URL.revokeObjectURL(blobURL); blobURL = ""; };
+  async function listen(id: string) {
+    const again = playing === id;
+    stopSample();
+    playing = "";
+    if (again) return;
     playing = id;
-    player.play().catch(() => (playing = ""));
+    try {
+      const res = await fetch(sample(id));
+      if (!res.ok) throw new Error(lv.noSample);
+      blobURL = URL.createObjectURL(new Blob([await res.arrayBuffer()], { type: "audio/mpeg" }));
+      if (playing !== id) return stopSample(); // another one was tapped meanwhile
+      player = new Audio(blobURL);
+      player.onended = () => { if (playing === id) playing = ""; };
+      await player.play();
+    } catch (e) {
+      if (playing === id) playing = "";
+      toast(`${lv.noSample} ${String(e).replace(/^(Runtime)?Error: /, "")}`, { kind: "error" });
+    }
   }
-  $effect(() => () => player?.pause());
+  $effect(() => () => stopSample());
   async function connectAI() {
     aiBusy = true; aiError = "";
     try { await ConnectAI(aiKey); aiOn = true; aiKey = ""; toast(ai.connected); loadVoices(); aiChanged(); }
