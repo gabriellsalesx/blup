@@ -532,10 +532,22 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .fb-picker[hidden] { display: none; }
   .fb-picker button { padding: .25rem .375rem; border-radius: 9999px; font-size: 1rem; line-height: 1; cursor: pointer; transition: background-color .2s, transform .2s; }
   .fb-picker button:hover { background: var(--main-100); transform: scale(1.15); }
-  .fb-form { display: grid; gap: .75rem; }
-  .fb-form > .button { justify-self: start; }
-  .fb-form textarea { width: 100%; min-height: 6rem; padding: .75rem; border: 1px solid var(--main-300); border-radius: .5rem; background: var(--main-25); color: var(--main-900); font: inherit; font-size: .9375rem; resize: vertical; }
+  /* The comment box: Write and Preview tabs over the text, Markdown note
+     and the button below. Locked (a sample) until the visitor signs in. */
+  .fb-box { border: 1px solid var(--main-200); border-radius: .5rem; background: var(--main-25); overflow: clip; }
+  .fb-tabs { display: flex; gap: .25rem; padding: .5rem .5rem 0; background: var(--main-100); border-block-end: 1px solid var(--main-200); }
+  .fb-tabs button { margin-block-end: -1px; padding: .5rem 1rem; border: 1px solid transparent; border-radius: .375rem .375rem 0 0; font-size: .875rem; color: var(--main-600); }
+  .fb-tabs button[aria-selected="true"] { border-color: var(--main-200); border-block-end-color: var(--main-25); background: var(--main-25); color: var(--main-900); font-weight: 500; }
+  .fb-tabs button:disabled { cursor: default; }
+  .fb-tabs button:not(:disabled, [aria-selected="true"]):hover { color: var(--main-900); }
+  .fb-pane { display: grid; gap: .75rem; padding: .75rem; }
+  .fb-form textarea { width: 100%; min-height: 7rem; padding: .75rem; border: 1px solid var(--main-200); border-radius: .375rem; background: var(--main-100); color: var(--main-900); font: inherit; font-size: .9375rem; resize: vertical; }
+  .fb-form textarea:disabled { cursor: not-allowed; resize: none; }
+  .fb-form textarea:not(:disabled) { background: var(--main-25); }
   .fb-form textarea:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 1px; }
+  .fb-preview { min-height: 7rem; padding: .25rem .25rem .5rem; font-size: 1rem; border-block-end: 1px solid var(--main-200); }
+  .fb-preview[aria-busy="true"] { opacity: .5; }
+  .fb-md { display: inline-flex; align-items: center; gap: .375rem; font-size: .8125rem; color: var(--main-500); }
   .fb-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
   .fb-actions .button { margin-inline-start: auto; }
   .fb-actions .button:disabled { opacity: .6; cursor: progress; transform: none; }

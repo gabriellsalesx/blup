@@ -15,7 +15,27 @@ links work without JavaScript too). Param: the page. */ -}}
   </div>
   <h2 id="fb-title" class="fb-title">{{ T "fbComments" }} <span class="fb-count" data-fb-ccount></span></h2>
   <ol class="fb-list" data-fb-list><li class="fb-empty" data-fb-empty>{{ T "fbEmpty" }}</li></ol>
-  <a class="button fb-comment" href="{{ $url }}#new_comment_field" rel="noopener"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-github"/></svg>{{ T "fbComment" }}</a>
+  {{- /* The comment box. Until the visitor signs in it is only a sample,
+  locked; feedback.js unlocks it after the GitHub login (without the login
+  service the button takes the visitor to the issue on GitHub). */}}
+  {{- $api := "" }}{{ with hugo.Data.blup_feedback }}{{ with .api }}{{ $api = . }}{{ end }}{{ end }}
+  <form class="fb-box fb-form" data-fb-box>
+    <div class="fb-tabs" role="tablist">
+      <button type="button" role="tab" aria-selected="true" data-fb-tab="write">{{ T "fbWrite" }}</button>
+      <button type="button" role="tab" aria-selected="false" data-fb-tab="preview" disabled>{{ T "fbPreview" }}</button>
+    </div>
+    <div class="fb-pane">
+      <textarea rows="4" disabled placeholder="{{ cond (ne $api "") (T "fbSignInPh") (T "fbOnGitHubPh") }}" aria-label="{{ T "fbComments" }}"></textarea>
+      <div class="fb-preview prose" hidden></div>
+      <div class="fb-actions">
+        <span class="fb-md"><svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M6 15V9l2.5 3L11 9v6M17 9v6m-2.5-2.5L17 15l2.5-2.5"/></svg>{{ T "fbMarkdown" }}</span>
+        <span class="fb-who" hidden></span>
+        <button type="button" class="fb-link" data-fb-logout hidden>{{ T "fbLogout" }}</button>
+        <a class="button fb-comment" href="{{ $url }}#new_comment_field" rel="noopener"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-github"/></svg>{{ cond (ne $api "") (T "fbSignIn") (T "fbComment") }}</a>
+      </div>
+      <p class="fb-error" hidden>{{ T "fbError" }}</p>
+    </div>
+  </form>
   <p class="fb-note">{{ T "fbNote" }}</p>
 </section>
 {{- end -}}

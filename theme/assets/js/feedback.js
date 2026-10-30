@@ -164,7 +164,8 @@ function comment(c, lang) {
 // quote shows what the answer is about.
 function reply(li, c) {
   const area = li.closest("[data-fb-issue]")?.querySelector(".fb-form textarea");
-  if (!area) return login();
+  if (!area || area.disabled) return login();
+  area.closest(".fb-form")?.querySelector('[data-fb-tab="write"]')?.click();
   const lines = (c.body || "").split("\n").filter((l) => !l.startsWith(">")).join(" ").replace(/\s+/g, " ").trim();
   const quote = lines.length > 200 ? `${lines.slice(0, 200)}…` : lines;
   area.value = `${quote ? `> ${quote}\n\n` : ""}@${c.user.login} ${area.value}`;
@@ -301,30 +302,56 @@ function picker(add, issue) {
   });
 }
 
-// form is the comment box (or the sign in button) of the full block.
+// form drives the comment box of the full block. The page draws it locked
+// (a sample of where comments go); signed in, it unlocks: write, preview
+// (GitHub renders the Markdown) and post.
 function form(node, issue, lang) {
-  const link = node.querySelector(".fb-comment");
-  if (!loginAPI || !link) return;
-  node.querySelector(".fb-form")?.remove();
+  const box = node.querySelector("[data-fb-box]");
+  if (!loginAPI || !box) return;
+  const area = box.querySelector("textarea");
+  const button = box.querySelector(".fb-comment");
   if (!auth) {
-    const b = el("button", { type: "button", className: "button fb-comment" }, link.querySelector("svg")?.cloneNode(true), t.login);
-    b.onclick = login;
-    const box = el("div", { className: "fb-form" }, b);
-    link.hidden = true;
-    link.before(box);
+    button.addEventListener("click", (e) => { e.preventDefault(); login(); });
     return;
   }
-  link.hidden = true;
-  const area = el("textarea", { rows: 4, placeholder: t.placeholder || "", required: true });
-  area.setAttribute("aria-label", t.placeholder || "");
-  const send = el("button", { type: "submit", className: "button", textContent: t.post });
-  const out = el("button", { type: "button", className: "fb-link", textContent: t.logout });
+  const send = el("button", { type: "submit", className: "button fb-comment" }, button.querySelector("svg")?.cloneNode(true) || "", t.post);
+  button.replaceWith(send);
+  area.disabled = false;
+  area.placeholder = t.placeholder || "";
+  const who = box.querySelector(".fb-who");
+  const out = box.querySelector("[data-fb-logout]");
+  out.hidden = false;
   out.onclick = logout;
-  const who = el("span", { className: "fb-who" });
-  const err = el("p", { className: "fb-error", hidden: true, textContent: t.error });
-  const f = el("form", { className: "fb-form" }, area, el("div", { className: "fb-actions" }, who, out, send), err);
-  user().then((u) => who.replaceChildren(el("img", { src: `${u.avatar_url}&s=48`, alt: "", width: 24, height: 24 }), `${t.as || ""} ${u.login}`)).catch(() => {});
-  f.onsubmit = async (e) => {
+  user().then((u) => { who.replaceChildren(el("img", { src: `${u.avatar_url}&s=48`, alt: "", width: 20, height: 20 }), `${t.as || ""} ${u.login}`); who.hidden = false; }).catch(() => {});
+  // Write and Preview tabs.
+  const preview = box.querySelector(".fb-preview");
+  const tabs = [...box.querySelectorAll("[data-fb-tab]")];
+  tabs.forEach((b) => { b.disabled = false; });
+  box.querySelector(".fb-tabs").addEventListener("click", async (e) => {
+    const tab = e.target.closest("[data-fb-tab]");
+    if (!tab || tab.getAttribute("aria-selected") === "true") return;
+    tabs.forEach((b) => b.setAttribute("aria-selected", String(b === tab)));
+    const show = tab.dataset.fbTab === "preview";
+    area.hidden = show;
+    preview.hidden = !show;
+    if (!show) return area.focus();
+    if (!area.value.trim()) return void preview.replaceChildren(el("p", { className: "fb-empty", textContent: t.nothing || "" }));
+    preview.setAttribute("aria-busy", "true");
+    try {
+      const res = await fetch("https://api.github.com/markdown", {
+        method: "POST",
+        headers: { Accept: "application/vnd.github+json", "Content-Type": "application/json", Authorization: `Bearer ${await key()}` },
+        body: JSON.stringify({ text: area.value, mode: "gfm", context: repo }),
+      });
+      if (!res.ok) throw new Error(res.status);
+      preview.innerHTML = await res.text(); // GitHub's own sanitized HTML
+    } catch {
+      preview.replaceChildren(el("p", { className: "fb-error", textContent: t.error || "" }));
+    }
+    preview.removeAttribute("aria-busy");
+  });
+  const err = box.querySelector(".fb-error");
+  box.onsubmit = async (e) => {
     e.preventDefault();
     const text = area.value.trim();
     if (!text) return;
@@ -338,6 +365,7 @@ function form(node, issue, lang) {
       });
       changed();
       area.value = "";
+      tabs[0].click();
       issue.data.comments = (issue.data.comments || 0) + 1;
       const ol = node.querySelector("[data-fb-list]");
       ol.querySelector("[data-fb-empty]")?.remove();
@@ -349,7 +377,6 @@ function form(node, issue, lang) {
     }
     send.disabled = false;
   };
-  link.before(f);
 }
 
 // sortBoard orders the roadmap's open columns by votes (a stable sort: the
