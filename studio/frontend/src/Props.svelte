@@ -64,6 +64,12 @@
   };
   checkNarration();
   const stale = $derived(!!audio && !!nowHash && !!audioHash && nowHash !== audioHash);
+  // Where the narration is: preparing the text (no parts yet), reading part
+  // by part, then saving. The bar fills by part; with a single part (or none
+  // yet) it is a band going back and forth.
+  const stage = $derived(!narrating ? "" : narrating.total === 0 ? n.stagePrep : narrating.done >= narrating.total ? n.stageSave
+    : narrating.total > 1 ? n.progress.replace("{done}", String(narrating.done + 1)).replace("{total}", String(narrating.total)) : n.stageVoice);
+  const fill = $derived(narrating && narrating.total > 1 ? Math.max(4, (narrating.done / narrating.total) * 100) : 0);
   const offNarrate = Events.On("narrate", (ev: any) => { if (narrating && ev.data?.note === note) narrating = { done: ev.data.done, total: ev.data.total }; });
   $effect(() => () => offNarrate());
   async function narrate() {
@@ -209,13 +215,18 @@
               {/if}
               <div class="cover">
                 <button class="btn ghost" disabled={!!narrating} onclick={narrate}><AudioLines size={15} />
-                  {#if narrating}{narrating.total > 1 ? n.progress.replace("{done}", String(narrating.done + 1 > narrating.total ? narrating.total : narrating.done + 1)).replace("{total}", String(narrating.total)) : n.working}{:else}{audio ? n.again : n.make}{/if}
+                  {#if narrating}{n.working}{:else}{audio ? n.again : n.make}{/if}
                 </button>
                 {#if audio && !narrating}
                   <button class="btn ghost" onclick={removeNarration}>{t.remove}</button>
                 {/if}
               </div>
-              {#if !audio}<small class="muted">{n.help}</small>{/if}
+              {#if narrating}
+                <div class="nbar" class:indet={fill === 0} role="progressbar" aria-label={stage} aria-valuemin="0" aria-valuemax="100" aria-valuenow={fill || undefined}>
+                  <span style:width={fill ? `${fill}%` : undefined}></span>
+                </div>
+                <small class="muted stage">{stage}</small>
+              {:else if !audio}<small class="muted">{n.help}</small>{/if}
             {/if}
           </div>
         </div>
@@ -276,6 +287,17 @@
   .narration { display: grid; gap: .5rem; padding: .75rem 1rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); }
   .narration p { margin: 0; font-size: .85rem; }
   .narration small { font-size: .8rem; }
+  /* The narration's progress: a filling bar with a moving sheen, or a band
+     going back and forth while the length is unknown. */
+  .nbar { position: relative; height: 6px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+  .nbar span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--blue); transition: width .5s ease; overflow: hidden; }
+  .nbar span::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .45), transparent); transform: translateX(-100%); animation: nsheen 1.4s ease-in-out infinite; }
+  .nbar.indet span { width: 35%; animation: nslide 1.3s ease-in-out infinite; }
+  .nbar.indet span::after { display: none; }
+  @keyframes nslide { 0% { left: -35%; } 100% { left: 100%; } }
+  @keyframes nsheen { to { transform: translateX(100%); } }
+  @media (prefers-reduced-motion: reduce) { .nbar span, .nbar span::after { animation-duration: 3s; } }
+  .stage { font-variant-numeric: tabular-nums; }
   .narration .warn { color: var(--warn, #d97706); }
   .narration .btn { display: inline-flex; align-items: center; gap: .4rem; }
   .more { justify-self: start; font-size: .8rem; font-weight: 600; color: var(--blue); }
