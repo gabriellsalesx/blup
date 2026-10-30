@@ -2,8 +2,9 @@
 	import { goto } from "$app/navigation";
 	import Mail from "@lucide/svelte/icons/mail";
 	import KeyRound from "@lucide/svelte/icons/key-round";
+	import UserPlus from "@lucide/svelte/icons/user-plus";
 	import Button from "#lib/ui/Button.svelte";
-	import Field from "#lib/ui/Field.svelte";
+	import FloatField from "#lib/ui/FloatField.svelte";
 	import { authClient, cancelled, message } from "#lib/auth.ts";
 	import { loadTurnstile } from "#lib/turnstile.ts";
 
@@ -88,38 +89,45 @@
 	}
 </script>
 
-<section class="w-full max-w-sm">
-	<h1 class="text-center text-2xl font-extrabold tracking-tight">Entre na sua conta</h1>
-
+<section class="w-full max-w-[400px]">
 	{#if step === "email"}
-		<p class="mt-1 text-center text-sm text-neutral-500">Mandamos um código para o seu e-mail. Primeira vez? A conta é criada na hora.</p>
-		<form class="mt-6 grid gap-3" onsubmit={sendCode}>
-			<Field label="E-mail" type="email" autocomplete="email webauthn" required bind:value={email} />
-			<Button {busy} disabled={!captcha || !email.trim()}>
-				{#if !busy}<Mail class="size-4" />{/if}
-				Receber código
+		<div class="grid gap-3">
+			<Button pill class="w-full" type="button" onclick={passkey}>
+				<KeyRound class="size-[18px]" />
+				Entrar com passkey
 			</Button>
+			<Button pill variant="secondary" class="w-full" type="button" disabled={!captcha} onclick={createWithPasskey}>
+				<UserPlus class="size-[18px]" />
+				Criar conta com passkey
+			</Button>
+		</div>
+
+		<div class="relative my-6 flex items-center justify-center">
+			<span class="absolute inset-x-0 border-t border-neutral-200 dark:border-neutral-800"></span>
+			<span class="relative bg-neutral-50 px-4 text-[13px] text-neutral-500 lowercase dark:bg-neutral-950">ou</span>
+		</div>
+
+		<form class="grid gap-4" onsubmit={sendCode}>
+			<FloatField id="email" label="E-mail" type="email" autocomplete="email webauthn" required bind:value={email} />
+			<Button pill class="w-full" {busy} disabled={!captcha || !email.trim()}>Entrar com e-mail</Button>
 		</form>
-		<div class="my-5 flex items-center gap-3 text-xs text-neutral-400"><span class="h-px flex-1 bg-neutral-200 dark:bg-neutral-800"></span>ou<span class="h-px flex-1 bg-neutral-200 dark:bg-neutral-800"></span></div>
-		<Button variant="secondary" class="w-full" type="button" onclick={passkey}>
-			<KeyRound class="size-4" />
-			Entrar com passkey
-		</Button>
-		<p class="mt-4 text-center text-sm text-neutral-500">
-			Prefere sem e-mail?
-			<button class="font-semibold text-blup hover:underline disabled:opacity-50" type="button" disabled={!captcha} onclick={createWithPasskey}>Criar conta com passkey</button>
-		</p>
 	{:else}
-		<p class="mt-1 text-center text-sm text-neutral-500">Digite o código que mandamos para <b class="text-neutral-800 dark:text-neutral-200">{email}</b>. Ele vale por 10 minutos.</p>
-		<form class="mt-6 grid gap-3" onsubmit={signIn}>
-			<Field class="py-3 text-center text-2xl font-bold tracking-[0.5em]" inputmode="numeric" autocomplete="one-time-code" maxlength={6} aria-label="Código" required bind:value={code} />
-			<Button {busy} disabled={code.trim().length < 6}>Entrar</Button>
-		</form>
-		<button class="mt-4 w-full text-center text-sm font-semibold text-blup hover:underline" onclick={() => { step = "email"; code = ""; error = ""; }}>Usar outro e-mail ou pedir outro código</button>
+		<div class="rounded-xl border border-neutral-200 bg-white p-6 text-center dark:border-neutral-800 dark:bg-neutral-900">
+			<div class="mb-4 flex justify-center">
+				<span class="grid size-12 place-items-center rounded-full bg-neutral-100 dark:bg-neutral-800"><Mail class="size-6" /></span>
+			</div>
+			<h1 class="mb-2 text-lg font-semibold">Verifique seu e-mail</h1>
+			<p class="mb-5 text-sm text-neutral-500">Enviamos um código para <span class="text-neutral-900 dark:text-white">{email}</span>. Ele vale por 10 minutos. Primeira vez? A conta é criada ao entrar.</p>
+			<form class="grid gap-3" onsubmit={signIn}>
+				<FloatField id="code" label="Código" surface="bg-white dark:bg-neutral-900" class="text-center text-2xl font-bold tracking-[0.5em]" inputmode="numeric" autocomplete="one-time-code" maxlength={6} required bind:value={code} />
+				<Button pill class="w-full" {busy} disabled={code.trim().length < 6}>Entrar</Button>
+			</form>
+			<button class="mt-4 text-sm text-neutral-500 underline hover:text-neutral-900 dark:hover:text-white" onclick={() => { step = "email"; code = ""; error = ""; }}>Usar um e-mail diferente</button>
+		</div>
 	{/if}
 
 	<!-- Turnstile: outside the steps, so it survives going back. -->
 	<div class="mt-3" class:hidden={step !== "email"} {@attach turnstile}></div>
 
-	{#if error}<p class="mt-4 text-sm text-red-600" role="alert">{error}</p>{/if}
+	{#if error}<p class="mt-4 text-center text-sm text-red-600" role="alert">{error}</p>{/if}
 </section>
