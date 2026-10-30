@@ -5,6 +5,7 @@ import { auth, db, type Session } from "./auth";
 import { subscription } from "./db/schema";
 import { PLANS, planNamed } from "./plans";
 import { staffApi } from "./staff";
+import { usageOf } from "./usage";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
 
@@ -78,7 +79,9 @@ const routes = app
 			.where(and(eq(subscription.referenceId, user.id), inArray(subscription.status, ["active", "trialing", "past_due"])))
 			.limit(1);
 		const plan = planNamed(sub?.plan);
+		const usage = await usageOf(user.id, sub?.periodEnd);
 		return c.json({
+			usage,
 			id: user.id,
 			email: hasEmail(user.email) ? user.email : null,
 			name: user.name,

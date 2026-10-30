@@ -9,6 +9,7 @@ import { db } from "./auth";
 import { passkey, session, staff, staffLog, subscription, user } from "./db/schema";
 import { planNamed } from "./plans";
 import { hasEmail } from "./auth-options";
+import { usageOf } from "./usage";
 
 // The staff area (support and administration). In production Cloudflare
 // Access stands in front of /staff and /api/staff; here the Worker checks
@@ -128,10 +129,13 @@ export const staffApi = new Hono<App>()
 			db.select().from(staffLog).where(eq(staffLog.userId, id)).orderBy(desc(staffLog.createdAt)).limit(20),
 		]);
 		const active = subs.find((s) => ACTIVE.includes(s.status));
+		const plan = planNamed(active?.plan);
+		const usage = await usageOf(id, active?.periodEnd);
 		const stripeMode = c.env.STRIPE_SECRET_KEY.startsWith("sk_live_") ? "" : "test/";
 		return c.json({
 			user: { id: u.id, email: hasEmail(u.email) ? u.email : null, emailVerified: u.emailVerified, createdAt: u.createdAt, banned: u.banned, banReason: u.banReason },
-			plan: { label: planNamed(active?.plan).label, status: active?.status ?? null, periodEnd: active?.periodEnd ?? null, cancelAtPeriodEnd: !!active?.cancelAtPeriodEnd },
+			plan: { label: plan.label, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.periodEnd ?? null, cancelAtPeriodEnd: !!active?.cancelAtPeriodEnd },
+			usage,
 			stripeUrl: u.stripeCustomerId ? `https://dashboard.stripe.com/${stripeMode}customers/${u.stripeCustomerId}` : null,
 			sessions,
 			passkeys: keys,

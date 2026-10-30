@@ -1,0 +1,48 @@
+<script lang="ts">
+	import { bytes, megabytes, type Usage } from "#lib/usage.ts";
+	import type { Limits } from "#lib/api.ts";
+
+	// The account's usage against its plan: storage, sites and AI credits as
+	// bars, then devices and the last sync. Only numbers, never the notes.
+	let { usage, limits }: { usage: Usage; limits: Limits } = $props();
+
+	const day = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
+	const ago = (d: string) => {
+		const min = Math.round((Date.now() - new Date(d).getTime()) / 60000);
+		if (min < 1) return "agora";
+		if (min < 60) return `há ${min} min`;
+		if (min < 60 * 24) return `há ${Math.round(min / 60)} h`;
+		return `há ${Math.round(min / 60 / 24)} dias`;
+	};
+	const bars = $derived([
+		{ label: "Armazenamento", used: usage.storageBytes, max: limits.storageMB * 1024 * 1024, text: `${bytes(usage.storageBytes)} de ${megabytes(limits.storageMB)}` },
+		{ label: "Sites", used: usage.sites, max: limits.sites, text: limits.sites < 0 ? `${usage.sites} · sem limite` : `${usage.sites} de ${limits.sites}` },
+		{
+			label: "Créditos de IA",
+			used: usage.aiCreditsUsed,
+			max: limits.aiCredits,
+			text: limits.aiCredits ? `${usage.aiCreditsUsed} de ${limits.aiCredits} este mês${usage.aiCreditsResetAt ? ` · renova em ${day(usage.aiCreditsResetAt)}` : ""}` : "Não inclusos no plano",
+		},
+	]);
+	const pct = (used: number, max: number) => (max > 0 ? Math.min(100, (used / max) * 100) : 0);
+</script>
+
+<div class="mt-3 grid gap-4">
+	{#each bars as b (b.label)}
+		<div>
+			<div class="flex items-baseline justify-between gap-3 text-sm">
+				<span class="font-medium">{b.label}</span>
+				<span class="text-neutral-500">{b.text}</span>
+			</div>
+			{#if b.max > 0}
+				<div class="mt-1.5 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+					<div class="h-full rounded-full {pct(b.used, b.max) >= 90 ? 'bg-red-500' : 'bg-blup'}" style:width="{pct(b.used, b.max)}%"></div>
+				</div>
+			{/if}
+		</div>
+	{/each}
+	<p class="text-sm text-neutral-500">
+		{usage.devices} {usage.devices === 1 ? "aparelho com o Studio" : "aparelhos com o Studio"} ·
+		{usage.lastSyncAt ? `última sincronização ${ago(usage.lastSyncAt)}` : "nunca sincronizou"}
+	</p>
+</div>

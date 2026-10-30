@@ -1,4 +1,6 @@
 import type { Page } from "./pager.svelte.ts";
+import type { Usage } from "./usage.ts";
+import type { Limits } from "./api.ts";
 
 // The staff area's calls (/api/staff). Cloudflare Access is in front in
 // production; on this computer, STAFF_DEV_EMAIL lets you in.
@@ -8,7 +10,8 @@ export type StaffMe = { email: string; role: Role };
 export type UserRow = { id: string; email: string | null; createdAt: string; banned: boolean; plan: string };
 export type UserDetail = {
 	user: { id: string; email: string | null; emailVerified: boolean; createdAt: string; banned: boolean; banReason: string | null };
-	plan: { label: string; status: string | null; periodEnd: string | null; cancelAtPeriodEnd: boolean };
+	plan: { label: string; limits: Limits; status: string | null; periodEnd: string | null; cancelAtPeriodEnd: boolean };
+	usage: Usage;
 	stripeUrl: string | null;
 	sessions: { id: string; createdAt: string; expiresAt: string; ipAddress: string | null; userAgent: string | null }[];
 	passkeys: { id: string; name: string | null; createdAt: string; deviceType: string }[];

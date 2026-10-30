@@ -10,6 +10,7 @@
 	import { confirm } from "#lib/confirm.svelte.ts";
 	import Button from "#lib/ui/Button.svelte";
 	import Row from "#lib/ui/Row.svelte";
+	import UsageBars from "#lib/ui/UsageBars.svelte";
 	import Field from "#lib/ui/Field.svelte";
 	import Modal from "#lib/ui/Modal.svelte";
 
@@ -73,6 +74,10 @@
 			{#snippet action()}
 				{#if d.stripeUrl}<a class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-4 py-2.5 font-semibold hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900" href={d.stripeUrl} target="_blank" rel="noreferrer">Abrir no Stripe <External class="size-4" /></a>{/if}
 			{/snippet}
+		</Row>
+
+		<Row title="Uso" help="Só números: o conteúdo das notas é criptografado e a staff não vê.">
+			<UsageBars usage={d.usage} limits={d.plan.limits} />
 		</Row>
 
 		<Row title="Sessões" help={`${d.sessions.length} ${d.sessions.length === 1 ? "aparelho conectado" : "aparelhos conectados"}`}>

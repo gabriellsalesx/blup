@@ -1,22 +1,23 @@
 <script lang="ts">
 	import Lock from "@lucide/svelte/icons/lock";
 	import Row from "#lib/ui/Row.svelte";
+	import { bytes, megabytes } from "#lib/usage.ts";
 
 	// Sync: the space the notes use in the cloud (the sync itself comes
 	// with the next Blup Studio).
 	let { data } = $props();
+
 	const limit = $derived(data.me.plan.limits.storageMB);
-	const used = 0;
-	const space = (mb: number) => (mb >= 1024 ? `${(mb / 1024).toLocaleString("pt-BR")} GB` : `${mb} MB`);
+	const used = $derived(data.me.usage.storageBytes);
 </script>
 
 <h1 class="text-3xl font-extrabold tracking-tight">Sync</h1>
 <p class="mt-2 text-neutral-500">Suas notas em todos os seus computadores, sempre offline no seu e guardadas na nuvem criptografadas: nem o Blup consegue ler.</p>
 
 <div class="mt-6">
-	<Row title="Espaço usado" help={`${space(used)} de ${space(limit)} do plano ${data.me.plan.label}`}>
+	<Row title="Espaço usado" help={`${bytes(used)} de ${megabytes(limit)} do plano ${data.me.plan.label}`}>
 		<div class="mt-3 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
-			<div class="h-full rounded-full bg-blup" style:width="{Math.min(100, (used / limit) * 100)}%"></div>
+			<div class="h-full rounded-full bg-blup" style:width="{Math.min(100, (used / (limit * 1024 * 1024)) * 100)}%"></div>
 		</div>
 	</Row>
 	<Row title="Criptografia de ponta a ponta" help="As notas saem do seu computador já embaralhadas, com uma chave que só você tem.">
