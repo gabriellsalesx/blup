@@ -13,6 +13,7 @@
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import Sparkles from "@lucide/svelte/icons/sparkles";
   import Play from "@lucide/svelte/icons/play";
+  import AudioLines from "@lucide/svelte/icons/audio-lines";
   import Pause from "@lucide/svelte/icons/pause";
   import { Events } from "@wailsio/runtime";
   import X from "@lucide/svelte/icons/x";
@@ -39,6 +40,7 @@
     { key: "editor", label: s.editor, Icon: PenLine },
     { key: "accounts", label: s.accounts, Icon: KeyRound },
     { key: "ai", label: t.ai.title, Icon: Sparkles },
+    { key: "narration", label: t.ai.narration, Icon: AudioLines },
     { key: "terminal", label: s.terminal, Icon: SquareTerminal },
     { key: "keys", label: t.keys.title, Icon: Keyboard },
   ];
@@ -352,8 +354,11 @@
           <small class="muted">{ai.keyNote}</small>
         </div>
       {/if}
-      <h3>{ai.narration}</h3>
+    {:else if tab === "narration"}
       <p class="muted lead">{ai.narrationHelp}</p>
+      {#if local && !local.installed && aiOn === false}
+        <p class="muted lead">{ai.narrationNeed} <button class="link" onclick={() => (tab = "ai")}>{ai.openAI}</button></p>
+      {/if}
       {#each [["pt", ai.voicePt], ["en", ai.voiceEn]].filter(([l]) => !siteLang || l === (siteLang === "pt" ? "pt" : "en")) as [l, label] (l)}
         <div class="voices" role="radiogroup" aria-label={label}>
           <b>{label}</b>
@@ -480,6 +485,8 @@
   .voices .group { margin-block: .5rem .1rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
   .voice { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .3rem .5rem; border-radius: .45rem; }
   .voice.on { background: var(--soft); }
+  .link { color: var(--blue); font-weight: 600; }
+  .link:hover { text-decoration: underline; }
   .model { display: flex; align-items: center; gap: .6rem; margin-block: .2rem .4rem; padding-inline: .5rem; font-size: .85rem; }
   .model select { flex: 1; min-width: 0; }
   .voice.off label { opacity: .55; }
