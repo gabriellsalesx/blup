@@ -2,7 +2,8 @@
 	import { goto } from "$app/navigation";
 	import Mail from "@lucide/svelte/icons/mail";
 	import KeyRound from "@lucide/svelte/icons/key-round";
-	import LoaderCircle from "@lucide/svelte/icons/loader-circle";
+	import Button from "#lib/ui/Button.svelte";
+	import Field from "#lib/ui/Field.svelte";
 	import { authClient, cancelled, message } from "#lib/auth.ts";
 	import { loadTurnstile } from "#lib/turnstile.ts";
 
@@ -79,42 +80,22 @@
 	{#if step === "email"}
 		<p class="mt-1 text-center text-sm text-neutral-500">Mandamos um código para o seu e-mail. Primeira vez? A conta é criada na hora.</p>
 		<form class="mt-6 grid gap-3" onsubmit={sendCode}>
-			<label class="grid gap-1.5 text-sm font-medium">
-				E-mail
-				<input
-					class="rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-base outline-none focus:border-blup dark:border-neutral-700 dark:bg-neutral-900"
-					type="email"
-					autocomplete="email webauthn"
-					required
-					bind:value={email}
-				/>
-			</label>
-			<button class="flex items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5 font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900" disabled={busy || !captcha || !email.trim()}>
-				{#if busy}<LoaderCircle class="size-4 animate-spin" />{:else}<Mail class="size-4" />{/if}
+			<Field label="E-mail" type="email" autocomplete="email webauthn" required bind:value={email} />
+			<Button {busy} disabled={!captcha || !email.trim()}>
+				{#if !busy}<Mail class="size-4" />{/if}
 				Receber código
-			</button>
+			</Button>
 		</form>
 		<div class="my-5 flex items-center gap-3 text-xs text-neutral-400"><span class="h-px flex-1 bg-neutral-200 dark:bg-neutral-800"></span>ou<span class="h-px flex-1 bg-neutral-200 dark:bg-neutral-800"></span></div>
-		<button class="flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 px-4 py-2.5 font-semibold dark:border-neutral-700" onclick={passkey}>
+		<Button variant="secondary" class="w-full" type="button" onclick={passkey}>
 			<KeyRound class="size-4" />
 			Entrar com passkey
-		</button>
+		</Button>
 	{:else}
 		<p class="mt-1 text-center text-sm text-neutral-500">Digite o código que mandamos para <b class="text-neutral-800 dark:text-neutral-200">{email}</b>. Ele vale por 10 minutos.</p>
 		<form class="mt-6 grid gap-3" onsubmit={signIn}>
-			<input
-				class="rounded-lg border border-neutral-300 bg-white px-3 py-3 text-center text-2xl font-bold tracking-[0.5em] outline-none focus:border-blup dark:border-neutral-700 dark:bg-neutral-900"
-				inputmode="numeric"
-				autocomplete="one-time-code"
-				maxlength="6"
-				aria-label="Código"
-				required
-				bind:value={code}
-			/>
-			<button class="flex items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5 font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900" disabled={busy || code.trim().length < 6}>
-				{#if busy}<LoaderCircle class="size-4 animate-spin" />{/if}
-				Entrar
-			</button>
+			<Field class="py-3 text-center text-2xl font-bold tracking-[0.5em]" inputmode="numeric" autocomplete="one-time-code" maxlength={6} aria-label="Código" required bind:value={code} />
+			<Button {busy} disabled={code.trim().length < 6}>Entrar</Button>
 		</form>
 		<button class="mt-4 w-full text-center text-sm font-semibold text-blup hover:underline" onclick={() => { step = "email"; code = ""; error = ""; }}>Usar outro e-mail ou pedir outro código</button>
 	{/if}

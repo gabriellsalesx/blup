@@ -1,5 +1,7 @@
 <script lang="ts">
 	import "../app.css";
+	import Toaster from "#lib/ui/Toaster.svelte";
+	import ThemePicker from "#lib/ui/ThemePicker.svelte";
 
 	let { children } = $props();
 </script>
@@ -11,3 +13,5 @@
 		{@render children()}
 	</div>
 </main>
+<div class="fixed top-4 right-4"><ThemePicker /></div>
+<Toaster />

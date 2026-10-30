@@ -5,6 +5,9 @@
 	import Trash from "@lucide/svelte/icons/trash-2";
 	import LogOut from "@lucide/svelte/icons/log-out";
 	import { authClient, cancelled, message } from "#lib/auth.ts";
+	import { toast } from "#lib/toast.svelte.ts";
+	import Button from "#lib/ui/Button.svelte";
+	import Card from "#lib/ui/Card.svelte";
 
 	// The account: who is signed in, the passkeys, signing out.
 	const session = authClient.useSession();
@@ -18,12 +21,14 @@
 		const { error: err } = await authClient.passkey.addPasskey();
 		busy = false;
 		if (err && !cancelled(err)) error = message(err);
+		else if (!err) toast("Passkey adicionada");
 	}
 
 	async function removePasskey(id: string) {
 		error = "";
 		const { error: err } = await authClient.passkey.deletePasskey({ id });
 		if (err) error = message(err);
+		else toast("Passkey removida");
 	}
 
 	async function signOut() {
@@ -41,16 +46,10 @@
 			<p class="mt-1 text-sm text-neutral-500">{$session.data.user.email}</p>
 		</div>
 
-		<div class="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-			<div class="flex items-start justify-between gap-4">
-				<div>
-					<h2 class="font-bold">Passkeys</h2>
-					<p class="mt-0.5 text-sm text-neutral-500">Entre com a digital, o rosto ou o PIN do aparelho, sem esperar o código por e-mail.</p>
-				</div>
-				<button class="flex shrink-0 items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900" disabled={busy} onclick={addPasskey}>
-					<Plus class="size-4" />Adicionar
-				</button>
-			</div>
+		<Card title="Passkeys" help="Entre com a digital, o rosto ou o PIN do aparelho, sem esperar o código por e-mail.">
+			{#snippet action()}
+				<Button class="shrink-0 px-3 py-2 text-sm" {busy} onclick={addPasskey}><Plus class="size-4" />Adicionar</Button>
+			{/snippet}
 			{#if $passkeys.data?.length}
 				<ul class="mt-4 grid gap-2">
 					{#each $passkeys.data as p (p.id)}
@@ -69,7 +68,7 @@
 			{:else if !$passkeys.isPending}
 				<p class="mt-4 text-sm text-neutral-500">Nenhuma passkey ainda.</p>
 			{/if}
-		</div>
+		</Card>
 
 		{#if error}<p class="text-sm text-red-600" role="alert">{error}</p>{/if}
 
