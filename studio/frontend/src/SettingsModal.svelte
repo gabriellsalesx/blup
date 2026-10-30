@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, LocalVoice, InstallLocalVoice, RemoveLocalVoice } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Settings from "@lucide/svelte/icons/settings";
@@ -12,6 +12,9 @@
   import KeyRound from "@lucide/svelte/icons/key-round";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import Sparkles from "@lucide/svelte/icons/sparkles";
+  import Play from "@lucide/svelte/icons/play";
+  import Pause from "@lucide/svelte/icons/pause";
+  import { Events } from "@wailsio/runtime";
   import X from "@lucide/svelte/icons/x";
   import Check from "@lucide/svelte/icons/check";
   import ThemePicker from "./ThemePicker.svelte";
@@ -83,8 +86,12 @@
   async function disconnect(account: string) {
     await Disconnect(account);
     loadConn();
-    if (account === "openrouter") { aiOn = false; toast(t.ai.disconnected); }
+    if (account === "openrouter") { aiOn = false; aiChanged(); toast(t.ai.disconnected); }
   }
+
+  // Tells the rest of the window (the note's narration) that the voices
+  // that can narrate changed.
+  const aiChanged = () => window.dispatchEvent(new Event("blup:ai"));
 
   // The AI (OpenRouter): one key for every site, used by the narration.
   const ai = t.ai;
@@ -92,14 +99,67 @@
   let aiKey = $state("");
   let aiBusy = $state(false);
   let aiError = $state("");
-  // The voice for each site language (the default first in each list).
-  let voices = $state<Record<string, { id: string; name: string }[]>>({ pt: [], en: [] });
+  // The voices for each site language: the local ones (Kokoro), then
+  // OpenRouter's. The chosen one is look.voices[lang]; without a choice
+  // (or one that can't narrate now), the first that can.
+  type Voice = { id: string; name: string; engine: string; female: boolean; ready: boolean };
+  let voices = $state<Record<string, Voice[]>>({ pt: [], en: [] });
   const loadVoices = () => { for (const l of ["pt", "en"]) Voices(l).then((v) => (voices[l] = v ?? [])).catch(() => {}); };
-  AIConnected().then((v) => { aiOn = v; if (v) loadVoices(); }).catch(() => (aiOn = false));
+  loadVoices();
+  AIConnected().then((v) => (aiOn = v)).catch(() => (aiOn = false));
+  const chosen = (l: string) => {
+    const list = voices[l];
+    const pick = list.find((v) => v.id === look.voices?.[l]);
+    return pick?.ready ? pick.id : (list.find((v) => v.ready) ?? pick ?? list.find((v) => v.engine === "openrouter"))?.id ?? "";
+  };
   const setVoice = (lang: string, id: string) => { setPref("voices", { ...(look.voices ?? {}), [lang]: id }); toast(ai.voiceSet); };
+
+  // The local voice: downloaded on demand, then ready to use.
+  const lv = t.localVoice;
+  let local = $state<{ supported: boolean; installed: boolean; bytes: number } | null>(null);
+  let installing = $state<{ done: number; total: number; step: string } | null>(null);
+  let localError = $state("");
+  LocalVoice().then((v) => (local = v));
+  const offInstall = Events.On("voiceInstall", (ev: any) => { if (installing) installing = ev.data; });
+  $effect(() => () => offInstall());
+  const mb = (b: number) => Math.round(b / 1e6);
+  async function installLocal() {
+    localError = "";
+    installing = { done: 0, total: local?.bytes ?? 0, step: "runtime" };
+    try {
+      await InstallLocalVoice();
+      local = await LocalVoice();
+      loadVoices();
+      aiChanged();
+      toast(lv.ready);
+    } catch (e) { localError = String(e).replace(/^(Runtime)?Error: /, ""); }
+    installing = null;
+  }
+  async function removeLocal() {
+    await RemoveLocalVoice().catch((e) => (localError = String(e)));
+    local = await LocalVoice();
+    loadVoices();
+    aiChanged();
+    toast(lv.removed);
+  }
+
+  // Samples bundled with the Studio (public/voices): one sentence each.
+  const sample = (id: string) => `/voices/${id.startsWith("kokoro:") ? id.replace(":", "-") : id.split(":")[0].toLowerCase()}.mp3`;
+  let playing = $state("");
+  let player: HTMLAudioElement | null = null;
+  function listen(id: string) {
+    player?.pause();
+    if (playing === id) { playing = ""; return; }
+    player = new Audio(sample(id));
+    player.onended = () => (playing = "");
+    player.onerror = () => { playing = ""; toast(lv.noSample, { kind: "error" }); };
+    playing = id;
+    player.play().catch(() => (playing = ""));
+  }
+  $effect(() => () => player?.pause());
   async function connectAI() {
     aiBusy = true; aiError = "";
-    try { await ConnectAI(aiKey); aiOn = true; aiKey = ""; toast(ai.connected); loadVoices(); }
+    try { await ConnectAI(aiKey); aiOn = true; aiKey = ""; toast(ai.connected); loadVoices(); aiChanged(); }
     catch (e) { aiError = String(e).includes("invalid key") ? ai.badKey : String(e).replace(/^(Runtime)?Error: /, ""); }
     aiBusy = false;
   }
@@ -196,6 +256,26 @@
       {/if}
     {:else if tab === "ai"}
       <p class="muted lead">{ai.lead}</p>
+      <h3>{lv.title}</h3>
+      <p class="muted lead">{lv.lead.replace("{mb}", String(mb(local?.bytes || 110e6)))}</p>
+      <div class="item column">
+        <div class="row">
+          <div class="text"><b>Kokoro</b><small>{!local ? "" : !local.supported ? lv.unsupported : local.installed ? lv.installed : lv.notInstalled}</small></div>
+          {#if local?.supported && !installing}
+            {#if local.installed}<button class="btn ghost" onclick={removeLocal}>{lv.remove}</button>
+            {:else}<button class="btn" onclick={installLocal}>{lv.install.replace("{mb}", String(mb(local.bytes)))}</button>{/if}
+          {/if}
+        </div>
+        {#if installing}
+          <div class="dl" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={installing.total ? Math.round((installing.done / installing.total) * 100) : 0}>
+            <span style:width={`${installing.total ? Math.max(2, (installing.done / installing.total) * 100) : 2}%`}></span>
+          </div>
+          <small class="muted">{lv.steps[installing.step as keyof typeof lv.steps] ?? lv.steps.runtime} {installing.total ? `${mb(installing.done)}/${mb(installing.total)} MB` : ""}</small>
+        {/if}
+        {#if localError}<p class="bad">{localError}</p>{/if}
+      </div>
+      <h3>OpenRouter</h3>
+      <p class="muted lead">{ai.openrouterLead}</p>
       <div class="item">
         <div class="text"><b>OpenRouter</b><small>{aiOn ? ai.on : ai.off}</small></div>
         {#if aiOn}<button class="btn ghost" onclick={() => disconnect("openrouter")}>{s.disconnect}</button>{/if}
@@ -216,11 +296,26 @@
       <h3>{ai.narration}</h3>
       <p class="muted lead">{ai.narrationHelp}</p>
       {#each [["pt", ai.voicePt], ["en", ai.voiceEn]] as [l, label] (l)}
-        <div class="item">
-          <div class="text"><b>{label}</b><small>{ai.voiceHelp}</small></div>
-          <select value={look.voices?.[l] || voices[l][0]?.id || ""} disabled={!voices[l].length} onchange={(e) => setVoice(l, e.currentTarget.value)}>
-            {#each voices[l] as v (v.id)}<option value={v.id}>{v.name}</option>{/each}
-          </select>
+        <div class="voices" role="radiogroup" aria-label={label}>
+          <b>{label}</b>
+          {#each [["local", lv.groupLocal], ["openrouter", lv.groupOpenRouter]] as [engine, group] (engine)}
+            {#if voices[l].some((v) => v.engine === engine)}
+              <small class="muted group">{group}</small>
+              {#each voices[l].filter((v) => v.engine === engine) as v (v.id)}
+                <div class="voice" class:off={!v.ready} class:on={chosen(l) === v.id}>
+                  <label>
+                    <input type="radio" name="voice-{l}" checked={chosen(l) === v.id} disabled={!v.ready} onchange={() => setVoice(l, v.id)} />
+                    <span>{v.name}</span>
+                    {#if engine === "local"}<small class="muted">{v.female ? lv.female : lv.male}</small>{/if}
+                    {#if !v.ready}<small class="muted">{engine === "local" ? lv.needInstall : lv.needKey}</small>{/if}
+                  </label>
+                  <button class="icon-btn" title={playing === v.id ? lv.stop : lv.listen} aria-label="{playing === v.id ? lv.stop : lv.listen}: {v.name}" onclick={() => listen(v.id)}>
+                    {#if playing === v.id}<Pause size={15} />{:else}<Play size={15} />{/if}
+                  </button>
+                </div>
+              {/each}
+            {/if}
+          {/each}
         </div>
       {/each}
     {:else if tab === "keys"}
@@ -305,6 +400,18 @@
   select { width: auto; }
   .start { align-self: flex-start; }
   .keyform { display: flex; gap: .5rem; }
+  .item.column .row { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
+  .dl { height: 6px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+  .dl span { display: block; height: 100%; border-radius: inherit; background: var(--blue); transition: width .3s ease; }
+  .voices { display: grid; gap: .15rem; padding-block: .85rem; border-block-end: 1px solid var(--line); }
+  .voices > b { margin-block-end: .25rem; }
+  .voices .group { margin-block: .5rem .1rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+  .voice { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .3rem .5rem; border-radius: .45rem; }
+  .voice.on { background: var(--soft); }
+  .voice.off label { opacity: .55; }
+  .voice label { display: flex; align-items: center; gap: .6rem; flex: 1; min-width: 0; cursor: pointer; }
+  .voice.off label { cursor: default; }
+  .voice label small { font-size: .78rem; }
   .keyform input { flex: 1; font-family: ui-monospace, monospace; }
   input[type="range"] { width: 11rem; accent-color: var(--blue); }
   .seg { display: inline-flex; gap: .2rem; padding: .2rem; border: 1px solid var(--line); border-radius: .6rem; }

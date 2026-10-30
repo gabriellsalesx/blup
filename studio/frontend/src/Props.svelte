@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AuthorNames, PickCover, LinkedImage, AIConnected, Narrate, NarrationHash } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { AuthorNames, PickCover, LinkedImage, AIConnected, LocalVoice, Narrate, NarrationHash } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { Events } from "@wailsio/runtime";
   import { toast } from "./toast.svelte";
   import AudioLines from "@lucide/svelte/icons/audio-lines";
@@ -59,10 +59,16 @@
   let narrating = $state<{ done: number; total: number } | null>(null);
   const checkNarration = async () => {
     if (!canNarrate) return;
-    aiOn = await AIConnected().catch(() => false);
+    // Ready with an OpenRouter key or the local voice installed.
+    aiOn = (await AIConnected().catch(() => false)) || (await LocalVoice().catch(() => null))?.installed === true;
     nowHash = await NarrationHash(note).catch(() => "");
   };
   checkNarration();
+  // The settings changed what can narrate (local voice, OpenRouter key).
+  $effect(() => {
+    window.addEventListener("blup:ai", checkNarration);
+    return () => window.removeEventListener("blup:ai", checkNarration);
+  });
   const stale = $derived(!!audio && !!nowHash && !!audioHash && nowHash !== audioHash);
   // Where the narration is: preparing the text (no parts yet), reading part
   // by part, then saving. The bar fills by part; with a single part (or none
@@ -83,7 +89,7 @@
       toast(n.done.replace("{min}", String(Math.max(1, Math.round(r.seconds / 60)))).replace("{mb}", (r.bytes / 1048576).toFixed(1)));
     } catch (e) {
       toast(String(e).includes("no OpenRouter key") ? n.needKey : String(e).replace(/^(Runtime)?Error: /, ""), { kind: "error" });
-      aiOn = await AIConnected().catch(() => false);
+      aiOn = (await AIConnected().catch(() => false)) || (await LocalVoice().catch(() => null))?.installed === true;
     }
     narrating = null;
   }

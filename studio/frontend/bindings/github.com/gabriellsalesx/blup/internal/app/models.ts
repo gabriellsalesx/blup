@@ -164,6 +164,16 @@ export interface FeedbackSetup {
 }
 
 /**
+ * LocalVoice tells whether this computer can have the local voice, whether
+ * it is installed and how much it downloads.
+ */
+export interface LocalVoice {
+    "supported": boolean;
+    "installed": boolean;
+    "bytes": number;
+}
+
+/**
  * MenuItem is an entry of the top menu: a name and where it leads (a
  * folder of the site, "/", "/tags/" or an address).
  */
@@ -358,9 +368,13 @@ export interface TrashItem {
 }
 
 /**
- * Voice is a narration voice.
+ * Voice is a narration voice: Engine "local" (on the computer) or
+ * "openrouter"; Ready when it can narrate now (installed, or a key saved).
  */
 export interface Voice {
     "id": string;
     "name": string;
+    "engine": string;
+    "female": boolean;
+    "ready": boolean;
 }

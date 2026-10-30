@@ -293,3 +293,16 @@ export interface Vault {
     "name": string;
     "path": string;
 }
+
+/**
+ * VoiceProgress is how much of the local voice was downloaded.
+ */
+export interface VoiceProgress {
+    "done": number;
+    "total": number;
+
+    /**
+     * runtime, tools, model, voices
+     */
+    "step": string;
+}

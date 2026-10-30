@@ -39,3 +39,22 @@ project.
 | --- | --- |
 | [Hugo](https://gohugo.io), builds the site | Apache-2.0 |
 | [Pagefind](https://pagefind.app), the site's search | MIT |
+
+### Blup Studio's local voice
+
+Downloaded only when the user picks "Voice on the computer" in Blup Studio
+(Settings, AI), each file pinned and checked by SHA-256
+([internal/kokoro/install.go](internal/kokoro/install.go)). None of them is
+part of Blup's binary: ONNX Runtime is loaded as a library at run time,
+eSpeak NG and LAME run as separate programs.
+
+| Part | License | Where it comes from |
+| --- | --- | --- |
+| [ONNX Runtime](https://onnxruntime.ai) 1.31.1 (Microsoft), runs the model | MIT | Microsoft's GitHub releases. Its C headers are in [internal/kokoro/ort](internal/kokoro/ort), with [its license](internal/kokoro/ort/LICENSE-onnxruntime-MIT.txt) |
+| [Kokoro 82M](https://huggingface.co/hexgrad/Kokoro-82M) (hexgrad), the voice model and voices, in [ONNX form](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX) | Apache-2.0 | Hugging Face, at a fixed revision |
+| [eSpeak NG](https://github.com/espeak-ng/espeak-ng) 1.52.0, the pronunciation | GPL-3.0-or-later | built from the unmodified official source by [studio/build/voice/build-tools.sh](studio/build/voice/build-tools.sh) and published with Blup's releases, with its license and source address |
+| [LAME](https://lame.sourceforge.io) 3.100, the MP3 | LGPL-2.0-or-later | same as eSpeak NG |
+
+The rewriting of eSpeak NG's phonemes into Kokoro's alphabet follows
+[misaki](https://github.com/hexgrad/misaki) (Apache-2.0), Kokoro's own
+pipeline.

@@ -290,6 +290,15 @@ export function ImageData(file: string): $CancellablePromise<string> {
 }
 
 /**
+ * InstallLocalVoice downloads the local voice (engine, tools, model and
+ * voices), checks each file and sets it up; progress goes out as
+ * "voiceInstall" events.
+ */
+export function InstallLocalVoice(): $CancellablePromise<void> {
+    return $Call.ByID(2762221990);
+}
+
+/**
  * Language is the Studio's language: "pt" or "en".
  */
 export function Language(): $CancellablePromise<string> {
@@ -309,6 +318,14 @@ export function Layout(): $CancellablePromise<$models.HomeItem[] | null> {
  */
 export function LinkedImage(link: string): $CancellablePromise<string> {
     return $Call.ByID(929506664, link);
+}
+
+/**
+ * LocalVoice tells whether the local voice (Kokoro, on the computer) can
+ * be installed here, whether it is, and its download size.
+ */
+export function LocalVoice(): $CancellablePromise<app$0.LocalVoice> {
+    return $Call.ByID(762490869);
 }
 
 /**
@@ -524,6 +541,13 @@ export function RemoveDomain(): $CancellablePromise<void> {
  */
 export function RemoveImage(key: string): $CancellablePromise<void> {
     return $Call.ByID(2469862723, key);
+}
+
+/**
+ * RemoveLocalVoice deletes the local voice.
+ */
+export function RemoveLocalVoice(): $CancellablePromise<void> {
+    return $Call.ByID(1289563401);
 }
 
 /**
@@ -817,8 +841,8 @@ export function Version(): $CancellablePromise<string> {
 }
 
 /**
- * Voices lists the narration voices for sites in lang ("pt" or "en"), the
- * default first.
+ * Voices lists the narration voices for sites in lang ("pt" or "en"): the
+ * local ones, then OpenRouter's.
  */
 export function Voices(lang: string): $CancellablePromise<app$0.Voice[] | null> {
     return $Call.ByID(766145645, lang);

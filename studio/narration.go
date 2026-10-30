@@ -18,7 +18,33 @@ type NarrateProgress struct {
 	Total int    `json:"total"`
 }
 
-func init() { application.RegisterEvent[NarrateProgress]("narrate") }
+// VoiceProgress is how much of the local voice was downloaded.
+type VoiceProgress struct {
+	Done  int64  `json:"done"`
+	Total int64  `json:"total"`
+	Step  string `json:"step"` // runtime, tools, model, voices
+}
+
+func init() {
+	application.RegisterEvent[NarrateProgress]("narrate")
+	application.RegisterEvent[VoiceProgress]("voiceInstall")
+}
+
+// LocalVoice tells whether the local voice (Kokoro, on the computer) can
+// be installed here, whether it is, and its download size.
+func (s *Studio) LocalVoice() app.LocalVoice { return app.LocalVoiceState() }
+
+// InstallLocalVoice downloads the local voice (engine, tools, model and
+// voices), checks each file and sets it up; progress goes out as
+// "voiceInstall" events.
+func (s *Studio) InstallLocalVoice() error {
+	return app.InstallLocalVoice(context.Background(), func(done, total int64, step string) {
+		application.Get().Event.Emit("voiceInstall", VoiceProgress{done, total, step})
+	})
+}
+
+// RemoveLocalVoice deletes the local voice.
+func (s *Studio) RemoveLocalVoice() error { return app.RemoveLocalVoice() }
 
 // AIConnected tells whether an OpenRouter key is saved.
 func (s *Studio) AIConnected() (bool, error) { return app.AIConnected() }
@@ -31,8 +57,8 @@ func (s *Studio) ConnectAI(key string) error {
 // OpenAIKeyPage opens OpenRouter's page of keys in the browser.
 func (s *Studio) OpenAIKeyPage() { s.OpenURL(narrate.KeyPage) }
 
-// Voices lists the narration voices for sites in lang ("pt" or "en"), the
-// default first.
+// Voices lists the narration voices for sites in lang ("pt" or "en"): the
+// local ones, then OpenRouter's.
 func (s *Studio) Voices(lang string) ([]app.Voice, error) {
 	return app.NarrationVoices(context.Background(), lang)
 }

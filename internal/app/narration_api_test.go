@@ -21,6 +21,7 @@ func fakeMP3() []byte {
 
 func TestNarrate(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("XDG_CACHE_HOME", t.TempDir()) // no local voice
 	var inputs []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]string
@@ -84,5 +85,22 @@ func TestNarrate(t *testing.T) {
 	write(t, root, "Secreto.md", "---\npassword: sim\n---\nTexto secreto que não pode virar áudio.\n")
 	if _, err := Narrate(context.Background(), site, "Secreto.md", "nova", nil); err == nil {
 		t.Fatal("a locked post was narrated")
+	}
+}
+
+func TestVoiceFor(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir()) // no local voice installed
+	cases := []struct{ lang, chosen, want string }{
+		{"pt", "", "pt-BR-Luana:MAI-Voice-2.1"},
+		{"pt", "pt-BR-Caio:MAI-Voice-2.1", "pt-BR-Caio:MAI-Voice-2.1"},
+		{"en", "pt-BR-Caio:MAI-Voice-2.1", "en-US-Harper:MAI-Voice-2.1"},
+		{"pt", "kokoro:pf_dora", "kokoro:pf_dora"},
+		{"en", "kokoro:pf_dora", "en-US-Harper:MAI-Voice-2.1"},
+		{"en", "kokoro:bm_george", "kokoro:bm_george"},
+	}
+	for _, c := range cases {
+		if got := voiceFor(c.lang, c.chosen); got != c.want {
+			t.Errorf("voiceFor(%q, %q) = %q, want %q", c.lang, c.chosen, got, c.want)
+		}
 	}
 }

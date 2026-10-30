@@ -11,6 +11,7 @@ export type {
     DeleteProblem,
     DomainStatus,
     FeedbackSetup,
+    LocalVoice,
     MenuItem,
     Narration,
     NewSiteOptions,

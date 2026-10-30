@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/gabriellsalesx/blup/internal/config"
+	"github.com/gabriellsalesx/blup/internal/kokoro"
 	"github.com/gabriellsalesx/blup/internal/narrate"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
 )
@@ -37,25 +38,103 @@ func AIConnected() (bool, error) {
 	return creds.OpenRouterToken != "", err
 }
 
-// NarrationVoices lists the voices for a site in lang ("pt" or "en"), the
-// default first, as {id, name}.
+// localPrefix marks the voices of the local engine ("kokoro:pf_dora"); the
+// others are OpenRouter's.
+const localPrefix = "kokoro:"
+
+// LocalVoiceDir is where the local voice is installed (with Hugo's
+// download, in the user's cache folder).
+func LocalVoiceDir() (string, error) {
+	d, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(d, "blup", "kokoro"), nil
+}
+
+// LocalVoice tells whether this computer can have the local voice, whether
+// it is installed and how much it downloads.
+type LocalVoice struct {
+	Supported bool  `json:"supported"`
+	Installed bool  `json:"installed"`
+	Bytes     int64 `json:"bytes"`
+}
+
+// LocalVoiceState checks the local voice.
+func LocalVoiceState() LocalVoice {
+	dir, err := LocalVoiceDir()
+	return LocalVoice{Supported: kokoro.Supported(), Installed: err == nil && kokoro.Installed(dir), Bytes: kokoro.DownloadSize()}
+}
+
+// InstallLocalVoice downloads and sets up the local voice.
+func InstallLocalVoice(ctx context.Context, progress kokoro.Progress) error {
+	dir, err := LocalVoiceDir()
+	if err != nil {
+		return err
+	}
+	return kokoro.Install(ctx, dir, progress)
+}
+
+// RemoveLocalVoice deletes the local voice.
+func RemoveLocalVoice() error {
+	dir, err := LocalVoiceDir()
+	if err != nil {
+		return err
+	}
+	return kokoro.Remove(dir)
+}
+
+// Voice is a narration voice: Engine "local" (on the computer) or
+// "openrouter"; Ready when it can narrate now (installed, or a key saved).
+type Voice struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Engine string `json:"engine"`
+	Female bool   `json:"female"`
+	Ready  bool   `json:"ready"`
+}
+
+// NarrationVoices lists the voices for a site in lang ("pt" or "en"): the
+// local ones, then OpenRouter's (the default of each first).
 func NarrationVoices(ctx context.Context, lang string) ([]Voice, error) {
 	creds, err := config.LoadCredentials()
 	if err != nil {
 		return nil, err
 	}
+	installed := LocalVoiceState().Installed
+	var out []Voice
+	for _, v := range kokoro.Voices {
+		if v.Lang == lang || (lang != "pt" && v.Lang == "en") {
+			out = append(out, Voice{ID: localPrefix + v.ID, Name: v.Name, Engine: "local", Female: v.Female, Ready: installed})
+		}
+	}
 	ids, err := (&narrate.Client{Key: creds.OpenRouterToken, BaseURL: openRouterURL}).Voices(ctx, lang)
-	out := make([]Voice, 0, len(ids))
 	for _, id := range ids {
-		out = append(out, Voice{ID: id, Name: narrate.VoiceName(id)})
+		out = append(out, Voice{ID: id, Name: narrate.VoiceName(id), Engine: "openrouter", Ready: creds.OpenRouterToken != ""})
 	}
 	return out, err
 }
 
-// Voice is a narration voice.
-type Voice struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+// voiceFor is the voice that narrates a site in lang: the chosen one when
+// it speaks lang, else the local default when installed, else OpenRouter's.
+func voiceFor(lang, chosen string) string {
+	if id, ok := strings.CutPrefix(chosen, localPrefix); ok {
+		for _, v := range kokoro.Voices {
+			if v.ID == id && (v.Lang == lang || (lang != "pt" && v.Lang == "en")) {
+				return chosen
+			}
+		}
+	} else if chosen != "" && narrate.VoiceFor(lang, chosen) == chosen {
+		return chosen
+	}
+	if LocalVoiceState().Installed {
+		for _, v := range kokoro.Voices {
+			if v.Lang == lang || (lang != "pt" && v.Lang == "en") {
+				return localPrefix + v.ID
+			}
+		}
+	}
+	return narrate.DefaultVoice(lang)
 }
 
 // ConnectOpenRouter checks an OpenRouter key and saves it.
@@ -117,13 +196,6 @@ func NarrationHash(site *config.Site, rel string) (string, error) {
 // narration, so its link stays). progress gets the parts done of total.
 // Posts with a password are not narrated: the audio would give them away.
 func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress func(done, total int)) (Narration, error) {
-	creds, err := config.LoadCredentials()
-	if err != nil {
-		return Narration{}, err
-	}
-	if creds.OpenRouterToken == "" {
-		return Narration{}, ErrNoAIKey
-	}
 	text, note, err := narrationText(site, rel)
 	if err != nil {
 		return Narration{}, err
@@ -134,27 +206,14 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 	if strings.Count(text, " ") < 3 {
 		return Narration{}, errors.New(byLang(site, "A nota ainda não tem texto para narrar.", "The note has no text to narrate yet."))
 	}
-	voice = narrate.VoiceFor(site.Lang, voice)
-	parts := narrate.Split(text, narrate.MaxPart)
-	client := &narrate.Client{Key: creds.OpenRouterToken, BaseURL: openRouterURL}
-	audio := make([][]byte, 0, len(parts))
-	for i, part := range parts {
-		if progress != nil {
-			progress(i, len(parts))
-		}
-		a, err := client.Speak(ctx, part, voice)
-		if errors.Is(err, narrate.ErrModelGone) {
-			return Narration{}, errors.New(byLang(site, "O modelo de voz saiu do OpenRouter. Atualize o Blup para usar o novo.", "The voice model left OpenRouter. Update Blup to use the new one."))
-		}
-		if err != nil {
-			return Narration{}, err
-		}
-		audio = append(audio, a)
+	voice = voiceFor(site.Lang, voice)
+	var mp3 []byte
+	var seconds float64
+	if id, ok := strings.CutPrefix(voice, localPrefix); ok {
+		mp3, seconds, err = speakLocal(ctx, text, id, progress)
+	} else {
+		mp3, seconds, err = speakOpenRouter(ctx, site, text, voice, progress)
 	}
-	if progress != nil {
-		progress(len(parts), len(parts))
-	}
-	mp3, seconds, err := narrate.JoinMP3(audio)
 	if err != nil {
 		return Narration{}, err
 	}
@@ -170,6 +229,47 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 		return Narration{}, err
 	}
 	return Narration{Link: "[[" + file + "]]", Hash: textHash(text), Seconds: seconds, Bytes: len(mp3)}, nil
+}
+
+// speakLocal narrates on the computer (Kokoro).
+func speakLocal(ctx context.Context, text, voice string, progress func(done, total int)) ([]byte, float64, error) {
+	dir, err := LocalVoiceDir()
+	if err != nil {
+		return nil, 0, err
+	}
+	return kokoro.Engine{Dir: dir}.Speak(ctx, text, voice, progress)
+}
+
+// speakOpenRouter narrates with OpenRouter, part by part, and joins the
+// MP3s.
+func speakOpenRouter(ctx context.Context, site *config.Site, text, voice string, progress func(done, total int)) ([]byte, float64, error) {
+	creds, err := config.LoadCredentials()
+	if err != nil {
+		return nil, 0, err
+	}
+	if creds.OpenRouterToken == "" {
+		return nil, 0, ErrNoAIKey
+	}
+	parts := narrate.Split(text, narrate.MaxPart)
+	client := &narrate.Client{Key: creds.OpenRouterToken, BaseURL: openRouterURL}
+	audio := make([][]byte, 0, len(parts))
+	for i, part := range parts {
+		if progress != nil {
+			progress(i, len(parts))
+		}
+		a, err := client.Speak(ctx, part, voice)
+		if errors.Is(err, narrate.ErrModelGone) {
+			return nil, 0, errors.New(byLang(site, "O modelo de voz saiu do OpenRouter. Atualize o Blup para usar o novo.", "The voice model left OpenRouter. Update Blup to use the new one."))
+		}
+		if err != nil {
+			return nil, 0, err
+		}
+		audio = append(audio, a)
+	}
+	if progress != nil {
+		progress(len(parts), len(parts))
+	}
+	return narrate.JoinMP3(audio)
 }
 
 // narrationFile is the attachment's name: the one the note already links

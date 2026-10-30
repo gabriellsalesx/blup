@@ -22,5 +22,6 @@ export type {
     Removed,
     SiteInfo,
     TermData,
-    Vault
+    Vault,
+    VoiceProgress
 } from "./models.js";

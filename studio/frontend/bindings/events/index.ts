@@ -28,3 +28,8 @@ export const Progress = "progress";
  */
 export const Term = "term";
 
+/**
+ * Name of the custom event "voiceInstall".
+ */
+export const VoiceInstall = "voiceInstall";
+
