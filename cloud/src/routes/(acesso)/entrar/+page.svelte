@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
 	import Mail from "@lucide/svelte/icons/mail";
-	import KeyRound from "@lucide/svelte/icons/key-round";
-	import UserPlus from "@lucide/svelte/icons/user-plus";
+	import Fingerprint from "@lucide/svelte/icons/fingerprint-pattern";
 	import Button from "#lib/ui/Button.svelte";
 	import FloatField from "#lib/ui/FloatField.svelte";
 	import { authClient, cancelled, message } from "#lib/auth.ts";
@@ -89,30 +88,32 @@
 	}
 </script>
 
-<section class="w-full max-w-[400px]">
+<section class="w-full">
 	{#if step === "email"}
+		<h1 class="text-3xl font-extrabold tracking-tight">Bem-vindo ao Blup</h1>
+		<p class="mt-2 mb-8 text-neutral-500">Entre ou crie sua conta para continuar.</p>
 		<div class="grid gap-3">
 			<Button pill class="w-full" type="button" onclick={passkey}>
-				<KeyRound class="size-[18px]" />
+				<Fingerprint class="size-5" />
 				Entrar com passkey
 			</Button>
 			<Button pill variant="secondary" class="w-full" type="button" disabled={!captcha} onclick={createWithPasskey}>
-				<UserPlus class="size-[18px]" />
+				<Fingerprint class="size-5" />
 				Criar conta com passkey
 			</Button>
 		</div>
 
 		<div class="relative my-6 flex items-center justify-center">
 			<span class="absolute inset-x-0 border-t border-neutral-200 dark:border-neutral-800"></span>
-			<span class="relative bg-neutral-50 px-4 text-[13px] text-neutral-500 lowercase dark:bg-neutral-950">ou</span>
+			<span class="relative bg-white px-4 text-[13px] text-neutral-500 lowercase dark:bg-neutral-900">ou</span>
 		</div>
 
 		<form class="grid gap-4" onsubmit={sendCode}>
-			<FloatField id="email" label="E-mail" type="email" autocomplete="email webauthn" required bind:value={email} />
+			<FloatField id="email" label="E-mail" surface="bg-white dark:bg-neutral-900" type="email" autocomplete="email webauthn" required bind:value={email} />
 			<Button pill class="w-full" {busy} disabled={!captcha || !email.trim()}>Entrar com e-mail</Button>
 		</form>
 	{:else}
-		<div class="rounded-xl border border-neutral-200 bg-white p-6 text-center dark:border-neutral-800 dark:bg-neutral-900">
+		<div class="text-center">
 			<div class="mb-4 flex justify-center">
 				<span class="grid size-12 place-items-center rounded-full bg-neutral-100 dark:bg-neutral-800"><Mail class="size-6" /></span>
 			</div>
