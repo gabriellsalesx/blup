@@ -28,6 +28,8 @@ export type AuthConfig = {
 export const SEND_CODE_PATH = "/email-otp/send-verification-otp";
 
 export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Record<string, unknown>, cfg: AuthConfig) {
+	// Fetch, not Node's http: the Worker's runtime.
+	const stripeClient = new Stripe(cfg.stripeSecret, { httpClient: Stripe.createFetchHttpClient() });
 	return {
 		appName: "Blup Cloud",
 		baseURL: cfg.appUrl,
@@ -44,6 +46,18 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 		emailAndPassword: { enabled: false },
 		// A blocked account (by the staff) can't sign in.
 		user: {
+			// The person deletes the account from the panel (a recent sign in is
+			// required). A paid subscription ends in Stripe first.
+			deleteUser: {
+				enabled: true,
+				beforeDelete: async (user) => {
+					const customer = (user as { stripeCustomerId?: string | null }).stripeCustomerId;
+					if (!customer) return;
+					for await (const sub of stripeClient.subscriptions.list({ customer, status: "all" })) {
+						if (!["canceled", "incomplete_expired"].includes(sub.status)) await stripeClient.subscriptions.cancel(sub.id);
+					}
+				},
+			},
 			additionalFields: {
 				banned: { type: "boolean", defaultValue: false, input: false },
 				banReason: { type: "string", required: false, input: false },
@@ -70,8 +84,7 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 			passkey({ rpID: cfg.rpID, rpName: "Blup Cloud", origin: cfg.appUrl }),
 			captcha({ provider: "cloudflare-turnstile", secretKey: cfg.turnstileSecret, endpoints: [SEND_CODE_PATH] }),
 			stripe({
-				// Fetch, not Node's http: the Worker's runtime.
-				stripeClient: new Stripe(cfg.stripeSecret, { httpClient: Stripe.createFetchHttpClient() }),
+				stripeClient,
 				stripeWebhookSecret: cfg.stripeWebhookSecret,
 				// The Stripe customer is made at the first checkout, not at sign
 				// up: free accounts never reach Stripe.
