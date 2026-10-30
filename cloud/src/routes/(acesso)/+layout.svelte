@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Check from "@lucide/svelte/icons/check";
 	import BlupLogo from "#lib/ui/BlupLogo.svelte";
-	import LoginScene from "#lib/ui/LoginScene.svelte";
+	import Scene from "#lib/ui/Scene.svelte";
 	import ThemePicker from "#lib/ui/ThemePicker.svelte";
 
 	// Signing in. On a phone: a blue band with the logo, the phrase and the
@@ -27,7 +27,7 @@
 				<BlupLogo class="h-8 w-auto text-white" />
 				<h2 class="mt-6 text-[1.7rem] leading-[1.15] font-extrabold tracking-tight">Um lar seguro para as suas notas</h2>
 			</div>
-			<div class="-mr-4 -mb-6 w-[56%] shrink-0"><LoginScene /></div>
+			<div class="-mr-4 -mb-6 w-[56%] shrink-0"><Scene /></div>
 		</header>
 
 		<!-- Large screens: the blue panel. -->
@@ -40,7 +40,7 @@
 					<li class="flex items-center gap-3 font-medium"><span class="grid size-6 place-items-center rounded-full bg-white/20"><Check class="size-3.5" /></span>{perk}</li>
 				{/each}
 			</ul>
-			<div class="-mx-4 mt-auto pt-6"><LoginScene /></div>
+			<div class="-mx-4 mt-auto pt-6"><Scene /></div>
 		</aside>
 
 		<!-- The form: a sheet on the phone, the right half on large screens. -->

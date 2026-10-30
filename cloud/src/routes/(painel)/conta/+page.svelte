@@ -4,6 +4,7 @@
 	import Trash from "@lucide/svelte/icons/trash-2";
 	import { authClient, cancelled, message } from "#lib/auth.ts";
 	import { toast } from "#lib/toast.svelte.ts";
+	import { confirm } from "#lib/confirm.svelte.ts";
 	import Button from "#lib/ui/Button.svelte";
 	import Field from "#lib/ui/Field.svelte";
 	import Modal from "#lib/ui/Modal.svelte";
@@ -15,8 +16,6 @@
 	let busy = $state(false);
 	let nameOpen = $state(false);
 	let name = $state("");
-	let delOpen = $state(false);
-	let confirmEmail = $state("");
 	// Linking an e-mail (accounts made with a passkey): the address, then the
 	// code sent to it.
 	let linkOpen = $state(false);
@@ -65,26 +64,34 @@
 		else if (!error) toast("Passkey adicionada");
 	}
 
-	async function removePasskey(id: string) {
+	async function removePasskey(id: string, name: string) {
+		if (!(await confirm({ title: "Remover a passkey?", message: `"${name}" deixa de entrar na sua conta. Você pode adicionar outra depois.`, confirmLabel: "Remover", danger: true }))) return;
 		const { error } = await authClient.passkey.deletePasskey({ id });
 		if (error) toast(message(error), { kind: "error" });
 		else toast("Passkey removida");
 	}
 
 	async function leaveEverywhere() {
+		if (!(await confirm({ title: "Sair de todos os lugares?", message: "Todos os aparelhos e o Blup Studio saem da sua conta, inclusive este. Você entra de novo em cada um.", confirmLabel: "Sair de todos" }))) return;
 		busy = true;
 		await authClient.revokeSessions();
 		await authClient.signOut();
 		goto("/entrar", { replaceState: true });
 	}
 
-	async function deleteAccount(e: SubmitEvent) {
-		e.preventDefault();
+	async function deleteAccount() {
+		const ok = await confirm({
+			title: "Excluir a conta?",
+			message: "Não dá para desfazer. A assinatura é cancelada na hora e as notas da nuvem são apagadas (as do seu computador continuam lá).",
+			confirmLabel: "Excluir",
+			danger: true,
+			typeToConfirm: confirmWord,
+		});
+		if (!ok) return;
 		busy = true;
 		const { error } = await authClient.deleteUser();
 		busy = false;
 		if (error) {
-			delOpen = false;
 			// Better Auth asks for a recent sign in before deleting.
 			return toast(error.code === "SESSION_EXPIRED" ? "Por segurança, saia e entre de novo antes de excluir a conta." : message(error), { kind: "error" });
 		}
@@ -116,7 +123,7 @@
 					<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800">
 						<KeyRound class="size-4 text-neutral-500" />
 						<span class="min-w-0 flex-1 text-sm"><b>{p.name || "Passkey"}</b> <span class="text-neutral-500">· adicionada em {date(p.createdAt)}</span></span>
-						<button class="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800" title="Remover" aria-label="Remover passkey" onclick={() => removePasskey(p.id)}><Trash class="size-4" /></button>
+						<button class="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800" title="Remover" aria-label="Remover passkey" onclick={() => removePasskey(p.id, p.name || "Passkey")}><Trash class="size-4" /></button>
 					</li>
 				{/each}
 			</ul>
@@ -128,7 +135,7 @@
 	</Row>
 
 	<Row title="Excluir conta" help="Apaga a conta, cancela a assinatura e remove as notas guardadas na nuvem. Pedimos uma confirmação antes.">
-		{#snippet action()}<Button class="bg-red-700! text-white!" onclick={() => { confirmEmail = ""; delOpen = true; }}>Excluir</Button>{/snippet}
+		{#snippet action()}<Button class="bg-red-700! text-white!" onclick={deleteAccount}>Excluir</Button>{/snippet}
 	</Row>
 </div>
 
@@ -164,13 +171,3 @@
 	{/if}
 </Modal>
 
-<Modal bind:open={delOpen} title="Excluir a conta">
-	<p class="text-sm text-neutral-500">Não dá para desfazer. A assinatura é cancelada na hora e as notas da nuvem são apagadas (as do seu computador continuam lá).</p>
-	<form class="mt-4 grid gap-3" onsubmit={deleteAccount}>
-		<Field label={`Digite ${confirmWord} para confirmar`} autocomplete="off" bind:value={confirmEmail} />
-		<div class="flex justify-end gap-2">
-			<Button variant="secondary" type="button" onclick={() => (delOpen = false)}>Cancelar</Button>
-			<Button class="bg-red-700! text-white!" {busy} disabled={confirmEmail.trim().toLowerCase() !== confirmWord.toLowerCase()}>Excluir</Button>
-		</div>
-	</form>
-</Modal>

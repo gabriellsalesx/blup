@@ -2,6 +2,7 @@
 	import Trash from "@lucide/svelte/icons/trash-2";
 	import { staffApi, roleLabel, when, type Role, type Team } from "#lib/staff.ts";
 	import { toast } from "#lib/toast.svelte.ts";
+	import { confirm } from "#lib/confirm.svelte.ts";
 	import Button from "#lib/ui/Button.svelte";
 	import Row from "#lib/ui/Row.svelte";
 	import Field from "#lib/ui/Field.svelte";
@@ -25,6 +26,7 @@
 		finally { busy = false; }
 	}
 	async function remove(m: string) {
+		if (!(await confirm({ title: "Tirar da equipe?", message: `${m} perde o acesso à staff na hora. Lembre de tirar também do Cloudflare Access.`, confirmLabel: "Tirar", danger: true }))) return;
 		try { await staffApi.removeMember(m); toast("Saiu da equipe"); await load(); }
 		catch { toast("Não deu certo.", { kind: "error" }); }
 	}

@@ -1,10 +1,13 @@
 <script lang="ts">
-	// The whole Blup gang on the sign-in panel (Aquarela's drawing), inline so
-	// each Blup can hop and blink on its own rhythm.
-	import scene from "#lib/assets/login-blups.svg?raw";
+	// One of Aquarela's drawings, inline so each Blup (g.blup.bN, with its
+	// eyes in g.eyes) can hop and blink on its own rhythm. The SVGs are our
+	// own files, bundled at build time (never user content).
+	import login from "#lib/assets/login-blups.svg?raw";
+
+	let { svg = login, class: extra = "" }: { svg?: string; class?: string } = $props();
 </script>
 
-<div class="scene" aria-hidden="true">{@html scene}</div>
+<div class="scene {extra}" aria-hidden="true">{@html svg}</div>
 
 <style>
 	.scene :global(svg) { width: 100%; height: auto; overflow: visible; }
