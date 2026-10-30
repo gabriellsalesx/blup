@@ -90,6 +90,7 @@
   {:else}
     <!-- Rebuilt with the language just chosen. -->
     {#key lang}
+      {#if step === "github" || step === "password"}<button class="skip" onclick={next}>{t.wel.skip}</button>{/if}
       <div class="center">
         <div class="dots" aria-hidden="true">{#each steps.slice(1) as s, i (s)}<span class:on={i < index}></span>{/each}</div>
 
@@ -154,12 +155,9 @@
         <div class="nav">
           <button class="btn ghost" onclick={back}>{t.wel.back}</button>
           {#if step === "github"}
-            <button class="btn" class:ghost={!login} disabled={searching} onclick={next}>{login ? t.wel.next : t.wel.skip}</button>
+            <button class="btn" disabled={!login || searching} onclick={next}>{t.wel.next}</button>
           {:else if step === "password"}
-            <span class="pair">
-              <button class="btn ghost" onclick={next}>{t.wel.skip}</button>
-              <button class="btn" disabled={!pw} onclick={savePassword}>{t.wel.saveNext}</button>
-            </span>
+            <button class="btn" disabled={!pw} onclick={savePassword}>{t.wel.saveNext}</button>
           {:else if step === "done"}
             <button class="btn big" onclick={finish}>{t.wel.start}</button>
           {:else}
@@ -172,7 +170,7 @@
 </div>
 
 <style>
-  .wel { height: 100%; overflow: auto; display: grid; place-items: center; padding: 3rem 1.5rem; }
+  .wel { position: relative; height: 100%; overflow: auto; display: grid; place-items: center; padding: 3rem 1.5rem; }
   .center { width: min(100%, 34rem); display: grid; justify-items: center; gap: 1rem; text-align: center; }
   .scene { width: min(100%, 26rem); aspect-ratio: 320 / 200; }
   h1 { font-size: 1.85rem; font-weight: 800; letter-spacing: -.03em; }
@@ -211,7 +209,9 @@
   .bounce { animation: bounce 1.6s ease-in-out infinite; }
   @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
   .nav { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-block-start: .5rem; }
-  .pair { display: flex; gap: .5rem; }
+  /* Skipping is discreet, at the top, as in most apps. */
+  .skip { position: absolute; inset-block-start: 1.1rem; inset-inline-end: 1.4rem; padding: .35rem .6rem; border-radius: .4rem; color: var(--muted); font-size: .9rem; font-weight: 600; }
+  .skip:hover { color: var(--text); background: var(--soft); }
   .btn.big { padding: .75rem 1.6rem; font-size: 1rem; }
   .bad { color: var(--red); font-size: .9rem; }
 </style>
