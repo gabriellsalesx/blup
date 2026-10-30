@@ -97,7 +97,7 @@ func narrationText(site *config.Site, rel string) (string, obsidian.Note, error)
 	if title == "" {
 		title = strings.TrimSuffix(filepath.Base(rel), filepath.Ext(rel))
 	}
-	return narrate.Speakable(title, n.Body), n, nil
+	return narrate.Speakable(title, n.String("description"), n.Body), n, nil
 }
 
 func textHash(text string) string {

@@ -22,9 +22,10 @@ func TestSpeakable(t *testing.T) {
 		"![foto](Anexos/x.png) Veja [[Outra nota|a outra nota]] e [[Mais uma]]. Fórmula $x^2$ aqui.[^1]\n\n" +
 		"[^1]: nota de rodapé\n\n" +
 		"Alinhado ao centro.\n{.text-center}\n"
-	got := Speakable("Meu post", body)
+	got := Speakable("Meu post", "Uma descrição curta", body)
 	want := []string{
 		"Meu post.",
+		"Uma descrição curta.",
 		"Primeiro parágrafo com negrito, itálico, código e um link. Continua na linha seguinte.",
 		"Um título.",
 		"item um.",

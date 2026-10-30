@@ -38,7 +38,7 @@ func TestNarrate(t *testing.T) {
 	site := settingsSite(t)
 	site.Lang = "pt"
 	root := site.ContentDir()
-	write(t, root, "Post.md", "---\ntitle: Meu post\n---\nUm texto com **várias** palavras para ler em voz alta.\n")
+	write(t, root, "Post.md", "---\ntitle: Meu post\ndescription: Sobre ler em voz alta\n---\nUm texto com **várias** palavras para ler em voz alta.\n")
 
 	if _, err := Narrate(context.Background(), site, "Post.md", "nova", nil); !errors.Is(err, ErrNoAIKey) {
 		t.Fatalf("without a key: %v", err)
@@ -54,7 +54,7 @@ func TestNarrate(t *testing.T) {
 	if n.Link != "[[Post.mp3]]" || n.Bytes != 144 || len(steps) != 2 {
 		t.Fatalf("narration: %+v steps %v", n, steps)
 	}
-	if len(inputs) != 1 || inputs[0] != "Meu post.\n\nUm texto com várias palavras para ler em voz alta." {
+	if len(inputs) != 1 || inputs[0] != "Meu post.\n\nSobre ler em voz alta.\n\nUm texto com várias palavras para ler em voz alta." {
 		t.Fatalf("read aloud: %q", inputs)
 	}
 	if _, err := os.Stat(filepath.Join(root, attachmentsFolder(site), "Post.mp3")); err != nil {

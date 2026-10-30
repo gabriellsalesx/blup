@@ -34,10 +34,10 @@ var (
 	reSpaces     = regexp.MustCompile(`[ \t]+`)
 )
 
-// Speakable turns a note into the text to read aloud: the title, then the
-// text without Markdown. Code, tables, math, images and comments are left
+// Speakable turns a note into the text to read aloud: the title, the
+// description (when there is one), then the text without Markdown. Code, tables, math, images and comments are left
 // out (they make no sense spoken); headings and list items end in a pause.
-func Speakable(title, body string) string {
+func Speakable(title, description, body string) string {
 	body = reComment.ReplaceAllString(body, "")
 	body = reHTMLCmt.ReplaceAllString(body, "")
 	body = reFence.ReplaceAllString(body, "\n")
@@ -51,8 +51,10 @@ func Speakable(title, body string) string {
 			cur = nil
 		}
 	}
-	if t := clean(title); t != "" {
-		paras = append(paras, sentence(t))
+	for _, head := range []string{title, description} {
+		if t := clean(head); t != "" {
+			paras = append(paras, sentence(t))
+		}
 	}
 	for _, line := range strings.Split(body, "\n") {
 		line = strings.TrimRight(line, " \t\r")
