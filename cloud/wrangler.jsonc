@@ -13,7 +13,7 @@
 		"directory": "./build",
 		"not_found_handling": "single-page-application",
 		"binding": "ASSETS",
-		"run_worker_first": ["/api/*"]
+		"run_worker_first": ["/api/*", "/staff", "/staff/*"]
 	},
 	// Os IDs reais ficam fora do repositório público: troque na hora de
 	// publicar (npx wrangler d1 create blup-cloud).
@@ -39,6 +39,47 @@
 		// Chave de site de TESTE do Turnstile (pública, sempre aprova).
 		"TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
 		// "log" mostra o código no terminal em vez de mandar e-mail.
-		"EMAIL_MODE": "log"
+		"EMAIL_MODE": "log",
+		// Vazio no computador: a staff fica em localhost:8787/staff.
+		"STAFF_HOST": ""
+	},
+	// Produção: npx wrangler deploy --env production. Um Worker com dois
+	// domínios: cloud.getblup.io (painel do usuário) e staff.getblup.io
+	// (staff, com o Cloudflare Access na frente). Bindings e vars não são
+	// herdados do topo, por isso se repetem aqui. Os IDs reais (D1) e os
+	// segredos entram na hora do deploy, nunca no repositório.
+	"env": {
+		"production": {
+			"workers_dev": false,
+			"preview_urls": false,
+			"routes": [
+				{ "pattern": "cloud.getblup.io", "custom_domain": true },
+				{ "pattern": "staff.getblup.io", "custom_domain": true }
+			],
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "blup-cloud",
+					"database_id": "00000000-0000-0000-0000-000000000000",
+					"migrations_dir": "migrations"
+				}
+			],
+			"r2_buckets": [{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" }],
+			"send_email": [{ "name": "EMAIL" }],
+			"ratelimits": [
+				{ "name": "OTP_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }
+			],
+			"vars": {
+				"APP_URL": "https://cloud.getblup.io",
+				// A passkey vale em getblup.io e nos subdomínios; o login confere a
+				// origem (cloud.getblup.io), então outro subdomínio não a usa.
+				"PASSKEY_RP_ID": "getblup.io",
+				"MAIL_FROM": "Blup <login@getblup.io>",
+				// Troque pela chave de site real do Turnstile (é pública).
+				"TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+				"EMAIL_MODE": "send",
+				"STAFF_HOST": "staff.getblup.io"
+			}
+		}
 	}
 }

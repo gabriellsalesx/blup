@@ -25,7 +25,7 @@ let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
 async function accessEmail(c: { req: { header: (n: string) => string | undefined; url: string }; env: Cloudflare.Env }): Promise<string | null> {
 	const host = new URL(c.req.url).hostname;
 	// Only on this computer, with STAFF_DEV_EMAIL in .dev.vars.
-	if (c.env.STAFF_DEV_EMAIL && (host === "localhost" || host === "127.0.0.1")) return c.env.STAFF_DEV_EMAIL;
+	if (c.env.STAFF_DEV_EMAIL && (host === "localhost" || host === "127.0.0.1" || host.endsWith(".localhost"))) return c.env.STAFF_DEV_EMAIL;
 	const token = c.req.header("cf-access-jwt-assertion");
 	if (!token || !c.env.ACCESS_TEAM_DOMAIN || !c.env.ACCESS_AUD) return null;
 	jwks ??= createRemoteJWKSet(new URL(`${c.env.ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`));

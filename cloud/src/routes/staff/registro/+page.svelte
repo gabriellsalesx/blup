@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { staffApi, actionLabel, when } from "#lib/staff.ts";
+	import { staffApi, staffHref, actionLabel, when } from "#lib/staff.ts";
 	import { createPager } from "#lib/pager.svelte.ts";
 	import { toast } from "#lib/toast.svelte.ts";
 	import Pager from "#lib/ui/Pager.svelte";
@@ -24,7 +24,7 @@
 						<td class="px-4 py-2.5 whitespace-nowrap text-neutral-500">{when(r.createdAt)}</td>
 						<td class="px-4 py-2.5">{r.staffEmail}</td>
 						<td class="px-4 py-2.5"><b>{actionLabel[r.action] ?? r.action}</b>{#if r.detail}<br /><span class="text-neutral-500">{r.detail}</span>{/if}</td>
-						<td class="px-4 py-2.5">{#if r.userId}<a class="text-blup hover:underline" href="/staff/contas/{r.userId}">abrir</a>{/if}</td>
+						<td class="px-4 py-2.5">{#if r.userId}<a class="text-blup hover:underline" href={staffHref(`/staff/contas/${r.userId}`)}>abrir</a>{/if}</td>
 					</tr>
 				{:else}
 					<tr><td class="px-4 py-6 text-neutral-500" colspan="4">Nada registrado ainda.</td></tr>

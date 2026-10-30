@@ -73,8 +73,17 @@ Abra pelo endereço `http://localhost:8787` (não `127.0.0.1`): a passkey e a or
 
 Este repositório é público. **Nenhum segredo entra no git**: em desenvolvimento eles ficam em `.dev.vars` (ignorado); em produção, `npx wrangler secret put` para `BETTER_AUTH_SECRET`, `TURNSTILE_SECRET_KEY`, `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET`. Os IDs do D1 e do R2 no `wrangler.jsonc` são de exemplo.
 
+## Endereços
+
+Um Worker só, com dois domínios (`env.production` no `wrangler.jsonc`):
+
+- **cloud.getblup.io**: o painel do usuário (`/entrar`, `/conta`) e a API (`/api`).
+- **staff.getblup.io**: a staff, na raiz (`/`, `/contas/:id`, `/equipe`, `/registro`), com o Cloudflare Access na frente do domínio inteiro. O `reroute` do SvelteKit (`src/hooks.ts`) mostra as telas de `routes/staff` ali.
+- Com `STAFF_HOST` definido, cada domínio responde 404 para as telas e a API do outro. No computador (`STAFF_HOST` vazio) tudo fica em `localhost:8787`, com a staff em `/staff`.
+- O site institucional (getblup.io) é outro repositório.
+
 ## Antes de publicar
 
-- Domínio: trocar `APP_URL`, `PASSKEY_RP_ID` e `MAIL_FROM` no `wrangler.jsonc`. Passkeys criadas em outro domínio deixam de valer.
+- Publicar com `npx wrangler deploy --env production` (os domínios já estão no `wrangler.jsonc`). Passkeys valem em `getblup.io` e subdomínios; as de teste do `localhost` não passam para lá.
 - Criar o D1 (`npx wrangler d1 create blup-cloud`) e o R2, e aplicar as migrações com `npm run db:migrate:remote`.
 - Trocar as chaves de teste do Turnstile pelas reais e ligar o envio de e-mail (`EMAIL_MODE` diferente de `log`).

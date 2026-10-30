@@ -96,4 +96,22 @@ app.onError((err, c) => {
 });
 
 export type AppType = typeof routes;
-export default app;
+
+// One Worker, two addresses. With STAFF_HOST set (production), the staff
+// lives only on its own host (behind Cloudflare Access) and the account
+// panel only on the other: each answers "not found" for the other's pages
+// and API. Without it (this computer), both live on localhost.
+export default {
+	fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
+		const url = new URL(req.url);
+		const staffApi = url.pathname.startsWith("/api/staff");
+		const staffPage = url.pathname === "/staff" || url.pathname.startsWith("/staff/");
+		if (env.STAFF_HOST) {
+			const onStaff = url.hostname === env.STAFF_HOST;
+			const api = url.pathname.startsWith("/api/");
+			if (onStaff ? api && !staffApi : staffApi || staffPage) return Response.json({ code: "NOT_FOUND" }, { status: 404 });
+		}
+		if (url.pathname.startsWith("/api/")) return app.fetch(req, env, ctx);
+		return env.ASSETS.fetch(req);
+	},
+} satisfies ExportedHandler<Cloudflare.Env>;

@@ -5,7 +5,7 @@
 	import External from "@lucide/svelte/icons/external-link";
 	import KeyRound from "@lucide/svelte/icons/key-round";
 	import Trash from "@lucide/svelte/icons/trash-2";
-	import { staffApi, actionLabel, when } from "#lib/staff.ts";
+	import { staffApi, staffHref, actionLabel, when } from "#lib/staff.ts";
 	import { toast } from "#lib/toast.svelte.ts";
 	import Button from "#lib/ui/Button.svelte";
 	import Row from "#lib/ui/Row.svelte";
@@ -33,7 +33,7 @@
 	}
 </script>
 
-<a href="/staff" class="inline-flex items-center gap-1.5 text-sm font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white"><ArrowLeft class="size-4" />Contas</a>
+<a href={staffHref("/staff")} class="inline-flex items-center gap-1.5 text-sm font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white"><ArrowLeft class="size-4" />Contas</a>
 
 {#if d}
 	<div class="mt-3 flex flex-wrap items-center gap-3">
@@ -116,7 +116,7 @@
 
 	<Modal bind:open={delOpen} title="Excluir a conta">
 		<p class="text-sm text-neutral-500">Cancela a assinatura no Stripe e apaga a conta, as sessões e as passkeys. Não dá para desfazer.</p>
-		<form class="mt-4 grid gap-3" onsubmit={async (e) => { e.preventDefault(); delOpen = false; busy = true; try { await staffApi.remove(id); toast("Conta excluída"); goto("/staff"); } catch { toast("Não deu certo. Tente de novo.", { kind: "error" }); } finally { busy = false; } }}>
+		<form class="mt-4 grid gap-3" onsubmit={async (e) => { e.preventDefault(); delOpen = false; busy = true; try { await staffApi.remove(id); toast("Conta excluída"); goto(staffHref("/staff")); } catch { toast("Não deu certo. Tente de novo.", { kind: "error" }); } finally { busy = false; } }}>
 			<Field label={`Digite ${d.user.email ?? d.user.id} para confirmar`} bind:value={confirmEmail} autocomplete="off" />
 			<div class="flex justify-end gap-2">
 				<Button variant="secondary" type="button" onclick={() => (delOpen = false)}>Cancelar</Button>

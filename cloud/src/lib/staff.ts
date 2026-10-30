@@ -52,6 +52,11 @@ export const staffApi = {
 	log: (cursor: string | null) => call<Page<LogRow>>("GET", `/log${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
 };
 
+// A staff page's address: /staff/contas here, /contas on staff.getblup.io
+// (hooks.ts maps it back).
+export const staffHref = (path: string) =>
+	typeof location !== "undefined" && location.hostname.startsWith("staff.") ? path.replace(/^\/staff/, "") || "/" : path;
+
 export const roleLabel = (r: Role) => (r === "admin" ? "Admin" : "Suporte");
 
 export const actionLabel: Record<string, string> = {
