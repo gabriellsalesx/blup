@@ -280,13 +280,17 @@ func writeWorker(dir, scope string) error {
 
 // worker: pages come from the network when online (always fresh) and from
 // the copy when offline; other files from the copy first. GitHub and the
-// login service always go to the network.
+// login service always go to the network. Audio is asked in ranges (the
+// player streams it), which the cache can't keep: it plays from the
+// network, or from the copy the visitor downloaded with the player's
+// button (cache AUDIO, kept across publishes), cut into the range asked.
 const worker = `// Made by blup: keeps the site working offline.
 const VERSION = "__VERSION__";
 const SCOPE = __SCOPE__;
 const FILES = __FILES__;
 const CACHE = "blup-" + VERSION;
 const SEEN = "blup-seen";
+const AUDIO = "blup-audio";
 
 self.addEventListener("install", (e) => {
   // One by one: a file that fails doesn't stop the others.
@@ -296,7 +300,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("blup-") && k !== CACHE && k !== SEEN).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("blup-") && k !== CACHE && k !== SEEN && k !== AUDIO).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -316,11 +320,40 @@ self.addEventListener("fetch", (e) => {
     );
     return;
   }
+  if (req.headers.has("range") || req.destination === "audio") {
+    e.respondWith(audio(req).then((res) => res || fetch(req)));
+    return;
+  }
   e.respondWith(
     caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-      if (res.ok && res.type === "basic") { const copy = res.clone(); caches.open(SEEN).then((c) => c.put(req, copy)); }
+      if (res.status === 200 && res.type === "basic") { const copy = res.clone(); caches.open(SEEN).then((c) => c.put(req, copy)); }
       return res;
     })),
   );
 });
+
+// audio answers from the downloaded copy, with the part (range) asked;
+// null when the audio wasn't downloaded.
+async function audio(req) {
+  const hit = await (await caches.open(AUDIO)).match(req.url);
+  if (!hit) return null;
+  const range = /bytes=(\d*)-(\d*)/.exec(req.headers.get("range") || "");
+  if (!range) return hit;
+  const buf = await hit.arrayBuffer();
+  const size = buf.byteLength;
+  let start = range[1] ? Number(range[1]) : size - Number(range[2] || 0);
+  let end = range[1] && range[2] ? Number(range[2]) : size - 1;
+  start = Math.max(0, start);
+  end = Math.min(end, size - 1);
+  if (start > end) return new Response(null, { status: 416, headers: { "Content-Range": "bytes */" + size } });
+  return new Response(buf.slice(start, end + 1), {
+    status: 206,
+    headers: {
+      "Content-Type": hit.headers.get("Content-Type") || "audio/mpeg",
+      "Content-Range": "bytes " + start + "-" + end + "/" + size,
+      "Content-Length": String(end - start + 1),
+      "Accept-Ranges": "bytes",
+    },
+  });
+}
 `

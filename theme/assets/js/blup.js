@@ -186,5 +186,62 @@ for (const box of document.querySelectorAll("[data-listen]")) {
     speedBtn.textContent = `${String(speeds[speed]).replace(".", document.documentElement.lang.startsWith("pt") ? "," : ".")}×`;
   });
   for (const ev of ["timeupdate", "loadedmetadata", "durationchange", "seeked"]) audio.addEventListener(ev, paint);
+  saveButton(box.querySelector("[data-listen-save]"), audio.src);
   for (const ev of ["play", "pause", "ended"]) audio.addEventListener(ev, state);
+}
+
+// saveButton keeps a narration on the device to listen offline, in the
+// cache the site's service worker plays it from ("blup-audio", see the
+// worker in internal/pwa). Shown only when the worker is on (published
+// site); a second tap deletes the copy.
+async function saveButton(btn, src) {
+  if (!btn || !("caches" in window) || !navigator.serviceWorker) return;
+  if (!navigator.serviceWorker.controller) {
+    // First visit: the worker takes the page over once it is installed.
+    navigator.serviceWorker.addEventListener("controllerchange", () => saveButton(btn, src), { once: true });
+    return;
+  }
+  const CACHE = "blup-audio";
+  const pct = btn.querySelector(".listen-pct");
+  const show = (state, text) => {
+    btn.dataset.state = state;
+    btn.setAttribute("aria-label", text);
+    btn.title = text;
+    if (state !== "saving") pct.textContent = "";
+  };
+  const cache = await caches.open(CACHE);
+  show((await cache.match(src)) ? "saved" : "", (await cache.match(src)) ? btn.dataset.saved : btn.dataset.save);
+  btn.hidden = false;
+  btn.addEventListener("click", async () => {
+    if (btn.dataset.state === "saving") return;
+    if (btn.dataset.state === "saved") {
+      await cache.delete(src);
+      return show("", btn.dataset.save);
+    }
+    show("saving", btn.dataset.saving);
+    try {
+      const res = await fetch(src, { cache: "no-store" });
+      if (!res.ok) throw new Error(res.status);
+      // Read it piece by piece to show how much came.
+      const total = Number(res.headers.get("Content-Length")) || 0;
+      const reader = res.body.getReader();
+      const parts = [];
+      let got = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parts.push(value);
+        got += value.length;
+        if (total) pct.textContent = `${Math.floor((got / total) * 100)}%`;
+      }
+      const type = res.headers.get("Content-Type") || "audio/mpeg";
+      // Older versions of this narration (another ?v=) go away.
+      const path = new URL(src).pathname;
+      for (const req of await cache.keys()) if (new URL(req.url).pathname === path && req.url !== src) await cache.delete(req);
+      await cache.put(src, new Response(new Blob(parts, { type }), { headers: { "Content-Type": type, "Content-Length": String(got) } }));
+      show("saved", btn.dataset.saved);
+    } catch {
+      show("", btn.dataset.failed);
+    }
+  });
 }

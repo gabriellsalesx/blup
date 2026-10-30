@@ -10,7 +10,9 @@ without JavaScript the browser's own controls show. Param: the page. */ -}}
 no player, since trying to play could hang the window. Never on the site. */ -}}
 {{- if not (and (eq (os.Getenv "HUGO_BLUP_MODE") "preview") (os.Getenv "HUGO_BLUP_NO_MP3")) -}}
 <section class="listen" data-listen aria-label="{{ T "listenTitle" }}">
-  <audio src="{{ .RelPermalink }}" preload="none" controls></audio>
+  {{- /* The version (audio_hash) makes a new narration a new address, so a
+  downloaded copy of the old one is never played instead. */}}
+  <audio src="{{ .RelPermalink }}{{ with $.Params.audio_hash }}?v={{ . }}{{ end }}" preload="none" controls></audio>
   <button class="listen-play" type="button" data-listen-play aria-label="{{ T "listenPlay" }}" data-play="{{ T "listenPlay" }}" data-pause="{{ T "listenPause" }}">
     <svg class="icon icon-play"><use href="#i-play"/></svg>
     <svg class="icon icon-pause"><use href="#i-pause"/></svg>
@@ -26,6 +28,13 @@ no player, since trying to play could hang the window. Never on the site. */ -}}
     <button type="button" data-listen-skip="-15" aria-label="{{ T "listenBack" }}"><svg class="icon"><use href="#i-rotate-ccw"/></svg><small>15</small></button>
     <button type="button" data-listen-skip="15" aria-label="{{ T "listenAhead" }}"><svg class="icon"><use href="#i-rotate-cw"/></svg><small>15</small></button>
     <button type="button" class="listen-speed" data-listen-speed aria-label="{{ T "listenSpeed" }}">1×</button>
+    {{- /* Download for offline listening: shown by blup.js when the site works
+    offline (its service worker is on). */}}
+    <button type="button" class="listen-save" data-listen-save hidden aria-label="{{ T "listenSave" }}" data-save="{{ T "listenSave" }}" data-saved="{{ T "listenSaved" }}" data-saving="{{ T "listenSaving" }}" data-failed="{{ T "listenSaveFailed" }}">
+      <svg class="icon icon-get"><use href="#i-download"/></svg>
+      <svg class="icon icon-done"><use href="#i-check"/></svg>
+      <span class="listen-pct" aria-hidden="true"></span>
+    </button>
   </div>
 </section>
 {{- end }}
