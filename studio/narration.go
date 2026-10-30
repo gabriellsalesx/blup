@@ -31,10 +31,6 @@ func (s *Studio) ConnectAI(key string) error {
 // OpenAIKeyPage opens OpenRouter's page of keys in the browser.
 func (s *Studio) OpenAIKeyPage() { s.OpenURL(narrate.KeyPage) }
 
-// LinkedAudio is the audio of a property ("[[post.mp3]]") as a data: URL,
-// for the player of the properties.
-func (s *Studio) LinkedAudio(link string) (string, error) { return s.LinkedImage(link) }
-
 // Voices lists the narration voices for sites in lang ("pt" or "en"), the
 // default first.
 func (s *Studio) Voices(lang string) ([]app.Voice, error) {

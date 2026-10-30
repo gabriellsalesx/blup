@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AuthorNames, PickCover, LinkedImage, LinkedAudio, AIConnected, Narrate, NarrationHash } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { AuthorNames, PickCover, LinkedImage, AIConnected, Narrate, NarrationHash, Media } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { Events } from "@wailsio/runtime";
   import { toast } from "./toast.svelte";
   import AudioLines from "@lucide/svelte/icons/audio-lines";
@@ -51,14 +51,21 @@
   let audio = $state(String(props.audio ?? ""));
   let audioHash = $state(String(props.audio_hash ?? ""));
   let nowHash = $state("");
-  let audioSrc = $state("");
+  let seconds = $state(Number(props.audio_seconds ?? 0));
+  const audioFile = $derived(audio.replace(/^\[\[|\]\]$/g, ""));
+  // The narration is heard in the live preview, as on the site. On Linux
+  // the window plays it with GStreamer's MP3 plugins (media.go): without
+  // them, the command that installs them.
+  let installCmd = $state("");
+  const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
   let aiOn = $state<boolean | null>(null);
   let narrating = $state<{ done: number; total: number } | null>(null);
   const checkNarration = async () => {
     if (!canNarrate) return;
     aiOn = await AIConnected().catch(() => false);
     nowHash = await NarrationHash(note).catch(() => "");
-    audioSrc = audio ? await LinkedAudio(audio).catch(() => "") : "";
+    const m = await Media().catch(() => null);
+    installCmd = m && !m.mp3 ? m.command : "";
   };
   checkNarration();
   const stale = $derived(!!audio && !!nowHash && !!audioHash && nowHash !== audioHash);
@@ -68,11 +75,10 @@
     narrating = { done: 0, total: 0 };
     try {
       const r = await Narrate(note);
-      audio = r.link; audioHash = r.hash; nowHash = r.hash;
+      audio = r.link; audioHash = r.hash; nowHash = r.hash; seconds = Math.round(r.seconds);
       onEdit("audio", r.link);
       onEdit("audio_hash", r.hash);
       onEdit("audio_seconds", Math.round(r.seconds));
-      audioSrc = await LinkedAudio(r.link).catch(() => "");
       toast(n.done.replace("{min}", String(Math.max(1, Math.round(r.seconds / 60)))).replace("{mb}", (r.bytes / 1048576).toFixed(1)));
     } catch (e) {
       toast(String(e).includes("no OpenRouter key") ? n.needKey : String(e).replace(/^(Runtime)?Error: /, ""), { kind: "error" });
@@ -81,7 +87,7 @@
     narrating = null;
   }
   function removeNarration() {
-    audio = ""; audioHash = ""; audioSrc = "";
+    audio = ""; audioHash = ""; seconds = 0;
     onEdit("audio", null);
     onEdit("audio_hash", null);
     onEdit("audio_seconds", null);
@@ -202,13 +208,18 @@
               <p class="muted">{n.needKey}</p>
               <button class="btn ghost" onclick={() => onSettings("ai")}>{n.openSettings}</button>
             {:else if aiOn}
-              {#if audio && audioSrc}<audio controls preload="metadata" src={audioSrc}></audio>{/if}
-              {#if audio}<small class:warn={stale} class:muted={!stale}>{stale ? n.stale : n.fresh}</small>{/if}
+              {#if audio}
+                <p><b>{audioFile}</b>{seconds ? ` · ${clock(seconds)}` : ""}</p>
+                <small class:warn={stale} class:muted={!stale}>{stale ? n.stale : n.fresh} {n.inPreview}</small>
+                {#if installCmd}<small class="warn">{n.needCodec}</small><code class="cmd">{installCmd}</code>{/if}
+              {/if}
               <div class="cover">
                 <button class="btn ghost" disabled={!!narrating} onclick={narrate}><AudioLines size={15} />
                   {#if narrating}{narrating.total > 1 ? n.progress.replace("{done}", String(narrating.done + 1 > narrating.total ? narrating.total : narrating.done + 1)).replace("{total}", String(narrating.total)) : n.working}{:else}{audio ? n.again : n.make}{/if}
                 </button>
-                {#if audio && !narrating}<button class="btn ghost" onclick={removeNarration}>{t.remove}</button>{/if}
+                {#if audio && !narrating}
+                  <button class="btn ghost" onclick={removeNarration}>{t.remove}</button>
+                {/if}
               </div>
               {#if !audio}<small class="muted">{n.help}</small>{/if}
             {/if}
@@ -269,8 +280,8 @@
   .opts button { width: 100%; padding: .4rem .6rem; border-radius: .35rem; text-align: start; font-size: .875rem; }
   .opts button:hover, .opts button.on { background: var(--soft); }
   .narration { display: grid; gap: .5rem; padding: .75rem 1rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); }
-  .narration audio { width: 100%; height: 2.25rem; }
   .narration p { margin: 0; font-size: .85rem; }
+  .narration .cmd { justify-self: start; padding: .3rem .5rem; border-radius: .35rem; background: var(--soft); font-size: .8rem; user-select: all; }
   .narration small { font-size: .8rem; }
   .narration .warn { color: var(--warn, #d97706); }
   .narration .btn { display: inline-flex; align-items: center; gap: .4rem; }

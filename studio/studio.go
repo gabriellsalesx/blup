@@ -206,6 +206,11 @@ func (s *Studio) StartPreview() (string, error) {
 	cmd := bin.Command(ctx, site.Dir(), "server", "--config", scaffold.PreviewConfig, "--renderToMemory", "--buildDrafts",
 		"--disableLiveReload", "--bind", "127.0.0.1", "--baseURL", "http://localhost/", "--logLevel", "info")
 	cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=preview")
+	if !canPlayMP3() {
+		// The theme shows how to install the plugins instead of a player
+		// the window can't play (see media.go).
+		cmd.Env = append(cmd.Env, "HUGO_BLUP_NO_MP3="+installCommand())
+	}
 	pr, pw := io.Pipe()
 	cmd.Stdout, cmd.Stderr = pw, pw
 	if err := cmd.Start(); err != nil {

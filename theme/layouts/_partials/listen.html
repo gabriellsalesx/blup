@@ -5,6 +5,16 @@ without JavaScript the browser's own controls show. Param: the page. */ -}}
 {{- with .Params.audio }}{{ with partial "vault-resource.html" (dict "page" $ "path" .) }}
 {{- $secs := int ($.Params.audio_seconds | default 0) -}}
 {{- $len := "" }}{{ if $secs }}{{ $len = printf "%d:%02d" (div $secs 60) (mod $secs 60) }}{{ end -}}
+{{- /* Preview in Blup Studio on a Linux without GStreamer's MP3 plugins:
+the window can't play the audio (and could hang trying), so the command
+that installs them shows instead. Never in the published site. */ -}}
+{{- $install := "" }}{{ if eq (os.Getenv "HUGO_BLUP_MODE") "preview" }}{{ $install = os.Getenv "HUGO_BLUP_NO_MP3" }}{{ end -}}
+{{- if $install }}
+<section class="listen listen-missing">
+  <svg class="icon"><use href="#i-headphones"/></svg>
+  <p>{{ T "listenNoCodec" }} <code>{{ $install }}</code></p>
+</section>
+{{- else -}}
 <section class="listen" data-listen aria-label="{{ T "listenTitle" }}">
   <audio src="{{ .RelPermalink }}" preload="none" controls></audio>
   <button class="listen-play" type="button" data-listen-play aria-label="{{ T "listenPlay" }}" data-play="{{ T "listenPlay" }}" data-pause="{{ T "listenPause" }}">
@@ -24,4 +34,5 @@ without JavaScript the browser's own controls show. Param: the page. */ -}}
     <button type="button" class="listen-speed" data-listen-speed aria-label="{{ T "listenSpeed" }}">1×</button>
   </div>
 </section>
+{{- end }}
 {{- end }}{{ end -}}

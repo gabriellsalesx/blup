@@ -22,7 +22,7 @@ be merged after it is signed.
 ## Pull requests
 
 - One change per pull request, with a clear description of what and why.
-- Run the tests: `go test ./...` (and `cd studio && go build -tags gtk3 .` for
+- Run the tests: `go test ./...` (and `cd studio && go build .` for
   Blup Studio).
 - Keep the style of the code around it.
 - Text people see goes in both English and Portuguese.
@@ -51,7 +51,7 @@ requests só são aceitos depois da assinatura.
 ## Pull requests
 
 - Uma mudança por pull request, com uma descrição clara do que e do porquê.
-- Rode os testes: `go test ./...` (e `cd studio && go build -tags gtk3 .` para
+- Rode os testes: `go test ./...` (e `cd studio && go build .` para
   o Blup Studio).
 - Siga o estilo do código ao redor.
 - Textos que as pessoas veem vão em inglês e em português.

@@ -85,6 +85,15 @@ export interface Hyprland {
 }
 
 /**
+ * MediaSupport tells whether the window can play the narration (MP3) and,
+ * when it can't, the command that installs what is missing.
+ */
+export interface MediaSupport {
+    "mp3": boolean;
+    "command": string;
+}
+
+/**
  * NarrateProgress is how many parts of the note were read aloud.
  */
 export interface NarrateProgress {

@@ -305,18 +305,17 @@ export function Layout(): $CancellablePromise<$models.HomeItem[] | null> {
 }
 
 /**
- * LinkedAudio is the audio of a property ("[[post.mp3]]") as a data: URL,
- * for the player of the properties.
- */
-export function LinkedAudio(link: string): $CancellablePromise<string> {
-    return $Call.ByID(445785663, link);
-}
-
-/**
  * LinkedImage is the image of a property ("[[cover.jpg]]") as a data: URL.
  */
 export function LinkedImage(link: string): $CancellablePromise<string> {
     return $Call.ByID(929506664, link);
+}
+
+/**
+ * Media checks the window's MP3 support.
+ */
+export function Media(): $CancellablePromise<$models.MediaSupport> {
+    return $Call.ByID(2763488506);
 }
 
 /**

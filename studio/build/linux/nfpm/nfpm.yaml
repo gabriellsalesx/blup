@@ -24,10 +24,14 @@ contents:
   - src: "./build/linux/blup-studio.desktop"
     dst: "/usr/share/applications/blup-studio.desktop"
 
-# Default dependencies for the GTK4 + WebKitGTK 6.0 stack (Ubuntu 24.04+ / Debian 13+)
+# Dependencies of the GTK4 + WebKitGTK 6.0 stack the Studio is built with
+# (Wails 3's default). GStreamer's "good" plugins let the window (and the
+# live preview in it) play the posts' MP3 narration: WebKitGTK plays media
+# through GStreamer and only lists them as optional.
 depends:
   - libgtk-4-1
   - libwebkitgtk-6.0-4
+  - gstreamer1.0-plugins-good
 
 # Distribution-specific overrides for different package formats
 overrides:
@@ -36,12 +40,14 @@ overrides:
     depends:
       - gtk4
       - webkitgtk6.0
+      - gstreamer1-plugins-good
 
   # Arch Linux packages
   archlinux:
     depends:
       - gtk4
       - webkitgtk-6.0
+      - gst-plugins-good
 
 # scripts section to ensure desktop database is updated after install
 scripts:
@@ -50,22 +56,6 @@ scripts:
   # preremove: "./build/linux/nfpm/scripts/preremove.sh"
   # postremove: "./build/linux/nfpm/scripts/postremove.sh"
 
-# If you build your app with -tags gtk3 (legacy WebKit2GTK 4.1 stack — supported through v3.0.x, removed in v3.1),
-# replace the depends/overrides above with these:
-#
-# depends:
-#   - libgtk-3-0
-#   - libwebkit2gtk-4.1-0
-# overrides:
-#   rpm:
-#     depends:
-#       - gtk3
-#       - webkit2gtk4.1
-#   archlinux:
-#     depends:
-#       - gtk3
-#       - webkit2gtk-4.1
-#
 # replaces:
 #   - foobar
 # provides:
