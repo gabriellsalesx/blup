@@ -428,7 +428,21 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .listen.playing .icon-pause { display: block; }
   .listen-main { flex: 1; min-width: 0; flex-direction: column; gap: .375rem; }
   .listen-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; font-size: .8125rem; }
-  .listen-title { display: inline-flex; align-items: center; gap: .375rem; font-weight: 600; color: var(--main-900); }
+  .listen-title { display: inline-flex; align-items: center; gap: .375rem; font-weight: 500; color: var(--main-500); }
+  .listen-name { overflow: hidden; font-size: .9375rem; font-weight: 600; line-height: 1.4; color: var(--main-900); white-space: nowrap; }
+  .listen-track { display: inline-flex; gap: 3rem; }
+  .listen-track > :last-child { display: none; }
+  .listen-name.scrolling { mask-image: linear-gradient(to right, transparent, #000 1rem, #000 calc(100% - 2rem), transparent); }
+  .listen-name.scrolling .listen-track { padding-inline-start: 1rem; animation: listen-marquee var(--marquee, 12s) linear infinite; }
+  .listen-name.scrolling .listen-track > :last-child { display: inline; }
+  .listen-name.scrolling:hover .listen-track { animation-play-state: paused; }
+  @keyframes listen-marquee { 0%, 12% { transform: translateX(0); } 100% { transform: translateX(calc(-50% - 1rem)); } }
+  @media (prefers-reduced-motion: reduce) {
+    .listen-name.scrolling { mask-image: none; }
+    .listen-name.scrolling .listen-track { animation: none; padding-inline-start: 0; }
+    .listen-name.scrolling .listen-track > :first-child { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .listen-name.scrolling .listen-track > :last-child { display: none; }
+  }
   .listen-time { color: var(--main-500); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .listen-seek { --fill: 0%; width: 100%; height: 1rem; margin: 0; background: transparent; appearance: none; -webkit-appearance: none; cursor: pointer; }
   .listen-seek::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--main-900) var(--fill), var(--main-200) var(--fill)); }
@@ -448,8 +462,9 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .listen-tools small { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 1px; font-size: .5rem; font-weight: 700; }
   @media (width < 40rem) {
     .listen { flex-wrap: wrap; }
-    .listen-main { order: 3; flex-basis: 100%; }
-    .listen-tools { margin-inline-start: auto; }
+    /* The title stays beside the play button; the tools go below. */
+    .listen-main { flex-basis: calc(100% - 3.625rem); }
+    .listen-tools { flex-basis: 100%; justify-content: flex-end; margin-block-start: -.25rem; }
   }
 
   /* Password-protected post */

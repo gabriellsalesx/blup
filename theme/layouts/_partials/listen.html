@@ -22,6 +22,9 @@ no player, since trying to play could hang the window. Never on the site. */ -}}
       <span class="listen-title"><svg class="icon icon-sm"><use href="#i-headphones"/></svg>{{ T "listenTitle" }}</span>
       <span class="listen-time"><span data-listen-now>0:00</span>{{ with $len }} / <span data-listen-len>{{ . }}</span>{{ else }}<span data-listen-len hidden></span>{{ end }}</span>
     </div>
+    {{- /* The post's title, scrolling like a music player's when it doesn't
+    fit (blup.js measures it; a copy follows for a seamless loop). */}}
+    <div class="listen-name" data-listen-name><span class="listen-track"><span>{{ $.Title }}</span><span aria-hidden="true">{{ $.Title }}</span></span></div>
     <input class="listen-seek" type="range" min="0" max="1000" value="0" step="1" data-listen-seek aria-label="{{ T "listenSeek" }}">
   </div>
   <div class="listen-tools">

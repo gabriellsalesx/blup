@@ -188,6 +188,22 @@ for (const box of document.querySelectorAll("[data-listen]")) {
   for (const ev of ["timeupdate", "loadedmetadata", "durationchange", "seeked"]) audio.addEventListener(ev, paint);
   saveButton(box.querySelector("[data-listen-save]"), audio.src);
   for (const ev of ["play", "pause", "ended"]) audio.addEventListener(ev, state);
+  // The title scrolls when it doesn't fit, at a steady reading pace.
+  const name = box.querySelector("[data-listen-name]");
+  if (name) {
+    const text = name.querySelector(".listen-track > span");
+    const fit = () => {
+      const w = text.offsetWidth;
+      const over = w > name.clientWidth;
+      name.classList.toggle("scrolling", over);
+      if (over) name.style.setProperty("--marquee", `${Math.max(8, (w + 48) / 35)}s`);
+    };
+    fit();
+    // The box, and the title itself (it widens when the font loads).
+    const ro = new ResizeObserver(fit);
+    ro.observe(name);
+    ro.observe(text);
+  }
 }
 
 // saveButton keeps a narration on the device to listen offline, in the
