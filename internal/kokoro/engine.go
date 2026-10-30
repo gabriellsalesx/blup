@@ -81,11 +81,32 @@ func (e Engine) Speak(ctx context.Context, text, voice string, progress func(don
 	if err != nil {
 		return nil, 0, err
 	}
-	ps, err := Phonemize(ctx, e.espeak(), e.espeakData(), voice, text)
-	if err != nil {
-		return nil, 0, err
+	// Paragraph by paragraph (the text comes with blank lines between
+	// them), so a pause goes between them: Kokoro alone runs everything
+	// together.
+	type part struct {
+		ps    []rune
+		pause float64 // silence after it, in seconds
 	}
-	parts := chunk(ps, maxTokens)
+	var parts []part
+	paras := strings.Split(strings.TrimSpace(text), "\n\n")
+	for i, para := range paras {
+		if strings.TrimSpace(para) == "" {
+			continue
+		}
+		ps, err := Phonemize(ctx, e.espeak(), e.espeakData(), voice, para)
+		if err != nil {
+			return nil, 0, err
+		}
+		chunks := chunk(ps, maxTokens)
+		for j, c := range chunks {
+			p := part{ps: c}
+			if j == len(chunks)-1 {
+				p.pause = pauseFor(i, len(paras))
+			}
+			parts = append(parts, p)
+		}
+	}
 	if len(parts) == 0 {
 		return nil, 0, errors.New("kokoro: nothing to read")
 	}
@@ -99,13 +120,14 @@ func (e Engine) Speak(ctx context.Context, text, voice string, progress func(don
 	}
 	defer s.close()
 	var pcm []float32
-	for i, p := range parts {
+	for i, pt := range parts {
 		if progress != nil {
 			progress(i, len(parts))
 		}
 		if err := ctx.Err(); err != nil {
 			return nil, 0, err
 		}
+		p := pt.ps
 		ids := make([]int64, 0, len(p)+2)
 		ids = append(ids, 0)
 		for _, r := range p {
@@ -121,12 +143,25 @@ func (e Engine) Speak(ctx context.Context, text, voice string, progress func(don
 			return nil, 0, err
 		}
 		pcm = append(pcm, audio...)
+		pcm = append(pcm, make([]float32, int(pt.pause*SampleRate))...)
 	}
 	if progress != nil {
 		progress(len(parts), len(parts))
 	}
 	mp3, err := e.encode(ctx, pcm)
 	return mp3, float64(len(pcm)) / SampleRate, err
+}
+
+// pauseFor is the silence after paragraph i of n: longer after the first
+// (the title), none after the last.
+func pauseFor(i, n int) float64 {
+	switch {
+	case i == n-1:
+		return 0
+	case i == 0:
+		return 0.9
+	}
+	return 0.6
 }
 
 // loadVoice reads a voice: 510 style rows of 256 floats.

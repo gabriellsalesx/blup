@@ -35,6 +35,12 @@ func TestChunk(t *testing.T) {
 	}
 }
 
+func TestPauses(t *testing.T) {
+	if pauseFor(0, 3) != 0.9 || pauseFor(1, 3) != 0.6 || pauseFor(2, 3) != 0 || pauseFor(0, 1) != 0 {
+		t.Fatal("pauses: title 0.9 s, paragraphs 0.6 s, none at the end")
+	}
+}
+
 func TestToKokoroPT(t *testing.T) {
 	// eSpeak NG's IPA (tied with ^) to Kokoro's letters, as misaki does.
 	in := "ˌest^ʃy ɛ ʊ blˈup lˈe^ɪŋdw ʊ se^ʊ pˈost^ʃ vˈɔz ˈa^ʊtæ stud^ʒˈi^ʊ"
