@@ -47,7 +47,7 @@ Abra pelo endereço `http://localhost:8787` (não `127.0.0.1`): a passkey e a or
 
 ## Segredos
 
-Este repositório é público. **Nenhum segredo entra no git**: em desenvolvimento eles ficam em `.dev.vars` (ignorado); em produção, `npx wrangler secret put BETTER_AUTH_SECRET` e `npx wrangler secret put TURNSTILE_SECRET_KEY`. Os IDs do D1 e do R2 no `wrangler.jsonc` são de exemplo.
+Este repositório é público. **Nenhum segredo entra no git**: em desenvolvimento eles ficam em `.dev.vars` (ignorado); em produção, `npx wrangler secret put` para `BETTER_AUTH_SECRET`, `TURNSTILE_SECRET_KEY`, `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET`. Os IDs do D1 e do R2 no `wrangler.jsonc` são de exemplo.
 
 ## Antes de publicar
 
