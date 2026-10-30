@@ -3,7 +3,7 @@
 	import { staffApi, roleLabel, when, type Role, type Team } from "#lib/staff.ts";
 	import { toast } from "#lib/toast.svelte.ts";
 	import Button from "#lib/ui/Button.svelte";
-	import Card from "#lib/ui/Card.svelte";
+	import Row from "#lib/ui/Row.svelte";
 	import Field from "#lib/ui/Field.svelte";
 
 	// Who is on the staff. Each one also needs to be allowed in Cloudflare
@@ -34,11 +34,11 @@
 	}
 </script>
 
-<h1 class="text-2xl font-extrabold tracking-tight">Equipe</h1>
+<h1 class="text-3xl font-extrabold tracking-tight">Equipe</h1>
 <p class="mt-1 text-sm text-neutral-500">Suporte vê as contas e ajuda (sessões, passkeys). Admin também bloqueia, exclui contas e cuida da equipe. Libere o e-mail também no Cloudflare Access.</p>
 
-<div class="mt-6 grid gap-5">
-	<Card title="Adicionar">
+<div class="mt-6">
+	<Row title="Adicionar" help="Quem entra pela primeira vez já fica com o papel escolhido.">
 		<form class="mt-3 flex flex-wrap items-end gap-3" onsubmit={add}>
 			<div class="min-w-64 flex-1"><Field label="E-mail" type="email" required bind:value={email} /></div>
 			<label class="grid gap-1.5 text-sm font-medium">Papel
@@ -49,10 +49,10 @@
 			</label>
 			<Button {busy}>Adicionar</Button>
 		</form>
-	</Card>
+	</Row>
 
 	{#if team}
-		<Card title="Quem está na equipe">
+		<Row title="Quem está na equipe">
 			<ul class="mt-3 grid gap-2 text-sm">
 				{#if team.owner}<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2.5 dark:border-neutral-800"><span class="flex-1 font-semibold">{team.owner}</span><span class="text-neutral-500">Admin (dono)</span></li>{/if}
 				{#each team.staff as m (m.email)}
@@ -66,6 +66,6 @@
 					</li>
 				{/each}
 			</ul>
-		</Card>
+		</Row>
 	{/if}
 </div>

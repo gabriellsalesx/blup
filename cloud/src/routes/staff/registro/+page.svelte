@@ -7,7 +7,7 @@
 	staffApi.log().then((r) => (rows = r)).catch(() => toast("Não deu para carregar o registro.", { kind: "error" }));
 </script>
 
-<h1 class="text-2xl font-extrabold tracking-tight">Registro</h1>
+<h1 class="text-3xl font-extrabold tracking-tight">Registro</h1>
 <p class="mt-1 text-sm text-neutral-500">Tudo o que a equipe fez: quem, o quê, em qual conta e quando.</p>
 
 {#if rows}

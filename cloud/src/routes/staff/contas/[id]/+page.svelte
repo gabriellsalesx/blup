@@ -8,7 +8,7 @@
 	import { staffApi, actionLabel, when } from "#lib/staff.ts";
 	import { toast } from "#lib/toast.svelte.ts";
 	import Button from "#lib/ui/Button.svelte";
-	import Card from "#lib/ui/Card.svelte";
+	import Row from "#lib/ui/Row.svelte";
 	import Field from "#lib/ui/Field.svelte";
 	import Modal from "#lib/ui/Modal.svelte";
 
@@ -37,45 +37,47 @@
 
 {#if d}
 	<div class="mt-3 flex flex-wrap items-center gap-3">
-		<h1 class="text-2xl font-extrabold tracking-tight">{d.user.email ?? "Sem e-mail (só passkey)"}</h1>
+		<h1 class="text-3xl font-extrabold tracking-tight break-all">{d.user.email ?? "Sem e-mail (só passkey)"}</h1>
 		{#if d.user.banned}<span class="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">Bloqueada</span>{/if}
 	</div>
 	<p class="mt-1 text-sm text-neutral-500">Criada em {when(d.user.createdAt)} · <code class="text-xs">{d.user.id}</code></p>
 	{#if d.user.banned && d.user.banReason}<p class="mt-2 text-sm text-red-600">Motivo do bloqueio: {d.user.banReason}</p>{/if}
 
-	<div class="mt-6 grid gap-5 md:grid-cols-2">
-		<Card title={`Plano ${d.plan.label}`} help={d.plan.periodEnd ? `${d.plan.cancelAtPeriodEnd ? "Termina" : "Renova"} em ${when(d.plan.periodEnd)}` : "Sem assinatura paga."}>
-			{#if d.stripeUrl}
-				<a class="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-blup hover:underline" href={d.stripeUrl} target="_blank" rel="noreferrer">Abrir no Stripe <External class="size-3.5" /></a>
-			{/if}
-		</Card>
-
-		<Card title="Sessões" help={`${d.sessions.length} ${d.sessions.length === 1 ? "aparelho conectado" : "aparelhos conectados"}`}>
+	<div class="mt-6">
+		<Row title={`Plano ${d.plan.label}`} help={d.plan.periodEnd ? `${d.plan.cancelAtPeriodEnd ? "Termina" : "Renova"} em ${when(d.plan.periodEnd)}` : "Sem assinatura paga."}>
 			{#snippet action()}
-				<Button variant="secondary" class="shrink-0 px-3 py-2 text-sm" {busy} disabled={!d.sessions.length} onclick={() => run(() => staffApi.revokeSessions(id), "Sessões encerradas")}>Encerrar todas</Button>
+				{#if d.stripeUrl}<a class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-4 py-2.5 font-semibold hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900" href={d.stripeUrl} target="_blank" rel="noreferrer">Abrir no Stripe <External class="size-4" /></a>{/if}
 			{/snippet}
-			<ul class="mt-3 grid gap-1.5 text-sm">
-				{#each d.sessions as s (s.id)}
-					<li class="truncate text-neutral-600 dark:text-neutral-400" title={s.userAgent ?? ""}>{when(s.createdAt)} · {s.ipAddress || "IP desconhecido"}</li>
-				{/each}
-			</ul>
-		</Card>
+		</Row>
 
-		<Card title="Passkeys" help="Perdeu o aparelho? Remova a passkey: a pessoa entra pelo código por e-mail e cadastra outra.">
+		<Row title="Sessões" help={`${d.sessions.length} ${d.sessions.length === 1 ? "aparelho conectado" : "aparelhos conectados"}`}>
+			{#snippet action()}
+				<Button variant="secondary" {busy} disabled={!d.sessions.length} onclick={() => run(() => staffApi.revokeSessions(id), "Sessões encerradas")}>Encerrar todas</Button>
+			{/snippet}
+			{#if d.sessions.length}
+				<ul class="mt-3 grid gap-1.5 text-sm">
+					{#each d.sessions as s (s.id)}
+						<li class="truncate text-neutral-600 dark:text-neutral-400" title={s.userAgent ?? ""}>{when(s.createdAt)} · {s.ipAddress || "IP desconhecido"}</li>
+					{/each}
+				</ul>
+			{/if}
+		</Row>
+
+		<Row title="Passkeys" help="Perdeu o aparelho? Remova a passkey: a pessoa entra pelo código por e-mail e cadastra outra.">
 			<ul class="mt-3 grid gap-2">
 				{#each d.passkeys as p (p.id)}
 					<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-800">
 						<KeyRound class="size-4 text-neutral-500" />
-						<span class="flex-1">{p.name || "Passkey"} <span class="text-neutral-500">· {when(p.createdAt)}</span></span>
+						<span class="flex-1"><b>{p.name || "Passkey"}</b> <span class="text-neutral-500">· {when(p.createdAt)}</span></span>
 						<button class="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800" aria-label="Remover passkey" title="Remover" disabled={busy} onclick={() => run(() => staffApi.removePasskey(id, p.id), "Passkey removida")}><Trash class="size-4" /></button>
 					</li>
 				{:else}
 					<li class="text-sm text-neutral-500">Nenhuma passkey.</li>
 				{/each}
 			</ul>
-		</Card>
+		</Row>
 
-		<Card title="Histórico da staff" help="O que a equipe fez nesta conta.">
+		<Row title="Histórico da staff" help="O que a equipe fez nesta conta.">
 			<ul class="mt-3 grid gap-1.5 text-sm">
 				{#each d.history as h (h.id)}
 					<li><b>{actionLabel[h.action] ?? h.action}</b> <span class="text-neutral-500">· {h.staffEmail} · {when(h.createdAt)}</span>{#if h.detail}<br /><span class="text-neutral-500">{h.detail}</span>{/if}</li>
@@ -83,22 +85,23 @@
 					<li class="text-neutral-500">Nada ainda.</li>
 				{/each}
 			</ul>
-		</Card>
-	</div>
+		</Row>
 
-	{#if admin}
-		<div class="mt-8 rounded-xl border border-red-200 p-5 dark:border-red-900">
-			<h2 class="font-bold text-red-700 dark:text-red-400">Administração</h2>
-			<div class="mt-3 flex flex-wrap gap-3">
-				{#if d.user.banned}
-					<Button variant="secondary" {busy} onclick={() => run(() => staffApi.unban(id), "Conta desbloqueada")}>Desbloquear</Button>
-				{:else}
-					<Button variant="secondary" {busy} onclick={() => { reason = ""; banOpen = true; }}>Bloquear a conta</Button>
-				{/if}
-				<Button variant="secondary" class="text-red-600" {busy} onclick={() => { confirmEmail = ""; delOpen = true; }}>Excluir a conta</Button>
-			</div>
-		</div>
-	{/if}
+		{#if admin}
+			{#if d.user.banned}
+				<Row title="Desbloquear a conta" help="A pessoa volta a entrar normalmente.">
+					{#snippet action()}<Button variant="secondary" {busy} onclick={() => run(() => staffApi.unban(id), "Conta desbloqueada")}>Desbloquear</Button>{/snippet}
+				</Row>
+			{:else}
+				<Row title="Bloquear a conta" help="Tira a pessoa de todos os aparelhos e impede novos logins até desbloquear. Pedimos o motivo.">
+					{#snippet action()}<Button variant="secondary" {busy} onclick={() => { reason = ""; banOpen = true; }}>Bloquear</Button>{/snippet}
+				</Row>
+			{/if}
+			<Row title="Excluir a conta" help="Cancela a assinatura no Stripe e apaga a conta, as sessões e as passkeys. Não dá para desfazer.">
+				{#snippet action()}<Button class="bg-red-700! text-white!" {busy} onclick={() => { confirmEmail = ""; delOpen = true; }}>Excluir</Button>{/snippet}
+			</Row>
+		{/if}
+	</div>
 
 	<Modal bind:open={banOpen} title="Bloquear a conta">
 		<p class="text-sm text-neutral-500">A pessoa sai de todos os aparelhos e não consegue entrar até ser desbloqueada.</p>

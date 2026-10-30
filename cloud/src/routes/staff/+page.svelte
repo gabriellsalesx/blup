@@ -16,7 +16,7 @@
 	const typed = () => { clearTimeout(timer); timer = setTimeout(search, 250); };
 </script>
 
-<h1 class="text-2xl font-extrabold tracking-tight">Contas</h1>
+<h1 class="text-3xl font-extrabold tracking-tight">Contas</h1>
 <label class="relative mt-5 block">
 	<Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" />
 	<input
