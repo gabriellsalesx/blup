@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from "svelte";
-  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -317,7 +317,7 @@
     timer = setTimeout(save, 300);
   }
 
-  async function pick(path: string) {
+  async function pick(path: string, page = "") {
     if (path === current) return;
     await save();
     try {
@@ -331,7 +331,9 @@
       current = path;
       if (look.lastNotes?.[site.dir] !== path) setPref("lastNotes", { ...(look.lastNotes ?? {}), [site.dir]: path });
       reveal(path);
-      follow(path);
+      // Picked in the preview: it is on that page already.
+      if (page) previewSrc = page;
+      else follow(path);
       status = "saved";
       error = "";
     } catch (e) {
@@ -344,6 +346,13 @@
     if (!previewURL) return;
     const url = await PreviewPage(path).catch(() => "");
     if (url && path === current) previewSrc = url;
+  }
+
+  // A link followed in the preview opens its note in the editor.
+  async function navigated(page: string) {
+    const note = await NoteAt(page).catch(() => "");
+    if (!note || note === current) return;
+    await pick(note, new URL(page, previewURL).href);
   }
 
   // The top buttons open the Publish screen and start right away.
@@ -492,7 +501,7 @@
     <section class="preview" bind:this={previewEl}>
       <div class="resizer left" role="separator" aria-orientation="vertical" aria-label={t.side.resize} title={t.side.resize} onmousedown={(e) => drag(e, "preview")} ondblclick={() => resetWidth("preview")}></div>
       {#if previewURL}
-        <Preview src={previewSrc || previewURL} title={t.preview} />
+        <Preview src={previewSrc || previewURL} title={t.preview} onNavigate={navigated} />
       {:else}
         <p class="hint muted">{previewBusy ? t.previewStarting : t.previewOff}</p>
       {/if}

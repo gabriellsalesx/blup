@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -273,26 +274,9 @@ func (s *Studio) shutdown() {
 // is off or the page is unknown). The preview lists every note's page in
 // blup-map.json.
 func (s *Studio) PreviewPage(rel string) (string, error) {
-	s.mu.Lock()
-	base := s.url
-	s.mu.Unlock()
-	if base == "" {
-		return "", nil
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimSuffix(base, "/")+"/blup-map.json", nil)
-	if err != nil {
+	base, pages, err := s.previewMap()
+	if err != nil || base == "" {
 		return "", err
-	}
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-	var pages []struct{ File, URL string }
-	if err := json.NewDecoder(res.Body).Decode(&pages); err != nil {
-		return "", nil
 	}
 	for _, p := range pages {
 		if strings.EqualFold(p.File, rel) {
@@ -305,6 +289,63 @@ func (s *Studio) PreviewPage(rel string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+// NoteAt is the note behind a page of the preview (its address path, as
+// the reader followed a link there), "" for a page without a note.
+func (s *Studio) NoteAt(page string) (string, error) {
+	_, pages, err := s.previewMap()
+	if err != nil {
+		return "", err
+	}
+	want := cleanPage(page)
+	for _, p := range pages {
+		if cleanPage(p.URL) == want {
+			return p.File, nil
+		}
+	}
+	return "", nil
+}
+
+// cleanPage compares page addresses: unescaped, with a trailing "/".
+func cleanPage(p string) string {
+	if u, err := url.PathUnescape(p); err == nil {
+		p = u
+	}
+	p = strings.TrimSuffix(p, "index.html")
+	if !strings.HasSuffix(p, "/") && path.Ext(p) == "" {
+		p += "/"
+	}
+	return p
+}
+
+type mapPage struct{ File, URL string }
+
+// previewMap reads blup-map.json, the page of each note, from the running
+// preview ("" base when the preview is off).
+func (s *Studio) previewMap() (string, []mapPage, error) {
+	s.mu.Lock()
+	base := s.url
+	s.mu.Unlock()
+	if base == "" {
+		return "", nil, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimSuffix(base, "/")+"/blup-map.json", nil)
+	if err != nil {
+		return "", nil, err
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", nil, err
+	}
+	defer res.Body.Close()
+	var pages []mapPage
+	if err := json.NewDecoder(res.Body).Decode(&pages); err != nil {
+		return base, nil, nil
+	}
+	return base, pages, nil
 }
 
 // Language is the Studio's language: "pt" or "en".

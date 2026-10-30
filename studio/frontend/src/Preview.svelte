@@ -7,7 +7,8 @@
   // of the visible one. Each frame's address carries a mark (_blup) that the
   // preview pages send back with their scroll (a script the theme adds in
   // preview mode only), so the Studio knows which frame is talking.
-  let { src, title }: { src: string; title: string } = $props();
+  // onNavigate tells the page the reader went to by a link inside.
+  let { src, title, onNavigate }: { src: string; title: string; onNavigate?: (path: string) => void } = $props();
 
   let seq = 0;
   const mark = () => String(++seq);
@@ -16,6 +17,7 @@
   const first = mark();
   let frames = $state<{ src: string; mark: string }[]>([{ src: withMark(src, first), mark: first }, { src: "", mark: "" }]);
   let active = $state(0);
+  let els: HTMLIFrameElement[] = $state([]);
   let pending: { idx: number; y: number; timer: ReturnType<typeof setTimeout> } | null = null;
   let path = ""; // the page shown (the reader may follow links inside)
   let y = 0; // its scroll
@@ -42,12 +44,15 @@
     const d = e.data;
     if (!d || typeof d.blup !== "string") return;
     const m = new URLSearchParams(d.q || "").get("_blup");
-    const idx = frames.findIndex((f) => f.mark && f.mark === m);
+    let idx = frames.findIndex((f) => f.mark && f.mark === m);
+    // A page reached by a link inside has no mark: the frame it came from.
+    if (idx < 0 && !m) idx = els.findIndex((el) => el && el.contentWindow === e.source);
     if (idx < 0) return;
     if (pending && idx === pending.idx) {
       if (d.blup === "loaded") (e.source as Window | null)?.postMessage({ blup: "scrollTo", y: pending.y }, "*");
       else if (d.blup === "ready") { path = d.path; y = d.y; swap(idx); }
     } else if (idx === active) {
+      if (d.blup === "loaded" && !m && d.path !== path) onNavigate?.(d.path);
       path = d.path;
       y = d.y;
     }
@@ -62,6 +67,8 @@
   $effect(() => {
     if (src && src !== shown) {
       shown = src;
+      // The note of the page the reader just went to: already there.
+      if (path && new URL(src, location.href).pathname === path) return;
       path = "";
       y = 0;
       load(src, 0);
@@ -73,7 +80,7 @@
 
 <div class="frames">
   {#each frames as f, i (i)}
-    {#if f.src}<iframe src={f.src} {title} class:hidden={i !== active}></iframe>{/if}
+    {#if f.src}<iframe bind:this={els[i]} src={f.src} {title} class:hidden={i !== active}></iframe>{/if}
   {/each}
 </div>
 

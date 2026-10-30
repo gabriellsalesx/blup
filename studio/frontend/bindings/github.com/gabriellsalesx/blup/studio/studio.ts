@@ -368,6 +368,14 @@ export function NextAuthorAvatar(): $CancellablePromise<string> {
 }
 
 /**
+ * NoteAt is the note behind a page of the preview (its address path, as
+ * the reader followed a link there), "" for a page without a note.
+ */
+export function NoteAt(page: string): $CancellablePromise<string> {
+    return $Call.ByID(3914056179, page);
+}
+
+/**
  * NoteLink is a Markdown link to the note at rel, written from the note at
  * from ("" for the top of the notes): [Name](../Folder/Name.md).
  */
