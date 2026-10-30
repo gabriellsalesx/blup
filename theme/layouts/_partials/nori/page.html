@@ -19,6 +19,7 @@
         {{ partial "nori/date.html" . }}
         {{- range .GetTerms "tags" }}<a class="nori-tag" href="{{ .RelPermalink }}">#{{ .LinkTitle }}</a>{{ end }}
       </p>
+      {{ partial "listen.html" . }}
     </header>
     {{- if partial "locked.html" . }}
     {{ partial "mochi/lock.html" . }}

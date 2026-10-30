@@ -84,7 +84,7 @@ func ConnectCloudflare(ctx context.Context, token string) ([]cfpages.Account, er
 	return accounts, creds.Save()
 }
 
-// Disconnect forgets the key of "github" or "cloudflare".
+// Disconnect forgets the key of "github", "cloudflare" or "openrouter".
 func Disconnect(account string) error {
 	creds, err := config.LoadCredentials()
 	if err != nil {
@@ -95,6 +95,8 @@ func Disconnect(account string) error {
 		creds.GitHubToken = ""
 	case "cloudflare":
 		creds.CloudflareToken = ""
+	case "openrouter":
+		creds.OpenRouterToken = ""
 	}
 	return creds.Save()
 }

@@ -1,12 +1,17 @@
 <script lang="ts">
-  import { AuthorNames, PickCover, LinkedImage } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { AuthorNames, PickCover, LinkedImage, LinkedAudio, AIConnected, Narrate, NarrationHash } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { Events } from "@wailsio/runtime";
+  import { look } from "./theme.svelte";
+  import { toast } from "./toast.svelte";
+  import AudioLines from "@lucide/svelte/icons/audio-lines";
   import Switch from "./Switch.svelte";
   import X from "@lucide/svelte/icons/x";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { t } from "./i18n";
 
-  // The note's properties as fields. onEdit(key, value) reports a change.
-  let { props, kind, isIndex, onEdit }: { props: Record<string, any>; kind: string; isIndex: boolean; onEdit: (key: string, value: any) => void } = $props();
+  // The note's properties as fields. onEdit(key, value) reports a change;
+  // note is the note's path; onSettings opens the Studio's settings (tab).
+  let { props, kind, isIndex, note, onEdit, onSettings }: { props: Record<string, any>; kind: string; isIndex: boolean; note: string; onEdit: (key: string, value: any) => void; onSettings: (tab: string) => void } = $props();
 
   const p = t.props;
   let open = $state(false);
@@ -39,6 +44,50 @@
     onEdit("image", link);
     loadCover();
   }
+  // Narration: a voice (OpenRouter) reads the post; the MP3 goes to the
+  // attachments and the "audio" property links it. audio_hash is the
+  // fingerprint of the text read, to tell when the post changed since.
+  const n = t.narration;
+  const canNarrate = !isIndex && (kind === "" || kind === "blog") && !props.blup;
+  let audio = $state(String(props.audio ?? ""));
+  let audioHash = $state(String(props.audio_hash ?? ""));
+  let nowHash = $state("");
+  let audioSrc = $state("");
+  let aiOn = $state<boolean | null>(null);
+  let narrating = $state<{ done: number; total: number } | null>(null);
+  const checkNarration = async () => {
+    if (!canNarrate) return;
+    aiOn = await AIConnected().catch(() => false);
+    nowHash = await NarrationHash(note).catch(() => "");
+    audioSrc = audio ? await LinkedAudio(audio).catch(() => "") : "";
+  };
+  checkNarration();
+  const stale = $derived(!!audio && !!nowHash && !!audioHash && nowHash !== audioHash);
+  const offNarrate = Events.On("narrate", (ev: any) => { if (narrating && ev.data?.note === note) narrating = { done: ev.data.done, total: ev.data.total }; });
+  $effect(() => () => offNarrate());
+  async function narrate() {
+    narrating = { done: 0, total: 0 };
+    try {
+      const r = await Narrate(note, look.voice ?? "");
+      audio = r.link; audioHash = r.hash; nowHash = r.hash;
+      onEdit("audio", r.link);
+      onEdit("audio_hash", r.hash);
+      onEdit("audio_seconds", Math.round(r.seconds));
+      audioSrc = await LinkedAudio(r.link).catch(() => "");
+      toast(n.done.replace("{min}", String(Math.max(1, Math.round(r.seconds / 60)))).replace("{mb}", (r.bytes / 1048576).toFixed(1)));
+    } catch (e) {
+      toast(String(e).includes("no OpenRouter key") ? n.needKey : String(e).replace(/^(Runtime)?Error: /, ""), { kind: "error" });
+      aiOn = await AIConnected().catch(() => false);
+    }
+    narrating = null;
+  }
+  function removeNarration() {
+    audio = ""; audioHash = ""; audioSrc = "";
+    onEdit("audio", null);
+    onEdit("audio_hash", null);
+    onEdit("audio_seconds", null);
+  }
+
   function password() {
     onEdit("password", pwMode === "none" ? null : pwMode === "general" ? (t.lang === "pt" ? "sim" : "yes") : pwOwn);
   }
@@ -147,6 +196,27 @@
         </div>
       {/if}
 
+      {#if canNarrate}
+        <div class="field wide"><span>{n.title}</span>
+          <div class="narration">
+            {#if aiOn === false}
+              <p class="muted">{n.needKey}</p>
+              <button class="btn ghost" onclick={() => onSettings("ai")}>{n.openSettings}</button>
+            {:else if aiOn}
+              {#if audio && audioSrc}<audio controls preload="metadata" src={audioSrc}></audio>{/if}
+              {#if audio}<small class:warn={stale} class:muted={!stale}>{stale ? n.stale : n.fresh}</small>{/if}
+              <div class="cover">
+                <button class="btn ghost" disabled={!!narrating} onclick={narrate}><AudioLines size={15} />
+                  {#if narrating}{narrating.total > 1 ? n.progress.replace("{done}", String(narrating.done + 1 > narrating.total ? narrating.total : narrating.done + 1)).replace("{total}", String(narrating.total)) : n.working}{:else}{audio ? n.again : n.make}{/if}
+                </button>
+                {#if audio && !narrating}<button class="btn ghost" onclick={removeNarration}>{t.remove}</button>{/if}
+              </div>
+              {#if !audio}<small class="muted">{n.help}</small>{/if}
+            {/if}
+          </div>
+        </div>
+      {/if}
+
       <button class="more wide" onclick={() => (more = !more)}>{more ? "−" : "+"} {p.more}</button>
       {#if more}
         {#if !isIndex}
@@ -199,5 +269,11 @@
   .opts { flex-basis: 100%; list-style: none; margin: 0; padding: .3rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); }
   .opts button { width: 100%; padding: .4rem .6rem; border-radius: .35rem; text-align: start; font-size: .875rem; }
   .opts button:hover, .opts button.on { background: var(--soft); }
+  .narration { display: grid; gap: .5rem; padding: .75rem 1rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); }
+  .narration audio { width: 100%; height: 2.25rem; }
+  .narration p { margin: 0; font-size: .85rem; }
+  .narration small { font-size: .8rem; }
+  .narration .warn { color: var(--warn, #d97706); }
+  .narration .btn { display: inline-flex; align-items: center; gap: .4rem; }
   .more { justify-self: start; font-size: .8rem; font-weight: 600; color: var(--blue); }
 </style>

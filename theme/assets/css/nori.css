@@ -121,6 +121,7 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-cover { margin-block-end: 1.5rem; overflow: clip; border: 1px solid var(--main-200); border-radius: .5rem; }
   .nori-cover img { width: 100%; }
   .nori-post-head .nori-lede { margin-block-start: .5rem; }
+  .nori-post-head .listen { margin-block-start: 1.5rem; }
   .nori-byline { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; margin-block-start: 1.5rem; }
   .nori-author { display: inline-flex; align-items: center; gap: .375rem; color: var(--main-900); }
   a.nori-author:hover, .nori-tag:hover { text-decoration: underline; }

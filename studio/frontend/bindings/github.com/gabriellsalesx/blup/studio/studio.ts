@@ -34,6 +34,13 @@ export function AIChanges(id: string): $CancellablePromise<app$0.Change[] | null
 }
 
 /**
+ * AIConnected tells whether an OpenRouter key is saved.
+ */
+export function AIConnected(): $CancellablePromise<boolean> {
+    return $Call.ByID(4208704319);
+}
+
+/**
  * AddAttachments asks for files on the computer and copies them in.
  */
 export function AddAttachments(): $CancellablePromise<string[] | null> {
@@ -125,6 +132,13 @@ export function CloseTerminal(id: string): $CancellablePromise<void> {
  */
 export function CloudflareAccounts(): $CancellablePromise<cfpages$0.Account[] | null> {
     return $Call.ByID(4050939365);
+}
+
+/**
+ * ConnectAI checks an OpenRouter key and saves it for every site.
+ */
+export function ConnectAI(key: string): $CancellablePromise<void> {
+    return $Call.ByID(1064801830, key);
 }
 
 /**
@@ -291,6 +305,14 @@ export function Layout(): $CancellablePromise<$models.HomeItem[] | null> {
 }
 
 /**
+ * LinkedAudio is the audio of a property ("[[post.mp3]]") as a data: URL,
+ * for the player of the properties.
+ */
+export function LinkedAudio(link: string): $CancellablePromise<string> {
+    return $Call.ByID(445785663, link);
+}
+
+/**
  * LinkedImage is the image of a property ("[[cover.jpg]]") as a data: URL.
  */
 export function LinkedImage(link: string): $CancellablePromise<string> {
@@ -302,6 +324,21 @@ export function LinkedImage(link: string): $CancellablePromise<string> {
  */
 export function MoveItem(rel: string, folder: string): $CancellablePromise<string> {
     return $Call.ByID(2636608032, rel, folder);
+}
+
+/**
+ * Narrate reads the note aloud and saves the MP3 in the attachments.
+ */
+export function Narrate(rel: string, voice: string): $CancellablePromise<app$0.Narration> {
+    return $Call.ByID(3876254213, rel, voice);
+}
+
+/**
+ * NarrationHash is the fingerprint of what the note reads now (compared
+ * with its audio_hash to tell an out of date narration).
+ */
+export function NarrationHash(rel: string): $CancellablePromise<string> {
+    return $Call.ByID(1764824444, rel);
 }
 
 /**
@@ -334,6 +371,13 @@ export function NoteLink(rel: string, $from: string): $CancellablePromise<string
  */
 export function Open(dir: string): $CancellablePromise<$models.Node> {
     return $Call.ByID(2984394386, dir);
+}
+
+/**
+ * OpenAIKeyPage opens OpenRouter's page of keys in the browser.
+ */
+export function OpenAIKeyPage(): $CancellablePromise<void> {
+    return $Call.ByID(1346239524);
 }
 
 /**
@@ -577,7 +621,8 @@ export function SaveNote(rel: string, body: string, edits: $models.PropEdit[] | 
 }
 
 /**
- * SavePrefs saves the Studio's choices.
+ * SavePrefs saves the Studio's choices. The recent sites are the Studio's
+ * own (remember): the page's copy may be old, so the saved list is kept.
  */
 export function SavePrefs(p: $models.Prefs): $CancellablePromise<void> {
     return $Call.ByID(3443380611, p);
@@ -776,6 +821,13 @@ export function Vaults(): $CancellablePromise<$models.Vault[] | null> {
  */
 export function Version(): $CancellablePromise<string> {
     return $Call.ByID(1372021014);
+}
+
+/**
+ * Voices lists the narration voices, the default first.
+ */
+export function Voices(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(766145645);
 }
 
 /**

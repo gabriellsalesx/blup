@@ -1,0 +1,27 @@
+{{- /* The post's narration ("audio" property: an MP3 in the vault, made by
+Blup Studio or recorded), as a small podcast player: play, skip back and
+ahead 15 s, the time, a bar to seek and the speed. blup.js drives it;
+without JavaScript the browser's own controls show. Param: the page. */ -}}
+{{- with .Params.audio }}{{ with partial "vault-resource.html" (dict "page" $ "path" .) }}
+{{- $secs := int ($.Params.audio_seconds | default 0) -}}
+{{- $len := "" }}{{ if $secs }}{{ $len = printf "%d:%02d" (div $secs 60) (mod $secs 60) }}{{ end -}}
+<section class="listen" data-listen aria-label="{{ T "listenTitle" }}">
+  <audio src="{{ .RelPermalink }}" preload="none" controls></audio>
+  <button class="listen-play" type="button" data-listen-play aria-label="{{ T "listenPlay" }}" data-play="{{ T "listenPlay" }}" data-pause="{{ T "listenPause" }}">
+    <svg class="icon icon-play"><use href="#i-play"/></svg>
+    <svg class="icon icon-pause"><use href="#i-pause"/></svg>
+  </button>
+  <div class="listen-main">
+    <div class="listen-head">
+      <span class="listen-title"><svg class="icon icon-sm"><use href="#i-headphones"/></svg>{{ T "listenTitle" }}</span>
+      <span class="listen-time"><span data-listen-now>0:00</span>{{ with $len }} / <span data-listen-len>{{ . }}</span>{{ else }}<span data-listen-len hidden></span>{{ end }}</span>
+    </div>
+    <input class="listen-seek" type="range" min="0" max="1000" value="0" step="1" data-listen-seek aria-label="{{ T "listenSeek" }}">
+  </div>
+  <div class="listen-tools">
+    <button type="button" data-listen-skip="-15" aria-label="{{ T "listenBack" }}"><svg class="icon"><use href="#i-rotate-ccw"/></svg><small>15</small></button>
+    <button type="button" data-listen-skip="15" aria-label="{{ T "listenAhead" }}"><svg class="icon"><use href="#i-rotate-cw"/></svg><small>15</small></button>
+    <button type="button" class="listen-speed" data-listen-speed aria-label="{{ T "listenSpeed" }}">1×</button>
+  </div>
+</section>
+{{- end }}{{ end -}}

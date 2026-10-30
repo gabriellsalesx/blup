@@ -12,6 +12,7 @@ import type * as main$0 from "../../../../gabriellsalesx/blup/studio/models.js";
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
+            "narrate": main$0.NarrateProgress;
             "notesChanged": string;
             "progress": main$0.Progress;
             "term": main$0.TermData;

@@ -85,6 +85,15 @@ export interface Hyprland {
 }
 
 /**
+ * NarrateProgress is how many parts of the note were read aloud.
+ */
+export interface NarrateProgress {
+    "note": string;
+    "done": number;
+    "total": number;
+}
+
+/**
  * Node is a folder or a note of the site.
  */
 export interface Node {
@@ -203,6 +212,11 @@ export interface Prefs {
      * sites opened lately, newest first (even ones taken out of the list)
      */
     "recent": string[] | null;
+
+    /**
+     * the narration's voice ("" = the first of narrate.Voices)
+     */
+    "voice": string;
 }
 
 /**

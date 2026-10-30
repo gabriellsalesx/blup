@@ -125,3 +125,66 @@ if (toc && "IntersectionObserver" in window) {
 }
 
 syncTheme();
+
+// Post narration player (listen.html): play and pause, skip 15 s, seek,
+// speed. The audio loads only on the first play.
+for (const box of document.querySelectorAll("[data-listen]")) {
+  const audio = box.querySelector("audio");
+  const play = box.querySelector("[data-listen-play]");
+  const seek = box.querySelector("[data-listen-seek]");
+  const now = box.querySelector("[data-listen-now]");
+  const len = box.querySelector("[data-listen-len]");
+  const speedBtn = box.querySelector("[data-listen-speed]");
+  const speeds = [1, 1.25, 1.5, 2, 0.75];
+  let speed = 0;
+  audio.controls = false;
+  box.classList.add("listen-ready");
+  const clock = (s) => {
+    s = Math.max(0, Math.floor(s || 0));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = String(s % 60).padStart(2, "0");
+    return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+  };
+  let dragging = false;
+  const paint = () => {
+    const d = audio.duration;
+    if (Number.isFinite(d) && d > 0) {
+      len.textContent = clock(d);
+      len.hidden = false;
+      if (!dragging) seek.value = String(Math.round((audio.currentTime / d) * 1000));
+    }
+    now.textContent = clock(audio.currentTime);
+    seek.style.setProperty("--fill", `${seek.value / 10}%`);
+  };
+  const state = () => {
+    const on = !audio.paused;
+    box.classList.toggle("playing", on);
+    play.setAttribute("aria-label", on ? play.dataset.pause : play.dataset.play);
+  };
+  play.addEventListener("click", () => {
+    if (audio.paused) {
+      // One narration at a time.
+      document.querySelectorAll("[data-listen] audio").forEach((a) => a !== audio && a.pause());
+      audio.play().catch(() => {});
+    } else audio.pause();
+  });
+  box.querySelectorAll("[data-listen-skip]").forEach((b) => b.addEventListener("click", () => {
+    audio.currentTime = Math.max(0, Math.min((audio.duration || Infinity) - 0.1, audio.currentTime + Number(b.dataset.listenSkip)));
+    paint();
+  }));
+  seek.addEventListener("input", () => {
+    dragging = true;
+    if (Number.isFinite(audio.duration)) now.textContent = clock((seek.value / 1000) * audio.duration);
+    seek.style.setProperty("--fill", `${seek.value / 10}%`);
+  });
+  seek.addEventListener("change", () => {
+    dragging = false;
+    if (Number.isFinite(audio.duration)) audio.currentTime = (seek.value / 1000) * audio.duration;
+  });
+  speedBtn.addEventListener("click", () => {
+    speed = (speed + 1) % speeds.length;
+    audio.playbackRate = speeds[speed];
+    speedBtn.textContent = `${String(speeds[speed]).replace(".", document.documentElement.lang.startsWith("pt") ? "," : ".")}×`;
+  });
+  for (const ev of ["timeupdate", "loadedmetadata", "durationchange", "seeked"]) audio.addEventListener(ev, paint);
+  for (const ev of ["play", "pause", "ended"]) audio.addEventListener(ev, state);
+}

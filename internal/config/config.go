@@ -26,6 +26,7 @@ type Global struct {
 type Credentials struct {
 	CloudflareToken string `toml:"cloudflare_token,omitempty"`
 	GitHubToken     string `toml:"github_token,omitempty"`
+	OpenRouterToken string `toml:"openrouter_token,omitempty"` // Blup Studio's AI (narration)
 }
 
 // SiteVersion is the format of blup.toml this Blup writes. When a release

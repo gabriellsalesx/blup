@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Settings from "@lucide/svelte/icons/settings";
@@ -11,6 +11,7 @@
   import PenLine from "@lucide/svelte/icons/pen-line";
   import KeyRound from "@lucide/svelte/icons/key-round";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
+  import Sparkles from "@lucide/svelte/icons/sparkles";
   import X from "@lucide/svelte/icons/x";
   import Check from "@lucide/svelte/icons/check";
   import ThemePicker from "./ThemePicker.svelte";
@@ -33,6 +34,7 @@
     { key: "look", label: s.look, Icon: Palette },
     { key: "editor", label: s.editor, Icon: PenLine },
     { key: "accounts", label: s.accounts, Icon: KeyRound },
+    { key: "ai", label: t.ai.title, Icon: Sparkles },
     { key: "terminal", label: s.terminal, Icon: SquareTerminal },
     { key: "keys", label: t.keys.title, Icon: Keyboard },
   ];
@@ -81,6 +83,23 @@
   async function disconnect(account: string) {
     await Disconnect(account);
     loadConn();
+    if (account === "openrouter") { aiOn = false; toast(t.ai.disconnected); }
+  }
+
+  // The AI (OpenRouter): one key for every site, used by the narration.
+  const ai = t.ai;
+  let aiOn = $state<boolean | null>(null);
+  let aiKey = $state("");
+  let aiBusy = $state(false);
+  let aiError = $state("");
+  let voices = $state<string[]>([]);
+  AIConnected().then((v) => (aiOn = v)).catch(() => (aiOn = false));
+  Voices().then((v) => (voices = v ?? []));
+  async function connectAI() {
+    aiBusy = true; aiError = "";
+    try { await ConnectAI(aiKey); aiOn = true; aiKey = ""; toast(ai.connected); }
+    catch (e) { aiError = String(e).includes("invalid key") ? ai.badKey : String(e).replace(/^(Runtime)?Error: /, ""); }
+    aiBusy = false;
   }
 </script>
 
@@ -173,6 +192,33 @@
           {:else}<button class="btn ghost" onclick={onPublish}>{s.connect}</button>{/if}
         </div>
       {/if}
+    {:else if tab === "ai"}
+      <p class="muted lead">{ai.lead}</p>
+      <div class="item">
+        <div class="text"><b>OpenRouter</b><small>{aiOn ? ai.on : ai.off}</small></div>
+        {#if aiOn}<button class="btn ghost" onclick={() => disconnect("openrouter")}>{s.disconnect}</button>{/if}
+      </div>
+      {#if aiOn === false}
+        <div class="item column">
+          <div class="text"><b>{ai.step1}</b><small>{ai.step1Help}</small></div>
+          <button class="btn ghost start" onclick={() => OpenAIKeyPage()}>{ai.openPage}</button>
+          <div class="text"><b>{ai.step2}</b></div>
+          <form class="keyform" onsubmit={(e) => { e.preventDefault(); if (aiKey.trim()) connectAI(); }}>
+            <input type="password" bind:value={aiKey} placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false" aria-label={ai.step2} />
+            <button class="btn" disabled={aiBusy || !aiKey.trim()}>{aiBusy ? ai.checking : s.connect}</button>
+          </form>
+          {#if aiError}<p class="bad">{aiError}</p>{/if}
+          <small class="muted">{ai.keyNote}</small>
+        </div>
+      {/if}
+      <h3>{ai.narration}</h3>
+      <p class="muted lead">{ai.narrationHelp}</p>
+      <div class="item">
+        <div class="text"><b>{ai.voice}</b><small>{ai.voiceHelp}</small></div>
+        <select value={look.voice || voices[0] || ""} onchange={(e) => setPref("voice", e.currentTarget.value)}>
+          {#each voices as v (v)}<option value={v}>{v[0].toUpperCase() + v.slice(1)}</option>{/each}
+        </select>
+      </div>
     {:else if tab === "keys"}
       <h3>{k.globalTitle}</h3>
       <div class="item">
@@ -253,6 +299,9 @@
   .text { display: grid; gap: .15rem; font-size: .9rem; }
   .text small { color: var(--muted); font-size: .8rem; }
   select { width: auto; }
+  .start { align-self: flex-start; }
+  .keyform { display: flex; gap: .5rem; }
+  .keyform input { flex: 1; font-family: ui-monospace, monospace; }
   input[type="range"] { width: 11rem; accent-color: var(--blue); }
   .seg { display: inline-flex; gap: .2rem; padding: .2rem; border: 1px solid var(--line); border-radius: .6rem; }
   .seg button { padding: .35rem .7rem; border-radius: .45rem; font-size: .85rem; font-weight: 600; color: var(--muted); }

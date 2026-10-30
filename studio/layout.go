@@ -110,6 +110,7 @@ type Prefs struct {
 	LastSite     string            `json:"lastSite"`     // the site open when the Studio closed
 	LastNotes    map[string]string `json:"lastNotes"`    // site folder -> the note open there last
 	Recent       []string          `json:"recent"`       // sites opened lately, newest first (even ones taken out of the list)
+	Voice        string            `json:"voice"`        // the narration's voice ("" = the first of narrate.Voices)
 }
 
 func prefsFile() (string, error) {

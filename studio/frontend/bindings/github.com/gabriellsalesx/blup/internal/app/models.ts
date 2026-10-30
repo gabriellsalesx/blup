@@ -173,6 +173,18 @@ export interface MenuItem {
 }
 
 /**
+ * Narration is a narration just made: the property value that links it
+ * ("[[name.mp3]]"), the fingerprint of the text it reads (audio_hash), its
+ * length and size.
+ */
+export interface Narration {
+    "link": string;
+    "hash": string;
+    "seconds": number;
+    "bytes": number;
+}
+
+/**
  * NewSiteOptions are the answers of the new site screens.
  */
 export interface NewSiteOptions {

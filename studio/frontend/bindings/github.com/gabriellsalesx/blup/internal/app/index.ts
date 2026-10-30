@@ -12,6 +12,7 @@ export type {
     DomainStatus,
     FeedbackSetup,
     MenuItem,
+    Narration,
     NewSiteOptions,
     Section,
     Settings,
