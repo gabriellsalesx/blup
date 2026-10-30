@@ -416,9 +416,6 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .post-hero .listen { margin-block-start: 1.5rem; }
   .listen { display: flex; align-items: center; gap: .875rem; max-width: 48rem; padding: .75rem 1rem .75rem .75rem; border: 1px solid var(--main-200); border-radius: 1rem; background: var(--main-50); }
   .listen audio { flex: 1; min-width: 0; }
-  .listen.listen-missing { align-items: flex-start; font-size: .875rem; color: var(--main-600); }
-  .listen.listen-missing > * { display: block; }
-  .listen.listen-missing code { display: inline-block; margin-block-start: .25rem; padding: .125rem .375rem; border-radius: .25rem; background: var(--main-100); color: var(--main-900); user-select: all; }
   .listen > :not(audio) { display: none; }
   .listen.listen-ready audio { display: none; }
   .listen.listen-ready > :not(audio) { display: flex; }

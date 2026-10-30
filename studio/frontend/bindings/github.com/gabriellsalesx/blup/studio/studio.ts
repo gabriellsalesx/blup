@@ -312,13 +312,6 @@ export function LinkedImage(link: string): $CancellablePromise<string> {
 }
 
 /**
- * Media checks the window's MP3 support.
- */
-export function Media(): $CancellablePromise<$models.MediaSupport> {
-    return $Call.ByID(2763488506);
-}
-
-/**
  * MoveItem moves a note or folder into folder (links follow).
  */
 export function MoveItem(rel: string, folder: string): $CancellablePromise<string> {

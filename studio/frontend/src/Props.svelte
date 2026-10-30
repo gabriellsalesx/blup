@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AuthorNames, PickCover, LinkedImage, AIConnected, Narrate, NarrationHash, Media } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { AuthorNames, PickCover, LinkedImage, AIConnected, Narrate, NarrationHash } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { Events } from "@wailsio/runtime";
   import { toast } from "./toast.svelte";
   import AudioLines from "@lucide/svelte/icons/audio-lines";
@@ -53,10 +53,7 @@
   let nowHash = $state("");
   let seconds = $state(Number(props.audio_seconds ?? 0));
   const audioFile = $derived(audio.replace(/^\[\[|\]\]$/g, ""));
-  // The narration is heard in the live preview, as on the site. On Linux
-  // the window plays it with GStreamer's MP3 plugins (media.go): without
-  // them, the command that installs them.
-  let installCmd = $state("");
+  // The narration is heard in the live preview, as on the site.
   const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
   let aiOn = $state<boolean | null>(null);
   let narrating = $state<{ done: number; total: number } | null>(null);
@@ -64,8 +61,6 @@
     if (!canNarrate) return;
     aiOn = await AIConnected().catch(() => false);
     nowHash = await NarrationHash(note).catch(() => "");
-    const m = await Media().catch(() => null);
-    installCmd = m && !m.mp3 ? m.command : "";
   };
   checkNarration();
   const stale = $derived(!!audio && !!nowHash && !!audioHash && nowHash !== audioHash);
@@ -211,7 +206,6 @@
               {#if audio}
                 <p><b>{audioFile}</b>{seconds ? ` · ${clock(seconds)}` : ""}</p>
                 <small class:warn={stale} class:muted={!stale}>{stale ? n.stale : n.fresh} {n.inPreview}</small>
-                {#if installCmd}<small class="warn">{n.needCodec}</small><code class="cmd">{installCmd}</code>{/if}
               {/if}
               <div class="cover">
                 <button class="btn ghost" disabled={!!narrating} onclick={narrate}><AudioLines size={15} />
@@ -281,7 +275,6 @@
   .opts button:hover, .opts button.on { background: var(--soft); }
   .narration { display: grid; gap: .5rem; padding: .75rem 1rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); }
   .narration p { margin: 0; font-size: .85rem; }
-  .narration .cmd { justify-self: start; padding: .3rem .5rem; border-radius: .35rem; background: var(--soft); font-size: .8rem; user-select: all; }
   .narration small { font-size: .8rem; }
   .narration .warn { color: var(--warn, #d97706); }
   .narration .btn { display: inline-flex; align-items: center; gap: .4rem; }

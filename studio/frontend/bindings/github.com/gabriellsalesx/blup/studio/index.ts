@@ -11,7 +11,6 @@ export type {
     Found,
     HomeItem,
     Hyprland,
-    MediaSupport,
     NarrateProgress,
     Node,
     NoteData,

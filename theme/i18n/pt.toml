@@ -136,7 +136,6 @@ listenSeek = "Posição no áudio"
 listenBack = "Voltar 15 segundos"
 listenAhead = "Avançar 15 segundos"
 listenSpeed = "Velocidade"
-listenNoCodec = "Este post tem narração. Para ouvir na prévia do Studio, instale os plugins de áudio do sistema e abra o Studio de novo:"
 [readingTime]
 one = "{{ .Count }} min de leitura"
 other = "{{ .Count }} min de leitura"

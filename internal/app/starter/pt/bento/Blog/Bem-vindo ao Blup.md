@@ -2,7 +2,7 @@
 title: Bem-vindo ao Blup
 date: {{date}}
 description: Seu cofre do Obsidian virou um site de produto. Veja por onde começar.
-tags: [Anúncios]
+tags: [Novidades]
 image: "[[blup-bem-vindo.jpg]]"
 ---
 Este site inteiro foi criado pelo Blup a partir de uma pasta do Obsidian, e serve de tutorial e de modelo.
