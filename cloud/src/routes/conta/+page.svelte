@@ -36,7 +36,7 @@
 
 {#if $session.data}
 	<section class="w-full max-w-lg grid gap-6">
-		<div>
+		<div class="text-center">
 			<h1 class="text-2xl font-extrabold tracking-tight">Sua conta</h1>
 			<p class="mt-1 text-sm text-neutral-500">{$session.data.user.email}</p>
 		</div>
@@ -73,7 +73,7 @@
 
 		{#if error}<p class="text-sm text-red-600" role="alert">{error}</p>{/if}
 
-		<button class="flex items-center gap-2 justify-self-start text-sm font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white" onclick={signOut}>
+		<button class="flex items-center gap-2 justify-self-center text-sm font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white" onclick={signOut}>
 			<LogOut class="size-4" />Sair
 		</button>
 	</section>

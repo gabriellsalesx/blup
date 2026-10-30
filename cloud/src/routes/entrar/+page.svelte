@@ -74,10 +74,10 @@
 </script>
 
 <section class="w-full max-w-sm">
-	<h1 class="text-2xl font-extrabold tracking-tight">Entrar no Blup Cloud</h1>
+	<h1 class="text-center text-2xl font-extrabold tracking-tight">Entre na sua conta</h1>
 
 	{#if step === "email"}
-		<p class="mt-1 text-sm text-neutral-500">Mandamos um código para o seu e-mail. Primeira vez? A conta é criada na hora.</p>
+		<p class="mt-1 text-center text-sm text-neutral-500">Mandamos um código para o seu e-mail. Primeira vez? A conta é criada na hora.</p>
 		<form class="mt-6 grid gap-3" onsubmit={sendCode}>
 			<label class="grid gap-1.5 text-sm font-medium">
 				E-mail
@@ -100,7 +100,7 @@
 			Entrar com passkey
 		</button>
 	{:else}
-		<p class="mt-1 text-sm text-neutral-500">Digite o código que mandamos para <b class="text-neutral-800 dark:text-neutral-200">{email}</b>. Ele vale por 10 minutos.</p>
+		<p class="mt-1 text-center text-sm text-neutral-500">Digite o código que mandamos para <b class="text-neutral-800 dark:text-neutral-200">{email}</b>. Ele vale por 10 minutos.</p>
 		<form class="mt-6 grid gap-3" onsubmit={signIn}>
 			<input
 				class="rounded-lg border border-neutral-300 bg-white px-3 py-3 text-center text-2xl font-bold tracking-[0.5em] outline-none focus:border-blup dark:border-neutral-700 dark:bg-neutral-900"
@@ -116,7 +116,7 @@
 				Entrar
 			</button>
 		</form>
-		<button class="mt-4 text-sm font-semibold text-blup hover:underline" onclick={() => { step = "email"; code = ""; error = ""; }}>Usar outro e-mail ou pedir outro código</button>
+		<button class="mt-4 w-full text-center text-sm font-semibold text-blup hover:underline" onclick={() => { step = "email"; code = ""; error = ""; }}>Usar outro e-mail ou pedir outro código</button>
 	{/if}
 
 	<!-- Turnstile: outside the steps, so it survives going back. -->

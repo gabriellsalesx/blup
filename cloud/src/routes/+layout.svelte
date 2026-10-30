@@ -4,12 +4,10 @@
 	let { children } = $props();
 </script>
 
-<div class="min-h-dvh flex flex-col">
-	<header class="flex items-center gap-2.5 px-6 py-5">
-		<img src="/blup.svg" alt="" width="32" height="32" />
-		<span class="font-bold tracking-tight">Blup Cloud</span>
-	</header>
-	<main class="flex-1 grid place-items-start justify-center px-4 pt-8 pb-16">
+<!-- Minimal: only the Blup above the content, no bar on top. -->
+<main class="min-h-dvh grid place-items-center px-4 py-16">
+	<div class="grid w-full justify-items-center gap-8">
+		<img src="/blup.svg" alt="Blup" width="72" height="72" />
 		{@render children()}
-	</main>
-</div>
+	</div>
+</main>
