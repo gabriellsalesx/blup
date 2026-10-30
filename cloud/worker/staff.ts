@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { and, count, desc, eq, gte, inArray, like, lt, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -80,9 +80,12 @@ export const staffApi = new Hono<App>()
 	.use(onStaff)
 	.get("/me", (c) => c.json(c.get("staff")))
 
-	// How many accounts, per plan (a count reads every account: fine for
-	// the staff's occasional look).
+	// How many accounts, per plan. Counting reads every account, so the
+	// answer is kept 5 minutes in the Worker's cache (free, per data center).
 	.get("/stats", async (c) => {
+		const key = new Request(new URL("/api/staff/stats?cache", c.req.url));
+		const hit = await caches.default.match(key);
+		if (hit) return new Response(hit.body, hit);
 		const week = new Date(Date.now() - 7 * 24 * 3600 * 1000);
 		const [[{ total }], [{ recent }], [{ banned }], paid] = await Promise.all([
 			db.select({ total: count() }).from(user),
@@ -91,27 +94,43 @@ export const staffApi = new Hono<App>()
 			db.select({ plan: subscription.plan, n: sql<number>`count(distinct ${subscription.referenceId})` }).from(subscription).where(inArray(subscription.status, ACTIVE)).groupBy(subscription.plan),
 		]);
 		const paying = paid.reduce((sum, p) => sum + p.n, 0);
-		return c.json({
+		const res = c.json({
 			total,
 			recent,
 			banned,
 			plans: [{ name: "free", label: planNamed("free").label, count: total - paying }, ...paid.map((p) => ({ name: p.plan, label: planNamed(p.plan).label, count: p.n }))],
 		});
+		res.headers.set("Cache-Control", "max-age=300");
+		c.executionCtx.waitUntil(caches.default.put(key, res.clone()));
+		return res;
 	})
 
-	// Accounts, newest first: by e-mail (its start) or by ID, a page at a time.
+	// Accounts, a page at a time, always through an index (checked with
+	// EXPLAIN QUERY PLAN): without a search, newest first by ID; an ID finds
+	// that account; anything else is the start of the e-mail, as a range on
+	// the e-mail index (Better Auth stores e-mails in lowercase), A to Z.
 	.get("/users", async (c) => {
 		const q = (c.req.query("q") ?? "").trim().toLowerCase();
 		const cursor = c.req.query("cursor");
 		const size = pageSize(c.req.query("limit"));
-		const found = await db
-			.select({ id: user.id, email: user.email, createdAt: user.createdAt, banned: user.banned })
-			.from(user)
-			.where(and(q ? or(eq(user.id, q), like(user.email, `${q.replace(/[%_]/g, "")}%`)) : undefined, cursor ? lt(user.id, cursor) : undefined))
-			.orderBy(desc(user.id))
-			.limit(size + 1);
+		const cols = { id: user.id, email: user.email, createdAt: user.createdAt, banned: user.banned };
+		let found;
+		let key: (r: { id: string; email: string }) => string = (r) => r.id;
+		if (!q) {
+			found = await db.select(cols).from(user).where(cursor ? lt(user.id, cursor) : undefined).orderBy(desc(user.id)).limit(size + 1);
+		} else if (/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(q)) {
+			found = await db.select(cols).from(user).where(eq(user.id, q)).limit(1);
+		} else {
+			key = (r) => r.email;
+			found = await db
+				.select(cols)
+				.from(user)
+				.where(and(gte(user.email, q), lt(user.email, `${q}\u{10FFFF}`), cursor ? gt(user.email, cursor) : undefined))
+				.orderBy(asc(user.email))
+				.limit(size + 1);
+		}
 		const rows = found.slice(0, size);
-		const nextCursor = found.length > size ? rows[rows.length - 1].id : null;
+		const nextCursor = found.length > size ? key(rows[rows.length - 1]) : null;
 		const subs = rows.length
 			? await db.select({ ref: subscription.referenceId, plan: subscription.plan }).from(subscription).where(and(inArray(subscription.referenceId, rows.map((r) => r.id)), inArray(subscription.status, ACTIVE)))
 			: [];

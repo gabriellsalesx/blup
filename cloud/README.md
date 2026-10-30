@@ -63,6 +63,8 @@ Abra pelo endereço `http://localhost:8787` (não `127.0.0.1`): a passkey e a or
 
 - Toda lista que pode crescer usa paginação por cursor (`src/lib/pager.svelte.ts` com o componente `Pager.svelte`), nunca `OFFSET`: o D1 cobra cada linha lida, e o `OFFSET` lê (e cobra) todas as linhas que pula.
 - A API responde `{ items, nextCursor }`. O cursor é a chave do último item: os IDs UUIDv7 e os inteiros do registro seguem a ordem de criação, então a próxima página é um intervalo na chave primária.
+- Toda consulta passa por um índice (conferido com `EXPLAIN QUERY PLAN`, que deve dizer `SEARCH`, nunca `SCAN` numa tabela grande). A busca da staff pelo começo do e-mail é um intervalo no índice do e-mail (o Better Auth guarda e-mails em minúsculas), não um `LIKE`. Os índices que o Better Auth não cria ficam em `migrations/0001_indices.sql`.
+- Contagens leem a tabela inteira: o resumo da staff fica 5 minutos no cache do Worker.
 
 ## Banco
 
