@@ -8,6 +8,8 @@
 	import { toast } from "#lib/toast.svelte.ts";
 	import Button from "#lib/ui/Button.svelte";
 	import Card from "#lib/ui/Card.svelte";
+	import PlanCard from "#lib/ui/PlanCard.svelte";
+	import { page } from "$app/state";
 
 	// The account: who is signed in, the passkeys, signing out.
 	const session = authClient.useSession();
@@ -31,6 +33,9 @@
 		else toast("Passkey removida");
 	}
 
+	// Back from Stripe's checkout.
+	if (page.url.searchParams.get("assinatura") === "ok") toast("Assinatura feita. Bem-vindo ao Pro!");
+
 	async function signOut() {
 		await authClient.signOut();
 		goto("/entrar", { replaceState: true });
@@ -45,6 +50,8 @@
 			<h1 class="text-2xl font-extrabold tracking-tight">Sua conta</h1>
 			<p class="mt-1 text-sm text-neutral-500">{$session.data.user.email}</p>
 		</div>
+
+		<PlanCard />
 
 		<Card title="Passkeys" help="Entre com a digital, o rosto ou o PIN do aparelho, sem esperar o código por e-mail.">
 			{#snippet action()}

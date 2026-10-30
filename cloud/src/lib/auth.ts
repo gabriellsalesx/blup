@@ -1,11 +1,12 @@
 import { createAuthClient } from "better-auth/svelte";
 import { emailOTPClient } from "better-auth/client/plugins";
 import { passkeyClient } from "@better-auth/passkey/client";
+import { stripeClient } from "@better-auth/stripe/client";
 
 // Same origin as the Worker: /api/auth.
 export const authClient = createAuthClient({
 	basePath: "/api/auth",
-	plugins: [emailOTPClient(), passkeyClient()],
+	plugins: [emailOTPClient(), passkeyClient(), stripeClient({ subscription: true })],
 });
 
 // Better Auth's errors, in the panel's words.
@@ -23,6 +24,8 @@ export function message(err: { code?: string; message?: string } | null | undefi
 		case "VERIFICATION_FAILED":
 			return "Não deu para confirmar que você não é um robô. Tente de novo.";
 	}
+	// Stripe's side (customer, checkout, portal): the details stay in the log.
+	if (/CUSTOMER|SUBSCRIPTION|CHECKOUT|BILLING/.test(err?.code ?? "")) return "Não deu para abrir o pagamento agora. Tente de novo em instantes.";
 	return err?.message || "Algo deu errado. Tente de novo.";
 }
 

@@ -33,6 +33,13 @@ Com `EMAIL_MODE=log` (o padrão no `wrangler.jsonc`), o código de login aparece
 
 Abra pelo endereço `http://localhost:8787` (não `127.0.0.1`): a passkey e a origem confiável do login usam `localhost`.
 
+## Planos e Stripe
+
+- Os planos ficam em `worker/plans.ts` (nome, preço, limites). O preço pago é achado no Stripe pelo *lookup key*, então nenhum ID do Stripe fica no repositório.
+- Coloque a chave de **teste** em `.dev.vars` (`STRIPE_SECRET_KEY`) e rode `npm run stripe:setup`: ele cria o produto e o preço de cada plano pago. Rodar de novo não muda nada.
+- Webhook no computador: `stripe listen --forward-to localhost:8787/api/auth/stripe/webhook` e copie o `whsec_...` para `STRIPE_WEBHOOK_SECRET`. Em produção, o webhook aponta para `https://<domínio>/api/auth/stripe/webhook` com os eventos `checkout.session.completed` e `customer.subscription.created`, `.updated` e `.deleted`.
+- O cliente do Stripe só é criado no primeiro pagamento: contas grátis nunca chegam ao Stripe.
+
 ## Banco
 
 - Mudou plugin do Better Auth: `npm run db:auth-schema` (gera `worker/db/auth-schema.ts`).

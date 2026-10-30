@@ -13,6 +13,8 @@ export const auth = betterAuth(
 		rpID: env.PASSKEY_RP_ID,
 		secret: env.BETTER_AUTH_SECRET,
 		turnstileSecret: env.TURNSTILE_SECRET_KEY,
+		stripeSecret: env.STRIPE_SECRET_KEY,
+		stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
 		// The e-mail goes out after the answer.
 		sendCode: (email, code, kind) => waitUntil(sendCode(env, email, code, kind)),
 	}),

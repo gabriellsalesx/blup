@@ -2,6 +2,9 @@ import type { BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP, captcha } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
+import { stripe } from "@better-auth/stripe";
+import Stripe from "stripe";
+import { PLANS } from "./plans";
 
 // Blup Cloud's sign in: only a code by e-mail (which also creates the
 // account) and passkeys, which a signed in person can add. Shared by the
@@ -13,6 +16,8 @@ export type AuthConfig = {
 	rpID: string;
 	secret: string;
 	turnstileSecret: string;
+	stripeSecret: string;
+	stripeWebhookSecret: string;
 	sendCode: (email: string, code: string, kind: string) => void;
 };
 
@@ -40,6 +45,19 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 			}),
 			passkey({ rpID: cfg.rpID, rpName: "Blup Cloud", origin: cfg.appUrl }),
 			captcha({ provider: "cloudflare-turnstile", secretKey: cfg.turnstileSecret, endpoints: [SEND_CODE_PATH] }),
+			stripe({
+				// Fetch, not Node's http: the Worker's runtime.
+				stripeClient: new Stripe(cfg.stripeSecret, { httpClient: Stripe.createFetchHttpClient() }),
+				stripeWebhookSecret: cfg.stripeWebhookSecret,
+				// The Stripe customer is made at the first checkout, not at sign
+				// up: free accounts never reach Stripe.
+				createCustomerOnSignUp: false,
+				subscription: {
+					enabled: true,
+					plans: PLANS.filter((p) => p.lookupKey).map((p) => ({ name: p.name, lookupKey: p.lookupKey, limits: p.limits })),
+					getCheckoutSessionParams: async () => ({ params: { locale: "pt-BR" } }),
+				},
+			}),
 		],
 	} satisfies BetterAuthOptions;
 }

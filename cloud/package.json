@@ -15,13 +15,16 @@
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "deploy": "vite build && wrangler deploy",
-    "db:auth-schema": "npx auth@latest generate --adapter drizzle --dialect sqlite --config worker/auth.cli.ts --output worker/db/auth-schema.ts --yes"
+    "db:auth-schema": "cd worker && npx auth@latest generate --adapter drizzle --dialect sqlite --config auth.cli.ts --output db/auth-schema.ts --yes",
+    "stripe:setup": "node scripts/stripe-setup.ts"
   },
   "dependencies": {
     "@better-auth/passkey": "^1.7.14",
+    "@better-auth/stripe": "^1.7.14",
     "better-auth": "^1.7.14",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.14",
+    "stripe": "^23.1.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -34,7 +37,7 @@
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.7",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vite": "^8.3.5",
     "vitest": "^5.0.5",
     "wrangler": "^4.156.0"

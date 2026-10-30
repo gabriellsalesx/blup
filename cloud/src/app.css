@@ -12,6 +12,12 @@
 	--color-blup: #3b82f6;
 }
 
+/* Tailwind 4 leaves buttons with the default cursor: the hand back. */
+@layer base {
+	button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
+	button:disabled { cursor: not-allowed; }
+}
+
 :root { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
 body { @apply bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100; }
