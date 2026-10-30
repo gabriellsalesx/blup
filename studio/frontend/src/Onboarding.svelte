@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { RecentSites, RestoreSite, OpenExisting, HomeDir, Vaults, VaultFolders, SuggestPlaces, CheckSiteDir, NeedsLinkAdjust, PickFolder, CreateSite } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { CloudSites, BringSite, Connections, RecentSites, RestoreSite, OpenExisting, HomeDir, Vaults, VaultFolders, SuggestPlaces, CheckSiteDir, NeedsLinkAdjust, PickFolder, CreateSite } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteInfo, Vault, RecentSite } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
+  import type { CloudSite } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Switch from "./Switch.svelte";
   import Check from "@lucide/svelte/icons/check";
   import Loader from "@lucide/svelte/icons/loader-circle";
@@ -102,6 +103,18 @@
       onDone(r);
     } catch (e) { openMsg = String(e).replace(/^(Runtime)?Error: /, ""); }
   }
+  // Sites on the user's GitHub that aren't on this computer: one tap
+  // brings the notes and the settings.
+  let cloud = $state<CloudSite[]>([]);
+  let bringing = $state("");
+  Connections().then(async (c) => { if (c.github) cloud = ((await CloudSites()) ?? []).filter((s) => !s.dir); }).catch(() => {});
+  async function bring(c: CloudSite) {
+    bringing = c.owner + "/" + c.repo;
+    openMsg = "";
+    try { onDone(await BringSite(c.owner, c.repo)); }
+    catch (e) { openMsg = String(e).replace(/^(Runtime)?Error: /, ""); }
+    finally { bringing = ""; }
+  }
   async function openExisting() {
     openMsg = "";
     try {
@@ -168,6 +181,22 @@
       <button class="btn big" onclick={next}>{o.start}</button>
       <button class="link-btn" onclick={openExisting}>{o.haveSite}</button>
       {#if openMsg}<p class="muted small">{openMsg}</p>{/if}
+      {#if cloud.length}
+        <div class="recent">
+          <b>{t.wel.cloudTitle}</b>
+          <ul>
+            {#each cloud as c (c.owner + "/" + c.repo)}
+              <li class="cloud">
+                <img src="/blups/{THEMES[c.model]?.blup ?? 'turma-3'}.svg" alt="" />
+                <span class="c-text"><span class="r-name">{c.title}</span><small class="muted">{c.owner}/{c.repo}</small></span>
+                <button class="btn" disabled={!!bringing} onclick={() => bring(c)}>
+                  {#if bringing === c.owner + "/" + c.repo}<span class="spin"><Loader size={15} /></span>{t.wel.bringing}{:else}{t.wel.bring}{/if}
+                </button>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
       {#if recent.length}
         <div class="recent">
           <b>{o.recentTitle}</b>
@@ -383,6 +412,10 @@
   .r-off { padding: .05rem .45rem; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: .7rem; font-weight: 600; }
   .recent small { font-size: .75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .recent > .btn { justify-self: start; }
+  .recent li.cloud { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .65rem; padding: .4rem .5rem; }
+  .cloud img { width: 1.9rem; }
+  .c-text { display: grid; gap: .1rem; min-width: 0; }
+  .cloud .btn { display: inline-flex; align-items: center; gap: .35rem; }
   .link-btn { margin-block-start: .75rem; color: var(--blue); font-size: .9rem; font-weight: 600; }
   .link-btn:hover { text-decoration: underline; }
   .small { font-size: .85rem; margin-block-start: .5rem; max-width: 28rem; }

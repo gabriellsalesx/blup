@@ -75,6 +75,23 @@ export interface Change {
 }
 
 /**
+ * CloudSite is a Blup site found on the user's GitHub.
+ */
+export interface CloudSite {
+    "owner": string;
+    "repo": string;
+    "title": string;
+    "model": string;
+    "lang": string;
+    "pushed": string;
+
+    /**
+     * Dir is the site's folder when it is already on this computer.
+     */
+    "dir": string;
+}
+
+/**
  * Connections tells which accounts Blup has a key for. GitHub is the
  * account's login ("" without a key); GitHubError says why it could not be
  * checked (no internet, revoked key).
@@ -315,6 +332,11 @@ export interface Settings {
     "feedback": boolean;
     "feedbackRepo": string;
     "hasPassword": boolean;
+
+    /**
+     * the password for every site is set
+     */
+    "generalPassword": boolean;
 }
 
 /**

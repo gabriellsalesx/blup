@@ -5,6 +5,7 @@ export type {
     Attachment,
     Author,
     Change,
+    CloudSite,
     Connections,
     DNSRecord,
     DeleteChoice,

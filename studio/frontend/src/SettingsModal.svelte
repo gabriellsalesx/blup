@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Settings from "@lucide/svelte/icons/settings";
@@ -21,8 +21,9 @@
   import ThemePicker from "./ThemePicker.svelte";
   import KeyRecorder from "./KeyRecorder.svelte";
   import { Clipboard } from "@wailsio/runtime";
-  import { toast } from "./toast.svelte";
+  import { toast, toastError } from "./toast.svelte";
   import Keyboard from "@lucide/svelte/icons/keyboard";
+  import LockKeyhole from "@lucide/svelte/icons/lock-keyhole";
   import { ACTIONS, keysOf, type Action } from "./keys";
   import Switch from "./Switch.svelte";
   import { look, setPref, spellLang } from "./theme.svelte";
@@ -39,6 +40,7 @@
     { key: "look", label: s.look, Icon: Palette },
     { key: "editor", label: s.editor, Icon: PenLine },
     { key: "accounts", label: s.accounts, Icon: KeyRound },
+    { key: "password", label: t.pw.general, Icon: LockKeyhole },
     { key: "ai", label: t.ai.title, Icon: Sparkles },
     { key: "narration", label: t.ai.narration, Icon: AudioLines },
     { key: "terminal", label: s.terminal, Icon: SquareTerminal },
@@ -82,6 +84,19 @@
   const loadConn = () => Connections().then((c) => (conn = c)).catch((e) => (error = String(e)));
   loadConn();
 
+  // The general password of protected posts, for every site.
+  let generalPw = $state(false);
+  let newPw = $state("");
+  let showPw = $state(false);
+  GeneralPassword().then((v) => (generalPw = v)).catch(() => {});
+  async function savePw(v: string) {
+    try {
+      await SetGeneralPassword(v);
+      generalPw = !!v;
+      newPw = "";
+      toast(v ? t.pw.generalSaved : t.pw.generalRemoved);
+    } catch (e) { toastError(e); }
+  }
   async function changeLang(l: string) {
     await SetLanguage(l);
     location.reload();
@@ -395,6 +410,19 @@
           {/each}
         </div>
       {/each}
+    {:else if tab === "password"}
+      <p class="muted lead">{t.pw.generalHelp}</p>
+      <div class="item column">
+        <div class="row">
+          <div class="text"><b>{t.pw.general}</b><small>{generalPw ? t.pw.generalSet : t.pw.notSet}</small></div>
+          {#if generalPw}<button class="btn ghost" onclick={() => savePw("")}>{t.remove}</button>{/if}
+        </div>
+        <div class="row">
+          <input type={showPw ? "text" : "password"} bind:value={newPw} aria-label={t.pw.general} autocomplete="new-password" />
+          <button class="btn ghost" onclick={() => (showPw = !showPw)}>{showPw ? t.wel.hide : t.wel.show}</button>
+          <button class="btn" disabled={!newPw} onclick={() => savePw(newPw)}>{t.save}</button>
+        </div>
+      </div>
     {:else if tab === "keys"}
       <h3>{k.globalTitle}</h3>
       <div class="item">

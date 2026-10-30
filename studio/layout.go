@@ -111,6 +111,7 @@ type Prefs struct {
 	LastNotes    map[string]string `json:"lastNotes"`    // site folder -> the note open there last
 	Recent       []string          `json:"recent"`       // sites opened lately, newest first (even ones taken out of the list)
 	Voices       map[string]string `json:"voices"`       // the narration's voice for each site language ("pt", "en"); missing = the default
+	Welcomed     bool              `json:"welcomed"`     // the welcome screens (language, GitHub, password, window) were seen
 }
 
 func prefsFile() (string, error) {

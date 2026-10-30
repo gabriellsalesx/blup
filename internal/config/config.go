@@ -27,6 +27,9 @@ type Credentials struct {
 	CloudflareToken string `toml:"cloudflare_token,omitempty"`
 	GitHubToken     string `toml:"github_token,omitempty"`
 	OpenRouterToken string `toml:"openrouter_token,omitempty"` // Blup Studio's AI (narration)
+	// PostPassword is the general password of protected posts, for every
+	// site without its own (Site.Password).
+	PostPassword string `toml:"post_password,omitempty"`
 }
 
 // SiteVersion is the format of blup.toml this Blup writes. When a release
@@ -48,8 +51,9 @@ type Site struct {
 	Vault       string `toml:"vault"`  // absolute path of the Obsidian vault
 	Folder      string `toml:"folder"` // folder inside the vault published as the site; "" = whole vault
 	Domain      string `toml:"domain,omitempty"`
-	// Password is the general password of protected notes ("password: sim").
-	// It stays in this file, on the user's computer, and is never published.
+	// Password is this site's own general password of protected notes
+	// ("password: sim"); without it, the one in the credentials file counts.
+	// It stays on the user's computer and is never published (nor synced).
 	Password string `toml:"password,omitempty"`
 	Deploy   Deploy `toml:"deploy"`
 	// Sync is the private GitHub repository the notes are synced with.

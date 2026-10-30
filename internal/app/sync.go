@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -60,6 +61,12 @@ func syncNotes(ctx context.Context, _ *config.Global, site *config.Site) error {
 	if err := site.Save(); err != nil {
 		return err
 	}
+	// The site's settings travel with the notes, and the topic lets Blup
+	// Studio on another computer find the site.
+	_ = c.AddTopic(ctx, s.Owner, s.Repo, SiteTopic)
+	if err := writeShared(site); err != nil {
+		return err
+	}
 
 	sy := &notesync.Syncer{
 		GH: c, Owner: s.Owner, Repo: s.Repo,
@@ -91,6 +98,11 @@ func syncNotes(ctx context.Context, _ *config.Global, site *config.Site) error {
 		return err
 	}); err != nil {
 		return err
+	}
+	if slices.Contains(rep.Downloaded, notesync.SiteFile) {
+		if err := readShared(site); err != nil {
+			return err
+		}
 	}
 	ui.OK(i18n.T("sync.done", len(rep.Uploaded)+len(rep.Deleted), len(rep.Downloaded)+len(rep.DeletedLocal)))
 	for i, p := range rep.Conflicts {

@@ -39,7 +39,14 @@ type remoteFile struct {
 // every dot file and dot folder (.obsidian, .trash, .git, .DS_Store, ...).
 func ignoredName(name string) bool { return strings.HasPrefix(name, ".") }
 
+// SiteFile is the one dot file that is synced: the site's settings, so
+// another computer can bring the whole site back (Blup Studio).
+const SiteFile = ".blup/site.toml"
+
 func ignoredPath(p string) bool {
+	if p == SiteFile {
+		return false
+	}
 	for _, seg := range strings.Split(p, "/") {
 		if ignoredName(seg) {
 			return true
@@ -93,12 +100,9 @@ func (s *Syncer) scan(prev *state, rep *Report, skip map[string]bool, progress f
 		}
 		abs, _ := filepath.Abs(p)
 		if d.IsDir() {
-			if ignoredName(d.Name()) || abs == trashAbs {
+			if (ignoredName(d.Name()) && d.Name() != ".blup") || abs == trashAbs {
 				return filepath.SkipDir
 			}
-			return nil
-		}
-		if ignoredName(d.Name()) || abs == stateAbs || !d.Type().IsRegular() {
 			return nil
 		}
 		rel, err := filepath.Rel(root, p)
@@ -106,6 +110,9 @@ func (s *Syncer) scan(prev *state, rep *Report, skip map[string]bool, progress f
 			return err
 		}
 		key := nfc(filepath.ToSlash(rel))
+		if (ignoredName(d.Name()) && key != SiteFile) || ignoredPath(key) || abs == stateAbs || !d.Type().IsRegular() {
+			return nil
+		}
 		if _, dup := out[key]; dup || skip[key] {
 			rep.skip(key, SkipDuplicateName)
 			skip[key] = true

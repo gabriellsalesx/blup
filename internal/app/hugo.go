@@ -115,20 +115,21 @@ func encryptLocked(ctx context.Context, site *config.Site, dir string) error {
 		// The (empty) manifest is internal: never publish it.
 		return lock.Discard(dir)
 	}
-	if needsGlobal && site.Password == "" {
+	pw := PostPassword(site)
+	if needsGlobal && pw == "" {
 		if !ui.Interactive() {
 			return errors.New(i18n.T("lock.no_global"))
 		}
-		if err := ui.AskSecret(i18n.T("lock.global_q"), i18n.T("lock.global_help"), &site.Password); err != nil {
+		if err := ui.AskSecret(i18n.T("lock.global_q"), i18n.T("lock.global_help"), &pw); err != nil {
 			return err
 		}
-		if err := site.Save(); err != nil {
+		if err := SetGeneralPassword(pw); err != nil {
 			return err
 		}
 	}
 	var n int
 	err = ui.Spin(ctx, i18n.T("lock.encrypting"), func(context.Context) error {
-		n, err = lock.Process(dir, site.Password)
+		n, err = lock.Process(dir, pw)
 		return err
 	})
 	if err != nil {

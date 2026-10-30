@@ -12,7 +12,7 @@
 // Only files the state file says were synced before are ever deleted.
 //
 // Dot files and dot folders (.obsidian, .trash, .git, .DS_Store, ...) are
-// ignored on both sides, as are files over GitHub's 100 MiB limit.
+// ignored on both sides (except SiteFile), as are files over GitHub's 100 MiB limit.
 //
 // Token permissions (fine-grained personal access token): Contents read and
 // write (blobs, trees, commits, refs, initializing an empty repository),

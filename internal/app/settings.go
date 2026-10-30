@@ -21,24 +21,25 @@ import (
 
 // Settings is what the site shows besides the notes.
 type Settings struct {
-	Model        string         `json:"model"`
-	Lang         string         `json:"lang"`
-	Name         string         `json:"name"`
-	Description  string         `json:"description"`
-	Author       string         `json:"author"`
-	Logo         string         `json:"logo"`    // file of the logo, "" for none
-	Favicon      string         `json:"favicon"` // file of the favicon, "" for none
-	Menu         []MenuItem     `json:"menu"`
-	MenuOptions  []MenuItem     `json:"menuOptions"` // pages that can go in the menu
-	ButtonText   string         `json:"buttonText"`
-	ButtonLink   string         `json:"buttonLink"`
-	Social       []string       `json:"social"`
-	Sections     []Section      `json:"sections"` // Bento only
-	Cookies      config.Cookies `json:"cookies"`
-	PrivacyNote  string         `json:"privacyNote"` // the policy note, relative to the notes folder
-	Feedback     bool           `json:"feedback"`
-	FeedbackRepo string         `json:"feedbackRepo"`
-	HasPassword  bool           `json:"hasPassword"`
+	Model           string         `json:"model"`
+	Lang            string         `json:"lang"`
+	Name            string         `json:"name"`
+	Description     string         `json:"description"`
+	Author          string         `json:"author"`
+	Logo            string         `json:"logo"`    // file of the logo, "" for none
+	Favicon         string         `json:"favicon"` // file of the favicon, "" for none
+	Menu            []MenuItem     `json:"menu"`
+	MenuOptions     []MenuItem     `json:"menuOptions"` // pages that can go in the menu
+	ButtonText      string         `json:"buttonText"`
+	ButtonLink      string         `json:"buttonLink"`
+	Social          []string       `json:"social"`
+	Sections        []Section      `json:"sections"` // Bento only
+	Cookies         config.Cookies `json:"cookies"`
+	PrivacyNote     string         `json:"privacyNote"` // the policy note, relative to the notes folder
+	Feedback        bool           `json:"feedback"`
+	FeedbackRepo    string         `json:"feedbackRepo"`
+	HasPassword     bool           `json:"hasPassword"`
+	GeneralPassword bool           `json:"generalPassword"` // the password for every site is set
 }
 
 // MenuItem is an entry of the top menu: a name and where it leads (a
@@ -66,7 +67,7 @@ func LoadSettings(site *config.Site) (Settings, error) {
 		Name: firstOf(note.String("site_name"), site.Title), Description: firstOf(note.String("site_description"), site.Description),
 		Author: site.Author, ButtonText: note.String("button_text"), ButtonLink: note.String("button_link"),
 		Social: note.List("social"), Cookies: site.Cookies,
-		Feedback: site.Feedback.On(), HasPassword: site.Password != "",
+		Feedback: site.Feedback.On(), HasPassword: site.Password != "", GeneralPassword: HasGeneralPassword(),
 		Logo: attachmentFile(site, note.String("logo")), Favicon: attachmentFile(site, note.String("favicon")),
 	}
 	if s.Social == nil {
@@ -295,7 +296,34 @@ func SaveCookies(site *config.Site, c config.Cookies, privacyPage bool, contact 
 	return note, saved(site)
 }
 
-// SetPassword sets the general password of protected posts ("" removes it).
+// PostPassword is the general password of a site's protected posts: its
+// own, or else the one for every site.
+func PostPassword(site *config.Site) string {
+	if site.Password != "" {
+		return site.Password
+	}
+	c, _ := config.LoadCredentials()
+	return c.PostPassword
+}
+
+// HasGeneralPassword tells whether the password for every site is set.
+func HasGeneralPassword() bool {
+	c, _ := config.LoadCredentials()
+	return c.PostPassword != ""
+}
+
+// SetGeneralPassword sets the password for every site ("" removes it).
+func SetGeneralPassword(password string) error {
+	c, err := config.LoadCredentials()
+	if err != nil {
+		return err
+	}
+	c.PostPassword = password
+	return c.Save()
+}
+
+// SetPassword sets the site's own general password of protected posts (""
+// removes it: the one for every site counts).
 func SetPassword(site *config.Site, password string) error {
 	site.Password = password
 	return saved(site)

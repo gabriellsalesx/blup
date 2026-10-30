@@ -217,6 +217,11 @@ export interface Prefs {
      * the narration's voice for each site language ("pt", "en"); missing = the default
      */
     "voices": { [_ in string]?: string } | null;
+
+    /**
+     * the welcome screens (language, GitHub, password, window) were seen
+     */
+    "welcomed": boolean;
 }
 
 /**

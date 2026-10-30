@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -254,6 +255,9 @@ func syncer(ctx context.Context, site *config.Site) (*notesync.Syncer, string, e
 	if !repo.Private {
 		return nil, "", errors.New(i18n.T("sync.public_q", repo.FullName))
 	}
+	// The mark that lets another computer find the site; without it the
+	// notes still sync.
+	_ = c.AddTopic(ctx, s.Owner, s.Repo, SiteTopic)
 	if err := site.Save(); err != nil {
 		return nil, "", err
 	}
@@ -280,15 +284,32 @@ func SyncStatus(ctx context.Context, site *config.Site) (SyncInfo, error) {
 	}, nil
 }
 
-// SyncNow sends and receives the notes.
+// SyncNow sends and receives the notes, and the site's settings with them.
 func SyncNow(ctx context.Context, site *config.Site) (SyncInfo, error) {
+	return syncSite(ctx, site, true)
+}
+
+// syncSite syncs; share puts this computer's settings next to the notes
+// first (a site just brought from GitHub only receives).
+func syncSite(ctx context.Context, site *config.Site, share bool) (SyncInfo, error) {
 	sy, repo, err := syncer(ctx, site)
 	if err != nil {
 		return SyncInfo{}, err
 	}
+	if share {
+		if err := writeShared(site); err != nil {
+			return SyncInfo{}, err
+		}
+	}
 	rep, err := sy.Sync(ctx, nil)
 	if err != nil {
 		return SyncInfo{}, errors.New(describe(err))
+	}
+	// Settings changed on another computer.
+	if share && slices.Contains(rep.Downloaded, notesync.SiteFile) {
+		if err := readShared(site); err != nil {
+			return SyncInfo{}, err
+		}
 	}
 	return SyncInfo{
 		Repo: repo, Send: len(rep.Uploaded) + len(rep.Deleted), Receive: len(rep.Downloaded) + len(rep.DeletedLocal),

@@ -15,7 +15,7 @@
   <h1>{t.pw.title}</h1>
   <p class="lead">{t.pw.lead}</p>
   <section class="card">
-    <span class="badge" class:on={settings.hasPassword}>{settings.hasPassword ? "✓ " + t.pw.set : t.pw.notSet}</span>
+    <span class="badge" class:on={settings.hasPassword || settings.generalPassword}>{settings.hasPassword ? "✓ " + t.pw.set : settings.generalPassword ? "✓ " + t.pw.usesGeneral : t.pw.notSet}</span>
     <label class="field"><span>{t.pw.label}</span>
       <div class="row">
         <input type={show ? "text" : "password"} bind:value={pw} autocomplete="new-password" />

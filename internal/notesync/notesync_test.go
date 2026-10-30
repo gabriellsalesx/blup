@@ -471,3 +471,26 @@ func TestDownloadKeepsFileModeAndHashCache(t *testing.T) {
 		t.Fatalf("cache = %+v", s.Files)
 	}
 }
+
+func TestSiteFileTravels(t *testing.T) {
+	f, _ := setup(t)
+	a := newComputer(t, f, "notas")
+	a.write(t, map[string]string{"a.md": "A\n", SiteFile: "title = 'Site'\n", ".blup/other.json": "{}"})
+	rep := a.sync(t)
+	eq(t, "uploaded", rep.Uploaded, SiteFile, "a.md")
+	remote := f.files("notas")
+	if remote[SiteFile] != "title = 'Site'\n" {
+		t.Fatalf("remote = %v", remote)
+	}
+	if _, ok := remote[".blup/other.json"]; ok {
+		t.Fatal("only the site file goes with the notes")
+	}
+
+	b := newComputer(t, f, "notas")
+	os.RemoveAll(b.dir)
+	rep = b.sync(t)
+	eq(t, "downloaded", rep.Downloaded, SiteFile, "a.md")
+	if _, ok := b.files(t)[InitFile.Path]; ok {
+		t.Fatal("the init file stays on GitHub")
+	}
+}

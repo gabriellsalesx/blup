@@ -100,6 +100,13 @@ export function BindHyprland(accel: string): $CancellablePromise<void> {
 }
 
 /**
+ * BringSite makes a site found on GitHub on this computer and opens it.
+ */
+export function BringSite(owner: string, repo: string): $CancellablePromise<$models.SiteInfo> {
+    return $Call.ByID(2562739665, owner, repo);
+}
+
+/**
  * CheckCookieTool tells whether an ID fits a tool ("" when it does).
  */
 export function CheckCookieTool(key: string, value: string): $CancellablePromise<string> {
@@ -125,6 +132,14 @@ export function CheckSiteDir(dir: string): $CancellablePromise<string> {
  */
 export function CloseTerminal(id: string): $CancellablePromise<void> {
     return $Call.ByID(842547382, id);
+}
+
+/**
+ * CloudSites lists the Blup sites found on the user's GitHub (their notes
+ * synced to a private repository).
+ */
+export function CloudSites(): $CancellablePromise<app$0.CloudSite[] | null> {
+    return $Call.ByID(675699605);
 }
 
 /**
@@ -265,6 +280,14 @@ export function FeedbackState(): $CancellablePromise<app$0.FeedbackSetup> {
  */
 export function ForgetSite(dir: string): $CancellablePromise<void> {
     return $Call.ByID(1236305264, dir);
+}
+
+/**
+ * GeneralPassword tells whether the password of protected posts for every
+ * site is set.
+ */
+export function GeneralPassword(): $CancellablePromise<boolean> {
+    return $Call.ByID(3953283791);
 }
 
 /**
@@ -687,6 +710,14 @@ export function SetDomain(value: string): $CancellablePromise<app$0.DomainStatus
  */
 export function SetFeedback(on: boolean): $CancellablePromise<void> {
     return $Call.ByID(1040662481, on);
+}
+
+/**
+ * SetGeneralPassword sets the password of protected posts for every site
+ * without its own ("" removes it).
+ */
+export function SetGeneralPassword(password: string): $CancellablePromise<void> {
+    return $Call.ByID(1200750639, password);
 }
 
 /**
