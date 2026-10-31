@@ -3,8 +3,9 @@
 BETTER_AUTH_SECRET=troque-por-uma-chave-longa-e-aleatoria
 # Chave secreta de TESTE do Turnstile (pública, sempre aprova).
 TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
-# Stripe em modo de TESTE (dashboard.stripe.com/test/apikeys). Nunca no git.
-STRIPE_SECRET_KEY=sk_test_coloque_a_sua
+# Stripe, do SANDBOX da conta Blup. Nunca no git. O Stripe recomenda uma
+# chave restrita (rk_) só com as permissões do README, em vez da secreta (sk_).
+STRIPE_SECRET_KEY=rk_test_coloque_a_sua
 # Do `stripe listen` (local) ou do webhook criado no dashboard (produção).
 STRIPE_WEBHOOK_SECRET=whsec_coloque_o_seu
 # Área da staff. Em produção o Cloudflare Access fica na frente de /staff e

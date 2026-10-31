@@ -12,6 +12,7 @@ export type UserDetail = {
 	user: { id: string; email: string | null; emailVerified: boolean; createdAt: string; banned: boolean; banReason: string | null };
 	plan: { label: string; limits: Limits; status: string | null; periodEnd: string | null; cancelAtPeriodEnd: boolean };
 	usage: Usage;
+	billing: { id: number; type: string; amount: number | null; currency: string | null; createdAt: string }[];
 	stripeUrl: string | null;
 	sessions: { id: string; createdAt: string; expiresAt: string; ipAddress: string | null; userAgent: string | null }[];
 	passkeys: { id: string; name: string | null; createdAt: string; deviceType: string }[];
@@ -71,5 +72,17 @@ export const actionLabel: Record<string, string> = {
 	"team.set": "Mudou a equipe",
 	"team.remove": "Tirou da equipe",
 };
+
+// Stripe's money events, in the staff's words (and whether they need a look).
+export const billingLabel: Record<string, { text: string; alert: boolean }> = {
+	"invoice.paid": { text: "Pagamento recebido", alert: false },
+	"invoice.payment_failed": { text: "Pagamento falhou", alert: true },
+	"charge.refunded": { text: "Reembolso", alert: false },
+	"charge.dispute.created": { text: "Contestação aberta", alert: true },
+	"radar.early_fraud_warning.created": { text: "Alerta de fraude", alert: true },
+};
+
+export const money = (cents: number | null, currency: string | null) =>
+	cents === null ? "" : (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: (currency ?? "brl").toUpperCase() });
 
 export const when = (d: string) => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });

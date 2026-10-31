@@ -100,21 +100,38 @@ app.onError((err, c) => {
 
 export type AppType = typeof routes;
 
+// The security headers of static/_headers, on what the Worker itself
+// serves (Cloudflare applies _headers only to assets it serves directly).
+const SECURITY_HEADERS: Record<string, string> = {
+	"Content-Security-Policy": "frame-ancestors 'none'",
+	"X-Frame-Options": "DENY",
+	"X-Content-Type-Options": "nosniff",
+	"Referrer-Policy": "strict-origin-when-cross-origin",
+	"Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+	"Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+};
+
+function secure(res: Response): Response {
+	const out = new Response(res.body, res);
+	for (const [k, v] of Object.entries(SECURITY_HEADERS)) if (!out.headers.has(k)) out.headers.set(k, v);
+	return out;
+}
+
 // One Worker, two addresses. With STAFF_HOST set (production), the staff
 // lives only on its own host (behind Cloudflare Access) and the account
 // panel only on the other: each answers "not found" for the other's pages
 // and API. Without it (this computer), both live on localhost.
 export default {
-	fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
+	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
 		const url = new URL(req.url);
 		const staffApi = url.pathname.startsWith("/api/staff");
 		const staffPage = url.pathname === "/staff" || url.pathname.startsWith("/staff/");
 		if (env.STAFF_HOST) {
 			const onStaff = url.hostname === env.STAFF_HOST;
 			const api = url.pathname.startsWith("/api/");
-			if (onStaff ? api && !staffApi : staffApi || staffPage) return Response.json({ code: "NOT_FOUND" }, { status: 404 });
+			if (onStaff ? api && !staffApi : staffApi || staffPage) return secure(Response.json({ code: "NOT_FOUND" }, { status: 404 }));
 		}
-		if (url.pathname.startsWith("/api/")) return app.fetch(req, env, ctx);
-		return env.ASSETS.fetch(req);
+		if (url.pathname.startsWith("/api/")) return secure(await app.fetch(req, env, ctx));
+		return secure(await env.ASSETS.fetch(req));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>;

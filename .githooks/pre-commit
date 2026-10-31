@@ -1,0 +1,13 @@
+#!/bin/sh
+# Refuses a commit that adds something that looks like a secret key: the
+# repository is public. Turn it on once per clone with:
+#   git config core.hooksPath .githooks
+# (placeholders such as sk_test_coloque_a_sua don't match: real keys are long).
+pattern='(sk|rk)_(live|test)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{30,}|gh[pousr]_[A-Za-z0-9]{30,}|sk-or-v1-[a-f0-9]{30,}|npm_[A-Za-z0-9]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY'
+found=$(git diff --cached -U0 --diff-filter=ACM | grep '^+' | grep -v '^+++' | grep -nE "$pattern")
+if [ -n "$found" ]; then
+	echo "Commit recusado: parece haver uma chave secreta no que vai ser commitado." >&2
+	echo "$found" | sed -E 's/(.{12}).*/\1.../' >&2
+	echo "Tire a chave (use .dev.vars ou um secret do Wrangler) e tente de novo." >&2
+	exit 1
+fi

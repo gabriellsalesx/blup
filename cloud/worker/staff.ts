@@ -6,7 +6,7 @@ import Stripe from "stripe";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { db } from "./auth";
-import { passkey, session, staff, staffLog, subscription, user } from "./db/schema";
+import { billingEvent, passkey, session, staff, staffLog, subscription, user } from "./db/schema";
 import { planNamed } from "./plans";
 import { hasEmail } from "./auth-options";
 import { usageOf } from "./usage";
@@ -141,11 +141,12 @@ export const staffApi = new Hono<App>()
 		const id = c.req.param("id");
 		const [u] = await db.select().from(user).where(eq(user.id, id)).limit(1);
 		if (!u) return c.json({ code: "NOT_FOUND" }, 404);
-		const [sessions, keys, subs, history] = await Promise.all([
+		const [sessions, keys, subs, history, billing] = await Promise.all([
 			db.select({ id: session.id, createdAt: session.createdAt, expiresAt: session.expiresAt, ipAddress: session.ipAddress, userAgent: session.userAgent }).from(session).where(eq(session.userId, id)).orderBy(desc(session.createdAt)),
 			db.select({ id: passkey.id, name: passkey.name, createdAt: passkey.createdAt, deviceType: passkey.deviceType }).from(passkey).where(eq(passkey.userId, id)),
 			db.select().from(subscription).where(eq(subscription.referenceId, id)),
 			db.select().from(staffLog).where(eq(staffLog.userId, id)).orderBy(desc(staffLog.createdAt)).limit(20),
+			db.select({ id: billingEvent.id, type: billingEvent.type, amount: billingEvent.amount, currency: billingEvent.currency, createdAt: billingEvent.createdAt }).from(billingEvent).where(eq(billingEvent.userId, id)).orderBy(desc(billingEvent.id)).limit(20),
 		]);
 		const active = subs.find((s) => ACTIVE.includes(s.status));
 		const plan = planNamed(active?.plan);
@@ -155,6 +156,7 @@ export const staffApi = new Hono<App>()
 			user: { id: u.id, email: hasEmail(u.email) ? u.email : null, emailVerified: u.emailVerified, createdAt: u.createdAt, banned: u.banned, banReason: u.banReason },
 			plan: { label: plan.label, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.periodEnd ?? null, cancelAtPeriodEnd: !!active?.cancelAtPeriodEnd },
 			usage,
+			billing,
 			stripeUrl: u.stripeCustomerId ? `https://dashboard.stripe.com/${stripeMode}customers/${u.stripeCustomerId}` : null,
 			sessions,
 			passkeys: keys,

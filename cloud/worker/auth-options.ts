@@ -21,6 +21,9 @@ export type AuthConfig = {
 	stripeSecret: string;
 	stripeWebhookSecret: string;
 	isBanned: (userId: string) => Promise<boolean>;
+	// Stripe events Better Auth doesn't act on (payments, refunds, disputes),
+	// kept for the staff.
+	onStripeEvent?: (event: Stripe.Event, stripe: Stripe) => Promise<void>;
 	sendCode: (email: string, code: string, kind: string) => void;
 };
 
@@ -113,10 +116,19 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 				// The Stripe customer is made at the first checkout, not at sign
 				// up: free accounts never reach Stripe.
 				createCustomerOnSignUp: false,
+				onEvent: async (event) => cfg.onStripeEvent?.(event, stripeClient),
 				subscription: {
 					enabled: true,
 					plans: PLANS.filter((p) => p.lookupKey).map((p) => ({ name: p.name, lookupKey: p.lookupKey, limits: p.limits })),
-					getCheckoutSessionParams: async () => ({ params: { locale: "pt-BR" } }),
+					// Stripe's recommendations: flexible billing mode, and a label to
+					// follow this checkout flow in the Dashboard (8 random letters).
+					getCheckoutSessionParams: async () => ({
+						params: {
+							locale: "pt-BR",
+							subscription_data: { billing_mode: { type: "flexible" } },
+							integration_identifier: "blup_cloud_pro_qmzrtxwa",
+						},
+					}),
 				},
 			}),
 		],

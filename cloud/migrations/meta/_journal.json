@@ -15,6 +15,20 @@
       "when": 1793401543187,
       "tag": "0001_indices",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793407922089,
+      "tag": "0002_eventos_de_cobranca",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793407937503,
+      "tag": "0003_indice_cliente_stripe",
+      "breakpoints": true
     }
   ]
 }

@@ -42,8 +42,12 @@ Abra pelo endereço `http://localhost:8787` (não `127.0.0.1`): a passkey e a or
 ## Planos e Stripe
 
 - Os planos ficam em `worker/plans.ts` (nome, preço, limites). O preço pago é achado no Stripe pelo *lookup key*, então nenhum ID do Stripe fica no repositório.
-- Coloque a chave de **teste** em `.dev.vars` (`STRIPE_SECRET_KEY`) e rode `npm run stripe:setup`: ele cria o produto e o preço de cada plano pago. Rodar de novo não muda nada.
-- Webhook no computador: `stripe listen --forward-to localhost:8787/api/auth/stripe/webhook` e copie o `whsec_...` para `STRIPE_WEBHOOK_SECRET`. Em produção, o webhook aponta para `https://<domínio>/api/auth/stripe/webhook` com os eventos `checkout.session.completed` e `customer.subscription.created`, `.updated` e `.deleted`.
+- Use um **sandbox** só do Blup e uma **chave restrita** (`rk_`), como o Stripe recomenda. Permissões da chave do Worker: *Customers* (escrita), *Checkout Sessions* (escrita), *Customer portal* (escrita), *Subscriptions* (escrita, para cancelar ao excluir a conta), *Prices* e *Products* (leitura), *Charges* (leitura, para os alertas de contestação e fraude). O `npm run stripe:setup` cria produto e preço, então roda com uma chave que tenha *Products* e *Prices* em escrita (só no seu computador).
+- `npm run stripe:setup` cria o produto e o preço de cada plano pago. Rodar de novo não muda nada.
+- **Portal do cliente:** a configuração padrão só se cria no painel do Stripe (Configurações > Billing > Portal do cliente): ligar histórico de faturas, troca de cartão e cancelamento no fim do período, e salvar. Faça no sandbox e de novo no modo real.
+- **Webhook** em `/api/auth/stripe/webhook`. No computador: `stripe listen --forward-to localhost:8787/api/auth/stripe/webhook` e o `whsec_...` vai para `STRIPE_WEBHOOK_SECRET`. Eventos: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.created`, `.updated` e `.deleted` (a assinatura, pelo Better Auth) e `invoice.paid`, `invoice.payment_failed`, `charge.refunded`, `charge.dispute.created`, `radar.early_fraud_warning.created` (guardados em `billing_event` e mostrados na staff).
+- No painel do Stripe, ligar a **recuperação automática** (Smart Retries e os e-mails de pagamento falho) e o **monitoramento de impostos** (Stripe Tax), conforme o plano de integração do Stripe.
+- **Segurança:** CSP gerado pelo SvelteKit (`vite.config.ts`) e os demais cabeçalhos em `static/_headers` e no Worker. Trava de commit com chave: `git config core.hooksPath .githooks` (uma vez por clone).
 - O cliente do Stripe só é criado no primeiro pagamento: contas grátis nunca chegam ao Stripe.
 
 ## Staff (suporte e administração)

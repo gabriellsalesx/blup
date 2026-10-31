@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { authOptions } from "./auth-options";
 import { sendCode } from "./email";
+import { recordBillingEvent } from "./billing";
 import * as schema from "./db/schema";
 
 export const db = drizzle(env.DB, { schema });
@@ -16,6 +17,7 @@ export const auth = betterAuth(
 		turnstileSecret: env.TURNSTILE_SECRET_KEY,
 		stripeSecret: env.STRIPE_SECRET_KEY,
 		stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+		onStripeEvent: (event, stripe) => recordBillingEvent(event, stripe),
 		isBanned: async (userId) => {
 			const [u] = await db.select({ banned: schema.user.banned }).from(schema.user).where(eq(schema.user.id, userId)).limit(1);
 			return !!u?.banned;

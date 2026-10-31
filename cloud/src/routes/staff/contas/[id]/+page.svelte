@@ -5,7 +5,7 @@
 	import External from "@lucide/svelte/icons/external-link";
 	import KeyRound from "@lucide/svelte/icons/key-round";
 	import Trash from "@lucide/svelte/icons/trash-2";
-	import { staffApi, staffHref, actionLabel, when } from "#lib/staff.ts";
+	import { staffApi, staffHref, actionLabel, billingLabel, money, when } from "#lib/staff.ts";
 	import { toast } from "#lib/toast.svelte.ts";
 	import { confirm } from "#lib/confirm.svelte.ts";
 	import Button from "#lib/ui/Button.svelte";
@@ -78,6 +78,21 @@
 
 		<Row title="Uso" help="Só números: o conteúdo das notas é criptografado e a staff não vê.">
 			<UsageBars usage={d.usage} limits={d.plan.limits} />
+		</Row>
+
+		<Row title="Pagamentos" help="O que o Stripe avisou: pagamentos, falhas, reembolsos, contestações e alertas de fraude.">
+			<ul class="mt-3 grid gap-1.5 text-sm">
+				{#each d.billing as b (b.id)}
+					{@const l = billingLabel[b.type] ?? { text: b.type, alert: false }}
+					<li class="flex flex-wrap items-baseline gap-x-2">
+						<b class={l.alert ? "text-red-600" : ""}>{l.text}</b>
+						<span>{money(b.amount, b.currency)}</span>
+						<span class="text-neutral-500">· {when(b.createdAt)}</span>
+					</li>
+				{:else}
+					<li class="text-neutral-500">Nada ainda.</li>
+				{/each}
+			</ul>
 		</Row>
 
 		<Row title="Sessões" help={`${d.sessions.length} ${d.sessions.length === 1 ? "aparelho conectado" : "aparelhos conectados"}`}>
