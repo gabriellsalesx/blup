@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { and, eq, inArray } from "drizzle-orm";
-import { auth, db, type Session } from "./auth";
-import { subscription } from "./db/schema";
+import { auth, type Session } from "./auth";
+import { activeSubscription } from "./account";
 import { PLANS, planNamed } from "./plans";
 import { staffApi } from "./staff";
+import { syncApi } from "./sync";
 import { usageOf } from "./usage";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
@@ -72,13 +72,8 @@ const routes = app
 	.get("/plans", (c) => c.json(PLANS.map(({ name, label, priceCents, limits, perks }) => ({ name, label, priceCents, limits, perks }))))
 	.get("/me", session, signedIn, async (c) => {
 		const { user } = c.get("session")!;
-		// The plan of the subscription that is paid (or on trial); else free.
 		// The portal cancels by setting cancel_at, not cancel_at_period_end.
-		const [sub] = await db
-			.select({ plan: subscription.plan, status: subscription.status, periodEnd: subscription.periodEnd, cancelAtPeriodEnd: subscription.cancelAtPeriodEnd, cancelAt: subscription.cancelAt })
-			.from(subscription)
-			.where(and(eq(subscription.referenceId, user.id), inArray(subscription.status, ["active", "trialing", "past_due"])))
-			.limit(1);
+		const sub = await activeSubscription(user.id);
 		const plan = planNamed(sub?.plan);
 		const usage = await usageOf(user.id, sub?.periodEnd);
 		return c.json({
@@ -92,6 +87,7 @@ const routes = app
 	});
 
 app.route("/staff", staffApi);
+app.route("/sync", syncApi);
 
 app.notFound((c) => c.json({ code: "NOT_FOUND" }, 404));
 app.onError((err, c) => {

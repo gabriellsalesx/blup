@@ -29,6 +29,13 @@
       "when": 1793407937503,
       "tag": "0003_indice_cliente_stripe",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793489953865,
+      "tag": "0004_sincronizacao",
+      "breakpoints": true
     }
   ]
 }

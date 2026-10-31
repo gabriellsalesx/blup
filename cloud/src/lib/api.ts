@@ -2,7 +2,7 @@
 
 import type { Usage } from "./usage.ts";
 
-export type Limits = { storageMB: number; sites: number; aiCredits: number };
+export type Limits = { storageMB: number; sites: number; aiCredits: number; live: boolean; historyDays: number };
 export type PlanInfo = { name: string; label: string; priceCents: number; limits: Limits; perks: string[] };
 export type Me = {
 	id: string;
