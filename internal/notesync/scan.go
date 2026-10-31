@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gabriellsalesx/blup/internal/deploy/github"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -27,12 +26,10 @@ type localFile struct {
 	cacheable bool
 }
 
-// remoteFile is a blob of the remote tree.
+// remoteFile is a file of the remote version.
 type remoteFile struct {
-	key  string // NFC
-	path string // exact path in the repository
-	sha  string
-	mode string
+	key string // NFC
+	f   RemoteFile
 }
 
 // ignoredName reports whether a path segment is excluded from syncing:
@@ -123,7 +120,7 @@ func (s *Syncer) scan(prev *state, rep *Report, skip map[string]bool, progress f
 		if err != nil {
 			return err
 		}
-		if info.Size() > github.MaxFileSize {
+		if info.Size() > MaxFileSize {
 			rep.skip(key, SkipTooLarge)
 			skip[key] = true
 			return nil
@@ -154,12 +151,10 @@ func (s *Syncer) scan(prev *state, rep *Report, skip map[string]bool, progress f
 	return out, err
 }
 
-// remoteFiles converts a remote tree into syncable files.
-func remoteFiles(tree []github.TreeFile, rep *Report, skip map[string]bool) (map[string]*remoteFile, map[string]bool) {
+// remoteFiles converts a remote version into syncable files.
+func remoteFiles(files []RemoteFile, rep *Report, skip map[string]bool) map[string]*remoteFile {
 	out := map[string]*remoteFile{}
-	shas := map[string]bool{}
-	for _, f := range tree {
-		shas[f.SHA] = true
+	for _, f := range files {
 		if ignoredPath(f.Path) {
 			continue
 		}
@@ -180,7 +175,7 @@ func remoteFiles(tree []github.TreeFile, rep *Report, skip map[string]bool) (map
 			delete(out, key)
 			continue
 		}
-		out[key] = &remoteFile{key: key, path: f.Path, sha: f.SHA, mode: f.Mode}
+		out[key] = &remoteFile{key: key, f: f}
 	}
-	return out, shas
+	return out
 }

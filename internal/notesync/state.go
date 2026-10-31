@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -17,7 +16,7 @@ const stateVersion = 1
 //
 //	{
 //	  "version": 1,
-//	  "owner": "maria", "repo": "notas", "branch": "main",
+//	  "remote": "github:maria/notas@main",
 //	  "commit": "<sha of the remote commit the snapshot matches>",
 //	  "synced_at": "2026-10-28T14:30:00Z",
 //	  "files": {
@@ -30,10 +29,13 @@ const stateVersion = 1
 // nanoseconds) are a hashing cache for the local copy; mtime 0 means "always
 // re-hash".
 type state struct {
-	Version  int                  `json:"version"`
-	Owner    string               `json:"owner"`
-	Repo     string               `json:"repo"`
-	Branch   string               `json:"branch"`
+	Version int    `json:"version"`
+	Remote  string `json:"remote"`
+	// Owner, Repo and Branch name the GitHub remote in files saved before
+	// Remote existed.
+	Owner    string               `json:"owner,omitempty"`
+	Repo     string               `json:"repo,omitempty"`
+	Branch   string               `json:"branch,omitempty"`
 	Commit   string               `json:"commit"`
 	SyncedAt time.Time            `json:"synced_at"`
 	Files    map[string]fileState `json:"files"`
@@ -46,7 +48,7 @@ type fileState struct {
 }
 
 // loadState returns the saved state, or nil when there is none or it
-// belongs to another repository/branch. A corrupt file is treated as no
+// belongs to another remote. A corrupt file is treated as no
 // state: the next sync then never deletes anything (it only adds, and turns
 // differences into conflict copies), which is the safe direction.
 func (s *Syncer) loadState() (*state, error) {
@@ -58,11 +60,16 @@ func (s *Syncer) loadState() (*state, error) {
 		return nil, err
 	}
 	var st state
-	if json.Unmarshal(data, &st) != nil || st.Version != stateVersion ||
-		!strings.EqualFold(st.Owner, s.Owner) || !strings.EqualFold(st.Repo, s.Repo) ||
-		st.Branch != s.branch() {
+	if json.Unmarshal(data, &st) != nil || st.Version != stateVersion {
 		return nil, nil
 	}
+	if st.Remote == "" && st.Owner != "" {
+		st.Remote = (&GitHub{Owner: st.Owner, Repo: st.Repo, Branch: st.Branch}).ID()
+	}
+	if st.Remote != s.remote().ID() {
+		return nil, nil
+	}
+	st.Owner, st.Repo, st.Branch = "", "", ""
 	if st.Files == nil {
 		st.Files = map[string]fileState{}
 	}

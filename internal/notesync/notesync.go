@@ -1,6 +1,7 @@
 // Package notesync keeps a folder of notes (the site folder inside an
-// Obsidian vault) in two-way sync with a private GitHub repository, using
-// only the GitHub REST API: no git binary and no git knowledge needed.
+// Obsidian vault) in two-way sync with a Remote: a private GitHub repository
+// (through the GitHub REST API only: no git binary and no git knowledge
+// needed) or Blup Cloud.
 //
 // Each sync compares three versions of every file: the local one, the one on
 // GitHub, and the one recorded at the last sync (the state file, kept
@@ -74,8 +75,11 @@ func EnsureRepo(ctx context.Context, gh *github.Client, owner, name string) (git
 	})
 }
 
-// Syncer syncs Dir with Branch of Owner/Repo.
+// Syncer syncs Dir with Remote, or with Branch of Owner/Repo on GitHub
+// when Remote is nil.
 type Syncer struct {
+	Remote Remote
+
 	GH     *github.Client
 	Owner  string
 	Repo   string
@@ -93,6 +97,18 @@ type Syncer struct {
 	MaxAttempts int
 	// Now is the clock (default time.Now), used for conflict names.
 	Now func() time.Time
+
+	gh *GitHub // Remote built from GH, Owner, Repo and Branch
+}
+
+func (s *Syncer) remote() Remote {
+	if s.Remote != nil {
+		return s.Remote
+	}
+	if s.gh == nil {
+		s.gh = &GitHub{Client: s.GH, Owner: s.Owner, Repo: s.Repo, Branch: s.Branch}
+	}
+	return s.gh
 }
 
 // Phase names reported through Progress.
@@ -165,13 +181,6 @@ func (r *Report) finish() {
 	r.UpToDate = len(r.Uploaded)+len(r.Downloaded)+len(r.Deleted)+len(r.DeletedLocal)+len(r.Conflicts) == 0
 }
 
-func (s *Syncer) branch() string {
-	if s.Branch != "" {
-		return s.Branch
-	}
-	return DefaultBranch
-}
-
 func (s *Syncer) now() time.Time {
 	if s.Now != nil {
 		return s.Now()
@@ -186,18 +195,13 @@ func (s *Syncer) trashDir() string {
 	return filepath.Join(filepath.Dir(s.StateFile), "sync-trash")
 }
 
-func (s *Syncer) concurrency() int {
-	if s.GH.Concurrency > 0 {
-		return s.GH.Concurrency
-	}
-	return 4
-}
+func (s *Syncer) concurrency() int { return s.remote().Concurrency() }
 
 func (s *Syncer) check() error {
 	switch {
-	case s.GH == nil:
-		return errors.New("notesync: no GitHub client")
-	case s.Owner == "" || s.Repo == "":
+	case s.Remote == nil && s.GH == nil:
+		return errors.New("notesync: no remote")
+	case s.Remote == nil && (s.Owner == "" || s.Repo == ""):
 		return errors.New("notesync: repository owner and name are required")
 	case s.Dir == "":
 		return errors.New("notesync: notes folder is required")
@@ -282,7 +286,7 @@ func plan(local map[string]*localFile, remote map[string]*remoteFile, prev *stat
 			ls = e.l.sha
 		}
 		if e.r != nil {
-			rs = e.r.sha
+			rs = e.r.f.SHA
 		}
 		e.op = decide(ls, rs, e.base)
 		out = append(out, e)
@@ -291,26 +295,21 @@ func plan(local map[string]*localFile, remote map[string]*remoteFile, prev *stat
 	return out
 }
 
-// snapshot reads both sides and plans. tip.Commit is "" for a missing branch.
-func (s *Syncer) snapshot(ctx context.Context, prev *state, init *github.InitFile, report func(Progress)) (github.Tip, []*entry, map[string]*localFile, map[string]*remoteFile, map[string]bool, Report, error) {
+// snapshot reads both sides and plans. head.Version is "" for an empty
+// remote.
+func (s *Syncer) snapshot(ctx context.Context, prev *state, write bool, report func(Progress)) (Head, []*entry, map[string]*localFile, Report, error) {
 	var rep Report
 	skip := map[string]bool{}
 	report(Progress{Phase: PhaseCompare})
-	tip, err := s.GH.BranchTip(ctx, s.Owner, s.Repo, s.branch(), init)
+	head, err := s.remote().Head(ctx, write)
 	if err != nil {
-		return tip, nil, nil, nil, nil, rep, err
+		return head, nil, nil, rep, err
 	}
-	var tree []github.TreeFile
-	if tip.Tree != "" {
-		if tree, err = s.GH.ReadTree(ctx, s.Owner, s.Repo, tip.Tree); err != nil {
-			return tip, nil, nil, nil, nil, rep, err
-		}
-	}
-	remote, shas := remoteFiles(tree, &rep, skip)
+	remote := remoteFiles(head.Files, &rep, skip)
 	report(Progress{Phase: PhaseCompare, Done: len(remote), Total: len(remote)})
 	local, err := s.scan(prev, &rep, skip, report)
 	if err != nil {
-		return tip, nil, nil, nil, nil, rep, err
+		return head, nil, nil, rep, err
 	}
 	entries := plan(local, remote, prev, skip)
 	if len(local) == 0 && prev != nil {
@@ -321,10 +320,10 @@ func (s *Syncer) snapshot(ctx context.Context, prev *state, init *github.InitFil
 			}
 		}
 		if dels > 1 {
-			return tip, nil, nil, nil, nil, rep, fmt.Errorf("%w: %s", ErrLocalFolderEmpty, s.Dir)
+			return head, nil, nil, rep, fmt.Errorf("%w: %s", ErrLocalFolderEmpty, s.Dir)
 		}
 	}
-	return tip, entries, local, remote, shas, rep, nil
+	return head, entries, local, rep, nil
 }
 
 func fill(rep *Report, entries []*entry, done bool) {
@@ -390,12 +389,12 @@ func (s *Syncer) Status(ctx context.Context, progress func(Progress)) (Report, e
 	if err != nil {
 		return Report{}, err
 	}
-	tip, entries, _, _, _, rep, err := s.snapshot(ctx, prev, nil, report)
+	head, entries, _, rep, err := s.snapshot(ctx, prev, false, report)
 	if err != nil {
 		return Report{}, err
 	}
 	fill(&rep, entries, false)
-	rep.Commit = tip.Commit
+	rep.Commit = head.Version
 	report(Progress{Phase: PhaseDone})
 	return rep, nil
 }
@@ -418,50 +417,29 @@ func (s *Syncer) Sync(ctx context.Context, progress func(Progress)) (Report, err
 	if attempts <= 0 {
 		attempts = DefaultMaxAttempts
 	}
-	uploaded := map[string]bool{} // blob shas sent in earlier attempts
-	init := InitFile
 	for attempt := 0; attempt < attempts; attempt++ {
 		if attempt > 0 {
 			report(Progress{Phase: PhaseRetry, Done: attempt, Total: attempts})
 		}
-		tip, entries, local, _, shas, rep, err := s.snapshot(ctx, prev, &init, report)
+		head, entries, local, rep, err := s.snapshot(ctx, prev, true, report)
 		if err != nil {
 			return Report{}, err
-		}
-		for sha := range uploaded {
-			shas[sha] = true
 		}
 		s.nameConflicts(entries, local)
 
-		changes, counts, err := s.prepareUploads(ctx, entries, shas, uploaded, report)
+		changes, counts, err := s.prepareUploads(ctx, entries, report)
 		if err != nil {
 			return Report{}, err
 		}
-		commit := tip.Commit
+		commit := head.Version
 		if len(changes) > 0 {
 			report(Progress{Phase: PhaseCommit})
-			tree, err := s.GH.CreateTree(ctx, s.Owner, s.Repo, tip.Tree, changes)
+			commit, err = s.remote().Commit(ctx, head, changes, counts)
+			if errors.Is(err, ErrNotFastForward) {
+				continue // someone else synced: compare again
+			}
 			if err != nil {
 				return Report{}, err
-			}
-			if tree != tip.Tree {
-				var parents []string
-				if tip.Commit != "" {
-					parents = []string{tip.Commit}
-				}
-				msg := fmt.Sprintf("blup sync: %d updated, %d added, %d removed", counts[0], counts[1], counts[2])
-				c, err := s.GH.CreateCommit(ctx, s.Owner, s.Repo, msg, tree, parents)
-				if err != nil {
-					return Report{}, err
-				}
-				err = s.GH.UpdateBranch(ctx, s.Owner, s.Repo, s.branch(), c, tip.Commit == "")
-				if errors.Is(err, github.ErrNotFastForward) {
-					continue // someone else synced: compare again
-				}
-				if err != nil {
-					return Report{}, err
-				}
-				commit = c
 			}
 			report(Progress{Phase: PhaseCommit, Done: 1, Total: 1})
 		}
@@ -523,16 +501,16 @@ func (s *Syncer) nameConflicts(entries []*entry, local map[string]*localFile) {
 }
 
 func remoteMode(r *remoteFile) string {
-	if r != nil && r.mode == "100755" {
-		return r.mode
+	if r != nil && r.f.Mode == "100755" {
+		return r.f.Mode
 	}
 	return "100644"
 }
 
-// prepareUploads reads and sends local files and returns the tree changes
-// plus commit message counts (updated, added, removed).
-func (s *Syncer) prepareUploads(ctx context.Context, entries []*entry, shas, uploaded map[string]bool, report func(Progress)) ([]github.TreeChange, [3]int, error) {
-	var counts [3]int
+// prepareUploads reads and sends local files and returns the changes of the
+// new version.
+func (s *Syncer) prepareUploads(ctx context.Context, entries []*entry, report func(Progress)) ([]Change, Counts, error) {
+	var counts Counts
 	var jobs []*entry
 	for _, e := range entries {
 		switch e.op {
@@ -540,7 +518,7 @@ func (s *Syncer) prepareUploads(ctx context.Context, entries []*entry, shas, upl
 			jobs = append(jobs, e)
 		}
 	}
-	changes := make([]github.TreeChange, len(jobs))
+	changes := make([]Change, len(jobs))
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var (
@@ -555,7 +533,7 @@ func (s *Syncer) prepareUploads(ctx context.Context, entries []*entry, shas, upl
 		wg.Go(func() {
 			for i := range work {
 				e := jobs[i]
-				ch, err := s.uploadOne(ctx, e, shas, &mu)
+				ch, err := s.uploadOne(ctx, e)
 				mu.Lock()
 				if err != nil {
 					if firstErr == nil {
@@ -564,9 +542,6 @@ func (s *Syncer) prepareUploads(ctx context.Context, entries []*entry, shas, upl
 					}
 					mu.Unlock()
 					continue
-				}
-				if ch.Content == nil {
-					uploaded[ch.SHA] = true
 				}
 				changes[i] = ch
 				done++
@@ -597,29 +572,29 @@ func (s *Syncer) prepareUploads(ctx context.Context, entries []*entry, shas, upl
 		switch e.op {
 		case opUpload:
 			if e.r != nil {
-				counts[0]++
+				counts.Updated++
 			} else {
-				counts[1]++
+				counts.Added++
 			}
 		case opConflict:
-			counts[0]++
-			counts[1]++
-			changes = append(changes, github.TreeChange{Path: e.copyKey, SHA: e.r.sha, Mode: remoteMode(e.r)})
+			counts.Updated++
+			counts.Added++
+			changes = append(changes, s.remote().Copy(e.r.f, e.copyKey))
 		case opDeleteRemote:
-			counts[2]++
-			changes = append(changes, github.TreeChange{Path: e.r.path, Delete: true})
+			counts.Removed++
+			changes = append(changes, Change{Path: e.r.f.Path, Delete: true})
 		}
 	}
 	return changes, counts, nil
 }
 
-func (s *Syncer) uploadOne(ctx context.Context, e *entry, shas map[string]bool, mu *sync.Mutex) (github.TreeChange, error) {
+func (s *Syncer) uploadOne(ctx context.Context, e *entry) (Change, error) {
 	data, err := os.ReadFile(e.l.abs)
 	if err != nil {
-		return github.TreeChange{}, err
+		return Change{}, err
 	}
-	if len(data) > github.MaxFileSize {
-		return github.TreeChange{}, github.ErrFileTooLarge
+	if len(data) > MaxFileSize {
+		return Change{}, github.ErrFileTooLarge
 	}
 	sha := github.BlobSHA(data)
 	if sha != e.l.sha {
@@ -628,24 +603,13 @@ func (s *Syncer) uploadOne(ctx context.Context, e *entry, shas map[string]bool, 
 	e.sent = sha
 	path := e.key
 	if e.r != nil {
-		path = e.r.path
+		path = e.r.f.Path
 	}
-	ch := github.TreeChange{Path: path, Mode: remoteMode(e.r)}
-	mu.Lock()
-	known := shas[sha]
-	mu.Unlock()
-	switch {
-	case known:
-		ch.SHA = sha
-	case s.GH.CanInline(data):
-		ch.Content = data
-	default:
-		got, err := s.GH.CreateBlob(ctx, s.Owner, s.Repo, data)
-		if err != nil {
-			return github.TreeChange{}, err
-		}
-		ch.SHA = got
+	ch, err := s.remote().Upload(ctx, path, sha, data)
+	if err != nil {
+		return Change{}, err
 	}
+	ch.Path, ch.Mode = path, remoteMode(e.r)
 	return ch, nil
 }
 
@@ -723,7 +687,7 @@ func (s *Syncer) applyOne(ctx context.Context, e *entry, trash string) SkipReaso
 		if e.op == opConflict {
 			target = s.localPath(e.copyKey)
 		}
-		data, err := s.GH.GetBlob(ctx, s.Owner, s.Repo, e.r.sha)
+		data, err := s.remote().Download(ctx, e.r.f)
 		if err != nil {
 			return SkipWriteFailed
 		}
@@ -735,7 +699,7 @@ func (s *Syncer) applyOne(ctx context.Context, e *entry, trash string) SkipReaso
 			return SkipChanged
 		}
 		perm := os.FileMode(0o644)
-		if e.r.mode == "100755" {
+		if e.r.f.Mode == "100755" {
 			perm = 0o755
 		}
 		if e.op == opDownload && e.l != nil {
@@ -798,7 +762,7 @@ func (s *Syncer) removeEmptyParents(dir string) {
 // newState records the snapshot both sides now agree on.
 func (s *Syncer) newState(prev *state, entries []*entry, commit string) *state {
 	st := &state{
-		Version: stateVersion, Owner: s.Owner, Repo: s.Repo, Branch: s.branch(),
+		Version: stateVersion, Remote: s.remote().ID(),
 		Commit: commit, SyncedAt: s.now().UTC(), Files: map[string]fileState{},
 	}
 	// Paths left out of the plan (skipped) keep their old snapshot.
@@ -836,13 +800,13 @@ func (s *Syncer) newState(prev *state, entries []*entry, commit string) *state {
 		case opConflict:
 			st.Files[e.key] = fromLocal(e.l, e.sent)
 			if e.applied {
-				st.Files[e.copyKey] = fileState{SHA: e.r.sha}
+				st.Files[e.copyKey] = fileState{SHA: e.r.f.SHA}
 			}
 		case opDeleteRemote:
 			// gone on both sides
 		case opDownload:
 			if e.applied {
-				st.Files[e.key] = fileState{SHA: e.r.sha}
+				st.Files[e.key] = fileState{SHA: e.r.f.SHA}
 			} else {
 				keep(e)
 			}

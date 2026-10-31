@@ -189,6 +189,21 @@ func TestFirstUploadIgnoresDotFilesAndKeepsUnicode(t *testing.T) {
 	if !strings.HasPrefix(f.repos["notas"].commits[rep.Commit].message, "blup sync: 0 updated, 6 added, 0 removed") {
 		t.Fatalf("message = %q", f.repos["notas"].commits[rep.Commit].message)
 	}
+	if s.Remote != "github:maria/notas@main" || s.Owner != "" {
+		t.Fatalf("remote = %q, owner = %q", s.Remote, s.Owner)
+	}
+
+	// A state file saved before Remote existed still counts as the base.
+	old := strings.Replace(string(b), `"remote": "github:maria/notas@main"`, `"owner": "Maria", "repo": "notas", "branch": "main"`, 1)
+	os.WriteFile(a.s.StateFile, []byte(old), 0o644)
+	a.write(t, map[string]string{"index.md": "# Início\n"})
+	rep = a.sync(t)
+	if !slices.Equal(rep.Uploaded, []string{"index.md"}) {
+		t.Fatalf("uploaded = %v", rep.Uploaded)
+	}
+	if len(rep.Conflicts) != 0 || len(rep.Downloaded) != 0 {
+		t.Fatalf("old state lost its base: %+v", rep)
+	}
 }
 
 func TestSecondComputerDownloadsAndConflicts(t *testing.T) {
