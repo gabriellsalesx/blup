@@ -233,7 +233,18 @@ export const staffApi = new Hono<App>()
 	.get("/log", adminOnly, async (c) => {
 		const cursor = Number(c.req.query("cursor")) || 0;
 		const size = pageSize(c.req.query("limit"));
-		const found = await db.select().from(staffLog).where(cursor ? lt(staffLog.id, cursor) : undefined).orderBy(desc(staffLog.id)).limit(size + 1);
+		// Each entry with its account's e-mail (null once the account is gone),
+		// by the account's primary key.
+		const found = await db
+			.select({ log: staffLog, email: user.email })
+			.from(staffLog)
+			.leftJoin(user, eq(user.id, staffLog.userId))
+			.where(cursor ? lt(staffLog.id, cursor) : undefined)
+			.orderBy(desc(staffLog.id))
+			.limit(size + 1);
 		const rows = found.slice(0, size);
-		return c.json({ items: rows, nextCursor: found.length > size ? String(rows[rows.length - 1].id) : null });
+		return c.json({
+			items: rows.map((r) => ({ ...r.log, account: r.log.userId ? (r.email === null ? { gone: true, email: null } : { gone: false, email: hasEmail(r.email) ? r.email : null }) : null })),
+			nextCursor: found.length > size ? String(rows[rows.length - 1].log.id) : null,
+		});
 	});

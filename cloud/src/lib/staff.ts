@@ -17,7 +17,7 @@ export type UserDetail = {
 	passkeys: { id: string; name: string | null; createdAt: string; deviceType: string }[];
 	history: LogRow[];
 };
-export type LogRow = { id: number; staffEmail: string; action: string; userId: string | null; detail: string | null; createdAt: string };
+export type LogRow = { id: number; staffEmail: string; action: string; userId: string | null; detail: string | null; createdAt: string; account?: { gone: boolean; email: string | null } | null };
 export type Stats = { total: number; recent: number; banned: number; plans: { name: string; label: string; count: number }[] };
 export type Team = { owner: string | null; staff: { email: string; role: Role; addedBy: string; createdAt: string }[] };
 
