@@ -102,7 +102,7 @@ export const syncApi = new Hono<App>()
 		const userId = c.get("userId");
 		if (!(await account(userId))) return c.json({ code: "NO_KEY" }, 409);
 		const [plan, [{ n }]] = await Promise.all([planOf(userId), db.select({ n: count() }).from(vault).where(eq(vault.userId, userId))]);
-		if (plan.limits.sites >= 0 && n >= plan.limits.sites) return c.json({ code: "SITES_LIMIT", limit: plan.limits.sites }, 403);
+		if (plan.limits.vaults >= 0 && n >= plan.limits.vaults) return c.json({ code: "VAULTS_LIMIT", limit: plan.limits.vaults }, 403);
 		const id = uuidv7();
 		await db.insert(vault).values({ id, userId, name: c.req.valid("json").name });
 		return c.json({ id, head: 0 }, 201);

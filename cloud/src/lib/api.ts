@@ -2,8 +2,8 @@
 
 import type { Usage } from "./usage.ts";
 
-export type Limits = { storageMB: number; sites: number; aiCredits: number; live: boolean; historyDays: number };
-export type PlanInfo = { name: string; label: string; priceCents: number; limits: Limits; perks: string[] };
+export type Limits = { storageMB: number; maxFileMB: number; vaults: number; sites: number; devices: number; aiCredits: number; live: boolean; historyDays: number };
+export type PlanInfo = { name: string; label: string; priceCents: number; currency: "brl" | "usd"; limits: Limits; perks: string[] };
 export type Me = {
 	id: string;
 	email: string | null; // null: an account made with a passkey, no e-mail linked yet
@@ -24,4 +24,4 @@ export const api = {
 	plans: () => get<PlanInfo[]>("/plans"),
 };
 
-export const brl = (cents: number) => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export const money = (cents: number, currency: string = "brl") => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: currency.toUpperCase() });

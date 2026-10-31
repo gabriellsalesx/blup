@@ -10,8 +10,14 @@ import (
 	"github.com/gabriellsalesx/blup/internal/deploy/github"
 )
 
-// MaxFileSize is the largest file synced (GitHub's per-file limit).
+// MaxFileSize is the largest file synced by default (GitHub's per-file
+// limit). A Remote with a MaxFileSize method sets its own.
 const MaxFileSize = github.MaxFileSize
+
+// Limited is a Remote whose largest file is not MaxFileSize (a plan's limit).
+type Limited interface {
+	MaxFileSize() int64
+}
 
 // ErrNotFastForward is returned by Remote.Commit when someone else saved a
 // new version since Head: Sync then compares again.

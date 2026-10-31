@@ -1,6 +1,7 @@
 // What an account uses (the API's `usage`) and how to show it.
 export type Usage = {
 	storageBytes: number;
+	vaults: number;
 	sites: number;
 	aiCreditsUsed: number;
 	aiCreditsResetAt: string | null;

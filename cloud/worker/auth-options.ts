@@ -1,7 +1,7 @@
 import type { BetterAuthOptions } from "better-auth";
 import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { emailOTP, captcha } from "better-auth/plugins";
+import { emailOTP, captcha, deviceAuthorization, bearer } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { stripe } from "@better-auth/stripe";
 import Stripe from "stripe";
@@ -9,9 +9,14 @@ import { PLANS } from "./plans";
 import { v7 as uuidv7 } from "uuid";
 
 // Blup Cloud's sign in: only a code by e-mail (which also creates the
-// account) and passkeys, which a signed in person can add. Shared by the
+// account) and passkeys, which a signed in person can add. Blup Studio
+// signs in through the browser (device authorization) and then sends its
+// session token as a Bearer header. Shared by the
 // Worker (auth.ts) and by the Better Auth CLI that generates the schema
 // (auth.cli.ts), so neither imports the other's runtime.
+
+// The only client allowed to sign in through the browser.
+export const STUDIO_CLIENT_ID = "blup-studio";
 
 export type AuthConfig = {
 	appUrl: string;
@@ -109,6 +114,14 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 					},
 				},
 			}),
+			// The Studio shows a code and opens /aparelho, where the signed in
+			// person confirms it is the same code and approves.
+			deviceAuthorization({
+				verificationUri: `${cfg.appUrl}/aparelho`,
+				expiresIn: "15m",
+				validateClient: (clientId) => clientId === STUDIO_CLIENT_ID,
+			}),
+			bearer(),
 			captcha({ provider: "cloudflare-turnstile", secretKey: cfg.turnstileSecret, endpoints: [SEND_CODE_PATH] }),
 			stripe({
 				stripeClient,

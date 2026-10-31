@@ -36,6 +36,13 @@
       "when": 1793489953865,
       "tag": "0004_sincronizacao",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1793490184534,
+      "tag": "0005_aparelhos",
+      "breakpoints": true
     }
   ]
 }

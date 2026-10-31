@@ -2,7 +2,7 @@
 	import { page } from "$app/state";
 	import Check from "@lucide/svelte/icons/check";
 	import { authClient, message } from "#lib/auth.ts";
-	import { brl } from "#lib/api.ts";
+	import { money } from "#lib/api.ts";
 	import { toast } from "#lib/toast.svelte.ts";
 	import Button from "#lib/ui/Button.svelte";
 	import Row from "#lib/ui/Row.svelte";
@@ -45,7 +45,7 @@
 				<h2 class="font-semibold">{p.label}</h2>
 				{#if mine}<span class="rounded-full bg-blup/10 px-2 py-0.5 text-xs font-semibold text-blup">Seu plano</span>{/if}
 			</div>
-			<p class="mt-1"><b class="text-2xl">{brl(p.priceCents)}</b> <span class="text-sm text-neutral-500">por mês</span></p>
+			<p class="mt-1"><b class="text-2xl">{money(p.priceCents, p.currency)}</b> <span class="text-sm text-neutral-500">por mês</span></p>
 			<ul class="mt-4 grid flex-1 content-start gap-1.5 text-sm">
 				{#each p.perks as perk (perk)}<li class="flex items-start gap-2"><Check class="mt-0.5 size-4 shrink-0 text-green-600" />{perk}</li>{/each}
 			</ul>

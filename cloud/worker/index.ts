@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { auth, type Session } from "./auth";
-import { activeSubscription } from "./account";
+import { activeSubscription, planOf } from "./account";
 import { PLANS, planNamed } from "./plans";
 import { staffApi } from "./staff";
 import { syncApi } from "./sync";
-import { usageOf } from "./usage";
+import { devicesOf, usageOf } from "./usage";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
 
@@ -53,6 +53,16 @@ app.post("/auth/subscription/upgrade", async (c, next) => {
 	await next();
 });
 
+// Each plan lets a number of Blup Studio installs in at once.
+app.post("/auth/device/approve", async (c, next) => {
+	const s = await auth.api.getSession({ headers: c.req.raw.headers });
+	if (s) {
+		const [plan, devices] = await Promise.all([planOf(s.user.id), devicesOf(s.user.id)]);
+		if (plan.limits.devices >= 0 && devices >= plan.limits.devices) return c.json({ code: "DEVICES_LIMIT", limit: plan.limits.devices }, 403);
+	}
+	await next();
+});
+
 app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
 
 const session = createMiddleware<App>(async (c, next) => {
@@ -69,7 +79,7 @@ const routes = app
 	// What the panel needs before signing in (public keys only).
 	.get("/config", (c) => c.json({ turnstileSiteKey: c.env.TURNSTILE_SITE_KEY }))
 	// The plans, for the panel and the Studio (no Stripe IDs).
-	.get("/plans", (c) => c.json(PLANS.map(({ name, label, priceCents, limits, perks }) => ({ name, label, priceCents, limits, perks }))))
+	.get("/plans", (c) => c.json(PLANS.map(({ name, label, priceCents, currency, limits, perks }) => ({ name, label, priceCents, currency, limits, perks }))))
 	.get("/me", session, signedIn, async (c) => {
 		const { user } = c.get("session")!;
 		// The portal cancels by setting cancel_at, not cancel_at_period_end.

@@ -1,12 +1,12 @@
 import { createAuthClient } from "better-auth/svelte";
-import { emailOTPClient } from "better-auth/client/plugins";
+import { emailOTPClient, deviceAuthorizationClient } from "better-auth/client/plugins";
 import { passkeyClient } from "@better-auth/passkey/client";
 import { stripeClient } from "@better-auth/stripe/client";
 
 // Same origin as the Worker: /api/auth.
 export const authClient = createAuthClient({
 	basePath: "/api/auth",
-	plugins: [emailOTPClient(), passkeyClient(), stripeClient({ subscription: true })],
+	plugins: [emailOTPClient(), passkeyClient(), stripeClient({ subscription: true }), deviceAuthorizationClient()],
 });
 
 // Better Auth's errors, in the panel's words.
@@ -33,3 +33,10 @@ export function message(err: { code?: string; message?: string } | null | undefi
 
 // The person closed the passkey prompt: not an error to show.
 export const cancelled = (err: object) => "code" in err && err.code === "AUTH_CANCELLED";
+
+// Where to go after signing in: the page that sent the person to /entrar
+// (?volta=), only if it is a page of this panel.
+export function afterSignIn(): string {
+	const back = new URLSearchParams(location.search).get("volta") ?? "";
+	return back.startsWith("/") && !back.startsWith("//") && !back.startsWith("/\\") ? back : "/conta";
+}

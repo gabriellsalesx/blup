@@ -32,15 +32,15 @@ for (const plan of PLANS) {
 	const found = await stripe.prices.list({ lookup_keys: [plan.lookupKey], active: true, limit: 1 });
 	const price = found.data[0];
 	if (price) {
-		if (price.unit_amount !== plan.priceCents || price.currency !== "brl") {
-			console.warn(`${plan.name}: o preço no Stripe (${price.unit_amount} ${price.currency}) é diferente do plano (${plan.priceCents} brl). Crie um preço novo no dashboard e passe o lookup key para ele.`);
+		if (price.unit_amount !== plan.priceCents || price.currency !== plan.currency) {
+			console.warn(`${plan.name}: o preço no Stripe (${price.unit_amount} ${price.currency}) é diferente do plano (${plan.priceCents} ${plan.currency}). Crie um preço novo no dashboard e passe o lookup key para ele.`);
 		} else console.log(`${plan.name}: já existe (${price.id})`);
 		continue;
 	}
 	const product = await stripe.products.create({ name: `Blup ${plan.label}`, metadata: { blup_plan: plan.name } });
 	const created = await stripe.prices.create({
 		product: product.id,
-		currency: "brl",
+		currency: plan.currency,
 		unit_amount: plan.priceCents,
 		recurring: { interval: "month" },
 		lookup_key: plan.lookupKey,

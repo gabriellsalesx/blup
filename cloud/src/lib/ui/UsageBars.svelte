@@ -16,7 +16,7 @@
 	};
 	const bars = $derived([
 		{ label: "Armazenamento", used: usage.storageBytes, max: limits.storageMB * 1024 * 1024, text: `${bytes(usage.storageBytes)} de ${megabytes(limits.storageMB)}` },
-		{ label: "Sites", used: usage.sites, max: limits.sites, text: limits.sites < 0 ? `${usage.sites} · sem limite` : `${usage.sites} de ${limits.sites}` },
+		{ label: "Sites", used: usage.sites, max: limits.sites, text: limits.sites < 0 ? `${usage.sites} · sem limite` : limits.sites === 0 ? "Não inclusos no plano" : `${usage.sites} de ${limits.sites}` },
 		{
 			label: "Créditos de IA",
 			used: usage.aiCreditsUsed,
@@ -42,7 +42,7 @@
 		</div>
 	{/each}
 	<p class="text-sm text-neutral-500">
-		{usage.devices} {usage.devices === 1 ? "aparelho com o Studio" : "aparelhos com o Studio"} ·
+		{usage.devices}{limits.devices >= 0 ? ` de ${limits.devices}` : ""} {usage.devices === 1 && limits.devices < 0 ? "computador com o Studio" : "computadores com o Studio"} ·
 		{usage.lastSyncAt ? `última sincronização ${ago(usage.lastSyncAt)}` : "nunca sincronizou"}
 	</p>
 </div>

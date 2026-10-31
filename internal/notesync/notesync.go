@@ -134,7 +134,7 @@ type Progress struct {
 type SkipReason string
 
 const (
-	SkipTooLarge      SkipReason = "too_large"           // over 100 MiB
+	SkipTooLarge      SkipReason = "too_large"           // over the remote's (or plan's) limit
 	SkipInvalidName   SkipReason = "invalid_name"        // name not valid on this computer
 	SkipDuplicateName SkipReason = "duplicate_name"      // two names differing only in Unicode form
 	SkipUnsupported   SkipReason = "unsupported"         // symlink or submodule on GitHub
@@ -196,6 +196,13 @@ func (s *Syncer) trashDir() string {
 }
 
 func (s *Syncer) concurrency() int { return s.remote().Concurrency() }
+
+func (s *Syncer) maxFileSize() int64 {
+	if l, ok := s.remote().(Limited); ok {
+		return l.MaxFileSize()
+	}
+	return MaxFileSize
+}
 
 func (s *Syncer) check() error {
 	switch {
@@ -593,7 +600,7 @@ func (s *Syncer) uploadOne(ctx context.Context, e *entry) (Change, error) {
 	if err != nil {
 		return Change{}, err
 	}
-	if len(data) > MaxFileSize {
+	if int64(len(data)) > s.maxFileSize() {
 		return Change{}, github.ErrFileTooLarge
 	}
 	sha := github.BlobSHA(data)

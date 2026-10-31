@@ -4,7 +4,7 @@
 	import Fingerprint from "@lucide/svelte/icons/fingerprint-pattern";
 	import Button from "#lib/ui/Button.svelte";
 	import FloatField from "#lib/ui/FloatField.svelte";
-	import { authClient, cancelled, message } from "#lib/auth.ts";
+	import { afterSignIn, authClient, cancelled, message } from "#lib/auth.ts";
 	import { loadTurnstile } from "#lib/turnstile.ts";
 
 	// Two ways in: a code sent by e-mail (which also creates the account)
@@ -63,7 +63,7 @@
 		const { error: err } = await authClient.signIn.emailOtp({ email: email.trim(), otp: code.trim() });
 		busy = false;
 		if (err) return (error = message(err));
-		goto("/conta", { replaceState: true });
+		goto(afterSignIn(), { replaceState: true });
 	}
 
 	// A new account with a passkey only (the e-mail can be linked later).
@@ -77,14 +77,14 @@
 		captcha = "";
 		if (widgetId) window.turnstile?.reset(widgetId);
 		if (err) return (error = cancelled(err) ? "" : message(err));
-		goto("/conta", { replaceState: true });
+		goto(afterSignIn(), { replaceState: true });
 	}
 
 	async function passkey() {
 		error = "";
 		const { error: err } = await authClient.signIn.passkey();
 		if (err) return (error = cancelled(err) ? "" : message(err));
-		goto("/conta", { replaceState: true });
+		goto(afterSignIn(), { replaceState: true });
 	}
 </script>
 
