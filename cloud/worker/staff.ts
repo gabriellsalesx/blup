@@ -151,10 +151,10 @@ export const staffApi = new Hono<App>()
 		const active = subs.find((s) => ACTIVE.includes(s.status));
 		const plan = planNamed(active?.plan);
 		const usage = await usageOf(id, active?.periodEnd);
-		const stripeMode = c.env.STRIPE_SECRET_KEY.startsWith("sk_live_") ? "" : "test/";
+		const stripeMode = /^[rs]k_live_/.test(c.env.STRIPE_SECRET_KEY) ? "" : "test/";
 		return c.json({
 			user: { id: u.id, email: hasEmail(u.email) ? u.email : null, emailVerified: u.emailVerified, createdAt: u.createdAt, banned: u.banned, banReason: u.banReason },
-			plan: { label: plan.label, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.periodEnd ?? null, cancelAtPeriodEnd: !!active?.cancelAtPeriodEnd },
+			plan: { label: plan.label, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.cancelAt ?? active?.periodEnd ?? null, cancelAtPeriodEnd: !!(active?.cancelAtPeriodEnd || active?.cancelAt) },
 			usage,
 			billing,
 			stripeUrl: u.stripeCustomerId ? `https://dashboard.stripe.com/${stripeMode}customers/${u.stripeCustomerId}` : null,

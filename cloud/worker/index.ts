@@ -73,8 +73,9 @@ const routes = app
 	.get("/me", session, signedIn, async (c) => {
 		const { user } = c.get("session")!;
 		// The plan of the subscription that is paid (or on trial); else free.
+		// The portal cancels by setting cancel_at, not cancel_at_period_end.
 		const [sub] = await db
-			.select({ plan: subscription.plan, status: subscription.status, periodEnd: subscription.periodEnd, cancelAtPeriodEnd: subscription.cancelAtPeriodEnd })
+			.select({ plan: subscription.plan, status: subscription.status, periodEnd: subscription.periodEnd, cancelAtPeriodEnd: subscription.cancelAtPeriodEnd, cancelAt: subscription.cancelAt })
 			.from(subscription)
 			.where(and(eq(subscription.referenceId, user.id), inArray(subscription.status, ["active", "trialing", "past_due"])))
 			.limit(1);
@@ -86,7 +87,7 @@ const routes = app
 			email: hasEmail(user.email) ? user.email : null,
 			name: user.name,
 			createdAt: user.createdAt,
-			plan: { name: plan.name, label: plan.label, limits: plan.limits, status: sub?.status ?? null, renewsAt: sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!sub?.cancelAtPeriodEnd },
+			plan: { name: plan.name, label: plan.label, limits: plan.limits, status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
 		});
 	});
 
