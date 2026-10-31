@@ -31,7 +31,7 @@ project.
 | [go-toml](https://github.com/pelletier/go-toml) | MIT | |
 | [go-yaml](https://github.com/yaml/go-yaml) | Apache-2.0 | |
 | [BLAKE3](https://lukechampine.com/blake3) | MIT | |
-| [golang.org/x/net, x/text](https://pkg.go.dev/golang.org/x) | BSD-3-Clause | |
+| [golang.org/x/net, x/text, x/crypto](https://pkg.go.dev/golang.org/x) | BSD-3-Clause | |
 
 ## Downloaded when needed (not bundled)
 
