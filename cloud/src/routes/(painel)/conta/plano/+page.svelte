@@ -37,7 +37,7 @@
 <h1 class="text-3xl font-extrabold tracking-tight">Plano</h1>
 <p class="mt-2 text-neutral-500">Notas sincronizadas com criptografia de ponta a ponta e sites no ar sem esforço. Cancele quando quiser.</p>
 
-<div class="mt-8 grid gap-4 sm:grid-cols-2">
+<div class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 	{#each data.plans as p (p.name)}
 		{@const mine = p.name === current.name}
 		<div class="flex flex-col rounded-xl border p-5 {mine ? 'border-blup ring-1 ring-blup' : 'border-neutral-200 dark:border-neutral-800'}">

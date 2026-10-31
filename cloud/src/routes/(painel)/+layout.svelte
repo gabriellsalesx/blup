@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
+	import { page } from "$app/state";
 	import User from "@lucide/svelte/icons/user";
 	import CreditCard from "@lucide/svelte/icons/credit-card";
 	import RefreshCw from "@lucide/svelte/icons/refresh-cw";
@@ -24,7 +25,8 @@
 	}
 </script>
 
-<PanelShell {links} home="/conta">
+<!-- The plans side by side need the wide page. -->
+<PanelShell {links} home="/conta" wide={page.url.pathname === "/conta/plano"}>
 	{#snippet foot()}
 		<button class="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 font-medium text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white" onclick={signOut}><Power class="size-[18px]" />Sair</button>
 	{/snippet}
