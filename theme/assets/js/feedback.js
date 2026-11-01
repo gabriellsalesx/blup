@@ -18,6 +18,11 @@ const script = document.querySelector("script[data-fb-repo]");
 const repo = script?.dataset.fbRepo;
 const loginAPI = script?.dataset.fbApi;
 const t = JSON.parse(script?.dataset.fbText || "{}");
+// The page's language: a comment written in another version of the page
+// (they share one conversation) says which.
+const pageLang = script?.dataset.fbLang || "";
+const LANG_NAMES = { pt: "Português", en: "English", es: "Español" };
+const LANG_MARK = /<!--\s*blup:lang=([a-z]{2})\s*-->/;
 const nodes = [...document.querySelectorAll("[data-fb-issue]")];
 const API = `https://api.github.com/repos/${repo}`;
 const EMOJI = { "+1": "👍", heart: "❤️", hooray: "🎉", rocket: "🚀", laugh: "😄", eyes: "👀", confused: "😕", "-1": "👎" };
@@ -148,6 +153,10 @@ function comment(c, lang) {
   // body_html is rendered and sanitized by GitHub.
   body.innerHTML = c.body_html || "";
   const head = el("div", { className: "fb-head" }, img, who, when);
+  const written = LANG_MARK.exec(c.body || "")?.[1];
+  if (written && pageLang && written !== pageLang && t.inLang) {
+    head.append(el("span", { className: "fb-lang", textContent: t.inLang.replace("{lang}", LANG_NAMES[written] || written) }));
+  }
   if (loginAPI) {
     const b = el("button", { type: "button", className: "fb-link fb-reply", textContent: t.reply });
     b.onclick = () => reply(li, c);
@@ -166,7 +175,7 @@ function reply(li, c) {
   const area = li.closest("[data-fb-issue]")?.querySelector(".fb-form textarea");
   if (!area || area.disabled) return login();
   area.closest(".fb-form")?.querySelector('[data-fb-tab="write"]')?.click();
-  const lines = (c.body || "").split("\n").filter((l) => !l.startsWith(">")).join(" ").replace(/\s+/g, " ").trim();
+  const lines = (c.body || "").replace(LANG_MARK, "").split("\n").filter((l) => !l.startsWith(">")).join(" ").replace(/\s+/g, " ").trim();
   const quote = lines.length > 200 ? `${lines.slice(0, 200)}…` : lines;
   area.value = `${quote ? `> ${quote}\n\n` : ""}@${c.user.login} ${area.value}`;
   area.scrollIntoView({ block: "center" });
@@ -360,7 +369,9 @@ function form(node, issue, lang) {
     try {
       const c = await gh(`${API}/issues/${issue.data.number}/comments`, {
         method: "POST",
-        body: { body: text },
+        // An invisible mark of the page's language (an HTML comment, which
+        // GitHub doesn't show).
+        body: { body: pageLang ? `${text}\n\n<!-- blup:lang=${pageLang} -->` : text },
         accept: "application/vnd.github.full+json",
       });
       changed();

@@ -209,6 +209,7 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .lang-code { font-size: .75rem; font-weight: 600; text-transform: uppercase; }
   /* A page translated by AI: a small mark by the title, a note on click. */
   .ai-note { margin-block: .5rem; }
+  .fb-lang { padding: .05rem .45rem; border-radius: 999px; background: var(--main-200); color: var(--main-600); font-size: .7rem; font-weight: 500; }
   .ai-badge { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .55rem; border: 1px solid var(--main-200); border-radius: 999px; color: var(--main-600); font-size: .75rem; font-weight: 500; }
   .ai-badge:hover { color: var(--main-900); border-color: var(--main-300); }
   .ai-pop { margin: 0; inset: auto; max-width: min(22rem, calc(100vw - 2rem)); padding: .75rem .9rem; border: 1px solid var(--main-200); border-radius: .5rem; background: var(--main-100); color: var(--main-700); box-shadow: var(--shadow-lg); font-size: .875rem; position-area: bottom span-right; margin-block-start: .375rem; }

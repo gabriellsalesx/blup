@@ -1,3 +1,8 @@
 {{- /* Stable key of a page for its feedback issue: the note's path inside
-the site folder, lowercase, with forward slashes. */ -}}
-{{- return lower (replace .File.Path "\\" "/") -}}
+the site folder, lowercase, with forward slashes. A translation uses its
+original's, so every language shares one conversation (votes, reactions
+and comments add up). */ -}}
+{{- $p := . -}}
+{{- $main := (index hugo.Sites 0).Language.Lang -}}
+{{- if ne site.Language.Lang $main }}{{ range .Translations }}{{ if eq .Language.Lang $main }}{{ $p = . }}{{ end }}{{ end }}{{ end -}}
+{{- return lower (replace $p.File.Path "\\" "/") -}}

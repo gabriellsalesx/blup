@@ -1,12 +1,16 @@
 {{- /* Profile of an author from the authors folder (the one whose _index has
 "blup: authors"): a note named after the author, with the properties photo,
-role and social (list of profile URLs) and the bio as its text. Returns a
+role and social (list of profile URLs) and the bio as its text; in a
+translated site, its translation (authors/<lang>/<name>.md) when there is. Returns a
 dict name, photo (resource or false), role, social, bio (HTML). Param: name. */ -}}
 {{- $name := . -}}
 {{- $out := dict "name" $name "photo" false "role" "" "social" slice "bio" "" -}}
 {{- with site.Params.blup.authors -}}
   {{- $dir := . -}}
-  {{- $note := resources.Get (printf "vault/%s/%s.md" $dir $name) -}}
+  {{- /* A translated site reads the profile in its language first. */ -}}
+  {{- $note := false -}}
+  {{- if ne site.Language.Lang (index hugo.Sites 0).Language.Lang }}{{ $note = resources.Get (printf "vault/%s/%s/%s.md" $dir site.Language.Lang $name) }}{{ end -}}
+  {{- if not $note }}{{ $note = resources.Get (printf "vault/%s/%s.md" $dir $name) }}{{ end -}}
   {{- if not $note -}}
     {{- range resources.Match (printf "vault/%s/*.md" $dir) -}}
       {{- if eq (lower (path.BaseName .Name)) (lower $name) }}{{ $note = . }}{{ break }}{{ end -}}

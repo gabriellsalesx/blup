@@ -140,7 +140,8 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 	assetFiles := append([]string{"! **/.*/**"}, globs(Attachments)...)
 	if authors != "" {
 		skip = append(skip, "! "+authors+"/**")
-		assetFiles = append(assetFiles, path.Join(folder, authors)+"/*.md")
+		// Profiles, and their translations (in a language's folder).
+		assetFiles = append(assetFiles, path.Join(folder, authors)+"/*.md", path.Join(folder, authors)+"/*/*.md")
 	}
 	if t := obsidian.TemplatesFolder(s.Vault); t != "" {
 		switch {
@@ -172,7 +173,7 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 	mounts := []mount{{Source: s.ContentDir(), Target: "content", Files: files}}
 	if len(others) > 0 {
 		mounts[0].Sites = inLangs(s.Lang)
-		mounts = append(mounts, translationMounts(s, others, skip)...)
+		mounts = append(mounts, translationMounts(s, others, skip, authors)...)
 	}
 	mounts = append(mounts,
 		mount{Source: s.Vault, Target: "assets/vault", Files: assetFiles},
@@ -286,7 +287,7 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 // translationMounts put each folder named after a translation language
 // (Posts/en) in place of its parent (Posts) in that language's site: the
 // note Posts/en/Note.md is the English Posts/Note.md, a translation of it.
-func translationMounts(s *config.Site, langs, skip []string) []mount {
+func translationMounts(s *config.Site, langs, skip []string, authors string) []mount {
 	root := s.ContentDir()
 	var out []mount
 	_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
@@ -294,6 +295,10 @@ func translationMounts(s *config.Site, langs, skip []string) []mount {
 			return nil
 		}
 		if p != root && strings.HasPrefix(d.Name(), ".") {
+			return filepath.SkipDir
+		}
+		// The authors' profiles (translated too) are data, never pages.
+		if rel, _ := filepath.Rel(root, p); authors != "" && filepath.ToSlash(rel) == authors {
 			return filepath.SkipDir
 		}
 		if !slices.Contains(langs, d.Name()) {

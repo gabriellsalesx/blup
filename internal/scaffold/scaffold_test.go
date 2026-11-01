@@ -201,6 +201,11 @@ func TestBuildTranslated(t *testing.T) {
 	write("Privacidade.md", "---\ntitle: Privacidade\nblup: privacy\n---\nPolítica.\n")
 	write("es/Privacidad.md", "---\ntitle: Privacidad\nblup: privacy\ntranslationKey: privacidade\n---\nPolítica.\n")
 	write("es/_index.md", "---\ntitle: Inicio\nsite_name: Cocina ES\n---\nHola.\n")
+	write("Autores/_index.md", "---\ntitle: Autores\nblup: authors\n---\n")
+	write("Autores/Ana.md", "---\nrole: Confeiteira\n---\nFaz bolos.\n")
+	write("Autores/es/Ana.md", "---\nrole: Pastelera\ntranslationKey: Autores/Ana\n---\nHace pasteles.\n")
+	write("Receitas Doces/Torta.md", "---\nauthors: [Ana]\ntranslationKey: torta\n---\nTorta.\n")
+	write("Receitas Doces/es/Tarta.md", "---\nauthors: [Ana]\ntranslationKey: torta\n---\nTarta.\n")
 	write("01 - Guia/es/Instalar.md", "---\ntitle: Instalar\n---\nVer [el pastel](../Receitas%20Doces/Bolo%20de%20Cenoura.md).\n")
 	write("en/Início.md", "---\ntitle: Welcome to the kitchen\n---\nHello.\n")
 
@@ -208,7 +213,15 @@ func TestBuildTranslated(t *testing.T) {
 	s := config.NewSite(dir)
 	s.Title, s.Lang, s.Model, s.Vault, s.Folder = "Cozinha", "pt", "mochi", vault, "Site"
 	s.Translations = []string{"en", "es"}
+	// Feedback on: the original's issue (7) is every version's.
+	s.Feedback = config.Feedback{Enabled: true, Owner: "ana", Repo: "cozinha-feedback"}
 	if err := Write(s); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "data"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "data", "blup_feedback.json"), []byte(`{"issues":{"receitas doces/bolo de cenoura.md":7}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cmd := bin.Command(context.Background(), dir, "--baseURL", "https://example.org/", "--logLevel", "warn")
@@ -256,6 +269,29 @@ func TestBuildTranslated(t *testing.T) {
 	// English has no translated policy: its footer links the original.
 	if p := read("en/receitas-doces/bolo-de-cenoura/index.html"); !strings.Contains(p, `href="/privacidade/"`) && !strings.Contains(p, "href=/privacidade/") {
 		t.Error("english page: the footer should link the original privacy policy")
+	}
+	// One conversation for every language: the translation shows the
+	// original's issue, and its comments are marked with its language.
+	for _, p := range []string{"receitas-doces/bolo-de-cenoura/index.html", "es/receitas-doces/pastel-de-zanahoria/index.html"} {
+		if page := read(p); !strings.Contains(page, `data-fb-issue="7"`) && !strings.Contains(page, "data-fb-issue=7") {
+			t.Errorf("%s: should show the original's conversation (issue 7)", p)
+		}
+	}
+	if page := read("es/receitas-doces/pastel-de-zanahoria/index.html"); !strings.Contains(page, `data-fb-lang="es"`) && !strings.Contains(page, "data-fb-lang=es") {
+		t.Error("spanish page: the feedback script should know the page's language")
+	}
+	// Authors: each language reads the profile in its language; the
+	// profiles are never pages.
+	if p := read("es/authors/ana/index.html"); !strings.Contains(p, "Pastelera") || strings.Contains(p, "Confeiteira") {
+		t.Error("spanish author page: the profile should be the spanish one")
+	}
+	if p := read("authors/ana/index.html"); !strings.Contains(p, "Confeiteira") {
+		t.Error("portuguese author page: the original profile")
+	}
+	for _, gone := range []string{"es/autores", "autores"} {
+		if _, err := os.Stat(filepath.Join(dir, "public", gone)); err == nil {
+			t.Errorf("%s should not be published", gone)
+		}
 	}
 	// The section in Spanish has its translated name.
 	if p := read("es/receitas-doces/index.html"); !strings.Contains(p, "Recetas dulces") {

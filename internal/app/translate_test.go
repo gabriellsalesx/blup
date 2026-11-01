@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -147,6 +148,18 @@ func TestTranslateHomeAndSection(t *testing.T) {
 	}
 	if p, err := TranslateNote(context.Background(), site, "Posts/_index.md", "es", nil); err != nil || p != "Posts/es/_index.md" {
 		t.Fatalf("section = %s %v", p, err)
+	}
+	// An author's profile keeps the author's name, its role translated.
+	write(t, root, "Autores/_index.md", "---\ntitle: Autores\nblup: authors\n---\n")
+	write(t, root, "Autores/Ana.md", "---\nrole: Confeiteira\n---\nFaz bolos.\n")
+	if p, err := TranslateNote(context.Background(), site, "Autores/Ana.md", "es", nil); err != nil || p != "Autores/es/Ana.md" {
+		t.Fatalf("author = %s %v", p, err)
+	}
+	if a, _ := obsidian.ReadNote(filepath.Join(root, "Autores", "es", "Ana.md")); a.String("role") != "ES(Confeiteira)" {
+		t.Fatalf("author role = %+v", a.Props)
+	}
+	if todo, _ := TranslationTodo(site, "es"); slices.Contains(todo, "Autores/Ana.md") || !slices.Contains(todo, "Posts/Um.md") {
+		t.Fatalf("todo = %v", todo)
 	}
 	if err := MarkReviewed(site, "Posts/es/_index.md", true); err != nil {
 		t.Fatal(err)

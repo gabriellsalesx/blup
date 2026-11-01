@@ -45,7 +45,7 @@ const (
 // and description: what the site shows (the site's description and button
 // on the home note, a help article's category, the tags) and the menu's
 // labels ("Name | target": the name).
-var TextProps = []string{"site_description", "button_text", "category", "tags", "menu"}
+var TextProps = []string{"site_description", "button_text", "category", "tags", "menu", "role"}
 
 // NoteLang is a language a note can be read in: its own (Original), or a
 // translation (Path, there or not yet, Stale when the original changed
@@ -359,9 +359,10 @@ func WriteTranslation(site *config.Site, rel, lang, title, desc, body string, pr
 	}
 	// Where it is already, else under its translated title.
 	target := translationPath(site, original, n, lang)
-	// A section's note keeps its name: it is the section in that language.
-	if target == "" && strings.EqualFold(path.Base(original), "_index.md") {
-		target = path.Join(path.Dir(original), lang, "_index.md")
+	// A section's note keeps its name (it is the section in that
+	// language), and so does an author's profile (its name is the author).
+	if target == "" && (strings.EqualFold(path.Base(original), "_index.md") || isAuthor(site, original)) {
+		target = path.Join(path.Dir(original), lang, path.Base(original))
 	}
 	if target == "" {
 		if target, err = translationName(site, path.Join(path.Dir(original), lang), safeFileName(strings.TrimSpace(title)), original); err != nil {
@@ -425,15 +426,12 @@ type SiteLangState struct {
 	Missing int    `json:"missing"`
 }
 
-// siteOriginals are the site's notes that get translations: every page
-// note in the site's language (not the agent guides, the authors' profiles
-// or the templates, which are never pages).
+// siteOriginals are the site's notes that get translations: every note
+// in the site's language (the pages, and the authors' profiles, which the
+// pages show), not the agent guides or the templates.
 func siteOriginals(site *config.Site) ([]string, error) {
 	root := site.ContentDir()
 	skip := map[string]bool{}
-	if a := obsidian.Sections(root)["authors"]; a != "" {
-		skip[a] = true
-	}
 	if t := obsidian.TemplatesFolder(site.Vault); t != "" {
 		if rel, err := filepath.Rel(root, filepath.Join(site.Vault, t)); err == nil {
 			skip[filepath.ToSlash(rel)] = true
@@ -615,4 +613,10 @@ func ReadSiteNote(site *config.Site, rel string) (obsidian.Note, error) {
 		return obsidian.Note{}, err
 	}
 	return obsidian.ReadNote(p)
+}
+
+// isAuthor tells whether rel is a profile of the authors folder.
+func isAuthor(site *config.Site, rel string) bool {
+	a := obsidian.Sections(site.ContentDir())["authors"]
+	return a != "" && path.Dir(rel) == a && !strings.EqualFold(path.Base(rel), "_index.md")
 }
