@@ -290,6 +290,19 @@
         {/each}
       </div>
     </section>
+
+    <!-- Note vaults: notes that are not a site (coming next). -->
+    <section class="vaults">
+      <h2>{t.vaults.title}</h2>
+      <p class="muted">{t.vaults.help}</p>
+      <div class="grid">
+        <button class="site new" onclick={() => toast(t.vaults.soon)}>
+          <img src="/blups/turma-7.svg" alt="" />
+          <strong>{t.vaults.new} <span class="soon">{t.vaults.soon}</span></strong>
+          <span class="muted">{t.vaults.newHelp}</span>
+        </button>
+      </div>
+    </section>
   {/if}
 </main>
 
@@ -299,6 +312,8 @@
   h1 { font-size: 1.25rem; font-weight: 700; }
   h2 { font-size: 1.75rem; font-weight: 700; letter-spacing: -.02em; }
   section > p { margin-block: .25rem 1.5rem; }
+  .vaults { margin-block-start: 3rem; }
+  .soon { margin-inline-start: .35rem; padding: .1rem .45rem; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: .7rem; font-weight: 600; vertical-align: middle; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1rem; }
   .site { position: relative; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); transition: border-color .15s, transform .15s, box-shadow .15s, opacity .15s; }
   .site:hover { border-color: var(--muted); }
