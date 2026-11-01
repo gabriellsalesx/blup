@@ -41,6 +41,8 @@ O partial [icon.html](../../theme/layouts/_partials/icon.html) é outro mecanism
 
 `mochi/page.html` mostra hero com título, descrição explícita, autoria, data, capa, player, corpo, tags e compartilhamento. Possui barra de leitura, sumário H2/H3 para conteúdo não protegido, perfis e até quatro relacionados, obtidos por `site.RegularPages.Related` e completados com posts recentes. O scaffold não configura critérios de relação, portanto a spec não atribui prioridade própria a tags. No Bento, os relacionados são filtrados para a mesma seção. `blup: privacy` usa página simples, sem o tratamento comum de post.
 
+Os três modelos têm o mesmo cabeçalho do Nori: logo e nome à esquerda (o nome com reticências em telas estreitas), e à direita busca, tema e o botão do menu, juntos em `.header-actions`. Bento usa `mochi/header.html` e o CSS do Mochi. `site/network.html` reconhece a rede pelo endereço; o ícone do Discord vem do Tabler Icons (MIT, licença em `theme/licenses/`), os demais seguem o desenho do tema.
+
 `mochi/more.html` oferece link de próxima página. Com JavaScript, `blup.js` busca a página e acrescenta os cards em `.post-grid` ou entradas em `.changelog`; sem JavaScript, o link continua navegável. Depois de importar os scripts dos itens, dispara `blup:added`. Hoje somente `lock.js` escuta esse evento: os itens acrescentados não recebem inicialização e contagens de feedback. O carregar mais comum não trata `.nori-list`, então no Nori o link navega para a página seguinte.
 
 ## Nori
@@ -103,7 +105,7 @@ O hook de heading inclui âncoras a partir de H2 e suporta classe. `render-block
 
 ## Identidade, autoria, SEO e feeds
 
-`site/settings.html` lê `_index.md`: `site_name`, `site_description`, logo, favicon e redes; usa `blup.toml` como fallback do nome e descrição. `site/menu.html` resolve os itens na ordem salva, indica item atual e avisa para destinos não encontrados.
+`site/settings.html` lê `_index.md`: `site_name`, `site_description`, logo, favicon, redes e `header_name` (`false` deixa só o logo no cabeçalho; sem a propriedade, logo e nome); usa `blup.toml` como fallback do nome e descrição. `site/menu.html` resolve os itens na ordem salva, indica item atual e avisa para destinos não encontrados.
 
 `site/author-profile.html` lê a nota do autor como asset na pasta marcada `authors`, extraindo `photo`, `role`, `social` e bio Markdown. Em uma versão traduzida do site procura primeiro `<autores>/<idioma>/<Nome>.md`, depois o perfil original; mantém o nome do arquivo, que identifica o autor. A foto pode cair para imagem no corpo. `mochi/authors.html` usa a taxonomia `authors` e depois o autor padrão. Perfis e suas traduções são recursos, excluídos das páginas de conteúdo; `/authors/` é a taxonomia. A tradução de cargo e bio está descrita em [Studio](studio.md#idiomas-e-tradução).
 

@@ -159,3 +159,25 @@ func TestTrash(t *testing.T) {
 		t.Fatal("trash must be empty")
 	}
 }
+
+// The site's name next to the logo: shown by default, hidden with
+// header_name: false, and back to the default (no property) when shown.
+func TestShowName(t *testing.T) {
+	site := settingsSite(t)
+	if s, _ := LoadSettings(site); !s.ShowName {
+		t.Fatal("the name should show by default")
+	}
+	if err := SetShowName(site, false); err != nil {
+		t.Fatal(err)
+	}
+	if s, _ := LoadSettings(site); s.ShowName {
+		t.Fatal("hidden, it still shows")
+	}
+	if err := SetShowName(site, true); err != nil {
+		t.Fatal(err)
+	}
+	n, _ := obsidian.ReadNote(homeNotePath(site))
+	if _, ok := n.Props["header_name"]; ok {
+		t.Fatalf("shown again should drop the property: %v", n.Props)
+	}
+}

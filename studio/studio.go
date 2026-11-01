@@ -255,7 +255,7 @@ func (s *Studio) startPreview(site *config.Site) (url string, err error) {
 				sent = true
 			case !sent:
 				log.WriteString(line + "\n")
-			case strings.Contains(line, "Total in"):
+			case rebuilt(line):
 				// A rebuild is done: the window swaps in the new page.
 				application.Get().Event.Emit("previewChanged", "")
 			}
@@ -390,3 +390,10 @@ func (s *Studio) previewMap() (string, []mapPage, error) {
 
 // Language is the Studio's language: "pt", "en" or "es".
 func (s *Studio) Language() string { return s.lang }
+
+// rebuilt tells whether a line of hugo server's log ends a rebuild: "Total
+// in" after a note changed, "Rebuilt in" after the site's config changed
+// (a save in the Site screen rewrites it), which the window missed before.
+func rebuilt(line string) bool {
+	return strings.Contains(line, "Total in") || strings.HasPrefix(strings.TrimSpace(line), "Rebuilt in")
+}

@@ -63,3 +63,18 @@ func TestAdoptPreview(t *testing.T) {
 		t.Error("the preview of a closed site kept running")
 	}
 }
+
+// Both of hugo server's ends of a rebuild reload the preview: after a note
+// changed and after the site's config changed (the Site screen's saves).
+func TestRebuiltLine(t *testing.T) {
+	for line, want := range map[string]bool{
+		"Total in 100 ms":   true,
+		"Rebuilt in 198 ms": true,
+		"Change of config file detected, rebuilding site (#1).": false,
+		"Web Server is available at http://localhost:1313/":     false,
+	} {
+		if rebuilt(line) != want {
+			t.Errorf("rebuilt(%q) = %v, want %v", line, !want, want)
+		}
+	}
+}

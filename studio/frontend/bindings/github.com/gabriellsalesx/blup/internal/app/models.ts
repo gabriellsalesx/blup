@@ -658,6 +658,11 @@ export interface Settings {
     "logo": string;
 
     /**
+     * the site's name next to the logo in the header
+     */
+    "showName": boolean;
+
+    /**
      * file of the favicon, "" for none
      */
     "favicon": string;

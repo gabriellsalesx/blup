@@ -216,7 +216,7 @@ func editMenu(site *config.Site) error {
 // network's icon from the address itself.
 var socialOrder = []struct{ name, match string }{
 	{"Instagram", "instagram.com"}, {"X", "x.com"}, {"LinkedIn", "linkedin.com"},
-	{"YouTube", "youtube.com"}, {"GitHub", "github.com"}, {"Facebook", "facebook.com"},
+	{"YouTube", "youtube.com"}, {"GitHub", "github.com"}, {"Discord", "discord.gg"}, {"Facebook", "facebook.com"},
 	{"WhatsApp", "wa.me"}, {"E-mail", "mailto:"},
 }
 
@@ -226,6 +226,7 @@ func socialNetwork(url string) int {
 		if strings.Contains(u, n.match) || (n.name == "X" && strings.Contains(u, "twitter.com")) ||
 			(n.name == "YouTube" && strings.Contains(u, "youtu.be")) ||
 			(n.name == "WhatsApp" && strings.Contains(u, "whatsapp.com")) ||
+			(n.name == "Discord" && strings.Contains(u, "discord.com")) ||
 			(n.name == "E-mail" && !strings.Contains(u, "://") && strings.Contains(u, "@")) {
 			return i
 		}

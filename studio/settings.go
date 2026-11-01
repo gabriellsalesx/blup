@@ -30,6 +30,11 @@ func (s *Studio) SaveAbout(name, description, author string) error {
 	return s.with(func(site *config.Site) error { return app.SaveAbout(site, name, description, author) })
 }
 
+// SetShowName shows or hides the site's name next to the logo.
+func (s *Studio) SetShowName(show bool) error {
+	return s.with(func(site *config.Site) error { return app.SetShowName(site, show) })
+}
+
 // SaveMenu sets the top menu and the top right button.
 func (s *Studio) SaveMenu(menu []app.MenuItem, buttonText, buttonLink string) error {
 	return s.with(func(site *config.Site) error { return app.SaveMenu(site, menu, buttonText, buttonLink) })

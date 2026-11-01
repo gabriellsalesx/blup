@@ -248,7 +248,7 @@ Colunas e formas de ver são gravadas 300 ms depois da mudança (`SaveDatabaseSc
 
 ## Prévia
 
-`StartPreview` encontra ou baixa Hugo, gera scaffold e inicia servidor restrito a `127.0.0.1`, em memória, com rascunhos e `HUGO_BLUP_MODE=preview`. Desativa live reload nativo e observa log `Total in` para emitir `previewChanged`. Não executa o preparo Pagefind da CLI.
+`StartPreview` encontra ou baixa Hugo, gera scaffold e inicia servidor restrito a `127.0.0.1`, em memória, com rascunhos e `HUGO_BLUP_MODE=preview`. Desativa live reload nativo e observa o log e emite `previewChanged` tanto em `Total in` (conteúdo) quanto em `Rebuilt in`, que o Hugo escreve depois de reler a configuração; assim o que as telas do Site salvam (nome, logo, menu, redes, mostrar o nome no cabeçalho) aparece na prévia sem recarregar à mão. Não executa o preparo Pagefind da CLI.
 
 `AddSection`, `RemoveSection` e `RestoreSection`, em [studio/settings.go](../../studio/settings.go), chamam `sectionsChanged` depois de uma operação bem-sucedida. Em [studio/translate.go](../../studio/translate.go), essa rotina solicita o reinício de uma prévia em execução. O motivo é a descoberta de pastas pelo watcher do Hugo: uma seção pode ser copiada com todas as notas antes de o watcher passar a observar a pasta, deixando páginas ausentes até outra alteração. Não basta recarregar o iframe para Hugo descobrir essas notas.
 
@@ -266,8 +266,10 @@ Em Linux, `canPlayMP3` procura `libgstaudioparsers.so` nos diretórios GStreamer
 
 | Tela | Operações atuais |
 | --- | --- |
-| Site, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, favicon, menu, botão e redes |
+| Site, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, favicon, "Mostrar o nome ao lado do logo" (`SetShowName`, propriedade `header_name`), menu, botão e redes |
 | Autores, `AuthorsPanel.svelte` | Lista, perfil, foto/avatar, cargo, redes, bio, criação, renomeação e remoção |
+
+As redes do site e as de cada autor usam o mesmo componente, `ui/SocialLinks.svelte`: cada endereço com o ícone da rede, e um botão por rede (`NETWORKS` em `social.ts`: Instagram, X, LinkedIn, YouTube, Discord, GitHub, Facebook, WhatsApp, e-mail) que acrescenta uma linha com o começo do endereço e põe o cursor no fim. Ao salvar as redes do site, linhas só com o começo são descartadas.
 | Anexos, `AttachmentsPanel.svelte` | Lista por tipo, tamanho e usos, adição, renomeação, exclusão e acesso às notas que usam |
 | Seções, `SectionsPanel.svelte` | Somente Bento; acrescenta exemplos, inclusive Feedback, remove para a lixeira e oferece restaurar a seção removida |
 | Comentários, `CommentsPanel.svelte` | Ativa/desativa feedback, prepara repositório e orienta instalação do App |

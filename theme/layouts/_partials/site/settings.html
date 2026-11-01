@@ -3,7 +3,9 @@
 blup.toml (set in the CLI). Use with
 partialCached "site/settings.html" . "site". Returns a dict:
 name, description, author, logo (resource or false), favicon (resource or
-false), social (slice of dict name/icon/url). */ -}}
+false), social (slice of dict name/icon/url), showName (the site's name next
+to the logo in the header; off with header_name: false, set in the Studio's
+Site screen). */ -}}
 {{- $h := site.Home -}}
 {{- /* A language without its own home note uses the main language's. */ -}}
 {{- if not $h.File }}{{ $h = (index hugo.Sites 0).Home }}{{ end -}}
@@ -27,4 +29,5 @@ false), social (slice of dict name/icon/url). */ -}}
     "author" site.Params.author
     "logo" $logo
     "favicon" $favicon
-    "social" $social -}}
+    "social" $social
+    "showName" (ne $p.header_name false) -}}

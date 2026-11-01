@@ -27,8 +27,9 @@ type Settings struct {
 	Name            string         `json:"name"`
 	Description     string         `json:"description"`
 	Author          string         `json:"author"`
-	Logo            string         `json:"logo"`    // file of the logo, "" for none
-	Favicon         string         `json:"favicon"` // file of the favicon, "" for none
+	Logo            string         `json:"logo"`     // file of the logo, "" for none
+	ShowName        bool           `json:"showName"` // the site's name next to the logo in the header
+	Favicon         string         `json:"favicon"`  // file of the favicon, "" for none
 	Menu            []MenuItem     `json:"menu"`
 	MenuOptions     []MenuItem     `json:"menuOptions"` // pages that can go in the menu
 	ButtonText      string         `json:"buttonText"`
@@ -70,6 +71,7 @@ func LoadSettings(site *config.Site) (Settings, error) {
 		Social: note.List("social"), Cookies: site.Cookies,
 		Feedback: site.Feedback.On(), HasPassword: site.Password != "", GeneralPassword: HasGeneralPassword(),
 		Logo: attachmentFile(site, note.String("logo")), Favicon: attachmentFile(site, note.String("favicon")),
+		ShowName: note.Props["header_name"] != false,
 	}
 	if s.Social == nil {
 		s.Social = []string{}
@@ -277,6 +279,16 @@ func menuAdd(site *config.Site, folder string) error {
 		}
 	}
 	return obsidian.SetProperties(p, obsidian.Prop{Key: "menu", Value: append(menu, folder)})
+}
+
+// SetShowName shows or hides the site's name next to the logo in the
+// header (header_name on the home note; shown when the property is absent).
+func SetShowName(site *config.Site, show bool) error {
+	var v any // shown: no property, as on a site that never chose
+	if !show {
+		v = false
+	}
+	return obsidian.SetProperties(homeNotePath(site), obsidian.Prop{Key: "header_name", Value: v})
 }
 
 // CheckCookieTool tells whether value is a valid ID for a cookie tool

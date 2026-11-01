@@ -103,17 +103,20 @@ through light-dark(): the theme switcher only changes color-scheme. */
     box-shadow: var(--shadow-sm);
   }
   .site-header .container { display: flex; align-items: center; height: var(--header-h); gap: .5rem; }
-  .brand { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; font-weight: 600; }
+  .brand { display: flex; align-items: center; gap: .5rem; flex-shrink: 1; min-width: 0; font-size: 1.0625rem; font-weight: 600; letter-spacing: -.01em; color: var(--main-900); }
+  .brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .brand img { height: 2rem; width: auto; margin-bottom: 3px; }
   .nav { display: none; flex: 1; justify-content: center; gap: 1.25rem; padding-inline: 1.25rem; }
   .nav a { font-weight: 500; color: var(--main-600); padding: .5rem .75rem; border-radius: .5rem; transition: background-color .3s var(--ease), color .3s var(--ease); }
   .nav a:hover { background: color-mix(in srgb, var(--main-200) 60%, transparent); }
-  .header-actions { display: flex; align-items: center; margin-inline-start: auto; }
+  /* The header's buttons together on the right (search, language, theme,
+     the optional button and, on small screens, the menu), as in Nori. */
+  .header-actions { display: flex; flex-shrink: 0; align-items: center; gap: .25rem; margin-inline-start: auto; }
   .icon-button { display: inline-flex; align-items: center; gap: .125rem; padding: .5rem; border-radius: .25rem; color: var(--main-600); transition: background-color .2s var(--ease); }
   /* Same hover tone as the menu links: visible on the blog's gray header
      and on the docs' page-colored one. */
   .icon-button:hover { background: color-mix(in srgb, var(--main-200) 60%, transparent); color: var(--main-900); }
-  .theme-picker { margin-inline: .75rem; }
+  .theme-picker { margin: 0; }
   .button {
     display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
     padding: .5rem 1rem; border-radius: .375rem; font-weight: 600;
@@ -122,18 +125,12 @@ through light-dark(): the theme switcher only changes color-scheme. */
   }
   .button:hover { transform: translateY(-2px); opacity: .85; }
   .header-cta { display: none; }
-  .menu-toggle { margin-inline-start: auto; color: var(--main-400); }
+  .menu-toggle { color: var(--main-600); }
 
   @media (width >= 48rem) {
     .nav { display: flex; }
     .header-cta { display: inline-flex; }
     .menu-toggle { display: none; }
-    .theme-picker { margin-inline: 1.25rem; }
-  }
-  /* Small screens: search and theme sit in the middle, like the reference. */
-  @media (width < 48rem) {
-    .header-actions { margin-inline: auto; gap: 1.5rem; }
-    .menu-toggle { margin-inline-start: 0; }
   }
 
   /* Mobile menu: a panel under the header, opened with the Popover API. */

@@ -1,7 +1,10 @@
 <script lang="ts">
-  import { SaveAbout, SaveMenu, SaveSocial, PickImage, RemoveImage, ImageData } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { SaveAbout, SaveMenu, SaveSocial, PickImage, RemoveImage, ImageData, SetShowName } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Settings, MenuItem } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Saved from "./Saved.svelte";
+  import Switch from "./Switch.svelte";
+  import SocialLinks from "./ui/SocialLinks.svelte";
+  import { NETWORKS } from "./social";
   import { saver } from "./saving.svelte";
   import { t } from "./i18n";
   import ArrowUp from "@lucide/svelte/icons/arrow-up";
@@ -48,8 +51,17 @@
     addPick = "";
   }
 
+  // The site's name next to the logo in the header, or the logo alone.
+  let showName = $state(settings.showName);
+  const nameSave = saver();
+  const setShowName = (v: boolean) => nameSave.run(async () => { await SetShowName(v); reload(); });
+
   // Social links
-  let social = $state<string[]>((settings.social ?? []).map((s) => s.replace(/^mailto:/, "")));
+  // As the author's profile: each link with its network's icon (an e-mail
+  // keeps its mailto: so it shows the e-mail icon).
+  let social = $state<string[]>([...(settings.social ?? [])]);
+  // A network picked but left with only the start of its address is dropped.
+  const filled = () => social.map((u) => u.trim()).filter((u) => u && !NETWORKS.some((n) => n.prefix === u));
   const socialSave = saver();
 </script>
 
@@ -77,7 +89,8 @@
         </div>
       </div>
     {/each}
-    <div class="actions"><Saved state={img.state} /></div>
+    <Switch label={t.look.showName} help={t.look.showNameHelp} bind:checked={showName} onchange={setShowName} />
+    <div class="actions"><Saved state={img.state} /><Saved state={nameSave.state} /></div>
   </section>
 
   <section class="card">
@@ -113,14 +126,8 @@
   <section class="card">
     <h2>{t.look.social}</h2>
     <p>{t.look.socialHelp}</p>
-    {#each social as _, i (i)}
-      <div class="row">
-        <input type="url" bind:value={social[i]} placeholder={t.look.socialPlaceholder} />
-        <button class="icon-btn" title={t.remove} onclick={() => social.splice(i, 1)}><X size={16} /></button>
-      </div>
-    {/each}
-    <button class="add" onclick={() => social.push("")}><Plus size={16} />{t.look.addSocial}</button>
-    <div class="actions"><Saved state={socialSave.state} /><button class="btn" disabled={socialSave.state.busy} onclick={() => socialSave.run(async () => { await SaveSocial(social); reload(); })}>{t.save}</button></div>
+    <SocialLinks bind:links={social} add={t.authors.addSocial} />
+    <div class="actions"><Saved state={socialSave.state} /><button class="btn" disabled={socialSave.state.busy} onclick={() => socialSave.run(async () => { await SaveSocial(filled()); reload(); })}>{t.save}</button></div>
   </section>
 </div>
 

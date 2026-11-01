@@ -7,8 +7,8 @@
   import Plus from "@lucide/svelte/icons/plus";
   import X from "@lucide/svelte/icons/x";
   import Pencil from "@lucide/svelte/icons/pencil";
-  import { tick } from "svelte";
-  import { NETWORKS, networkOf } from "./social";
+  import { NETWORKS } from "./social";
+  import SocialLinks from "./ui/SocialLinks.svelte";
 
   // The site's authors as cards; one opens as a form (name, photo, role,
   // bio, profiles). Each author is a note in the authors folder, which the
@@ -54,15 +54,6 @@
     await load();
     onTree?.();
   }, t.toast.authorDeleted);
-  // A profile: pick the network, then type the rest of the link.
-  async function addNetwork(prefix: string) {
-    social.push(prefix);
-    await tick();
-    const inputs = document.querySelectorAll<HTMLInputElement>(".form .profile input");
-    const el = inputs[inputs.length - 1];
-    el?.focus();
-    el?.setSelectionRange(el.value.length, el.value.length);
-  }
   let photoPicked = false;
   const pickPhoto = () => s.run(async () => {
     photoPicked = false;
@@ -114,22 +105,7 @@
     <label class="field"><span>{a.name}</span><input type="text" bind:value={form.name} placeholder={a.namePh} />{#if editing && form.name.trim() && form.name.trim() !== editing}<small>{a.renameHelp}</small>{/if}</label>
     <label class="field"><span>{a.role}</span><input type="text" bind:value={form.role} placeholder={a.rolePh} /></label>
     <label class="field"><span>{a.bio}</span><textarea rows="4" bind:value={form.bio} placeholder={a.bioPh}></textarea><small>{a.bioHelp}</small></label>
-    <div class="field"><span>{a.social}</span>
-      {#each social as _, i (i)}
-        {@const net = networkOf(social[i])}
-        <div class="row profile">
-          <span class="net" title={net.name}>{@html net.icon}</span>
-          <input type="text" bind:value={social[i]} aria-label={net.name} />
-          <button class="icon-btn" title={t.remove} onclick={() => social.splice(i, 1)}><X size={16} /></button>
-        </div>
-      {/each}
-      <small>{a.addSocial}</small>
-      <div class="nets">
-        {#each NETWORKS as n (n.key)}
-          <button class="net-btn" onclick={() => addNetwork(n.prefix)}>{@html n.icon}{n.name}</button>
-        {/each}
-      </div>
-    </div>
+    <SocialLinks bind:links={social} label={a.social} add={a.addSocial} />
     <div class="actions">
       {#if editing && !asking}<button class="btn ghost danger-text" onclick={() => (asking = true)}>{a.delete}</button>{/if}
       {#if asking}<span class="q">{a.deleteQ}</span><button class="btn ghost" onclick={() => (asking = false)}>{t.sec.cancel}</button><button class="btn danger" onclick={remove}>{a.delete}</button>{/if}
@@ -160,9 +136,5 @@
   .q { font-size: .85rem; color: var(--muted); }
   .danger-text { color: var(--red); }
   .btn.danger { background: var(--red); color: #fff; }
-  .profile .net { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none; border-radius: .5rem; background: var(--soft); }
-  .nets { display: flex; flex-wrap: wrap; gap: .35rem; }
-  .net-btn { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .7rem; border: 1px solid var(--line); border-radius: 999px; font-size: .82rem; font-weight: 600; }
-  .net-btn:hover { border-color: var(--blue); color: var(--blue); }
   .empty { padding: 2rem; border: 1px dashed var(--line); border-radius: .75rem; text-align: center; }
 </style>

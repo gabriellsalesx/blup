@@ -1099,6 +1099,13 @@ export function SetProps(rel: string, edits: $models.PropEdit[] | null): $Cancel
 }
 
 /**
+ * SetShowName shows or hides the site's name next to the logo.
+ */
+export function SetShowName(show: boolean): $CancellablePromise<void> {
+    return $Call.ByID(910457404, show);
+}
+
+/**
  * SetSyncRemote picks where the open site's notes are synced.
  */
 export function SetSyncRemote(remote: string): $CancellablePromise<void> {
