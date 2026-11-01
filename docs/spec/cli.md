@@ -98,7 +98,7 @@ Para esse índice, `previewSearch` cria uma saída temporária com `hugo --build
 
 `internal/app/customize.go` repete o menu e salva `blup.toml` e o scaffold após uma mudança bem-sucedida. Inclui:
 
-- Menu superior com seleção de pastas e tags, links externos e botão com `button_text` e `button_link`.
+- Menu superior com seleção de pastas e tags, links externos e botão com `button_text` e `button_link`. Um menu com submenus não é refeito pelo terminal, que avisa (`custom.menu_sub`) e pergunta só o botão; os submenus se editam no Studio ou no Obsidian.
 - Inclusão de seções no Bento. O fluxo CLI de seções adiciona exemplos; a remoção é feita nas notas. O Studio tem remoção para a lixeira.
 - Feedback com issues e instalação do GitHub App; cookies, ferramentas e política de privacidade.
 - Redes sociais, logo, favicon, nome, descrição e autor/perfil.

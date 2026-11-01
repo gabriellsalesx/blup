@@ -45,10 +45,72 @@ type Settings struct {
 }
 
 // MenuItem is an entry of the top menu: a name and where it leads (a
-// folder of the site, "/", "/tags/" or an address).
+// folder of the site, "/", "/tags/" or an address). Sub puts it in the
+// submenu of the entry above it that isn't one; that entry then has no
+// link, it only opens the submenu.
 type MenuItem struct {
 	Name   string `json:"name"`
 	Target string `json:"target"`
+	Sub    bool   `json:"sub"`
+}
+
+// The lines of the "menu" property: "Name | target", or a folder or note
+// by its name; "+ " in front puts the line in the submenu of the line
+// above; a line with nothing after "|" only opens its submenu.
+const menuSubMark = "+"
+
+// parseMenuLine reads one line of the menu.
+func parseMenuLine(l string) MenuItem {
+	l = strings.TrimSpace(l)
+	var m MenuItem
+	if rest, ok := strings.CutPrefix(l, menuSubMark); ok {
+		m.Sub, l = true, strings.TrimSpace(rest)
+	}
+	name, target, ok := strings.Cut(l, "|")
+	if !ok {
+		target = name
+	}
+	m.Name, m.Target = strings.TrimSpace(name), strings.TrimSpace(target)
+	return m
+}
+
+// menuLines writes the menu as lines of the "menu" property. Entries
+// without a name, and without a target outside a group with a submenu,
+// are left out; a submenu entry without one above it becomes a top one.
+func menuLines(menu []MenuItem) []string {
+	var keep []MenuItem
+	for _, m := range menu {
+		m.Name, m.Target = strings.TrimSpace(m.Name), strings.TrimSpace(m.Target)
+		if m.Name == "" || (m.Sub && m.Target == "") {
+			continue
+		}
+		if m.Sub && len(keep) == 0 {
+			m.Sub = false
+		}
+		keep = append(keep, m)
+	}
+	lines := make([]string, 0, len(keep))
+	for i, m := range keep {
+		if !m.Sub && i+1 < len(keep) && keep[i+1].Sub {
+			m.Target = "" // opens its submenu
+		} else if m.Target == "" {
+			continue
+		}
+		lines = append(lines, menuLine(m))
+	}
+	return lines
+}
+
+// menuLine is one line of the menu.
+func menuLine(m MenuItem) string {
+	s := m.Name + " |"
+	if m.Target != "" {
+		s += " " + m.Target
+	}
+	if m.Sub {
+		s = menuSubMark + " " + s
+	}
+	return s
 }
 
 // Section is one of Bento's parts.
@@ -84,23 +146,19 @@ func LoadSettings(site *config.Site) (Settings, error) {
 		s.PrivacyNote = filepath.ToSlash(s.PrivacyNote)
 	}
 	for _, l := range note.List("menu") {
-		name, target, ok := strings.Cut(l, "|")
-		if !ok {
-			target = name
-		}
-		s.Menu = append(s.Menu, MenuItem{strings.TrimSpace(name), strings.TrimSpace(target)})
+		s.Menu = append(s.Menu, parseMenuLine(l))
 	}
 	if s.Menu == nil {
 		s.Menu = []MenuItem{}
 	}
-	s.MenuOptions = []MenuItem{{"Home", "/"}}
+	s.MenuOptions = []MenuItem{{Name: "Home", Target: "/"}}
 	authors := obsidian.Sections(site.ContentDir())["authors"]
 	for _, f := range obsidian.Folders(site.ContentDir(), 1) {
 		if f.Path != authors && f.Notes > 0 {
-			s.MenuOptions = append(s.MenuOptions, MenuItem{f.Path, f.Path})
+			s.MenuOptions = append(s.MenuOptions, MenuItem{Name: f.Path, Target: f.Path})
 		}
 	}
-	s.MenuOptions = append(s.MenuOptions, MenuItem{"Tags", "/tags/"})
+	s.MenuOptions = append(s.MenuOptions, MenuItem{Name: "Tags", Target: "/tags/"})
 	{
 		have := existingSections(site)
 		// Bento's parts, and a blog's podcast. The feedback board and the
@@ -173,14 +231,7 @@ func SaveAbout(site *config.Site, name, description, author string) error {
 // SaveMenu sets the top menu and the button at the top right (an empty
 // text removes it).
 func SaveMenu(site *config.Site, menu []MenuItem, buttonText, buttonLink string) error {
-	lines := make([]string, 0, len(menu))
-	for _, m := range menu {
-		name, target := strings.TrimSpace(m.Name), strings.TrimSpace(m.Target)
-		if name == "" || target == "" {
-			continue
-		}
-		lines = append(lines, name+" | "+target)
-	}
+	lines := menuLines(menu)
 	if strings.TrimSpace(buttonText) == "" {
 		buttonLink = ""
 	} else if err := validURL(buttonLink); err != nil {
@@ -273,8 +324,7 @@ func menuAdd(site *config.Site, folder string) error {
 		return nil
 	}
 	for _, l := range menu {
-		name, target, _ := strings.Cut(l, "|")
-		if strings.EqualFold(strings.TrimSpace(target), folder) || strings.EqualFold(strings.TrimSpace(name), folder) {
+		if m := parseMenuLine(l); strings.EqualFold(m.Target, folder) || strings.EqualFold(m.Name, folder) {
 			return nil
 		}
 	}
@@ -420,11 +470,7 @@ func RemoveSection(site *config.Site, kind string) (string, error) {
 	}
 	var menu []string
 	for _, l := range note.List("menu") {
-		_, target, ok := strings.Cut(l, "|")
-		if !ok {
-			target = l
-		}
-		if !strings.EqualFold(strings.Trim(strings.TrimSpace(target), "/"), folder) {
+		if m := parseMenuLine(l); !strings.EqualFold(strings.Trim(m.Target, "/"), folder) {
 			menu = append(menu, l)
 		}
 	}

@@ -152,7 +152,7 @@ Voz local usa `kokoro:<id>`, voz pelo plano Blup Cloud usa `blup:<voz>` e voz Op
 | `_index.md` na raiz publicada | Nota inicial e identidade do site |
 | `site_name`, `site_description` | Precedem `title`/`description` de `blup.toml` na identidade do tema |
 | `logo`, `favicon` | Referência a imagem do cofre, incluindo `[[arquivo.png]]` |
-| `menu` | Lista de `Destino` ou `Nome \| Destino`; resolve pastas, notas, home, `/caminho`, HTTP/HTTPS ou `mailto:` |
+| `menu` | Lista de `Destino` ou `Nome \| Destino`; resolve pastas, notas, home, `/caminho`, HTTP/HTTPS ou `mailto:`. Submenu: `+ ` na frente põe a linha no submenu da linha de cima, que então só abre o submenu, sem link (o Studio grava essa linha como `Nome \|`). Um nível só |
 | `button_text`, `button_link` | Botão do cabeçalho |
 | `social` | Lista de URLs ou emails usada em redes sociais |
 | `title`, `description` | Título e descrição da página |

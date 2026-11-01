@@ -1,0 +1,34 @@
+{{- /* One line of the menu (see site/menu.html), without its "+": a dict
+name, url, current and external, or false when it leads nowhere (a line
+that only opens a submenu, or a folder or note the site doesn't have).
+Params: page (the current page), line. */ -}}
+{{- $page := .page -}}
+{{- $name := .line -}}
+{{- $target := .line -}}
+{{- with findRESubmatch `^(.*?)\s*\|\s*(.*)$` .line 1 }}{{ $name = index (index . 0) 1 }}{{ $target = index (index . 0) 2 }}{{ end -}}
+{{- $target = replaceRE `^\[\[([^|\]]+)(\|[^\]]*)?\]\]$` "$1" $target -}}
+{{- $url := "" -}}
+{{- $dest := false -}}
+{{- if not $target -}}
+{{- else if or (hasPrefix $target "http://") (hasPrefix $target "https://") (hasPrefix $target "mailto:") -}}
+  {{- $url = $target -}}
+{{- else if hasPrefix $target "/" -}}
+  {{- $url = relURL (strings.TrimPrefix "/" $target) -}}
+{{- else if in (slice "home" "início" "inicio") (lower $target) -}}
+  {{- $dest = site.Home -}}
+{{- else -}}
+  {{- $want := lower $target -}}
+  {{- range site.Sections }}{{ if or (eq (lower .Title) $want) (eq (lower .LinkTitle) $want) (and .File (eq (lower .File.Dir) (printf "%s/" $want))) }}{{ $dest = . }}{{ break }}{{ end }}{{ end -}}
+  {{- if not $dest }}{{ range site.RegularPages }}{{ if or (eq (lower .Title) $want) (and .File (eq (lower .File.ContentBaseName) $want)) }}{{ $dest = . }}{{ break }}{{ end }}{{ end }}{{ end -}}
+  {{- if not $dest }}{{ warnf "menu: %q is not a folder or note of the site" $target }}{{ end -}}
+{{- end -}}
+{{- with $dest -}}
+  {{- $url = .RelPermalink -}}
+  {{- if eq $name $target }}{{ $name = cond .IsHome $name (.LinkTitle | default (partial "title.html" .)) }}{{ end -}}
+{{- end -}}
+{{- $out := false -}}
+{{- if $url -}}
+  {{- $cur := and $dest (or (eq $page $dest) (and (not $dest.IsHome) ($page.IsDescendant $dest))) -}}
+  {{- $out = dict "name" $name "url" $url "current" $cur "external" (hasPrefix $url "http") -}}
+{{- end -}}
+{{- return $out -}}

@@ -1,0 +1,16 @@
+{{- /* An entry of the header's menu (site/menu.html): a link, or, with a
+submenu, a button that opens it under itself (a popover: a click or Esc
+closes it, no script needed). */ -}}
+{{- if .children -}}
+{{- $id := printf "nav-sub-%s" (.name | urlize | default "menu") -}}
+<div class="nav-group">
+  <button type="button" class="nav-sub-toggle" popovertarget="{{ $id }}" style="anchor-name: --{{ $id }}"{{ if .current }} data-current{{ end }}>{{ .name }}<svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>
+  <div id="{{ $id }}" class="dropdown nav-sub" popover style="position-anchor: --{{ $id }}">
+    {{- range .children }}
+    <a href="{{ .url }}"{{ if .current }} aria-current="page"{{ end }}{{ if .external }} rel="noopener"{{ end }}>{{ .name }}</a>
+    {{- end }}
+  </div>
+</div>
+{{- else -}}
+<a href="{{ .url }}"{{ if .current }} aria-current="page"{{ end }}{{ if .external }} rel="noopener"{{ end }}>{{ .name }}</a>
+{{- end -}}

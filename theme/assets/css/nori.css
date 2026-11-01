@@ -37,8 +37,8 @@ neutral palette and layout. Bundled into one file by css.Build. */
   }
   @media (width >= 48rem) { .nori-header { padding-inline: 2.5rem; } }
   .nori-header .nav { gap: .25rem; }
-  .nori-header .nav a { padding: .375rem .75rem; font-size: .875rem; color: var(--main-600); }
-  .nori-header .nav a:hover, .nori-header .nav a[aria-current] { color: var(--main-900); }
+  .nori-header .nav > a, .nori-header .nav-sub-toggle { padding: .375rem .75rem; font-size: .875rem; color: var(--main-600); }
+  .nori-header .nav > a:hover, .nori-header .nav > a[aria-current], .nori-header .nav-sub-toggle:hover, .nori-header .nav-sub-toggle[data-current] { color: var(--main-900); }
   .nori-header .button { padding: .375rem .875rem; font-size: .875rem; background: var(--main-900); color: var(--main-25); }
   .nori-header .menu-toggle { color: var(--main-600); }
   .nori-header .mobile-menu { inset-block-start: calc(var(--header-h) + .75rem); }

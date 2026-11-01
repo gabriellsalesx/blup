@@ -25,7 +25,7 @@ func TestSettingsRoundTrip(t *testing.T) {
 	if err := SaveAbout(site, " Meu Blog ", "Sobre coisas", "Ana"); err != nil {
 		t.Fatal(err)
 	}
-	if err := SaveMenu(site, []MenuItem{{"Início", "/"}, {"Posts", "Posts"}, {"", "x"}}, "Assine", "https://x.dev/news"); err != nil {
+	if err := SaveMenu(site, []MenuItem{{Name: "Início", Target: "/"}, {Name: "Posts", Target: "Posts"}, {Target: "x"}}, "Assine", "https://x.dev/news"); err != nil {
 		t.Fatal(err)
 	}
 	if err := SaveSocial(site, []string{"https://github.com/ana", "ana@x.dev", " "}); err != nil {
@@ -51,7 +51,7 @@ func TestSettingsRoundTrip(t *testing.T) {
 	if s.Name != "Meu Blog" || s.Description != "Sobre coisas" || s.Author != "Ana" || !s.HasPassword || s.Logo != file {
 		t.Fatalf("settings = %+v", s)
 	}
-	if len(s.Menu) != 2 || s.Menu[1] != (MenuItem{"Posts", "Posts"}) || s.ButtonText != "Assine" {
+	if len(s.Menu) != 2 || s.Menu[1] != (MenuItem{Name: "Posts", Target: "Posts"}) || s.ButtonText != "Assine" {
 		t.Fatalf("menu = %+v, button %q", s.Menu, s.ButtonText)
 	}
 	if strings.Join(s.Social, ",") != "https://github.com/ana,mailto:ana@x.dev" {
@@ -99,7 +99,7 @@ func TestRemoveSection(t *testing.T) {
 	if folder == "" {
 		t.Fatal("roadmap not added")
 	}
-	SaveMenu(site, []MenuItem{{"Início", "/"}, {"Roadmap", folder}}, "", "")
+	SaveMenu(site, []MenuItem{{Name: "Início", Target: "/"}, {Name: "Roadmap", Target: folder}}, "", "")
 
 	trashed, err := RemoveSection(site, "roadmap")
 	if err != nil {
@@ -179,5 +179,35 @@ func TestShowName(t *testing.T) {
 	n, _ := obsidian.ReadNote(homeNotePath(site))
 	if _, ok := n.Props["header_name"]; ok {
 		t.Fatalf("shown again should drop the property: %v", n.Props)
+	}
+}
+
+func TestSubmenu(t *testing.T) {
+	site := settingsSite(t)
+	menu := []MenuItem{
+		{Name: "Solto", Target: "x", Sub: true}, // nothing above: a top entry
+		{Name: "Recursos", Target: "Docs"},      // has a submenu: no link
+		{Name: "Guias", Target: "Guias", Sub: true},
+		{Name: "Loja", Target: "https://loja.dev", Sub: true},
+		{Name: "Vazio", Sub: true}, // no target: left out
+		{Name: "Grupo sem itens"},  // no target, no submenu: left out
+		{Name: "Sobre", Target: "Sobre"},
+	}
+	if err := SaveMenu(site, menu, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	n, _ := obsidian.ReadNote(homeNotePath(site))
+	want := "Solto | x,Recursos |,+ Guias | Guias,+ Loja | https://loja.dev,Sobre | Sobre"
+	if got := strings.Join(n.List("menu"), ","); got != want {
+		t.Fatalf("lines = %q", got)
+	}
+	s, _ := LoadSettings(site)
+	if len(s.Menu) != 5 || s.Menu[1] != (MenuItem{Name: "Recursos"}) || s.Menu[3] != (MenuItem{Name: "Loja", Target: "https://loja.dev", Sub: true}) {
+		t.Fatalf("menu = %+v", s.Menu)
+	}
+	for _, l := range []string{"+ Guias | Guias", "Recursos |", "+Docs"} {
+		if m := parseMenuLine(l); menuLine(m) != map[string]string{"+ Guias | Guias": "+ Guias | Guias", "Recursos |": "Recursos |", "+Docs": "+ Docs | Docs"}[l] {
+			t.Fatalf("%q -> %q", l, menuLine(m))
+		}
 	}
 }

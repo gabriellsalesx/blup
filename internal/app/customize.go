@@ -86,6 +86,15 @@ func editMenu(site *config.Site) error {
 	if err != nil {
 		return err
 	}
+	// The terminal lists pages without submenus: a menu that has them is
+	// kept as it is (the Studio and Obsidian edit it), only the button is
+	// asked.
+	for _, l := range note.List("menu") {
+		if parseMenuLine(l).Sub {
+			ui.Warn(i18n.T("custom.menu_sub"))
+			return editButton(home, note, note.List("menu"))
+		}
+	}
 	type item struct{ name, target string }
 	parse := func(line string) item {
 		name, target, ok := strings.Cut(line, "|")
@@ -197,7 +206,11 @@ func editMenu(site *config.Site) error {
 		}
 		lines = append(lines, strings.TrimSpace(menu[i].name)+" | "+menu[i].target)
 	}
+	return editButton(home, note, lines)
+}
 
+// editButton asks the button at the top right and saves it with the menu.
+func editButton(home string, note obsidian.Note, lines []string) error {
 	text, link := note.String("button_text"), note.String("button_link")
 	if err := ui.Ask(i18n.T("custom.button_text"), i18n.T("custom.button_text_help"), "", &text, nil); err != nil {
 		return err

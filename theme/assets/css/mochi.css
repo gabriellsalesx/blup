@@ -107,8 +107,16 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .brand img { height: 2rem; width: auto; margin-bottom: 3px; }
   .nav { display: none; flex: 1; justify-content: center; gap: 1.25rem; padding-inline: 1.25rem; }
-  .nav a { font-weight: 500; color: var(--main-600); padding: .5rem .75rem; border-radius: .5rem; transition: background-color .3s var(--ease), color .3s var(--ease); }
-  .nav a:hover { background: color-mix(in srgb, var(--main-200) 60%, transparent); }
+  .nav > a, .nav-sub-toggle { font-weight: 500; color: var(--main-600); padding: .5rem .75rem; border-radius: .5rem; transition: background-color .3s var(--ease), color .3s var(--ease); }
+  .nav > a:hover, .nav-sub-toggle:hover { background: color-mix(in srgb, var(--main-200) 60%, transparent); }
+  /* An entry with a submenu: a button that opens it under itself. */
+  .nav-sub-toggle { display: inline-flex; align-items: center; gap: .25rem; }
+  .nav-sub-toggle .icon { transition: rotate .2s var(--ease); }
+  .nav-group:has(.nav-sub:popover-open) .nav-sub-toggle .icon { rotate: 180deg; }
+  .nav-sub-toggle[data-current], .nav-group:has(.nav-sub:popover-open) .nav-sub-toggle { color: var(--main-900); }
+  .nav-sub { position-area: bottom span-right; min-width: 11rem; }
+  .nav-sub a[aria-current] { background: var(--main-200); color: var(--main-900); }
+  @supports not (position-area: bottom) { .nav-sub { inset: var(--header-h) auto auto 50%; translate: -50% 0; } }
   /* The header's buttons together on the right (search, language, theme,
      the optional button and, on small screens, the menu), as in Nori. */
   .header-actions { display: flex; flex-shrink: 0; align-items: center; gap: .25rem; margin-inline-start: auto; }
@@ -142,6 +150,12 @@ through light-dark(): the theme switcher only changes color-scheme. */
   }
   .mobile-menu ul { padding: .5rem 1.25rem; }
   .mobile-menu li a { display: block; padding: .75rem 0; font-weight: 500; color: var(--main-700); }
+  /* An entry with a submenu opens it below, indented. */
+  .mobile-sub summary { display: flex; align-items: center; justify-content: space-between; padding: .75rem 0; font-weight: 500; color: var(--main-700); cursor: pointer; list-style: none; }
+  .mobile-sub summary::-webkit-details-marker { display: none; }
+  .mobile-sub summary .icon { transition: rotate .2s var(--ease); }
+  .mobile-sub[open] summary .icon { rotate: 180deg; }
+  .mobile-menu .mobile-sub ul { padding: 0 0 .25rem 1rem; border-inline-start: 1px solid var(--main-200); }
   .mobile-menu .mobile-cta { border-block-start: 1px solid var(--main-200); padding: 1rem 1.25rem; }
   .mobile-menu .button { width: 100%; }
   .menu-toggle .icon-close { display: none; }

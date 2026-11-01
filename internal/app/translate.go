@@ -271,11 +271,10 @@ func PropTexts(n obsidian.Note) map[string][]string {
 		var texts []string
 		for _, v := range n.List(k) {
 			if k == "menu" {
-				name, _, ok := strings.Cut(v, "|")
-				if !ok {
+				if !strings.Contains(v, "|") {
 					continue // a folder or note by its name: the site shows its translated title
 				}
-				v = name
+				v = parseMenuLine(v).Name
 			}
 			if v = strings.TrimSpace(v); v != "" {
 				texts = append(texts, v)
@@ -369,8 +368,9 @@ func translatedProps(n obsidian.Note, tr map[string]any) []obsidian.Prop {
 			out := make([]string, len(orig))
 			for j, line := range orig {
 				out[j] = line
-				if _, target, ok := strings.Cut(line, "|"); ok && strings.TrimSpace(line[:strings.Index(line, "|")]) != "" && i < len(texts) {
-					out[j] = texts[i] + " | " + strings.TrimSpace(target)
+				if m := parseMenuLine(line); strings.Contains(line, "|") && m.Name != "" && i < len(texts) {
+					m.Name = texts[i]
+					out[j] = menuLine(m)
 					i++
 				}
 			}

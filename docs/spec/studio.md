@@ -266,8 +266,10 @@ Em Linux, `canPlayMP3` procura `libgstaudioparsers.so` nos diretórios GStreamer
 
 | Tela | Operações atuais |
 | --- | --- |
-| Site, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, favicon, "Mostrar o nome ao lado do logo" (`SetShowName`, propriedade `header_name`), menu, botão e redes |
+| Site, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, favicon, "Mostrar o nome ao lado do logo" (`SetShowName`, propriedade `header_name`), menu com submenus (`ui/MenuEditor.svelte`), botão e redes |
 | Autores, `AuthorsPanel.svelte` | Lista, perfil, foto/avatar, cargo, redes, bio, criação, renomeação e remoção |
+
+`ui/MenuEditor.svelte` guarda o menu como grupos (a entrada e o seu submenu) e grava com `toMenu`, uma lista de `MenuItem` com `sub`. Arrastar pela alça: no meio de uma entrada de cima, vai para o submenu dela; na borda de cima ou de baixo, fica antes ou depois. Um nível só: uma entrada com submenu não entra noutro, e num item de submenu só se solta antes ou depois. Os botões fazem o mesmo sem mouse: subir, descer, pôr no submenu de cima, tirar do submenu e remover (remover um grupo devolve o submenu ao menu). "Novo submenu" cria uma entrada sem destino, que só vai ao arquivo com itens dentro. `SaveMenu` (`menuLines`) grava o grupo como `Nome |` e os itens como `+ Nome | destino`.
 
 As redes do site e as de cada autor usam o mesmo componente, `ui/SocialLinks.svelte`: cada endereço com o ícone da rede, e um botão por rede (`NETWORKS` em `social.ts`: Instagram, X, LinkedIn, YouTube, Discord, GitHub, Facebook, WhatsApp, e-mail) que acrescenta uma linha com o começo do endereço e põe o cursor no fim. Ao salvar as redes do site, linhas só com o começo são descartadas.
 | Anexos, `AttachmentsPanel.svelte` | Lista por tipo, tamanho e usos, adição, renomeação, exclusão e acesso às notas que usam |

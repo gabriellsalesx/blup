@@ -439,11 +439,14 @@ export interface Mention {
 
 /**
  * MenuItem is an entry of the top menu: a name and where it leads (a
- * folder of the site, "/", "/tags/" or an address).
+ * folder of the site, "/", "/tags/" or an address). Sub puts it in the
+ * submenu of the entry above it that isn't one; that entry then has no
+ * link, it only opens the submenu.
  */
 export interface MenuItem {
     "name": string;
     "target": string;
+    "sub": boolean;
 }
 
 /**

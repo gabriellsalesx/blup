@@ -1,0 +1,14 @@
+{{- /* An entry of the phone menu (site/menu.html): a link, or, with a
+submenu, a line that opens it below (open already on one of its pages). */ -}}
+{{- if .children -}}
+<li><details class="mobile-sub"{{ if .current }} open{{ end }}>
+  <summary>{{ .name }}<svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
+  <ul>
+    {{- range .children }}
+    <li><a href="{{ .url }}"{{ if .current }} aria-current="page"{{ end }}>{{ .name }}</a></li>
+    {{- end }}
+  </ul>
+</details></li>
+{{- else -}}
+<li><a href="{{ .url }}"{{ if .current }} aria-current="page"{{ end }}>{{ .name }}</a></li>
+{{- end -}}
