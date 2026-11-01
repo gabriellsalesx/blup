@@ -103,7 +103,7 @@ Num cofre de anotações, a árvore lista também canvases (`.canvas`) e desenho
 
 `CanvasView.svelte` (lógica em `canvas.ts`) grava no formato aberto JSON Canvas: cartões de texto em Markdown, notas do cofre (`CanvasFile.svelte` mostra o texto, ou a imagem), links da web e grupos, ligados por setas com texto e cor. Mover a tela arrastando, zoom com Ctrl e a roda, dois cliques criam um cartão, arrastar do ponto lateral cria uma seta, notas arrastadas da árvore viram cartões, e há desfazer e refazer.
 
-`DrawingView.svelte` (lógica em `draw.ts`) é o editor de desenho: retângulo, losango, elipse, seta, linha, desenho livre, texto (solto ou dentro da forma), borracha e imagens, com cor, fundo, espessura, tracejado e tamanho de texto, seleção por caixa, redimensionar, duplicar, ordem, atalhos de teclado, desfazer e exportar PNG para os anexos. O arquivo é JSON com um elemento por linha. As duas telas salvam sozinhas e recarregam quando o arquivo muda fora do editor (evento `notesChanged`), se não houver mudança própria pendente.
+`DrawingView.svelte` (lógica em `draw.ts`) é o editor de desenho: retângulo, losango, elipse, seta, linha, desenho livre, texto (solto ou dentro da forma), borracha e imagens, com cor, fundo, espessura, tracejado e tamanho de texto, seleção por caixa, redimensionar, duplicar, ordem, atalhos de teclado, desfazer e exportar PNG para os anexos. O arquivo é JSON com um elemento por linha. As duas telas têm modo tela cheia (botão nos controles ou F; Esc sai), em que ocupam a janela inteira, sem lateral, barra ou menu. As duas telas salvam sozinhas e recarregam quando o arquivo muda fora do editor (evento `notesChanged`), se não houver mudança própria pendente.
 
 ## Prévia
 

@@ -17,6 +17,8 @@
   import ZoomIn from "@lucide/svelte/icons/zoom-in";
   import ZoomOut from "@lucide/svelte/icons/zoom-out";
   import Scan from "@lucide/svelte/icons/scan";
+  import Maximize2 from "@lucide/svelte/icons/maximize-2";
+  import Minimize2 from "@lucide/svelte/icons/minimize-2";
   import Undo2 from "@lucide/svelte/icons/undo-2";
   import Redo2 from "@lucide/svelte/icons/redo-2";
   import Copy from "@lucide/svelte/icons/copy";
@@ -35,8 +37,10 @@
   //
   // Moving around: the hand (or Space, or the middle button) drags the
   // board, the wheel scrolls it, Ctrl and the wheel (or a pinch) zoom.
-  let { path, onStatus, onError, onOutside }: {
+  let { path, full, onFull, onStatus, onError, onOutside }: {
     path: string;
+    full: boolean; // full screen: the drawing alone in the window
+    onFull: () => void;
     onStatus: (s: "saved" | "saving" | "unsaved") => void;
     onError: (e: string) => void;
     onOutside: () => void; // changed on disk by someone else
@@ -517,7 +521,8 @@
     else if (mod && k === "0") { e.preventDefault(); fit(); }
     else if (mod) return;
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); remove(); }
-    else if (e.key === "Escape") { selected = new Set(); tool = "select"; }
+    else if (e.key === "Escape") { if (full && !chosen.length && tool === "select") onFull(); selected = new Set(); tool = "select"; }
+    else if (k === "f") { e.preventDefault(); onFull(); }
     else if (e.key === "Enter" && chosen.length === 1 && (chosen[0].type === "text" || isShape(chosen[0]))) { e.preventDefault(); startText(chosen[0]); }
     else if (e.key.startsWith("Arrow") && chosen.length) {
       e.preventDefault();
@@ -552,8 +557,9 @@
 
 <svelte:window onkeydown={key} onkeyup={(e) => { if (e.key === " ") space = false; }} onpaste={paste} oncopy={copy} />
 
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div class="draw" bind:this={host} style:cursor={cursor} style:background-position="{pan.x}px {pan.y}px" style:background-size="{20 * zoom}px {20 * zoom}px"
-  role="application" aria-label={td.board} onpointerdown={down} onpointermove={move} onpointerup={up} onwheel={wheel} ondblclick={dbl}
+  role="application" aria-label={td.board} onmousedown={(e) => { if (tool === "text" || editing) e.preventDefault(); }} onpointerdown={down} onpointermove={move} onpointerup={up} onwheel={wheel} ondblclick={dbl}
   ondragover={(e) => e.preventDefault()} ondrop={drop}>
   <svg class="paper">
     <g transform="translate({pan.x} {pan.y}) scale({zoom})">
@@ -710,6 +716,7 @@
   <button class="pct" title={td.fit} onclick={fit}>{Math.round(zoom * 100)}%</button>
   <button title={td.zoomIn} aria-label={td.zoomIn} onclick={() => zoomBy(1.2)}><ZoomIn size={16} strokeWidth={1.75} /></button>
   <button title={td.fit} aria-label={td.fit} onclick={fit}><Scan size={16} strokeWidth={1.75} /></button>
+  <button title="{full ? td.exitFull : td.full} (F)" aria-label={full ? td.exitFull : td.full} onclick={onFull}>{#if full}<Minimize2 size={16} strokeWidth={1.75} />{:else}<Maximize2 size={16} strokeWidth={1.75} />{/if}</button>
   <span class="csep"></span>
   <button title="{td.undo} (Ctrl+Z)" aria-label={td.undo} disabled={!canUndo} onclick={undo}><Undo2 size={16} strokeWidth={1.75} /></button>
   <button title="{td.redo} (Ctrl+Shift+Z)" aria-label={td.redo} disabled={!canRedo} onclick={redo}><Redo2 size={16} strokeWidth={1.75} /></button>

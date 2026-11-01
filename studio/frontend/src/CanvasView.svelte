@@ -9,6 +9,8 @@
   import ZoomIn from "@lucide/svelte/icons/zoom-in";
   import ZoomOut from "@lucide/svelte/icons/zoom-out";
   import Scan from "@lucide/svelte/icons/scan";
+  import Maximize2 from "@lucide/svelte/icons/maximize-2";
+  import Minimize2 from "@lucide/svelte/icons/minimize-2";
   import Undo2 from "@lucide/svelte/icons/undo-2";
   import Redo2 from "@lucide/svelte/icons/redo-2";
   import Trash2 from "@lucide/svelte/icons/trash-2";
@@ -28,8 +30,10 @@
   // the wheel (or a pinch) to zoom. Two clicks on the board make a card;
   // dragging from the dot on a card's side makes an arrow. Notes dragged
   // from the files panel land as cards.
-  let { path, notes, onStatus, onError, onOpenNote, onOutside }: {
+  let { path, notes, full, onFull, onStatus, onError, onOpenNote, onOutside }: {
     path: string; notes: NoteRef[];
+    full: boolean; // full screen: the canvas alone in the window
+    onFull: () => void;
     onStatus: (s: "saved" | "saving" | "unsaved") => void;
     onError: (e: string) => void;
     onOpenNote: (path: string) => void;
@@ -381,7 +385,8 @@
     else if (e.key === "Delete" || e.key === "Backspace") {
       if (edgeSel) { e.preventDefault(); removeEdge(edgeSel); }
       else if (selected.size) { e.preventDefault(); remove(selected); }
-    } else if (e.key === "Escape") { selected = new Set(); edgeSel = ""; }
+    } else if (e.key === "Escape") { if (full && !selected.size && !edgeSel) onFull(); selected = new Set(); edgeSel = ""; }
+    else if (!mod && e.key.toLowerCase() === "f") { e.preventDefault(); onFull(); }
     else if (e.key === "Enter" && selected.size === 1) { e.preventDefault(); startEdit(byId.get([...selected][0])!); }
   }
 
@@ -553,6 +558,7 @@
     <button title={tb.zoomIn} onclick={() => zoomBy(1.2)}><ZoomIn size={17} strokeWidth={1.75} /></button>
     <button title={tb.zoomOut} onclick={() => zoomBy(1 / 1.2)}><ZoomOut size={17} strokeWidth={1.75} /></button>
     <button title={tb.fit} onclick={fit}><Scan size={17} strokeWidth={1.75} /></button>
+    <button title="{full ? tb.exitFull : tb.full} (F)" aria-label={full ? tb.exitFull : tb.full} onclick={onFull}>{#if full}<Minimize2 size={17} strokeWidth={1.75} />{:else}<Maximize2 size={17} strokeWidth={1.75} />{/if}</button>
     <span class="csep"></span>
     <button title={tb.undo} disabled={!canUndo} onclick={undo}><Undo2 size={17} strokeWidth={1.75} /></button>
     <button title={tb.redo} disabled={!canRedo} onclick={redo}><Redo2 size={17} strokeWidth={1.75} /></button>

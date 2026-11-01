@@ -124,6 +124,9 @@
   let tree = $state<Node[]>([]);
   let current = $state(""); // path of the open note (or canvas, or drawing)
   const board = $derived(boardKind(current));
+  // Full screen: a canvas or a drawing alone in the window (F, or Esc to
+  // leave); only while one is open.
+  let full = $state(false);
   let text = $state("");
   let noteProps = $state<Record<string, any>>({});
   let kind = $state("");
@@ -212,6 +215,7 @@
 
   // The screen on the right of the menu: writing or a settings panel.
   let screen = $state("write");
+  const fullOn = $derived(full && !!board && screen === "write");
   let settings = $state<Settings | null>(null);
   const reload = () => LoadSettings().then((s) => (settings = s)).catch((e) => (error = String(e)));
   // A vault of notes: the editor, attachments, sync and trash; no site.
@@ -528,16 +532,16 @@
     {#if !notesVault}<button class="btn" onclick={() => go("publish", "publish")}>{t.publish}</button>{/if}
   </header>
 
-  <section class="main" class:scroll={screen !== "write"}>
+  <section class="main" class:scroll={screen !== "write"} class:full={fullOn}>
     {#if error}<p class="error">{t.error}: {error}</p>{/if}
     {#if outside}<div class="outside"><span>{t.term.outside}</span><button class="btn ghost" onclick={reloadOutside}>{t.term.reload}</button><button class="btn ghost" onclick={() => (outside = false)}>{t.term.keep}</button></div>{/if}
     {#if screen === "write"}
       {#if current}
         {#key current + ":" + reloadN}
           {#if board === "canvas"}
-            <CanvasView path={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOpenNote={openNote} onOutside={() => reloadN++} />
+            <CanvasView path={current} full={fullOn} onFull={() => (full = !full)} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOpenNote={openNote} onOutside={() => reloadN++} />
           {:else if board === "drawing"}
-            <DrawingView path={current} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />
+            <DrawingView path={current} full={fullOn} onFull={() => (full = !full)} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />
           {:else}
           <div class="note">
             {#if !notesVault}<Props props={noteProps} {kind} note={current} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} />{/if}
@@ -692,6 +696,7 @@
   .spacer { flex: 1; }
   .main { grid-row: 2; position: relative; overflow: hidden; background: var(--panel); }
   .main.scroll { overflow: auto; background: var(--bg); }
+  .main.full { position: fixed; inset: 0; z-index: 35; }
   .preview { position: relative; grid-row: 2; overflow: hidden; border-inline-start: 1px solid var(--line); background: var(--bg); }
   .term { grid-row: 3; grid-column: 3 / -1; position: relative; min-height: 0; }
   .ws.no-side .term { grid-column: 2 / -1; }
