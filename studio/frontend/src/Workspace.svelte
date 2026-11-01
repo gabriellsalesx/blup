@@ -335,6 +335,16 @@
     addEventListener("mousemove", move);
     addEventListener("mouseup", up);
   }
+  // The same edges by keyboard (they are buttons): the arrows move them,
+  // Home goes back to the default.
+  function nudge(e: KeyboardEvent, which: "side" | "preview") {
+    const step = e.key === "ArrowRight" ? 16 : e.key === "ArrowLeft" ? -16 : 0;
+    if (e.key === "Home") { e.preventDefault(); resetWidth(which); return; }
+    if (!step) return;
+    e.preventDefault();
+    if (which === "side") { sideW = clampSide(sideW + step); setPref("sideWidth", sideW); }
+    else { prevW = clampPrev((prevW || previewEl?.getBoundingClientRect().width || PREV_MIN) - step); setPref("previewWidth", prevW); }
+  }
   function resetWidth(which: "side" | "preview") {
     if (which === "side") { sideW = SIDE; setPref("sideWidth", 0); }
     else { prevW = 0; setPref("previewWidth", 0); }
@@ -425,9 +435,16 @@
   let termStarted = $state(false);
   $effect(() => { if (termOpen) termStarted = true; });
   let termHeight = $state(300);
+  const clampTerm = (h: number) => Math.min(Math.max(140, h), window.innerHeight - 200);
+  function nudgeTerm(e: KeyboardEvent) {
+    const step = e.key === "ArrowUp" ? 16 : e.key === "ArrowDown" ? -16 : 0;
+    if (!step) return;
+    e.preventDefault();
+    termHeight = clampTerm(termHeight + step);
+  }
   function resizeTerm(e: MouseEvent) {
     const start = e.clientY, h = termHeight;
-    const move = (m: MouseEvent) => (termHeight = Math.min(Math.max(140, h + start - m.clientY), window.innerHeight - 200));
+    const move = (m: MouseEvent) => (termHeight = clampTerm(h + start - m.clientY));
     const up = () => { removeEventListener("mousemove", move); removeEventListener("mouseup", up); };
     addEventListener("mousemove", move);
     addEventListener("mouseup", up);
@@ -493,7 +510,8 @@
   let written = ""; // the text the editor wrote to disk last
   const same = (a: string, b: string) => a.trimEnd() === b.trimEnd();
 
-  Open(site.dir)
+  // The site is the one this Workspace opened (a new site is a new one).
+  Open(untrack(() => site.dir))
     .then((root) => {
       tree = root.children ?? [];
       reload();
@@ -676,7 +694,7 @@
 
   {#if sideOpen}
     <aside class="side">
-      <div class="resizer right" role="separator" aria-orientation="vertical" aria-label={t.side.resize} title={t.side.resize} onmousedown={(e) => drag(e, "side")} ondblclick={() => resetWidth("side")}></div>
+      <button type="button" class="resizer right" aria-label={t.side.resize} title={t.side.resize} onmousedown={(e) => drag(e, "side")} onkeydown={(e) => nudge(e, "side")} ondblclick={() => resetWidth("side")}></button>
       <div class="side-tabs">
         <button class="tab" class:on={sideTab === "files"} title={t.side.files} onclick={() => (sideTab = "files")}><Files size={17} strokeWidth={1.75} /></button>
         <button class="tab" class:on={sideTab === "search"} title={t.side.search} onclick={() => (sideTab = "search")}><Search size={17} strokeWidth={1.75} /></button>
@@ -799,7 +817,7 @@
 
   {#if previewOn}
     <section class="preview" bind:this={previewEl}>
-      <div class="resizer left" role="separator" aria-orientation="vertical" aria-label={t.side.resize} title={t.side.resize} onmousedown={(e) => drag(e, "preview")} ondblclick={() => resetWidth("preview")}></div>
+      <button type="button" class="resizer left" aria-label={t.side.resize} title={t.side.resize} onmousedown={(e) => drag(e, "preview")} onkeydown={(e) => nudge(e, "preview")} ondblclick={() => resetWidth("preview")}></button>
       {#if previewURL}
         <Preview src={previewSrc || previewURL} title={t.preview} onNavigate={navigated} />
       {:else}
@@ -850,7 +868,7 @@
   {/if}
   {#if termStarted}
     <div class="term" class:min={!termOpen} style:height="{termHeight}px">
-      <div class="grip" role="separator" aria-orientation="horizontal" onmousedown={resizeTerm}></div>
+      <button type="button" class="grip" aria-label={t.side.resizeTerm} title={t.side.resizeTerm} onmousedown={resizeTerm} onkeydown={nudgeTerm}></button>
       {#await TerminalPanel() then { default: C }}<C visible={termOpen} onClose={() => (termOpen = false)} />{/await}
     </div>
   {/if}
@@ -874,14 +892,15 @@
   .cloud-tip img { width: 6rem; }
   .cloud-tip b { font-size: 1rem; }
   .cloud-tip p { margin-block: .25rem .75rem; font-size: .87rem; color: var(--muted); }
-  .resizer { position: absolute; z-index: 5; inset-block: 0; width: 7px; cursor: col-resize; }
+  .resizer { position: absolute; z-index: 5; inset-block: 0; width: 7px; padding: 0; cursor: col-resize; }
+  .resizer:focus-visible, .grip:focus-visible { outline: none; }
   /* On the panel's border, half outside it, above the files' scrollbar:
      hovering the border lights it blue, as in every view. */
   .resizer.right { inset-inline-end: -4px; }
   .resizer.left { inset-inline-start: 0; } /* the preview cuts what sticks out */
   .resizer.left::after { inset-inline-start: 0; }
   .resizer::after { content: ""; position: absolute; inset-block: 0; inset-inline-start: 3px; width: 2px; background: transparent; transition: background .1s; }
-  .resizer:hover::after, .ws.resizing .resizer:active::after { background: var(--blue); }
+  .resizer:hover::after, .resizer:focus-visible::after, .ws.resizing .resizer:active::after { background: var(--blue); }
   .ws.resizing { cursor: col-resize; user-select: none; }
   .ws.resizing :global(iframe) { pointer-events: none; }
   .ws.no-side.no-preview { grid-template-columns: 3rem minmax(0, 1fr); }
@@ -942,7 +961,8 @@
   .term { grid-row: 3; grid-column: 3 / -1; position: relative; min-height: 0; }
   .ws.no-side .term { grid-column: 2 / -1; }
   .term.min { display: none; }
-  .grip { position: absolute; z-index: 3; inset-inline: 0; inset-block-start: -3px; height: 6px; cursor: row-resize; }
+  .grip { position: absolute; z-index: 3; inset-inline: 0; inset-block-start: -3px; height: 6px; padding: 0; cursor: row-resize; }
+  .grip:focus-visible { box-shadow: inset 0 2px 0 var(--blue); }
   .outside { position: absolute; z-index: 2; inset-inline: 1rem; inset-block-start: .75rem; display: flex; gap: .5rem; align-items: center; padding: .5rem .75rem; border-radius: .5rem; background: var(--soft); font-size: .85rem; }
   .outside span { flex: 1; }
   .note { height: 100%; display: flex; flex-direction: column; }
