@@ -10,21 +10,45 @@
   // open folder; clicking a folder also makes it the place for new notes.
   // Right-click opens the item's menu (onMenu). Canvases and drawings have
   // an icon; notes can be dragged onto a canvas.
-  let { nodes, current, folder, open, onPick, onFolder, onMenu, depth = 0 }: {
-    nodes: Node[]; current: string; folder: string; open: Record<string, boolean>;
-    onPick: (p: string) => void; onFolder: (p: string) => void; onMenu: (n: Node, e: MouseEvent) => void; depth?: number;
+  //
+  // Renaming is right there, like Obsidian: the name becomes a field, all
+  // of it selected. Enter or clicking away keeps it, Esc gives up
+  // (onRename gets null).
+  let { nodes, current, folder, open, renaming = "", onPick, onFolder, onMenu, onRename, depth = 0 }: {
+    nodes: Node[]; current: string; folder: string; open: Record<string, boolean>; renaming?: string;
+    onPick: (p: string) => void; onFolder: (p: string) => void; onMenu: (n: Node, e: MouseEvent) => void;
+    onRename: (n: Node, name: string | null) => void; depth?: number;
   } = $props();
+
+  // Once per field: Enter and then the blur it causes count as one.
+  let done = false;
+  const start = (el: HTMLInputElement) => { done = false; el.focus(); el.select(); };
+  function finish(n: Node, name: string | null) {
+    if (done) return;
+    done = true;
+    onRename(n, name);
+  }
 </script>
 
 <ul class:nested={depth > 0}>
   {#each nodes as n (n.path)}
     <li>
-      {#if n.dir}
+      {#if n.path === renaming}
+        <div class="row" class:note={!n.dir}>
+          {#if n.dir}<span class="chev" class:open={open[n.path]}><ChevronRight size={14} /></span>{/if}
+          <input class="rename" value={n.name} use:start aria-label={n.name}
+            onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); finish(n, e.currentTarget.value); } else if (e.key === "Escape") { e.preventDefault(); finish(n, null); } }}
+            onblur={(e) => finish(n, e.currentTarget.value)} />
+        </div>
+        {#if n.dir && open[n.path] && n.children}
+          <Tree nodes={n.children} {current} {folder} {open} {renaming} {onPick} {onFolder} {onMenu} {onRename} depth={depth + 1} />
+        {/if}
+      {:else if n.dir}
         <button class="row" class:selected={n.path === folder} onclick={() => { open[n.path] = !open[n.path]; onFolder(n.path); }} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
           <span class="chev" class:open={open[n.path]}><ChevronRight size={14} /></span><span class="name">{n.name}</span>
         </button>
         {#if open[n.path] && n.children}
-          <Tree nodes={n.children} {current} {folder} {open} {onPick} {onFolder} {onMenu} depth={depth + 1} />
+          <Tree nodes={n.children} {current} {folder} {open} {renaming} {onPick} {onFolder} {onMenu} {onRename} depth={depth + 1} />
         {/if}
       {:else}
         <button class="row note" class:active={n.path === current} draggable="true" ondragstart={(e) => e.dataTransfer?.setData("application/x-blup-note", n.path)} onclick={() => onPick(n.path)} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
@@ -46,6 +70,7 @@
   .row.note.active, .row.selected { background: var(--soft); color: var(--text); opacity: 1; }
   .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .kind { display: inline-grid; flex: none; margin-inline-start: -1.15rem; width: .85rem; color: var(--muted); }
+  .rename { flex: 1; min-width: 0; padding: .1rem .35rem; margin-block: -.1rem; border: 1px solid var(--blue); border-radius: .3rem; outline: none; background: var(--panel); color: var(--text); font: inherit; }
   .chev { display: inline-grid; place-items: center; width: 1rem; flex: none; color: var(--muted); transition: transform .15s; }
   .chev.open { transform: rotate(90deg); }
 </style>

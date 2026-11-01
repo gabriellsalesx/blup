@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Clipboard } from "@wailsio/runtime";
-  import { RestoreSection, RenameItem, MoveItem, CopyNote, DeleteItem, NoteLink, OpenInObsidian, ShowInFolder } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { RestoreSection, MoveItem, CopyNote, DeleteItem, NoteLink, OpenInObsidian, ShowInFolder } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import FilePlus from "@lucide/svelte/icons/file-plus";
   import FolderPlus from "@lucide/svelte/icons/folder-plus";
@@ -19,20 +19,20 @@
   import { toast, toastError } from "./toast.svelte";
 
   // The right-click menu of the file explorer, and its small dialogs
-  // (rename, move to, delete).
-  let { node, x, y, current, folders, boards = false, onClose, onChanged, onNew, onHistory }: {
+  // (move to, delete). Renaming happens in the tree itself (onRename).
+  let { node, x, y, current, folders, boards = false, onClose, onChanged, onNew, onRename, onHistory }: {
     node: Node; x: number; y: number; current: string; folders: string[];
     onClose: () => void;
     onChanged: (change: { from: string; to: string | null; open?: string }) => void;
     boards?: boolean; // a vault of notes: new canvases and drawings too
     onNew: (kind: NewKind, folder: string) => void;
+    onRename: (node: Node) => void;
     // Earlier versions on Blup Cloud (only when the plan keeps them).
     onHistory?: (path: string) => void;
   } = $props();
   const m = t.menu;
 
-  let dialog = $state<"" | "rename" | "move" | "delete">("");
-  let name = $state(node.name);
+  let dialog = $state<"" | "move" | "delete">("");
   let filter = $state("");
   let error = $state("");
   let copied = $state(false);
@@ -43,7 +43,6 @@
     try { await fn(); } catch (e) { error = msg(e); }
   }
   const base = (p: string) => p.split("/").pop()!.replace(/\.(draw|canvas|md)$/i, "");
-  const rename = () => run(async () => { const to = await RenameItem(node.path, name); onChanged({ from: node.path, to }); toast(t.toast.noteRenamed.replace("{name}", base(to))); });
   const move = (f: string) => run(async () => { const to = await MoveItem(node.path, f); onChanged({ from: node.path, to }); toast(t.toast.noteMoved.replace("{folder}", f || m.top)); });
   // To the Blup trash, with Undo in the toast (the tree follows the files).
   const remove = () => run(async () => {
@@ -98,16 +97,12 @@
     <button onclick={() => { OpenInObsidian(node.path); onClose(); }}><External size={16} />{m.obsidian}</button>
     <button onclick={() => { ShowInFolder(node.path); onClose(); }}><FolderOpen size={16} />{m.show}</button>
     <hr />
-    <button onclick={() => (dialog = "rename")}><Pencil size={16} />{m.rename}</button>
+    <button onclick={() => { onRename(node); onClose(); }}><Pencil size={16} />{m.rename}</button>
     <button class="danger" onclick={() => (dialog = "delete")}><Trash size={16} />{m.delete}</button>
   </div>
 {:else}
   <div class="dialog" role="dialog" aria-modal="true">
-    {#if dialog === "rename"}
-      <h2>{m.renameTitle}</h2>
-      <input type="text" bind:value={name} use:focus onkeydown={(e) => e.key === "Enter" && rename()} />
-      <p class="muted">{m.renameHelp}</p>
-    {:else if dialog === "move"}
+    {#if dialog === "move"}
       <h2>{m.moveTitle.replace("{name}", node.name)}</h2>
       <input type="text" bind:value={filter} placeholder={m.filter} use:focus />
       <ul>
@@ -120,7 +115,6 @@
     {#if error}<p class="bad">{error}</p>{/if}
     <div class="actions">
       <button class="btn ghost" onclick={onClose}>{t.sec.cancel}</button>
-      {#if dialog === "rename"}<button class="btn" onclick={rename}>{m.rename}</button>{/if}
       {#if dialog === "delete"}<button class="btn danger-btn" onclick={remove}>{m.delete}</button>{/if}
     </div>
   </div>

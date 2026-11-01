@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
-  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, RenameItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -99,6 +99,19 @@
       reveal(rel);
       screen = "write";
       await pick(rel);
+    } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
+
+  // Renaming in the tree itself: the item's name becomes a field.
+  let renaming = $state("");
+  async function rename(n: Node, name: string | null) {
+    renaming = "";
+    name = name?.trim() ?? "";
+    if (!name || name === n.name) return;
+    try {
+      const to = await RenameItem(n.path, name);
+      await menuChanged({ from: n.path, to });
+      toast(t.toast.noteRenamed.replace("{name}", fileTitle(to)));
     } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
   }
 
@@ -501,7 +514,7 @@
           </div>
         {/if}
         <div class="files">
-          <Tree nodes={tree} {current} {folder} open={openMap} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} onMenu={openMenu} />
+          <Tree nodes={tree} {current} {folder} open={openMap} {renaming} onRename={rename} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} onMenu={openMenu} />
         </div>
       {:else}
         <div class="side-search">
@@ -633,7 +646,7 @@
     {#key historyFor}<HistoryModal path={historyFor} onClose={() => (historyFor = "")} />{/key}
   {/if}
   {#if menu}
-    <FileMenu node={menu.node} x={menu.x} y={menu.y} {current} folders={folders(tree)} boards={notesVault} onClose={() => (menu = null)} onChanged={menuChanged} onNew={menuNew} onHistory={cloudHistory ? (p) => (historyFor = p) : undefined} />
+    <FileMenu node={menu.node} x={menu.x} y={menu.y} {current} folders={folders(tree)} boards={notesVault} onRename={(n) => (renaming = n.path)} onClose={() => (menu = null)} onChanged={menuChanged} onNew={menuNew} onHistory={cloudHistory ? (p) => (historyFor = p) : undefined} />
   {/if}
   {#if termStarted}
     <div class="term" class:min={!termOpen} style:height="{termHeight}px">
