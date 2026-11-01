@@ -1,11 +1,14 @@
 {{- /* The block of votes, reactions and comments of one GitHub issue
 (feedback.js fills it). Params: n (the issue's number; 0 in the template
 the feedback board clones for each request), url (the issue on GitHub),
-kind (the page's section: roadmap adds the vote button). */ -}}
+kind (the page's section: roadmap adds the vote button). An example request
+of the board (feedback-examples.html) passes example (true) and replies
+(its example comments): shown as they are, nothing read from GitHub. */ -}}
 {{- $n := .n -}}
 {{- $url := .url -}}
 {{- $kind := .kind -}}
-<section class="feedback" data-fb-issue="{{ $n }}" data-fb-mode="full" aria-labelledby="fb-title">
+{{- $example := .example -}}
+<section class="feedback"{{ if $example }} data-fbb-example-block{{ else }} data-fb-issue="{{ $n }}" data-fb-mode="full"{{ end }} aria-labelledby="fb-title">
   <div class="fb-bar">
     {{- if eq $kind "roadmap" }}
     <a class="fb-vote" href="{{ $url }}" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-chevron-up"/></svg><b data-fb-votes>0</b><span>{{ T "fbVote" }}</span></a>
@@ -13,8 +16,18 @@ kind (the page's section: roadmap adds the vote button). */ -}}
     <span class="fb-chips" data-fb-chips></span>
     <a class="fb-add" href="{{ $url }}" rel="noopener"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-smile-plus"/></svg><span>{{ T "fbReact" }}</span></a>
   </div>
-  <h2 id="fb-title" class="fb-title">{{ T "fbComments" }} <span class="fb-count" data-fb-ccount></span></h2>
-  <ol class="fb-list" data-fb-list><li class="fb-empty" data-fb-empty>{{ T "fbEmpty" }}</li></ol>
+  <h2 id="fb-title" class="fb-title">{{ T "fbComments" }} <span class="fb-count" data-fb-ccount>{{ with .replies }}{{ len . }}{{ end }}</span></h2>
+  <ol class="fb-list" data-fb-list>
+    {{- range .replies }}
+    {{- $days := int (.days | default 0) }}
+    <li class="fb-item">
+      <div class="fb-head"><span class="fbb-avatar" aria-hidden="true"><svg class="icon"><use href="#i-user"/></svg></span><b>{{ .author }}</b><time>{{ cond (eq $days 0) (T "fbbToday") (cond (eq $days 1) (T "fbbDay1") (replace (T "fbbDayN") "{n}" (string $days))) }}</time></div>
+      <div class="fb-body prose"><p>{{ .text }}</p></div>
+    </li>
+    {{- else }}
+    <li class="fb-empty" data-fb-empty>{{ T "fbEmpty" }}</li>
+    {{- end }}
+  </ol>
   {{- /* The comment box. Until the visitor signs in it is only a sample,
   locked; feedback.js unlocks it after the GitHub login (without the login
   service the button takes the visitor to the issue on GitHub). */}}

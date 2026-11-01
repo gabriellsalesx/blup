@@ -1,0 +1,20 @@
+{{- /* Each example request on its own (#ex-0, #ex-1...), as feedback.js
+shows a real one: its text, then votes, reactions and comments, here the
+example's own. Param: the examples. */ -}}
+{{- range $i, $e := . }}
+{{- $kind := .kind | default "other" }}{{ $status := .status | default "new" }}{{ $days := int (.days | default 0) }}
+<article class="fbb-detail" data-fbb-ex="{{ $i }}" hidden>
+  <a href="#" class="fbb-back" data-fbb-back><svg class="icon" aria-hidden="true"><use href="#i-arrow-left"/></svg>{{ T "fbbBack" }}</a>
+  <p class="fbb-line">
+    {{- if ne $status "new" }}<span class="fbb-status s-{{ $status }}">{{ T (printf "fbbStatus_%s" $status) }}</span>{{ end -}}
+    <span class="fbb-cat">{{ T (printf "fbbKind_%s" $kind) }}</span>
+  </p>
+  <h2 class="fbb-detail-title">{{ .title }}</h2>
+  <div class="fbb-meta">
+    <span class="fbb-avatar" aria-hidden="true"><svg class="icon"><use href="#i-user"/></svg></span>
+    <span><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>{{ cond (eq $days 0) (T "fbbToday") (cond (eq $days 1) (T "fbbDay1") (replace (T "fbbDayN") "{n}" (string $days))) }}</span>
+  </div>
+  {{- with .body }}<div class="prose fbb-body"><p>{{ . }}</p></div>{{ end }}
+  {{ partial "bento/feedback-block.html" (dict "n" 0 "url" "#" "kind" "" "example" true "replies" (.replies | default slice)) }}
+</article>
+{{- end }}

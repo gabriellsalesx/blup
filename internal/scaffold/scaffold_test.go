@@ -433,8 +433,10 @@ func TestFeedbackBoard(t *testing.T) {
 		}
 		page := string(b)
 		if !on {
-			if strings.Contains(page, "data-fb-board") || strings.Contains(page, "data-fbb-new") || !strings.Contains(page, "O quadro de feedback precisa dos comentários") {
-				t.Error("without comments the board can't take requests and says why")
+			// The board still works on its examples (the script loads), and
+			// says why it can't take requests.
+			if !strings.Contains(page, "data-fb-board") || strings.Contains(page, "data-fbb-issues") || !strings.Contains(page, "js/feedback") || !strings.Contains(page, "O quadro de feedback precisa dos comentários") {
+				t.Error("without comments the board works on its examples and says why it takes no requests")
 			}
 			// The examples still show (as the other sections' notes); the
 			// notice saying so is the preview's only.
@@ -447,7 +449,7 @@ func TestFeedbackBoard(t *testing.T) {
 			`data-fb-board`, `data-fbb-issues="https://github.com/ana/produto-feedback/issues"`,
 			`data-kind="bug" aria-selected="false"`, `data-kind="improvement"`, `<b data-count>1</b>`, `<dialog class="fbb-dialog"`,
 			`<template data-fbb-block>`, 
-			`<span class="fbb-title">Modo escuro</span>`, `<use href="#i-message-square"/>`, `<use href="#i-chevron-up"/>`,
+			`<a class="fbb-title" href="#ex-0">Modo escuro</a>`, `data-fbb-ex="0"`, `data-fbb-example-block`, `role="listbox"`, `<use href="#i-message-square"/>`, `<use href="#i-chevron-up"/>`,
 			`<span class="fbb-status s-planned">Planejado</span>`, `<span class="fbb-cat">Relatos de bug</span>`,
 		} {
 			if !strings.Contains(page, want) {

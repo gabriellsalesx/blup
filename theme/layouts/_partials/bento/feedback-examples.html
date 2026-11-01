@@ -2,17 +2,17 @@
 the section's note: on the board while it has no real request (or comments
 are off), as the other sections bring example notes. The same card
 feedback.js draws for a real request. Param: the examples. */ -}}
-{{- range . }}
+{{- range $i, $e := . }}
 {{- $kind := .kind | default "other" }}{{ $status := .status | default "new" }}
-{{- $comments := int (.comments | default 0) }}{{ $days := int (.days | default 0) }}
+{{- $comments := len (.replies | default slice) }}{{ $days := int (.days | default 0) }}
 <li class="fbb-item fbb-example" data-kind="{{ $kind }}" data-status="{{ $status }}" data-votes="{{ .votes | default 0 }}" data-days="{{ $days }}">
-  <span class="fbb-vote" aria-label="{{ T "fbVotes" }}: {{ .votes | default 0 }}"><svg class="icon" aria-hidden="true"><use href="#i-chevron-up"/></svg><b>{{ .votes | default 0 }}</b></span>
+  <button type="button" class="fbb-vote" aria-pressed="false" aria-label="{{ T "fbVote" }}"><svg class="icon" aria-hidden="true"><use href="#i-chevron-up"/></svg><b>{{ .votes | default 0 }}</b></button>
   <div class="fbb-main">
     <p class="fbb-line">
       {{- if ne $status "new" }}<span class="fbb-status s-{{ $status }}">{{ T (printf "fbbStatus_%s" $status) }}</span>{{ end -}}
       <span class="fbb-cat">{{ T (printf "fbbKind_%s" $kind) }}</span>
     </p>
-    <span class="fbb-title">{{ .title }}</span>
+    <a class="fbb-title" href="#ex-{{ $i }}">{{ .title }}</a>
     {{- with .body }}<p class="fbb-excerpt">{{ . }}</p>{{ end }}
     <div class="fbb-meta">
       <span><svg class="icon" aria-hidden="true"><use href="#i-message-square"/></svg>{{ cond (eq $comments 1) (T "fbbComment1") (replace (T "fbbCommentN") "{n}" (string $comments)) }}</span>

@@ -188,6 +188,8 @@ layout. Bundled into one file by css.Build. */
   .fbb-page { width: 100%; max-width: var(--container); margin-inline: auto; padding: 2.5rem var(--gutter) 5rem; }
   .fbb { --k-feature: #22c55e; --k-improvement: #3b82f6; --k-bug: #ef4444; --k-other: #64748b; display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.5rem; align-items: start; }
   .fbb .icon { width: 1.125rem; height: 1.125rem; flex: none; }
+  /* Parts the script hides (the list while a request is open...). */
+  .fbb [hidden] { display: none !important; }
   /* The categories (FeedLog's boards). */
   .fbb-side { position: sticky; top: calc(var(--header-h) + 1.5rem); display: grid; gap: 1rem; }
   .fbb-side h2 { padding-inline: .75rem; font-size: 1rem; font-weight: 700; color: var(--main-900); }
@@ -203,11 +205,22 @@ layout. Bundled into one file by css.Build. */
   .fbb-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
   .fbb-bar h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -.02em; color: var(--main-900); }
   .fbb-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .625rem; }
-  .fbb-filter, .fbb-search { display: inline-flex; align-items: center; gap: .5rem; height: 2.5rem; padding-inline: .875rem; border: 1px solid var(--main-200); border-radius: .625rem; background: var(--main-25); color: var(--main-500); }
-  .fbb-filter select, .fbb-search input { height: 100%; border: 0; outline: 0; background: transparent; color: var(--main-700); font: inherit; font-size: .875rem; }
-  .fbb-filter select { appearance: none; padding-inline-end: .25rem; cursor: pointer; }
-  .fbb-search input { width: 9rem; }
-  .fbb-filter:focus-within, .fbb-search:focus-within { border-color: var(--main-400); }
+  .fbb-filter-button, .fbb-search { display: inline-flex; align-items: center; gap: .5rem; height: 2.5rem; padding-inline: .875rem; border: 1px solid var(--main-200); border-radius: .625rem; background: var(--main-25); color: var(--main-500); }
+  .fbb-filter-button { font-size: .875rem; color: var(--main-700); transition: border-color .15s; }
+  .fbb-filter-button:hover, .fbb-filter-button[aria-expanded="true"] { border-color: var(--main-400); }
+  .fbb-filter-button .fbb-caret { width: 1rem; height: 1rem; color: var(--main-500); transition: transform .15s; }
+  .fbb-filter-button[aria-expanded="true"] .fbb-caret { transform: rotate(180deg); }
+  .fbb-search input { width: 9rem; height: 100%; border: 0; outline: 0; background: transparent; color: var(--main-700); font: inherit; font-size: .875rem; }
+  .fbb-search:focus-within { border-color: var(--main-400); }
+  /* The status menu. */
+  .fbb-filter { position: relative; }
+  .fbb-menu { position: absolute; z-index: 20; top: calc(100% + .375rem); inset-inline-start: 0; display: grid; gap: .125rem; min-width: 100%; width: max-content; margin: 0; padding: .375rem; list-style: none; border: 1px solid var(--main-200); border-radius: .75rem; background: var(--main-25); box-shadow: var(--shadow-lg); }
+  .fbb-menu[hidden] { display: none; }
+  .fbb-menu li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .5rem .625rem; border-radius: .5rem; font-size: .875rem; color: var(--main-700); cursor: pointer; outline: 0; }
+  .fbb-menu li:hover, .fbb-menu li:focus-visible { background: var(--main-100); color: var(--main-900); }
+  .fbb-menu li .icon { width: 1rem; height: 1rem; color: var(--primary-700); visibility: hidden; }
+  .fbb-menu li[aria-selected="true"] { font-weight: 600; color: var(--main-900); }
+  .fbb-menu li[aria-selected="true"] .icon { visibility: visible; }
   .fbb-sort { display: inline-flex; gap: .125rem; padding: .25rem; border-radius: .625rem; background: var(--main-100); }
   .fbb-sort button { height: 2rem; padding-inline: .875rem; border-radius: .5rem; font-size: .875rem; color: var(--main-500); }
   .fbb-sort button[aria-selected="true"] { background: var(--main-25); color: var(--main-900); font-weight: 600; box-shadow: var(--shadow-sm); }
@@ -240,6 +253,9 @@ layout. Bundled into one file by css.Build. */
   .fbb-avatar { display: inline-grid !important; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; overflow: hidden; background: color-mix(in srgb, #38bdf8 20%, transparent); color: light-dark(#0369a1, #7dd3fc); }
   .fbb-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .fbb-avatar .icon { width: .875rem; height: .875rem; }
+  .fb-head .fbb-avatar { width: 2rem; height: 2rem; }
+  .fb-head .fbb-avatar .icon { width: 1rem; height: 1rem; }
+  .fbb-meta a { color: inherit; }
   .fbb-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .05rem .5rem; border-radius: 999px; background: var(--main-100); color: var(--main-700); font-size: .75rem; font-weight: 500; }
   .fbb-chip[class*=" k-"]::before { content: ""; width: .45rem; height: .45rem; border-radius: 50%; background: var(--k); }
   .fbb .k-feature { --k: var(--k-feature); } .fbb .k-bug { --k: var(--k-bug); } .fbb .k-improvement { --k: var(--k-improvement); } .fbb .k-other { --k: var(--k-other); }
@@ -263,7 +279,7 @@ layout. Bundled into one file by css.Build. */
   .fbb-back { display: inline-flex; align-items: center; gap: .375rem; width: fit-content; font-size: .875rem; color: var(--main-600); }
   .fbb-back .icon { width: 1rem; height: 1rem; }
   .fbb-detail-title { font-size: 1.5rem; font-weight: 700; color: var(--main-900); }
-  .fbb-dialog { width: min(34rem, calc(100vw - 2rem)); padding: 0; border: 1px solid var(--main-200); border-radius: .75rem; background: var(--main-50, var(--main-25)); color: var(--main-900); box-shadow: var(--shadow-lg); }
+  .fbb-dialog { width: min(34rem, calc(100vw - 2rem)); margin: auto; padding: 0; border: 1px solid var(--main-200); border-radius: .75rem; background: var(--main-50, var(--main-25)); color: var(--main-900); box-shadow: var(--shadow-lg); }
   .fbb-dialog::backdrop { background: rgb(0 0 0 / .45); }
   .fbb-form { display: grid; gap: 1rem; padding: 1.5rem; }
   .fbb-form h2 { font-size: 1.125rem; font-weight: 700; }

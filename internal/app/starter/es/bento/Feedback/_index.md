@@ -9,37 +9,58 @@ examples:
     kind: feature
     status: planned
     votes: 42
-    comments: 8
     days: 2
     body: "Seguir el tema del sistema, sin cambiarlo a mano cada noche."
+    replies:
+      - author: marina
+        days: 1
+        text: "Sería genial, de noche la pantalla clara cansa bastante."
+      - author: rafael
+        days: 1
+        text: "Un voto más. ¿Puede seguir el horario del sistema también?"
   - title: "La búsqueda no encuentra palabras con tilde"
     kind: bug
     status: progress
     votes: 17
-    comments: 3
     days: 9
     body: "Buscar \"configuración\" no trae nada, pero \"configuracion\" sí."
+    replies:
+      - author: julia
+        days: 6
+        text: "Me pasa también, con \"acción\" y \"está\"."
+      - author: equipo
+        days: 2
+        text: "Ya encontramos la causa y la corrección sale en la próxima versión."
   - title: "Atajo para crear una nota nueva"
     kind: improvement
     status: new
     votes: 11
-    comments: 2
     days: 15
     body: "Un atajo de teclado ayudaría mucho a quien escribe todo el día."
+    replies:
+      - author: pedro
+        days: 10
+        text: "Ctrl+N sería lo más natural."
   - title: "Exportar a PDF"
     kind: feature
     status: done
     votes: 29
-    comments: 5
     days: 22
     body: "Poder descargar una página entera en PDF para enviarla por correo."
+    replies:
+      - author: carla
+        days: 20
+        text: "Lo usé hoy para enviar un informe, quedó perfecto. ¡Gracias!"
   - title: "Versión para Windows XP"
     kind: other
     status: declined
     votes: 3
-    comments: 1
     days: 40
     body: "Todavía uso una computadora vieja en la oficina."
+    replies:
+      - author: equipo
+        days: 38
+        text: "Windows XP ya no recibe actualizaciones de seguridad, así que no lo vamos a soportar."
 ---
 %%
 Esta carpeta es el tablero de feedback del sitio: quien visita abre pedidos (error, función, mejora u otro), vota y comenta, entrando con GitHub. Los pedidos quedan en las issues del repositorio de comentarios del sitio, no aquí. El estado de cada pedido (planeado, en curso, hecho, rechazado) lo cambias en Blup Studio, en la pantalla Feedback.

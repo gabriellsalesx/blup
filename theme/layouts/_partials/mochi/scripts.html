@@ -7,7 +7,9 @@ app" button. Not in the preview, which changes all the time. */}}
 <script type="module" src="{{ $pwa.RelPermalink }}" data-sw="{{ "sw.js" | relURL }}" data-scope="{{ site.Home.RelPermalink }}"></script>
 {{- end }}
 {{- /* Feedback (votes, reactions, comments from GitHub issues). */}}
-{{- if site.Params.blup.feedback }}
+{{- /* The feedback board (Bento) works without them too: its filters, its
+example requests and the form that says comments are off. */}}
+{{- if or site.Params.blup.feedback (eq (partial "bento/kind.html" .) "feedback") }}
 {{- $fb := resources.Get "js/feedback.js" | js.Build (dict "minify" true "format" "esm") | fingerprint }}
 {{- /* api: the login service, set by the CLI while its GitHub App is on the
 repository; without it, voting and commenting link to GitHub. */}}

@@ -18,9 +18,10 @@ saying so only in Blup Studio's preview. */ -}}
   "empty" (T "fbbEmpty") "nothing" (T "fbbNothing") "back" (T "fbbBack") "written" (T "fbbWritten") "votes" (T "fbVote")
   "comments" (T "fbComments") "error" (T "fbError") "send" (T "fbbSend")
   "boards" (dict "feature" (T "fbbKind_feature") "bug" (T "fbbKind_bug") "improvement" (T "fbbKind_improvement") "other" (T "fbbKind_other"))
+  "off" (T "fbbOffSend") "exampleOnly" (T "fbbExampleOnly")
   "comment1" (T "fbbComment1") "commentN" (T "fbbCommentN") "today" (T "fbbToday") "day1" (T "fbbDay1") "dayN" (T "fbbDayN") -}}
 <main id="main" class="fbb-page">
-  <div class="fbb"{{ if $repo }} data-fb-board data-fbb-text="{{ $text | jsonify }}" data-fbb-issues="https://github.com/{{ $repo }}/issues"{{ end }}>
+  <div class="fbb" data-fb-board data-fbb-text="{{ $text | jsonify }}"{{ with $repo }} data-fbb-issues="https://github.com/{{ . }}/issues"{{ end }}>
     {{- /* The categories, FeedLog's "Boards": all, then one per kind. */}}
     <nav class="fbb-side" aria-label="{{ T "fbbBoards" }}">
       <h2>{{ T "fbbBoards" }}</h2>
@@ -39,14 +40,19 @@ saying so only in Blup Studio's preview. */ -}}
       <header class="fbb-bar">
         <h1>{{ partial "title.html" . }}</h1>
         <div class="fbb-tools">
-          <label class="fbb-filter">
-            <svg class="icon" aria-hidden="true"><use href="#i-list-filter"/></svg>
-            <select data-fbb-status aria-label="{{ T "fbbStatus" }}">
-              <option value="">{{ T "fbbAllStatus" }}</option>
-              <option value="active">{{ T "fbbActive" }}</option>
-              {{- range $statuses }}<option value="{{ . }}">{{ T (printf "fbbStatus_%s" .) }}</option>{{ end }}
-            </select>
-          </label>
+          {{- /* The status filter: a menu of the theme's own, not the system's. */}}
+          <div class="fbb-filter" data-fbb-status>
+            <button type="button" class="fbb-filter-button" aria-haspopup="listbox" aria-expanded="false" aria-label="{{ T "fbbStatus" }}">
+              <svg class="icon" aria-hidden="true"><use href="#i-list-filter"/></svg><span data-fbb-status-label>{{ T "fbbAllStatus" }}</span><svg class="icon fbb-caret" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+            </button>
+            <ul class="fbb-menu" role="listbox" aria-label="{{ T "fbbStatus" }}" hidden>
+              <li role="option" data-value="" aria-selected="true"><span>{{ T "fbbAllStatus" }}</span><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></li>
+              <li role="option" data-value="active" aria-selected="false"><span>{{ T "fbbActive" }}</span><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></li>
+              {{- range $statuses }}
+              <li role="option" data-value="{{ . }}" aria-selected="false"><span class="fbb-status s-{{ . }}">{{ T (printf "fbbStatus_%s" .) }}</span><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></li>
+              {{- end }}
+            </ul>
+          </div>
           <div class="fbb-sort" role="tablist" aria-label="{{ T "fbbSort" }}">
             <button type="button" role="tab" data-sort="top" aria-selected="true">{{ T "fbbTop" }}</button>
             <button type="button" role="tab" data-sort="recent" aria-selected="false">{{ T "fbbRecent" }}</button>
@@ -55,9 +61,7 @@ saying so only in Blup Studio's preview. */ -}}
             <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
             <input type="search" data-fbb-search placeholder="{{ T "fbbSearch" }}" aria-label="{{ T "fbbSearch" }}">
           </label>
-          {{- if $repo }}
-          <a class="button fbb-new" data-fbb-new href="https://github.com/{{ $repo }}/issues/new"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>{{ T "fbbNew" }}</a>
-          {{- end }}
+          <a class="button fbb-new" data-fbb-new href="{{ with $repo }}https://github.com/{{ . }}/issues/new{{ else }}#{{ end }}"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>{{ T "fbbNew" }}</a>
         </div>
       </header>
       {{- if not $repo }}<p class="fbb-note">{{ T "fbbOff" }}</p>{{ end }}
@@ -67,8 +71,8 @@ saying so only in Blup Studio's preview. */ -}}
         {{- else if $repo }}<li class="fbb-empty">{{ T "fbbLoading" }}</li>{{ end }}
       </ol>
       <article class="fbb-detail" data-fbb-detail hidden></article>
+      {{- with $examples }}{{ partial "bento/feedback-example-pages.html" . }}{{ end }}
     </div>
-    {{- if $repo }}
     <dialog class="fbb-dialog" data-fbb-dialog aria-labelledby="fbb-new-title">
       <form method="dialog" class="fbb-form">
         <h2 id="fbb-new-title">{{ T "fbbNew" }}</h2>
@@ -87,7 +91,6 @@ saying so only in Blup Studio's preview. */ -}}
         </div>
       </form>
     </dialog>
-    {{- end }}
     {{- if $repo }}
     <template data-fbb-block>{{ partial "bento/feedback-block.html" (dict "n" 0 "url" (printf "https://github.com/%s/issues" $repo) "kind" "roadmap") }}</template>
     {{- end }}

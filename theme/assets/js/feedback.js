@@ -546,7 +546,7 @@ function postStatus(p) {
 
 async function board() {
   const root = document.querySelector("[data-fb-board]");
-  if (!root || !repo) return;
+  if (!root) return;
   const bt = JSON.parse(root.dataset.fbbText || "{}");
   const lang = document.documentElement.lang || undefined;
   const list = root.querySelector("[data-fbb-list]");
@@ -558,8 +558,12 @@ async function board() {
   // fill the board until a real one comes.
   const examples = [...list.querySelectorAll(".fbb-example")];
   const note = root.querySelector("[data-fbb-note]");
+  const notes = [...root.querySelectorAll(".fbb-note")];
+  const exPages = [...root.querySelectorAll("[data-fbb-ex]")];
 
-  try {
+  // Without comments on (no repository) the board still works on its
+  // examples; nothing is read from GitHub.
+  if (repo) try {
     const raw = await read(
       `/posts?repo=${encodeURIComponent(repo)}`,
       `${API}/issues?state=all&sort=created&direction=desc&per_page=100`,
@@ -661,7 +665,61 @@ async function board() {
     state.kind = tab.dataset.kind;
     draw();
   });
-  root.querySelector("[data-fbb-status]").addEventListener("change", (e) => { state.status = e.target.value; draw(); });
+  // The status menu (a list of the theme's own, not the system's select).
+  const menu = root.querySelector("[data-fbb-status]");
+  const menuButton = menu.querySelector("button");
+  const options = [...menu.querySelectorAll('[role="option"]')];
+  const menuList = menu.querySelector('[role="listbox"]');
+  const openMenu = (open) => {
+    menuList.hidden = !open;
+    menuButton.setAttribute("aria-expanded", String(open));
+    if (open) (options.find((o) => o.getAttribute("aria-selected") === "true") || options[0]).focus();
+  };
+  const pick = (o) => {
+    options.forEach((x) => x.setAttribute("aria-selected", String(x === o)));
+    menu.querySelector("[data-fbb-status-label]").textContent = o.textContent.trim();
+    state.status = o.dataset.value;
+    openMenu(false);
+    menuButton.focus();
+    draw();
+  };
+  options.forEach((o) => { o.tabIndex = -1; });
+  menuButton.addEventListener("click", () => openMenu(menuList.hidden));
+  menuList.addEventListener("click", (e) => { const o = e.target.closest('[role="option"]'); if (o) pick(o); });
+  menuList.addEventListener("keydown", (e) => {
+    const i = options.indexOf(document.activeElement);
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      options[(i + (e.key === "ArrowDown" ? 1 : options.length - 1)) % options.length].focus();
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (i >= 0) pick(options[i]);
+    } else if (e.key === "Escape") {
+      openMenu(false);
+      menuButton.focus();
+    }
+  });
+  document.addEventListener("click", (e) => { if (!menu.contains(e.target)) openMenu(false); });
+
+  // An example's vote: it counts here only, to show how voting feels.
+  list.addEventListener("click", (e) => {
+    const v = e.target.closest(".fbb-example .fbb-vote");
+    if (!v) return;
+    const on = v.getAttribute("aria-pressed") !== "true";
+    v.setAttribute("aria-pressed", String(on));
+    const b = v.querySelector("b");
+    b.textContent = String(Number(b.textContent) + (on ? 1 : -1));
+    v.closest(".fbb-example").dataset.votes = b.textContent;
+  });
+  // An example's comment box and reactions: they say it is an example.
+  for (const page of exPages) {
+    const say = page.querySelector(".fb-error");
+    page.querySelectorAll(".fb-comment, .fb-add, .fb-box").forEach((x) => x.addEventListener("click", (e) => {
+      e.preventDefault();
+      say.textContent = bt.exampleOnly;
+      say.hidden = false;
+    }));
+  }
   root.querySelector(".fbb-sort").addEventListener("click", (e) => {
     const b = e.target.closest("[data-sort]");
     if (!b) return;
@@ -676,14 +734,24 @@ async function board() {
   const show = async () => {
     const n = Number(/^#p-(\d+)$/.exec(location.hash)?.[1]);
     const issue = n && posts.find((i) => i.data.number === n);
-    if (!issue) {
+    const ex = /^#ex-(\d+)$/.exec(location.hash)?.[1];
+    const exPage = !posts.length && ex != null && exPages.find((a) => a.dataset.fbbEx === ex);
+    exPages.forEach((a) => { a.hidden = a !== exPage; });
+    if (!issue && !exPage) {
       detail.hidden = true;
       detail.replaceChildren();
       list.hidden = bar.hidden = false;
+      notes.forEach((x) => { x.hidden = x === note && !!posts.length; });
       draw();
       return;
     }
     list.hidden = bar.hidden = true;
+    notes.forEach((x) => { x.hidden = true; });
+    if (exPage) {
+      detail.hidden = true;
+      exPage.scrollIntoView({ block: "start" });
+      return;
+    }
     const p = issue.data;
     const written = postLang(p);
     const backLink = el("a", { href: "#", className: "fbb-back" }, icon("arrow-left"), bt.back);
@@ -710,10 +778,17 @@ async function board() {
   const dialog = root.querySelector("[data-fbb-dialog]");
   const form = dialog.querySelector("form");
   const err = form.querySelector(".fb-error");
-  root.querySelector("[data-fbb-new]").addEventListener("click", async (e) => {
-    if (!loginAPI) return; // the link goes to GitHub
+  root.querySelectorAll("[data-fbb-back]").forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
-    if (!(await key())) return login();
+    history.pushState(null, "", location.pathname + location.search);
+    show();
+  }));
+  root.querySelector("[data-fbb-new]").addEventListener("click", async (e) => {
+    if (repo && !loginAPI) return; // the link goes to GitHub
+    e.preventDefault();
+    // Without comments on, the form shows what it would ask, and says why
+    // it can't send.
+    if (repo && !(await key())) return login();
     err.hidden = true;
     dialog.showModal();
     form.elements.title.focus();
@@ -725,6 +800,11 @@ async function board() {
     const f = form.elements;
     const title = f.title.value.trim();
     if (!title) return;
+    if (!repo) {
+      err.textContent = bt.off;
+      err.hidden = false;
+      return;
+    }
     const kind = f.kind.value || "other";
     const send = form.querySelector("[data-fbb-send]");
     send.disabled = true;
@@ -744,6 +824,7 @@ async function board() {
       dialog.close();
       location.hash = `p-${p.number}`;
     } catch {
+      err.textContent = bt.error;
       err.hidden = false;
     }
     send.disabled = false;
