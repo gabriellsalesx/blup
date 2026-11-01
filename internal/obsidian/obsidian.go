@@ -294,7 +294,7 @@ func StrictLineBreaks(vault string) (bool, error) {
 	return v, nil
 }
 
-var sectionKind = regexp.MustCompile(`(?m)^blup:\s*["']?(docs|roadmap|changelog|help|blog|authors)["']?\s*$`)
+var sectionKind = regexp.MustCompile(`(?m)^blup:\s*["']?(docs|roadmap|changelog|help|blog|feedback|authors)["']?\s*$`)
 
 // Sections maps each special folder kind found directly inside dir (the
 // site folder) to its folder name. A folder has a kind when its _index note
