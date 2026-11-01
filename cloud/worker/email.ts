@@ -1,5 +1,4 @@
 import { hasEmail } from "./auth-options";
-import { LOGO_PNG } from "./email-logo";
 
 // The sign-in code by e-mail, through Cloudflare's Email Service. With
 // EMAIL_MODE=log (development) the code only shows in the terminal.
@@ -32,8 +31,7 @@ export async function sendCode(env: Cloudflare.Env, email: string, code: string,
 			from: sender(env.MAIL_FROM),
 			subject,
 			text: `Blup\n\n${lead}\n\n${code}\n\nO código vale por 10 minutos. Se não foi você que pediu, ignore este e-mail: ninguém entra sem ele.\n\nBlup · getblup.io`,
-			html: codeHtml(lead, code),
-			attachments: [{ content: LOGO_PNG, filename: "blup.png", type: "image/png", disposition: "inline", contentId: "blup-logo" }],
+			html: codeHtml(lead, code, `${env.APP_URL}/email/blup.png`),
 		});
 	} catch (e) {
 		// The person sees no difference (the request already answered); the
@@ -49,12 +47,16 @@ function sender(from: string) {
 	return m ? { name: m[1], email: m[2] } : from;
 }
 
-function codeHtml(lead: string, code: string) {
+// The logo is a PNG served by this Worker (static/email/blup.png, the
+// wordmark of src/lib/ui/BlupLogo.svelte rendered at 440x172): mail apps
+// don't show SVG, and an image embedded in the message shows as an
+// attachment in Gmail.
+function codeHtml(lead: string, code: string, logo: string) {
 	return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;padding:32px 16px;background:#f4f6fb;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0e1b45">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background:#ffffff;border-radius:16px;border:1px solid #e3e8f2">
-<tr><td style="padding:32px 32px 8px"><img src="cid:blup-logo" width="110" height="43" alt="Blup" style="display:block;border:0"></td></tr>
+<tr><td style="padding:32px 32px 8px"><img src="${logo}" width="110" height="43" alt="Blup" style="display:block;border:0"></td></tr>
 <tr><td style="padding:16px 32px 0;font-size:15px;line-height:22px">${lead}</td></tr>
 <tr><td style="padding:16px 32px"><div style="padding:16px;border-radius:12px;background:#eef6fd;text-align:center;font-size:36px;font-weight:800;letter-spacing:8px;color:#0e1b45">${code}</div></td></tr>
 <tr><td style="padding:0 32px 32px;font-size:13px;line-height:20px;color:#5b6787">O código vale por 10 minutos. Se não foi você que pediu, ignore este e-mail: ninguém entra sem ele.</td></tr>
