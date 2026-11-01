@@ -860,6 +860,8 @@
   .cloud-tip b { font-size: 1rem; }
   .cloud-tip p { margin-block: .25rem .75rem; font-size: .87rem; color: var(--muted); }
   .resizer { position: absolute; z-index: 5; inset-block: 0; width: 7px; cursor: col-resize; }
+  /* On the panel's border, half outside it, above the files' scrollbar:
+     hovering the border lights it blue, as in every view. */
   .resizer.right { inset-inline-end: -4px; }
   .resizer.left { inset-inline-start: 0; } /* the preview cuts what sticks out */
   .resizer.left::after { inset-inline-start: 0; }
@@ -876,7 +878,7 @@
   .grow { flex: 1; }
   /* The files panel is as tall as the window, never taller: its list
      scrolls by itself (and doesn't pass the scroll on). */
-  .side { position: relative; grid-row: 1 / -1; grid-column: 2; display: flex; flex-direction: column; min-height: 0; max-height: 100vh; overflow: hidden; border-inline-end: 1px solid var(--line); background: var(--panel); }
+  .side { position: relative; grid-row: 1 / -1; grid-column: 2; display: flex; flex-direction: column; min-height: 0; max-height: 100vh; border-inline-end: 1px solid var(--line); background: var(--panel); }
   .side-tabs { display: flex; gap: .2rem; padding: .55rem .6rem; border-block-end: 1px solid var(--line); }
   .tab { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .4rem; color: var(--muted); }
   .tab:hover, .tab.on { background: var(--soft); color: var(--text); }
