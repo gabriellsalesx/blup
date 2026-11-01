@@ -80,6 +80,8 @@ func espeakVoice(voice string) string {
 		return "pt-br"
 	case strings.HasPrefix(voice, "b"):
 		return "en-gb"
+	case strings.HasPrefix(voice, "e"):
+		return "es"
 	}
 	return "en-us"
 }

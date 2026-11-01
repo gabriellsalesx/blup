@@ -161,12 +161,18 @@
   type Model = { id: string; name: string; perPost: number; recommended: boolean; voices: number };
   const DEFAULT_MODEL = "microsoft/mai-voice-2.1";
   const norm = (id = "") => (id && !id.includes("|") && !id.startsWith("kokoro:") ? `${DEFAULT_MODEL}|${id}` : id);
-  let voices = $state<Record<string, Voice[]>>({ pt: [], en: [] });
-  let models = $state<Record<string, Model[]>>({ pt: [], en: [] });
+  // A default voice per language, for every site: a post is narrated in
+  // the language picked then (Props), with that language's voice.
+  const LANGS = [["pt", "Português"], ["en", "English"], ["es", "Español"]] as const;
+  // It opens on the open site's language (the voices a post of it gets).
+  const firstLang = () => (LANGS.some(([l]) => l === siteLang) ? siteLang : t.lang);
+  let voiceLang = $state<string>(firstLang());
+  let voices = $state<Record<string, Voice[]>>({ pt: [], en: [], es: [] });
+  let models = $state<Record<string, Model[]>>({ pt: [], en: [], es: [] });
   const modelOf = (l: string) => { const c = norm(look.voices?.[l]); return c.includes("|") ? c.split("|")[0] : DEFAULT_MODEL; };
-  let model = $state<Record<string, string>>({ pt: modelOf("pt"), en: modelOf("en") });
+  let model = $state<Record<string, string>>({ pt: modelOf("pt"), en: modelOf("en"), es: modelOf("es") });
   const loadVoices = () => {
-    for (const l of ["pt", "en"]) {
+    for (const [l] of LANGS) {
       Voices(l, model[l]).then((v) => (voices[l] = v ?? [])).catch(() => {});
       VoiceModels(l).then((m) => (models[l] = m ?? [])).catch(() => {});
     }
@@ -476,7 +482,11 @@
       {#if local && !local.installed && aiOn === false}
         <p class="muted lead">{ai.narrationNeed} <button class="link" onclick={() => (tab = "ai")}>{ai.openAI}</button></p>
       {/if}
-      {#each [["pt", ai.voicePt], ["en", ai.voiceEn]].filter(([l]) => !siteLang || l === (siteLang === "pt" ? "pt" : "en")) as [l, label] (l)}
+      <div class="seg langs" role="tablist" aria-label={ai.voiceLangs}>
+        {#each LANGS as [l, name] (l)}<button role="tab" aria-selected={voiceLang === l} class:on={voiceLang === l} onclick={() => (voiceLang = l)}>{name}</button>{/each}
+      </div>
+      {#each LANGS.filter(([l]) => l === voiceLang) as [l, name] (l)}
+        {@const label = ai.voiceFor.replace("{lang}", name)}
         <div class="voices" role="radiogroup" aria-label={label}>
           <b>{label}</b>
           {#each [["local", lv.groupLocal], ["blup", lv.groupBlup], ["openrouter", lv.groupOpenRouter]] as [engine, group] (engine)}
@@ -647,6 +657,7 @@
   .seg { display: inline-flex; gap: .2rem; padding: .2rem; border: 1px solid var(--line); border-radius: .6rem; }
   .seg button { padding: .35rem .7rem; border-radius: .45rem; font-size: .85rem; font-weight: 600; color: var(--muted); }
   .seg button.on { background: var(--soft); color: var(--text); }
+  .seg.langs { margin-block: .25rem .5rem; }
   .item.column { flex-direction: column; align-items: stretch; gap: .6rem; }
   .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
   .chip { display: inline-flex; align-items: center; gap: .25rem; padding: .2rem .3rem .2rem .6rem; border: 1px solid var(--line); border-radius: 999px; font-size: .8rem; }

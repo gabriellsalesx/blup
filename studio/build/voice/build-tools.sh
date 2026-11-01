@@ -62,12 +62,12 @@ tar xzf "lame-$LAME_VERSION.tar.gz"
   make -j"$jobs" "${static[@]}" >/dev/null
 )
 
-# Only what Portuguese and English need from eSpeak NG's data.
+# Only what Portuguese, English and Spanish need from eSpeak NG's data.
 b=bundle
 data=$b/espeak-ng-data
 mkdir -p "$data" "$b/licenses"
 src=espeak-ng-$ESPEAK_VERSION/espeak-ng-data
-cp "$src"/{phontab,phonindex,phondata,intonations,pt_dict,en_dict} "$data/"
+cp "$src"/{phontab,phonindex,phondata,intonations,pt_dict,en_dict,es_dict} "$data/"
 cp -r "$src/lang" "$data/"
 cp "espeak-ng-$ESPEAK_VERSION/src/espeak-ng" "$b/"
 cp "lame-$LAME_VERSION/frontend/lame" "$b/"

@@ -38,21 +38,25 @@ var defaultVoices = map[string]string{"pt": "pt-BR-Luana:MAI-Voice-2.1", "en": "
 // Known is DefaultModel with its known voices, for when OpenRouter's list
 // can't be read.
 func Known() ModelInfo {
-	return ModelInfo{ID: DefaultModel, Name: "Microsoft AI: MAI-Voice-2.1", PerThousand: 0.022, Voices: append(append([]string{}, knownVoices["pt"]...), knownVoices["en"]...)}
+	return ModelInfo{ID: DefaultModel, Name: "Microsoft AI: MAI-Voice-2.1", PerThousand: 0.022, Voices: slices.Concat(knownVoices["pt"], knownVoices["en"], knownVoices["es"])}
 }
 
 var knownVoices = map[string][]string{
 	"pt": {"pt-BR-Luana:MAI-Voice-2.1", "pt-BR-Caio:MAI-Voice-2.1", "pt-BR-Rafael:MAI-Voice-2.1", "pt-BR-Pedro:MAI-Voice-2.1", "pt-BR-Harper:MAI-Voice-2.1", "pt-BR-Grant:MAI-Voice-2.1"},
 	"en": {"en-US-Harper:MAI-Voice-2.1", "en-US-Olivia:MAI-Voice-2.1", "en-US-Iris:MAI-Voice-2.1", "en-US-Ethan:MAI-Voice-2.1", "en-US-Grant:MAI-Voice-2.1", "en-US-Jasper:MAI-Voice-2.1", "en-US-Sage:MAI-Voice-2.1"},
+	"es": {"es-MX-Valeria:MAI-Voice-2.1", "es-MX-Alejo:MAI-Voice-2.1", "es-MX-Harper:MAI-Voice-2.1", "es-MX-Grant:MAI-Voice-2.1", "es-ES-Marta:MAI-Voice-2.1"},
 }
+
+// recorded are the voices whose sample the Studio carries.
+var recorded = []string{"pt", "en"}
 
 // HasSample tells whether the Studio carries a recorded sample of voice
 // (the recommended model's voices from Brazil and the US). OpenRouter
 // lists others too (Portugal, the UK, Australia, India): their sample is
 // made on demand.
 func HasSample(voice string) bool {
-	for _, l := range knownVoices {
-		if slices.Contains(l, voice) {
+	for _, lang := range recorded {
+		if slices.Contains(knownVoices[lang], voice) {
 			return true
 		}
 	}

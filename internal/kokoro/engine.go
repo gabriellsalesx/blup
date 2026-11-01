@@ -36,7 +36,7 @@ const maxTokens = 510
 type Voice struct {
 	ID     string `json:"id"`     // Kokoro's name, "pf_dora"
 	Name   string `json:"name"`   // "Dora"
-	Lang   string `json:"lang"`   // the site language it speaks: "pt" or "en"
+	Lang   string `json:"lang"`   // the site language it speaks: "pt", "en" or "es"
 	Female bool   `json:"female"` // for the list
 }
 
@@ -51,6 +51,9 @@ var Voices = []Voice{
 	{"am_fenrir", "Fenrir", "en", false},
 	{"bf_emma", "Emma (UK)", "en", true},
 	{"bm_george", "George (UK)", "en", false},
+	{"ef_dora", "Dora", "es", true},
+	{"em_alex", "Alex", "es", false},
+	{"em_santa", "Santa", "es", false},
 }
 
 // Engine runs the local voice installed in Dir.

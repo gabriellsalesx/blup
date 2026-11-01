@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/kokoro"
 	"github.com/gabriellsalesx/blup/internal/narrate"
@@ -165,14 +166,14 @@ func NarrationVoices(ctx context.Context, lang, model string) ([]Voice, error) {
 	installed := LocalVoiceState().Installed
 	var out []Voice
 	for _, v := range kokoro.Voices {
-		if v.Lang == lang || (lang != "pt" && v.Lang == "en") {
+		if localSpeaks(v, lang) {
 			out = append(out, Voice{ID: localPrefix + v.ID, Name: v.Name, Engine: "local", Female: v.Female, Ready: installed, Sample: true})
 		}
 	}
 	// Through Blup Cloud: the recommended model's voices, on paid plans.
 	included := blupAIIncluded(ctx)
 	for _, v := range narrate.VoicesFor(narrate.Known(), lang) {
-		out = append(out, Voice{ID: blupPrefix + v, Name: narrate.VoiceName(v), Engine: "blup", Ready: included, Sample: true})
+		out = append(out, Voice{ID: blupPrefix + v, Name: narrate.VoiceName(v), Engine: "blup", Ready: included, Sample: narrate.HasSample(v)})
 	}
 	if model == "" {
 		model = narrate.DefaultModel
@@ -193,6 +194,16 @@ func NarrationVoices(ctx context.Context, lang, model string) ([]Voice, error) {
 	return out, err
 }
 
+// localSpeaks tells whether a local voice reads a site in lang: its own
+// language, English for the languages without local voices.
+func localSpeaks(v kokoro.Voice, lang string) bool {
+	switch lang {
+	case "pt", "en", "es":
+		return v.Lang == lang
+	}
+	return v.Lang == "en"
+}
+
 func byLangCode(lang, pt, en, es string) string {
 	switch lang {
 	case "pt":
@@ -210,7 +221,7 @@ func byLangCode(lang, pt, en, es string) string {
 func voiceFor(lang, chosen string) string {
 	if id, ok := strings.CutPrefix(chosen, localPrefix); ok {
 		for _, v := range kokoro.Voices {
-			if v.ID == id && (v.Lang == lang || (lang != "pt" && v.Lang == "en")) {
+			if v.ID == id && localSpeaks(v, lang) {
 				return chosen
 			}
 		}
@@ -221,7 +232,7 @@ func voiceFor(lang, chosen string) string {
 	}
 	if LocalVoiceState().Installed {
 		for _, v := range kokoro.Voices {
-			if v.Lang == lang || (lang != "pt" && v.Lang == "en") {
+			if localSpeaks(v, lang) {
 				return localPrefix + v.ID
 			}
 		}
@@ -275,12 +286,18 @@ func voiceName(v, lang string) string {
 // PreviewVoice is a short sample of an OpenRouter voice without a recorded
 // one: made once (it costs a fraction of a cent) and kept in the cache.
 func PreviewVoice(ctx context.Context, lang, choice string) ([]byte, error) {
-	model, voice := splitChoice(choice)
 	creds, err := config.LoadCredentials()
 	if err != nil {
 		return nil, err
 	}
-	if creds.OpenRouterToken == "" {
+	// A Blup Cloud voice is heard through the plan; the others through the
+	// person's OpenRouter key.
+	key, base := creds.OpenRouterToken, openRouterURL
+	model, voice := splitChoice(choice)
+	if v, ok := strings.CutPrefix(choice, blupPrefix); ok {
+		model, voice, key, base = narrate.DefaultModel, v, creds.BlupToken, blupcloud.AIBaseURL()
+	}
+	if key == "" {
 		return nil, ErrNoAIKey
 	}
 	h := sha256.Sum256([]byte(lang + "\x00" + choice))
@@ -296,7 +313,7 @@ func PreviewVoice(ctx context.Context, lang, choice string) ([]byte, error) {
 		"Olá! Esta é a voz que vai ler os seus posts. Quem prefere escutar aperta o play e ouve tudo, como um podcast.",
 		"Hi! This is the voice that will read your posts. Anyone who would rather listen just presses play and hears it all, like a podcast.",
 		"¡Hola! Esta es la voz que va a leer tus posts. Quien prefiera escuchar solo presiona play y lo oye todo, como un podcast.")
-	b, err := (&narrate.Client{Key: creds.OpenRouterToken, BaseURL: openRouterURL}).Speak(ctx, model, text, voice)
+	b, err := (&narrate.Client{Key: key, BaseURL: base}).Speak(ctx, model, text, voice)
 	if err != nil {
 		return nil, err
 	}

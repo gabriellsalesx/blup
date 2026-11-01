@@ -28,7 +28,7 @@ import (
 
 // Version is the layout of an installation; a newer Blup that changes the
 // downloads bumps it and the user downloads again.
-const Version = "1"
+const Version = "2" // 2: Spanish (its voices and eSpeak NG dictionary)
 
 type download struct {
 	url    string
@@ -52,7 +52,7 @@ var platforms = map[string]platform{
 		ort:        download{ortRelease + "onnxruntime-linux-x64-1.31.1.tgz", "c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9", 11413655},
 		ortLib:     "onnxruntime-linux-x64-1.31.1/lib/libonnxruntime.so.1.31.1",
 		ortLicense: "onnxruntime-linux-x64-1.31.1/LICENSE",
-		tools:      download{toolsRelease + "blup-voice-tools-linux-amd64.tar.gz", "c83fb6791905418d7d0cfcf2e78aac36727287379e0eb5c6008fd56a08abccb8", 1753798},
+		tools:      download{toolsRelease + "blup-voice-tools-linux-amd64.tar.gz", "43e5f9490eb284585f28253b8a299f75b0c4e979eeba8d3aac1b50d54c84a591", 1777126},
 	},
 	// Built by the release workflow (macOS and Windows runners), then
 	// added here with their checksums.
@@ -84,6 +84,9 @@ var voiceFiles = map[string]string{
 	"am_fenrir":  "c27989f741f7ee34d273a39d8a595cc0837d35f5ced9a29b7cc162614616df43",
 	"bf_emma":    "669fe0647f9dd04fcab92f1439a40eeb4c8b4ab1f82e4996fe3d918ce4a63b73",
 	"bm_george":  "c4b235a4c1f2cd3b939fed08b899ce9385638b763f7b73a59616c4fc9bd6c9bc",
+	"ef_dora":    "f66ec66bd295acb18372e37008533a9a3228483ccd294e7538d5d9294ac9a532",
+	"em_alex":    "27809e9eafdcbcfff90a3016c697568676531de2a2c39cee29c96c7bd6b83e95",
+	"em_santa":   "ad43b774e1ca24d05c6161297d8aeb770ac3d29bb95daf516727af5f7d543683",
 }
 
 const voiceSize = maxTokens * 256 * 4
