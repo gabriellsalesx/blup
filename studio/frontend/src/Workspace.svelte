@@ -80,6 +80,9 @@
   let others = $state<SiteInfo[]>([]);
 
   const flat = (nodes: Node[]): Node[] => nodes.flatMap((n) => (n.dir ? flat(n.children ?? []) : [n]));
+  const findDir = (nodes: Node[], path: string): Node | undefined => {
+    for (const n of nodes) if (n.dir) { if (n.path === path) return n; const f = findDir(n.children ?? [], path); if (f) return f; }
+  };
   const folders = (nodes: Node[]): string[] => nodes.flatMap((n) => (n.dir ? [n.path, ...folders(n.children ?? [])] : []));
   const found = $derived.by(() => (query.trim() ? flat(tree).filter((n) => n.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 80) : []));
   function expandAll() { for (const f of folders(tree)) openMap[f] = true; }
@@ -165,9 +168,11 @@
     name = name?.trim() ?? "";
     if (!name || name === n.name) return;
     try {
-      if (n.path === current) await save(); // what was typed goes with it
-      const to = await RenameItem(n.path, name);
-      await menuChanged({ from: n.path, to });
+      // A database's item renames its .table (the folder follows).
+      const path = n.table || n.path;
+      if (path === current) await save(); // what was typed goes with it
+      const to = await RenameItem(path, name);
+      await menuChanged({ from: path, to });
       toast(t.toast.noteRenamed.replace("{name}", fileTitle(to)));
     } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
   }
@@ -178,10 +183,12 @@
   async function moveTo(path: string, f: string) {
     const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
     if (!path || parent === f || f === path || f.startsWith(path + "/")) return;
+    // A database's item moves its .table (the folder follows).
+    const what = folders(tree).includes(path) ? findDir(tree, path)?.table || path : path;
     try {
       await save();
-      const to = await MoveItem(path, f);
-      await menuChanged({ from: path, to });
+      const to = await MoveItem(what, f);
+      await menuChanged({ from: what, to });
       if (f) openMap[f] = true;
       toast(t.toast.noteMoved.replace("{folder}", f || t.menu.top));
     } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }

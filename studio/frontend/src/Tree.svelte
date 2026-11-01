@@ -101,7 +101,8 @@
 
 {#snippet icon(n: Node)}
   <span class="ico">
-    {#if n.dir}{#if open[n.path]}<FolderOpen size={15} strokeWidth={1.75} />{:else}<Folder size={15} strokeWidth={1.75} />{/if}
+    {#if n.dir && n.kind === "database"}<Database size={15} strokeWidth={1.75} />
+    {:else if n.dir}{#if open[n.path]}<FolderOpen size={15} strokeWidth={1.75} />{:else}<Folder size={15} strokeWidth={1.75} />{/if}
     {:else if n.kind === "drawing"}<PenTool size={15} strokeWidth={1.75} />
     {:else if n.kind === "canvas"}<LayoutDashboard size={15} strokeWidth={1.75} />
     {:else if n.kind === "database"}<Database size={15} strokeWidth={1.75} />
@@ -135,8 +136,8 @@
           <Tree nodes={n.children} {current} {folder} bind:open {renaming} {creating} parent={n.path} {onPick} {onFolder} {onMenu} {onRename} {onCreate} {onMove} depth={depth + 1} />
         {/if}
       {:else if n.dir}
-        <button class={["row", { selected: n.path === folder, target: over === n.path }]} draggable={!!onMove} ondragstart={(e) => dragStart(e, n)} ondragend={dragEnd}
-          ondragover={(e) => dragOver(e, n)} ondragleave={() => dragLeave(n)} ondrop={(e) => drop(e, n)} onclick={() => { open[n.path] = !open[n.path]; onFolder(n.path); }} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
+        <button class={["row", { selected: n.path === folder, target: over === n.path, active: !!n.table && n.table === current }]} draggable={!!onMove} ondragstart={(e) => dragStart(e, n)} ondragend={dragEnd}
+          ondragover={(e) => dragOver(e, n)} ondragleave={() => dragLeave(n)} ondrop={(e) => drop(e, n)} onclick={() => { if (n.table) { open[n.path] = true; onPick(n.table); } else open[n.path] = !open[n.path]; onFolder(n.path); }} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
           <span class="chev" class:open={open[n.path]}><ChevronRight size={14} /></span>{@render icon(n)}<span class="name">{n.name}</span>
         </button>
         {#if open[n.path] && n.children}
@@ -160,7 +161,7 @@
   .row:hover { background: var(--soft); opacity: 1; }
   .row.note { color: var(--muted); opacity: 1; }
   .row.note:hover { color: var(--text); }
-  .row.note.active, .row.selected { background: var(--soft); color: var(--text); opacity: 1; }
+  .row.note.active, .row.active, .row.selected { background: var(--soft); color: var(--text); opacity: 1; }
   .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ico { display: inline-grid; place-items: center; width: 1rem; flex: none; color: var(--muted); }
   .rename { flex: 1; min-width: 0; padding: .1rem .35rem; margin-block: -.1rem; border: 1px solid var(--blue); border-radius: .3rem; outline: none; background: var(--panel); color: var(--text); font: inherit; }

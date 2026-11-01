@@ -389,3 +389,17 @@ func DatabaseOf(site *config.Site, rel string) (string, *DBSchema) {
 	}
 	return "", nil
 }
+
+// RecordsFolder is the name of a database's records' folder (next to its
+// .table), or "" when the file can't be read.
+func RecordsFolder(site *config.Site, rel string) string {
+	p, err := dbPath(site, rel)
+	if err != nil {
+		return ""
+	}
+	s, err := readSchema(p)
+	if err != nil {
+		return ""
+	}
+	return s.Records
+}

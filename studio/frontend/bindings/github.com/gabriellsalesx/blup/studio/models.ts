@@ -118,9 +118,14 @@ export interface Node {
     "dir": boolean;
 
     /**
-     * canvas or drawing (vaults); "" for a note
+     * canvas, drawing or database (vaults); "" for a note
      */
     "kind"?: string;
+
+    /**
+     * a database's folder: its .table (opened by a click)
+     */
+    "table"?: string;
     "children"?: Node[] | null;
 }
 

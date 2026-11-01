@@ -231,7 +231,7 @@
               {#each schema.columns as c (c.key)}
                 <th><button onclick={(e) => openCol(e, c.key)}>{c.name}{#if view.sort === c.key}<ArrowUp size={12} />{:else if view.sort === "-" + c.key}<ArrowDown size={12} />{/if}</button></th>
               {/each}
-              <th class="add"><button title={d.addColumn} aria-label={d.addColumn} onclick={addColumn}><Plus size={15} /></button></th>
+              <th class="addcol"><button title={d.addColumn} aria-label={d.addColumn} onclick={addColumn}><Plus size={15} /></button></th>
             </tr>
           </thead>
           <tbody>
@@ -264,7 +264,7 @@
               <input class="new-card" bind:value={newName} placeholder={d.newRecordPh} use:focus onkeydown={(e) => { if (e.key === "Enter") add(lane.value); if (e.key === "Escape") adding = null; }} onblur={() => add(lane.value)} />
             {/if}
             {#each shown.filter((r) => asText(r.props?.[groupCol!.key]) === lane.value) as r (r.path)}
-              <button class="card" draggable="true" ondragstart={() => (dragged = r)} ondragend={() => { dragged = null; overLane = null; }} onclick={() => onOpenNote(r.path)}>
+              <button class="bcard" draggable="true" ondragstart={() => (dragged = r)} ondragend={() => { dragged = null; overLane = null; }} onclick={() => onOpenNote(r.path)}>
                 <b>{r.name}</b>
                 {#each cardFields as c (c.key)}{#if asText(r.props?.[c.key])}<small><span class="muted">{c.name}:</span> {asText(r.props?.[c.key])}</small>{/if}{/each}
               </button>
@@ -327,7 +327,7 @@
   th { position: sticky; inset-block-start: 0; z-index: 1; background: var(--panel); }
   th button { display: flex; align-items: center; gap: .3rem; width: 100%; padding: .55rem .5rem; font-size: .8rem; font-weight: 600; color: var(--muted); text-align: start; white-space: nowrap; }
   th button:hover { color: var(--text); background: var(--soft); }
-  th.add button { justify-content: center; width: 2.4rem; }
+  th.addcol button { justify-content: center; width: 2.4rem; }
   td { min-width: 9rem; max-width: 18rem; padding: .15rem .2rem; }
   td.name { position: relative; min-width: 12rem; }
   .open { padding: .3rem .4rem; border-radius: .35rem; font-weight: 600; color: var(--text); text-align: start; }
@@ -345,10 +345,10 @@
   .lane header { display: flex; align-items: center; gap: .45rem; font-size: .86rem; font-weight: 600; }
   .dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--c); }
   .n { margin-inline-start: auto; padding: 0 .45rem; border-radius: 999px; background: var(--soft); font-size: .75rem; color: var(--muted); }
-  .card { display: grid; gap: .2rem; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); text-align: start; cursor: grab; box-shadow: 0 1px 2px rgb(0 0 0 / .06); }
-  .card:hover { border-color: var(--muted); }
-  .card b { font-size: .9rem; }
-  .card small { font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bcard { display: grid; gap: .2rem; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); text-align: start; cursor: grab; box-shadow: 0 1px 2px rgb(0 0 0 / .06); }
+  .bcard:hover { border-color: var(--muted); }
+  .bcard b { font-size: .9rem; }
+  .bcard small { font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .lane-add { display: flex; align-items: center; gap: .3rem; padding: .35rem .5rem; border-radius: .4rem; font-size: .82rem; color: var(--muted); }
   .lane-add:hover { background: var(--soft); color: var(--text); }
 

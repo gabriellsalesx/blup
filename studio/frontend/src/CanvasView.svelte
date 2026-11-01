@@ -492,7 +492,7 @@
       <!-- The cards (the keyboard works on the selection: Enter, Delete). -->
       {#each cards as n (n.id)}
         <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-        <div class="card {n.type}" class:sel={selected.has(n.id)} class:editing={editing === n.id} data-node={n.id}
+        <div class="ccard {n.type}" class:sel={selected.has(n.id)} class:editing={editing === n.id} data-node={n.id}
           style:left="{n.x}px" style:top="{n.y}px" style:width="{n.width}px" style:height="{n.height}px" style:--c={tint(n.color)}
           role="group" onpointerdown={(e) => downCard(e, n)} ondblclick={(e) => { e.stopPropagation(); startEdit(n); }} onclick={clickLink}>
           <div class="content">
@@ -552,7 +552,7 @@
   {/if}
 
   <!-- Adding: a card, a note of the vault, a web address, a group. -->
-  <div class="add" role="toolbar" aria-label={tb.add}>
+  <div class="addbar" role="toolbar" aria-label={tb.add}>
     <button title={tb.addText} onclick={() => addText()}><StickyNote size={18} strokeWidth={1.75} /><span>{tb.text}</span></button>
     <button title={tb.addNote} onclick={() => (picking = true)}><FileText size={18} strokeWidth={1.75} /><span>{tb.note}</span></button>
     <button title={tb.addLink} onclick={() => addLink()}><LinkIcon size={18} strokeWidth={1.75} /><span>{tb.link}</span></button>
@@ -584,10 +584,10 @@
 
   /* Cards, like Obsidian's: a border in the card's color, a hint of it
      inside. */
-  .card { position: absolute; display: flex; border: 2px solid var(--c, var(--line)); border-radius: .6rem; background: color-mix(in srgb, var(--c, transparent) 10%, var(--panel)); box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
-  .card.sel { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .ccard { position: absolute; display: flex; border: 2px solid var(--c, var(--line)); border-radius: .6rem; background: color-mix(in srgb, var(--c, transparent) 10%, var(--panel)); box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
+  .ccard.sel { outline: 2px solid var(--blue); outline-offset: 2px; }
   .content { flex: 1; min-width: 0; overflow: auto; padding: .65rem .85rem; border-radius: inherit; font-size: .95rem; line-height: 1.5; color: var(--text); }
-  .card.editing .content { overflow: hidden; padding: 0; }
+  .ccard.editing .content { overflow: hidden; padding: 0; }
   textarea { width: 100%; height: 100%; padding: .65rem .85rem; border: 0; border-radius: inherit; outline: none; resize: none; background: transparent; color: var(--text); font: inherit; line-height: 1.5; user-select: text; }
   .url { width: 100%; height: 100%; padding: 0 .85rem; border: 0; outline: none; background: transparent; color: var(--text); font: inherit; }
   .site { display: flex; gap: .6rem; align-items: center; width: 100%; height: 100%; text-align: start; color: var(--text); }
@@ -596,19 +596,19 @@
 
   .md :global(h1), .md :global(h2), .md :global(h3) { margin-block: .2rem .4rem; line-height: 1.25; }
   .md :global(h1) { font-size: 1.4rem; } .md :global(h2) { font-size: 1.2rem; } .md :global(h3) { font-size: 1.05rem; }
-  .md :global(p), .card :global(.md p) { margin-block: 0 .45rem; }
-  .card :global(.md ul), .card :global(.md ol) { margin-block: 0 .45rem; padding-inline-start: 1.25rem; }
-  .card :global(.md .task) { list-style: "☐  "; } .card :global(.md .task.done) { list-style: "☑  "; color: var(--muted); }
-  .card :global(.md blockquote) { margin: 0 0 .45rem; padding-inline-start: .7rem; border-inline-start: 3px solid var(--line); color: var(--muted); }
-  .card :global(.md code) { padding: .05rem .3rem; border-radius: .25rem; background: var(--soft); font-size: .88em; }
-  .card :global(.md pre) { padding: .5rem; border-radius: .4rem; background: var(--soft); overflow: auto; }
-  .card :global(.md mark) { background: color-mix(in srgb, #e0ac00 35%, transparent); color: inherit; }
-  .card :global(.md .lnk) { color: var(--blue); text-decoration: underline; padding: 0; font: inherit; cursor: pointer; }
+  .md :global(p), .ccard :global(.md p) { margin-block: 0 .45rem; }
+  .ccard :global(.md ul), .ccard :global(.md ol) { margin-block: 0 .45rem; padding-inline-start: 1.25rem; }
+  .ccard :global(.md .task) { list-style: "☐  "; } .ccard :global(.md .task.done) { list-style: "☑  "; color: var(--muted); }
+  .ccard :global(.md blockquote) { margin: 0 0 .45rem; padding-inline-start: .7rem; border-inline-start: 3px solid var(--line); color: var(--muted); }
+  .ccard :global(.md code) { padding: .05rem .3rem; border-radius: .25rem; background: var(--soft); font-size: .88em; }
+  .ccard :global(.md pre) { padding: .5rem; border-radius: .4rem; background: var(--soft); overflow: auto; }
+  .ccard :global(.md mark) { background: color-mix(in srgb, #e0ac00 35%, transparent); color: inherit; }
+  .ccard :global(.md .lnk) { color: var(--blue); text-decoration: underline; padding: 0; font: inherit; cursor: pointer; }
 
   /* The dots on the sides, to drag an arrow out of, and the corner to
      resize; shown on hover. */
   .dot { position: absolute; width: 12px; height: 12px; border: 2px solid var(--panel); border-radius: 50%; background: var(--blue); opacity: 0; cursor: crosshair; transition: opacity .1s; }
-  .card:hover .dot, .card.sel .dot { opacity: 1; }
+  .ccard:hover .dot, .ccard.sel .dot { opacity: 1; }
   .dot.top { inset-block-start: -7px; inset-inline-start: calc(50% - 6px); }
   .dot.bottom { inset-block-end: -7px; inset-inline-start: calc(50% - 6px); }
   .dot.left { inset-inline-start: -7px; inset-block-start: calc(50% - 6px); }
@@ -640,9 +640,9 @@
   .menu .swatch.none { background: linear-gradient(135deg, transparent 45%, var(--red) 45% 55%, transparent 55%), var(--panel); }
   .msep, .csep { width: 1px; height: 1.2rem; background: var(--line); }
 
-  .add { position: absolute; z-index: 3; inset-block-end: 1rem; inset-inline-start: 50%; transform: translateX(-50%); display: flex; gap: .2rem; padding: .3rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / .12); }
-  .add button { display: flex; align-items: center; gap: .4rem; padding: .45rem .7rem; border-radius: .5rem; font-size: .85rem; color: var(--muted); }
-  .add button:hover { background: var(--soft); color: var(--text); }
+  .addbar { position: absolute; z-index: 3; inset-block-end: 1rem; inset-inline-start: 50%; transform: translateX(-50%); display: flex; gap: .2rem; padding: .3rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / .12); }
+  .addbar button { display: flex; align-items: center; gap: .4rem; padding: .45rem .7rem; border-radius: .5rem; font-size: .85rem; color: var(--muted); }
+  .addbar button:hover { background: var(--soft); color: var(--text); }
   .controls { position: absolute; z-index: 3; inset-block-start: 1rem; inset-inline-end: 1rem; display: grid; justify-items: center; gap: .15rem; padding: .3rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); }
   .controls button { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .4rem; color: var(--muted); }
   .controls button:hover:not(:disabled) { background: var(--soft); color: var(--text); }

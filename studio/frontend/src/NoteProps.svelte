@@ -52,21 +52,21 @@
 
 <section class="props" aria-label={p.title}>
   <h2>{p.title}</h2>
-  <div class="row">
+  <div class="prow">
     <span class="k"><CalendarPlus size={16} />{p.created}</span>
     <input type="date" value={day(props.created)} onchange={(e) => setDate("created", e.currentTarget.value)} aria-label={p.created} />
   </div>
-  <div class="row">
+  <div class="prow">
     <span class="k"><CalendarClock size={16} />{p.updated}</span>
     <input type="date" value={day(props.updated)} onchange={(e) => setDate("updated", e.currentTarget.value)} aria-label={p.updated} />
   </div>
-  <div class="row">
+  <div class="prow">
     <span class="k"><Tag size={16} />{p.tags}</span>
     <div class="tags">
       {#each tags as tag (tag)}
         <span class="chip">{tag}<button title={p.remove.replace("{tag}", tag)} aria-label={p.remove.replace("{tag}", tag)} onclick={() => setTags(tags.filter((x) => x !== tag))}><X size={12} /></button></span>
       {/each}
-      <span class="add">
+      <span class="tagadd">
         <input bind:value={draft} onkeydown={key} onblur={() => addTag()} placeholder={tags.length ? "" : p.addTag} aria-label={p.addTag} />
         {#if draft.trim() && suggestions.length}
           <ul class="sug" role="listbox">
@@ -77,7 +77,7 @@
     </div>
   </div>
   {#each database?.columns ?? [] as c (c.key)}
-    <div class="row">
+    <div class="prow">
       <span class="k">{c.name}</span>
       <div class="v"><FieldInput column={c} value={props[c.key]} {notes} {onOpenNote} onChange={(v) => onEdit(c.key, v)} onNewOption={onNewOption ? (v, color) => onNewOption(c.key, v, color) : undefined} /></div>
     </div>
@@ -87,7 +87,7 @@
 <style>
   .props { display: grid; gap: .15rem; padding-block-end: .5rem; border-block-end: 1px solid var(--line); }
   h2 { font-size: 1rem; font-weight: 600; color: var(--muted); margin-block-end: .35rem; }
-  .row { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); align-items: center; min-height: 2.1rem; }
+  .prow { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); align-items: center; min-height: 2.1rem; }
   .k { display: flex; align-items: center; gap: .55rem; color: var(--muted); font-size: .92rem; }
   .v { min-width: 0; font-size: .92rem; }
   input[type="date"] { justify-self: start; padding: .2rem .4rem; border: 1px solid transparent; border-radius: .35rem; background: transparent; color: var(--text); font: inherit; font-size: .92rem; color-scheme: light dark; }
@@ -96,8 +96,8 @@
   .chip { display: inline-flex; align-items: center; gap: .2rem; padding: .12rem .3rem .12rem .6rem; border-radius: 999px; background: color-mix(in srgb, var(--blue) 16%, transparent); color: light-dark(#1d4ed8, #93c5fd); font-size: .88rem; }
   .chip button { display: grid; place-items: center; padding: .1rem; border-radius: 999px; color: inherit; opacity: .75; }
   .chip button:hover { opacity: 1; background: color-mix(in srgb, currentColor 18%, transparent); }
-  .add { position: relative; }
-  .add input { width: 8rem; padding: .2rem .3rem; border: 0; outline: none; background: transparent; color: var(--text); font: inherit; font-size: .9rem; }
+  .tagadd { position: relative; }
+  .tagadd input { width: 8rem; padding: .2rem .3rem; border: 0; outline: none; background: transparent; color: var(--text); font: inherit; font-size: .9rem; }
   .sug { position: absolute; z-index: 5; inset-block-start: 100%; inset-inline-start: 0; min-width: 10rem; list-style: none; padding: .25rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--panel); box-shadow: 0 10px 28px rgb(0 0 0 / .2); }
   .sug button { width: 100%; padding: .3rem .5rem; border-radius: .35rem; text-align: start; font-size: .88rem; }
   .sug button:hover { background: var(--soft); }

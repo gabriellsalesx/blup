@@ -90,16 +90,16 @@
 {:else if column.type === "check"}
   <input type="checkbox" checked={value === true} onchange={(e) => onChange(e.currentTarget.checked)} aria-label={column.name} />
 {:else if column.type === "date"}
-  <input class="field" type="date" value={text.slice(0, 10)} onchange={(e) => onChange(e.currentTarget.value)} aria-label={column.name} />
+  <input class="fin" type="date" value={text.slice(0, 10)} onchange={(e) => onChange(e.currentTarget.value)} aria-label={column.name} />
 {:else if column.type === "link"}
-  <span class="row">
-    {#if linkName}<button class="link" onclick={openLink}>{linkName}</button><button class="mini" title={d.clear} aria-label={d.clear} onclick={() => onChange("")}><X size={13} /></button>
+  <span class="frow">
+    {#if linkName}<button class="flink" onclick={openLink}>{linkName}</button><button class="mini" title={d.clear} aria-label={d.clear} onclick={() => onChange("")}><X size={13} /></button>
     {:else}<button class="empty pick" onclick={() => (picking = true)}>{d.pickNote}</button>{/if}
   </span>
   {#if picking}<NotePicker title={column.name} {notes} onClose={() => (picking = false)} onPick={(n) => { picking = false; onChange(`[[${n.name}]]`); }} />{/if}
 {:else}
-  <span class="row">
-    <input class="field" type={column.type === "number" ? "number" : column.type === "email" ? "email" : column.type === "phone" ? "tel" : column.type === "url" ? "url" : "text"}
+  <span class="frow">
+    <input class="fin" type={column.type === "number" ? "number" : column.type === "email" ? "email" : column.type === "phone" ? "tel" : column.type === "url" ? "url" : "text"}
       value={text} placeholder={compact ? "" : d.empty} aria-label={column.name}
       onchange={(e) => commit(column.type === "number" && e.currentTarget.value !== "" ? (Number(e.currentTarget.value) as unknown as string) : e.currentTarget.value)}
       onkeydown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
@@ -115,9 +115,9 @@
 {/if}
 
 <style>
-  .row { display: flex; align-items: center; gap: .15rem; width: 100%; min-width: 0; }
-  .field { flex: 1; min-width: 0; width: 100%; padding: .25rem .4rem; border: 1px solid transparent; border-radius: .35rem; background: transparent; color: var(--text); font: inherit; color-scheme: light dark; }
-  .field:hover, .field:focus { border-color: var(--line); outline: none; background: var(--panel); }
+  .frow { display: flex; align-items: center; gap: .15rem; width: 100%; min-width: 0; }
+  .fin { flex: 1; min-width: 0; width: 100%; padding: .25rem .4rem; border: 1px solid transparent; border-radius: .35rem; background: transparent; color: var(--text); font: inherit; color-scheme: light dark; }
+  .fin:hover, .fin:focus { border-color: var(--line); outline: none; background: var(--panel); }
   .mini { display: grid; place-items: center; flex: none; width: 1.5rem; height: 1.5rem; border-radius: .3rem; color: var(--muted); }
   .mini:hover { background: var(--soft); color: var(--blue); }
   .chips { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; width: 100%; min-height: 1.8rem; padding: .2rem .35rem; border-radius: .35rem; text-align: start; }
@@ -126,7 +126,7 @@
   .empty { color: var(--muted); font-size: .85rem; }
   .pick { padding: .25rem .4rem; border-radius: .35rem; }
   .pick:hover { background: var(--soft); color: var(--text); }
-  .link { padding: .1rem .3rem; color: var(--blue); text-decoration: underline; text-underline-offset: 3px; text-align: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .flink { padding: .1rem .3rem; color: var(--blue); text-decoration: underline; text-underline-offset: 3px; text-align: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   input[type="checkbox"] { width: 1.05rem; height: 1.05rem; margin: .3rem .4rem; accent-color: var(--blue); }
   .menu { position: fixed; z-index: 80; width: 14rem; display: grid; gap: .3rem; padding: .4rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .28); }
   .menu input { width: 100%; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--bg); color: var(--text); font: inherit; font-size: .85rem; outline: none; }

@@ -55,7 +55,8 @@ type Node struct {
 	Name     string `json:"name"`
 	Path     string `json:"path"` // relative to the notes folder, with "/"
 	Dir      bool   `json:"dir"`
-	Kind     string `json:"kind,omitempty"` // canvas or drawing (vaults); "" for a note
+	Kind     string `json:"kind,omitempty"` // canvas, drawing or database (vaults); "" for a note
+	Table    string `json:"table,omitempty"` // a database's folder: its .table (opened by a click)
 	Children []Node `json:"children,omitempty"`
 }
 
@@ -109,7 +110,8 @@ func (s *Studio) current() (*config.Site, error) {
 
 // Tree is the open site's folders and notes, folders first, by name.
 // Hidden folders (.obsidian, .git...) are left out. A vault of notes lists
-// its canvases and drawings too.
+// its canvases, drawings and databases too (a database as its records'
+// folder).
 func (s *Studio) Tree() (Node, error) {
 	site, err := s.current()
 	if err != nil {
@@ -143,6 +145,23 @@ func (s *Studio) Tree() (Node, error) {
 			} else if strings.EqualFold(filepath.Ext(name), ".md") {
 				notes = append(notes, Node{Name: strings.TrimSuffix(name, filepath.Ext(name)), Path: p})
 			}
+		}
+		// A database shows as one item: its records' folder, with the
+		// database's icon, opening its .table (which isn't listed itself).
+		if site.IsNotes() {
+			kept := notes[:0]
+			for _, n := range notes {
+				if n.Kind == KindDatabase {
+					if records := app.RecordsFolder(site, n.Path); records != "" {
+						if i := slices.IndexFunc(dirs, func(d Node) bool { return d.Name == records && d.Kind == "" }); i >= 0 {
+							dirs[i].Kind, dirs[i].Table = KindDatabase, n.Path
+							continue
+						}
+					}
+				}
+				kept = append(kept, n)
+			}
+			notes = kept
 		}
 		byName := func(a, b Node) int { return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)) }
 		slices.SortFunc(dirs, byName)

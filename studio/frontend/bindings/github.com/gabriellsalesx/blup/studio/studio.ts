@@ -1089,7 +1089,8 @@ export function Trash(): $CancellablePromise<app$0.TrashItem[] | null> {
 /**
  * Tree is the open site's folders and notes, folders first, by name.
  * Hidden folders (.obsidian, .git...) are left out. A vault of notes lists
- * its canvases and drawings too.
+ * its canvases, drawings and databases too (a database as its records'
+ * folder).
  */
 export function Tree(): $CancellablePromise<$models.Node> {
     return $Call.ByID(1427577990);

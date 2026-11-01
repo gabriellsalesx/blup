@@ -43,12 +43,17 @@
     try { await fn(); } catch (e) { error = msg(e); }
   }
   const base = (p: string) => p.split("/").pop()!.replace(/\.(draw|canvas|table|md)$/i, "");
-  const move = (f: string) => run(async () => { const to = await MoveItem(node.path, f); onChanged({ from: node.path, to }); toast(t.toast.noteMoved.replace("{folder}", f || m.top)); });
-  // To the Blup trash, with Undo in the toast (the tree follows the files).
+  // A database's item is its records' folder; moving it moves its .table
+  // (which takes the folder along).
+  const target = $derived(node.table || node.path);
+  const move = (f: string) => run(async () => { const to = await MoveItem(target, f); onChanged({ from: target, to }); toast(t.toast.noteMoved.replace("{folder}", f || m.top)); });
+  // To the Blup trash, with Undo in the toast (the tree follows the files);
+  // a database goes with its records.
   const remove = () => run(async () => {
-    const where = await DeleteItem(node.path);
-    onChanged({ from: node.path, to: null });
-    toast(t.toast.noteDeleted.replace("{name}", node.name), { action: { label: t.toast.undo, run: () => RestoreSection(where).catch(toastError) } });
+    const where = [await DeleteItem(node.path)];
+    if (node.table) where.push(await DeleteItem(node.table));
+    onChanged({ from: node.table || node.path, to: null });
+    toast(t.toast.noteDeleted.replace("{name}", node.name), { action: { label: t.toast.undo, run: () => Promise.all(where.map((w) => RestoreSection(w))).catch(toastError) } });
   });
   const copy = () => run(async () => { const to = await CopyNote(node.path); onChanged({ from: "", to, open: to }); toast(t.toast.noteCopied.replace("{name}", base(to))); });
   async function copyLink() {
@@ -79,11 +84,11 @@
   <div class="menu" bind:this={menuEl} style:left="{pos.x}px" style:top="{pos.y}px" role="menu">
     {#if node.dir}
       <button onclick={() => { onNew("note", node.path); onClose(); }}><FilePlus size={16} />{m.newNote}</button>
-      {#if boards}
+      {#if boards && !node.table}
         <button onclick={() => { onNew("canvas", node.path); onClose(); }}><LayoutDashboard size={16} />{t.boards.newCanvas}</button>
         <button onclick={() => { onNew("drawing", node.path); onClose(); }}><PenTool size={16} />{t.boards.newDrawing}</button>
       {/if}
-      <button onclick={() => { onNew("folder", node.path); onClose(); }}><FolderPlus size={16} />{m.newFolder}</button>
+      {#if !node.table}<button onclick={() => { onNew("folder", node.path); onClose(); }}><FolderPlus size={16} />{m.newFolder}</button>{/if}
       <hr />
     {:else}
       {#if !node.path.toLowerCase().endsWith(".table")}<button onclick={copy}><Copy size={16} />{m.copy}</button>{/if}
@@ -94,7 +99,7 @@
       {#if onHistory}<button onclick={() => { onHistory(node.path); onClose(); }}><History size={16} />{t.history.menu}</button>{/if}
     {/if}
     <hr />
-    {#if node.dir || /\.(md|canvas)$/i.test(node.path)}<button onclick={() => { OpenInObsidian(node.path); onClose(); }}><External size={16} />{m.obsidian}</button>{/if}
+    {#if (node.dir && !node.table) || /\.(md|canvas)$/i.test(node.path)}<button onclick={() => { OpenInObsidian(node.path); onClose(); }}><External size={16} />{m.obsidian}</button>{/if}
     <button onclick={() => { ShowInFolder(node.path); onClose(); }}><FolderOpen size={16} />{m.show}</button>
     <hr />
     <button onclick={() => { onRename(node); onClose(); }}><Pencil size={16} />{m.rename}</button>

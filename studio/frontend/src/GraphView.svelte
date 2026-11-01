@@ -335,7 +335,7 @@
   </div>
 
   {#if p.panel}
-    <aside class="panel" aria-label={tg.panel}>
+    <aside class="gpanel" aria-label={tg.panel}>
       <header>
         {@render section("filters", tg.filters)}
         <button class="icon" title={tg.reset} aria-label={tg.reset} onclick={reset}><RotateCcw size={16} /></button>
@@ -375,7 +375,7 @@
               <button class="icon" title={tg.removeGroup} aria-label={tg.removeGroup} onclick={() => (p.groups = p.groups.filter((_, k) => k !== i))}><X size={14} /></button>
             </div>
           {/each}
-          <button class="add" disabled={!options.length} onclick={addGroup}><Plus size={15} />{tg.newGroup}</button>
+          <button class="gadd" disabled={!options.length} onclick={addGroup}><Plus size={15} />{tg.newGroup}</button>
         </div>
       {/if}
 
@@ -401,7 +401,7 @@
       {/if}
     </aside>
   {:else}
-    <button class="open" title={tg.panel} aria-label={tg.panel} onclick={() => (p.panel = true)}><Settings2 size={18} /></button>
+    <button class="reopen" title={tg.panel} aria-label={tg.panel} onclick={() => (p.panel = true)}><Settings2 size={18} /></button>
   {/if}
 
   <div class="corner">
@@ -418,8 +418,8 @@
 
   /* Like Obsidian's: 240px wide, 12px from the corner, 13px text,
      scrolling without a bar when the window is short. */
-  .panel { position: absolute; z-index: 3; inset-block-start: 12px; inset-inline-end: 12px; width: 240px; max-height: calc(100% - 16px); overflow-y: auto; scrollbar-width: none; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / .2); font-size: 13px; }
-  .panel::-webkit-scrollbar { display: none; }
+  .gpanel { position: absolute; z-index: 3; inset-block-start: 12px; inset-inline-end: 12px; width: 240px; max-height: calc(100% - 16px); overflow-y: auto; scrollbar-width: none; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / .2); font-size: 13px; }
+  .gpanel::-webkit-scrollbar { display: none; }
   header { display: flex; align-items: center; padding-inline-end: 4px; }
   header .sec { flex: 1; border-block-start: 0; }
   .sec { display: flex; align-items: center; gap: .35rem; width: 100%; padding: 8px 12px; border-block-start: 1px solid var(--line); font-size: 13px; font-weight: 600; color: var(--text); text-align: start; }
@@ -449,11 +449,12 @@
 
   .group { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .4rem; }
   .swatch { width: 1.25rem; height: 1.25rem; border-radius: 50%; border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--line); }
-  .add { display: flex; align-items: center; justify-content: center; gap: .35rem; padding: .4rem; border: 1px dashed var(--line); border-radius: .45rem; font-size: .84rem; color: var(--muted); }
-  .add:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
-  .add:disabled { opacity: .4; }
+  /* Like Obsidian's "New group": a full-width soft button. */
+  .gadd { display: flex; align-items: center; justify-content: center; gap: .35rem; width: 100%; padding: 6px 8px; border-radius: .45rem; background: var(--soft); color: var(--text); font-size: 13px; font-weight: 500; }
+  .gadd:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 12%, var(--soft)); }
+  .gadd:disabled { opacity: .4; }
 
-  .open { position: absolute; z-index: 3; inset-block-start: 12px; inset-inline-end: 12px; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); color: var(--muted); box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
-  .open:hover { color: var(--text); }
+  .reopen { position: absolute; z-index: 3; inset-block-start: 12px; inset-inline-end: 12px; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); color: var(--muted); box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
+  .reopen:hover { color: var(--text); }
   .corner { position: absolute; z-index: 3; inset-block-end: .9rem; inset-inline-start: .9rem; display: flex; gap: .2rem; padding: .25rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); }
 </style>

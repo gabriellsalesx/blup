@@ -662,43 +662,43 @@
 
 <!-- The style of the selection (or of what comes next). -->
 {#if showPanel}
-  <div class="panel" role="group" aria-label={td.style}>
+  <div class="stylepanel" role="group" aria-label={td.style}>
     <span class="plabel">{td.stroke}</span>
-    <div class="row">
+    <div class="swrow">
       {#each PALETTE as c (c)}
         <button class={["sw", { on: shown.stroke === c }]} style:background={ink(c)} title={td.colors[c]} aria-label={td.colors[c]} onclick={() => setStyle("stroke", c)}></button>
       {/each}
     </div>
     {#if showFill}
       <span class="plabel">{td.fill}</span>
-      <div class="row">
+      <div class="swrow">
         <button class={["sw", "none", { on: shown.fill === "none" }]} title={td.noFill} aria-label={td.noFill} onclick={() => setStyle("fill", "none")}></button>
         {#each PALETTE.filter((c) => c !== "ink") as c (c)}
           <button class={["sw", { on: shown.fill === c }]} style:background={ink(c)} title={td.colors[c]} aria-label={td.colors[c]} onclick={() => setStyle("fill", c)}></button>
         {/each}
       </div>
       {#if shown.fill !== "none"}
-        <div class="row seg">
+        <div class="swrow seg">
           <button class={{ on: shown.fillStyle !== "solid" }} onclick={() => setStyle("fillStyle", "tint")}>{td.tint}</button>
           <button class={{ on: shown.fillStyle === "solid" }} onclick={() => setStyle("fillStyle", "solid")}>{td.solid}</button>
         </div>
       {/if}
     {/if}
     <span class="plabel">{td.width}</span>
-    <div class="row seg">
+    <div class="swrow seg">
       {#each WIDTHS as w (w)}
         <button class={{ on: shown.width === w }} title="{w}px" aria-label="{w}px" onclick={() => setStyle("width", w)}><span class="wline" style:height="{w + 1}px"></span></button>
       {/each}
     </div>
     <span class="plabel">{td.dash}</span>
-    <div class="row seg">
+    <div class="swrow seg">
       {#each ["solid", "dashed", "dotted"] as const as d (d)}
         <button class={{ on: shown.dash === d }} title={td[d]} aria-label={td[d]} onclick={() => setStyle("dash", d)}><svg width="26" height="6" aria-hidden="true"><line x1="2" y1="3" x2="24" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray={dashArray(d, 2)} /></svg></button>
       {/each}
     </div>
     {#if showText}
       <span class="plabel">{td.size}</span>
-      <div class="row seg">
+      <div class="swrow seg">
         {#each SIZES as s, i (s)}
           <button class={{ on: shown.size === s }} onclick={() => setStyle("size", s)}>{["P", "M", "G", "GG"][i]}</button>
         {/each}
@@ -706,7 +706,7 @@
     {/if}
     {#if chosen.length}
       <span class="plabel">{td.actions}</span>
-      <div class="row acts">
+      <div class="swrow acts">
         <button title={td.toBack} aria-label={td.toBack} onclick={() => order(false)}><SendToBack size={16} /></button>
         <button title={td.toFront} aria-label={td.toFront} onclick={() => order(true)}><BringToFront size={16} /></button>
         <button title="{td.duplicate} (Ctrl+D)" aria-label={td.duplicate} onclick={() => duplicate()}><Copy size={16} /></button>
@@ -751,9 +751,9 @@
   .tools small { position: absolute; inset-inline-end: 3px; inset-block-end: 1px; font-size: .55rem; opacity: .7; }
   .tsep { width: 1px; height: 1.4rem; margin-inline: .2rem; background: var(--line); }
 
-  .panel { position: absolute; z-index: 3; inset-block-start: 4.2rem; inset-inline-start: .8rem; display: grid; gap: .35rem; width: 13.5rem; padding: .75rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / .1); }
+  .stylepanel { position: absolute; z-index: 3; inset-block-start: 4.2rem; inset-inline-start: .8rem; display: grid; gap: .35rem; width: 13.5rem; padding: .75rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / .1); }
   .plabel { font-size: .72rem; color: var(--muted); margin-block-start: .2rem; }
-  .row { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .swrow { display: flex; flex-wrap: wrap; gap: .3rem; }
   .sw { width: 1.35rem; height: 1.35rem; border-radius: .35rem; border: 1px solid var(--line); }
   .sw.on { outline: 2px solid var(--blue); outline-offset: 1px; }
   .sw.none { background: linear-gradient(135deg, transparent 45%, var(--red) 45% 55%, transparent 55%), var(--panel); }
