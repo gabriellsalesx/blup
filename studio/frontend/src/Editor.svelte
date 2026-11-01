@@ -39,7 +39,8 @@
   import Highlighter from "@lucide/svelte/icons/highlighter";
   import AlignLeft from "@lucide/svelte/icons/text-align-start";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
-  import { PasteImage, PickNoteImage } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { PasteImage, PickNoteImage, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { targetAt, type Target } from "./notelinks";
   import Bold from "@lucide/svelte/icons/bold";
   import Italic from "@lucide/svelte/icons/italic";
   import Strike from "@lucide/svelte/icons/strikethrough";
@@ -94,9 +95,12 @@
   // A Markdown editor. onChange gets every edit; onSave, Ctrl/Cmd+S.
   // note is the note's path (for the images' links); notes, every note (for
   // [[ ).
-  let { text, note, notes = [], onChange, onSave, onError }: {
+  // onOpenNote: a link to another note was clicked (the workspace opens it,
+  // and the preview follows).
+  let { text, note, notes = [], onChange, onSave, onError, onOpenNote }: {
     text: string; note: string; notes?: { name: string; path: string }[];
     onChange: (v: string) => void; onSave: () => void; onError?: (e: string) => void;
+    onOpenNote?: (path: string) => void;
   } = $props();
   const te = t.editor;
   let host: HTMLDivElement;
@@ -119,6 +123,12 @@
     const parts = [...from.slice(i).map(() => ".."), ...to.slice(i)];
     return parts.map((p) => p.replace(/%/g, "%25").replace(/ /g, "%20").replace(/\(/g, "%28").replace(/\)/g, "%29")).join("/");
   }
+  // The link under pos (see notelinks.ts).
+  function linkAt(v: EditorView, pos: number): Target | null {
+    const line = v.state.doc.lineAt(pos);
+    return targetAt(line.text, pos - line.from, note, notes);
+  }
+
   const mdLink = (text: string, n: { path: string }) => `[${text.replace(/[[\]]/g, "\\$&")}](${noteHref(n.path)})`;
   function linkToNote(n: { name: string; path: string }) {
     picking = false;
@@ -416,6 +426,32 @@
             if (pos == null || (!inSel && !wordAt(v, pos))) return false;
             e.preventDefault();
             return true;
+          },
+          // A link to another note opens it; an address on the web opens
+          // in the browser with Ctrl/Cmd (a plain click edits the text).
+          click: (e, v) => {
+            if (e.button !== 0 || !v.state.selection.main.empty) return false;
+            const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
+            const target = pos == null ? null : linkAt(v, pos);
+            if (!target) return false;
+            if ("note" in target) {
+              if (target.note === note) return false;
+              e.preventDefault();
+              onOpenNote?.(target.note);
+              return true;
+            }
+            if (!(e.ctrlKey || e.metaKey)) return false;
+            e.preventDefault();
+            OpenURL(target.url);
+            return true;
+          },
+          // The hand over a link that opens something.
+          mousemove: (e, v) => {
+            const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
+            const target = pos == null ? null : linkAt(v, pos);
+            const hand = !!target && ("note" in target ? target.note !== note : e.ctrlKey || e.metaKey);
+            v.contentDOM.style.cursor = hand ? "pointer" : "";
+            return false;
           },
           paste: (e) => {
             const files = images(e.clipboardData?.files);
