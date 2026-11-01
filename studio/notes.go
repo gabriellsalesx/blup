@@ -77,12 +77,23 @@ func (s *Studio) SaveNote(rel, body string, edits []PropEdit) error {
 	}
 	props := make([]obsidian.Prop, 0, len(edits))
 	for _, e := range edits {
-		props = append(props, obsidian.Prop{Key: e.Key, Value: clean(e.Value)})
+		props = append(props, obsidian.Prop{Key: e.Key, Value: s.propValue(e.Value)})
 	}
 	if len(props) == 0 {
 		return nil
 	}
 	return obsidian.SetProperties(p, props...)
+}
+
+// propValue is clean, but in a vault of notes a number 0 is a value (a
+// database's number column), not "none" as in a site's forms.
+func (s *Studio) propValue(v any) any {
+	if f, ok := v.(float64); ok && f == 0 {
+		if site, err := s.current(); err == nil && site.IsNotes() {
+			return int64(0)
+		}
+	}
+	return clean(v)
 }
 
 // clean turns form values into property values; empty ones become nil (the

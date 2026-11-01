@@ -100,6 +100,10 @@ func DailyNote(site *config.Site, folder, tag string, now time.Time) (string, er
 	} else if err != nil {
 		return "", err
 	}
-	text := strings.TrimRight(string(b), "\n") + "\n\n## " + now.Format("15:04") + "\n\n"
-	return rel, os.WriteFile(p, []byte(text), 0o644)
+	heading := "## " + now.Format("15:04")
+	text := strings.TrimRight(string(b), "\n")
+	if strings.HasSuffix(text, "\n"+heading) {
+		return rel, nil // opened again the same minute: that time is there already
+	}
+	return rel, os.WriteFile(p, []byte(text+"\n\n"+heading+"\n\n"), 0o644)
 }

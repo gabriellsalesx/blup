@@ -54,7 +54,7 @@ func (s *Studio) SetProps(rel string, edits []PropEdit) error {
 	}
 	props := make([]obsidian.Prop, 0, len(edits))
 	for _, e := range edits {
-		props = append(props, obsidian.Prop{Key: e.Key, Value: clean(e.Value)})
+		props = append(props, obsidian.Prop{Key: e.Key, Value: s.propValue(e.Value)})
 	}
 	return obsidian.SetProperties(p, props...)
 }

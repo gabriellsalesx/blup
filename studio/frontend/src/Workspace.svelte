@@ -281,12 +281,13 @@
     if (which === "side") { sideW = SIDE; setPref("sideWidth", 0); }
     else { prevW = 0; setPref("previewWidth", 0); }
   }
-  // The Studio's shortcuts (Settings > Shortcuts).
+  // The Studio's shortcuts (Settings > Shortcuts); some are for vaults.
+  const VAULT_ONLY: Action[] = ["dailyNote", "graph", "newCanvas", "newDrawing", "newDatabase"];
   function shortcut(e: KeyboardEvent) {
     const combo = comboOf(e);
     if (!combo) return;
     const a = ACTIONS.find((x) => keysOf(look.keys, x.key) === combo)?.key as Action | undefined;
-    if (!a) return;
+    if (!a || (!notesVault && VAULT_ONLY.includes(a))) return; // a site's keys stay the editor's
     e.preventDefault();
     if (a === "terminal") termOpen = !termOpen;
     else if (a === "preview") togglePreview();
@@ -295,7 +296,6 @@
     else if (a === "search") { sideOpen = true; sideTab = "search"; }
     else if (a === "newNote") { sideOpen = true; sideTab = "files"; screen = "write"; startCreate("note"); }
     else if (a === "fullScreen") { if (board) full = !full; }
-    else if (!notesVault) return;
     else if (a === "dailyNote") dailyNote();
     else if (a === "graph") { save(); screen = screen === "graph" ? "write" : "graph"; }
     else if (a === "newCanvas") quickBoard("canvas");

@@ -69,3 +69,44 @@ func TestDatabase(t *testing.T) {
 		t.Fatalf("saved = %+v", again.Schema)
 	}
 }
+
+// A database renamed or moved takes its records' folder along; a records'
+// folder renamed by itself is written in its .table.
+func TestDatabaseFollowsMoves(t *testing.T) {
+	site := settingsSite(t)
+	rel, err := CreateDatabase(site, "", "Clientes", DBSchema{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec, _ := AddRecord(site, rel, "Ana", nil)
+	if err := os.WriteFile(filepath.Join(site.ContentDir(), "Nota.md"), []byte("Ver [Ana](Bancos%20de%20dados/Clientes/Ana.md)\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	to, err := RenameItem(site, rel, "Contatos")
+	if err != nil || to != "Bancos de dados/Contatos.table" {
+		t.Fatalf("rename = %q, %v", to, err)
+	}
+	db, err := ReadDatabase(site, to)
+	if err != nil || db.Schema.Records != "Contatos" || len(db.Records) != 1 {
+		t.Fatalf("after rename = %+v, %v (record was %s)", db, err, rec)
+	}
+	if b, _ := os.ReadFile(filepath.Join(site.ContentDir(), "Nota.md")); !strings.Contains(string(b), "Contatos/Ana.md") {
+		t.Fatalf("link not fixed: %s", b)
+	}
+	moved, err := MoveItem(site, to, "")
+	if err != nil || moved != "Contatos.table" {
+		t.Fatalf("move = %q, %v", moved, err)
+	}
+	if db, _ := ReadDatabase(site, moved); len(db.Records) != 1 {
+		t.Fatalf("after move = %+v", db)
+	}
+	if _, err := RenameItem(site, "Contatos", "Pessoas"); err != nil {
+		t.Fatal(err)
+	}
+	if db, _ := ReadDatabase(site, moved); db.Schema.Records != "Pessoas" || len(db.Records) != 1 {
+		t.Fatalf("after folder rename = %+v", db)
+	}
+	if table, _ := DatabaseOf(site, "Pessoas/Ana.md"); table != "Contatos.table" {
+		t.Fatalf("record's database = %q", table)
+	}
+}

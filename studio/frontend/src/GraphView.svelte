@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
+  import { Events } from "@wailsio/runtime";
   import { NoteGraph } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import Settings2 from "@lucide/svelte/icons/settings-2";
   import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
@@ -305,7 +306,11 @@
     ro.observe(host!);
     return () => ro.disconnect();
   });
-  onDestroy(() => cancelAnimationFrame(frame));
+  // Notes changed on disk: the map reads them again (what stayed keeps its
+  // place).
+  let wait: ReturnType<typeof setTimeout> | undefined;
+  const off = Events.On("notesChanged", () => { clearTimeout(wait); wait = setTimeout(load, 600); });
+  onDestroy(() => { cancelAnimationFrame(frame); off(); clearTimeout(wait); });
 </script>
 
 {#snippet section(key: string, title: string)}

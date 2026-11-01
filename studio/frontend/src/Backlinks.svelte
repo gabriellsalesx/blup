@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
+  import { Events } from "@wailsio/runtime";
   import { NoteGraph } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import { t } from "./i18n";
@@ -10,8 +12,14 @@
 
   let from = $state<{ path: string; name: string; folder: string }[]>([]);
   let open = $state((() => { try { return localStorage.getItem("blup.backlinks") !== "closed"; } catch { return true; } })());
+  // Read again when notes change on disk (a link added or taken out).
+  let changes = $state(0);
+  let wait: ReturnType<typeof setTimeout> | undefined;
+  const off = Events.On("notesChanged", () => { clearTimeout(wait); wait = setTimeout(() => changes++, 400); });
+  onDestroy(() => { off(); clearTimeout(wait); });
   $effect(() => {
     const me = note;
+    changes;
     NoteGraph().then((g) => {
       if (me !== note) return;
       const names = new Map((g.nodes ?? []).map((n) => [n.path, n]));

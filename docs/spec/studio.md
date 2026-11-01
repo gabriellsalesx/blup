@@ -32,6 +32,8 @@ Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsal
 | `media.go` | Detecção local de reprodução MP3 por `canPlayMP3` |
 | `terminal.go` | Agentes instalados, PTY, entrada/saída, tamanho, snapshots e undo |
 | `layout.go` | Organização da home e preferências |
+| `boards.go`, `graph.go` | Canvas, desenho e `.table` como texto, imagens dos quadros e mapa de notas (cofres) |
+| `database.go`, `tags.go` | Bancos de dados, células (`SetProps`), nota do dia e tags conhecidas (cofres) |
 | `desktop.go`, `hyprland.go`, `about.go` | Bandeja, autostart, atalhos, alteração de idioma por `SetLanguage` e versão |
 
 | Evento | Payload e finalidade |
@@ -97,19 +99,139 @@ O corretor usa Hunspell em WebAssembly dentro de `spell.worker.ts`. Carrega dici
 
 `Props.svelte` expõe título, descrição, data, tags, autores, imagem, rascunho, escondido e senha. Para Bento também usa ordem pela propriedade `weight`, status e categoria quando aplicáveis. Propriedades adicionais desconhecidas pelo formulário ficam no arquivo. A narração aparece apenas fora de `_index.md`, sem `blup` preenchido e com tipo vazio ou `blog`; atualiza `audio`, `audio_hash` e `audio_seconds` e avisa quando o hash do texto difere. As condições e os motores estão em [narração e voz](narracao-e-voz.md).
 
-## Produtividade no editor
+## Cofres de anotações
 
-`livemd.ts` mostra links (`[[Nota]]`, `[[Nota|texto]]`, `[texto](nota.md)`, endereços da web) só pelo texto, roxo e sublinhado; a forma escrita volta enquanto o cursor está no link (digitando, pelas setas ou com o clique direito). Títulos recolhem pela seta à esquerda (no hover, ou sempre quando recolhidos), até o próximo título do mesmo nível. No editor, `@` (no começo da linha ou depois de espaço) menciona uma nota (link) ou uma data; `/` abre as ações (títulos, listas, tarefa, citação, destaque, tabela, código, divisor, links, imagem, data de hoje e, nos cofres, novo desenho ou canvas com o link já posto); Enter escolhe nesses menus.
+Um cofre de anotações é um site com `kind = "notes"` (`site.IsNotes()` no Go, `notesVault` em `Workspace.svelte`): só notas, sem tema nem publicação. As seções abaixo descrevem o que o Studio acrescenta nesse modo; num site comum essas ações não aparecem e os atalhos delas não fazem nada.
 
-Nos cofres: propriedades só de criado, atualizado (automáticos, editáveis; nota nova já nasce com os dois) e tags (`NoteProps.svelte`, sugestões de `Tags`); o painel "Mencionada em" (`Backlinks.svelte`) embaixo da nota; e o **Mapa de notas** (`GraphView.svelte`, layout em `graph.ts`, dados de `app.NoteGraph`: notas, canvases e desenhos, e links Markdown, `[[wikilinks]]` e notas postas num canvas, ignorando código), com busca, filtros por pasta e tag, notas soltas e "em volta desta nota". A faixa da esquerda tem o mapa e os botões de novo canvas e novo desenho.
+### Faixa lateral e árvore
 
-## Canvas e desenhos (cofres de anotações)
+A faixa da esquerda (`.ribbon`) mostra só ícones, com o nome no hover. No cofre ela tem Escrever, Mapa de notas, Anexos, Sincronizar e Lixeira; depois um separador com Novo canvas, Novo desenho, Novo banco de dados e Nota do dia; embaixo, o terminal. Sem botão de Prévia nem de Publicar na barra superior.
 
-Num cofre de anotações, a árvore lista também canvases (`.canvas`) e desenhos (`.draw`), com ícone próprio, e a lateral e o menu de pasta criam os dois na hora, sem pedir nome (`CreateCanvas`, `CreateDrawing`): "Desenho 2026-11-01 14.05.33" na pasta Desenhos (ou "Canvas …" na pasta Canvas), ou na pasta cujo menu foi usado, e já abre. Os dois são do próprio Studio, feitos em Svelte, sem biblioteca de terceiros; não precisam abrir no Obsidian (só as notas em Markdown precisam). `boards.go` lê e grava (`ReadBoard`, `SaveBoard`, só essas extensões), guarda imagens coladas na pasta de anexos (`SaveBoardImage`) e entrega imagens do cofre como `data:` (`BoardFile`). Renomear e copiar mantêm a extensão (`fileExt`). A sincronização e a lixeira tratam esses arquivos como qualquer outro.
+A árvore (`Tree.svelte`) lista notas, pastas, canvases (`.canvas`), desenhos (`.draw`) e bancos de dados (`.table`), cada um com ícone próprio; `Studio.Open` só inclui essas três extensões quando o site é um cofre. Clicar numa pasta abre ou fecha e a torna o lugar das notas novas.
 
-`CanvasView.svelte` (lógica em `canvas.ts`) grava no formato aberto JSON Canvas: cartões de texto em Markdown, notas do cofre (`CanvasFile.svelte` mostra o texto, ou a imagem), links da web e grupos, ligados por setas com texto e cor. Mover a tela arrastando, zoom com Ctrl e a roda, dois cliques criam um cartão, arrastar do ponto lateral cria uma seta, notas arrastadas da árvore viram cartões, e há desfazer e refazer.
+- Criar no lugar: Nova nota e Nova pasta (lateral, menu da pasta, `Ctrl+N`) abrem a pasta de destino e põem um campo de nome no topo dela; Enter ou clicar fora cria, Esc desiste. Canvas e desenho não pedem nome (veja abaixo).
+- Renomear no lugar: Renomear, no menu de contexto, troca o nome por um campo com tudo selecionado; Enter ou clicar fora salva, Esc desiste. A extensão é mantida por `fileExt` (`.draw`, `.canvas`, `.table`, `.md` ou a de `path.Ext`).
+- Arrastar: no cofre, nota ou pasta solta sobre uma pasta vai para dentro dela; solta sobre uma nota vai para a pasta dessa nota; solta no espaço vazio embaixo da árvore vai para a raiz. Uma pasta mantida sob o item arrastado por 700 ms se abre. Não aceita soltar dentro de si mesma, numa subpasta sua ou onde já está. O movimento usa `MoveItem`, que corrige os links como o "Mover para…". Notas da árvore também podem ser arrastadas para um canvas aberto, onde viram cartões.
 
-`DrawingView.svelte` (lógica em `draw.ts`) é o editor de desenho: retângulo, losango, elipse, seta, linha, desenho livre, texto (solto ou dentro da forma), borracha e imagens, com cor, fundo, espessura, tracejado e tamanho de texto, seleção por caixa, redimensionar, duplicar, ordem, atalhos de teclado, desfazer e exportar PNG para os anexos. O arquivo é JSON com um elemento por linha. As duas telas têm modo tela cheia (botão nos controles ou F; Esc sai), em que ocupam a janela inteira, sem lateral, barra ou menu. As duas telas salvam sozinhas e recarregam quando o arquivo muda fora do editor (evento `notesChanged`), se não houver mudança própria pendente.
+### Página da nota e propriedades
+
+A nota do cofre começa pelo nome do arquivo em letra grande (`.inline-title`): editar e sair do campo, ou Enter, renomeia o arquivo; Esc devolve o nome. Abaixo vem `NoteProps.svelte`, no lugar de `Props.svelte`, com apenas criado, atualizado e tags, e o texto em seguida. Ao pé da nota fica o painel "Mencionada em".
+
+Nota nova num cofre nasce com `created` e `updated` do dia e sem `title` (`createFile`, em `studio/notes.go`). Ao salvar (`Workspace.save`), se `created` falta ele é preenchido; se o texto mudou, `updated` não foi editado à mão e ainda não é de hoje, recebe a data de hoje. Os dois campos são `input type="date"` e podem ser alterados.
+
+As tags aceitam Enter ou vírgula para confirmar, Backspace no campo vazio tira a última, um `#` inicial é descartado e espaços viram hífen. As sugestões vêm de `Tags` (`studio/tags.go`): todas as tags das propriedades das notas, das mais usadas para as menos, lidas como lista ou texto separado por vírgulas; mostra até 8.
+
+Se a nota é registro de um banco de dados, os campos do banco aparecem depois das tags (veja Bancos de dados).
+
+### Tags herdadas da pasta
+
+`FolderTags` (`internal/app/quicknotes.go`) decide as tags de uma nota nova na pasta: se a pasta é a pasta de registros de um banco, a tag do banco; senão, as tags presentes em pelo menos metade das notas `.md` diretas da pasta, só quando há duas notas ou mais. Vale para Nova nota (`createFile`) e para a nota do dia.
+
+### Nota do dia
+
+O botão Nota do dia (`Ctrl+Alt+D`) chama `DailyNote(pasta, tag)` com os valores da tradução: pasta `Diário` e tag `diario` em português, `Daily` e `daily` em inglês. A nota é `Diário/AAAA-MM-DD.md`. Na primeira vez do dia é criada com `created` e `updated` e com as tags de `FolderTags` mais a tag do diário na frente, se ainda não estiver entre elas. Toda chamada, nova ou não, acrescenta ao fim do arquivo um título `## HH:MM` com a hora atual. O workspace salva a nota aberta antes, abre a nota do dia e põe o cursor no fim do texto (`atEnd`), pronto para escrever; se ela já estava aberta, recarrega o conteúdo.
+
+## Editor: links, títulos, `@` e `/`
+
+`livemd.ts` aproxima o editor da página lida:
+
+- Links aparecem só pelo texto, em azul (`--blue`) e sublinhados: `[[Nota]]` mostra o nome, `[[Nota|texto]]` mostra o texto, `[texto](nota.md)` e `[texto](https://…)` mostram o texto. A forma escrita volta enquanto o cursor ou a seleção toca o link (digitando, pelas setas ou com o clique direito). Imagens (`![…]`) e tudo que está dentro de código ficam como escritos. Um clique num link para outra nota a abre; um endereço da web abre no navegador só com Ctrl/Cmd e clique, para o clique simples continuar editando.
+- Títulos recolhem como no Obsidian: uma seta à esquerda de cada `#` a `######` que tenha conteúdo recolhível, visível no hover ou sempre quando recolhido, esconde tudo até o próximo título do mesmo nível ou maior. Os atalhos de dobra vêm do `basicSetup` do CodeMirror: `Ctrl+Shift+[` recolhe, `Ctrl+Shift+]` mostra, `Ctrl+Alt+[` recolhe todos e `Ctrl+Alt+]` mostra todos.
+
+`Editor.svelte` tem dois menus de digitação, ativados só no começo da linha ou depois de um espaço (assim um e-mail não abre o `@`) e fora de código; Enter ou Tab escolhem.
+
+- `@` lista as notas (menos a aberta e os `_index`), na seção Notas, e datas, na seção Datas: hoje, amanhã, ontem e os próximos dias da semana pelo nome. Nota vira link Markdown relativo; data vira texto no formato local (`01/11/2026` em português).
+- `/` lista as ações: Título 1 a 3, Lista, Lista numerada, Lista de tarefas, Citação, Destaque (callout), Tabela, Bloco de código, Linha divisória, Link para outra nota (abre o seletor), Link externo, Imagem do computador e Data de hoje. No cofre, também Novo desenho e Novo canvas: criam o arquivo como os botões da faixa e inserem o link para ele na nota.
+
+`[[` continua listando as notas e inserindo link Markdown, como em "Editor e propriedades".
+
+## Mapa de notas e "Mencionada em"
+
+`app.NoteGraph` (`internal/app/graph.go`) percorre a pasta de notas, pulando pastas ocultas e os `_index.md`, e devolve:
+
+- nós: cada `.md` (`note`), `.canvas` (`canvas`) e `.draw` (`drawing`), com caminho, nome sem extensão, pasta, tags e `created` (a propriedade, cortada em 10 caracteres, senão a data de modificação do arquivo);
+- arestas, sem repetição e sem laço: links Markdown relativos ou com `/` inicial (ignora endereços com `://`, `mailto:` e âncoras puras, tira `#…` e `?…` e decodifica `%20`), `[[wikilinks]]` (pelo caminho, senão pelo nome, preferindo a mesma pasta) e, num canvas, cada nó `file`. O texto dentro de código (crases e blocos) é ignorado. Desenhos não são lidos em busca de links. Como o arquivo inteiro é lido, links nas propriedades também contam, inclusive os campos Ligação com nota dos bancos de dados.
+
+`Backlinks.svelte` ("Mencionada em") fica sob cada nota do cofre: lista as origens das arestas que chegam à nota aberta, com nome e pasta, e abre a escolhida. Recolhido ou aberto, lembra a última escolha em `localStorage` (`blup.backlinks`). A lista é calculada ao abrir a nota.
+
+`GraphView.svelte` é a tela Mapa de notas (`Ctrl+G` alterna com Escrever). Cada nota é um ponto, cada link uma linha; o raio cresce com a raiz do número de links (`graph.ts`). O layout é uma simulação de forças própria, sem biblioteca: repulsão entre pares até 420 px, molas nos links, gravidade para o centro, amortecimento e `alpha` que decai até parar; começa em espiral. Passar o mouse acende a nota e os vizinhos; clique abre; arrastar um ponto o move (fixo enquanto arrasta); arrastar o vazio move o mapa; a roda dá zoom de 0,15 a 4. Os botões Ver tudo (enquadra) e Ler as notas de novo (o mapa não se atualiza sozinho) ficam na tela.
+
+O painel do canto (Ajustes do mapa) tem quatro partes que abrem e fecham, botão Voltar ao padrão e Fechar (vira um ícone). Tudo é salvo em `localStorage` (`blup.graph`).
+
+| Parte | Controles |
+| --- | --- |
+| Filtros | Busca (só acende os nomes que batem, não esconde), Pasta (inclui subpastas), Tag, Tags como pontos (um ponto por tag ligado às suas notas), Notas soltas (com a contagem; desligado esconde nós sem links), Canvas e desenhos, Em volta da nota aberta com Profundidade de 1 a 4 links; mostra "N notas, M links" |
+| Grupos | Novo grupo: pasta (com subpastas) ou tag, com cor que troca no clique; vale o primeiro grupo que casa |
+| Exibição | Setas, Limite para mostrar os nomes (zoom mínimo para os rótulos), Tamanho das notas, Espessura das linhas e Animar: as notas surgem na ordem de `created`, em 3 a 12 s, e as linhas quando as duas pontas já surgiram |
+| Forças | Força do centro, Força de repulsão, Força dos links e Distância dos links |
+
+## Canvas e desenhos
+
+Canvases (`.canvas`) e desenhos (`.draw`) são do próprio Studio, feitos em Svelte, sem biblioteca de terceiros; não precisam do Obsidian. A faixa lateral (`Ctrl+Alt+C` e `Ctrl+Alt+W`), o menu de pasta e o menu `/` os criam na hora, sem pedir nome (`CreateCanvas`, `CreateDrawing`): "Desenho 2026-11-01 14.05.33" na pasta `Desenhos` ou "Canvas …" na pasta `Canvas`, ou na pasta cujo menu foi usado, e já abre. Arquivo vazio: `{"nodes":[],"edges":[]}` e `{"version":1,"elements":[]}`.
+
+`studio/boards.go` lê e grava o texto (`ReadBoard`, `SaveBoard`, só `.canvas`, `.draw` e `.table`), guarda imagens coladas e PNGs exportados na pasta de anexos (`SaveBoardImage`, via `app.PasteImage`, devolvendo o caminho no cofre) e entrega imagens do cofre como `data:` (`BoardFile`, só `image/*`). Renomear e copiar mantêm a extensão (`fileExt`). Sincronização e lixeira tratam esses arquivos como qualquer outro.
+
+`CanvasView.svelte` (lógica em `canvas.ts`) grava no formato aberto JSON Canvas: cartões de texto em Markdown, notas do cofre (`CanvasFile.svelte` mostra o texto, ou a imagem), links da web e grupos, ligados por setas com texto e cor. Arrastar o vazio ou a roda move a tela; Ctrl e a roda, ou pinça, dão zoom; dois cliques criam um cartão; arrastar do ponto lateral de um cartão cria uma seta; notas arrastadas da árvore viram cartões. Teclado: Enter edita o selecionado, Delete ou Backspace apaga, `Ctrl+A` seleciona tudo, `Ctrl+Z`, `Ctrl+Shift+Z` e `Ctrl+Y` desfazem e refazem.
+
+`DrawingView.svelte` (lógica em `draw.ts`) desenha retângulo, losango, elipse, seta, linha, desenho livre, texto (solto ou dentro da forma), borracha e imagens, com cor, fundo (suave ou sólido), espessura, tracejado e tamanho de texto; seleção por caixa, redimensionar, duplicar, ordem e exportar PNG para os anexos. Cada ferramenta tem uma letra: H mover a tela, V selecionar, R retângulo, D losango, O elipse, A seta, L linha, P desenho livre, T texto, E borracha. Também: Espaço segurado move a tela, setas movem o selecionado (Shift, de 10 em 10), Enter escreve na forma ou no texto, `Ctrl+D` duplica, `Ctrl+=`, `Ctrl+-` e `Ctrl+0` aproximam, afastam e enquadram. O arquivo é JSON com um elemento por linha; cada elemento tem caixa `x, y, w, h`, e linhas, setas e traços guardam os pontos relativos a ela. Chaves desconhecidas no topo do arquivo são preservadas.
+
+As duas telas têm tela cheia (botão nos controles, F dentro da tela, ou o atalho `F11` do Studio): ocupam a janela inteira, sem faixa, árvore ou barra. Esc sai quando nada está selecionado (no desenho, também com a ferramenta de seleção). Salvam sozinhas e recarregam quando o arquivo muda fora do editor (evento `notesChanged`), se não houver mudança própria pendente.
+
+## Bancos de dados
+
+Um banco de dados do cofre é uma lista de coisas (clientes, tarefas, leituras) em que cada item é uma nota: tem espaço para escrever, links de e para outras notas e aparece na busca e no mapa. Código em `internal/app/database.go`, `studio/database.go`, `DatabaseView.svelte`, `DatabaseNew.svelte`, `FieldInput.svelte` e `db.ts`.
+
+```text
+Bancos de dados/Clientes.table   colunas e formas de ver (JSON)
+Bancos de dados/Clientes/        uma nota por registro, campos nas propriedades
+```
+
+### Arquivo `.table`
+
+JSON do próprio Studio, indentado com tabulação:
+
+| Campo | Conteúdo |
+| --- | --- |
+| `version` | Sempre `1` |
+| `records` | Nome da pasta de registros, ao lado do `.table`; se faltar, o nome do arquivo sem extensão |
+| `tag` | Tag de todo registro; ao criar, o nome em minúsculas com hífens no lugar de espaços |
+| `columns` | `{key, name, type, options}`; `key` é a propriedade nas notas, `options` são `{value, color}` |
+| `views` | `{id, name, type, groupBy, sort, filter, match}`; `type` é `table` ou `board` |
+
+Tipos de coluna (`db.ts`, rótulo em português): `text` Texto, `number` Número, `select` Escolha única, `multi` Várias escolhas, `date` Data, `phone` Telefone, `email` E-mail, `url` Link, `check` Sim/Não, `link` Ligação com nota. Cores das opções: `gray`, `red`, `orange`, `yellow`, `green`, `blue`, `pink`. Nas formas de ver, `sort` é a chave da coluna (vazio para o nome), com `-` na frente para ordem decrescente; `groupBy` é a coluna de escolha única que dá as colunas do quadro; `filter` e `match` guardam o filtro (coluna e opção).
+
+`keyOf` gera a chave a partir do nome da coluna: minúsculas, sem acentos, não alfanuméricos viram hífen, `campo` se ficar vazio, e sufixo `-2`, `-3` quando já existe ou quando colide com `tags`, `created`, `updated` ou `title`.
+
+### Criar
+
+Novo banco de dados (faixa lateral ou `Ctrl+Alt+B`) abre `DatabaseNew.svelte`: escolher um modelo e o nome (o do modelo, até o usuário digitar outro). `CreateDatabase` sempre grava em `Bancos de dados/` (o workspace passa pasta vazia), cria a pasta de registros e o `.table`; nome tomado, no arquivo ou na pasta, ganha número ("Clientes 2").
+
+| Modelo | Colunas | Quadro por |
+| --- | --- | --- |
+| Clientes | Empresa, Telefone, E-mail, Temperatura (Quente, Morno, Frio), Último contato | Temperatura |
+| Tarefas | Situação (A fazer, Fazendo, Feito), Prioridade (Alta, Média, Baixa), Prazo, Responsável | Situação |
+| Leituras | Autor, Situação (Quero ler, Lendo, Lido), Nota (número), Link | Situação |
+| Do zero | Situação (A fazer, Feito); nome padrão "Minha lista" | Situação |
+
+Todo modelo vem com as formas de ver Tabela e Quadro.
+
+### Registros
+
+`ReadDatabase` lê os `.md` diretos da pasta de registros (sem ocultos), em ordem de nome sem distinção de caixa, com as propriedades (datas como `AAAA-MM-DD`) e os primeiros 2000 bytes do texto, usados pela busca. `AddRecord` cria `Nome.md` (ou `Nome 2.md`) com `created` e `updated` de hoje, a tag do banco e as propriedades não vazias recebidas. `SetProps` grava uma célula na nota; valor nulo, vazio, falso ou zero remove a propriedade (a regra de `clean`).
+
+`DatabaseOf` reconhece um registro: a nota está numa pasta `X` e existe `X.table` ao lado dessa pasta com `records` igual a `X`. Nesse caso `ReadNote` devolve `table` e `database`, e a página da nota mostra os campos em Propriedades, com o mesmo `FieldInput` da tabela; criar uma opção ali grava a opção no `.table`. Nota nova criada na pasta de registros pela árvore herda a tag do banco (`FolderTags`).
+
+### Tela do banco
+
+`DatabaseView.svelte` abre o `.table`. A barra tem as abas das formas de ver (e "+ Quadro" quando não há quadro e existe coluna de escolha única), Buscar em tudo…, Filtrar (Tudo ou uma opção de uma coluna de escolha única), Colunas por… no quadro quando há mais de uma coluna de escolha única, e Novo.
+
+- Tabela: cada célula é editável como planilha; clicar no nome abre a nota; a lixeira da linha apaga o registro para a Lixeira, com Desfazer no aviso. O cabeçalho de uma coluna abre o menu dela: nome, tipo, opções (com cor, renomear, tirar, Adicionar opção), Ordenar A → Z, Ordenar Z → A e Apagar coluna; o cabeçalho Nome só ordena. O "+" do fim acrescenta "Nova coluna" do tipo Texto e abre o menu.
+- Quadro: uma coluna por opção da coluna de agrupamento, mais "Sem valor"; arrastar um cartão para outra coluna troca a escolha (para "Sem valor", remove a propriedade). O cartão mostra o nome e até três outros campos preenchidos; clique abre a nota; cada coluna tem seu Novo.
+- Busca: todas as palavras precisam aparecer no nome, em algum campo ou no começo do texto da nota.
+- Novo registro: nome e Enter numa linha no topo (ou no topo da coluna do quadro). No quadro recebe a opção da coluna; na tabela com filtro, recebe a opção filtrada.
+- Campos (`FieldInput.svelte`): escolha única e várias escolhas abrem uma lista com "Buscar ou criar…" e Limpar; Telefone tem Ligar (`tel:`) e Abrir no WhatsApp (`wa.me`); E-mail tem Escrever e-mail; Link tem Abrir o link (prefixa `https://` se faltar); Data usa o seletor de data; Sim/Não é uma caixa; Ligação com nota abre o seletor de notas e grava `[[Nome]]`, que aparece no mapa e no "Mencionada em" da nota ligada.
+
+Colunas e formas de ver são gravadas 300 ms depois da mudança (`SaveDatabaseSchema`, que preserva `records` e, se vier vazio, `tag`). Apagar uma coluna não apaga a propriedade das notas. A tela relê os registros quando algo muda na pasta de registros e oferece recarregar quando o próprio `.table` muda fora dela.
 
 ## Prévia
 
@@ -147,20 +269,28 @@ A lixeira do Blup fica em `<site>/.blup/trash`, fora das notas, com diretório d
 
 `SettingsModal.svelte` contém abas geral, aparência, editor, contas, senha geral, IA, narração, terminal e atalhos. Controla idioma, preferências visuais e de editor, prévia ao abrir, contas, senha entre sites, OpenRouter, motor local, escolha/amostra de voz por idioma, tamanho do terminal e agentes encontrados. O link de ajuda é definido em `DOCS` nesse arquivo.
 
-Os atalhos padrão de `src/keys.ts` são:
+Os atalhos padrão de `src/keys.ts` são (os marcados com cofre só agem num cofre de anotações; a tela cheia só com um canvas ou desenho aberto):
 
 | Ação | Teclas |
 | --- | --- |
 | Nova nota | `Ctrl+N` |
+| Nota do dia (cofre) | `Ctrl+Alt+D` |
+| Mapa de notas (cofre) | `Ctrl+G` |
+| Novo canvas (cofre) | `Ctrl+Alt+C` |
+| Novo desenho (cofre) | `Ctrl+Alt+W` |
+| Novo banco de dados (cofre) | `Ctrl+Alt+B` |
+| Tela cheia no canvas e no desenho | `F11` |
 | Busca de notas | `Ctrl+Shift+F` |
 | Painel lateral | `Ctrl+Alt+S` |
 | Prévia | `Ctrl+Alt+P` |
 | Terminal | Ctrl com acento grave |
 | Configurações | `Ctrl+,` |
 
+`comboOf` monta a combinação pela tecla física das letras e números (`e.code`), então o layout do teclado e o Shift não mudam a letra. As escolhas do usuário ficam em `keys` nas preferências; ausência da ação usa o padrão e valor vazio desliga.
+
 O usuário pode alterar ou desativar cada um. Ao escolher uma combinação já usada por outra ação, a outra perde aquela combinação. O atalho global de mostrar/ocultar é outro mecanismo, com padrão `Alt+Space`.
 
-A aba Atalhos também mostra a lista fixa de comandos do editor, `k.editorKeys`. Em Hyprland sem configuração automática, apresenta as instruções do binding e um botão para copiar a linha.
+A aba Atalhos também mostra a lista fixa de comandos do editor, `k.editorKeys`: `Ctrl+S` salvar, `Ctrl+Z` e `Ctrl+Shift+Z` desfazer e refazer, `Ctrl+B` negrito, `Ctrl+I` itálico, `Ctrl+K` link, Tab aceita a sugestão, `@` menciona nota ou data, `/` abre as ações e os quatro atalhos de recolher títulos. Em Hyprland sem configuração automática, apresenta as instruções do binding e um botão para copiar a linha.
 
 ## Terminal e agentes locais
 

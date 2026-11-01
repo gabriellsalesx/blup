@@ -194,8 +194,8 @@ func ReadDatabase(site *config.Site, rel string) (Database, error) {
 			continue
 		}
 		props, body := splitProps(string(b))
-		if len(body) > 2000 {
-			body = body[:2000]
+		if r := []rune(body); len(r) > 2000 {
+			body = string(r[:2000])
 		}
 		db.Records = append(db.Records, DBRecord{Path: recRel, Name: strings.TrimSuffix(e.Name(), filepath.Ext(e.Name())), Props: props, Text: body})
 	}
@@ -303,6 +303,64 @@ func AddRecord(site *config.Site, rel, name string, props map[string]any) (strin
 	return path.Join(path.Dir(rel), s.Records, file), nil
 }
 
+// followDatabase keeps a database whole after a move or rename (from was
+// moved to to): a .table takes its records' folder along (renamed like
+// it), and a renamed records' folder is written in its .table.
+func followDatabase(site *config.Site, from, to string, dir bool) error {
+	if !dir && strings.EqualFold(path.Ext(from), ".table") {
+		p, err := notesPath(site, to)
+		if err != nil {
+			return err
+		}
+		s, err := readSchema(p)
+		if err != nil {
+			return nil // not a database we can read: leave it
+		}
+		oldDir, err := notesPath(site, path.Join(path.Dir(from), s.Records))
+		if err != nil {
+			return err
+		}
+		if _, err := os.Stat(oldDir); err != nil {
+			return nil
+		}
+		name := strings.TrimSuffix(path.Base(to), path.Ext(to))
+		newRel := path.Join(path.Dir(to), name)
+		newDir, err := notesPath(site, newRel)
+		if err != nil {
+			return err
+		}
+		if newDir != oldDir {
+			if _, err := os.Stat(newDir); err == nil {
+				return errors.New(name + " already exists there")
+			}
+			if err := os.Rename(oldDir, newDir); err != nil {
+				return err
+			}
+			if err := fixLinks(site, path.Join(path.Dir(from), s.Records), newRel, true); err != nil {
+				return err
+			}
+		}
+		s.Records = name
+		return writeSchema(p, s)
+	}
+	if dir && path.Dir(from) == path.Dir(to) {
+		// The records' folder renamed by itself: its .table follows the name.
+		table := path.Join(path.Dir(from), path.Base(from)+".table")
+		if path.Dir(from) == "." {
+			table = path.Base(from) + ".table"
+		}
+		p, err := notesPath(site, table)
+		if err != nil {
+			return nil
+		}
+		if s, err := readSchema(p); err == nil && s.Records == path.Base(from) {
+			s.Records = path.Base(to)
+			return writeSchema(p, s)
+		}
+	}
+	return nil
+}
+
 // DatabaseOf is the database a note is a record of (its .table path and
 // columns), or "" when it is not one: the note is in a folder that a
 // .table next to that folder names as its records' folder.
@@ -311,17 +369,34 @@ func DatabaseOf(site *config.Site, rel string) (string, *DBSchema) {
 	if dir == "." || dir == "" {
 		return "", nil
 	}
-	table := path.Join(path.Dir(dir), path.Base(dir)+".table")
-	if path.Dir(dir) == "." {
-		table = path.Base(dir) + ".table"
+	parent := path.Dir(dir)
+	if parent == "." {
+		parent = ""
 	}
-	p, err := dbPath(site, table)
-	if err != nil {
-		return "", nil
+	// Usually the .table has the folder's name; else any .table next to
+	// the folder that names it (the folder renamed by itself).
+	tables := []string{path.Join(parent, path.Base(dir)+".table")}
+	pdir := filepath.Clean(site.ContentDir())
+	if parent != "" {
+		pdir, _ = notesPath(site, parent)
 	}
-	s, err := readSchema(p)
-	if err != nil || s.Records != path.Base(dir) {
-		return "", nil
+	if pdir != "" {
+		if entries, err := os.ReadDir(pdir); err == nil {
+			for _, e := range entries {
+				if !e.IsDir() && strings.EqualFold(filepath.Ext(e.Name()), ".table") {
+					tables = append(tables, path.Join(parent, e.Name()))
+				}
+			}
+		}
 	}
-	return table, &s
+	for _, table := range tables {
+		p, err := dbPath(site, table)
+		if err != nil {
+			continue
+		}
+		if s, err := readSchema(p); err == nil && s.Records == path.Base(dir) {
+			return table, &s
+		}
+	}
+	return "", nil
 }

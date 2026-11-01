@@ -125,6 +125,9 @@ func moveItem(site *config.Site, from, to string, dir bool) error {
 	if err := os.Rename(src, dst); err != nil {
 		return err
 	}
+	if err := followDatabase(site, from, to, dir); err != nil {
+		return err
+	}
 	return fixLinks(site, from, to, dir)
 }
 

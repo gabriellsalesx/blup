@@ -57,7 +57,7 @@ func boardName(name string) string {
 // boardPath is a board of the open vault, refusing anything else.
 func (s *Studio) boardPath(rel string) (string, error) {
 	if boardKind(rel) == "" {
-		return "", errors.New("not a canvas or a drawing")
+		return "", errors.New("not a canvas, a drawing or a database")
 	}
 	return s.notePath(rel)
 }

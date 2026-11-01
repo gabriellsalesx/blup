@@ -89,7 +89,7 @@
     if (!name) return;
     const props: Record<string, unknown> = {};
     if (view?.type === "board" && view.groupBy && group) props[view.groupBy] = group;
-    else if (view?.filter && view.match) props[view.filter] = byKey.get(view.filter)?.type === "multi" ? [view.match] : view.match;
+    else if (view?.filter && view.match) props[view.filter] = view.match;
     try { await AddRecord(path, name, props); await load(); } catch (e) { onError(clean(e)); }
   }
   async function remove(r: DBRecord) {
@@ -127,6 +127,18 @@
     view.sort = (desc ? "-" : "") + key;
     colMenu = null;
     saveSchema();
+  }
+  // A choice renamed: the records that had it get the new name too.
+  function renameOption(c: DBColumn, o: { value: string }, typed: string) {
+    const was = o.value, now = typed.trim();
+    if (!now || now === was) return;
+    o.value = now;
+    saveSchema();
+    for (const r of records) {
+      const v = r.props?.[c.key];
+      if (v === was) set(r, c.key, now);
+      else if (Array.isArray(v) && v.includes(was)) set(r, c.key, v.map((x) => (x === was ? now : x)));
+    }
   }
   function newOption(c: DBColumn, value: string, color: string) {
     c.options = [...(c.options ?? []), { value, color }];
@@ -274,7 +286,7 @@
             {#each menuCol.options ?? [] as o, i (i)}
               <div class="opt">
                 <button class="sw" style:background={optionColor(o.color)} title={d.color} aria-label={d.color} onclick={() => { o.color = nextColor(o.color); saveSchema(); }}></button>
-                <input value={o.value} aria-label={d.choice} onchange={(e) => { o.value = e.currentTarget.value.trim() || o.value; saveSchema(); }} />
+                <input value={o.value} aria-label={d.choice} onchange={(e) => renameOption(menuCol, o, e.currentTarget.value)} />
                 <button class="x" title={d.removeChoice} aria-label={d.removeChoice} onclick={() => { menuCol.options = (menuCol.options ?? []).filter((_, k) => k !== i); saveSchema(); }}><X size={13} /></button>
               </div>
             {/each}
