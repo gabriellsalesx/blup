@@ -25,6 +25,10 @@
   // Vaults of notes have a row of their own, below the sites.
   const vaults = $derived(Object.values(sites).filter((s) => s.kind === "notes").sort((a, b) => a.title.localeCompare(b.title)));
   const isVault = (dir: string | undefined) => !!dir && sites[dir]?.kind === "notes";
+  // Sites and vaults share the list and its folders, but each in its own
+  // section: a folder holds only one of them (the kind of what's in it).
+  const vaultItem = (it: HomeItem) => (it.folder ? isVault(it.sites?.[0]) : isVault(it.site));
+  const sameKind = (dir: string, it: HomeItem) => isVault(dir) === vaultItem(it);
   let items = $state<HomeItem[]>([]);
   let loaded = $state(false);
   let error = $state("");
@@ -112,7 +116,7 @@
     const dir = dragged;
     dragged = "";
     over = null;
-    if (!dir || target.site === dir) return;
+    if (!dir || target.site === dir || !sameKind(dir, target)) return;
     const targetKey = keyOf(target);
     take(dir);
     let i = items.findIndex((it) => keyOf(it) === targetKey);
@@ -204,12 +208,14 @@
   homeView.expand = "";
   let query = $state({ sites: "", vaults: "" });
   const match = (s: SiteInfo | undefined, q: string) => !!s && s.title.toLocaleLowerCase().includes(q.trim().toLocaleLowerCase());
-  const siteItems = $derived(items.filter((it) => it.folder || !isVault(it.site)));
+  const siteItems = $derived(items.filter((it) => !vaultItem(it)));
+  const vaultItems = $derived(items.filter(vaultItem));
   const siteCount = $derived(Object.values(sites).filter((s) => s.kind !== "notes").length);
   // Searching shows the matching sites themselves, also those in folders.
   const foundSites = $derived(Object.values(sites).filter((s) => s.kind !== "notes" && match(s, query.sites)).sort((a, b) => a.title.localeCompare(b.title)));
   const shownItems = $derived(whole.sites ? siteItems : siteItems.slice(0, limit));
-  const shownVaults = $derived(whole.vaults ? vaults.filter((v) => match(v, query.vaults)) : vaults.slice(0, limit));
+  const foundVaults = $derived(vaults.filter((v) => match(v, query.vaults)));
+  const shownVaultItems = $derived(whole.vaults ? vaultItems : vaultItems.slice(0, limit));
   const folders = $derived(items.filter((i) => i.folder));
   const focus = (el: HTMLInputElement) => { el.focus(); el.select(); };
 </script>
@@ -222,7 +228,7 @@
     <div class="site" class:dragging={dragged === dir} draggable="true"
       ondragstart={(e) => { dragged = dir; e.dataTransfer?.setData("text/plain", dir); }}
       ondragend={() => { dragged = ""; over = null; }}
-      ondragover={(e) => { if (!dragged || dragged === dir) return; e.preventDefault(); over = { key: "s:" + dir, zone: zone(e, !inFolder) }; }}
+      ondragover={(e) => { if (!dragged || dragged === dir || isVault(dragged) !== isVault(dir)) return; e.preventDefault(); over = { key: "s:" + dir, zone: zone(e, !inFolder) }; }}
       ondragleave={() => (over = null)}
       ondrop={(e) => { e.preventDefault(); const z = over?.zone ?? "after"; inFolder ? dropInFolder(dir, z) : dropOn({ site: dir }, z); }}
       class:before={over?.key === "s:" + dir && over.zone === "before"}
@@ -230,7 +236,7 @@
       class:into={over?.key === "s:" + dir && over.zone === "into"}>
       <button class="open" onclick={() => onOpen(s)}>
         <img src="/blups/{blupOf(s)}.svg" alt="" />
-        <span class="kind">{s.model === "bento" ? t.product : t.blog}</span>
+        <span class="kind">{s.kind === "notes" ? t.vaults.kind : s.model === "bento" ? t.product : t.blog}</span>
         <strong>{s.title}</strong>
         <span class="path muted" title={s.folder}>{short(s.folder)}</span>
       </button>
@@ -240,8 +246,8 @@
           {#if inFolder}
             <button onclick={() => takeOut(dir)}>{h.takeOut}</button>
           {:else}
-            {#each folders as f (f.folder)}<button onclick={() => moveTo(dir, f.folder!)}>{h.moveTo.replace("{name}", f.folder!)}</button>{/each}
-            <button onclick={() => newFolderWith(dir)}>{h.newFolderWith}</button>
+            {#each folders.filter((f) => sameKind(dir, f)) as f (f.folder)}<button onclick={() => moveTo(dir, f.folder!)}>{h.moveTo.replace("{name}", f.folder!)}</button>{/each}
+            <button onclick={() => newFolderWith(dir)}>{isVault(dir) ? h.newFolderWithVault : h.newFolderWith}</button>
           {/if}
           <hr />
           <button onclick={() => { menu = ""; forget(dir); }}>{t.del.forget}</button>
@@ -252,22 +258,25 @@
   {/if}
 {/snippet}
 
-{#snippet vaultCard(s: SiteInfo)}
-  <div class="site">
-    <button class="open" onclick={() => onOpen(s)}>
-      <img src="/blups/turma-7.svg" alt="" />
-      <span class="kind">{t.vaults.kind}</span>
-      <strong>{s.title}</strong>
-      <span class="path muted" title={s.folder}>{short(s.folder)}</span>
-    </button>
-    <button class="more" title={h.options} onclick={(e) => { e.stopPropagation(); menu = menu === s.dir ? "" : s.dir; }}><Ellipsis size={18} /></button>
-    {#if menu === s.dir}
-      <div class="menu" role="menu">
-        <button onclick={() => { menu = ""; forget(s.dir); }}>{t.del.forget}</button>
-        <button class="danger" onclick={() => { menu = ""; deleting = s.dir; }}><Trash size={15} />{t.del.deleteMenu}</button>
-      </div>
+{#snippet folderCard(it: HomeItem)}
+{@const f = it.folder!}
+<div class="site folder"
+  ondragover={(e) => { if (!dragged || !sameKind(dragged, it)) return; e.preventDefault(); over = { key: "f:" + f, zone: zone(e, true) }; }}
+  ondragleave={() => (over = null)}
+  ondrop={(e) => { e.preventDefault(); dropOn(it, over?.zone ?? "into"); }}
+  class:before={over?.key === "f:" + f && over.zone === "before"}
+  class:after={over?.key === "f:" + f && over.zone === "after"}
+  class:into={over?.key === "f:" + f && over.zone === "into"}>
+  <button class="open" onclick={() => (open = f)}>
+    <span class="minis">{#each (it.sites ?? []).slice(0, 3) as d (d)}<img src="/blups/{blupOf(sites[d])}.svg" alt="" />{/each}</span>
+    {#if renaming === f}
+      <input class="name" type="text" value={f} use:focus onclick={(e) => e.stopPropagation()} onblur={(e) => rename(f, e.currentTarget.value)} onkeydown={(e) => e.key === "Enter" && e.currentTarget.blur()} />
+    {:else}
+      <strong>{f}</strong>
     {/if}
-  </div>
+    <span class="muted">{(vaultItem(it) ? h.countVaults : h.count).replace("{n}", String(it.sites?.length ?? 0))}</span>
+  </button>
+</div>
 {/snippet}
 
 {#snippet searchBox(key: "sites" | "vaults")}
@@ -312,7 +321,7 @@
   {:else}
     <section>
       <h2>{t.sites}</h2>
-      <p class="muted">{t.sitesHelp} {items.length > 1 ? h.hint : ""}</p>
+      <p class="muted">{t.sitesHelp} {siteCount > 1 ? h.hint : ""}</p>
       {#if error}<p class="error">{t.error}: {error}</p>{/if}
       {#if whole.sites}{@render searchBox("sites")}{/if}
       <div class="grid" {@attach measure}>
@@ -326,25 +335,8 @@
         {:else}
         {#each shownItems as it (keyOf(it))}
           {#if it.folder}
-            {@const f = it.folder}
-            <div class="site folder"
-              ondragover={(e) => { if (!dragged) return; e.preventDefault(); over = { key: "f:" + f, zone: zone(e, true) }; }}
-              ondragleave={() => (over = null)}
-              ondrop={(e) => { e.preventDefault(); dropOn(it, over?.zone ?? "into"); }}
-              class:before={over?.key === "f:" + f && over.zone === "before"}
-              class:after={over?.key === "f:" + f && over.zone === "after"}
-              class:into={over?.key === "f:" + f && over.zone === "into"}>
-              <button class="open" onclick={() => (open = f)}>
-                <span class="minis">{#each (it.sites ?? []).slice(0, 3) as d (d)}<img src="/blups/{blupOf(sites[d])}.svg" alt="" />{/each}</span>
-                {#if renaming === f}
-                  <input class="name" type="text" value={f} use:focus onclick={(e) => e.stopPropagation()} onblur={(e) => rename(f, e.currentTarget.value)} onkeydown={(e) => e.key === "Enter" && e.currentTarget.blur()} />
-                {:else}
-                  <strong>{f}</strong>
-                {/if}
-                <span class="muted">{h.count.replace("{n}", String(it.sites?.length ?? 0))}</span>
-              </button>
-            </div>
-          {:else if !isVault(it.site)}
+            {@render folderCard(it)}
+          {:else}
             {@render siteCard(it.site!, false)}
           {/if}
         {/each}
@@ -357,7 +349,7 @@
     <!-- Note vaults: notes that are not a site (coming next). -->
     <section class="vaults">
       <h2>{t.vaults.title}</h2>
-      <p class="muted">{t.vaults.help}</p>
+      <p class="muted">{t.vaults.help} {vaults.length > 1 ? h.hintVaults : ""}</p>
       {#if whole.vaults}{@render searchBox("vaults")}{/if}
       <div class="grid">
         <button class="site new" onclick={onNewVault}>
@@ -365,10 +357,16 @@
           <strong>{t.vaults.new}</strong>
           <span class="muted">{t.vaults.newHelp}</span>
         </button>
-        {#each shownVaults as v (v.dir)}{@render vaultCard(v)}{/each}
+        {#if whole.vaults && query.vaults.trim()}
+          {#each foundVaults as v (v.dir)}{@render siteCard(v.dir, false)}{/each}
+        {:else}
+          {#each shownVaultItems as it (keyOf(it))}
+            {#if it.folder}{@render folderCard(it)}{:else}{@render siteCard(it.site!, false)}{/if}
+          {/each}
+        {/if}
       </div>
-      {#if whole.vaults && !shownVaults.length && query.vaults.trim()}<p class="muted none">{h.none}</p>{/if}
-      {@render more("vaults", vaults.length, vaults.length)}
+      {#if whole.vaults && query.vaults.trim() && !foundVaults.length}<p class="muted none">{h.none}</p>{/if}
+      {@render more("vaults", vaultItems.length, vaults.length)}
     </section>
   {/if}
 </main>
