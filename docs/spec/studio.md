@@ -266,7 +266,7 @@ Em Linux, `canPlayMP3` procura `libgstaudioparsers.so` nos diretórios GStreamer
 
 | Tela | Operações atuais |
 | --- | --- |
-| Site, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, favicon, menu, botão e redes; quando o site tem senha própria (`password` do `blup.toml`, de antes de a tela Senha sair do menu), um aviso com "Passar a usar a senha geral" |
+| Site, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, favicon, menu, botão e redes |
 | Autores, `AuthorsPanel.svelte` | Lista, perfil, foto/avatar, cargo, redes, bio, criação, renomeação e remoção |
 | Anexos, `AttachmentsPanel.svelte` | Lista por tipo, tamanho e usos, adição, renomeação, exclusão e acesso às notas que usam |
 | Seções, `SectionsPanel.svelte` | Somente Bento; acrescenta exemplos, inclusive Feedback, remove para a lixeira e oferece restaurar a seção removida |
