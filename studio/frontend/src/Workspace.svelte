@@ -433,6 +433,13 @@
     { key: "publish", label: t.nav.publish, Icon: Upload, group: "end" },
     { key: "trash", label: t.nav.trash, Icon: Trash2, group: "end" },
   ]);
+  // Each screen opens from its top: the scroll of a long one (Site,
+  // Publish) left a short one (Sections) looking empty.
+  let mainEl = $state<HTMLElement>();
+  $effect(() => {
+    void screen;
+    if (mainEl) mainEl.scrollTop = 0;
+  });
   const top = $derived(screens.filter((x) => x.group !== "end"));
   const bottom = $derived(screens.filter((x) => x.group === "end"));
   const openScreen = async (key: string) => { await save(); autostart = ""; screen = key; error = ""; };
@@ -785,7 +792,7 @@
     {#if !notesVault}<button class="btn" onclick={() => go("publish", "publish")}>{t.publish}</button>{/if}
   </header>
 
-  <section class="main" class:scroll={screen !== "write"} class:full={fullOn}>
+  <section class="main" bind:this={mainEl} class:scroll={screen !== "write"} class:full={fullOn}>
     {#if error}<p class="error">{t.error}: {error}</p>{/if}
     {#if outside}<div class="outside"><span>{t.term.outside}</span><button class="btn ghost" onclick={reloadOutside}>{t.term.reload}</button><button class="btn ghost" onclick={() => (outside = false)}>{t.term.keep}</button></div>{/if}
     {#if screen === "write"}
