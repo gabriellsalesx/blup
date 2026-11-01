@@ -1,5 +1,8 @@
 {{- /* The privacy policy: the note with "blup: privacy" (Blup writes a
-template when the cookie tools are turned on). Returns the page or false. */ -}}
+template when the cookie tools are turned on), in this language when it was
+translated. Returns the page or false. */ -}}
 {{- $p := false -}}
 {{- range where site.Pages "Params.blup" "privacy" }}{{ $p = . }}{{ break }}{{ end -}}
+{{- /* A language without its own translation: the original's policy. */ -}}
+{{- if not $p }}{{ range where (index hugo.Sites 0).Pages "Params.blup" "privacy" }}{{ $p = . }}{{ break }}{{ end }}{{ end -}}
 {{- return $p -}}

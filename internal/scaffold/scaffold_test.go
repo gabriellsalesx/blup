@@ -198,6 +198,9 @@ func TestBuildTranslated(t *testing.T) {
 	write("Receitas Doces/Bolo de Cenoura.md", "---\ntranslationKey: bolo\n---\nSem título no frontmatter nem H1.\n\n## Modo de preparo\nMisture tudo.\n")
 	write("Receitas Doces/es/Pastel de zanahoria.md", "---\ntitle: Pastel de zanahoria\ntranslationKey: bolo\nai_translated: true\n---\nUn pastel.\n")
 	write("Receitas Doces/es/_index.md", "---\ntitle: Recetas dulces\n---\n")
+	write("Privacidade.md", "---\ntitle: Privacidade\nblup: privacy\n---\nPolítica.\n")
+	write("es/Privacidad.md", "---\ntitle: Privacidad\nblup: privacy\ntranslationKey: privacidade\n---\nPolítica.\n")
+	write("es/_index.md", "---\ntitle: Inicio\nsite_name: Cocina ES\n---\nHola.\n")
 	write("01 - Guia/es/Instalar.md", "---\ntitle: Instalar\n---\nVer [el pastel](../Receitas%20Doces/Bolo%20de%20Cenoura.md).\n")
 	write("en/Início.md", "---\ntitle: Welcome to the kitchen\n---\nHello.\n")
 
@@ -241,6 +244,18 @@ func TestBuildTranslated(t *testing.T) {
 	}
 	if p := read("en/receitas-doces/bolo-de-cenoura/index.html"); strings.Contains(p, "Translated with AI") {
 		t.Error("a reviewed translation shows no AI mark")
+	}
+	// The footer: this language's privacy page and site name, not the
+	// first language's (cached parts are per language).
+	if p := read("es/receitas-doces/pastel-de-zanahoria/index.html"); !strings.Contains(p, "/es/privacidad/") || !strings.Contains(p, "Cocina ES") {
+		t.Error("spanish page: footer/settings come from another language")
+	}
+	if p := read("receitas-doces/bolo-de-cenoura/index.html"); strings.Contains(p, "/es/privacidad/") || strings.Contains(p, "Cocina ES") {
+		t.Error("portuguese page: footer/settings come from the spanish site")
+	}
+	// English has no translated policy: its footer links the original.
+	if p := read("en/receitas-doces/bolo-de-cenoura/index.html"); !strings.Contains(p, `href="/privacidade/"`) && !strings.Contains(p, "href=/privacidade/") {
+		t.Error("english page: the footer should link the original privacy policy")
 	}
 	// The section in Spanish has its translated name.
 	if p := read("es/receitas-doces/index.html"); !strings.Contains(p, "Recetas dulces") {
