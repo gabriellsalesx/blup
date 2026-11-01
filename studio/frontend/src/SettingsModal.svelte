@@ -452,6 +452,7 @@
         <div class="text"><b>{s.theme}</b><small>{s.themeHelp}</small></div>
         <ThemePicker />
       </div>
+      <div class="item"><Switch label={s.railNames} help={s.railNamesHelp} checked={look.railNames} onchange={(v) => setPref("railNames", v)} /></div>
       <div class="item">
         <div class="text"><b>{s.font}</b><small>{look.editorFont}px</small></div>
         <input type="range" min="13" max="22" value={look.editorFont} oninput={(e) => setPref("editorFont", +e.currentTarget.value)} />

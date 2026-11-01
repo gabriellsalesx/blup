@@ -110,7 +110,7 @@ Um cofre de anotações é um site com `kind = "notes"` (`site.IsNotes()` no Go,
 
 ### Faixa lateral e árvore
 
-A faixa da esquerda (`.ribbon`) mostra só ícones, com o nome no hover. No cofre ela tem Escrever, Mapa de notas, Anexos, Sincronizar e Lixeira; depois um separador com Novo canvas, Novo desenho, Novo banco de dados e Nota do dia; embaixo, o terminal. Sem botão de Prévia nem de Publicar na barra superior.
+A faixa da esquerda (`.ribbon`) mostra ícones, com o nome numa dica rápida ao passar o mouse ou focar (`data-tip`); em Configurações > Aparência, "Mostrar nomes no menu lateral" (`railNames`) alarga a faixa e põe o nome ao lado de cada ícone. As telas vêm em grupos separados por uma linha (`group` em `screens`). Num site: Conteúdo (Escrever, Anexos, Autores), Site (Site, Seções, Idiomas), Público (Comentários, Feedback no Bento e Podcast no blog, quando a seção existe) e Privacidade (Cookies e estatísticas); embaixo, Publicar, Lixeira e o terminal. No cofre: Escrever, Mapa de notas e Anexos; depois um separador com Novo canvas, Novo desenho, Novo banco de dados e Nota do dia; embaixo, Sincronizar, Lixeira e o terminal. Sem botão de Prévia nem de Publicar na barra superior.
 
 A árvore (`Tree.svelte`) lista notas, pastas, canvases (`.canvas`), desenhos (`.draw`) e bancos de dados (`.table`), cada um com ícone próprio; `Studio.Open` só inclui essas três extensões quando o site é um cofre. Clicar numa pasta abre ou fecha e a torna o lugar das notas novas.
 
@@ -266,14 +266,13 @@ Em Linux, `canPlayMP3` procura `libgstaudioparsers.so` nos diretórios GStreamer
 
 | Tela | Operações atuais |
 | --- | --- |
-| Aparência, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, favicon, menu, botão e redes |
+| Site, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, favicon, menu, botão e redes; quando o site tem senha própria (`password` do `blup.toml`, de antes de a tela Senha sair do menu), um aviso com "Passar a usar a senha geral" |
 | Autores, `AuthorsPanel.svelte` | Lista, perfil, foto/avatar, cargo, redes, bio, criação, renomeação e remoção |
 | Anexos, `AttachmentsPanel.svelte` | Lista por tipo, tamanho e usos, adição, renomeação, exclusão e acesso às notas que usam |
 | Seções, `SectionsPanel.svelte` | Somente Bento; acrescenta exemplos, inclusive Feedback, remove para a lixeira e oferece restaurar a seção removida |
 | Comentários, `CommentsPanel.svelte` | Ativa/desativa feedback, prepara repositório e orienta instalação do App |
 | Feedback, `FeedbackPanel.svelte` | Só no Bento com a seção Feedback: lista issues de pedidos via `FeedbackPosts`, filtra por categoria, abre no GitHub e muda o status via `SetFeedbackStatus` |
 | Cookies, `CookiesPanel.svelte` | Ferramentas, IDs, URLs próprias, banner e política |
-| Senha, `PasswordPanel.svelte` | Senha geral específica do site e estado da global |
 | Publicação, `PublishPanel.svelte` | Conectar contas, destino, publicar, acompanhar log, domínio e sync |
 | Lixeira, `TrashPanel.svelte` | Restaurar, excluir item e esvaziar |
 

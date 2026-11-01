@@ -187,6 +187,20 @@
           </div>
         </div>
 
+        <!-- Who wrote it: on every post, not hidden in More options. -->
+        <div class="field wide"><span>{p.authors}</span>
+          <div class="chips suggest">
+            {#each authors as a, i (a)}<span class="chip">{a}<button title={t.remove} onclick={() => { authors.splice(i, 1); onEdit("authors", [...authors]); }}><X size={12} /></button></span>{/each}
+            <input type="text" bind:value={authorInput} onkeydown={authorKey} oninput={() => (authorPick = -1)} onfocus={() => (authorFocus = true)} onblur={() => setTimeout(() => (authorFocus = false), 150)} placeholder={known.length ? p.pickAuthor : p.addAuthor} />
+            {#if authorFocus && authorOpts.length}
+              <ul class="opts" role="listbox">
+                {#each authorOpts as n, i (n)}<li><button role="option" aria-selected={i === authorPick} class:on={i === authorPick} onmousedown={(e) => e.preventDefault()} onclick={() => addAuthor(n)}>{n}</button></li>{/each}
+              </ul>
+            {/if}
+          </div>
+          {#if unknownAuthors.length}<small>{p.unknownAuthor.replace("{names}", unknownAuthors.join(", "))}</small>{/if}
+        </div>
+
         <div class="field wide"><span>{p.cover}</span>
           <div class="cover">
             <div class="thumb">{#if cover}<img src={cover} alt="" />{:else}<span class="muted">{t.look.none}</span>{/if}</div>
@@ -249,22 +263,8 @@
 
       {#if onOpenNote}<NoteLangs {note} onOpen={onOpenNote} {onSettings} />{/if}
 
-      <button class="more wide" onclick={() => (more = !more)}>{more ? "−" : "+"} {p.more}</button>
-      {#if more}
-        {#if !isIndex}
-          <div class="field wide"><span>{p.authors}</span>
-            <div class="chips suggest">
-              {#each authors as a, i (a)}<span class="chip">{a}<button title={t.remove} onclick={() => { authors.splice(i, 1); onEdit("authors", [...authors]); }}><X size={12} /></button></span>{/each}
-              <input type="text" bind:value={authorInput} onkeydown={authorKey} oninput={() => (authorPick = -1)} onfocus={() => (authorFocus = true)} onblur={() => setTimeout(() => (authorFocus = false), 150)} placeholder={known.length ? p.pickAuthor : p.addAuthor} />
-              {#if authorFocus && authorOpts.length}
-                <ul class="opts" role="listbox">
-                  {#each authorOpts as n, i (n)}<li><button role="option" aria-selected={i === authorPick} class:on={i === authorPick} onmousedown={(e) => e.preventDefault()} onclick={() => addAuthor(n)}>{n}</button></li>{/each}
-                </ul>
-              {/if}
-            </div>
-            {#if unknownAuthors.length}<small>{p.unknownAuthor.replace("{names}", unknownAuthors.join(", "))}</small>{/if}
-          </div>
-        {/if}
+      {#if ordered}<button class="more wide" onclick={() => (more = !more)}>{more ? "−" : "+"} {p.more}</button>{/if}
+      {#if more && ordered}
         {#if ordered}
           <label class="field"><span>{p.weight}</span><input type="number" min="0" bind:value={weight} oninput={() => onEdit("weight", Number(weight) || 0)} /><small>{isIndex ? p.weightHelp : p.weightHelpPage}</small></label>
         {/if}

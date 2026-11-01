@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { SaveAbout, SaveMenu, SaveSocial, PickImage, RemoveImage, ImageData } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { SaveAbout, SaveMenu, SaveSocial, PickImage, RemoveImage, ImageData, SetPassword } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Settings, MenuItem } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Saved from "./Saved.svelte";
   import { saver } from "./saving.svelte";
@@ -48,6 +48,11 @@
     addPick = "";
   }
 
+  // A password of this site only, set before the side menu lost its
+  // Password screen: shown so it isn't forgotten, and one click back to the
+  // general password (Settings > Password).
+  const ownPw = saver();
+
   // Social links
   let social = $state<string[]>((settings.social ?? []).map((s) => s.replace(/^mailto:/, "")));
   const socialSave = saver();
@@ -56,6 +61,14 @@
 <div class="panel">
   <h1>{t.look.title}</h1>
   <p class="lead">{t.look.lead}</p>
+
+  {#if settings.hasPassword}
+    <section class="card">
+      <h2>{t.look.ownPw}</h2>
+      <p>{t.look.ownPwHelp}</p>
+      <div class="actions"><Saved state={ownPw.state} /><button class="btn ghost" disabled={ownPw.state.busy} onclick={() => ownPw.run(async () => { await SetPassword(""); reload(); }, t.look.ownPwRemoved)}>{t.look.ownPwRemove}</button></div>
+    </section>
+  {/if}
 
   <section class="card">
     <h2>{t.look.about}</h2>

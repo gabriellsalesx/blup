@@ -275,6 +275,11 @@ export interface Prefs {
      * who translates: "local" (on the computer) or "cloud" (OpenRouter or Blup Cloud); "" = local when installed
      */
     "translateAI": string;
+
+    /**
+     * the side menu shows each screen's name next to its icon
+     */
+    "railNames": boolean;
 }
 
 /**

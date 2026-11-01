@@ -115,6 +115,7 @@ type Prefs struct {
 	CloudTip     bool              `json:"cloudTip"`     // the invitation to Blup Cloud, after the first site, was answered
 	BackupDir    string            `json:"backupDir"`    // a daily copy of the open site's notes goes here ("" = off)
 	TranslateAI  string            `json:"translateAI"`  // who translates: "local" (on the computer) or "cloud" (OpenRouter or Blup Cloud); "" = local when installed
+	RailNames    bool              `json:"railNames"`    // the side menu shows each screen's name next to its icon
 }
 
 func prefsFile() (string, error) {

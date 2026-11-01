@@ -48,7 +48,6 @@
   import MessageSquare from "@lucide/svelte/icons/message-square";
   import Podcast from "@lucide/svelte/icons/podcast";
   import Cookie from "@lucide/svelte/icons/cookie";
-  import KeyRound from "@lucide/svelte/icons/key-round";
   import Upload from "@lucide/svelte/icons/upload";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import { t } from "./i18n";
@@ -69,7 +68,6 @@
   const FeedbackPanel = lazy(() => import("./FeedbackPanel.svelte"));
   const PodcastPanel = lazy(() => import("./PodcastPanel.svelte"));
   const CookiesPanel = lazy(() => import("./CookiesPanel.svelte"));
-  const PasswordPanel = lazy(() => import("./PasswordPanel.svelte"));
   const PublishPanel = lazy(() => import("./PublishPanel.svelte"));
   const TrashPanel = lazy(() => import("./TrashPanel.svelte"));
   const AuthorsPanel = lazy(() => import("./AuthorsPanel.svelte"));
@@ -409,30 +407,35 @@
   const reload = () => LoadSettings().then((s) => (settings = s)).catch((e) => (error = String(e)));
   // A vault of notes: the editor, attachments, sync and trash; no site.
   const notesVault = $derived(site.kind === "notes");
+  // The screens, in groups split by a line: what one writes, the site,
+  // what the public sees and answers, privacy; publishing and the trash
+  // sit at the bottom ("end").
   const screens = $derived(notesVault ? [
-    { key: "write", label: t.nav.write, Icon: PenLine },
-    { key: "graph", label: t.graph.title, Icon: Waypoints },
-    { key: "attach", label: t.nav.attach, Icon: Paperclip },
-    { key: "publish", label: t.sync, Icon: RefreshCw },
-    { key: "trash", label: t.nav.trash, Icon: Trash2 },
+    { key: "write", label: t.nav.write, Icon: PenLine, group: "content" },
+    { key: "graph", label: t.graph.title, Icon: Waypoints, group: "content" },
+    { key: "attach", label: t.nav.attach, Icon: Paperclip, group: "content" },
+    { key: "publish", label: t.sync, Icon: RefreshCw, group: "end" },
+    { key: "trash", label: t.nav.trash, Icon: Trash2, group: "end" },
   ] : [
-    { key: "write", label: t.nav.write, Icon: PenLine },
-    { key: "look", label: t.nav.look, Icon: Palette },
-    { key: "langs", label: t.nav.langs, Icon: Languages },
-    { key: "authors", label: t.nav.authors, Icon: Users },
-    { key: "attach", label: t.nav.attach, Icon: Paperclip },
+    { key: "write", label: t.nav.write, Icon: PenLine, group: "content" },
+    { key: "attach", label: t.nav.attach, Icon: Paperclip, group: "content" },
+    { key: "authors", label: t.nav.authors, Icon: Users, group: "content" },
+    { key: "look", label: t.nav.look, Icon: Palette, group: "site" },
     // Bento's parts; a blog's podcast.
-    { key: "sections", label: t.nav.sections, Icon: LayoutGrid },
-    { key: "comments", label: t.nav.comments, Icon: MessageCircle },
+    { key: "sections", label: t.nav.sections, Icon: LayoutGrid, group: "site" },
+    { key: "langs", label: t.nav.langs, Icon: Languages, group: "site" },
+    { key: "comments", label: t.nav.comments, Icon: MessageCircle, group: "public" },
     // The feedback board's requests, when the Bento site has the section.
-    ...(site.model === "bento" && settings?.sections?.some((x) => x.kind === "feedback" && x.present) ? [{ key: "feedback", label: t.nav.feedback, Icon: MessageSquare }] : []),
+    ...(site.model === "bento" && settings?.sections?.some((x) => x.kind === "feedback" && x.present) ? [{ key: "feedback", label: t.nav.feedback, Icon: MessageSquare, group: "public" }] : []),
     // A blog's podcast, when it has the section.
-    ...(site.model !== "bento" && settings?.sections?.some((x) => x.kind === "podcast" && x.present) ? [{ key: "podcast", label: t.nav.podcast, Icon: Podcast }] : []),
-    { key: "cookies", label: t.nav.cookies, Icon: Cookie },
-    { key: "password", label: t.nav.password, Icon: KeyRound },
-    { key: "publish", label: t.nav.publish, Icon: Upload },
-    { key: "trash", label: t.nav.trash, Icon: Trash2 },
+    ...(site.model !== "bento" && settings?.sections?.some((x) => x.kind === "podcast" && x.present) ? [{ key: "podcast", label: t.nav.podcast, Icon: Podcast, group: "public" }] : []),
+    { key: "cookies", label: t.nav.cookies, Icon: Cookie, group: "privacy" },
+    { key: "publish", label: t.nav.publish, Icon: Upload, group: "end" },
+    { key: "trash", label: t.nav.trash, Icon: Trash2, group: "end" },
   ]);
+  const top = $derived(screens.filter((x) => x.group !== "end"));
+  const bottom = $derived(screens.filter((x) => x.group === "end"));
+  const openScreen = async (key: string) => { await save(); autostart = ""; screen = key; error = ""; };
 
   // The terminal at the bottom, and its height (dragging its top edge).
   let termOpen = $state(false);
@@ -677,13 +680,14 @@
 
 <svelte:window onresize={fit} onkeydown={shortcut} onclick={() => (switching = false)} />
 
-<div class="ws" class:no-preview={!previewOn} class:no-side={!sideOpen} class:resizing style:--side="{sideW}px" style:--prev={prevW ? `${prevW}px` : "minmax(0, 1fr)"}>
+<div class="ws" class:names={look.railNames} class:no-preview={!previewOn} class:no-side={!sideOpen} class:resizing style:--side="{sideW}px" style:--prev={prevW ? `${prevW}px` : "minmax(0, 1fr)"}>
   <!-- The ribbon, like Obsidian's: icons only, the name on hover. -->
   <nav class="ribbon">
     <button class="rib" title={t.side.toggle} onclick={() => (sideOpen = !sideOpen)}><PanelLeft size={19} strokeWidth={1.75} /></button>
     <span class="sep"></span>
-    {#each screens as { key, label, Icon } (key)}
-      <button class="rib" class:active={screen === key} title={label} onclick={async () => { await save(); autostart = ""; screen = key; error = ""; }}><Icon size={19} strokeWidth={1.75} /></button>
+    {#each top as { key, label, Icon, group }, i (key)}
+      {#if i > 0 && top[i - 1].group !== group}<span class="sep"></span>{/if}
+      <button class="rib" class:active={screen === key} aria-label={label} data-tip={label} onclick={() => openScreen(key)}><Icon size={19} strokeWidth={1.75} /><span class="rib-name">{label}</span></button>
     {/each}
     {#if notesVault}
       <!-- Making things: a canvas, a drawing (opened right away). -->
@@ -694,6 +698,10 @@
       <button class="rib" title={t.daily.button} onclick={dailyNote}><CalendarDays size={19} strokeWidth={1.75} /></button>
     {/if}
     <span class="grow"></span>
+    {#each bottom as { key, label, Icon } (key)}
+      <button class="rib" class:active={screen === key} aria-label={label} data-tip={label} onclick={() => openScreen(key)}><Icon size={19} strokeWidth={1.75} /><span class="rib-name">{label}</span></button>
+    {/each}
+    <span class="sep"></span>
     <button class="rib" class:active={termOpen} title={t.term.button + (keysOf(look.keys, "terminal") ? ` (${keysOf(look.keys, "terminal")})` : "")} onclick={() => (termOpen = !termOpen)}><SquareTerminal size={19} strokeWidth={1.75} /></button>
   </nav>
 
@@ -811,7 +819,6 @@
         {:else if screen === "feedback"}{#await FeedbackPanel() then { default: C }}<C />{/await}
         {:else if screen === "podcast"}{#await PodcastPanel() then { default: C }}<C />{/await}
         {:else if screen === "cookies"}{#await CookiesPanel() then { default: C }}<C {settings} {reload} onOpenNote={openNote} />{/await}
-        {:else if screen === "password"}{#await PasswordPanel() then { default: C }}<C {settings} {reload} />{/await}
         {:else if screen === "publish"}{#await PublishPanel() then { default: C }}<C autostart={autostart} notes={notesVault} />{/await}
         {:else if screen === "authors"}{#await AuthorsPanel() then { default: C }}<C onTree={async () => (tree = (await LoadTree()).children ?? [])} />{/await}
         {:else if screen === "attach"}{#await AttachmentsPanel() then { default: C }}<C onOpenNote={openNote} />{/await}
@@ -883,9 +890,9 @@
 <style>
   /* Columns: ribbon, files, editor, preview. The top bar starts after the
      files; the terminal sits under the editor and the preview. */
-  .ws { height: 100%; overflow: hidden; display: grid; grid-template-columns: 3rem var(--side) minmax(0, 1fr) var(--prev); grid-template-rows: auto minmax(0, 1fr) auto; }
-  .ws.no-preview { grid-template-columns: 3rem var(--side) minmax(0, 1fr); }
-  .ws.no-side { grid-template-columns: 3rem minmax(0, 1fr) var(--prev); }
+  .ws { --rail: 3rem; height: 100%; overflow: hidden; display: grid; grid-template-columns: var(--rail) var(--side) minmax(0, 1fr) var(--prev); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .ws.no-preview { grid-template-columns: var(--rail) var(--side) minmax(0, 1fr); }
+  .ws.no-side { grid-template-columns: var(--rail) minmax(0, 1fr) var(--prev); }
   /* The edges to drag: a thin line that lights up under the mouse. */
   .tip-shade { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / .45); }
   .tip { position: fixed; z-index: 41; inset: 0; margin: auto; height: fit-content; display: grid; justify-items: center; gap: .9rem; width: min(26rem, calc(100% - 2rem)); padding: 1.75rem 1.5rem 1.5rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); text-align: center; }
@@ -909,9 +916,19 @@
   .resizer:hover::after, .resizer:focus-visible::after, .ws.resizing .resizer:active::after { background: var(--blue); }
   .ws.resizing { cursor: col-resize; user-select: none; }
   .ws.resizing :global(iframe) { pointer-events: none; }
-  .ws.no-side.no-preview { grid-template-columns: 3rem minmax(0, 1fr); }
-  .ribbon { grid-row: 1 / -1; grid-column: 1; display: flex; flex-direction: column; align-items: center; gap: .2rem; padding-block: .6rem; border-inline-end: 1px solid var(--line); background: var(--panel); }
-  .rib { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: .45rem; color: var(--muted); }
+  .ws.no-side.no-preview { grid-template-columns: var(--rail) minmax(0, 1fr); }
+  .ribbon { position: relative; z-index: 20; grid-row: 1 / -1; grid-column: 1; display: flex; flex-direction: column; align-items: center; gap: .2rem; padding-block: .6rem; border-inline-end: 1px solid var(--line); background: var(--panel); }
+  .rib { position: relative; display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: .45rem; color: var(--muted); }
+  .rib-name { display: none; }
+  /* The screen's name at once on hover (the system's tip waits a second). */
+  .rib[data-tip]:hover::after, .rib[data-tip]:focus-visible::after { content: attr(data-tip); position: absolute; z-index: 50; inset-inline-start: calc(100% + .5rem); padding: .3rem .55rem; border-radius: .4rem; background: var(--text); color: var(--bg); font-size: .78rem; font-weight: 500; white-space: nowrap; pointer-events: none; }
+  /* Names next to the icons (Settings > Look). */
+  .ws.names { --rail: 11.5rem; }
+  .ws.names .ribbon { align-items: stretch; padding-inline: .5rem; }
+  .ws.names .rib { display: flex; justify-content: flex-start; gap: .65rem; width: 100%; padding-inline: .55rem; }
+  .ws.names .rib-name { display: inline; overflow: hidden; font-size: .85rem; text-overflow: ellipsis; white-space: nowrap; }
+  .ws.names .rib[data-tip]:hover::after { content: none; }
+  .ws.names .sep { width: auto; margin-inline: .3rem; }
   .rib:hover { background: var(--soft); color: var(--text); }
   .rib.active { background: var(--soft); color: var(--text); }
   .sep { width: 1.4rem; height: 1px; margin-block: .35rem; background: var(--line); }
