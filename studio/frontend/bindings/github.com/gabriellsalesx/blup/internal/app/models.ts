@@ -518,6 +518,19 @@ export interface NewSiteOptions {
 }
 
 /**
+ * NoteLang is a language a note can be read in: its own (Original), or a
+ * translation (Path, there or not yet, Stale when the original changed
+ * since).
+ */
+export interface NoteLang {
+    "lang": string;
+    "path": string;
+    "original": boolean;
+    "exists": boolean;
+    "stale": boolean;
+}
+
+/**
  * SearchHit is a note found by SearchNotes: by its name, its text, or
  * both; Lines are up to three lines where the text has the words.
  */

@@ -7,10 +7,11 @@
   import X from "@lucide/svelte/icons/x";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { t } from "./i18n";
+  import NoteLangs from "./NoteLangs.svelte";
 
   // The note's properties as fields. onEdit(key, value) reports a change;
   // note is the note's path; onSettings opens the Studio's settings (tab).
-  let { props, kind, isIndex, note, onEdit, onSettings }: { props: Record<string, any>; kind: string; isIndex: boolean; note: string; onEdit: (key: string, value: any) => void; onSettings: (tab: string) => void } = $props();
+  let { props, kind, isIndex, note, onEdit, onSettings, onOpenNote }: { props: Record<string, any>; kind: string; isIndex: boolean; note: string; onEdit: (key: string, value: any) => void; onSettings: (tab: string) => void; onOpenNote?: (path: string) => void } = $props();
 
   const p = t.props;
   let open = $state(false);
@@ -245,6 +246,8 @@
           </div>
         </div>
       {/if}
+
+      {#if onOpenNote && !props.blup}<NoteLangs {note} onOpen={onOpenNote} {onSettings} />{/if}
 
       <button class="more wide" onclick={() => (more = !more)}>{more ? "−" : "+"} {p.more}</button>
       {#if more}

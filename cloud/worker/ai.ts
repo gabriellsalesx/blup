@@ -6,7 +6,7 @@ import { aiUsage } from "./db/schema";
 import { planOf } from "./account";
 import type { Plan } from "./plans";
 
-// AI through Blup Cloud (narration for now), paid by the plan instead of the
+// AI through Blup Cloud (narration and translation), paid by the plan instead of the
 // person's own OpenRouter key. No credits: each request costs what the model
 // costs, and the plan has a monthly allowance (25% of what the plan leaves
 // after Stripe's fee) that no single week can use more than half of. The
@@ -21,7 +21,28 @@ type App = { Bindings: Cloudflare.Env; Variables: { userId: string } };
 // US$ 22 per million characters.
 export const VOICE_MODEL = "microsoft/mai-voice-2.1";
 export const PER_CHAR_MICROS = 22;
-const VOICE = /^(pt-BR|en-US)-[A-Za-z]+:MAI-Voice-2\.1$/;
+const VOICE = /^(pt-BR|en-US|es-MX|es-ES)-[A-Za-z]+:MAI-Voice-2\.1$/;
+
+// The translation model (the same as the Studio's internal/translate) and
+// its languages. The request is built here: Blup Cloud translates notes,
+// it is not a general chat.
+export const TRANSLATE_MODEL = "anthropic/claude-haiku-5.5";
+const LANG_NAMES: Record<string, string> = { pt: "Brazilian Portuguese", en: "English", es: "Spanish (neutral Latin American)" };
+// The Studio sends a note in parts of at most 12000 bytes.
+const MAX_TRANSLATE = 16000;
+// What a character costs to translate, at most, before the real cost is
+// known: Haiku's US$ 0.10 in and US$ 0.50 out per million tokens, about
+// three characters a token, the answer as long as the text.
+const TRANSLATE_CHAR_MICROS = 0.2;
+
+// The instruction, the same as internal/translate.Prompt.
+const translatePrompt = (from: string, to: string) => `You translate Markdown notes of a website from ${LANG_NAMES[from]} to ${LANG_NAMES[to]}.
+Rules:
+- Output only the translation, nothing before or after it.
+- Keep the Markdown exactly: headings, lists, tables, quotes, callouts ("> [!tip] Title": translate the title, never the type in brackets), bold, italics, line breaks and blank lines.
+- Never change code blocks, inline code, HTML tags, URLs, the targets of links (the part in parentheses) or of [[wikilinks]] (translate only the text after |), image paths, file names, {.attributes} or math between $.
+- Keep names of people, products and brands.
+- Write naturally, as a native speaker would, keeping the tone.`;
 // Pro's monthly allowance, in millionths of a dollar (1x); the other plans
 // are multiples (aiUsage).
 const PRO_MONTH_MICROS = 660_000;
@@ -75,6 +96,17 @@ export async function aiUsageOf(userId: string, plan: Plan): Promise<AIUsage> {
 // OpenRouter's error shape, so the Studio's client reads it as usual.
 const fail = (message: string, code: string) => ({ error: { message, code } });
 
+// Whether the plan's allowance leaves room for a cost now (an error to
+// answer otherwise).
+async function allowance(userId: string, cost: number) {
+	const plan = await planOf(userId);
+	if (!plan.limits.aiUsage) return { status: 402 as const, body: fail("O seu plano não inclui IA pelo Blup Cloud.", "NO_AI") };
+	const use = await aiUsageOf(userId, plan);
+	if (use.usedMonthMicros + cost > use.monthMicros) return { status: 402 as const, body: fail("O uso de IA deste mês acabou. Ele renova no dia 1.", "AI_MONTH_LIMIT") };
+	if (use.usedWeekMicros + cost > use.weekCapMicros) return { status: 402 as const, body: fail("Você já usou metade do uso de IA do mês nesta semana. Tente de novo em alguns dias.", "AI_WEEK_LIMIT") };
+	return null;
+}
+
 export const aiApi = new Hono<App>()
 	.use(signedIn)
 	.get("/usage", async (c) => {
@@ -115,4 +147,49 @@ export const aiApi = new Hono<App>()
 		const audio = await res.arrayBuffer();
 		await db.insert(aiUsage).values({ userId, kind: "narration", units: chars, costMicros: cost });
 		return new Response(audio, { headers: { "content-type": "audio/mpeg" } });
+	}})
+	.post("/translate", async (c) => {
+		const userId = c.get("userId");
+		const body = await c.req.json<{ text?: string; from?: string; to?: string }>().catch(() => null);
+		const text = typeof body?.text === "string" ? body.text : "";
+		const from = body?.from ?? "", to = body?.to ?? "";
+		if (!text.trim() || text.length > MAX_TRANSLATE || !LANG_NAMES[from] || !LANG_NAMES[to] || from === to) {
+			return c.json(fail("Pedido de tradução inválido.", "BAD_REQUEST"), 400);
+		}
+		const estimate = Math.ceil([...text].length * TRANSLATE_CHAR_MICROS);
+		const denied = await allowance(userId, estimate);
+		if (denied) return c.json(denied.body, denied.status);
+		if (!c.env.OPENROUTER_API_KEY) return c.json(fail("A tradução pelo Blup Cloud está indisponível agora.", "UNAVAILABLE"), 503);
+
+		const res = await fetch(`${c.env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${c.env.OPENROUTER_API_KEY}`,
+				"Content-Type": "application/json",
+				"HTTP-Referer": "https://getblup.io",
+				"X-Title": "Blup Cloud",
+			},
+			body: JSON.stringify({
+				model: TRANSLATE_MODEL,
+				temperature: 0.2,
+				usage: { include: true },
+				messages: [
+					{ role: "system", content: translatePrompt(from, to) },
+					{ role: "user", content: text },
+				],
+			}),
+		});
+		if (!res.ok) {
+			console.error("[blup] tradução falhou", res.status, (await res.text()).slice(0, 300));
+			return c.json(fail("A tradução falhou agora. Tente de novo.", "UPSTREAM"), res.status === 429 ? 429 : 502);
+		}
+		const out = await res.json<{ choices?: { message?: { content?: string }; finish_reason?: string }[]; usage?: { cost?: number } }>();
+		const answer = out.choices?.[0]?.message?.content ?? "";
+		if (!answer || out.choices?.[0]?.finish_reason === "length") {
+			return c.json(fail("A tradução voltou incompleta. Tente de novo.", "UPSTREAM"), 502);
+		}
+		// What OpenRouter charged (in dollars), else the estimate.
+		const cost = typeof out.usage?.cost === "number" ? Math.ceil(out.usage.cost * 1_000_000) : estimate;
+		await db.insert(aiUsage).values({ userId, kind: "translation", units: [...text].length, costMicros: cost });
+		return c.json({ text: answer });
 	});

@@ -32,6 +32,7 @@ export type {
     Narration,
     NarrationCost,
     NewSiteOptions,
+    NoteLang,
     SearchHit,
     Section,
     Settings,

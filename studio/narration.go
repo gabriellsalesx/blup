@@ -84,14 +84,15 @@ func (s *Studio) NarrationHash(rel string) (string, error) {
 	return app.NarrationHash(site, rel)
 }
 
-// Narrate reads the note aloud, with the voice chosen for the site's
-// language, and saves the MP3 in the attachments.
+// Narrate reads the note aloud, with the voice chosen for its language
+// (the site's, or its translation's), and saves the MP3 in the attachments.
 func (s *Studio) Narrate(rel string) (app.Narration, error) {
 	site, err := s.current()
 	if err != nil {
 		return app.Narration{}, err
 	}
-	voice := s.Prefs().Voices[site.Lang]
+	_, lang := app.NoteOrigin(site, rel)
+	voice := s.Prefs().Voices[lang]
 	return app.Narrate(context.Background(), site, rel, voice, func(done, total int) {
 		application.Get().Event.Emit("narrate", NarrateProgress{rel, done, total})
 	})
@@ -105,7 +106,8 @@ func (s *Studio) NarrationEstimate(rel string) (*app.NarrationCost, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !app.NarratesThroughBlup(site.Lang, s.Prefs().Voices[site.Lang]) {
+	_, lang := app.NoteOrigin(site, rel)
+	if !app.NarratesThroughBlup(lang, s.Prefs().Voices[lang]) {
 		return nil, nil
 	}
 	c, err := app.EstimateNarration(context.Background(), site, rel)

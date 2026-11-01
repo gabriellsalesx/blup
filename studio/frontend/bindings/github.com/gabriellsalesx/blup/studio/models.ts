@@ -336,6 +336,17 @@ export interface TermData {
 }
 
 /**
+ * TranslateProgress is how far the translation of a note went (parts done
+ * of total), heard by the window as "translate".
+ */
+export interface TranslateProgress {
+    "note": string;
+    "lang": string;
+    "done": number;
+    "total": number;
+}
+
+/**
  * Vault is an Obsidian vault found on the computer.
  */
 export interface Vault {

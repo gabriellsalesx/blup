@@ -378,7 +378,8 @@ func NarrationHash(site *config.Site, rel string) (string, error) {
 	return textHash(text), err
 }
 
-// Narrate reads the note at rel aloud with voice, in the site's language,
+// Narrate reads the note at rel aloud with voice, in the note's language
+// (the site's, or its translation's: NoteOrigin),
 // and saves the MP3 in the attachments (over the note's previous
 // narration, so its link stays). progress gets the parts done of total.
 // Posts with a password are not narrated: the audio would give them away.
@@ -393,7 +394,8 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 	if strings.Count(text, " ") < 3 {
 		return Narration{}, errors.New(byLang(site, "A nota ainda não tem texto para narrar.", "The note has no text to narrate yet.", "La nota todavía no tiene texto para narrar."))
 	}
-	voice = voiceFor(site.Lang, voice)
+	_, lang := NoteOrigin(site, rel)
+	voice = voiceFor(lang, voice)
 	var mp3 []byte
 	var seconds float64
 	var used string
@@ -402,7 +404,7 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 	} else if v, ok := strings.CutPrefix(voice, blupPrefix); ok {
 		mp3, seconds, err = speakBlup(ctx, site, text, v, progress)
 	} else {
-		mp3, seconds, used, err = speakOpenRouter(ctx, site, text, voice, progress)
+		mp3, seconds, used, err = speakOpenRouter(ctx, lang, text, voice, progress)
 	}
 	if err != nil {
 		return Narration{}, err
@@ -410,7 +412,7 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 	if len(mp3) > maxAudio {
 		return Narration{}, errors.New(byLang(site, "A narração passou de 25 MB, o máximo que o site publica. Divida o post em partes.", "The narration is over 25 MB, the most the site publishes. Split the post into parts.", "La narración pasa de 25 MB, el máximo que publica el sitio. Divide el post en partes."))
 	}
-	file := narrationFile(site, rel, note)
+	file := narrationFile(site, rel, lang, note)
 	dest := filepath.Join(site.ContentDir(), attachmentsFolder(site), file)
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return Narration{}, err
@@ -432,7 +434,7 @@ func speakLocal(ctx context.Context, text, voice string, progress func(done, tot
 
 // speakOpenRouter narrates with OpenRouter, part by part, and joins the
 // MP3s. used names the voice used instead of the choice, when it left.
-func speakOpenRouter(ctx context.Context, site *config.Site, text, choice string, progress func(done, total int)) ([]byte, float64, string, error) {
+func speakOpenRouter(ctx context.Context, lang, text, choice string, progress func(done, total int)) ([]byte, float64, string, error) {
 	creds, err := config.LoadCredentials()
 	if err != nil {
 		return nil, 0, "", err
@@ -440,7 +442,7 @@ func speakOpenRouter(ctx context.Context, site *config.Site, text, choice string
 	if creds.OpenRouterToken == "" {
 		return nil, 0, "", ErrNoAIKey
 	}
-	model, voice, used, err := resolveOpenRouter(ctx, site.Lang, choice)
+	model, voice, used, err := resolveOpenRouter(ctx, lang, choice)
 	if err != nil {
 		return nil, 0, "", err
 	}
@@ -453,7 +455,7 @@ func speakOpenRouter(ctx context.Context, site *config.Site, text, choice string
 		}
 		a, err := client.Speak(ctx, model, part, voice)
 		if errors.Is(err, narrate.ErrModelGone) {
-			return nil, 0, "", errors.New(byLang(site, "O modelo de voz saiu do OpenRouter agora há pouco. Escolha outro nas configurações de IA.", "The voice model just left OpenRouter. Pick another in the AI settings.", "El modelo de voz acaba de salir de OpenRouter. Elige otro en la configuración de IA."))
+			return nil, 0, "", errors.New(byLangCode(lang, "O modelo de voz saiu do OpenRouter agora há pouco. Escolha outro nas configurações de IA.", "The voice model just left OpenRouter. Pick another in the AI settings.", "El modelo de voz acaba de salir de OpenRouter. Elige otro en la configuración de IA."))
 		}
 		if err != nil {
 			return nil, 0, "", err
@@ -469,7 +471,7 @@ func speakOpenRouter(ctx context.Context, site *config.Site, text, choice string
 
 // narrationFile is the attachment's name: the one the note already links
 // to (an MP3 in the attachments), else the note's name.
-func narrationFile(site *config.Site, rel string, note obsidian.Note) string {
+func narrationFile(site *config.Site, rel, lang string, note obsidian.Note) string {
 	cur := strings.TrimSuffix(strings.TrimPrefix(note.String("audio"), "[["), "]]")
 	if strings.EqualFold(filepath.Ext(cur), ".mp3") && filepath.Base(cur) == cur {
 		if _, err := os.Stat(filepath.Join(site.ContentDir(), attachmentsFolder(site), cur)); err == nil {
@@ -479,6 +481,10 @@ func narrationFile(site *config.Site, rel string, note obsidian.Note) string {
 	name := safeFileName(strings.TrimSuffix(filepath.Base(rel), filepath.Ext(rel)))
 	if name == "" {
 		name = "narration"
+	}
+	// A translation's narration: the same name, with its language.
+	if lang != site.Lang {
+		name += " (" + lang + ")"
 	}
 	// A taken name (another note's narration, a file of the user) gets a number.
 	file := name + ".mp3"

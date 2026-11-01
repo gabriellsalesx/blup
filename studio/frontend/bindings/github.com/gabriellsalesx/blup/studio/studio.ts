@@ -511,8 +511,8 @@ export function MoveItem(rel: string, folder: string): $CancellablePromise<strin
 }
 
 /**
- * Narrate reads the note aloud, with the voice chosen for the site's
- * language, and saves the MP3 in the attachments.
+ * Narrate reads the note aloud, with the voice chosen for its language
+ * (the site's, or its translation's), and saves the MP3 in the attachments.
  */
 export function Narrate(rel: string): $CancellablePromise<app$0.Narration> {
     return $Call.ByID(3876254213, rel);
@@ -580,6 +580,14 @@ export function NoteHistory(path: string): $CancellablePromise<blupcloud$0.NoteV
  */
 export function NoteImage(note: string, src: string): $CancellablePromise<string> {
     return $Call.ByID(2688340763, note, src);
+}
+
+/**
+ * NoteLangs lists the note's languages: the original, then each other
+ * site language, translated (and up to date) or not.
+ */
+export function NoteLangs(rel: string): $CancellablePromise<app$0.NoteLang[] | null> {
+    return $Call.ByID(3204859451, rel);
 }
 
 /**
@@ -1113,6 +1121,14 @@ export function Target(): $CancellablePromise<app$0.Target> {
  */
 export function Thumbnail(name: string): $CancellablePromise<string> {
     return $Call.ByID(630207794, name);
+}
+
+/**
+ * TranslateNote translates the note (or the original of a translation)
+ * into lang with AI and returns the translation's path.
+ */
+export function TranslateNote(rel: string, lang: string): $CancellablePromise<string> {
+    return $Call.ByID(1658791572, rel, lang);
 }
 
 /**

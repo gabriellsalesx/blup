@@ -132,7 +132,7 @@ export const aiUsage = sqliteTable(
 	{
 		id: integer("id").primaryKey(),
 		userId: text("user_id").notNull(),
-		kind: text("kind").notNull(), // "narration"
+		kind: text("kind").notNull(), // "narration" or "translation"
 		units: integer("units").notNull(), // characters read
 		costMicros: integer("cost_micros").notNull(),
 		createdAt: integer("created_at", { mode: "timestamp_ms" })

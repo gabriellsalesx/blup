@@ -23,6 +23,7 @@ export type {
     Removed,
     SiteInfo,
     TermData,
+    TranslateProgress,
     Vault,
     VersionText,
     VoiceProgress
