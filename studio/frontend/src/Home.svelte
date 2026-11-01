@@ -12,7 +12,9 @@
   // The list of sites, organized by the user: drag a site onto another to
   // make a folder, onto a folder to put it inside, onto a card's edge to
   // change the order. The "⋯" menu does the same without dragging.
-  let { onOpen, onNew, onEmpty }: { onOpen: (s: SiteInfo) => void; onNew: () => void; onEmpty: () => void } = $props();
+  // With no site yet, the list shows only "New site": nothing opens by
+  // itself, the person chooses when to start one.
+  let { onOpen, onNew }: { onOpen: (s: SiteInfo) => void; onNew: () => void } = $props();
 
   const h = t.home;
 
@@ -35,7 +37,6 @@
     const name = sites[dir]?.title ?? "";
     gone(dir);
     toast(t.toast.siteDeleted.replace("{name}", name));
-    if (!Object.keys(sites).length) onEmpty();
   }
   // Out of the list only: the toast offers to put it back.
   async function forget(dir: string) {
@@ -58,7 +59,6 @@
     .then(([list, layout]) => {
       for (const s of list ?? []) sites[s.dir] = s;
       items = layout ?? [];
-      if (!(list ?? []).length) onEmpty();
     })
     .catch((e) => (error = String(e)))
     .finally(() => (loaded = true));

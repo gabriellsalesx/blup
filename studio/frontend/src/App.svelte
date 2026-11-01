@@ -11,7 +11,6 @@
   // The open site, the new site screens, or the list of sites.
   let site = $state<SiteInfo | null>(null);
   let creating = $state(false);
-  let hasSites = $state(true);
 
   // The welcome screens, the first time on a computer without sites (one
   // that already has sites skips them). Then the Studio opens on the site
@@ -35,15 +34,15 @@
 {#if !ready}
   <!-- Finding the last site. -->
 {:else if welcome}
-  <Welcome onStart={() => { welcome = false; hasSites = false; creating = true; }} onOpen={(s) => { welcome = false; site = s; }} />
+  <Welcome onStart={() => (welcome = false)} onOpen={(s) => { welcome = false; site = s; }} />
 {:else if site}
   {#key site.dir}
     <Workspace {site} onBack={() => (site = null)} onSwitch={(s) => (site = s)} />
   {/key}
 {:else if creating}
-  <Onboarding canCancel={hasSites} onCancel={() => (creating = false)} onDone={(s) => { creating = false; site = s; }} />
+  <Onboarding canCancel onCancel={() => (creating = false)} onDone={(s) => { creating = false; site = s; }} />
 {:else}
-  <Home onOpen={(s) => (site = s)} onNew={() => (creating = true)} onEmpty={() => { hasSites = false; creating = true; }} />
+  <Home onOpen={(s) => (site = s)} onNew={() => (creating = true)} />
 {/if}
 
 <Toaster />
