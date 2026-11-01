@@ -193,8 +193,11 @@ func TestBuildTranslated(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("Receitas Doces/en/Bolo de Cenoura.md", "---\ntitle: Carrot Cake\n---\nA cake. See [the guide](../01%20-%20Guia/01%20-%20Instalar.md).\n")
-	write("Receitas Doces/es/Bolo de Cenoura.md", "---\ntitle: Pastel de zanahoria\n---\nUn pastel.\n")
+	write("Receitas Doces/en/Bolo de Cenoura.md", "---\ntitle: Carrot Cake\ntranslationKey: bolo\n---\nA cake. See [the guide](../01%20-%20Guia/01%20-%20Instalar.md).\n")
+	// A translation under its own name, linked by translationKey.
+	write("Receitas Doces/Bolo de Cenoura.md", "---\ntranslationKey: bolo\n---\nSem título no frontmatter nem H1.\n\n## Modo de preparo\nMisture tudo.\n")
+	write("Receitas Doces/es/Pastel de zanahoria.md", "---\ntitle: Pastel de zanahoria\ntranslationKey: bolo\n---\nUn pastel.\n")
+	write("01 - Guia/es/Instalar.md", "---\ntitle: Instalar\n---\nVer [el pastel](../Receitas%20Doces/Bolo%20de%20Cenoura.md).\n")
 	write("en/Início.md", "---\ntitle: Welcome to the kitchen\n---\nHello.\n")
 
 	dir := t.TempDir()
@@ -220,7 +223,7 @@ func TestBuildTranslated(t *testing.T) {
 		}
 		return string(b)
 	}
-	if pt := read("receitas-doces/bolo-de-cenoura/index.html"); !strings.Contains(pt, "/en/receitas-doces/bolo-de-cenoura/") || !strings.Contains(pt, "/es/receitas-doces/bolo-de-cenoura/") {
+	if pt := read("receitas-doces/bolo-de-cenoura/index.html"); !strings.Contains(pt, "/en/receitas-doces/bolo-de-cenoura/") || !strings.Contains(pt, "/es/receitas-doces/pastel-de-zanahoria/") {
 		t.Error("the original should link to its translations")
 	}
 	en := read("en/receitas-doces/bolo-de-cenoura/index.html")
@@ -231,7 +234,11 @@ func TestBuildTranslated(t *testing.T) {
 	if !strings.Contains(en, `href="/01---guia/01---instalar/"`) && !strings.Contains(en, "href=/01---guia/01---instalar/") {
 		t.Errorf("english page: link to an untranslated note should reach the original")
 	}
-	read("es/receitas-doces/bolo-de-cenoura/index.html")
+	read("es/receitas-doces/pastel-de-zanahoria/index.html")
+	// A link to the original reaches its translation in the same language.
+	if g := read("es/01---guia/instalar/index.html"); !strings.Contains(g, "/es/receitas-doces/pastel-de-zanahoria/") {
+		t.Error("spanish page: a link should reach the spanish translation")
+	}
 	read("en/inicio/index.html")
 
 	// The preview's map: each note's page, translations by their folder.
@@ -243,7 +250,7 @@ func TestBuildTranslated(t *testing.T) {
 		t.Fatalf("hugo preview: %v\n%s", err, out)
 	}
 	m := read("blup-map.json")
-	for _, want := range []string{`"file":"Receitas Doces/en/Bolo de Cenoura.md","url":"/en/receitas-doces/bolo-de-cenoura/"`, `"file":"en/Início.md"`} {
+	for _, want := range []string{`"file":"Receitas Doces/en/Bolo de Cenoura.md","url":"/en/receitas-doces/bolo-de-cenoura/"`, `"file":"Receitas Doces/es/Pastel de zanahoria.md","url":"/es/receitas-doces/pastel-de-zanahoria/"`, `"file":"en/Início.md"`} {
 		if !strings.Contains(m, want) {
 			t.Errorf("blup-map: missing %s in %s", want, m)
 		}

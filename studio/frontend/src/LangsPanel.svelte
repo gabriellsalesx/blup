@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { SiteLangs, TranslateSite, TranslationTodo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { SiteLangs, TranslateSite, TranslationTodo, FollowTranslations } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteLangState, Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import { Events } from "@wailsio/runtime";
   import { toast, toastError } from "./toast.svelte";
@@ -31,9 +31,10 @@
         const todo = (await TranslationTodo(lang)) ?? [];
         for (const [i, rel] of todo.entries()) {
           progress = { done: i, total: todo.length, note: rel };
-          await translateNoteLocal(rel, settings.lang, lang);
+          await translateNoteLocal(rel, settings.lang, lang, undefined, false);
         }
         n = todo.length;
+        await FollowTranslations();
       } else n = await TranslateSite(lang);
       toast(sl.finished.replace("{n}", String(n)).replace("{lang}", NAMES[lang]));
       onTree();

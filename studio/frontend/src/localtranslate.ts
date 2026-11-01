@@ -200,12 +200,12 @@ export async function useLocal(): Promise<boolean> {
  * Translates the note original (in from) into to on the computer and
  * saves it next to it; returns the translation's path.
  */
-export async function translateNoteLocal(original: string, from: string, to: string, progress?: (done: number, total: number) => void): Promise<string> {
+export async function translateNoteLocal(original: string, from: string, to: string, progress?: (done: number, total: number) => void, follow = true): Promise<string> {
   const n = await ReadNote(original);
   const props = (n.props ?? {}) as Record<string, unknown>;
   const name = original.split("/").pop()!.replace(/\.md$/i, "");
   const title = await translateText(String(props.title || name), from, to);
   const desc = props.description ? await translateText(String(props.description), from, to) : "";
   const body = await translateMarkdown(n.body ?? "", from, to, progress);
-  return SaveTranslation(original, to, title, desc, body);
+  return SaveTranslation(original, to, title, desc, body, follow);
 }

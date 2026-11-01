@@ -24,6 +24,11 @@ export const Narrate = "narrate";
 export const NotesChanged = "notesChanged";
 
 /**
+ * Name of the custom event "previewRestarted".
+ */
+export const PreviewRestarted = "previewRestarted";
+
+/**
  * Name of the custom event "progress".
  */
 export const Progress = "progress";

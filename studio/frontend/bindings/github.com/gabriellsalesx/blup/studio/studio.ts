@@ -428,6 +428,14 @@ export function FeedbackState(): $CancellablePromise<app$0.FeedbackSetup> {
 }
 
 /**
+ * FollowTranslations brings the preview up to date after translations
+ * saved one by one (the local translation of a whole site).
+ */
+export function FollowTranslations(): $CancellablePromise<void> {
+    return $Call.ByID(941570695);
+}
+
+/**
  * ForgetSite takes a site out of the list without deleting anything.
  */
 export function ForgetSite(dir: string): $CancellablePromise<void> {
@@ -982,10 +990,11 @@ export function SaveSocial(links: string[] | null): $CancellablePromise<void> {
 
 /**
  * SaveTranslation saves a translation made in the window and returns its
- * path.
+ * path; follow brings the preview up to date (false while a whole site is
+ * being translated: FollowTranslations at the end).
  */
-export function SaveTranslation(rel: string, lang: string, title: string, description: string, body: string): $CancellablePromise<string> {
-    return $Call.ByID(1812394062, rel, lang, title, description, body);
+export function SaveTranslation(rel: string, lang: string, title: string, description: string, body: string, follow: boolean): $CancellablePromise<string> {
+    return $Call.ByID(1812394062, rel, lang, title, description, body, follow);
 }
 
 /**

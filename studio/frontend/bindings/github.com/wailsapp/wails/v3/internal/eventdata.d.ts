@@ -18,6 +18,7 @@ declare module "@wailsio/runtime" {
             "cloudSync": app$0.LiveState;
             "narrate": main$0.NarrateProgress;
             "notesChanged": string;
+            "previewRestarted": string;
             "progress": main$0.Progress;
             "term": main$0.TermData;
             "translate": main$0.TranslateProgress;

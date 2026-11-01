@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -22,14 +23,20 @@ import (
 )
 
 // Translations of notes. A note's translation into a language lives in a
-// folder named after it, next to the note, with the same file name
-// (Posts/Note.md → Posts/en/Note.md): the site publishes it as that
-// language's page (internal/scaffold). It keeps the original's properties
-// (its own title and description translated) and translation_hash, the
+// folder named after it, next to the note, under its own translated name
+// (Posts/Bolo.md → Posts/es/Pastel.md): the site publishes it as that
+// language's page (internal/scaffold). The original and its translations
+// share translationKey (Hugo links pages by it; it is set on the original
+// at its first translation), and a translation keeps translation_hash, the
 // fingerprint of the original it came from, to tell when it is out of date.
+// A translation with the original's own file name (and no key) is one too.
 
-// hashKey is the property with the original's fingerprint.
-const hashKey = "translation_hash"
+// hashKey is the property with the original's fingerprint; linkKey the
+// one shared by a note and its translations.
+const (
+	hashKey = "translation_hash"
+	linkKey = "translationKey"
+)
 
 // NoteLang is a language a note can be read in: its own (Original), or a
 // translation (Path, there or not yet, Stale when the original changed
@@ -43,21 +50,86 @@ type NoteLang struct {
 }
 
 // NoteOrigin is the original of a note and the note's language: a note in
-// a language folder (Posts/en/Note.md) is the translation of
-// Posts/Note.md; any other note is an original in the site's language.
+// a language folder (Posts/en/Note.md) is the translation of the note of
+// the parent folder with its translationKey (or its file name); any other
+// note is an original in the site's language.
 func NoteOrigin(site *config.Site, rel string) (original, lang string) {
 	dir, file := path.Split(rel)
 	dir = strings.TrimSuffix(dir, "/")
-	if l := path.Base(dir); dir != "" && l != site.Lang && slices.Contains(config.SiteLangs, l) {
-		return path.Join(path.Dir(dir), file), l
+	l := path.Base(dir)
+	if dir == "" || l == site.Lang || !slices.Contains(config.SiteLangs, l) {
+		return rel, site.Lang
 	}
-	return rel, site.Lang
+	parent := path.Dir(dir)
+	if parent == "." {
+		parent = ""
+	}
+	if p, err := notesPath(site, rel); err == nil {
+		if n, err := obsidian.ReadNote(p); err == nil {
+			if key := n.String(linkKey); key != "" {
+				if o := noteWithKey(site, parent, key); o != "" {
+					return o, l
+				}
+				// The key given at the first translation is the original's path
+				// (when the key was taken out of the original).
+				if o := key + ".md"; path.Dir(o) == cmp.Or(parent, ".") {
+					if op, err := notesPath(site, o); err == nil {
+						if _, err := os.Stat(op); err == nil {
+							return o, l
+						}
+					}
+				}
+			}
+		}
+	}
+	return path.Join(parent, file), l
 }
 
-// translationPath is where rel's translation into lang lives.
-func translationPath(original, lang string) string {
+// noteWithKey is the note of folder dir (only its own notes) whose
+// translationKey is key ("" when none).
+func noteWithKey(site *config.Site, dir, key string) string {
+	d, err := notesPath(site, dir)
+	if err != nil {
+		return ""
+	}
+	entries, err := os.ReadDir(d)
+	if err != nil {
+		return ""
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.EqualFold(path.Ext(e.Name()), ".md") {
+			continue
+		}
+		if n, err := obsidian.ReadNote(filepath.Join(d, e.Name())); err == nil && n.String(linkKey) == key {
+			return path.Join(dir, e.Name())
+		}
+	}
+	return ""
+}
+
+// translationPath is where the translation of original (whose note is n)
+// into lang is: the note of the language folder with its translationKey,
+// else the one with its file name ("" when there is none yet).
+func translationPath(site *config.Site, original string, n obsidian.Note, lang string) string {
 	dir, file := path.Split(original)
-	return path.Join(dir, lang, file)
+	folder := path.Join(dir, lang)
+	// Its key, or the one given at the first translation (the original's
+	// path), when the key was taken out of the original.
+	for _, key := range []string{n.String(linkKey), strings.TrimSuffix(original, path.Ext(original))} {
+		if key == "" {
+			continue
+		}
+		if t := noteWithKey(site, folder, key); t != "" {
+			return t
+		}
+	}
+	same := path.Join(folder, file)
+	if p, err := notesPath(site, same); err == nil {
+		if _, err := os.Stat(p); err == nil {
+			return same
+		}
+	}
+	return ""
 }
 
 // NoteLangs lists the languages of the note at rel: the original first,
@@ -78,13 +150,11 @@ func NoteLangs(site *config.Site, rel string) ([]NoteLang, error) {
 		if l == site.Lang {
 			continue
 		}
-		nl := NoteLang{Lang: l, Path: translationPath(original, l)}
-		if p, err := notesPath(site, nl.Path); err == nil {
+		nl := NoteLang{Lang: l, Path: translationPath(site, original, n, l)}
+		if p, err := notesPath(site, nl.Path); nl.Path != "" && err == nil {
 			if t, err := obsidian.ReadNote(p); err == nil {
-				if _, err := os.Stat(p); err == nil {
-					nl.Exists = true
-					nl.Stale = t.String(hashKey) != "" && t.String(hashKey) != sum
-				}
+				nl.Exists = true
+				nl.Stale = t.String(hashKey) != "" && t.String(hashKey) != sum
 			}
 		}
 		out = append(out, nl)
@@ -180,7 +250,23 @@ func WriteTranslation(site *config.Site, rel, lang, title, desc, body string) (s
 	if err != nil {
 		return "", err
 	}
-	target := translationPath(original, lang)
+	// The note and its translations share a key, set on the original at
+	// its first translation.
+	key := n.String(linkKey)
+	if key == "" {
+		key = strings.TrimSuffix(original, path.Ext(original))
+		if err := obsidian.SetProperties(op, obsidian.Prop{Key: linkKey, Value: key}); err != nil {
+			return "", err
+		}
+		n.Props[linkKey] = key
+	}
+	// Where it is already, else under its translated title.
+	target := translationPath(site, original, n, lang)
+	if target == "" {
+		if target, err = translationName(site, path.Join(path.Dir(original), lang), safeFileName(strings.TrimSpace(title)), original); err != nil {
+			return "", err
+		}
+	}
 	tp, err := notesPath(site, target)
 	if err != nil {
 		return "", err
@@ -190,7 +276,7 @@ func WriteTranslation(site *config.Site, rel, lang, title, desc, body string) (s
 	}
 	// The original's properties, then its own title, description, text and
 	// fingerprint; a narration is of the original's language, not this one.
-	src, err := os.ReadFile(op)
+	src, err := os.ReadFile(op) // with the key, now
 	if err != nil {
 		return "", err
 	}
@@ -302,20 +388,52 @@ func SiteLangs(site *config.Site) ([]SiteLangState, error) {
 // translationOf is the state of rel's translation into lang: "done",
 // "stale" or "missing".
 func translationOf(site *config.Site, rel, lang string) string {
-	tp, err := notesPath(site, translationPath(rel, lang))
+	op, err := notesPath(site, rel)
+	if err != nil {
+		return "missing"
+	}
+	n, err := obsidian.ReadNote(op)
+	if err != nil {
+		return "missing"
+	}
+	tr := translationPath(site, rel, n, lang)
+	if tr == "" {
+		return "missing"
+	}
+	tp, err := notesPath(site, tr)
 	if err != nil {
 		return "missing"
 	}
 	t, err := obsidian.ReadNote(tp)
-	if _, serr := os.Stat(tp); err != nil || serr != nil {
+	if err != nil {
 		return "missing"
 	}
-	op, _ := notesPath(site, rel)
-	n, err := obsidian.ReadNote(op)
-	if err == nil && t.String(hashKey) != "" && t.String(hashKey) != sourceHash(n, rel) {
+	if t.String(hashKey) != "" && t.String(hashKey) != sourceHash(n, rel) {
 		return "stale"
 	}
 	return "done"
+}
+
+// translationName is a note path in dir named name (a number added when taken by
+// another note), or the original's own name when name is empty.
+func translationName(site *config.Site, dir, name, original string) (string, error) {
+	if name == "" {
+		name = strings.TrimSuffix(path.Base(original), path.Ext(original))
+	}
+	for i := 1; ; i++ {
+		base := name
+		if i > 1 {
+			base = fmt.Sprintf("%s %d", name, i)
+		}
+		rel := path.Join(dir, base+".md")
+		p, err := notesPath(site, rel)
+		if err != nil {
+			return "", err
+		}
+		if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
+			return rel, nil
+		}
+	}
 }
 
 // TranslateSite translates every note of the site into lang that has no

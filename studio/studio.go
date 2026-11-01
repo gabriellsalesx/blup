@@ -34,6 +34,9 @@ type Studio struct {
 	site    *config.Site
 	preview *exec.Cmd
 	url     string
+	// previewCfg is the config the running preview started with: a newer
+	// one (a new language, a new language folder) needs a fresh start.
+	previewCfg []byte
 	// login is the Blup Cloud sign in waiting for the browser.
 	login  *blupcloud.Login
 	cancel context.CancelFunc
@@ -217,6 +220,7 @@ func (s *Studio) StartPreview() (string, error) {
 	if err := scaffold.Write(site); err != nil {
 		return "", err
 	}
+	cfg := s.previewConfig(site)
 	cmd := bin.Command(ctx, site.Dir(), "server", "--config", scaffold.PreviewConfig, "--renderToMemory", "--buildDrafts",
 		"--disableLiveReload", "--bind", "127.0.0.1", "--baseURL", "http://localhost/", "--logLevel", "info")
 	cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=preview")
@@ -259,7 +263,7 @@ func (s *Studio) StartPreview() (string, error) {
 			return "", errors.New("the preview stopped: " + strings.TrimSpace(log.String()))
 		}
 		s.mu.Lock()
-		s.preview, s.url = cmd, url
+		s.preview, s.url, s.previewCfg = cmd, url, cfg
 		s.mu.Unlock()
 		return url, nil
 	case <-time.After(2 * time.Minute):

@@ -57,13 +57,18 @@ func (s *Studio) InstallLocalTranslate() error {
 func (s *Studio) RemoveLocalTranslate() error { return localtr.Remove(localTranslateDir()) }
 
 // SaveTranslation saves a translation made in the window and returns its
-// path.
-func (s *Studio) SaveTranslation(rel, lang, title, description, body string) (string, error) {
+// path; follow brings the preview up to date (false while a whole site is
+// being translated: FollowTranslations at the end).
+func (s *Studio) SaveTranslation(rel, lang, title, description, body string, follow bool) (string, error) {
 	site, err := s.current()
 	if err != nil {
 		return "", err
 	}
-	return app.WriteTranslation(site, rel, lang, title, description, body)
+	out, err := app.WriteTranslation(site, rel, lang, title, description, body)
+	if err == nil && follow {
+		s.previewFollows(site)
+	}
+	return out, err
 }
 
 // TranslationTodo lists the open site's notes to translate into lang.

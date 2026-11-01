@@ -9,10 +9,14 @@ rel="noopener" and open normally. */ -}}
   {{- $ext = true -}}
 {{- else if $u.Path -}}
   {{- $target := path.Join .Page.File.Dir $u.Path -}}
-  {{- /* A translation links to the translated note, else to the original. */ -}}
+  {{- /* A translation links to the translated note (it may have its own
+  name: the original's translation in this language), else to the
+  original. */ -}}
   {{- $main := (index hugo.Sites 0) -}}
+  {{- $lang := site.Language.Lang -}}
   {{- with or (.Page.GetPage $target) (.Page.GetPage (strings.TrimSuffix ".md" $target)) ($main.GetPage $target) ($main.GetPage (strings.TrimSuffix ".md" $target)) -}}
     {{- $href = .RelPermalink -}}
+    {{- range .Translations }}{{ if eq .Language.Lang $lang }}{{ $href = .RelPermalink }}{{ end }}{{ end -}}
   {{- else -}}
     {{- with partial "vault-resource.html" (dict "page" .Page "path" $u.Path) -}}
       {{- $href = .RelPermalink -}}

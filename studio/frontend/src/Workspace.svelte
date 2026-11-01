@@ -464,7 +464,17 @@
   // Live sync through Blup Cloud (paid plans): its state on the Sync button.
   let cloud = $state<{ state: string; error?: string } | null>(null);
   const offCloud = Events.On("cloudSync", (ev: any) => (cloud = ev.data));
-  onDestroy(() => offCloud());
+  // The preview started again (a translation brought a new language): its
+  // new address, on the open note's page.
+  const offPreview = Events.On("previewRestarted", (ev: any) => {
+    if (!previewURL || typeof ev.data !== "string") return;
+    previewURL = previewSrc = ev.data;
+    follow(current);
+  });
+  // A rebuild may bring the open note's page (a translation just made):
+  // the preview goes there.
+  const offRebuilt = Events.On("previewChanged", () => { if (current) follow(current); });
+  onDestroy(() => { offCloud(); offPreview(); offRebuilt(); });
   // Earlier versions on Blup Cloud: checked when the site opens and after
   // each live sync (signing in or changing plan turns it on).
   let cloudHistory = $state(false);
