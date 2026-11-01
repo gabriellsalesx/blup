@@ -38,7 +38,7 @@ saying so only in Blup Studio's preview. */ -}}
     </nav>
     <div class="fbb-content">
       <header class="fbb-bar">
-        <h1>{{ partial "title.html" . }}</h1>
+        <div class="fbb-heading"><h1>{{ partial "title.html" . }}</h1>{{ partial "site/ai-badge.html" . }}</div>
         <div class="fbb-tools">
           {{- /* The status filter: a menu of the theme's own, not the system's. */}}
           <div class="fbb-filter" data-fbb-status>

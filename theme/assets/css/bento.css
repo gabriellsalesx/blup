@@ -203,6 +203,7 @@ layout. Bundled into one file by css.Build. */
   /* The title and the tools. */
   .fbb-content { display: grid; gap: 1.25rem; min-width: 0; }
   .fbb-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+  .fbb-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
   .fbb-bar h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -.02em; color: var(--main-900); }
   .fbb-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .625rem; }
   .fbb-filter-button, .fbb-search { display: inline-flex; align-items: center; gap: .5rem; height: 2.5rem; padding-inline: .875rem; border: 1px solid var(--main-200); border-radius: .625rem; background: var(--main-25); color: var(--main-500); }

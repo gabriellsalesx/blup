@@ -172,3 +172,58 @@ func TestTranslateHomeAndSection(t *testing.T) {
 		t.Fatalf("reviewed = %+v", langs)
 	}
 }
+
+// The feedback board's example requests are translated with the note:
+// each one's title, text and comments; votes, kind, status and dates stay.
+func TestTranslateFeedbackExamples(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	creds, _ := config.LoadCredentials()
+	creds.OpenRouterToken = "k"
+	if err := creds.Save(); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct{ Messages []struct{ Content string } }
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		text := "EN(" + req.Messages[1].Content + ")"
+		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": text}, "finish_reason": "stop"}}})
+	}))
+	defer srv.Close()
+	openRouterURL = srv.URL
+	defer func() { openRouterURL = "" }()
+
+	site := settingsSite(t)
+	site.Lang = "pt"
+	root := site.ContentDir()
+	write(t, root, "Feedback/_index.md", "---\ntitle: Feedback\nblup: feedback\nexamples:\n  - title: Modo escuro\n    kind: feature\n    status: planned\n    votes: 42\n    days: 2\n    body: Seguir o sistema.\n    replies:\n      - author: marina\n        days: 1\n        text: Seria ótimo.\n---\n")
+
+	before, _ := NoteLangs(site, "Feedback/_index.md")
+	got, err := TranslateNote(context.Background(), site, "Feedback/_index.md", "en", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := obsidian.ReadNote(filepath.Join(root, filepath.FromSlash(got)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ex, _ := n.Props["examples"].([]any)
+	if len(ex) != 1 {
+		t.Fatalf("examples = %#v", n.Props["examples"])
+	}
+	e := ex[0].(map[string]any)
+	reply := e["replies"].([]any)[0].(map[string]any)
+	if e["title"] != "EN(Modo escuro)" || e["body"] != "EN(Seguir o sistema.)" || reply["text"] != "EN(Seria ótimo.)" {
+		t.Fatalf("texts = %#v", e)
+	}
+	if e["kind"] != "feature" || e["status"] != "planned" || e["votes"] != 42 || reply["author"] != "marina" || reply["days"] != 1 {
+		t.Fatalf("the rest changed = %#v", e)
+	}
+	if before[1].Exists {
+		t.Fatal("no translation before")
+	}
+	// An example changed in the original: the translation is out of date.
+	write(t, root, "Feedback/_index.md", "---\ntitle: Feedback\nblup: feedback\nexamples:\n  - title: Modo claro\n---\n")
+	if langs, _ := NoteLangs(site, "Feedback/_index.md"); !langs[1].Stale {
+		t.Fatalf("after an example changed = %+v", langs)
+	}
+}

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -179,11 +180,13 @@ func NoteLangs(site *config.Site, rel string) ([]NoteLang, error) {
 }
 
 // sourceHash is the fingerprint of what a translation is made from: the
-// title (or the file's name), the description and the text.
+// title (or the file's name), the description and the text, and the
+// feedback board's example requests (only that note has them, so the
+// others keep their fingerprint).
 func sourceHash(n obsidian.Note, rel string) string {
 	h := sha256.New()
 	h.Write([]byte(translateVersion))
-	for _, s := range []string{noteTitle(n, rel), n.String("description"), n.Body} {
+	for _, s := range append([]string{noteTitle(n, rel), n.String("description"), n.Body}, exampleTexts(n.Props[examplesKey])...) {
 		h.Write([]byte(s))
 		h.Write([]byte{0})
 	}
@@ -282,6 +285,64 @@ func PropTexts(n obsidian.Note) map[string][]string {
 			out[k] = texts
 		}
 	}
+	if texts := exampleTexts(n.Props[examplesKey]); len(texts) > 0 {
+		out[examplesKey] = texts
+	}
+	return out
+}
+
+// examplesKey is the feedback board's example requests (Bento): a list of
+// requests, each with its title, text and example comments (replies).
+const examplesKey = "examples"
+
+// exampleTexts are the texts of the example requests to translate, in
+// order: each one's title, its text, then its comments' texts.
+func exampleTexts(v any) []string {
+	var out []string
+	walkExamples(v, func(s string) string {
+		out = append(out, s)
+		return s
+	})
+	return out
+}
+
+// walkExamples calls fn on each text of the example requests (as
+// exampleTexts lists them) and returns a copy with what fn gives back.
+func walkExamples(v any, fn func(string) string) any {
+	list, ok := v.([]any)
+	if !ok {
+		return v
+	}
+	text := func(m map[string]any, k string) {
+		if s, ok := m[k].(string); ok && strings.TrimSpace(s) != "" {
+			m[k] = fn(strings.TrimSpace(s))
+		}
+	}
+	out := make([]any, len(list))
+	for i, item := range list {
+		m, ok := item.(map[string]any)
+		if !ok {
+			out[i] = item
+			continue
+		}
+		c := maps.Clone(m)
+		text(c, "title")
+		text(c, "body")
+		if replies, ok := c["replies"].([]any); ok {
+			rs := make([]any, len(replies))
+			for j, r := range replies {
+				if rm, ok := r.(map[string]any); ok {
+					rc := maps.Clone(rm)
+					text(rc, "text")
+					rs[j] = rc
+				} else {
+					rs[j] = r
+				}
+			}
+			c["replies"] = rs
+		}
+		out[i] = c
+	}
 	return out
 }
 
@@ -291,6 +352,14 @@ func translatedProps(n obsidian.Note, tr map[string]any) []obsidian.Prop {
 	var props []obsidian.Prop
 	for k, v := range tr {
 		texts := toStrings(v)
+		if k == examplesKey {
+			// The same requests, their texts in the new language.
+			if len(texts) == len(exampleTexts(n.Props[k])) {
+				i := 0
+				props = append(props, obsidian.Prop{Key: k, Value: walkExamples(n.Props[k], func(string) string { i++; return texts[i-1] })})
+			}
+			continue
+		}
 		orig := n.List(k)
 		if !slices.Contains(TextProps, k) || len(texts) == 0 || len(orig) == 0 {
 			continue
