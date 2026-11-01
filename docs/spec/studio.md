@@ -308,6 +308,23 @@ O usuário pode alterar ou desativar cada um. Ao escolher uma combinação já u
 
 A aba Atalhos também mostra a lista fixa de comandos do editor, `k.editorKeys`: `Ctrl+S` salvar, `Ctrl+Z` e `Ctrl+Shift+Z` desfazer e refazer, `Ctrl+B` negrito, `Ctrl+I` itálico, `Ctrl+K` link, Tab aceita a sugestão, `@` menciona nota ou data, `/` abre as ações e os quatro atalhos de recolher títulos. Em Hyprland sem configuração automática, apresenta as instruções do binding e um botão para copiar a linha.
 
+Também em Configurações: a aba Narração tem uma voz padrão para cada idioma (Português, English, Español), para todos os sites; Geral tem a cópia diária das notas (`BackupDir` nas preferências: um `.zip` por dia em `internal/app/backup.go`, feito um minuto depois de abrir o site, guardando 7 cópias, nunca dentro das notas); Sobre procura versão nova (`CheckUpdate`, uma vez por dia ou no botão) e o rodapé mostra um ponto azul quando há.
+
+## Idiomas e tradução
+
+Um site é escrito no idioma de `lang` (`pt`, `en` ou `es`) e pode ser publicado nos outros, listados em `translations` no `blup.toml`. A tradução de `Pasta/Nota.md` fica em `Pasta/en/Nota.md` (o mesmo nome, numa pasta com o código do idioma, em minúsculas). O `hugo.toml` gerado (`internal/scaffold`) declara os idiomas e monta cada pasta de idioma no lugar da pasta mãe só naquele idioma (`sites.matrix`), então a página traduzida é a mesma página no outro idioma: o Hugo liga as duas, o tema mostra o seletor de idioma (`site/langs.html`) e `hreflang`, e um link para uma nota sem tradução cai na original.
+
+- Painel Idiomas na nota (`NoteLangs.svelte`): a original e cada idioma, com Abrir, Traduzir e Traduzir de novo. A tradução guarda `translation_hash`, a impressão da original (título, descrição e texto); quando a original muda, aparece como desatualizada.
+- Tela Idiomas do site (`LangsPanel.svelte`): quantas notas estão traduzidas, desatualizadas e faltando em cada idioma, e Traduzir o que falta de uma vez.
+- Quem traduz (`internal/translate`): a IA do plano no Blup Cloud (`/api/ai/translate`, que monta o pedido no servidor e desconta o custo real) quando o plano inclui IA, senão a chave do OpenRouter (Claude Haiku 5.5). A nota vai em partes de até 12 KB, cortadas em linhas em branco fora de blocos de código. Código, links, imagens e o tipo dos callouts não mudam.
+- A narração de uma tradução usa a voz do idioma dela, e o arquivo de áudio leva o idioma no nome (`Nota (en).mp3`).
+
+## Busca, exportar e desempenho
+
+- A busca da lateral procura no nome e no texto das notas (`SearchNotes`, sem diferenciar maiúsculas nem acentos), mostrando as linhas encontradas.
+- O botão direito numa nota exporta como HTML (imagens embutidas, `export.ts`) ou abre a impressão do sistema, que também salva em PDF.
+- Leveza: terminal, mapa, canvas, desenho, banco de dados e os painéis do site carregam só quando abertos (`lazy.ts`); o mapa de notas não desenha parado; o mapa e o "Mencionada em" releem só as notas que mudaram (cache por data e tamanho em `internal/app/graph.go`); mudanças só de permissão nos arquivos não recarregam nada. No Linux o motor de mídia do WebKit (GStreamer) liga na abertura (`audio.ts`), porque a primeira vez que um som toca ele segura a janela por meio segundo.
+
 ## Terminal e agentes locais
 
 `terminal.go` usa `go-pty` e `TerminalPanel.svelte` usa xterm.js com addon de ajuste e abas para vários terminais. Inicia shell na pasta das notas: PowerShell em Windows, `$SHELL -l` nos demais ou `/bin/bash -l`. Define ambiente de terminal de 256 cores. Dados binários de saída são transmitidos em base64.

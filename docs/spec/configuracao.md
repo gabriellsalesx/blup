@@ -37,7 +37,8 @@ O pacote config cria seu diretório global com `0700`. O Studio também pode cri
 | `title` | texto | Nome e fallback de identidade do site |
 | `description` | texto | Descrição padrão |
 | `author` | texto | Autor padrão, usado no cascade e em fallback do tema |
-| `lang` | texto | Idioma do site, normalmente `pt` ou `en`, independente da interface |
+| `lang` | texto | Idioma do site: `pt`, `en` ou `es`, independente da interface |
+| `translations` | lista de texto | Outros idiomas em que o site é publicado (`en`, `es`, `pt`); a tradução de cada nota fica numa pasta com o código do idioma ao lado dela. A tradução com IA acrescenta o idioma aqui |
 | `model` | texto | Tema `mochi`, `nori` ou `bento` |
 | `vault` | texto | Caminho da raiz das notas/cofre |
 | `folder` | texto | Subpasta publicada; vazio significa a raiz inteira |
@@ -132,8 +133,10 @@ A senha geral é resolvida por `app.PostPassword`: primeiro `Site.Password`, dep
 | `lastSite` | texto | Último diretório técnico aberto |
 | `lastNotes` | mapa | Diretório técnico para última nota aberta |
 | `recent` | lista de texto | Até 12 sites recentes, inclusive os retirados da lista |
-| `voices` | mapa | Idioma para voz de narração escolhida |
+| `voices` | mapa | Voz de narração de cada idioma (`pt`, `en`, `es`), para todos os sites |
 | `welcomed` | booleano | Telas iniciais já foram vistas |
+| `cloudTip` | booleano | O convite ao Blup Cloud depois do primeiro site foi respondido |
+| `backupDir` | texto | Pasta da cópia diária das notas; vazio desliga |
 
 Voz local usa `kokoro:<id>`. Voz OpenRouter usa `<modelo>|<voz>`, inclusive voz vazia para o padrão do modelo. Nomes antigos sem separador são tratados como voz do modelo remoto recomendado.
 
