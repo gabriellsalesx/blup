@@ -53,7 +53,7 @@
 </script>
 
 {#if langs.length}
-  <div class="field wide"><span>{tr.title}</span>
+  <div class="field langs-field"><span>{tr.title}</span>
     <div class="note-langs">
       {#each langs as l (l.lang)}
         <div class="lang-row" class:here={l.path === note}>
@@ -81,14 +81,17 @@
 {/if}
 
 <style>
+  /* The whole width of the note's properties (a grid of two columns). */
+  .langs-field { grid-column: 1 / -1; }
   .note-langs { display: grid; gap: .35rem; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); }
   .note-langs p { margin: 0; font-size: .85rem; }
   .note-langs > small { font-size: .78rem; line-height: 1.4; }
-  .lang-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .3rem .4rem; border-radius: .45rem; }
+  .lang-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .75rem; padding: .4rem .5rem; border-radius: .45rem; }
   .lang-row.here { background: var(--soft); }
-  .lang-text { display: grid; min-width: 0; font-size: .875rem; }
+  .lang-text { display: grid; flex: 1 1 10rem; min-width: 0; font-size: .875rem; }
   .lang-text small { font-size: .78rem; }
   .lang-text .warn { color: var(--warn, #d97706); }
-  .lang-acts { display: inline-flex; gap: .3rem; flex: none; }
+  /* Beside the name while they fit; below it on a narrow panel. */
+  .lang-acts { display: flex; flex-wrap: wrap; gap: .3rem; }
   .lang-acts .btn { padding: .3rem .65rem; font-size: .8rem; }
 </style>
