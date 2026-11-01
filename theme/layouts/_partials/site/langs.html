@@ -1,0 +1,19 @@
+{{- /* The language switcher of a translated site: each language goes to
+this page's translation, or to that language's home when the page has
+none. Nothing on a site in one language. */ -}}
+{{- if gt (len hugo.Sites) 1 -}}
+{{- $page := . -}}
+<div class="theme-picker lang-picker">
+  <button class="icon-button" type="button" popovertarget="lang-menu" aria-label="{{ T "language" }}" style="anchor-name: --lang">
+    <svg class="icon"><use href="#i-globe"/></svg><span class="lang-code">{{ site.Language.Lang }}</span>
+  </button>
+  <div id="lang-menu" class="dropdown" popover style="position-anchor: --lang" role="menu">
+    {{- range hugo.Sites }}
+    {{- $s := . -}}
+    {{- $url := .Home.RelPermalink -}}
+    {{- range $page.AllTranslations }}{{ if eq .Language.Lang $s.Language.Lang }}{{ $url = .RelPermalink }}{{ end }}{{ end }}
+    <a role="menuitemradio" href="{{ $url }}" hreflang="{{ .Language.Lang }}" lang="{{ .Language.Lang }}" aria-checked="{{ eq .Language.Lang site.Language.Lang }}">{{ .Language.Label | default .Language.Lang }}</a>
+    {{- end }}
+  </div>
+</div>
+{{- end -}}

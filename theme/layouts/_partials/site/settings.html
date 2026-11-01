@@ -5,6 +5,8 @@ partialCached "site/settings.html" . "site". Returns a dict:
 name, description, author, logo (resource or false), favicon (resource or
 false), social (slice of dict name/icon/url). */ -}}
 {{- $h := site.Home -}}
+{{- /* A language without its own home note uses the main language's. */ -}}
+{{- if not $h.File }}{{ $h = (index hugo.Sites 0).Home }}{{ end -}}
 {{- $p := $h.Params -}}
 {{- $logo := false -}}
 {{- with $p.logo }}{{ $logo = partial "vault-resource.html" (dict "page" $h "path" .) }}{{ end -}}

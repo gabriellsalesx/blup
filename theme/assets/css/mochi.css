@@ -203,6 +203,10 @@ through light-dark(): the theme switcher only changes color-scheme. */
   @supports not (position-area: bottom) {
     .dropdown { inset: calc(var(--header-h) - .25rem) 1rem auto auto; }
   }
+  .dropdown a { display: flex; width: 100%; align-items: center; padding: .5rem .75rem; border-radius: .25rem; font-size: .875rem; text-decoration: none; color: inherit; }
+  .dropdown a:hover, .dropdown a[aria-checked="true"] { background: var(--main-200); color: var(--main-900); }
+  .lang-picker .icon-button { gap: .25rem; width: auto; padding-inline: .5rem; }
+  .lang-code { font-size: .75rem; font-weight: 600; text-transform: uppercase; }
   .dropdown button { display: flex; width: 100%; align-items: center; gap: .75rem; padding: .5rem .75rem; border-radius: .25rem; font-size: .875rem; }
   .dropdown button:hover, .dropdown button[aria-checked="true"] { background: var(--main-200); color: var(--main-900); }
   /* Controls that need JavaScript stay hidden when scripts are blocked;

@@ -1,9 +1,16 @@
 {{- /* Preview only: the page of each note (its file, relative to the notes
-folder, with "/"), read by Blup Studio to show the note being edited. */ -}}
+folder, with "/"), read by Blup Studio to show the note being edited. A
+translation's file is in its language's folder (Posts/en/Note.md is the
+English Posts/Note.md). */ -}}
 {{- $out := slice -}}
-{{- range $p := site.Pages -}}
-  {{- with $p.File -}}
-    {{- $out = $out | append (dict "file" (replace .Path "\\" "/") "url" $p.RelPermalink) -}}
+{{- $main := (index hugo.Sites 0).Language.Lang -}}
+{{- range $s := hugo.Sites -}}
+  {{- range $p := $s.Pages -}}
+    {{- with $p.File -}}
+      {{- $file := replace .Path "\\" "/" -}}
+      {{- if ne $s.Language.Lang $main }}{{ $file = path.Join (path.Dir $file) $s.Language.Lang (path.Base $file) }}{{ end -}}
+      {{- $out = $out | append (dict "file" $file "url" $p.RelPermalink) -}}
+    {{- end -}}
   {{- end -}}
 {{- end -}}
 {{- $out | jsonify -}}

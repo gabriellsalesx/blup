@@ -14,6 +14,7 @@
   </nav>
   <div class="header-actions">
     <button class="icon-button" type="button" data-search-open aria-label="{{ T "search" }}"><svg class="icon"><use href="#i-search"/></svg></button>
+    {{- partial "site/langs.html" . }}
     <div class="theme-picker">
       <button class="icon-button" type="button" popovertarget="theme-menu" aria-label="{{ T "changeTheme" }}" style="anchor-name: --theme">
         <svg class="icon when-light"><use href="#i-sun"/></svg>

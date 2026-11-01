@@ -170,3 +170,96 @@ func TestCookieParams(t *testing.T) {
 		t.Fatalf("plausible = %v", pl)
 	}
 }
+
+// TestBuildTranslated: a note's translation in a folder named after the
+// language (Receitas Doces/en/Bolo de Cenoura.md) is that page in the
+// language's site, linked to the original; the folder itself is not a page.
+func TestBuildTranslated(t *testing.T) {
+	bin, ok := hugo.Find(context.Background())
+	if !ok {
+		t.Skip("hugo not installed")
+	}
+	vault := t.TempDir()
+	if err := os.CopyFS(vault, os.DirFS("testdata/vault")); err != nil {
+		t.Fatal(err)
+	}
+	site := filepath.Join(vault, "Site")
+	write := func(rel, text string) {
+		p := filepath.Join(site, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("Receitas Doces/en/Bolo de Cenoura.md", "---\ntitle: Carrot Cake\n---\nA cake. See [the guide](../01%20-%20Guia/01%20-%20Instalar.md).\n")
+	write("Receitas Doces/es/Bolo de Cenoura.md", "---\ntitle: Pastel de zanahoria\n---\nUn pastel.\n")
+	write("en/Início.md", "---\ntitle: Welcome to the kitchen\n---\nHello.\n")
+
+	dir := t.TempDir()
+	s := config.NewSite(dir)
+	s.Title, s.Lang, s.Model, s.Vault, s.Folder = "Cozinha", "pt", "mochi", vault, "Site"
+	s.Translations = []string{"en", "es"}
+	if err := Write(s); err != nil {
+		t.Fatal(err)
+	}
+	cmd := bin.Command(context.Background(), dir, "--baseURL", "https://example.org/", "--logLevel", "warn")
+	cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=publish")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("hugo: %v\n%s", err, out)
+	}
+	if strings.Contains(string(out), "ERROR") {
+		t.Errorf("hugo output:\n%s", out)
+	}
+	read := func(p string) string {
+		b, err := os.ReadFile(filepath.Join(dir, "public", p))
+		if err != nil {
+			t.Fatalf("missing %s", p)
+		}
+		return string(b)
+	}
+	if pt := read("receitas-doces/bolo-de-cenoura/index.html"); !strings.Contains(pt, "/en/receitas-doces/bolo-de-cenoura/") || !strings.Contains(pt, "/es/receitas-doces/bolo-de-cenoura/") {
+		t.Error("the original should link to its translations")
+	}
+	en := read("en/receitas-doces/bolo-de-cenoura/index.html")
+	if !strings.Contains(en, "Carrot Cake") || !strings.Contains(en, `lang="en`) && !strings.Contains(en, "lang=en") {
+		t.Error("english page: title or lang wrong")
+	}
+	// A link to a note without a translation goes to the original.
+	if !strings.Contains(en, `href="/01---guia/01---instalar/"`) && !strings.Contains(en, "href=/01---guia/01---instalar/") {
+		t.Errorf("english page: link to an untranslated note should reach the original")
+	}
+	read("es/receitas-doces/bolo-de-cenoura/index.html")
+	read("en/inicio/index.html")
+
+	// The preview's map: each note's page, translations by their folder.
+	if err := os.WriteFile(filepath.Join(dir, "hugo.toml"), mustConfig(t, s, true), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err = bin.Command(context.Background(), dir, "--logLevel", "warn").CombinedOutput()
+	if err != nil {
+		t.Fatalf("hugo preview: %v\n%s", err, out)
+	}
+	m := read("blup-map.json")
+	for _, want := range []string{`"file":"Receitas Doces/en/Bolo de Cenoura.md","url":"/en/receitas-doces/bolo-de-cenoura/"`, `"file":"en/Início.md"`} {
+		if !strings.Contains(m, want) {
+			t.Errorf("blup-map: missing %s in %s", want, m)
+		}
+	}
+	for _, gone := range []string{"receitas-doces/en", "en/receitas-doces/en", "es/es"} {
+		if _, err := os.Stat(filepath.Join(dir, "public", gone)); err == nil {
+			t.Errorf("%s should not be a page", gone)
+		}
+	}
+}
+
+func mustConfig(t *testing.T, s *config.Site, preview bool) []byte {
+	t.Helper()
+	b, err := HugoConfig(s, preview)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}

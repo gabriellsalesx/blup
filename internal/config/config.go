@@ -53,14 +53,18 @@ type Site struct {
 	Title       string `toml:"title"`
 	Description string `toml:"description"`
 	Author      string `toml:"author"`
-	Lang        string `toml:"lang"`   // "pt", "en" or "es": language of the site itself
-	Model       string `toml:"model"`  // theme: "mochi" or "nori" (personal blog), "bento" (SaaS)
+	Lang        string `toml:"lang"`  // "pt", "en" or "es": language of the site itself
+	Model       string `toml:"model"` // theme: "mochi" or "nori" (personal blog), "bento" (SaaS)
+	// Translations are the other languages the site is published in ("en",
+	// "es", "pt"): a note's translation lives in a folder of that name next
+	// to it (Posts/en/Note.md), with the same file name.
+	Translations []string `toml:"translations,omitempty"`
 	// Kind is "" for a site, or "notes" for a vault of notes: the same
 	// notes, editor and sync, but no site (no theme, preview or publishing).
-	Kind string `toml:"kind,omitempty"`
-	Vault       string `toml:"vault"`  // absolute path of the Obsidian vault
-	Folder      string `toml:"folder"` // folder inside the vault published as the site; "" = whole vault
-	Domain      string `toml:"domain,omitempty"`
+	Kind   string `toml:"kind,omitempty"`
+	Vault  string `toml:"vault"`  // absolute path of the Obsidian vault
+	Folder string `toml:"folder"` // folder inside the vault published as the site; "" = whole vault
+	Domain string `toml:"domain,omitempty"`
 	// Password is this site's own general password of protected notes
 	// ("password: sim"); without it, the one in the credentials file counts.
 	// It stays on the user's computer and is never published (nor synced).
@@ -322,3 +326,17 @@ const KindNotes = "notes"
 // IsNotes tells whether this is a vault of notes rather than a site.
 func (s *Site) IsNotes() bool { return s.Kind == KindNotes }
 
+// SiteLangs are the languages a site can be written and translated in.
+var SiteLangs = []string{"pt", "en", "es"}
+
+// OtherLangs are the site's translations: known languages other than its
+// own, without repeats, in the order of SiteLangs.
+func (s *Site) OtherLangs() []string {
+	var out []string
+	for _, l := range SiteLangs {
+		if l != s.Lang && slices.Contains(s.Translations, l) {
+			out = append(out, l)
+		}
+	}
+	return out
+}

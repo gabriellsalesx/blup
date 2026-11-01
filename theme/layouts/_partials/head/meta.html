@@ -39,6 +39,12 @@ the icons of every device from the favicon after the build (internal/pwa). */ -}
 <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-title" content="{{ (partialCached "site/settings.html" . "site").name }}">
+{{- /* A translated page names its versions in the other languages. */ -}}
+{{- if .IsTranslated }}
+{{- range .AllTranslations }}
+<link rel="alternate" hreflang="{{ .Language.Locale | default .Language.Lang }}" href="{{ .Permalink }}">
+{{- end }}
+{{- end }}
 {{- with site.Home.OutputFormats.Get "rss" }}
 <link rel="alternate" type="application/rss+xml" href="{{ .Permalink }}" title="{{ (partialCached "site/settings.html" . "site").name }}">
 {{- end }}
