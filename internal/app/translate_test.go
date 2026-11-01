@@ -64,3 +64,44 @@ func TestTranslateNote(t *testing.T) {
 		t.Fatalf("hugo.toml not written: %v", err)
 	}
 }
+
+func TestTranslateSite(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	creds, _ := config.LoadCredentials()
+	creds.OpenRouterToken = "k"
+	_ = creds.Save()
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": "ES"}, "finish_reason": "stop"}}})
+	}))
+	defer srv.Close()
+	openRouterURL = srv.URL
+	defer func() { openRouterURL = "" }()
+
+	site := settingsSite(t)
+	site.Lang = "pt"
+	root := site.ContentDir()
+	write(t, root, "A.md", "Um.")
+	write(t, root, "Pasta/B.md", "Dois.")
+	write(t, root, "AGENTS.md", "guia")
+	write(t, root, "en/A.md", "---\ntitle: A\n---\nOne.")
+
+	n, err := TranslateSite(context.Background(), site, "es", nil)
+	if err != nil || n != 4 { // A, Pasta/B and the test site's _index and Posts/Um
+		t.Fatalf("translated %d, %v", n, err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "Pasta", "es", "B.md")); err != nil {
+		t.Fatal(err)
+	}
+	st, _ := SiteLangs(site)
+	for _, s := range st {
+		if s.Lang == "es" && (s.Done != 4 || s.Missing != 0 || !s.On) {
+			t.Fatalf("es = %+v", s)
+		}
+	}
+	before := calls
+	if n, _ := TranslateSite(context.Background(), site, "es", nil); n != 0 || calls != before {
+		t.Fatal("up to date notes should not be translated again")
+	}
+}

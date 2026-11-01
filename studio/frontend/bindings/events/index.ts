@@ -39,6 +39,11 @@ export const Term = "term";
 export const Translate = "translate";
 
 /**
+ * Name of the custom event "translateSite".
+ */
+export const TranslateSite = "translateSite";
+
+/**
  * Name of the custom event "voiceInstall".
  */
 export const VoiceInstall = "voiceInstall";

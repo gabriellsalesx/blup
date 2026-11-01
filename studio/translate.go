@@ -16,7 +16,10 @@ type TranslateProgress struct {
 	Total int    `json:"total"`
 }
 
-func init() { application.RegisterEvent[TranslateProgress]("translate") }
+func init() {
+	application.RegisterEvent[TranslateProgress]("translate")
+	application.RegisterEvent[TranslateSiteProgress]("translateSite")
+}
 
 // NoteLangs lists the note's languages: the original, then each other
 // site language, translated (and up to date) or not.
@@ -37,5 +40,34 @@ func (s *Studio) TranslateNote(rel, lang string) (string, error) {
 	}
 	return app.TranslateNote(context.Background(), site, rel, lang, func(done, total int) {
 		application.Get().Event.Emit("translate", TranslateProgress{rel, lang, done, total})
+	})
+}
+
+// TranslateSiteProgress is how far the translation of the whole site went.
+type TranslateSiteProgress struct {
+	Lang  string `json:"lang"`
+	Done  int    `json:"done"`
+	Total int    `json:"total"`
+	Note  string `json:"note"`
+}
+
+// SiteLangs tells how much of the open site is in each other language.
+func (s *Studio) SiteLangs() ([]app.SiteLangState, error) {
+	site, err := s.current()
+	if err != nil {
+		return nil, err
+	}
+	return app.SiteLangs(site)
+}
+
+// TranslateSite translates the open site's notes that miss a translation
+// into lang (or have an out of date one) and returns how many it did.
+func (s *Studio) TranslateSite(lang string) (int, error) {
+	site, err := s.current()
+	if err != nil {
+		return 0, err
+	}
+	return app.TranslateSite(context.Background(), site, lang, func(done, total int, note string) {
+		application.Get().Event.Emit("translateSite", TranslateSiteProgress{lang, done, total, note})
 	})
 }

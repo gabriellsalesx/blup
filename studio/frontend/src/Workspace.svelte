@@ -42,6 +42,7 @@
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import PenLine from "@lucide/svelte/icons/pen-line";
   import Palette from "@lucide/svelte/icons/palette";
+  import Languages from "@lucide/svelte/icons/languages";
   import LayoutGrid from "@lucide/svelte/icons/layout-grid";
   import MessageCircle from "@lucide/svelte/icons/message-circle";
   import Cookie from "@lucide/svelte/icons/cookie";
@@ -60,6 +61,7 @@
   const TerminalPanel = lazy(() => import("./TerminalPanel.svelte"));
   const HistoryModal = lazy(() => import("./HistoryModal.svelte"));
   const LookPanel = lazy(() => import("./LookPanel.svelte"));
+  const LangsPanel = lazy(() => import("./LangsPanel.svelte"));
   const SectionsPanel = lazy(() => import("./SectionsPanel.svelte"));
   const CommentsPanel = lazy(() => import("./CommentsPanel.svelte"));
   const CookiesPanel = lazy(() => import("./CookiesPanel.svelte"));
@@ -402,6 +404,7 @@
   ] : [
     { key: "write", label: t.nav.write, Icon: PenLine },
     { key: "look", label: t.nav.look, Icon: Palette },
+    { key: "langs", label: t.nav.langs, Icon: Languages },
     { key: "authors", label: t.nav.authors, Icon: Users },
     { key: "attach", label: t.nav.attach, Icon: Paperclip },
     ...(site.model === "bento" ? [{ key: "sections", label: t.nav.sections, Icon: LayoutGrid }] : []),
@@ -765,6 +768,7 @@
     {:else if settings}
       {#key screen}
         {#if screen === "look"}{#await LookPanel() then { default: C }}<C {settings} {reload} />{/await}
+        {:else if screen === "langs"}{#await LangsPanel() then { default: C }}<C {settings} onTree={async () => (tree = (await LoadTree()).children ?? [])} />{/await}
         {:else if screen === "sections"}{#await SectionsPanel() then { default: C }}<C {settings} {reload} onTree={(n) => (tree = n.children ?? [])} />{/await}
         {:else if screen === "comments"}{#await CommentsPanel() then { default: C }}<C {settings} {reload} />{/await}
         {:else if screen === "cookies"}{#await CookiesPanel() then { default: C }}<C {settings} {reload} onOpenNote={openNote} />{/await}

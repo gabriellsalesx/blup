@@ -24,6 +24,7 @@ export type {
     SiteInfo,
     TermData,
     TranslateProgress,
+    TranslateSiteProgress,
     Vault,
     VersionText,
     VoiceProgress

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -203,4 +204,125 @@ func addSiteLang(site *config.Site, lang string) error {
 		return err
 	}
 	return scaffold.Write(site)
+}
+
+// SiteLangState is how much of the site is in a language: notes
+// translated and up to date, out of date, and not translated yet.
+type SiteLangState struct {
+	Lang    string `json:"lang"`
+	On      bool   `json:"on"` // published (the site has it)
+	Done    int    `json:"done"`
+	Stale   int    `json:"stale"`
+	Missing int    `json:"missing"`
+}
+
+// siteOriginals are the site's notes that get translations: every page
+// note in the site's language (not the agent guides, the authors' profiles
+// or the templates, which are never pages).
+func siteOriginals(site *config.Site) ([]string, error) {
+	root := site.ContentDir()
+	skip := map[string]bool{}
+	if a := obsidian.Sections(root)["authors"]; a != "" {
+		skip[a] = true
+	}
+	if t := obsidian.TemplatesFolder(site.Vault); t != "" {
+		if rel, err := filepath.Rel(root, filepath.Join(site.Vault, t)); err == nil {
+			skip[filepath.ToSlash(rel)] = true
+		}
+	}
+	var out []string
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(root, p)
+		rel = filepath.ToSlash(rel)
+		if d.IsDir() {
+			if p != root && (strings.HasPrefix(d.Name(), ".") || skip[rel] || (slices.Contains(config.SiteLangs, d.Name()) && d.Name() != site.Lang)) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.EqualFold(path.Ext(rel), ".md") && !slices.Contains(scaffold.AgentGuides, rel) {
+			out = append(out, rel)
+		}
+		return nil
+	})
+	return out, err
+}
+
+// SiteLangs tells, for each language other than the site's, how much of
+// the site is translated.
+func SiteLangs(site *config.Site) ([]SiteLangState, error) {
+	notes, err := siteOriginals(site)
+	if err != nil {
+		return nil, err
+	}
+	var out []SiteLangState
+	for _, l := range config.SiteLangs {
+		if l == site.Lang {
+			continue
+		}
+		st := SiteLangState{Lang: l, On: slices.Contains(site.Translations, l)}
+		for _, rel := range notes {
+			switch translationOf(site, rel, l) {
+			case "done":
+				st.Done++
+			case "stale":
+				st.Stale++
+			default:
+				st.Missing++
+			}
+		}
+		out = append(out, st)
+	}
+	return out, nil
+}
+
+// translationOf is the state of rel's translation into lang: "done",
+// "stale" or "missing".
+func translationOf(site *config.Site, rel, lang string) string {
+	tp, err := notesPath(site, translationPath(rel, lang))
+	if err != nil {
+		return "missing"
+	}
+	t, err := obsidian.ReadNote(tp)
+	if _, serr := os.Stat(tp); err != nil || serr != nil {
+		return "missing"
+	}
+	op, _ := notesPath(site, rel)
+	n, err := obsidian.ReadNote(op)
+	if err == nil && t.String(hashKey) != "" && t.String(hashKey) != sourceHash(n, rel) {
+		return "stale"
+	}
+	return "done"
+}
+
+// TranslateSite translates every note of the site into lang that has no
+// translation yet, or an out of date one. progress gets the notes done of
+// total and the note being translated. It stops at the first error (the
+// notes done stay).
+func TranslateSite(ctx context.Context, site *config.Site, lang string, progress func(done, total int, note string)) (int, error) {
+	notes, err := siteOriginals(site)
+	if err != nil {
+		return 0, err
+	}
+	var todo []string
+	for _, rel := range notes {
+		if translationOf(site, rel, lang) != "done" {
+			todo = append(todo, rel)
+		}
+	}
+	for i, rel := range todo {
+		if progress != nil {
+			progress(i, len(todo), rel)
+		}
+		if _, err := TranslateNote(ctx, site, rel, lang, nil); err != nil {
+			return i, err
+		}
+	}
+	if progress != nil {
+		progress(len(todo), len(todo), "")
+	}
+	return len(todo), addSiteLang(site, lang)
 }

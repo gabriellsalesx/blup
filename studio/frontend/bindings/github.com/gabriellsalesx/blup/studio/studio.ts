@@ -1069,6 +1069,13 @@ export function ShowInFolder(rel: string): $CancellablePromise<void> {
 }
 
 /**
+ * SiteLangs tells how much of the open site is in each other language.
+ */
+export function SiteLangs(): $CancellablePromise<app$0.SiteLangState[] | null> {
+    return $Call.ByID(935023878);
+}
+
+/**
  * SiteParts lists what the site in dir is made of, for the delete window.
  */
 export function SiteParts(dir: string): $CancellablePromise<app$0.SiteParts> {
@@ -1154,6 +1161,14 @@ export function Thumbnail(name: string): $CancellablePromise<string> {
  */
 export function TranslateNote(rel: string, lang: string): $CancellablePromise<string> {
     return $Call.ByID(1658791572, rel, lang);
+}
+
+/**
+ * TranslateSite translates the open site's notes that miss a translation
+ * into lang (or have an out of date one) and returns how many it did.
+ */
+export function TranslateSite(lang: string): $CancellablePromise<number> {
+    return $Call.ByID(1712606371, lang);
 }
 
 /**

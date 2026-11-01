@@ -352,6 +352,16 @@ export interface TranslateProgress {
 }
 
 /**
+ * TranslateSiteProgress is how far the translation of the whole site went.
+ */
+export interface TranslateSiteProgress {
+    "lang": string;
+    "done": number;
+    "total": number;
+    "note": string;
+}
+
+/**
  * Vault is an Obsidian vault found on the computer.
  */
 export interface Vault {

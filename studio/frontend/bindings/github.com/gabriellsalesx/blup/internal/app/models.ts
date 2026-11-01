@@ -612,6 +612,22 @@ export interface Settings {
 }
 
 /**
+ * SiteLangState is how much of the site is in a language: notes
+ * translated and up to date, out of date, and not translated yet.
+ */
+export interface SiteLangState {
+    "lang": string;
+
+    /**
+     * published (the site has it)
+     */
+    "on": boolean;
+    "done": number;
+    "stale": number;
+    "missing": number;
+}
+
+/**
  * SiteParts is what a site is made of, for the "delete" window.
  */
 export interface SiteParts {

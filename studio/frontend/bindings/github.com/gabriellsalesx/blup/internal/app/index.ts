@@ -36,6 +36,7 @@ export type {
     SearchHit,
     Section,
     Settings,
+    SiteLangState,
     SiteParts,
     Snippet,
     SyncInfo,
