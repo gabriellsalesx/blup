@@ -13,7 +13,7 @@
   const lower = $derived(file.toLowerCase());
   const image = $derived(/\.(png|jpe?g|webp|gif|svg|avif)$/.test(lower));
   const board = $derived(lower.endsWith(".canvas") ? "canvas" : lower.endsWith(".draw") ? "drawing" : "");
-  const name = $derived(file.split("/").pop()!.replace(/\.(draw|canvas|md)$/i, ""));
+  const name = $derived(file.split("/").pop()!.replace(/\.(draw|canvas|table|md)$/i, ""));
 
   // Read again when the file changes on disk (version).
   const content = $derived.by(() => {

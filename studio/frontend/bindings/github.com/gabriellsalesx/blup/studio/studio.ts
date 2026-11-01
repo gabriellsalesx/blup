@@ -51,6 +51,13 @@ export function AddAttachments(): $CancellablePromise<string[] | null> {
 }
 
 /**
+ * AddRecord makes a record of a database and returns its path.
+ */
+export function AddRecord(rel: string, name: string, props: { [_ in string]?: any } | null): $CancellablePromise<string> {
+    return $Call.ByID(2292320688, rel, name, props);
+}
+
+/**
  * AddSection adds a Bento section with example notes, and returns the new
  * tree of notes.
  */
@@ -263,6 +270,15 @@ export function CreateCanvas(folder: string, name: string): $CancellablePromise<
 }
 
 /**
+ * CreateDatabase makes a database named title in folder ("" for the
+ * databases' folder) with the columns and views of a template, and
+ * returns its path.
+ */
+export function CreateDatabase(folder: string, title: string, schema: app$0.DBSchema): $CancellablePromise<string> {
+    return $Call.ByID(1387194755, folder, title, schema);
+}
+
+/**
  * CreateDrawing makes a drawing named name in folder and returns its path.
  */
 export function CreateDrawing(folder: string, name: string): $CancellablePromise<string> {
@@ -312,6 +328,14 @@ export function CreateVault(title: string, notes: string): $CancellablePromise<$
  */
 export function CurrentDomain(): $CancellablePromise<string> {
     return $Call.ByID(31178783);
+}
+
+/**
+ * DailyNote opens the note of the day in folder (made with tag the first
+ * time) with the time added at its end, and returns its path.
+ */
+export function DailyNote(folder: string, tag: string): $CancellablePromise<string> {
+    return $Call.ByID(1351292415, folder, tag);
 }
 
 /**
@@ -712,6 +736,13 @@ export function ReadBoard(rel: string): $CancellablePromise<string> {
 }
 
 /**
+ * ReadDatabase is a database and its records.
+ */
+export function ReadDatabase(rel: string): $CancellablePromise<app$0.Database> {
+    return $Call.ByID(2779922559, rel);
+}
+
+/**
  * ReadNote returns a note's properties and text.
  */
 export function ReadNote(rel: string): $CancellablePromise<$models.NoteData> {
@@ -838,6 +869,13 @@ export function SaveCookies(c: config$0.Cookies, privacyPage: boolean, contact: 
 }
 
 /**
+ * SaveDatabaseSchema saves a database's columns and views.
+ */
+export function SaveDatabaseSchema(rel: string, schema: app$0.DBSchema): $CancellablePromise<void> {
+    return $Call.ByID(3114128333, rel, schema);
+}
+
+/**
  * SaveLayout saves the home screen's order.
  */
 export function SaveLayout(items: $models.HomeItem[] | null): $CancellablePromise<void> {
@@ -915,6 +953,14 @@ export function SetLanguage(lang: string): $CancellablePromise<void> {
  */
 export function SetPassword(password: string): $CancellablePromise<void> {
     return $Call.ByID(2274743879, password);
+}
+
+/**
+ * SetProps changes properties of a note (a database's cell, from its
+ * table or board): a nil, empty or false value removes it.
+ */
+export function SetProps(rel: string, edits: $models.PropEdit[] | null): $CancellablePromise<void> {
+    return $Call.ByID(2895650224, rel, edits);
 }
 
 /**

@@ -357,7 +357,7 @@
   // Following: a note or another board opens in the Studio; a web address
   // in the browser.
   function openFile(file: string) {
-    if (/\.(md|canvas|draw)$/i.test(file)) onOpenNote(file);
+    if (/\.(md|canvas|draw|table)$/i.test(file)) onOpenNote(file);
   }
   function openLink(href: string, from: string) {
     const wiki = /^\[\[([^\]|#]+)/.exec(href);

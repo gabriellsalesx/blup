@@ -11,6 +11,7 @@
   import FileIcon from "@lucide/svelte/icons/file";
   import Folder from "@lucide/svelte/icons/folder";
   import FolderOpen from "@lucide/svelte/icons/folder-open";
+  import Database from "@lucide/svelte/icons/database";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
 
   // The notes, like Obsidian's file explorer: folders open and close (open
@@ -103,6 +104,7 @@
     {#if n.dir}{#if open[n.path]}<FolderOpen size={15} strokeWidth={1.75} />{:else}<Folder size={15} strokeWidth={1.75} />{/if}
     {:else if n.kind === "drawing"}<PenTool size={15} strokeWidth={1.75} />
     {:else if n.kind === "canvas"}<LayoutDashboard size={15} strokeWidth={1.75} />
+    {:else if n.kind === "database"}<Database size={15} strokeWidth={1.75} />
     {:else}<FileIcon size={15} strokeWidth={1.75} />{/if}
   </span>
 {/snippet}

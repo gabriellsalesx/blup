@@ -4,13 +4,23 @@
   import CalendarClock from "@lucide/svelte/icons/calendar-clock";
   import Tag from "@lucide/svelte/icons/tag";
   import X from "@lucide/svelte/icons/x";
+  import type { DBSchema } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import FieldInput from "./FieldInput.svelte";
   import { t } from "./i18n";
 
   // A vault note's properties, like Obsidian's, and only these: when it was
   // made, when it changed last (both filled in by themselves, see
   // Workspace.save, and editable), and its tags. onEdit changes them (the
   // workspace keeps props up to date).
-  let { props, onEdit }: { props: Record<string, any>; onEdit: (key: string, value: any) => void } = $props();
+  // A record of a database (database): its fields come after, each by its
+  // column's kind.
+  let { props, database, notes = [], onEdit, onNewOption, onOpenNote }: {
+    props: Record<string, any>; database?: DBSchema;
+    notes?: { name: string; path: string }[];
+    onEdit: (key: string, value: any) => void;
+    onNewOption?: (key: string, value: string, color: string) => void;
+    onOpenNote?: (path: string) => void;
+  } = $props();
   const p = t.noteProps;
 
   const day = (v: unknown) => String(v ?? "").slice(0, 10);
@@ -66,6 +76,12 @@
       </span>
     </div>
   </div>
+  {#each database?.columns ?? [] as c (c.key)}
+    <div class="row">
+      <span class="k">{c.name}</span>
+      <div class="v"><FieldInput column={c} value={props[c.key]} {notes} {onOpenNote} onChange={(v) => onEdit(c.key, v)} onNewOption={onNewOption ? (v, color) => onNewOption(c.key, v, color) : undefined} /></div>
+    </div>
+  {/each}
 </section>
 
 <style>
@@ -73,6 +89,7 @@
   h2 { font-size: 1rem; font-weight: 600; color: var(--muted); margin-block-end: .35rem; }
   .row { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); align-items: center; min-height: 2.1rem; }
   .k { display: flex; align-items: center; gap: .55rem; color: var(--muted); font-size: .92rem; }
+  .v { min-width: 0; font-size: .92rem; }
   input[type="date"] { justify-self: start; padding: .2rem .4rem; border: 1px solid transparent; border-radius: .35rem; background: transparent; color: var(--text); font: inherit; font-size: .92rem; color-scheme: light dark; }
   input[type="date"]:hover, input[type="date"]:focus { border-color: var(--line); outline: none; }
   .tags { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }

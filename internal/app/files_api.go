@@ -49,7 +49,7 @@ func i18nInvalidName() string { return "invalid name" }
 // .md, a vault's canvases and drawings, or any other.
 func fileExt(name string) string {
 	n := strings.ToLower(name)
-	for _, ext := range []string{".draw", ".canvas", ".md"} {
+	for _, ext := range []string{".draw", ".canvas", ".table", ".md"} {
 		if strings.HasSuffix(n, ext) {
 			return name[len(name)-len(ext):]
 		}

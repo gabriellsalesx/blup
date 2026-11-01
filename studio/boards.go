@@ -19,12 +19,14 @@ import (
 //
 //   - a canvas (.canvas, in the open JSON Canvas format): cards, notes and
 //     links on an endless board, joined by arrows;
-//   - a drawing (.draw): shapes, arrows, text and free strokes.
+//   - a drawing (.draw): shapes, arrows, text and free strokes;
+//   - a database (.table): its records are notes (app/database.go).
 
 // Kinds of a Node that isn't a note or a folder.
 const (
-	KindCanvas  = "canvas"
-	KindDrawing = "drawing"
+	KindCanvas   = "canvas"
+	KindDrawing  = "drawing"
+	KindDatabase = "database"
 )
 
 // boardKind is the kind of a file name, "" for a note or anything else.
@@ -35,6 +37,8 @@ func boardKind(name string) string {
 		return KindCanvas
 	case strings.HasSuffix(n, ".draw"):
 		return KindDrawing
+	case strings.HasSuffix(n, ".table"):
+		return KindDatabase
 	}
 	return ""
 }
@@ -42,7 +46,7 @@ func boardKind(name string) string {
 // boardName is a board's name without its extension.
 func boardName(name string) string {
 	n := strings.ToLower(name)
-	for _, ext := range []string{".draw", ".canvas"} {
+	for _, ext := range []string{".draw", ".canvas", ".table"} {
 		if strings.HasSuffix(n, ext) {
 			return name[:len(name)-len(ext)]
 		}

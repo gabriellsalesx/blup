@@ -24,6 +24,10 @@ type NoteData struct {
 	Props map[string]any `json:"props"`
 	Body  string         `json:"body"`
 	Kind  string         `json:"kind"` // section of the note (Bento): docs, roadmap...
+	// A vault's note that is a record of a database: the database and its
+	// columns (its fields in Properties).
+	Table    string        `json:"table,omitempty"`
+	Database *app.DBSchema `json:"database,omitempty"`
 }
 
 // PropEdit is a property changed in the form; a nil, empty or false value
@@ -48,7 +52,11 @@ func (s *Studio) ReadNote(rel string) (NoteData, error) {
 	if fm != "" {
 		_ = yaml.Unmarshal([]byte(fm), &props)
 	}
-	return NoteData{Props: jsonSafe(props).(map[string]any), Body: body, Kind: s.kindOf(rel)}, nil
+	data := NoteData{Props: jsonSafe(props).(map[string]any), Body: body, Kind: s.kindOf(rel)}
+	if site, err := s.current(); err == nil && site.IsNotes() {
+		data.Table, data.Database = app.DatabaseOf(site, rel)
+	}
+	return data, nil
 }
 
 // SaveNote saves a note's text and the properties changed in the form.
@@ -253,6 +261,14 @@ func (s *Studio) createFile(folder, name, ext, text string) (string, error) {
 			if site, err := s.current(); err == nil && site.IsNotes() {
 				today := time.Now().Format("2006-01-02")
 				text = "---\ncreated: " + today + "\nupdated: " + today + "\n---\n\n"
+				// It takes the tags its folder's notes have (or its
+				// database's).
+				if tags := app.FolderTags(site, folder); len(tags) > 0 {
+					if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+						return "", err
+					}
+					return rel, obsidian.SetProperties(p, obsidian.Prop{Key: "tags", Value: tags})
+				}
 			}
 		}
 		return rel, os.WriteFile(p, []byte(text), 0o644)

@@ -154,12 +154,95 @@ export interface Connections {
 }
 
 /**
+ * DBColumn is a field of the records: Key is the property's name in the
+ * notes; Type is text, number, phone, email, url, date, select, multi,
+ * check or link (a note).
+ */
+export interface DBColumn {
+    "key": string;
+    "name": string;
+    "type": string;
+    "options"?: DBOption[] | null;
+}
+
+/**
+ * DBOption is a choice of a select column, and its color.
+ */
+export interface DBOption {
+    "value": string;
+    "color"?: string;
+}
+
+/**
+ * DBRecord is a record: a note of the records' folder.
+ */
+export interface DBRecord {
+    "path": string;
+    "name": string;
+    "props": { [_ in string]?: any } | null;
+
+    /**
+     * the note's text (the start), for the search
+     */
+    "text": string;
+}
+
+/**
+ * DBSchema is a .table file.
+ */
+export interface DBSchema {
+    "version": number;
+
+    /**
+     * the records' folder, next to the .table file
+     */
+    "records": string;
+
+    /**
+     * every record has it
+     */
+    "tag": string;
+    "columns": DBColumn[] | null;
+    "views": DBView[] | null;
+}
+
+/**
+ * DBView is a way of seeing the records: a table or a board (one column
+ * per option of GroupBy), sorted and filtered.
+ */
+export interface DBView {
+    "id": string;
+    "name": string;
+
+    /**
+     * table, board
+     */
+    "type": string;
+    "groupBy"?: string;
+
+    /**
+     * a column's key ("" the name), "-" first for descending
+     */
+    "sort"?: string;
+    "filter"?: string;
+    "match"?: string;
+}
+
+/**
  * DNSRecord is a record to create where the domain was bought.
  */
 export interface DNSRecord {
     "type": string;
     "name": string;
     "value": string;
+}
+
+/**
+ * Database is a database and its records.
+ */
+export interface Database {
+    "schema": DBSchema;
+    "records": DBRecord[] | null;
 }
 
 /**

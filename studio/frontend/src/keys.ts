@@ -1,10 +1,16 @@
 // The Studio's keyboard shortcuts: what each one does, its default keys,
 // and the keys of a key press in the same form ("Ctrl+Shift+F"), which is
 // also how Wails writes the global shortcut.
-export type Action = "terminal" | "preview" | "newNote" | "search" | "sidebar" | "settings";
+export type Action = "terminal" | "preview" | "newNote" | "search" | "sidebar" | "settings" | "dailyNote" | "graph" | "newCanvas" | "newDrawing" | "newDatabase" | "fullScreen";
 
 export const ACTIONS: { key: Action; keys: string }[] = [
   { key: "newNote", keys: "Ctrl+N" },
+  { key: "dailyNote", keys: "Ctrl+Alt+D" },
+  { key: "graph", keys: "Ctrl+G" },
+  { key: "newCanvas", keys: "Ctrl+Alt+C" },
+  { key: "newDrawing", keys: "Ctrl+Alt+W" },
+  { key: "newDatabase", keys: "Ctrl+Alt+B" },
+  { key: "fullScreen", keys: "F11" },
   { key: "search", keys: "Ctrl+Shift+F" },
   { key: "sidebar", keys: "Ctrl+Alt+S" },
   { key: "preview", keys: "Ctrl+Alt+P" },

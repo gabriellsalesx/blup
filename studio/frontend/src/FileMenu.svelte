@@ -42,7 +42,7 @@
     error = "";
     try { await fn(); } catch (e) { error = msg(e); }
   }
-  const base = (p: string) => p.split("/").pop()!.replace(/\.(draw|canvas|md)$/i, "");
+  const base = (p: string) => p.split("/").pop()!.replace(/\.(draw|canvas|table|md)$/i, "");
   const move = (f: string) => run(async () => { const to = await MoveItem(node.path, f); onChanged({ from: node.path, to }); toast(t.toast.noteMoved.replace("{folder}", f || m.top)); });
   // To the Blup trash, with Undo in the toast (the tree follows the files).
   const remove = () => run(async () => {

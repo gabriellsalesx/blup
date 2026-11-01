@@ -1,12 +1,18 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
-  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, RenameItem, MoveItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, CreateDatabase, SaveDatabaseSchema, DailyNote, RenameItem, MoveItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
   import Editor from "./Editor.svelte";
   import CanvasView from "./CanvasView.svelte";
   import DrawingView from "./DrawingView.svelte";
+  import DatabaseView from "./DatabaseView.svelte";
+  import DatabaseNew from "./DatabaseNew.svelte";
+  import Database from "@lucide/svelte/icons/database";
+  import CalendarDays from "@lucide/svelte/icons/calendar-days";
+  import type { DBSchema } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import type { Template } from "./db";
   import { boardKind, fileTitle, type NewKind } from "./boards";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import PenTool from "@lucide/svelte/icons/pen-tool";
@@ -104,6 +110,45 @@
     tree = (await LoadTree()).children ?? [];
     return rel;
   }
+  // The note of the day: made (or opened) in the daily folder, with the
+  // time added at its end and the cursor there, ready to write.
+  let atEnd = $state(false);
+  async function dailyNote() {
+    try {
+      await save();
+      const rel = await DailyNote(t.daily.folder, t.daily.tag);
+      tree = (await LoadTree()).children ?? [];
+      reveal(rel);
+      screen = "write";
+      atEnd = true;
+      if (rel === current) { const note = await ReadNote(rel); applyOutside(note); }
+      else await pick(rel);
+    } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
+
+  // A new database: its template and name are asked (DatabaseNew), then
+  // it opens.
+  let dbNew = $state(false);
+  async function newDatabase(title: string, tpl: Template) {
+    dbNew = false;
+    try {
+      const rel = await CreateDatabase("", title, tpl.schema);
+      tree = (await LoadTree()).children ?? [];
+      reveal(rel);
+      screen = "write";
+      await pick(rel);
+    } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
+  // The open note is a record of a database: its fields (in Properties).
+  let noteDb = $state<{ table: string; schema: DBSchema } | null>(null);
+  function dbOption(key: string, value: string, color: string) {
+    const db = noteDb;
+    const col = db?.schema.columns?.find((c) => c.key === key);
+    if (!db || !col) return;
+    col.options = [...(col.options ?? []), { value, color }];
+    SaveDatabaseSchema(db.table, $state.snapshot(db.schema) as DBSchema).catch((e) => (error = String(e)));
+  }
+
   async function quickBoard(kind: "canvas" | "drawing", where?: string) {
     try {
       const rel = await makeBoard(kind, where);
@@ -249,6 +294,13 @@
     else if (a === "settings") prefsOpen = true;
     else if (a === "search") { sideOpen = true; sideTab = "search"; }
     else if (a === "newNote") { sideOpen = true; sideTab = "files"; screen = "write"; startCreate("note"); }
+    else if (a === "fullScreen") { if (board) full = !full; }
+    else if (!notesVault) return;
+    else if (a === "dailyNote") dailyNote();
+    else if (a === "graph") { save(); screen = screen === "graph" ? "write" : "graph"; }
+    else if (a === "newCanvas") quickBoard("canvas");
+    else if (a === "newDrawing") quickBoard("drawing");
+    else if (a === "newDatabase") dbNew = true;
   }
 
   // A smaller window keeps the editor's room.
@@ -458,6 +510,7 @@
       text = note.body;
       noteProps = note.props ?? {};
       kind = note.kind;
+      noteDb = note.database && note.table ? { table: note.table, schema: note.database } : null;
       edits = {};
       pending = text;
       written = text;
@@ -518,7 +571,7 @@
   <input class="inline-title" value={fileTitle(current)} aria-label={t.menu.rename} spellcheck="false"
     onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } else if (e.key === "Escape") { e.currentTarget.value = fileTitle(current); e.currentTarget.blur(); } }}
     onblur={(e) => rename({ path: current, name: fileTitle(current), dir: false } as Node, e.currentTarget.value)} />
-  <NoteProps props={noteProps} onEdit={(k, v) => { noteProps[k] = v; editProp(k, v); }} />
+  <NoteProps props={noteProps} database={noteDb?.schema} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onOpenNote={openNote} onNewOption={dbOption} onEdit={(k, v) => { noteProps[k] = v; editProp(k, v); }} />
 {/snippet}
 
 <svelte:window onresize={fit} onkeydown={shortcut} onclick={() => (switching = false)} />
@@ -536,6 +589,8 @@
       <span class="sep"></span>
       <button class="rib" title={t.boards.newCanvas} onclick={() => quickBoard("canvas")}><LayoutDashboard size={19} strokeWidth={1.75} /></button>
       <button class="rib" title={t.boards.newDrawing} onclick={() => quickBoard("drawing")}><PenTool size={19} strokeWidth={1.75} /></button>
+      <button class="rib" title={t.db.newDb} onclick={() => (dbNew = true)}><Database size={19} strokeWidth={1.75} /></button>
+      <button class="rib" title={t.daily.button} onclick={dailyNote}><CalendarDays size={19} strokeWidth={1.75} /></button>
     {/if}
     <span class="grow"></span>
     <button class="rib" class:active={termOpen} title={t.term.button + (keysOf(look.keys, "terminal") ? ` (${keysOf(look.keys, "terminal")})` : "")} onclick={() => (termOpen = !termOpen)}><SquareTerminal size={19} strokeWidth={1.75} /></button>
@@ -621,10 +676,12 @@
             <CanvasView path={current} full={fullOn} onFull={() => (full = !full)} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOpenNote={openNote} onOutside={() => reloadN++} />
           {:else if board === "drawing"}
             <DrawingView path={current} full={fullOn} onFull={() => (full = !full)} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />
+          {:else if board === "database"}
+            <DatabaseView path={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onOpenNote={openNote} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />
           {:else}
           <div class="note">
             {#if !notesVault}<Props props={noteProps} {kind} note={current} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} />{/if}
-            <div class="body"><Editor {text} note={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onChange={changed} onSave={save} onError={(e) => (error = e)} onOpenNote={openNote} onNewBoard={notesVault ? (kind) => makeBoard(kind) : undefined} header={notesVault ? noteHead : undefined} /></div>
+            <div class="body"><Editor {text} note={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onChange={changed} onSave={save} onError={(e) => (error = e)} onOpenNote={openNote} onNewBoard={notesVault ? (kind) => makeBoard(kind) : undefined} header={notesVault ? noteHead : undefined} {atEnd} onReady={() => (atEnd = false)} /></div>
             {#if notesVault}<Backlinks note={current} onOpenNote={openNote} />{/if}
           </div>
           {/if}
@@ -693,6 +750,7 @@
       </div>
     </div>
   {/if}
+  {#if dbNew}<DatabaseNew onCreate={newDatabase} onClose={() => (dbNew = false)} />{/if}
   {#if historyFor}
     {#key historyFor}<HistoryModal path={historyFor} onClose={() => (historyFor = "")} />{/key}
   {/if}

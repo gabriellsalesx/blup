@@ -101,12 +101,16 @@
   // onNewBoard (a vault of notes): makes a canvas or a drawing and gives its
   // path, for the / menu. header: what scrolls with the note, above its
   // text (a vault's title and properties).
-  let { text, note, notes = [], header, onChange, onSave, onError, onOpenNote, onNewBoard }: {
+  // atEnd: the cursor starts at the end of the text (the note of the day);
+  // onReady says it is in place.
+  let { text, note, notes = [], header, atEnd = false, onReady, onChange, onSave, onError, onOpenNote, onNewBoard }: {
     text: string; note: string; notes?: { name: string; path: string }[];
     onChange: (v: string) => void; onSave: () => void; onError?: (e: string) => void;
     onOpenNote?: (path: string) => void;
     onNewBoard?: (kind: "canvas" | "drawing") => Promise<string>;
     header?: Snippet;
+    atEnd?: boolean;
+    onReady?: () => void;
   } = $props();
   const te = t.editor;
   let host: HTMLDivElement;
@@ -571,6 +575,8 @@
       ],
     });
     view.focus();
+    if (atEnd) view.dispatch({ selection: EditorSelection.cursor(view.state.doc.length), scrollIntoView: true });
+    onReady?.();
     // Ctrl+Z from the window (see undo.ts) undoes in the editor.
     const onUndo = (cmd: "undo" | "redo") => {
       if (!view.hasFocus) return false;
