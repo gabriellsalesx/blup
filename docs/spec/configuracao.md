@@ -137,6 +137,7 @@ A senha geral é resolvida por `app.PostPassword`: primeiro `Site.Password`, dep
 | `welcomed` | booleano | Telas iniciais já foram vistas |
 | `cloudTip` | booleano | O convite ao Blup Cloud depois do primeiro site foi respondido |
 | `backupDir` | texto | Pasta da cópia diária das notas; vazio desliga |
+| `translateAI` | texto | Quem traduz: `local` (no computador) ou `cloud` (OpenRouter ou Blup Cloud); vazio usa o computador quando instalado |
 
 Voz local usa `kokoro:<id>`. Voz OpenRouter usa `<modelo>|<voz>`, inclusive voz vazia para o padrão do modelo. Nomes antigos sem separador são tratados como voz do modelo remoto recomendado.
 

@@ -318,6 +318,7 @@ Um site é escrito no idioma de `lang` (`pt`, `en` ou `es`) e pode ser publicado
 - Tela Idiomas do site (`LangsPanel.svelte`): quantas notas estão traduzidas, desatualizadas e faltando em cada idioma, e Traduzir o que falta de uma vez.
 - Quem traduz (`internal/translate`): a IA do plano no Blup Cloud (`/api/ai/translate`, que monta o pedido no servidor e desconta o custo real) quando o plano inclui IA, senão a chave do OpenRouter (Claude Haiku 5.5). A nota vai em partes de até 12 KB, cortadas em linhas em branco fora de blocos de código. Código, links, imagens e o tipo dos callouts não mudam.
 - A narração de uma tradução usa a voz do idioma dela, e o arquivo de áudio leva o idioma no nome (`Nota (en).mp3`).
+- Tradução no computador (`internal/localtr`, `localtranslate.ts`, `public/bergamot`): o motor e os modelos do Firefox Translations (Bergamot 4.0 e modelos 3.0 de inglês com português e espanhol), baixados da Mozilla sob demanda (cerca de 100 MB, 145 MB no disco, cada arquivo conferido por SHA-256 antes e depois de descompactar) e servidos à janela em `/local-translate/`. Roda num worker; português e espanhol passam pelo inglês. Cada linha do Markdown vira HTML que o motor preserva: código, endereços, alvos de wikilinks, imagens e matemática vão em marcações com o próprio texto (só para contexto) e voltam exatamente como eram, com os espaços e a caixa baixa do original. A escolha de quem traduz fica em `translateAI` (vazio: no computador quando instalado).
 
 ## Busca, exportar e desempenho
 
