@@ -91,7 +91,17 @@ export function curve(a: { x: number; y: number }, as: Side, b: { x: number; y: 
   const c2 = bs ? { x: b.x + NORMAL[bs].x * k, y: b.y + NORMAL[bs].y * k } : b;
   // The point at the middle of the curve (t = .5).
   const mid = { x: (a.x + 3 * c1.x + 3 * c2.x + b.x) / 8, y: (a.y + 3 * c1.y + 3 * c2.y + b.y) / 8 };
-  return { d: `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`, mid, end: b, endSide: bs };
+  // The arrow tips, drawn (a marker painted with context-stroke comes out
+  // black in WebKit): along the curve's last and first stretch.
+  const last = c2.x === b.x && c2.y === b.y ? c1 : c2;
+  return { d: `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`, mid, end: b, endSide: bs, head: tip(last, b), tail: tip(c1, a) };
+}
+
+// A filled triangle pointing at to, coming from from.
+function tip(from: { x: number; y: number }, to: { x: number; y: number }) {
+  const r = Math.atan2(to.y - from.y, to.x - from.x);
+  const p = (s: number) => `${to.x - 15 * Math.cos(r + s)},${to.y - 15 * Math.sin(r + s)}`;
+  return `M${to.x},${to.y} L${p(0.42)} L${p(-0.42)} Z`;
 }
 
 // The box around some cards.

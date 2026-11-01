@@ -136,6 +136,20 @@
     const r = board!.getBoundingClientRect();
     zoomAt(r.left + r.width / 2, r.top + r.height / 2, zoom * f);
   }
+
+  // Ctrl and + or - (the row's or the keypad's, any keyboard layout) zoom,
+  // Ctrl+0 frames what was made; also while the files panel has the focus,
+  // which it keeps after the board was opened from it.
+  function zoomKey(e: KeyboardEvent) {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || (e.target as HTMLElement)?.closest?.("[role=dialog], [role=menu]")) return false;
+    const c = e.code, k = e.key;
+    if (k === "+" || k === "=" || c === "Equal" || c === "NumpadAdd") zoomBy(1.2);
+    else if (k === "-" || c === "Minus" || c === "NumpadSubtract") zoomBy(1 / 1.2);
+    else if (k === "0" || c === "Digit0" || c === "Numpad0") fit();
+    else return false;
+    e.preventDefault();
+    return true;
+  }
   // Everything in view (or the start, when empty).
   function fit() {
     if (!board) return;
@@ -379,6 +393,7 @@
       return;
     }
     if (!board?.isConnected) return;
+    if (zoomKey(e)) return;
     // Keys go to the board unless something else has the focus (the files
     // panel, the ribbon, a window over it); Ctrl+Alt is the Studio's.
     if ((e.target as HTMLElement)?.closest?.(".side, .ribbon, [role=dialog], [role=menu]") || e.altKey) return;
@@ -454,9 +469,6 @@
 
       <!-- The arrows. -->
       <svg class="edges" aria-hidden="true">
-        <defs>
-          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke" /></marker>
-        </defs>
         {#each edges as e (e.id)}
           {@const a = byId.get(e.fromNode)}
           {@const b = byId.get(e.toNode)}
@@ -464,13 +476,18 @@
             {@const p = edgePath(a, b, e)}
             <g class="edge" class:sel={edgeSel === e.id} style:--c={tint(e.color)}>
               <path class="hit" d={p.d} role="presentation" onpointerdown={(ev) => { ev.stopPropagation(); selected = new Set(); finishEdit(); edgeSel = e.id; }} ondblclick={(ev) => { ev.stopPropagation(); editLabel(e.id); }} />
-              <path class="line" d={p.d} marker-end={(e.toEnd ?? "arrow") === "arrow" ? "url(#arrow)" : undefined} marker-start={e.fromEnd === "arrow" ? "url(#arrow)" : undefined} />
+              <path class="line" d={p.d} />
+              {#if (e.toEnd ?? "arrow") === "arrow"}<path class="head" d={p.head} />{/if}
+              {#if e.fromEnd === "arrow"}<path class="head" d={p.tail} />{/if}
             </g>
           {/if}
         {/each}
         {#if arrowTo}
           {@const a = byId.get(arrowTo.from)}
-          {#if a}<path class="line drawing" d={curve(sidePoint(a, arrowTo.side), arrowTo.side, arrowTo.to, null).d} marker-end="url(#arrow)" />{/if}
+          {#if a}
+            {@const p = curve(sidePoint(a, arrowTo.side), arrowTo.side, arrowTo.to, null)}
+            <path class="line drawing" d={p.d} /><path class="head drawing" d={p.head} />
+          {/if}
         {/if}
       </svg>
       <!-- Arrow labels, over the lines. -->
@@ -623,6 +640,8 @@
   .edge .line, .line { fill: none; stroke: var(--c, var(--muted)); stroke-width: 2.5; }
   .edge.sel .line { stroke: var(--blue); }
   .line.drawing { stroke: var(--blue); stroke-dasharray: 6 5; }
+  .head { fill: var(--c, var(--muted)); stroke: none; }
+  .edge.sel .head, .head.drawing { fill: var(--blue); }
   .edge .hit { fill: none; stroke: transparent; stroke-width: 16; cursor: pointer; pointer-events: stroke; }
   .elabel { position: absolute; transform: translate(-50%, -50%); }
   .elabel span, .elabel input { display: block; padding: .15rem .5rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--panel); color: var(--text); font: inherit; font-size: .9rem; white-space: nowrap; }

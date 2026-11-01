@@ -163,6 +163,20 @@
     const r = host!.getBoundingClientRect();
     zoomAt(r.left + r.width / 2, r.top + r.height / 2, zoom * f);
   }
+
+  // Ctrl and + or - (the row's or the keypad's, any keyboard layout) zoom,
+  // Ctrl+0 frames what was made; also while the files panel has the focus,
+  // which it keeps after the board was opened from it.
+  function zoomKey(e: KeyboardEvent) {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || (e.target as HTMLElement)?.closest?.("[role=dialog], [role=menu]")) return false;
+    const c = e.code, k = e.key;
+    if (k === "+" || k === "=" || c === "Equal" || c === "NumpadAdd") zoomBy(1.2);
+    else if (k === "-" || c === "Minus" || c === "NumpadSubtract") zoomBy(1 / 1.2);
+    else if (k === "0" || c === "Digit0" || c === "Numpad0") fit();
+    else return false;
+    e.preventDefault();
+    return true;
+  }
   function fit() {
     if (!host) return;
     const r = host.getBoundingClientRect();
@@ -511,6 +525,7 @@
       return;
     }
     if (!host?.isConnected) return;
+    if (zoomKey(e)) return;
     // Keys go to the board unless something else has the focus (the files
     // panel, the ribbon, a window over it); Ctrl+Alt is the Studio's.
     if ((e.target as HTMLElement)?.closest?.(".side, .ribbon, [role=dialog], [role=menu]") || e.altKey) return;
@@ -520,9 +535,6 @@
     else if (mod && k === "y") { e.preventDefault(); redo(); }
     else if (mod && k === "a") { e.preventDefault(); selected = new Set(elements.map((x) => x.id)); tool = "select"; }
     else if (mod && k === "d") { e.preventDefault(); duplicate(); }
-    else if (mod && (k === "=" || k === "+")) { e.preventDefault(); zoomBy(1.2); }
-    else if (mod && k === "-") { e.preventDefault(); zoomBy(1 / 1.2); }
-    else if (mod && k === "0") { e.preventDefault(); fit(); }
     else if (mod) return;
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); remove(); }
     else if (e.key === "Escape") { if (full && !chosen.length && tool === "select") onFull(); selected = new Set(); tool = "select"; }
