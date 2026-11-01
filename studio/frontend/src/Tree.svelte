@@ -28,10 +28,16 @@
   // (onto a note, into that note's folder); a folder held over for a
   // moment opens. The top of the vault is the
   // empty room under the tree (Workspace).
-  let { nodes, current, folder, open, renaming = "", onPick, onFolder, onMenu, onRename, onMove, depth = 0 }: {
+  //
+  // Making a note or folder (creating): its name is typed in a field at the
+  // top of the folder it goes in; onCreate gets it (null: given up).
+  type Creating = { folder: string; kind: "note" | "folder"; placeholder: string } | null;
+  let { nodes, current, folder, open, renaming = "", creating = null, parent = "", onPick, onFolder, onMenu, onRename, onCreate, onMove, depth = 0 }: {
     nodes: Node[]; current: string; folder: string; open: Record<string, boolean>; renaming?: string;
+    creating?: Creating; parent?: string;
     onPick: (p: string) => void; onFolder: (p: string) => void; onMenu: (n: Node, e: MouseEvent) => void;
     onRename: (n: Node, name: string | null) => void;
+    onCreate: (name: string | null) => void;
     onMove?: (path: string, folder: string) => void; // when items can be dragged
     depth?: number;
   } = $props();
@@ -85,6 +91,11 @@
     done = true;
     onRename(n, name);
   }
+  function made(name: string | null) {
+    if (done) return;
+    done = true;
+    onCreate(name?.trim() ? name : null);
+  }
 </script>
 
 {#snippet icon(n: Node)}
@@ -97,6 +108,17 @@
 {/snippet}
 
 <ul class:nested={depth > 0}>
+  {#if creating && creating.folder === parent}
+    <li>
+      <div class="row" class:note={creating.kind === "note"}>
+        {#if creating.kind === "folder"}<span class="chev"><ChevronRight size={14} /></span>{/if}
+        <span class="ico">{#if creating.kind === "folder"}<Folder size={15} strokeWidth={1.75} />{:else}<FileIcon size={15} strokeWidth={1.75} />{/if}</span>
+        <input class="rename" use:start placeholder={creating.placeholder} aria-label={creating.placeholder}
+          onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); made(e.currentTarget.value); } else if (e.key === "Escape") { e.preventDefault(); made(null); } }}
+          onblur={(e) => made(e.currentTarget.value)} />
+      </div>
+    </li>
+  {/if}
   {#each nodes as n (n.path)}
     <li>
       {#if n.path === renaming}
@@ -108,7 +130,7 @@
             onblur={(e) => finish(n, e.currentTarget.value)} />
         </div>
         {#if n.dir && open[n.path] && n.children}
-          <Tree nodes={n.children} {current} {folder} {open} {renaming} {onPick} {onFolder} {onMenu} {onRename} {onMove} depth={depth + 1} />
+          <Tree nodes={n.children} {current} {folder} {open} {renaming} {creating} parent={n.path} {onPick} {onFolder} {onMenu} {onRename} {onCreate} {onMove} depth={depth + 1} />
         {/if}
       {:else if n.dir}
         <button class={["row", { selected: n.path === folder, target: over === n.path }]} draggable={!!onMove} ondragstart={(e) => dragStart(e, n)} ondragend={dragEnd}
@@ -116,7 +138,7 @@
           <span class="chev" class:open={open[n.path]}><ChevronRight size={14} /></span>{@render icon(n)}<span class="name">{n.name}</span>
         </button>
         {#if open[n.path] && n.children}
-          <Tree nodes={n.children} {current} {folder} {open} {renaming} {onPick} {onFolder} {onMenu} {onRename} {onMove} depth={depth + 1} />
+          <Tree nodes={n.children} {current} {folder} {open} {renaming} {creating} parent={n.path} {onPick} {onFolder} {onMenu} {onRename} {onCreate} {onMove} depth={depth + 1} />
         {/if}
       {:else}
         <button class="row note" class:active={n.path === current} draggable="true" ondragstart={(e) => dragStart(e, n)} ondragend={dragEnd} ondragover={(e) => dragOver(e, n)} ondrop={(e) => drop(e, n)} onclick={() => onPick(n.path)} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
@@ -128,10 +150,10 @@
 </ul>
 
 <style>
-  ul { list-style: none; padding: 0; }
+  ul { list-style: none; padding: 0; display: grid; gap: 1px; }
   /* The guide line of an open folder, under its chevron. */
   ul.nested { margin-inline-start: .95rem; padding-inline-start: .35rem; border-inline-start: 1px solid var(--line); }
-  .row { display: flex; align-items: center; gap: .3rem; width: 100%; text-align: start; padding: .28rem .5rem .28rem .3rem; border-radius: .35rem; font-size: .875rem; color: var(--text); opacity: .85; }
+  .row { display: flex; align-items: center; gap: .35rem; width: 100%; min-height: 1.9rem; text-align: start; padding: .3rem .5rem .3rem .3rem; border-radius: .35rem; font-size: .875rem; color: var(--text); opacity: .85; }
   .row:hover { background: var(--soft); opacity: 1; }
   .row.note { color: var(--muted); opacity: 1; }
   .row.note:hover { color: var(--text); }

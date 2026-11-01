@@ -13,9 +13,13 @@ export function place(nodes: GNode[]) {
   });
 }
 
+// How strong each force is (the Forces section of the map's panel); 1 is
+// the default of each.
+export type Forces = { repel: number; link: number; distance: number; center: number };
+
 // One step; alpha (1 to 0) is how much is still moving.
-export function step(nodes: GNode[], edges: GEdge[], alpha: number) {
-  const REPEL = 900, SPRING = 0.04, LENGTH = 70, GRAVITY = 0.012, CUT = 420 * 420;
+export function step(nodes: GNode[], edges: GEdge[], alpha: number, f: Forces = { repel: 1, link: 1, distance: 70, center: 1 }) {
+  const REPEL = 900 * f.repel, SPRING = 0.04 * f.link, LENGTH = f.distance, GRAVITY = 0.012 * f.center, CUT = 420 * 420;
   for (let i = 0; i < nodes.length; i++) {
     const a = nodes[i];
     for (let j = i + 1; j < nodes.length; j++) {
@@ -45,4 +49,4 @@ export function step(nodes: GNode[], edges: GEdge[], alpha: number) {
 }
 
 // A node's size: bigger when more links reach it.
-export const radius = (n: GNode) => 4 + Math.min(14, Math.sqrt(n.degree) * 2.4);
+export const radius = (n: GNode, scale = 1) => (4 + Math.min(14, Math.sqrt(n.degree) * 2.4)) * scale;

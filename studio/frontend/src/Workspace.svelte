@@ -69,7 +69,6 @@
   let openMap = $state<Record<string, boolean>>({});
   let folder = $state(""); // where new notes go: the folder clicked last
   let creating = $state<"note" | "folder" | null>(null);
-  let newName = $state("");
   let query = $state("");
   let switching = $state(false);
   let others = $state<SiteInfo[]>([]);
@@ -84,9 +83,13 @@
     for (let i = 1; i <= parts.length; i++) openMap[parts.slice(0, i).join("/")] = true;
     folder = parts.join("/");
   }
-  function startCreate(kind: "note" | "folder") { newName = ""; creating = kind; }
-  const createIn = $derived(creating === "folder" ? t.side.folderIn : t.side.noteIn);
-  const createPh = $derived(creating === "folder" ? t.side.folderPh : t.side.notePh);
+  // A new note or folder is named right where it will be: a field in its
+  // folder in the tree (opened), not at the top.
+  function startCreate(kind: "note" | "folder") {
+    if (folder) openMap[folder] = true;
+    sideOpen = true; sideTab = "files";
+    creating = kind;
+  }
 
   // A new canvas or drawing, right away, no name to ask: "Drawing
   // 2026-11-01 14.05.33", in its own folder at the top (or in the folder
@@ -171,8 +174,8 @@
     folder = f;
     startCreate(kind);
   }
-  async function finishCreate() {
-    const kind = creating, name = newName.trim();
+  async function finishCreate(typed: string | null) {
+    const kind = creating, name = typed?.trim() ?? "";
     creating = null;
     if (!kind || !name) return;
     try {
@@ -556,17 +559,10 @@
             <button title={t.side.expand} onclick={expandAll}><ChevronsUpDown size={17} strokeWidth={1.75} /></button>
           {/if}
         </div>
-        {#if creating}
-          <div class="create">
-            <small class="muted">{createIn} {folder || site.title}</small>
-            <!-- svelte-ignore a11y_autofocus -->
-            <input type="text" autofocus bind:value={newName} placeholder={createPh}
-              onkeydown={(e) => { if (e.key === "Enter") finishCreate(); if (e.key === "Escape") creating = null; }} onblur={() => setTimeout(() => (creating = null), 150)} />
-          </div>
-        {/if}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="files" ondragover={overTop} ondrop={dropTop}>
-          <Tree nodes={tree} {current} {folder} open={openMap} {renaming} onRename={rename} onMove={notesVault ? moveTo : undefined} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} onMenu={openMenu} />
+          <Tree nodes={tree} {current} {folder} open={openMap} {renaming} onRename={rename}
+            creating={creating ? { folder, kind: creating, placeholder: creating === "folder" ? t.side.folderPh : t.side.notePh } : null} onCreate={finishCreate} onMove={notesVault ? moveTo : undefined} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} onMenu={openMenu} />
         </div>
       {:else}
         <div class="side-search">
@@ -714,7 +710,7 @@
 <style>
   /* Columns: ribbon, files, editor, preview. The top bar starts after the
      files; the terminal sits under the editor and the preview. */
-  .ws { height: 100%; display: grid; grid-template-columns: 3rem var(--side) minmax(0, 1fr) var(--prev); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .ws { height: 100%; overflow: hidden; display: grid; grid-template-columns: 3rem var(--side) minmax(0, 1fr) var(--prev); grid-template-rows: auto minmax(0, 1fr) auto; }
   .ws.no-preview { grid-template-columns: 3rem var(--side) minmax(0, 1fr); }
   .ws.no-side { grid-template-columns: 3rem minmax(0, 1fr) var(--prev); }
   /* The edges to drag: a thin line that lights up under the mouse. */
@@ -744,16 +740,16 @@
   .rib.active { background: var(--soft); color: var(--text); }
   .sep { width: 1.4rem; height: 1px; margin-block: .35rem; background: var(--line); }
   .grow { flex: 1; }
-  .side { position: relative; grid-row: 1 / -1; grid-column: 2; display: flex; flex-direction: column; min-height: 0; border-inline-end: 1px solid var(--line); background: var(--panel); }
+  /* The files panel is as tall as the window, never taller: its list
+     scrolls by itself (and doesn't pass the scroll on). */
+  .side { position: relative; grid-row: 1 / -1; grid-column: 2; display: flex; flex-direction: column; min-height: 0; max-height: 100vh; overflow: hidden; border-inline-end: 1px solid var(--line); background: var(--panel); }
   .side-tabs { display: flex; gap: .2rem; padding: .55rem .6rem; border-block-end: 1px solid var(--line); }
   .tab { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .4rem; color: var(--muted); }
   .tab:hover, .tab.on { background: var(--soft); color: var(--text); }
   .side-tools { display: flex; justify-content: center; gap: .3rem; padding: .45rem; }
   .side-tools button { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .4rem; color: var(--muted); }
   .side-tools button:hover { background: var(--soft); color: var(--text); }
-  .create { display: grid; gap: .25rem; padding: .25rem .6rem .5rem; }
-  .create small { font-size: .72rem; }
-  .files { flex: 1; min-height: 0; overflow: auto; padding: 0 .4rem .75rem; }
+  .files { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 .4rem .75rem; }
   .side-search { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .5rem; padding: .6rem; }
   .side-search ul { list-style: none; padding: 0; overflow: auto; }
   .hit { display: grid; width: 100%; text-align: start; padding: .35rem .5rem; border-radius: .35rem; font-size: .875rem; }
