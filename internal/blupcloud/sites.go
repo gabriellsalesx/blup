@@ -69,6 +69,21 @@ func (c *Client) CreateSite(ctx context.Context, slug, title string) (Site, erro
 	return s, siteErr(err)
 }
 
+// SlugCheck says whether a name can be a new site's address: "free",
+// "yours" (a site of this account has it), "taken" (with free names close
+// to it), "reserved" (kept by Blup) or "invalid".
+type SlugCheck struct {
+	Status      string   `json:"status"`
+	Suggestions []string `json:"suggestions"`
+}
+
+// CheckSlug asks whether slug.getblup.site is free.
+func (c *Client) CheckSlug(ctx context.Context, slug string) (SlugCheck, error) {
+	var r SlugCheck
+	err := c.do(ctx, http.MethodGet, "/sites/check?slug="+url.QueryEscape(slug), nil, "", &r)
+	return r, siteErr(err)
+}
+
 // DeleteSite takes a site down and deletes its files.
 func (c *Client) DeleteSite(ctx context.Context, id string) error {
 	return siteErr(c.do(ctx, http.MethodDelete, "/sites/"+url.PathEscape(id), nil, "", nil))

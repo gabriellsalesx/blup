@@ -3,5 +3,6 @@
 
 export type {
     DeletedFile,
-    NoteVersion
+    NoteVersion,
+    SlugCheck
 } from "./models.js";

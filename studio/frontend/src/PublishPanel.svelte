@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
-  import { CurrentDomain, SetDomain, CheckDomain, RemoveDomain, Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, SyncStatus, Sync, SyncRemote, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { CurrentDomain, SetDomain, CheckDomain, RemoveDomain, Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, CheckSiteSlug, SyncStatus, Sync, SyncRemote, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, Target as Dest, SyncInfo, DomainStatus, BlupAccount } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Account } from "../bindings/github.com/gabriellsalesx/blup/internal/deploy/cfpages/models";
+  import type { SlugCheck } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import Check from "@lucide/svelte/icons/check";
   import Alert from "@lucide/svelte/icons/circle-alert";
   import Loader from "@lucide/svelte/icons/loader-circle";
@@ -99,8 +100,31 @@
   const SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
   const blupOK = $derived(!!cloud?.signedIn && cloud.sitesMax !== 0);
   const slugOK = $derived(!!target && SLUG.test(target.slug) && !target.slug.includes("--"));
+  // The address is checked while it is typed: free, taken (with names close
+  // to it), kept by Blup.
+  let slugCheck = $state<SlugCheck | null>(null);
+  let slugChecking = $state(false);
+  // What can be typed: lower case, no accents, dashes for the rest.
+  const normSlug = (v: string) => v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9-]+/g, "-").replace(/^-+/, "").slice(0, 40);
+  let slugTimer: ReturnType<typeof setTimeout> | undefined;
+  function checkSlug() {
+    clearTimeout(slugTimer);
+    slugCheck = null;
+    slugChecking = false;
+    if (target?.provider !== "blup" || target.slugFixed || !slugOK) return;
+    const slug = target.slug;
+    slugChecking = true;
+    slugTimer = setTimeout(async () => {
+      try {
+        const r = await CheckSiteSlug(slug);
+        if (target?.slug === slug) slugCheck = r;
+      } catch { slugCheck = null; } finally { slugChecking = false; }
+    }, 400);
+  }
+  onDestroy(() => clearTimeout(slugTimer));
+  const slugFree = $derived(!!target?.slugFixed || slugCheck?.status === "free" || slugCheck?.status === "yours");
   const connected = $derived(target?.provider === "blup" ? blupOK : target?.provider === "cloudflare" ? !!conn?.cloudflare : !!conn?.github);
-  const ready = $derived(!!target?.provider && connected && (target.provider === "blup" ? slugOK : target.provider === "github" ? !!target.repo : !!target.account && !!target.project));
+  const ready = $derived(!!target?.provider && connected && (target.provider === "blup" ? slugOK && slugFree : target.provider === "github" ? !!target.repo : !!target.account && !!target.project));
   // The steps to connect a Cloudflare or GitHub account show on request.
   let howTo = $state(false);
 
@@ -191,10 +215,22 @@
         {:else if cloud?.signedIn}
           <label class="field"><span>{p.blupAddress}</span>
             <div class="row addr">
-              <input type="text" bind:value={target.slug} disabled={target.slugFixed} spellcheck="false" autocomplete="off" />
+              <input type="text" value={target.slug} oninput={(e) => { target!.slug = normSlug(e.currentTarget.value); e.currentTarget.value = target!.slug; checkSlug(); }} {@attach () => untrack(checkSlug)} disabled={target.slugFixed} spellcheck="false" autocomplete="off" aria-describedby="slug-state" />
               <span class="muted">.getblup.site</span>
             </div>
-            <small class:bad={!slugOK}>{target.slugFixed ? p.blupFixed : p.blupAddressHelp}</small>
+            <small id="slug-state" class="slug-state" aria-live="polite">
+              {#if target.slugFixed}{p.blupFixed}
+              {:else if !slugOK}<span class="bad">{p.blupAddressHelp}</span>
+              {:else if slugChecking}<span class="muted">{p.slugChecking}</span>
+              {:else if slugCheck?.status === "free"}<span class="good"><Check size={13} />{p.slugFree}</span>
+              {:else if slugCheck?.status === "yours"}<span class="good"><Check size={13} />{p.slugYours}</span>
+              {:else if slugCheck?.status === "reserved"}<span class="bad">{p.slugReserved}</span>
+              {:else if slugCheck?.status === "invalid"}<span class="bad">{p.blupAddressHelp}</span>
+              {:else if slugCheck?.status === "taken"}
+                <span class="bad">{p.slugTaken}</span>
+                {#each slugCheck.suggestions ?? [] as s (s)}<button type="button" class="slug-pick" onclick={() => { target!.slug = s; checkSlug(); }}>{s}</button>{/each}
+              {:else}{p.blupAddressHelp}{/if}
+            </small>
           </label>
           <small class="muted">{p.blupUsage.replace("{n}", String(cloud.sites)).replace("{max}", cloud.sitesMax < 0 ? "∞" : String(cloud.sitesMax))}</small>
         {/if}
@@ -368,6 +404,10 @@
   .choices.three { grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
   .addr { align-items: center; gap: .35rem; }
   .addr input { flex: 1; min-width: 0; }
+  .slug-state { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+  .slug-state .good { display: inline-flex; align-items: center; gap: .25rem; }
+  .slug-pick { padding: .1rem .55rem; border: 1px solid var(--line); border-radius: 999px; font-size: .8rem; font-weight: 600; }
+  .slug-pick:hover { border-color: var(--blue); color: var(--blue); }
   .btn.big { padding: .7rem 1.4rem; font-size: .95rem; }
   .link { color: var(--blue); text-decoration: underline; font-size: inherit; }
   .log { list-style: none; padding: .75rem; display: grid; gap: .35rem; max-height: 16rem; overflow: auto; border-radius: .5rem; background: var(--bg); font-size: .85rem; }

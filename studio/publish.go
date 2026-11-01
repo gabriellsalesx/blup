@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gabriellsalesx/blup/internal/app"
+	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/deploy/cfpages"
 	"github.com/gabriellsalesx/blup/internal/ui"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -82,6 +83,16 @@ func (s *Studio) Disconnect(account string) error { return app.Disconnect(accoun
 // CloudflareAccounts lists the accounts of the saved Cloudflare key.
 func (s *Studio) CloudflareAccounts() ([]cfpages.Account, error) {
 	return app.CloudflareAccounts(context.Background())
+}
+
+// CheckSiteSlug says whether an address on Blup Cloud is free (while it is
+// typed on the Publish screen).
+func (s *Studio) CheckSiteSlug(slug string) (blupcloud.SlugCheck, error) {
+	site, err := s.current()
+	if err != nil {
+		return blupcloud.SlugCheck{}, err
+	}
+	return app.CheckBlupSlug(context.Background(), site, slug)
 }
 
 // Target is where the open site is published.

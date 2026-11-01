@@ -204,6 +204,14 @@ export function CheckSiteDir(dir: string): $CancellablePromise<string> {
 }
 
 /**
+ * CheckSiteSlug says whether an address on Blup Cloud is free (while it is
+ * typed on the Publish screen).
+ */
+export function CheckSiteSlug(slug: string): $CancellablePromise<blupcloud$0.SlugCheck> {
+    return $Call.ByID(1527477706, slug);
+}
+
+/**
  * CheckUpdate tells whether a newer Blup Studio is out (force asks GitHub
  * now instead of using the day's answer).
  */

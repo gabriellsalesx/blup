@@ -8,7 +8,7 @@ import { auth, db } from "./auth";
 import { site, siteBlob } from "./db/schema";
 import { storageUsed } from "./usage";
 import { planOf } from "./account";
-import { HASH, deploySchema, fileKey, manifestKey, slugAllowed, toManifest } from "./site-rules";
+import { HASH, deploySchema, fileKey, manifestKey, slugAllowed, slugCandidates, slugProblem, toManifest } from "./site-rules";
 
 // Sites published through Blup Cloud (paid plans). The Studio builds the
 // site with Hugo (minified), gzips the text files and sends only what this
@@ -88,6 +88,22 @@ export const sitesApi = new Hono<App>()
 			limit: plan.limits.sites,
 			sites: rows.map((r) => ({ ...r, live: r.live !== "", url: siteURL(c.env, r.slug) })),
 		});
+	})
+
+	// Whether a name can be the address of a new site, while it is typed:
+	// free, the person's own, taken (with names close to it that are free),
+	// kept by Blup, or not a valid name.
+	.get("/check", zValidator("query", z.object({ slug: z.string().max(64) })), async (c) => {
+		const userId = c.get("userId");
+		const { slug } = c.req.valid("query");
+		const problem = slugProblem(slug);
+		if (problem) return c.json({ status: problem, suggestions: [] });
+		const [owner] = await db.select({ userId: site.userId }).from(site).where(eq(site.slug, slug)).limit(1);
+		if (!owner) return c.json({ status: "free", suggestions: [] });
+		if (owner.userId === userId) return c.json({ status: "yours", suggestions: [] });
+		const candidates = slugCandidates(slug);
+		const taken = new Set((await db.select({ slug: site.slug }).from(site).where(inArray(site.slug, candidates))).map((r) => r.slug));
+		return c.json({ status: "taken", suggestions: candidates.filter((s) => !taken.has(s)).slice(0, 3) });
 	})
 
 	.post("/", zValidator("json", created), async (c) => {

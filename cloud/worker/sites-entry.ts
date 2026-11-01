@@ -13,7 +13,15 @@ const HEADERS: Record<string, string> = {
 
 export default {
 	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
-		const slug = slugOfHost(new URL(req.url).hostname, env.SITES_DOMAIN);
+		const url = new URL(req.url);
+		const local = env.SITES_DOMAIN === "localhost";
+		// Always HTTPS, and www.name.getblup.site is the same site as
+		// name.getblup.site (one address, so search engines see one).
+		const bare = url.hostname.startsWith("www.") ? url.hostname.slice(4) : url.hostname;
+		if (!local && (url.protocol === "http:" || bare !== url.hostname) && slugOfHost(bare, env.SITES_DOMAIN)) {
+			return new Response(null, { status: 301, headers: { location: `https://${bare}${url.pathname}${url.search}` } });
+		}
+		const slug = slugOfHost(url.hostname, env.SITES_DOMAIN);
 		const res = slug ? await serveSite(req, env, ctx, slug) : new Response("Not found", { status: 404 });
 		// Set on the answer itself: a copy would lose that its body is already
 		// gzipped and get it compressed twice.

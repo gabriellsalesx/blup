@@ -15,7 +15,21 @@ const RESERVED = new Set([
 	"billing", "pay", "security", "static", "assets", "cdn", "test", "dev", "staging",
 ]);
 
-export const slugAllowed = (s: string) => SLUG.test(s) && !RESERVED.has(s) && !s.includes("--");
+export const slugAllowed = (s: string) => slugProblem(s) === null;
+
+// Why a name can't be used: its shape, or Blup keeps it.
+export function slugProblem(s: string): "invalid" | "reserved" | null {
+	if (!SLUG.test(s) || s.includes("--")) return "invalid";
+	return RESERVED.has(s) ? "reserved" : null;
+}
+
+// Names close to one that is taken, to offer instead (the ones free are
+// checked against the sites).
+export function slugCandidates(base: string): string[] {
+	const b = base.replace(/-?\d+$/, "").slice(0, 34) || "site";
+	const out = [`${b}-site`, `${b}-blog`, `meu-${b}`, `${b}-online`, ...[2, 3, 4, 5].map((n) => `${b}-${n}`)];
+	return [...new Set(out)].filter((s) => s !== base && slugAllowed(s));
+}
 
 // The site a request is for: "ana" for ana.getblup.site (or ana.localhost on
 // this computer); null for any other host.

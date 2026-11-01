@@ -46,6 +46,23 @@ func blupSlug(title string) string {
 	return out
 }
 
+// CheckBlupSlug says whether slug.getblup.site is free for this site
+// (a site already on Blup Cloud keeps its own: "yours").
+func CheckBlupSlug(ctx context.Context, site *config.Site, slug string) (blupcloud.SlugCheck, error) {
+	if site.Deploy.Blup.ID != "" && site.Deploy.Blup.Slug == slug {
+		return blupcloud.SlugCheck{Status: "yours"}, nil
+	}
+	c, _, err := blupClient()
+	if err != nil {
+		return blupcloud.SlugCheck{}, errors.New(describe(err))
+	}
+	r, err := c.CheckSlug(ctx, slug)
+	if err != nil {
+		return r, errors.New(describe(err))
+	}
+	return r, nil
+}
+
 // deployBlup builds the site for its Blup Cloud address and sends it.
 func deployBlup(ctx context.Context, site *config.Site) (string, error) {
 	c, _, err := blupClient()

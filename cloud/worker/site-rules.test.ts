@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cacheControl, deploySchema, pathAllowed, resolvePath, slugAllowed, slugOfHost, type Manifest } from "./site-rules";
+import { cacheControl, deploySchema, pathAllowed, resolvePath, slugAllowed, slugCandidates, slugOfHost, slugProblem, type Manifest } from "./site-rules";
 
 const H = "a".repeat(64);
 
@@ -22,6 +22,19 @@ describe("site names", () => {
 		expect(slugOfHost("cloud.getblup.io", "getblup.site")).toBeNull();
 		expect(slugOfHost("ana.localhost", "localhost")).toBe("ana");
 		expect(slugOfHost("ana.getblup.site", "")).toBeNull();
+	});
+});
+
+describe("names close to a taken one", () => {
+	it("are valid, not the same and not kept", () => {
+		const c = slugCandidates("revista");
+		expect(c).toContain("revista-blog");
+		expect(c).not.toContain("revista");
+		expect(c.every(slugAllowed)).toBe(true);
+		expect(slugCandidates("revista-2")).toContain("revista-3");
+		expect(slugProblem("www")).toBe("reserved");
+		expect(slugProblem("Oi!")).toBe("invalid");
+		expect(slugProblem("oi-tudo")).toBeNull();
 	});
 });
 

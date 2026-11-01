@@ -96,6 +96,8 @@ O Blup Studio gera o site com o Hugo (`--minify --gc`), compacta em gzip os arqu
 
 - R2 (`SITES`): `s/<site>/f/<sha256>` (o arquivo, gzip quando o manifesto diz) e `s/<site>/d/<publicação>` (o manifesto). D1: `site` e `site_blob`.
 - Servir gasta o mínimo: o arquivo vai como está guardado (gzip, sem compactar de novo); a resposta fica no cache do data center com a publicação na chave (uma nova nunca mistura com a velha); a publicação no ar fica 30 s na memória do isolate e os manifestos enquanto ele vive. Páginas, feeds e o service worker são conferidos a cada visita (ETag, 304); arquivos com impressão digital no nome ficam um ano no navegador.
+- Endereço: `GET /api/sites/check?slug=` responde `free`, `yours`, `taken` (com até três nomes parecidos livres), `reserved` ou `invalid`; o Studio pergunta enquanto a pessoa digita.
+- Sempre HTTPS: o Worker dos sites manda `http://` para `https://` e `www.nome.getblup.site` para `nome.getblup.site` (301). O certificado gratuito da Cloudflare (Universal SSL) cobre `*.getblup.site` mas não um nível abaixo, então `www.nome.getblup.site` só abre em HTTPS com o Advanced Certificate Manager (US$ 10 por mês). O `www` de verdade é do domínio próprio (Max e Ultra), quando ele existir: `meusite.com` e `www.meusite.com` pelo Cloudflare for SaaS (100 endereços grátis, depois US$ 0,10 cada por mês).
 - Plano Grátis: `sites: 0`, a API recusa criar, enviar e publicar (`PLAN`). Notas e sites somam no armazenamento do plano.
 - Domínio próprio nos sites (Max e Ultra) ainda não existe: o site sai no endereço `getblup.site`.
 

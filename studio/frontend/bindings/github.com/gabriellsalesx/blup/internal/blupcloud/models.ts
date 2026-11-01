@@ -31,3 +31,13 @@ export interface NoteVersion {
      */
     "current": boolean;
 }
+
+/**
+ * SlugCheck says whether a name can be a new site's address: "free",
+ * "yours" (a site of this account has it), "taken" (with free names close
+ * to it), "reserved" (kept by Blup) or "invalid".
+ */
+export interface SlugCheck {
+    "status": string;
+    "suggestions": string[] | null;
+}
