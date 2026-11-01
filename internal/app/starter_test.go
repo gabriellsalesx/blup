@@ -15,7 +15,7 @@ import (
 // BLUP_STARTER_OUT set, the sites are written there to be built and looked at.
 func TestStarter(t *testing.T) {
 	out := os.Getenv("BLUP_STARTER_OUT")
-	for _, lang := range []string{"pt", "en"} {
+	for _, lang := range []string{"pt", "en", "es"} {
 		for _, model := range []string{"mochi", "bento", "nori"} {
 			vault := t.TempDir()
 			if out != "" {

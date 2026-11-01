@@ -45,12 +45,16 @@ func attachmentsFolder(site *config.Site) string {
 	return attachmentsFolders["en"]
 }
 
+// starterRoot is the starter tree of the site's language and model, or the
+// English one when that language has no tree.
 func starterRoot(site *config.Site) string {
-	lang := site.Lang
-	if lang != "pt" {
-		lang = "en"
+	if site.Lang != "" {
+		dir := path.Join("starter", site.Lang, site.Model)
+		if _, err := fs.Stat(starter, dir); err == nil {
+			return dir
+		}
 	}
-	return path.Join("starter", lang, site.Model)
+	return path.Join("starter", "en", site.Model)
 }
 
 // starterSections maps each section kind of the starter to its folder.
@@ -208,4 +212,4 @@ func copyStarter(site *config.Site, sub string, skip map[string]bool) error {
 
 // attachRefRe finds images linked as Markdown inside the notes
 // (![...](../Anexos/name.jpg)).
-var attachRefRe = regexp.MustCompile(`\]\((?:\.\./)*(?:Anexos|Attachments)/([^)\s]+\.(?:jpg|png|webp|svg))\)`)
+var attachRefRe = regexp.MustCompile(`\]\((?:\.\./)*(?:Anexos|Attachments|Adjuntos)/([^)\s]+\.(?:jpg|png|webp|svg))\)`)
