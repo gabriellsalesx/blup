@@ -12,7 +12,7 @@
   import Database from "@lucide/svelte/icons/database";
   import CalendarDays from "@lucide/svelte/icons/calendar-days";
   import type { DBSchema } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
-  import type { Template } from "./db";
+  import { templates, type Template } from "./db";
   import { boardKind, fileTitle, type NewKind } from "./boards";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import PenTool from "@lucide/svelte/icons/pen-tool";
@@ -25,6 +25,8 @@
   import TerminalPanel from "./TerminalPanel.svelte";
   import HistoryModal from "./HistoryModal.svelte";
   import FileMenu from "./FileMenu.svelte";
+  import ContextMenu, { type MenuEntry } from "./ContextMenu.svelte";
+  import SquareKanban from "@lucide/svelte/icons/square-kanban";
   import SettingsModal, { DOCS } from "./SettingsModal.svelte";
   import Gear from "@lucide/svelte/icons/settings";
   import CircleHelp from "@lucide/svelte/icons/circle-question-mark";
@@ -144,6 +146,36 @@
       await pick(rel);
     } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
   }
+  // A kanban board: a list of tasks that opens on its board, no questions
+  // asked ("Kanban board", numbered when taken).
+  async function newKanban() {
+    const tasks = templates().find((x) => x.id === "tasks")!;
+    const views = [...(tasks.schema.views ?? [])].sort((a, b) => (a.type === "board" ? -1 : b.type === "board" ? 1 : 0));
+    dbFolder = "";
+    await newDatabase(t.db.kanbanName, { ...tasks, schema: { ...tasks.schema, views } });
+  }
+
+  // A right-click on the empty part of the files: what can be made at the
+  // top (a site's notes only take notes and folders).
+  let sideMenu = $state<{ x: number; y: number } | null>(null);
+  function emptyMenu(e: MouseEvent) {
+    if (e.defaultPrevented || (e.target as HTMLElement).closest("input")) return;
+    e.preventDefault();
+    sideMenu = { x: e.clientX, y: e.clientY };
+  }
+  const topNew = (kind: "note" | "folder") => { folder = ""; startCreate(kind); };
+  const sideItems = (): MenuEntry[] => [
+    { label: t.side.newNote, Icon: SquarePen, run: () => topNew("note") },
+    { label: t.side.newFolder, Icon: FolderPlus, run: () => topNew("folder") },
+    ...(notesVault ? [
+      "sep" as const,
+      { label: t.boards.newCanvas, Icon: LayoutDashboard, run: () => quickBoard("canvas") },
+      { label: t.db.newDb, Icon: Database, run: () => { dbFolder = ""; dbNew = true; } },
+      { label: t.db.newKanban, Icon: SquareKanban, run: newKanban },
+      { label: t.boards.newDrawing, Icon: PenTool, run: () => quickBoard("drawing") },
+    ] : []),
+  ];
+
   // The open note is a record of a database: its fields (in Properties).
   let noteDb = $state<{ table: string; schema: DBSchema } | null>(null);
   function dbOption(key: string, value: string, color: string) {
@@ -643,7 +675,7 @@
           {/if}
         </div>
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="files" ondragover={overTop} ondrop={dropTop}>
+        <div class="files" ondragover={overTop} ondrop={dropTop} oncontextmenu={emptyMenu}>
           <Tree nodes={tree} {current} {folder} bind:open={openMap} {renaming} onRename={rename}
             creating={creating ? { folder, kind: creating, placeholder: creating === "folder" ? t.side.folderPh : t.side.notePh } : null} onCreate={finishCreate} onMove={notesVault ? moveTo : undefined} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} onMenu={openMenu} />
         </div>
@@ -788,6 +820,7 @@
   {#if historyFor}
     {#key historyFor}<HistoryModal path={historyFor} onClose={() => (historyFor = "")} />{/key}
   {/if}
+  {#if sideMenu}<ContextMenu x={sideMenu.x} y={sideMenu.y} items={sideItems()} onClose={() => (sideMenu = null)} />{/if}
   {#if menu}
     <FileMenu node={menu.node} x={menu.x} y={menu.y} {current} folders={folders(tree)} boards={notesVault} onRename={(n) => (renaming = n.path)} onClose={() => (menu = null)} onChanged={menuChanged} onNew={menuNew} onHistory={cloudHistory ? (p) => (historyFor = p) : undefined} />
   {/if}
