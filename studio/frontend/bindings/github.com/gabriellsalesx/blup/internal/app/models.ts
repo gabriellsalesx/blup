@@ -323,6 +323,26 @@ export interface DomainStatus {
 }
 
 /**
+ * FeedbackPost is a request of the board.
+ */
+export interface FeedbackPost {
+    "number": number;
+    "title": string;
+    "url": string;
+
+    /**
+     * feature, bug, improvement, other
+     */
+    "kind": string;
+    "lang": string;
+    "status": string;
+    "author": string;
+    "created": string;
+    "votes": number;
+    "comments": number;
+}
+
+/**
  * FeedbackSetup is where the comments setup stands.
  */
 export interface FeedbackSetup {

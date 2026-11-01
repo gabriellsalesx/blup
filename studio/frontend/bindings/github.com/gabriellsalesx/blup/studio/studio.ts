@@ -421,6 +421,13 @@ export function EmptyTrash(): $CancellablePromise<void> {
 }
 
 /**
+ * FeedbackPosts lists the requests of the open site's feedback board.
+ */
+export function FeedbackPosts(): $CancellablePromise<app$0.FeedbackPost[] | null> {
+    return $Call.ByID(2372843408);
+}
+
+/**
  * FeedbackState says whether the comments login app is installed.
  */
 export function FeedbackState(): $CancellablePromise<app$0.FeedbackSetup> {
@@ -1034,6 +1041,14 @@ export function SetDomain(value: string): $CancellablePromise<app$0.DomainStatus
  */
 export function SetFeedback(on: boolean): $CancellablePromise<void> {
     return $Call.ByID(1040662481, on);
+}
+
+/**
+ * SetFeedbackStatus sets a request's status (new, planned, progress, done,
+ * declined) on GitHub; the site shows it within a minute.
+ */
+export function SetFeedbackStatus($number: number, status: string): $CancellablePromise<void> {
+    return $Call.ByID(2148938387, $number, status);
 }
 
 /**

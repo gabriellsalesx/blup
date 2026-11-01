@@ -35,6 +35,10 @@ var starter embed.FS
 // docsKinds are the optional sections of the bento model, in menu order.
 var docsKinds = []string{"docs", "roadmap", "changelog", "help", "blog"}
 
+// studioKinds are the bento sections only Blup Studio adds: the feedback
+// board (its requests are read and answered in the Studio).
+var studioKinds = []string{"feedback"}
+
 // attachmentsFolders name the folder of images, by site language.
 var attachmentsFolders = map[string]string{"pt": "Anexos", "en": "Attachments", "es": "Adjuntos"}
 

@@ -45,6 +45,7 @@
   import Languages from "@lucide/svelte/icons/languages";
   import LayoutGrid from "@lucide/svelte/icons/layout-grid";
   import MessageCircle from "@lucide/svelte/icons/message-circle";
+  import MessageSquare from "@lucide/svelte/icons/message-square";
   import Cookie from "@lucide/svelte/icons/cookie";
   import KeyRound from "@lucide/svelte/icons/key-round";
   import Upload from "@lucide/svelte/icons/upload";
@@ -64,6 +65,7 @@
   const LangsPanel = lazy(() => import("./LangsPanel.svelte"));
   const SectionsPanel = lazy(() => import("./SectionsPanel.svelte"));
   const CommentsPanel = lazy(() => import("./CommentsPanel.svelte"));
+  const FeedbackPanel = lazy(() => import("./FeedbackPanel.svelte"));
   const CookiesPanel = lazy(() => import("./CookiesPanel.svelte"));
   const PasswordPanel = lazy(() => import("./PasswordPanel.svelte"));
   const PublishPanel = lazy(() => import("./PublishPanel.svelte"));
@@ -409,6 +411,8 @@
     { key: "attach", label: t.nav.attach, Icon: Paperclip },
     ...(site.model === "bento" ? [{ key: "sections", label: t.nav.sections, Icon: LayoutGrid }] : []),
     { key: "comments", label: t.nav.comments, Icon: MessageCircle },
+    // The feedback board's requests, when the Bento site has the section.
+    ...(site.model === "bento" && settings?.sections?.some((x) => x.kind === "feedback" && x.present) ? [{ key: "feedback", label: t.nav.feedback, Icon: MessageSquare }] : []),
     { key: "cookies", label: t.nav.cookies, Icon: Cookie },
     { key: "password", label: t.nav.password, Icon: KeyRound },
     { key: "publish", label: t.nav.publish, Icon: Upload },
@@ -781,6 +785,7 @@
         {:else if screen === "langs"}{#await LangsPanel() then { default: C }}<C {settings} onTree={async () => (tree = (await LoadTree()).children ?? [])} />{/await}
         {:else if screen === "sections"}{#await SectionsPanel() then { default: C }}<C {settings} {reload} onTree={(n) => (tree = n.children ?? [])} />{/await}
         {:else if screen === "comments"}{#await CommentsPanel() then { default: C }}<C {settings} {reload} />{/await}
+        {:else if screen === "feedback"}{#await FeedbackPanel() then { default: C }}<C />{/await}
         {:else if screen === "cookies"}{#await CookiesPanel() then { default: C }}<C {settings} {reload} onOpenNote={openNote} />{/await}
         {:else if screen === "password"}{#await PasswordPanel() then { default: C }}<C {settings} {reload} />{/await}
         {:else if screen === "publish"}{#await PublishPanel() then { default: C }}<C autostart={autostart} notes={notesVault} />{/await}

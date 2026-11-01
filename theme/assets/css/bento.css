@@ -184,6 +184,52 @@ layout. Bundled into one file by css.Build. */
   .column ul { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
   .column li { min-width: 0; }
   .column .empty { padding: 1rem .5rem; font-size: .875rem; color: var(--main-500); }
+  /* The feedback board: requests with votes, filters, one request open. */
+  .fbb-page { max-width: 56rem; }
+  .fbb { --k-feature: #22c55e; --k-improvement: #3b82f6; --k-bug: #ef4444; --k-other: #64748b; display: grid; gap: 1rem; }
+  .fbb-bar { display: grid; gap: .75rem; }
+  .fbb-tabs { display: flex; flex-wrap: wrap; gap: .375rem; }
+  .fbb-tab { display: inline-flex; align-items: center; gap: .4rem; padding: .375rem .75rem; border: 1px solid var(--main-200); border-radius: 999px; font-size: .875rem; color: var(--main-600); }
+  .fbb-tab b { font-size: .75rem; font-weight: 600; color: var(--main-500); }
+  .fbb-tab[aria-selected="true"] { border-color: var(--main-900); color: var(--main-900); background: var(--main-100); }
+  .fbb-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+  .fbb-tools select, .fbb-tools input { height: 2.25rem; padding: 0 .75rem; border: 1px solid var(--main-200); border-radius: .5rem; background: var(--main-25); color: var(--main-900); font: inherit; font-size: .875rem; }
+  .fbb-tools input { flex: 1; min-width: 10rem; }
+  .fbb-tools .button { margin-inline-start: auto; }
+  .fbb-sort { display: inline-flex; padding: .1875rem; border: 1px solid var(--main-200); border-radius: .5rem; }
+  .fbb-sort button { padding: .25rem .625rem; border-radius: .375rem; font-size: .8125rem; color: var(--main-600); }
+  .fbb-sort button[aria-selected="true"] { background: var(--main-100); color: var(--main-900); font-weight: 600; }
+  .fbb-list { display: grid; gap: .625rem; margin: 0; padding: 0; list-style: none; }
+  .fbb-item { display: flex; align-items: flex-start; gap: 1rem; padding: 1rem 1.25rem; border: 1px solid var(--main-200); border-radius: .5rem; background: var(--main-25); box-shadow: var(--shadow-sm); }
+  .fbb-vote { display: grid; justify-items: center; gap: .125rem; min-width: 3rem; padding: .375rem .5rem; border: 1px solid var(--main-200); border-radius: .5rem; color: var(--main-900); font-size: .875rem; cursor: pointer; }
+  .fbb-vote .fbb-up { font-size: .7rem; color: var(--main-500); }
+  .fbb-vote[aria-pressed="true"] { border-color: var(--main-900); background: var(--main-100); }
+  .fbb-main { display: grid; gap: .4rem; min-width: 0; }
+  .fbb-title { font-weight: 600; color: var(--main-900); text-decoration: none; }
+  .fbb-title:hover { text-decoration: underline; }
+  .fbb-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; font-size: .8125rem; color: var(--main-500); }
+  .fbb-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .05rem .5rem; border-radius: 999px; background: var(--main-100); color: var(--main-700); font-size: .75rem; font-weight: 500; }
+  .fbb-chip[class*=" k-"]::before { content: ""; width: .45rem; height: .45rem; border-radius: 50%; background: var(--k); }
+  .fbb .k-feature { --k: var(--k-feature); } .fbb .k-bug { --k: var(--k-bug); } .fbb .k-improvement { --k: var(--k-improvement); } .fbb .k-other { --k: var(--k-other); }
+  .fbb-empty { padding: 2rem 1rem; text-align: center; color: var(--main-500); font-size: .875rem; }
+  .fbb-detail { display: grid; gap: .875rem; }
+  .fbb-back { font-size: .875rem; color: var(--main-600); }
+  .fbb-detail-title { font-size: 1.5rem; font-weight: 700; color: var(--main-900); }
+  .fbb-dialog { width: min(34rem, calc(100vw - 2rem)); padding: 0; border: 1px solid var(--main-200); border-radius: .75rem; background: var(--main-50, var(--main-25)); color: var(--main-900); box-shadow: var(--shadow-lg); }
+  .fbb-dialog::backdrop { background: rgb(0 0 0 / .45); }
+  .fbb-form { display: grid; gap: 1rem; padding: 1.5rem; }
+  .fbb-form h2 { font-size: 1.125rem; font-weight: 700; }
+  .fbb-kinds { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; border: 0; }
+  .fbb-kinds legend { margin-block-end: .5rem; font-size: .875rem; font-weight: 600; }
+  .fbb-kind input { position: absolute; opacity: 0; }
+  .fbb-kind span { display: inline-flex; align-items: center; gap: .35rem; padding: .375rem .75rem; border: 1px solid var(--main-200); border-radius: 999px; font-size: .875rem; cursor: pointer; }
+  .fbb-kind span::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--k); }
+  .fbb-kind input:checked + span { border-color: var(--main-900); background: var(--main-100); font-weight: 600; }
+  .fbb-kind input:focus-visible + span { outline: 2px solid var(--main-900); outline-offset: 2px; }
+  .fbb-field { display: grid; gap: .375rem; font-size: .875rem; font-weight: 600; }
+  .fbb-field input, .fbb-field textarea { padding: .5rem .75rem; border: 1px solid var(--main-200); border-radius: .5rem; background: var(--main-25); color: var(--main-900); font: inherit; font-weight: 400; }
+  .fbb-actions { display: flex; justify-content: flex-end; gap: .5rem; }
+  @media (max-width: 40rem) { .fbb-item { padding: .875rem; gap: .75rem; } .fbb-tools .button { margin-inline-start: 0; width: 100%; justify-content: center; } }
   .roadmap-card { display: block; padding: 1.25rem; border: 1px solid var(--main-200); border-radius: .5rem; background: var(--main-25); box-shadow: var(--shadow-sm); transition: box-shadow .2s, transform .2s; }
   .roadmap-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
   .roadmap-card h3 { margin-block-end: .5rem; font-size: 1rem; font-weight: 700; line-height: 1.25; color: var(--main-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

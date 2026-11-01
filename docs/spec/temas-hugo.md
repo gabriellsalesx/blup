@@ -130,6 +130,8 @@ Configurar feedback cria ou usa um repositório público `<slug>-feedback`, ativ
 
 O cliente não pagina a lista de issues nem a de comentários. Nas chamadas diretas ao GitHub pede `per_page=100` para cada uma e só usa a primeira resposta, podendo omitir issues ou comentários além desse conjunto. As leituras via serviço também não têm loop de paginação no navegador; o comportamento interno desse serviço não está neste repositório. A lista de nós de feedback é capturada uma vez ao carregar o script e não é ampliada por `blup:added`.
 
+A seção Feedback do Bento (`blup: feedback`, só oferecida pelo Studio) é um quadro de pedidos (`bento/feedback-board.html`): abas por tipo (recurso, bug, melhoria, outro) com contagens, filtro de status, ordem por votos ou recentes, busca e um diálogo de novo pedido. Cada pedido é uma issue do repositório `-feedback` marcada com `<!-- blup:feedback kind=X lang=Y -->`; o status é a etiqueta `status: planned|progress|done|declined` (feito e recusado fecham a issue). `feedback.js` lê a lista pelo `/posts` do serviço de login (ou pelo GitHub) e abre o pedido em `#p-N` com o mesmo bloco de votos e comentários (`bento/feedback-block.html`). Sem comentários ligados, a página mostra só um aviso.
+
 Os controles permitem votar, reagir, escrever com prévia Markdown, responder por citação e remover comentários conforme permissões. Respostas são comentários na mesma issue, com citação e menção, sem árvore própria no banco do Blup. A API de login pertence a `github.com/gabriellsalesx/blup-api`; seu servidor não está implementado neste repositório.
 
 ## Cookies e vídeos

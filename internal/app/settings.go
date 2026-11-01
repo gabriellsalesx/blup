@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -100,7 +101,8 @@ func LoadSettings(site *config.Site) (Settings, error) {
 	s.MenuOptions = append(s.MenuOptions, MenuItem{"Tags", "/tags/"})
 	if site.Model == "bento" {
 		have := existingSections(site)
-		for _, k := range docsKinds {
+		// The feedback board is the Studio's only (the CLI doesn't offer it).
+		for _, k := range append(slices.Clone(docsKinds), studioKinds...) {
 			folder, ok := have[k]
 			if !ok {
 				folder = ""

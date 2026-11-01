@@ -260,6 +260,7 @@ Em Linux, `canPlayMP3` procura `libgstaudioparsers.so` nos diretórios GStreamer
 | Anexos, `AttachmentsPanel.svelte` | Lista por tipo, tamanho e usos, adição, renomeação, exclusão e acesso às notas que usam |
 | Seções, `SectionsPanel.svelte` | Somente Bento; acrescenta exemplos e remove seções para lixeira |
 | Comentários, `CommentsPanel.svelte` | Ativa/desativa feedback, prepara repositório e orienta instalação do App |
+| Feedback, `FeedbackPanel.svelte` | Só no Bento com a seção Feedback: lista os pedidos do quadro (tipo, votos, comentários) e muda o status (`SetFeedbackStatus`, etiqueta no GitHub) |
 | Cookies, `CookiesPanel.svelte` | Ferramentas, IDs, URLs próprias, banner e política |
 | Senha, `PasswordPanel.svelte` | Senha geral específica do site e estado da global |
 | Publicação, `PublishPanel.svelte` | Conectar contas, destino, publicar, acompanhar log, domínio e sync |

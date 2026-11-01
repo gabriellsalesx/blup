@@ -30,6 +30,7 @@ const TTL = 5 * 60 * 1000; // unauthenticated GitHub API: 60 requests/hour
 const API_TTL = 60 * 1000; // the login service caches for a minute
 const AUTH = "blup-gh";
 const STATE = "blup-gh-state";
+const HASH = "blup-gh-hash";
 
 // --- the visitor's GitHub key -------------------------------------------
 
@@ -48,6 +49,8 @@ function takeLogin() {
   history.replaceState(null, "", location.pathname + location.search);
   let want = null;
   try { want = sessionStorage.getItem(STATE); sessionStorage.removeItem(STATE); } catch {}
+  // Back where the visitor was (an open request of the feedback board).
+  try { const back = sessionStorage.getItem(HASH); sessionStorage.removeItem(HASH); if (back) history.replaceState(null, "", location.pathname + location.search + back); } catch {}
   if (!want || want !== h.get("blup_state") || !h.get("blup_token")) return false;
   saveAuth({ token: h.get("blup_token"), refresh: h.get("blup_refresh"), expires: Number(h.get("blup_expires")) || 0 });
   return true;
@@ -56,7 +59,7 @@ function takeLogin() {
 function login() {
   const bytes = crypto.getRandomValues(new Uint8Array(18));
   const state = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  try { sessionStorage.setItem(STATE, state); } catch {}
+  try { sessionStorage.setItem(STATE, state); sessionStorage.setItem(HASH, location.hash); } catch {}
   const q = new URLSearchParams({ repo, return: location.origin + location.pathname + location.search, state });
   location.href = `${loginAPI}/login?${q}`;
 }
@@ -418,9 +421,45 @@ async function read(path, github, accept) {
   return gh(github, { accept });
 }
 
+// attach brings one block of the page to life with its issue: votes,
+// reactions and, for the full block, the comments and the comment box.
+async function attach(node, issue, lang, back) {
+  const vote = node.querySelector(".fb-vote");
+  const box = node.querySelector("[data-fb-chips]");
+  const view = () => {
+    const votes = issue.count("+1");
+    node.querySelectorAll("[data-fb-votes]").forEach((e) => { e.textContent = votes; });
+    node.querySelectorAll("[data-fb-ccount]").forEach((e) => { e.textContent = issue.data.comments || (node.dataset.fbMode === "card" ? 0 : ""); });
+    vote?.setAttribute("aria-pressed", String(!!issue.mine?.has("+1")));
+    if (box) chips(box, issue, !!vote);
+  };
+  issue.views.push(view);
+  if (vote && loginAPI) vote.onclick = (e) => { e.preventDefault(); issue.toggle("+1"); };
+  const add = node.querySelector(".fb-add");
+  if (add) picker(add, issue);
+  view();
+  node.hidden = false;
+  if (node.dataset.fbMode !== "full") return;
+  if (loginAPI) node.querySelector(".fb-note")?.replaceChildren(t.note || "");
+  form(node, issue, lang);
+  if (auth) issue.loadMine().then(() => issue.render());
+  if (issue.data.comments) {
+    try {
+      const n = issue.data.number;
+      const comments = await read(
+        `/comments?repo=${encodeURIComponent(repo)}&issue=${n}`,
+        `${API}/issues/${n}/comments?per_page=100`,
+        "application/vnd.github.full+json",
+      );
+      node.querySelector("[data-fb-list]").replaceChildren(...comments.map((c) => comment(c, lang)));
+      deletable(node, issue);
+    } catch {}
+  }
+  if (back) node.scrollIntoView({ block: "start" });
+}
+
 async function run() {
   if (!repo || !nodes.length) return;
-  const back = loginAPI && takeLogin();
   let list;
   try {
     list = await read(`/issues?repo=${encodeURIComponent(repo)}`, `${API}/issues?labels=blup&state=all&per_page=100`);
@@ -431,39 +470,7 @@ async function run() {
   const lang = document.documentElement.lang || undefined;
   for (const node of nodes) {
     const issue = issues.get(Number(node.dataset.fbIssue));
-    if (!issue) continue;
-    const vote = node.querySelector(".fb-vote");
-    const box = node.querySelector("[data-fb-chips]");
-    const view = () => {
-      const votes = issue.count("+1");
-      node.querySelectorAll("[data-fb-votes]").forEach((e) => { e.textContent = votes; });
-      node.querySelectorAll("[data-fb-ccount]").forEach((e) => { e.textContent = issue.data.comments || (node.dataset.fbMode === "card" ? 0 : ""); });
-      vote?.setAttribute("aria-pressed", String(!!issue.mine?.has("+1")));
-      if (box) chips(box, issue, !!vote);
-    };
-    issue.views.push(view);
-    if (vote && loginAPI) vote.onclick = (e) => { e.preventDefault(); issue.toggle("+1"); };
-    const add = node.querySelector(".fb-add");
-    if (add) picker(add, issue);
-    view();
-    node.hidden = false;
-    if (node.dataset.fbMode !== "full") continue;
-    if (loginAPI) node.querySelector(".fb-note")?.replaceChildren(t.note || "");
-    form(node, issue, lang);
-    if (auth) issue.loadMine().then(() => issue.render());
-    if (issue.data.comments) {
-      try {
-        const n = issue.data.number;
-        const comments = await read(
-          `/comments?repo=${encodeURIComponent(repo)}&issue=${n}`,
-          `${API}/issues/${n}/comments?per_page=100`,
-          "application/vnd.github.full+json",
-        );
-        node.querySelector("[data-fb-list]").replaceChildren(...comments.map((c) => comment(c, lang)));
-        deletable(node, issue);
-      } catch {}
-    }
-    if (back) node.scrollIntoView({ block: "start" });
+    if (issue) await attach(node, issue, lang, back);
   }
   sortBoard();
   sortTabs(issues);
@@ -515,4 +522,183 @@ function sortTabs(issues) {
   bar.hidden = false;
 }
 
+// The login handed back after "#", read once for the whole page.
+const back = loginAPI && takeLogin();
 run();
+board();
+
+// --- the feedback board (Bento's feedback section) -------------------------
+
+// A request of the board is an issue a visitor opened from it, marked in
+// its text (an HTML comment GitHub doesn't show) with its type and the
+// language of the page it came from. Its status is a "status: ..." label
+// the site's owner sets in Blup Studio; a closed request without one is done.
+const POST_MARK = /<!--\s*blup:feedback\s+kind=([a-z]+)(?:\s+lang=([a-z]{2}))?\s*-->/;
+const KINDS = ["feature", "bug", "improvement", "other"];
+
+function postKind(p) { const k = POST_MARK.exec(p.body || "")?.[1]; return KINDS.includes(k) ? k : "other"; }
+function postLang(p) { return POST_MARK.exec(p.body || "")?.[2] || ""; }
+function postStatus(p) {
+  const l = (p.labels || []).map((x) => (typeof x === "string" ? x : x?.name || "")).find((n) => n.startsWith("status:"));
+  if (l) return l.slice(7).trim();
+  return p.state === "closed" ? "done" : "new";
+}
+
+async function board() {
+  const root = document.querySelector("[data-fb-board]");
+  if (!root || !repo) return;
+  const bt = JSON.parse(root.dataset.fbbText || "{}");
+  const lang = document.documentElement.lang || undefined;
+  const list = root.querySelector("[data-fbb-list]");
+  const detail = root.querySelector("[data-fbb-detail]");
+  const bar = root.querySelector(".fbb-bar");
+  const state = { kind: "all", status: "", sort: "top", q: "" };
+  let posts = [];
+
+  try {
+    const raw = await read(
+      `/posts?repo=${encodeURIComponent(repo)}`,
+      `${API}/issues?state=all&sort=created&direction=desc&per_page=100`,
+      "application/vnd.github.full+json",
+    );
+    posts = raw.filter((p) => !p.pull_request && POST_MARK.test(p.body || "")).map((p) => new Issue(p));
+  } catch {
+    list.replaceChildren(el("li", { className: "fbb-empty", textContent: bt.error }));
+    return;
+  }
+
+  // The list: the requests that pass the filters, in the chosen order.
+  const chip = (cls, text) => el("span", { className: `fbb-chip ${cls}`, textContent: text });
+  const plain = (html) => { const d = document.createElement("div"); d.innerHTML = html || ""; return d.textContent || ""; };
+  const row = (issue) => {
+    const p = issue.data;
+    const kind = postKind(p), status = postStatus(p), written = postLang(p);
+    const vote = el("button", { type: "button", className: "fbb-vote" }, el("span", { className: "fbb-up", textContent: "▲" }), el("b", { textContent: String(issue.count("+1")) }));
+    vote.setAttribute("aria-label", `${bt.votes}: ${issue.count("+1")}`);
+    vote.setAttribute("aria-pressed", String(!!issue.mine?.has("+1")));
+    vote.onclick = () => issue.toggle("+1");
+    const open = el("a", { href: `#p-${p.number}`, className: "fbb-title", textContent: p.title });
+    const meta = el("div", { className: "fbb-meta" },
+      chip(`k-${kind}`, bt.kinds?.[kind] || kind),
+      chip(`s-${status}`, bt.statuses?.[status] || status),
+      el("span", { textContent: p.user?.login || "" }),
+      el("span", { textContent: `💬 ${p.comments || 0}` }));
+    if (written && written !== pageLang) meta.append(el("span", { className: "fb-lang", textContent: (bt.written || "").replace("{lang}", LANG_NAMES[written] || written) }));
+    return el("li", { className: "fbb-item" }, vote, el("div", { className: "fbb-main" }, open, meta));
+  };
+  const counts = () => {
+    for (const tab of root.querySelectorAll(".fbb-tab")) {
+      const k = tab.dataset.kind;
+      tab.querySelector("[data-count]").textContent = String(posts.filter((i) => k === "all" || postKind(i.data) === k).length);
+    }
+  };
+  const draw = () => {
+    const q = state.q.trim().toLowerCase();
+    const shown = posts
+      .filter((i) => state.kind === "all" || postKind(i.data) === state.kind)
+      .filter((i) => !state.status || postStatus(i.data) === state.status)
+      .filter((i) => !q || i.data.title.toLowerCase().includes(q) || plain(i.data.body_html).toLowerCase().includes(q))
+      .sort((a, b) => (state.sort === "top" ? b.count("+1") - a.count("+1") : 0) || Date.parse(b.data.created_at) - Date.parse(a.data.created_at));
+    list.replaceChildren(...(shown.length ? shown.map(row) : [el("li", { className: "fbb-empty", textContent: posts.length ? bt.nothing : bt.empty })]));
+    counts();
+  };
+  for (const i of posts) i.views.push(() => { if (!list.hidden) draw(); });
+
+  root.querySelector(".fbb-tabs").addEventListener("click", (e) => {
+    const tab = e.target.closest(".fbb-tab");
+    if (!tab) return;
+    root.querySelectorAll(".fbb-tab").forEach((b) => b.setAttribute("aria-selected", String(b === tab)));
+    state.kind = tab.dataset.kind;
+    draw();
+  });
+  root.querySelector("[data-fbb-status]").addEventListener("change", (e) => { state.status = e.target.value; draw(); });
+  root.querySelector(".fbb-sort").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-sort]");
+    if (!b) return;
+    root.querySelectorAll(".fbb-sort [data-sort]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+    state.sort = b.dataset.sort;
+    draw();
+  });
+  root.querySelector("[data-fbb-search]").addEventListener("input", (e) => { state.q = e.target.value; draw(); });
+
+  // One request on its own (#p-12): its text, then the block of votes,
+  // reactions and comments every page of the site uses.
+  const show = async () => {
+    const n = Number(/^#p-(\d+)$/.exec(location.hash)?.[1]);
+    const issue = n && posts.find((i) => i.data.number === n);
+    if (!issue) {
+      detail.hidden = true;
+      detail.replaceChildren();
+      list.hidden = bar.hidden = false;
+      draw();
+      return;
+    }
+    list.hidden = bar.hidden = true;
+    const p = issue.data;
+    const kind = postKind(p), status = postStatus(p), written = postLang(p);
+    const backLink = el("a", { href: "#", className: "fbb-back", textContent: `← ${bt.back}` });
+    backLink.onclick = (e) => { e.preventDefault(); history.pushState(null, "", location.pathname + location.search); show(); };
+    const meta = el("div", { className: "fbb-meta" }, chip(`k-${kind}`, bt.kinds?.[kind] || kind), chip(`s-${status}`, bt.statuses?.[status] || status),
+      el("a", { href: p.user?.html_url, rel: "noopener", textContent: p.user?.login || "" }),
+      el("time", { dateTime: p.created_at, textContent: new Date(p.created_at).toLocaleDateString(lang, { day: "numeric", month: "short", year: "numeric" }) }));
+    if (written && written !== pageLang) meta.append(el("span", { className: "fb-lang", textContent: (bt.written || "").replace("{lang}", LANG_NAMES[written] || written) }));
+    const body = el("div", { className: "prose fbb-body" });
+    body.innerHTML = p.body_html || ""; // rendered and sanitized by GitHub
+    const block = root.querySelector("[data-fbb-block]").content.firstElementChild.cloneNode(true);
+    block.dataset.fbIssue = String(p.number);
+    block.querySelectorAll('a[href^="https://github.com/"]').forEach((a) => { a.href = a.href.replace(/\/issues(#.*)?$/, `/issues/${p.number}$1`); });
+    detail.replaceChildren(backLink, el("h2", { className: "fbb-detail-title", textContent: p.title }), meta, body, block);
+    detail.hidden = false;
+    detail.scrollIntoView({ block: "start" });
+    await attach(block, issue, lang, false);
+  };
+  addEventListener("hashchange", show);
+  addEventListener("popstate", show);
+
+  // A new request: signed in, a small form; without the login service, the
+  // new issue form on GitHub.
+  const dialog = root.querySelector("[data-fbb-dialog]");
+  const form = dialog.querySelector("form");
+  const err = form.querySelector(".fb-error");
+  root.querySelector("[data-fbb-new]").addEventListener("click", async (e) => {
+    if (!loginAPI) return; // the link goes to GitHub
+    e.preventDefault();
+    if (!(await key())) return login();
+    err.hidden = true;
+    dialog.showModal();
+    form.elements.title.focus();
+  });
+  form.querySelector("[data-fbb-cancel]").onclick = () => dialog.close();
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    // form.elements: form.title is the form's own title attribute.
+    const f = form.elements;
+    const title = f.title.value.trim();
+    if (!title) return;
+    const kind = f.kind.value || "other";
+    const send = form.querySelector("[data-fbb-send]");
+    send.disabled = true;
+    err.hidden = true;
+    try {
+      const mark = `<!-- blup:feedback kind=${kind}${pageLang ? ` lang=${pageLang}` : ""} -->`;
+      const p = await gh(`${API}/issues`, {
+        method: "POST",
+        body: { title, body: `${f.body.value.trim()}\n\n${mark}` },
+        accept: "application/vnd.github.full+json",
+      });
+      changed();
+      const issue = new Issue({ ...p, reactions: p.reactions || {} });
+      issue.views.push(() => { if (!list.hidden) draw(); });
+      posts.unshift(issue);
+      form.reset();
+      dialog.close();
+      location.hash = `p-${p.number}`;
+    } catch {
+      err.hidden = false;
+    }
+    send.disabled = false;
+  });
+
+  await show();
+  if (back) root.scrollIntoView({ block: "start" });
+}

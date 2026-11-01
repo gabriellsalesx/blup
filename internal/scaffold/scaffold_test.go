@@ -391,3 +391,61 @@ func TestChangelogMap(t *testing.T) {
 		t.Error("the map comes before the list of versions")
 	}
 }
+
+// The feedback section is the board: tabs by kind, the new-request form and
+// the block of votes and comments a request's page reuses. Without
+// comments turned on, a note says so.
+func TestFeedbackBoard(t *testing.T) {
+	bin, ok := hugo.Find(context.Background())
+	if !ok {
+		t.Skip("hugo not installed")
+	}
+	for _, on := range []bool{true, false} {
+		vault := t.TempDir()
+		for rel, text := range map[string]string{
+			"_index.md":          "---\ntitle: Produto\n---\n",
+			"Feedback/_index.md": "---\ntitle: Feedback\nblup: feedback\ndescription: Peça e vote.\n---\n",
+		} {
+			p := filepath.Join(vault, filepath.FromSlash(rel))
+			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		dir := t.TempDir()
+		s := config.NewSite(dir)
+		s.Title, s.Lang, s.Model, s.Vault = "Produto", "pt", "bento", vault
+		if on {
+			s.Feedback = config.Feedback{Enabled: true, Owner: "ana", Repo: "produto-feedback"}
+		}
+		if err := Write(s); err != nil {
+			t.Fatal(err)
+		}
+		out, err := bin.Command(context.Background(), dir, "--logLevel", "warn").CombinedOutput()
+		if err != nil {
+			t.Fatalf("hugo: %v\n%s", err, out)
+		}
+		b, err := os.ReadFile(filepath.Join(dir, "public", "feedback", "index.html"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		page := string(b)
+		if !on {
+			if strings.Contains(page, "data-fb-board") || !strings.Contains(page, `<p class="empty">`) {
+				t.Error("without comments the board is a note, not the board")
+			}
+			continue
+		}
+		for _, want := range []string{
+			`data-fb-board`, `data-fbb-issues="https://github.com/ana/produto-feedback/issues"`,
+			`data-kind="bug"`, `data-kind="improvement"`, `<dialog class="fbb-dialog"`,
+			`<template data-fbb-block>`, `Peça e vote.`,
+		} {
+			if !strings.Contains(page, want) {
+				t.Errorf("the board page is missing %q", want)
+			}
+		}
+	}
+}

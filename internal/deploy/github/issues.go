@@ -84,3 +84,63 @@ func (c *Client) DeleteRepo(ctx context.Context, owner, repo string) error {
 	}
 	return err
 }
+
+// BoardIssue is an issue of a feedback board, with what the Studio shows.
+type BoardIssue struct {
+	Number    int    `json:"number"`
+	Title     string `json:"title"`
+	Body      string `json:"body"`
+	State     string `json:"state"`
+	URL       string `json:"html_url"`
+	Comments  int    `json:"comments"`
+	CreatedAt string `json:"created_at"`
+	User      struct {
+		Login string `json:"login"`
+	} `json:"user"`
+	Labels []struct {
+		Name string `json:"name"`
+	} `json:"labels"`
+	Reactions struct {
+		PlusOne int `json:"+1"`
+	} `json:"reactions"`
+	PullRequest *struct{} `json:"pull_request"`
+}
+
+// RecentIssues returns the newest issues (open and closed, without pull
+// requests), at most pages×100.
+func (c *Client) RecentIssues(ctx context.Context, owner, repo string, pages int) ([]BoardIssue, error) {
+	var all []BoardIssue
+	for page := 1; page <= pages; page++ {
+		q := url.Values{"state": {"all"}, "per_page": {"100"}, "page": {fmt.Sprint(page)}, "sort": {"created"}, "direction": {"desc"}}
+		var batch []BoardIssue
+		if _, err := c.do(ctx, http.MethodGet, repoPath(owner, repo)+"/issues?"+q.Encode(), nil, &batch); err != nil {
+			return nil, err
+		}
+		for _, i := range batch {
+			if i.PullRequest == nil {
+				all = append(all, i)
+			}
+		}
+		if len(batch) < 100 {
+			break
+		}
+	}
+	return all, nil
+}
+
+// SetIssueLabels replaces the labels of an issue.
+func (c *Client) SetIssueLabels(ctx context.Context, owner, repo string, number int, labels []string) error {
+	_, err := c.do(ctx, http.MethodPut, fmt.Sprintf("%s/issues/%d/labels", repoPath(owner, repo), number), map[string]any{"labels": labels}, nil)
+	return err
+}
+
+// SetIssueState opens or closes an issue; reason is "completed" or
+// "not_planned" when closing.
+func (c *Client) SetIssueState(ctx context.Context, owner, repo string, number int, open bool, reason string) error {
+	in := map[string]any{"state": "open"}
+	if !open {
+		in = map[string]any{"state": "closed", "state_reason": reason}
+	}
+	_, err := c.do(ctx, http.MethodPatch, fmt.Sprintf("%s/issues/%d", repoPath(owner, repo), number), in, nil)
+	return err
+}

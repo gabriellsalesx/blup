@@ -1,0 +1,66 @@
+{{- /* The feedback board (Bento's feedback section, turned on in Blup
+Studio): requests visitors open (a bug, a feature, an improvement...) as
+issues of the site's public "-feedback" repository, with votes, comments
+and a status the site's owner sets in the Studio. feedback.js reads and
+writes them live (no rebuild); the page only draws the frame. Every
+language of the site shows the same board. Param: the section page. */ -}}
+{{- $repo := site.Params.blup.feedback -}}
+{{- $kinds := slice "feature" "bug" "improvement" "other" -}}
+{{- $statuses := slice "new" "planned" "progress" "done" "declined" -}}
+{{- $text := dict
+  "kinds" (dict "feature" (T "fbbOne_feature") "bug" (T "fbbOne_bug") "improvement" (T "fbbOne_improvement") "other" (T "fbbOne_other"))
+  "statuses" (dict "new" (T "fbbStatus_new") "planned" (T "fbbStatus_planned") "progress" (T "fbbStatus_progress") "done" (T "fbbStatus_done") "declined" (T "fbbStatus_declined"))
+  "empty" (T "fbbEmpty") "nothing" (T "fbbNothing") "back" (T "fbbBack") "written" (T "fbbWritten") "votes" (T "fbVote")
+  "comments" (T "fbComments") "error" (T "fbError") "send" (T "fbbSend") -}}
+<main id="main" class="roadmap fbb-page">
+  <header class="roadmap-head">
+    <h1>{{ partial "title.html" . }}</h1>
+    {{- with .Description | default (partial "content.html" . | plainify | htmlUnescape | strings.TrimSpace) }}<p>{{ . }}</p>{{ end }}
+  </header>
+  {{- if $repo }}
+  <div class="fbb" data-fb-board data-fbb-text="{{ $text | jsonify }}" data-fbb-issues="https://github.com/{{ $repo }}/issues">
+    <div class="fbb-bar">
+      <div class="fbb-tabs" role="tablist" aria-label="{{ T "fbbKind" }}">
+        {{- range slice "all" "feature" "bug" "improvement" "other" }}
+        <button type="button" role="tab" class="fbb-tab k-{{ . }}" data-kind="{{ . }}" aria-selected="{{ eq . "all" }}"><span>{{ T (printf "fbbKind_%s" .) }}</span><b data-count></b></button>
+        {{- end }}
+      </div>
+      <div class="fbb-tools">
+        <select data-fbb-status aria-label="{{ T "fbbStatus" }}">
+          <option value="">{{ T "fbbAllStatus" }}</option>
+          {{- range $statuses }}<option value="{{ . }}">{{ T (printf "fbbStatus_%s" .) }}</option>{{ end }}
+        </select>
+        <div class="fbb-sort" role="tablist" aria-label="{{ T "fbbSort" }}">
+          <button type="button" role="tab" data-sort="top" aria-selected="true">{{ T "fbbTop" }}</button>
+          <button type="button" role="tab" data-sort="recent" aria-selected="false">{{ T "fbbRecent" }}</button>
+        </div>
+        <input type="search" data-fbb-search placeholder="{{ T "fbbSearch" }}" aria-label="{{ T "fbbSearch" }}">
+        <a class="button" data-fbb-new href="https://github.com/{{ $repo }}/issues/new"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"/></svg>{{ T "fbbNew" }}</a>
+      </div>
+    </div>
+    <ol class="fbb-list" data-fbb-list aria-live="polite"><li class="fbb-empty">{{ T "fbbLoading" }}</li></ol>
+    <article class="fbb-detail" data-fbb-detail hidden></article>
+    <dialog class="fbb-dialog" data-fbb-dialog aria-labelledby="fbb-new-title">
+      <form method="dialog" class="fbb-form">
+        <h2 id="fbb-new-title">{{ T "fbbNew" }}</h2>
+        <fieldset class="fbb-kinds">
+          <legend>{{ T "fbbKind" }}</legend>
+          {{- range $i, $k := $kinds }}
+          <label class="fbb-kind k-{{ $k }}"><input type="radio" name="kind" value="{{ $k }}"{{ if eq $i 0 }} checked{{ end }}><span>{{ T (printf "fbbOne_%s" $k) }}</span></label>
+          {{- end }}
+        </fieldset>
+        <label class="fbb-field"><span>{{ T "fbbTitle" }}</span><input type="text" name="title" required maxlength="140" placeholder="{{ T "fbbTitlePh" }}"></label>
+        <label class="fbb-field"><span>{{ T "fbbBody" }}</span><textarea name="body" rows="6" placeholder="{{ T "fbbBodyPh" }}"></textarea></label>
+        <p class="fb-error" hidden>{{ T "fbError" }}</p>
+        <div class="fbb-actions">
+          <button type="button" class="button button-ghost" data-fbb-cancel>{{ T "fbbCancel" }}</button>
+          <button type="submit" class="button" data-fbb-send>{{ T "fbbSend" }}</button>
+        </div>
+      </form>
+    </dialog>
+    <template data-fbb-block>{{ partial "bento/feedback-block.html" (dict "n" 0 "url" (printf "https://github.com/%s/issues" $repo) "kind" "roadmap") }}</template>
+  </div>
+  {{- else }}
+  <p class="empty">{{ T "fbbOff" }}</p>
+  {{- end }}
+</main>
