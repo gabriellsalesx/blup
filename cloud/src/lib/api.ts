@@ -12,7 +12,7 @@ export type Me = {
 	usage: Usage;
 	// AI through Blup Cloud: the share of this month's allowance used.
 	ai: AIShare;
-	plan: { name: string; label: string; limits: Limits; status: string | null; renewsAt: string | null; cancelsAtPeriodEnd: boolean };
+	plan: { name: string; label: string; limits: Limits; gift?: boolean; status: string | null; renewsAt: string | null; cancelsAtPeriodEnd: boolean };
 };
 
 async function get<T>(path: string): Promise<T> {

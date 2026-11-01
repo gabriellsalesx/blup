@@ -16,6 +16,8 @@
 	let yearly = $state(false);
 	const current = $derived(data.me.plan);
 	const paid = $derived(current.name !== "free");
+	// The owner of Blup has the top plan as a gift: nothing to pay or manage.
+	const gift = $derived(!!current.gift);
 	const when = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
 
 	// Back from Stripe's checkout.
@@ -53,7 +55,7 @@
 		<div class="flex flex-col rounded-xl border p-5 {mine || (p.suggested && !paid) ? 'border-blup ring-1 ring-blup' : 'border-neutral-200 dark:border-neutral-800'}">
 			<div class="flex items-baseline justify-between gap-2">
 				<h2 class="font-semibold">{p.label}</h2>
-				{#if mine}<span class="rounded-full bg-blup/10 px-2 py-0.5 text-xs font-semibold text-blup">Seu plano</span>
+				{#if mine}<span class="rounded-full bg-blup/10 px-2 py-0.5 text-xs font-semibold text-blup">{gift ? "Cortesia" : "Seu plano"}</span>
 				{:else if p.suggested}<span class="rounded-full bg-blup px-2 py-0.5 text-xs font-semibold text-white">Mais escolhido</span>{/if}
 			</div>
 			{#if yearly && p.yearlyCents}
@@ -78,16 +80,22 @@
 
 {#if paid}
 	<div class="mt-8">
-		<Row title="Assinatura" help={current.renewsAt ? (current.cancelsAtPeriodEnd ? `Cancelada: o ${current.label} vale até ${when(current.renewsAt)}.` : `Renova em ${when(current.renewsAt)}.`) : undefined}>
-			{#snippet action()}<Button variant="secondary" {busy} onclick={manage}>Gerenciar</Button>{/snippet}
-		</Row>
+		{#if gift}
+			<Row title="Assinatura" help={`${current.label} de cortesia para o dono do Blup, sem cobrança e sem data para acabar.`} />
+		{:else}
+			<Row title="Assinatura" help={current.renewsAt ? (current.cancelsAtPeriodEnd ? `Cancelada: o ${current.label} vale até ${when(current.renewsAt)}.` : `Renova em ${when(current.renewsAt)}.`) : undefined}>
+				{#snippet action()}<Button variant="secondary" {busy} onclick={manage}>Gerenciar</Button>{/snippet}
+			</Row>
+		{/if}
 		<Row title="Uso de IA" help={data.me.ai.included ? `${data.me.ai.percent}% do uso de IA deste mês (narração). Renova em ${new Date(data.me.ai.resetsAt).toLocaleDateString("pt-BR", { day: "numeric", month: "long", timeZone: "UTC" })}.` : undefined}>
 			<div class="mt-3 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
 				<div class="h-full rounded-full {data.me.ai.percent >= 90 ? 'bg-red-500' : 'bg-blup'}" style:width="{data.me.ai.percent}%"></div>
 			</div>
 		</Row>
-		<Row title="Faturas e pagamento" help="Baixe as faturas, troque o cartão ou cancele, na página segura do Stripe.">
-			{#snippet action()}<Button variant="secondary" {busy} onclick={manage}>Abrir</Button>{/snippet}
-		</Row>
+		{#if !gift}
+			<Row title="Faturas e pagamento" help="Baixe as faturas, troque o cartão ou cancele, na página segura do Stripe.">
+				{#snippet action()}<Button variant="secondary" {busy} onclick={manage}>Abrir</Button>{/snippet}
+			</Row>
+		{/if}
 	</div>
 {/if}

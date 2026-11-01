@@ -54,6 +54,7 @@ Abra pelo endereço `http://localhost:8787` (não `127.0.0.1`): a passkey e a or
 
 - Painel em `/staff` e API em `/api/staff`. Em produção, crie no Cloudflare Access uma aplicação para esses dois caminhos e libere só os e-mails da equipe. O Worker confere o token do Access de novo (`ACCESS_TEAM_DOMAIN` e `ACCESS_AUD`) e o papel na tabela `staff`.
 - O primeiro admin é o `STAFF_OWNER_EMAIL` (secret). Os outros entram pela tela Equipe.
+- O `STAFF_OWNER_EMAIL` também ganha o plano Ultra de cortesia (sem Stripe), desde que o e-mail da conta seja o mesmo e esteja confirmado. Só ele: a staff adicionada pela tela Equipe não ganha.
 - Papéis: **Suporte** vê contas, encerra sessões e remove passkeys perdidas. **Admin** também bloqueia, exclui contas (cancelando no Stripe) e cuida da equipe.
 - Toda ação fica na tabela `staff_log`. A staff nunca lê notas (são cifradas no computador da pessoa) e nunca entra como o usuário.
 - No computador, `STAFF_DEV_EMAIL` em `.dev.vars` deixa entrar sem o Access, só pelo `localhost`.

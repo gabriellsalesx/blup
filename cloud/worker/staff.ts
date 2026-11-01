@@ -8,6 +8,7 @@ import { zValidator } from "@hono/zod-validator";
 import { db } from "./auth";
 import { billingEvent, passkey, session, staff, staffLog, subscription, user } from "./db/schema";
 import { planNamed } from "./plans";
+import { GIFT_PLAN, isOwner } from "./account";
 import { hasEmail } from "./auth-options";
 import { usageOf } from "./usage";
 import { aiUsageOf } from "./ai";
@@ -114,7 +115,7 @@ export const staffApi = new Hono<App>()
 		const q = (c.req.query("q") ?? "").trim().toLowerCase();
 		const cursor = c.req.query("cursor");
 		const size = pageSize(c.req.query("limit"));
-		const cols = { id: user.id, email: user.email, createdAt: user.createdAt, banned: user.banned };
+		const cols = { id: user.id, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt, banned: user.banned };
 		let found;
 		let key: (r: { id: string; email: string }) => string = (r) => r.id;
 		if (!q) {
@@ -135,7 +136,7 @@ export const staffApi = new Hono<App>()
 		const subs = rows.length
 			? await db.select({ ref: subscription.referenceId, plan: subscription.plan }).from(subscription).where(and(inArray(subscription.referenceId, rows.map((r) => r.id)), inArray(subscription.status, ACTIVE)))
 			: [];
-		return c.json({ items: rows.map((r) => ({ ...r, email: hasEmail(r.email) ? r.email : null, plan: planNamed(subs.find((s) => s.ref === r.id)?.plan).label })), nextCursor });
+		return c.json({ items: rows.map(({ emailVerified, ...r }) => ({ ...r, email: hasEmail(r.email) ? r.email : null, plan: isOwner(r.email, emailVerified) ? `${planNamed(GIFT_PLAN).label} (cortesia)` : planNamed(subs.find((s) => s.ref === r.id)?.plan).label })), nextCursor });
 	})
 
 	.get("/users/:id", async (c) => {
@@ -150,12 +151,13 @@ export const staffApi = new Hono<App>()
 			db.select({ id: billingEvent.id, type: billingEvent.type, amount: billingEvent.amount, currency: billingEvent.currency, createdAt: billingEvent.createdAt }).from(billingEvent).where(eq(billingEvent.userId, id)).orderBy(desc(billingEvent.id)).limit(20),
 		]);
 		const active = subs.find((s) => ACTIVE.includes(s.status));
-		const plan = planNamed(active?.plan);
+		const gift = isOwner(u.email, u.emailVerified);
+		const plan = planNamed(gift ? GIFT_PLAN : active?.plan);
 		const [usage, ai] = await Promise.all([usageOf(id), aiUsageOf(id, plan)]);
 		const stripeMode = /^[rs]k_live_/.test(c.env.STRIPE_SECRET_KEY) ? "" : "test/";
 		return c.json({
 			user: { id: u.id, email: hasEmail(u.email) ? u.email : null, emailVerified: u.emailVerified, createdAt: u.createdAt, banned: u.banned, banReason: u.banReason },
-			plan: { label: plan.label, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.cancelAt ?? active?.periodEnd ?? null, cancelAtPeriodEnd: !!(active?.cancelAtPeriodEnd || active?.cancelAt) },
+			plan: { label: gift ? `${plan.label} (cortesia)` : plan.label, gift, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.cancelAt ?? active?.periodEnd ?? null, cancelAtPeriodEnd: !!(active?.cancelAtPeriodEnd || active?.cancelAt) },
 			usage,
 			ai: { percent: ai.percent, resetsAt: ai.resetsAt, included: plan.limits.aiUsage > 0 },
 			billing,

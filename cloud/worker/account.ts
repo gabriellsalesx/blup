@@ -1,7 +1,19 @@
+import { env } from "cloudflare:workers";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "./auth";
-import { subscription } from "./db/schema";
-import { planNamed } from "./plans";
+import { subscription, user } from "./db/schema";
+import { GIFT_PLAN, ownerMatches, planNamed } from "./plans";
+
+export { GIFT_PLAN };
+
+// The owner of Blup (STAFF_OWNER_EMAIL, a secret) has the top plan as a
+// gift: no Stripe, no subscription, the limits of GIFT_PLAN.
+export const isOwner = (email: string | null | undefined, verified: boolean | null | undefined) => ownerMatches(env.STAFF_OWNER_EMAIL, email, verified);
+
+async function ownerAccount(userId: string) {
+	const [u] = await db.select({ email: user.email, verified: user.emailVerified }).from(user).where(eq(user.id, userId)).limit(1);
+	return isOwner(u?.email, u?.verified);
+}
 
 // Subscriptions that give the paid plan (past_due keeps it while Stripe
 // retries the card).
@@ -17,7 +29,9 @@ export async function activeSubscription(userId: string) {
 	return sub;
 }
 
-// The plan an account is on now (free without a paid subscription).
+// The plan an account is on now: the gift for the owner, else the paid
+// one (free without a paid subscription).
 export async function planOf(userId: string) {
-	return planNamed((await activeSubscription(userId))?.plan);
+	const [owner, sub] = await Promise.all([ownerAccount(userId), activeSubscription(userId)]);
+	return planNamed(owner ? GIFT_PLAN : sub?.plan);
 }

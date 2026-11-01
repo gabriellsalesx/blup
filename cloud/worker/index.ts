@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { auth, db, type Session } from "./auth";
-import { activeSubscription, planOf } from "./account";
+import { activeSubscription, planOf, isOwner, GIFT_PLAN } from "./account";
 import { PLANS, SUGGESTED, planNamed } from "./plans";
 import { staffApi } from "./staff";
 import { syncApi } from "./sync";
@@ -88,7 +88,8 @@ const routes = app
 		const { user } = c.get("session")!;
 		// The portal cancels by setting cancel_at, not cancel_at_period_end.
 		const sub = await activeSubscription(user.id);
-		const plan = planNamed(sub?.plan);
+		const gift = isOwner(user.email, user.emailVerified);
+		const plan = planNamed(gift ? GIFT_PLAN : sub?.plan);
 		const [usage, ai] = await Promise.all([usageOf(user.id), aiUsageOf(user.id, plan)]);
 		return c.json({
 			usage,
@@ -97,7 +98,7 @@ const routes = app
 			email: hasEmail(user.email) ? user.email : null,
 			name: user.name,
 			createdAt: user.createdAt,
-			plan: { name: plan.name, label: plan.label, limits: plan.limits, status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
+			plan: { name: plan.name, label: plan.label, limits: plan.limits, gift, status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
 		});
 	})
 	// The Blup Studio installs signed in (each is a session), to see and

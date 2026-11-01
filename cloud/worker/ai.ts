@@ -147,7 +147,7 @@ export const aiApi = new Hono<App>()
 		const audio = await res.arrayBuffer();
 		await db.insert(aiUsage).values({ userId, kind: "narration", units: chars, costMicros: cost });
 		return new Response(audio, { headers: { "content-type": "audio/mpeg" } });
-	}})
+	})
 	.post("/translate", async (c) => {
 		const userId = c.get("userId");
 		const body = await c.req.json<{ text?: string; from?: string; to?: string }>().catch(() => null);

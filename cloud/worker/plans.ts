@@ -89,3 +89,11 @@ export const PLANS: Plan[] = [
 export const SUGGESTED = "max";
 
 export const planNamed = (name: string | null | undefined) => PLANS.find((p) => p.name === name) ?? FREE;
+
+// The owner of Blup (STAFF_OWNER_EMAIL) has GIFT_PLAN for free. Only a
+// verified e-mail equal to the owner's counts; no owner set, no gift.
+export const GIFT_PLAN = "ultra";
+export function ownerMatches(owner: string | null | undefined, email: string | null | undefined, verified: boolean | null | undefined) {
+	const o = owner?.trim().toLowerCase();
+	return !!o && !!verified && email?.trim().toLowerCase() === o;
+}
