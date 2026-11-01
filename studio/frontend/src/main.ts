@@ -5,11 +5,16 @@ import { Language } from "../bindings/github.com/gabriellsalesx/blup/studio/stud
 import { setLanguage } from "./i18n";
 import { loadTheme } from "./theme.svelte";
 import { installUndo } from "./undo";
+import { primeSound } from "./audio";
 
 installUndo();
 
-// The language first: the spell check's dictionary follows it.
-Language()
+// The language first: the spell check's dictionary follows it. While the
+// Studio asks for it, the media engine starts (audio.ts): its pause goes
+// into the opening, not into a ▶ later.
+const lang = Language();
+primeSound();
+lang
   .then(setLanguage)
   .catch(() => {})
   .then(loadTheme)

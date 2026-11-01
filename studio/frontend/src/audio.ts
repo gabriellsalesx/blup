@@ -1,20 +1,14 @@
-// One sound output for the Studio's voice samples, ready before the first
-// ▶. On Linux (WebKitGTK) the first sound of a run loads the MP3 decoder
-// and opens the sound output, and the window stalls meanwhile; done right
-// after the settings open, the first ▶ plays at once.
-let ctx: AudioContext | null = null;
-let warm: Promise<void> | null = null;
-
-export const soundOut = () => (ctx ??= new AudioContext());
-
-// warmSound decodes a sample once (and wakes the output when the web view
-// allows it without a click).
-export function warmSound(sample: string) {
-  warm ??= (async () => {
-    const out = soundOut();
-    const res = await fetch(sample);
-    await out.decodeAudioData(await res.arrayBuffer());
-    await out.resume().catch(() => {});
-  })().catch(() => { warm = null; });
-  return warm;
+// Sound on Linux: WebKitGTK starts GStreamer, its media engine, the first
+// time a page touches audio, on the page's own thread. Measured here it
+// holds the window for about half a second (two on a computer where
+// GStreamer never ran), and a voice sample's ▶ was that first time.
+// primeSound makes it happen while the Studio opens; after it, decoding a
+// sample takes some 60 ms.
+export function primeSound() {
+  try { new Audio().canPlayType("audio/mpeg"); } catch {}
 }
+
+// One sound output for the voice samples, made on the first ▶ (a click,
+// which the web view requires to start sound).
+let ctx: AudioContext | null = null;
+export const soundOut = () => (ctx ??= new AudioContext());

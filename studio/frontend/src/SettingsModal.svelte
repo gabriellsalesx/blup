@@ -18,7 +18,7 @@
   import Cloud from "@lucide/svelte/icons/cloud";
   import Info from "@lucide/svelte/icons/info";
   import CloudAccount from "./CloudAccount.svelte";
-  import { soundOut, warmSound } from "./audio";
+  import { soundOut } from "./audio";
   import { Events } from "@wailsio/runtime";
   import X from "@lucide/svelte/icons/x";
   import Check from "@lucide/svelte/icons/check";
@@ -232,8 +232,6 @@
   // moments stuttered; it also can't stream the app's wails:// addresses.
   // The start waits a moment for the sound output to wake up.
   let playing = $state("");
-  // Warmed up once the window has painted (see audio.ts).
-  $effect(() => { const id = setTimeout(() => warmSound("/voices/kokoro-pf_dora.mp3"), 400); return () => clearTimeout(id); });
   let source: AudioBufferSourceNode | null = null;
   let startAt = 0;
   let length = 0;
