@@ -266,7 +266,9 @@ func watchNotes(root string) {
 					return
 				}
 				rel, err := filepath.Rel(root, ev.Name)
-				if err != nil || strings.HasPrefix(filepath.Base(ev.Name), ".") {
+				// A change of permissions or access time only (a backup tool,
+				// an indexer) changes nothing to read.
+				if err != nil || strings.HasPrefix(filepath.Base(ev.Name), ".") || ev.Op == fsnotify.Chmod {
 					continue
 				}
 				if ev.Has(fsnotify.Create) {

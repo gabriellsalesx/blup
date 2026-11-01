@@ -5,10 +5,6 @@
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
   import Editor from "./Editor.svelte";
-  import CanvasView from "./CanvasView.svelte";
-  import DrawingView from "./DrawingView.svelte";
-  import DatabaseView from "./DatabaseView.svelte";
-  import DatabaseNew from "./DatabaseNew.svelte";
   import Database from "@lucide/svelte/icons/database";
   import CalendarDays from "@lucide/svelte/icons/calendar-days";
   import type { DBSchema } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
@@ -19,11 +15,8 @@
   import Props from "./Props.svelte";
   import NoteProps from "./NoteProps.svelte";
   import Backlinks from "./Backlinks.svelte";
-  import GraphView from "./GraphView.svelte";
   import Waypoints from "@lucide/svelte/icons/waypoints";
   import Preview from "./Preview.svelte";
-  import TerminalPanel from "./TerminalPanel.svelte";
-  import HistoryModal from "./HistoryModal.svelte";
   import FileMenu from "./FileMenu.svelte";
   import ContextMenu, { type MenuEntry } from "./ContextMenu.svelte";
   import SettingsModal, { DOCS } from "./SettingsModal.svelte";
@@ -44,16 +37,6 @@
   import CloudCheck from "@lucide/svelte/icons/cloud-check";
   import CloudAlert from "@lucide/svelte/icons/cloud-alert";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
-  import LookPanel from "./LookPanel.svelte";
-  import SectionsPanel from "./SectionsPanel.svelte";
-  import CommentsPanel from "./CommentsPanel.svelte";
-  import CookiesPanel from "./CookiesPanel.svelte";
-  import PasswordPanel from "./PasswordPanel.svelte";
-  import PublishPanel from "./PublishPanel.svelte";
-  import TrashPanel from "./TrashPanel.svelte";
-  import AuthorsPanel from "./AuthorsPanel.svelte";
-  import AttachmentsPanel from "./AttachmentsPanel.svelte";
-  import DeleteSite from "./DeleteSite.svelte";
   import Paperclip from "@lucide/svelte/icons/paperclip";
   import Users from "@lucide/svelte/icons/users";
   import Trash2 from "@lucide/svelte/icons/trash-2";
@@ -66,6 +49,26 @@
   import Upload from "@lucide/svelte/icons/upload";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import { t } from "./i18n";
+  import { lazy } from "./lazy";
+  // The views and panels opened now and then load when first opened: a
+  // lighter start, on any computer.
+  const CanvasView = lazy(() => import("./CanvasView.svelte"));
+  const DrawingView = lazy(() => import("./DrawingView.svelte"));
+  const DatabaseView = lazy(() => import("./DatabaseView.svelte"));
+  const DatabaseNew = lazy(() => import("./DatabaseNew.svelte"));
+  const GraphView = lazy(() => import("./GraphView.svelte"));
+  const TerminalPanel = lazy(() => import("./TerminalPanel.svelte"));
+  const HistoryModal = lazy(() => import("./HistoryModal.svelte"));
+  const LookPanel = lazy(() => import("./LookPanel.svelte"));
+  const SectionsPanel = lazy(() => import("./SectionsPanel.svelte"));
+  const CommentsPanel = lazy(() => import("./CommentsPanel.svelte"));
+  const CookiesPanel = lazy(() => import("./CookiesPanel.svelte"));
+  const PasswordPanel = lazy(() => import("./PasswordPanel.svelte"));
+  const PublishPanel = lazy(() => import("./PublishPanel.svelte"));
+  const TrashPanel = lazy(() => import("./TrashPanel.svelte"));
+  const AuthorsPanel = lazy(() => import("./AuthorsPanel.svelte"));
+  const AttachmentsPanel = lazy(() => import("./AttachmentsPanel.svelte"));
+  const DeleteSite = lazy(() => import("./DeleteSite.svelte"));
 
   let { site, onBack, onSwitch }: { site: SiteInfo; onBack: () => void; onSwitch: (s: SiteInfo) => void } = $props();
 
@@ -728,11 +731,11 @@
       {#if current}
         {#key current + ":" + reloadN}
           {#if board === "canvas"}
-            <CanvasView path={current} bindSave={(fn) => (boardSave = fn)} full={fullOn} onFull={() => (full = !full)} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOpenNote={openNote} onOutside={() => reloadN++} />
+            {#await CanvasView() then { default: C }}<C path={current} bindSave={(fn) => (boardSave = fn)} full={fullOn} onFull={() => (full = !full)} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOpenNote={openNote} onOutside={() => reloadN++} />{/await}
           {:else if board === "drawing"}
-            <DrawingView path={current} bindSave={(fn) => (boardSave = fn)} full={fullOn} onFull={() => (full = !full)} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />
+            {#await DrawingView() then { default: C }}<C path={current} bindSave={(fn) => (boardSave = fn)} full={fullOn} onFull={() => (full = !full)} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />{/await}
           {:else if board === "database"}
-            <DatabaseView path={current} bindSave={(fn) => (boardSave = fn)} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onOpenNote={openNote} onStatus={(st) => (status = st)} onError={(e) => (error = e)} />
+            {#await DatabaseView() then { default: C }}<C path={current} bindSave={(fn) => (boardSave = fn)} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onOpenNote={openNote} onStatus={(st) => (status = st)} onError={(e) => (error = e)} />{/await}
           {:else}
           <div class="note">
             {#if !notesVault}<Props props={noteProps} {kind} note={current} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} />{/if}
@@ -745,18 +748,18 @@
         <p class="hint muted">{t.pickNote}</p>
       {/if}
     {:else if screen === "graph"}
-      <GraphView {current} onOpenNote={openNote} />
+      {#await GraphView() then { default: C }}<C {current} onOpenNote={openNote} />{/await}
     {:else if settings}
       {#key screen}
-        {#if screen === "look"}<LookPanel {settings} {reload} />
-        {:else if screen === "sections"}<SectionsPanel {settings} {reload} onTree={(n) => (tree = n.children ?? [])} />
-        {:else if screen === "comments"}<CommentsPanel {settings} {reload} />
-        {:else if screen === "cookies"}<CookiesPanel {settings} {reload} onOpenNote={openNote} />
-        {:else if screen === "password"}<PasswordPanel {settings} {reload} />
-        {:else if screen === "publish"}<PublishPanel autostart={autostart} notes={notesVault} />
-        {:else if screen === "authors"}<AuthorsPanel onTree={async () => (tree = (await LoadTree()).children ?? [])} />
-        {:else if screen === "attach"}<AttachmentsPanel onOpenNote={openNote} />
-        {:else if screen === "trash"}<TrashPanel {reload} onTree={(n) => (tree = n.children ?? [])} />
+        {#if screen === "look"}{#await LookPanel() then { default: C }}<C {settings} {reload} />{/await}
+        {:else if screen === "sections"}{#await SectionsPanel() then { default: C }}<C {settings} {reload} onTree={(n) => (tree = n.children ?? [])} />{/await}
+        {:else if screen === "comments"}{#await CommentsPanel() then { default: C }}<C {settings} {reload} />{/await}
+        {:else if screen === "cookies"}{#await CookiesPanel() then { default: C }}<C {settings} {reload} onOpenNote={openNote} />{/await}
+        {:else if screen === "password"}{#await PasswordPanel() then { default: C }}<C {settings} {reload} />{/await}
+        {:else if screen === "publish"}{#await PublishPanel() then { default: C }}<C autostart={autostart} notes={notesVault} />{/await}
+        {:else if screen === "authors"}{#await AuthorsPanel() then { default: C }}<C onTree={async () => (tree = (await LoadTree()).children ?? [])} />{/await}
+        {:else if screen === "attach"}{#await AttachmentsPanel() then { default: C }}<C onOpenNote={openNote} />{/await}
+        {:else if screen === "trash"}{#await TrashPanel() then { default: C }}<C {reload} onTree={(n) => (tree = n.children ?? [])} />{/await}
         {/if}
       {/key}
     {/if}
@@ -775,7 +778,7 @@
   {#if prefsOpen}
     <SettingsModal start={prefsTab} siteLang={settings?.lang} onClose={() => { prefsOpen = false; prefsTab = "general"; }} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
   {/if}
-  {#if deletingSite}<DeleteSite dir={deletingSite} onClose={() => (deletingSite = "")} onDone={(dir) => { const name = others.find((o) => o.dir === dir)?.title ?? ""; deletingSite = ""; loadSites(); toast(t.toast.siteDeleted.replace("{name}", name)); }} />{/if}
+  {#if deletingSite}{#await DeleteSite() then { default: C }}<C dir={deletingSite} onClose={() => (deletingSite = "")} onDone={(dir) => { const name = others.find((o) => o.dir === dir)?.title ?? ""; deletingSite = ""; loadSites(); toast(t.toast.siteDeleted.replace("{name}", name)); }} />{/await}{/if}
   {#if cloudTip && !showTip}
     <!-- Once there is a site: keeping the notes in the cloud (optional). -->
     <aside class="cloud-tip" aria-label={t.hello.tipTitle}>
@@ -805,9 +808,9 @@
       </div>
     </div>
   {/if}
-  {#if dbNew}<DatabaseNew onCreate={newDatabase} onClose={() => { dbNew = false; dbFolder = ""; }} />{/if}
+  {#if dbNew}{#await DatabaseNew() then { default: C }}<C onCreate={newDatabase} onClose={() => { dbNew = false; dbFolder = ""; }} />{/await}{/if}
   {#if historyFor}
-    {#key historyFor}<HistoryModal path={historyFor} onClose={() => (historyFor = "")} />{/key}
+    {#key historyFor}{#await HistoryModal() then { default: C }}<C path={historyFor} onClose={() => (historyFor = "")} />{/await}{/key}
   {/if}
   {#if sideMenu}<ContextMenu x={sideMenu.x} y={sideMenu.y} items={sideItems()} onClose={() => (sideMenu = null)} />{/if}
   {#if menu}
@@ -816,7 +819,7 @@
   {#if termStarted}
     <div class="term" class:min={!termOpen} style:height="{termHeight}px">
       <div class="grip" role="separator" aria-orientation="horizontal" onmousedown={resizeTerm}></div>
-      <TerminalPanel visible={termOpen} onClose={() => (termOpen = false)} />
+      {#await TerminalPanel() then { default: C }}<C visible={termOpen} onClose={() => (termOpen = false)} />{/await}
     </div>
   {/if}
 </div>

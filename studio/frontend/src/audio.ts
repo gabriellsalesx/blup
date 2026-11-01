@@ -4,7 +4,10 @@
 // GStreamer never ran), and a voice sample's ▶ was that first time.
 // primeSound makes it happen while the Studio opens; after it, decoding a
 // sample takes some 60 ms.
+// Only on Linux: macOS and Windows play sound through the system's own
+// media engine, already running.
 export function primeSound() {
+  if (!/Linux/.test(navigator.userAgent) || /Android/.test(navigator.userAgent)) return;
   try { new Audio().canPlayType("audio/mpeg"); } catch {}
 }
 
