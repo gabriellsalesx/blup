@@ -3,8 +3,8 @@
 </script>
 
 <script lang="ts">
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
-  import type { Connections as Conn } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import type { Connections as Conn, BlupAccount as Account, AIQuota } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Settings from "@lucide/svelte/icons/settings";
   import Palette from "@lucide/svelte/icons/palette";
@@ -15,6 +15,9 @@
   import Play from "@lucide/svelte/icons/play";
   import AudioLines from "@lucide/svelte/icons/audio-lines";
   import Pause from "@lucide/svelte/icons/pause";
+  import Cloud from "@lucide/svelte/icons/cloud";
+  import Info from "@lucide/svelte/icons/info";
+  import CloudAccount from "./CloudAccount.svelte";
   import { Events } from "@wailsio/runtime";
   import X from "@lucide/svelte/icons/x";
   import Check from "@lucide/svelte/icons/check";
@@ -35,17 +38,26 @@
   let { onClose, onPublish, start = "general", siteLang = "" }: { onClose: () => void; onPublish: () => void; start?: string; siteLang?: string } = $props();
   const s = t.prefs;
 
-  const tabs = [
-    { key: "general", label: s.general, Icon: Settings },
-    { key: "look", label: s.look, Icon: Palette },
-    { key: "editor", label: s.editor, Icon: PenLine },
-    { key: "accounts", label: s.accounts, Icon: KeyRound },
-    { key: "password", label: t.pw.general, Icon: LockKeyhole },
-    { key: "ai", label: t.ai.title, Icon: Sparkles },
-    { key: "narration", label: t.ai.narration, Icon: AudioLines },
-    { key: "terminal", label: s.terminal, Icon: SquareTerminal },
-    { key: "keys", label: t.keys.title, Icon: Keyboard },
+  // The sections, in groups: the Studio itself, what publishes the sites,
+  // AI and voice. Blup Cloud (the account) sits above them, About below.
+  const groups = [
+    { label: s.groupStudio, tabs: [
+      { key: "general", label: s.general, Icon: Settings },
+      { key: "look", label: s.look, Icon: Palette },
+      { key: "editor", label: s.editor, Icon: PenLine },
+      { key: "keys", label: t.keys.title, Icon: Keyboard },
+      { key: "terminal", label: s.terminal, Icon: SquareTerminal },
+    ] },
+    { label: s.groupSites, tabs: [
+      { key: "accounts", label: s.accounts, Icon: KeyRound },
+      { key: "password", label: t.pw.general, Icon: LockKeyhole },
+    ] },
+    { label: s.groupAI, tabs: [
+      { key: "ai", label: t.ai.title, Icon: Sparkles },
+      { key: "narration", label: t.ai.narration, Icon: AudioLines },
+    ] },
   ];
+  const tabs = [{ key: "cloud", label: s.cloud, Icon: Cloud }, ...groups.flatMap((g) => g.tabs), { key: "about", label: s.about, Icon: Info }];
   const k = t.keys;
 
   // The desktop: opening with the computer, the tray, the global shortcut.
@@ -81,6 +93,21 @@
   Version().then((v) => (version = v));
   Language().then((l) => (lang = l));
   Agents().then((a) => (agents = a ?? []));
+  // Blup Cloud: the account (for every vault and site) and how much of the
+  // plan is used.
+  let account = $state<Account | null>(null);
+  let quota = $state<AIQuota | null>(null);
+  BlupAccount().then((a) => (account = a)).catch(() => {});
+  $effect(() => {
+    if (account?.signedIn && account.ai) BlupAIUsage().then((q) => (quota = q)).catch(() => (quota = null));
+    else quota = null;
+  });
+  const size = (n: number) => (n < 1 << 30 ? `${Math.max(0, n / (1 << 20)).toFixed(n < 10 << 20 ? 1 : 0)} MB` : `${(n / (1 << 30)).toFixed(1)} GB`);
+  const pct = (used: number, max: number) => (max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0);
+  const day = (iso: string) => new Date(iso).toLocaleDateString(t.lang === "pt" ? "pt-BR" : "en-US", { day: "numeric", month: "long" });
+  const count = (n: number, max: number) => (max > 0 ? `${n} / ${max}` : `${n} · ${s.unlimited}`);
+  // "1.4.0" reads v1.4.0; a build without a version ("dev") as it is.
+  const shownVersion = $derived(/^\d/.test(version) ? `v${version}` : version);
   const loadConn = () => Connections().then((c) => (conn = c)).catch((e) => (error = String(e)));
   loadConn();
 
@@ -246,10 +273,22 @@
 <div class="shade" role="presentation" onclick={onClose}></div>
 <div class="modal" role="dialog" aria-modal="true" aria-label={s.title}>
   <nav>
-    <small class="muted">{s.title}</small>
-    {#each tabs as { key, label, Icon } (key)}
-      <button class:on={tab === key} onclick={() => (tab = key)}><Icon size={16} />{label}</button>
+    <!-- The Blup Cloud account, for every vault and site. -->
+    <button class="whoami" class:on={tab === "cloud"} onclick={() => (tab = "cloud")}>
+      <span class="avatar" aria-hidden="true">{#if account?.signedIn}{(account.email || "B")[0].toUpperCase()}{:else}<Cloud size={15} />{/if}</span>
+      <span class="who-text">
+        {#if account?.signedIn}<b>{account.email || s.cloud}</b><small>{s.cloud} · {account.label}</small>
+        {:else}<b>{s.signInNav}</b><small>{s.signInNavHelp}</small>{/if}
+      </span>
+    </button>
+    {#each groups as g (g.label)}
+      <small class="muted grouphead">{g.label}</small>
+      {#each g.tabs as { key, label, Icon } (key)}
+        <button class:on={tab === key} onclick={() => (tab = key)}><Icon size={16} />{label}</button>
+      {/each}
     {/each}
+    <span class="navfill"></span>
+    <button class="appver" class:on={tab === "about"} onclick={() => (tab = "about")}><Info size={14} />Blup Studio {shownVersion}</button>
   </nav>
   <div class="side">
     <!-- The title and the X stay put; only what's below scrolls. -->
@@ -263,15 +302,49 @@
       <div class="item"><Switch label={k.tray} help={k.trayHelp} checked={!!look.tray} onchange={setTray} /></div>
       {#if deskError}<p class="bad">{deskError}</p>{/if}
       <div class="item">
-        <div class="text"><b>{s.version}</b><small>Blup Studio {version}</small></div>
-        <button class="btn ghost" onclick={() => OpenURL("https://getblup.pages.dev/bento/changelog/")}>{s.news}</button>
-      </div>
-      <div class="item">
         <div class="text"><b>{s.lang}</b><small>{s.langHelp}</small></div>
         <select value={lang} onchange={(e) => changeLang(e.currentTarget.value)}>
           <option value="pt">Português</option>
           <option value="en">English</option>
         </select>
+      </div>
+    {:else if tab === "cloud"}
+      <p class="muted lead">{s.cloudLead}</p>
+      <div class="cloudbox"><CloudAccount bind:account brief /></div>
+      {#if account?.signedIn}
+        <h3>{s.usage}</h3>
+        <div class="item column">
+          <div class="row"><b>{s.storageUse}</b><small class="muted">{t.cloud.storage.replace("{used}", size(account.storageBytes)).replace("{total}", size(account.storageMB * 1048576))}</small></div>
+          <div class="dl" role="progressbar" aria-label={s.storageUse} aria-valuemin="0" aria-valuemax="100" aria-valuenow={pct(account.storageBytes, account.storageMB * 1048576)}>
+            <span class:full={pct(account.storageBytes, account.storageMB * 1048576) >= 90} style:width="{Math.max(1, pct(account.storageBytes, account.storageMB * 1048576))}%"></span>
+          </div>
+        </div>
+        <div class="item column">
+          <div class="row"><b>{s.aiUse}</b>{#if quota}<small class="muted">{s.aiUsed.replace("{n}", String(quota.percent))}</small>{/if}</div>
+          {#if account.ai && quota}
+            <div class="dl" role="progressbar" aria-label={s.aiUse} aria-valuemin="0" aria-valuemax="100" aria-valuenow={quota.percent}>
+              <span class:full={quota.percent >= 90} style:width="{Math.max(1, quota.percent)}%"></span>
+            </div>
+            <small class="muted">{s.aiResets.replace("{date}", day(quota.resetsAt))}{#if quota.left < 100 - quota.percent}. {s.aiWeek.replace("{n}", String(quota.left))}{/if}</small>
+          {:else if !account.ai}
+            <small class="muted">{s.aiNone}</small>
+          {/if}
+        </div>
+        <div class="item"><div class="text"><b>{s.sitesUse}</b></div><span class="muted num">{count(account.sites, account.sitesMax)}</span></div>
+        <div class="item"><div class="text"><b>{s.devicesUse}</b></div><span class="muted num">{count(account.devices, account.devicesMax)}</span></div>
+        <div class="item">
+          <span></span>
+          <span class="keyrow">
+            <button class="btn ghost" onclick={() => OpenBlupCloud("/conta/plano")}>{s.plans}</button>
+            <button class="btn ghost" onclick={() => OpenBlupCloud("/conta")}>{s.manage}</button>
+          </span>
+        </div>
+      {/if}
+    {:else if tab === "about"}
+      <p class="muted lead">{s.aboutLead}</p>
+      <div class="item">
+        <div class="text"><b>{s.version}</b><small>Blup Studio {shownVersion}</small></div>
+        <button class="btn ghost" onclick={() => OpenURL("https://getblup.pages.dev/bento/changelog/")}>{s.news}</button>
       </div>
       <div class="item">
         <div class="text"><b>{s.help}</b><small>{s.helpHelp}</small></div>
@@ -332,6 +405,11 @@
       {/if}
     {:else if tab === "ai"}
       <p class="muted lead">{ai.lead}</p>
+      <h3>{s.aiCloud}</h3>
+      <div class="item">
+        <div class="text"><small>{account?.ai && quota ? s.aiCloudOn.replace("{n}", String(quota.percent)) : s.aiCloudOff}</small></div>
+        <button class="btn ghost" onclick={() => (tab = "cloud")}>{s.aiCloudSee}</button>
+      </div>
       <h3>{lv.title}</h3>
       <p class="muted lead">{lv.lead.replace("{mb}", String(mb(local?.bytes || 110e6)))}</p>
       <div class="item column">
@@ -484,11 +562,22 @@
 <style>
   .shade { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / .45); }
   .modal { position: fixed; z-index: 41; inset: 0; margin: auto; width: min(52rem, calc(100% - 2rem)); height: min(36rem, calc(100% - 2rem)); display: grid; grid-template-columns: 13rem minmax(0, 1fr); border: 1px solid var(--line); border-radius: .85rem; overflow: hidden; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
-  nav { display: flex; flex-direction: column; gap: .15rem; padding: 1rem .6rem; border-inline-end: 1px solid var(--line); background: var(--bg); }
+  nav { display: flex; flex-direction: column; gap: .15rem; padding: 1rem .6rem; overflow-y: auto; border-inline-end: 1px solid var(--line); background: var(--bg); }
   nav small { padding: .2rem .6rem .5rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
   nav button { display: flex; align-items: center; gap: .55rem; padding: .45rem .6rem; border-radius: .4rem; font-size: .875rem; color: var(--muted); text-align: start; }
   nav button:hover { background: var(--soft); color: var(--text); }
   nav button.on { background: var(--soft); color: var(--text); font-weight: 600; }
+  nav .grouphead { padding: .9rem .6rem .3rem; }
+  .whoami { gap: .6rem; padding: .5rem .55rem; margin-block-end: .1rem; border: 1px solid var(--line); border-radius: .6rem; }
+  .avatar { flex: none; display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 50%; background: var(--blue); color: #fff; font-size: .85rem; font-weight: 700; }
+  .who-text { display: grid; min-width: 0; }
+  .who-text b { color: var(--text); font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .who-text small { padding: 0; font-size: .72rem; font-weight: 500; text-transform: none; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .navfill { flex: 1; }
+  nav .appver { gap: .4rem; font-size: .75rem; }
+  .cloudbox { display: grid; gap: .75rem; padding-block: .5rem 1rem; border-block-end: 1px solid var(--line); font-size: .9rem; }
+  .dl span.full { background: var(--red); }
+  .num { font-size: .85rem; font-variant-numeric: tabular-nums; }
   .side { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
   .head { display: flex; align-items: center; gap: 1rem; padding: 1.1rem 1rem .6rem 2rem; border-block-end: 1px solid var(--line); }
   .head h2 { flex: 1; margin: 0; }

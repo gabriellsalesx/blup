@@ -6,6 +6,21 @@
 import * as config$0 from "../config/models.js";
 
 /**
+ * AIQuota is how much of the month's AI allowance was used (Percent, 0 to
+ * 100; Left is what can still be used now, the week's cap counted) and
+ * when it starts again.
+ */
+export interface AIQuota {
+    "percent": number;
+    "left": number;
+
+    /**
+     * RFC 3339
+     */
+    "resetsAt": string;
+}
+
+/**
  * Attachment is a file of the attachments folder.
  */
 export interface Attachment {
@@ -92,6 +107,20 @@ export interface BlupAccount {
     "maxFileMB": number;
     "storageMB": number;
     "storageBytes": number;
+
+    /**
+     * Sites and computers used, and how many the plan allows.
+     */
+    "sites": number;
+    "sitesMax": number;
+    "devices": number;
+    "devicesMax": number;
+
+    /**
+     * AI: the plan includes AI through Blup Cloud (BlupAIUsage tells how
+     * much of it was used).
+     */
+    "ai": boolean;
 
     /**
      * Notes: "new" (no notes password yet), "locked" (created on another

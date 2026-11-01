@@ -49,6 +49,14 @@ type BlupAccount struct {
 	MaxFileMB    int   `json:"maxFileMB"`
 	StorageMB    int   `json:"storageMB"`
 	StorageBytes int64 `json:"storageBytes"`
+	// Sites and computers used, and how many the plan allows.
+	Sites      int `json:"sites"`
+	SitesMax   int `json:"sitesMax"`
+	Devices    int `json:"devices"`
+	DevicesMax int `json:"devicesMax"`
+	// AI: the plan includes AI through Blup Cloud (BlupAIUsage tells how
+	// much of it was used).
+	AI bool `json:"ai"`
 	// Notes: "new" (no notes password yet), "locked" (created on another
 	// computer, not typed here) or "ready".
 	Notes string `json:"notes"`
@@ -88,6 +96,9 @@ func LoadBlupAccount(ctx context.Context) (BlupAccount, error) {
 		SignedIn: true, Plan: me.Plan.Name, Label: me.Plan.Label,
 		Live: me.Plan.Limits.Live, HistoryDays: me.Plan.Limits.HistoryDays, MaxFileMB: me.Plan.Limits.MaxFileMB,
 		StorageMB: me.Plan.Limits.StorageMB, StorageBytes: me.Usage.StorageBytes,
+		Sites: me.Usage.Sites, SitesMax: me.Plan.Limits.Sites,
+		Devices: me.Usage.Devices, DevicesMax: me.Plan.Limits.Devices,
+		AI: me.Plan.Limits.AIUsage > 0,
 	}
 	if me.Email != nil {
 		a.Email = *me.Email

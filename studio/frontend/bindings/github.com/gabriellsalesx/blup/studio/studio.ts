@@ -102,6 +102,13 @@ export function AutostartEnabled(): $CancellablePromise<boolean> {
 }
 
 /**
+ * BlupAIUsage is how much of the plan's AI allowance was used this month.
+ */
+export function BlupAIUsage(): $CancellablePromise<app$0.AIQuota> {
+    return $Call.ByID(3583473754);
+}
+
+/**
  * BlupAccount is the Blup Cloud account signed in here (SignedIn false
  * when none).
  */

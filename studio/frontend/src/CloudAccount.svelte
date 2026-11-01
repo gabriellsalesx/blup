@@ -14,7 +14,8 @@
   // notes are "ready".
   // bare: the screen around already says what signing in is for (the
   // welcome), so only the button shows.
-  let { account = $bindable(null), bare = false }: { account?: Account | null; bare?: boolean } = $props();
+  // brief: the storage is shown around (the settings' usage), not here.
+  let { account = $bindable(null), bare = false, brief = false }: { account?: Account | null; bare?: boolean; brief?: boolean } = $props();
   const c = t.cloud;
 
   let error = $state("");
@@ -114,7 +115,7 @@
   {:else}
     <p class="muted">
       {account.live ? c.live : c.manual}
-      {c.storage.replace("{used}", size(account.storageBytes)).replace("{total}", size(account.storageMB * 1048576))}.
+      {#if !brief}{c.storage.replace("{used}", size(account.storageBytes)).replace("{total}", size(account.storageMB * 1048576))}.{/if}
       {#if !account.live}<button class="link" onclick={() => OpenBlupCloud("/conta/plano")}>{c.upgrade}</button>{/if}
     </p>
   {/if}

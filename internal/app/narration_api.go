@@ -121,7 +121,11 @@ func speechModels(ctx context.Context) ([]narrate.ModelInfo, error) {
 	if err != nil || len(list) == 0 {
 		return []narrate.ModelInfo{narrate.Known()}, err
 	}
-	return list, nil
+	// Kokoro runs on the computer for free (the local voice): not offered
+	// paid through OpenRouter.
+	return slices.DeleteFunc(list, func(m narrate.ModelInfo) bool {
+		return strings.Contains(strings.ToLower(m.ID), "kokoro")
+	}), nil
 }
 
 // NarrationModels lists OpenRouter's voice models that can read a site in

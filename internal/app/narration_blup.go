@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
@@ -25,6 +26,32 @@ func blupAIIncluded(ctx context.Context) bool {
 	}
 	me, err := c.Me(ctx)
 	return err == nil && me.Plan.Limits.AIUsage > 0
+}
+
+// AIQuota is how much of the month's AI allowance was used (Percent, 0 to
+// 100; Left is what can still be used now, the week's cap counted) and
+// when it starts again.
+type AIQuota struct {
+	Percent  int    `json:"percent"`
+	Left     int    `json:"left"`
+	ResetsAt string `json:"resetsAt"` // RFC 3339
+}
+
+// BlupAIUsage reads the AI allowance of the account signed in here.
+func BlupAIUsage(ctx context.Context) (AIQuota, error) {
+	c, _, err := blupClient()
+	if err != nil {
+		return AIQuota{}, errors.New(describe(err))
+	}
+	u, err := c.AIUsage(ctx)
+	if err != nil {
+		return AIQuota{}, errors.New(describe(err))
+	}
+	q := AIQuota{Percent: u.Percent, ResetsAt: u.ResetsAt.Format(time.RFC3339)}
+	if u.MonthMicros > 0 {
+		q.Left = int(u.Left() * 100 / u.MonthMicros)
+	}
+	return q, nil
 }
 
 // NarrationCost is what narrating a note through Blup Cloud would use.

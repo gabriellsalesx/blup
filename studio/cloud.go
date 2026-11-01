@@ -38,6 +38,11 @@ func (s *Studio) BlupAccount() (app.BlupAccount, error) {
 	return app.LoadBlupAccount(context.Background())
 }
 
+// BlupAIUsage is how much of the plan's AI allowance was used this month.
+func (s *Studio) BlupAIUsage() (app.AIQuota, error) {
+	return app.BlupAIUsage(context.Background())
+}
+
 // BlupLoginCode is what the person checks in the browser.
 type BlupLoginCode struct {
 	Code string `json:"code"`

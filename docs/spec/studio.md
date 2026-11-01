@@ -275,7 +275,15 @@ A lixeira do Blup fica em `<site>/.blup/trash`, fora das notas, com diretório d
 
 ## Configurações globais
 
-`SettingsModal.svelte` contém abas geral, aparência, editor, contas, senha geral, IA, narração, terminal e atalhos. Controla idioma, preferências visuais e de editor, prévia ao abrir, contas, senha entre sites, OpenRouter, motor local, escolha/amostra de voz por idioma, tamanho do terminal e agentes encontrados. O link de ajuda é definido em `DOCS` nesse arquivo.
+`SettingsModal.svelte` organiza as abas em grupos na lateral:
+
+- no topo, o cartão da conta do Blup Cloud (e-mail e plano, ou "Entrar no Blup Cloud"), que abre a aba Blup Cloud. Ela vale para todos os cofres e sites: entrar e sair (`CloudAccount.svelte` com `brief`), senha das notas e o uso do plano em barras: armazenamento, IA do mês (`BlupAIUsage`: percentual usado, data em que renova e quanto dá para usar agora pelo teto semanal), sites publicados e computadores, com Ver planos e Gerenciar conta;
+- Studio: geral (idioma, autostart, bandeja), aparência, editor, atalhos e terminal;
+- Sites: publicação (GitHub e Cloudflare) e senha geral dos posts;
+- IA e voz: IA (a IA do Blup Cloud, a voz no computador e o OpenRouter) e narração;
+- no rodapé, `Blup Studio v<versão>`, que abre a aba Sobre (versão, novidades, documentação e código).
+
+O link de ajuda é definido em `DOCS` nesse arquivo. A lista de modelos do OpenRouter não traz o Kokoro, que já roda grátis no computador.
 
 Os atalhos padrão de `src/keys.ts` são (os marcados com cofre só agem num cofre de anotações; a tela cheia só com um canvas ou desenho aberto):
 
