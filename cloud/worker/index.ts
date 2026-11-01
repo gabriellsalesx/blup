@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { auth, type Session } from "./auth";
 import { activeSubscription, planOf } from "./account";
-import { PLANS, planNamed } from "./plans";
+import { PLANS, SUGGESTED, planNamed } from "./plans";
 import { staffApi } from "./staff";
 import { syncApi } from "./sync";
 import { devicesOf, usageOf } from "./usage";
@@ -79,7 +79,7 @@ const routes = app
 	// What the panel needs before signing in (public keys only).
 	.get("/config", (c) => c.json({ turnstileSiteKey: c.env.TURNSTILE_SITE_KEY }))
 	// The plans, for the panel and the Studio (no Stripe IDs).
-	.get("/plans", (c) => c.json(PLANS.map(({ name, label, priceCents, currency, limits, perks }) => ({ name, label, priceCents, currency, limits, perks }))))
+	.get("/plans", (c) => c.json(PLANS.map(({ name, label, priceCents, yearlyCents, currency, limits, perks }) => ({ name, label, priceCents, yearlyCents, currency, limits, perks, suggested: name === SUGGESTED }))))
 	.get("/me", session, signedIn, async (c) => {
 		const { user } = c.get("session")!;
 		// The portal cancels by setting cancel_at, not cancel_at_period_end.

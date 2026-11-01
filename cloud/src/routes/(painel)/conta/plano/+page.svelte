@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from "svelte";
 	import { page } from "$app/state";
 	import Check from "@lucide/svelte/icons/check";
 	import { authClient, message } from "#lib/auth.ts";
@@ -11,17 +12,21 @@
 	// Stripe's own pages to pay and to manage the subscription.
 	let { data } = $props();
 	let busy = $state(false);
+	// Yearly: ten months' price for twelve.
+	let yearly = $state(false);
 	const current = $derived(data.me.plan);
 	const paid = $derived(current.name !== "free");
 	const when = (d: string) => new Date(d).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
 
 	// Back from Stripe's checkout.
-	if (page.url.searchParams.get("assinatura") === "ok") toast("Assinatura feita. Bem-vindo ao Pro!");
+	onMount(() => {
+		if (page.url.searchParams.get("assinatura") === "ok") toast(`Assinatura feita. Bem-vindo ao ${data.me.plan.label}!`);
+	});
 
 	async function subscribe(plan: string) {
 		busy = true;
 		const back = `${location.origin}/conta/plano`;
-		const { error } = await authClient.subscription.upgrade({ plan, successUrl: `${back}?assinatura=ok`, cancelUrl: back });
+		const { error } = await authClient.subscription.upgrade({ plan, annual: yearly, successUrl: `${back}?assinatura=ok`, cancelUrl: back });
 		busy = false;
 		if (error) toast(message(error), { kind: "error" });
 	}
@@ -37,15 +42,26 @@
 <h1 class="text-3xl font-extrabold tracking-tight">Plano</h1>
 <p class="mt-2 text-neutral-500">Notas sincronizadas com criptografia de ponta a ponta e sites no ar sem esforço. Cancele quando quiser.</p>
 
-<div class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+<div class="mt-8 inline-flex rounded-full border border-neutral-200 p-1 text-sm font-semibold dark:border-neutral-800" role="radiogroup" aria-label="Cobrança">
+	<button role="radio" aria-checked={!yearly} class="rounded-full px-4 py-1.5 {!yearly ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900' : 'text-neutral-500'}" onclick={() => (yearly = false)}>Mensal</button>
+	<button role="radio" aria-checked={yearly} class="rounded-full px-4 py-1.5 {yearly ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900' : 'text-neutral-500'}" onclick={() => (yearly = true)}>Anual <span class="font-normal {yearly ? '' : 'text-green-600'}">2 meses grátis</span></button>
+</div>
+
+<div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 	{#each data.plans as p (p.name)}
 		{@const mine = p.name === current.name}
-		<div class="flex flex-col rounded-xl border p-5 {mine ? 'border-blup ring-1 ring-blup' : 'border-neutral-200 dark:border-neutral-800'}">
+		<div class="flex flex-col rounded-xl border p-5 {mine || (p.suggested && !paid) ? 'border-blup ring-1 ring-blup' : 'border-neutral-200 dark:border-neutral-800'}">
 			<div class="flex items-baseline justify-between gap-2">
 				<h2 class="font-semibold">{p.label}</h2>
-				{#if mine}<span class="rounded-full bg-blup/10 px-2 py-0.5 text-xs font-semibold text-blup">Seu plano</span>{/if}
+				{#if mine}<span class="rounded-full bg-blup/10 px-2 py-0.5 text-xs font-semibold text-blup">Seu plano</span>
+				{:else if p.suggested}<span class="rounded-full bg-blup px-2 py-0.5 text-xs font-semibold text-white">Mais escolhido</span>{/if}
 			</div>
-			<p class="mt-1"><b class="text-2xl">{money(p.priceCents, p.currency)}</b> <span class="text-sm text-neutral-500">por mês</span></p>
+			{#if yearly && p.yearlyCents}
+				<p class="mt-1"><b class="text-2xl">{money(p.yearlyCents, p.currency)}</b> <span class="text-sm text-neutral-500">por ano</span></p>
+				<p class="text-sm text-neutral-500">{money(Math.round(p.yearlyCents / 12), p.currency)} por mês</p>
+			{:else}
+				<p class="mt-1"><b class="text-2xl">{money(p.priceCents, p.currency)}</b> <span class="text-sm text-neutral-500">por mês</span></p>
+			{/if}
 			<ul class="mt-4 grid flex-1 content-start gap-1.5 text-sm">
 				{#each p.perks as perk (perk)}<li class="flex items-start gap-2"><Check class="mt-0.5 size-4 shrink-0 text-green-600" />{perk}</li>{/each}
 			</ul>

@@ -132,14 +132,14 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 				onEvent: async (event) => cfg.onStripeEvent?.(event, stripeClient),
 				subscription: {
 					enabled: true,
-					plans: PLANS.filter((p) => p.lookupKey).map((p) => ({ name: p.name, lookupKey: p.lookupKey, limits: p.limits })),
+					plans: PLANS.filter((p) => p.lookupKey).map((p) => ({ name: p.name, lookupKey: p.lookupKey, annualDiscountLookupKey: p.yearlyLookupKey, limits: p.limits })),
 					// Stripe's recommendations: flexible billing mode, and a label to
 					// follow this checkout flow in the Dashboard (8 random letters).
 					getCheckoutSessionParams: async () => ({
 						params: {
 							locale: "pt-BR",
 							subscription_data: { billing_mode: { type: "flexible" } },
-							integration_identifier: "blup_cloud_pro_qmzrtxwa",
+							integration_identifier: "blup_cloud_plans_qmzrtxwa",
 						},
 					}),
 				},
