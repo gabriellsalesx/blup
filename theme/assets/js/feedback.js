@@ -554,9 +554,9 @@ async function board() {
   const bar = root.querySelector(".fbb-bar");
   const state = { kind: "all", status: "", sort: "top", q: "" };
   let posts = [];
-  // In Blup Studio's preview, example requests (the section note's
-  // "examples") fill the board until a real one comes.
-  const examples = [...(root.querySelector("[data-fbb-examples]")?.content.children || [])];
+  // Example requests (the section note's "examples", drawn by the page)
+  // fill the board until a real one comes.
+  const examples = [...list.querySelectorAll(".fbb-example")];
   const note = root.querySelector("[data-fbb-note]");
 
   try {
@@ -573,25 +573,57 @@ async function board() {
     }
   }
 
-  // The list: the requests that pass the filters, in the chosen order.
-  const chip = (cls, text) => el("span", { className: `fbb-chip ${cls}`, textContent: text });
-  const plain = (html) => { const d = document.createElement("div"); d.innerHTML = html || ""; return d.textContent || ""; };
+  // The list: the requests that pass the filters, in the chosen order,
+  // each a card like the page's examples (feedback-examples.html).
+  const plain = (html) => { const d = document.createElement("div"); d.innerHTML = html || ""; return (d.textContent || "").trim(); };
+  const icon = (name) => {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "icon");
+    svg.setAttribute("aria-hidden", "true");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", `#i-${name}`);
+    svg.append(use);
+    return svg;
+  };
+  const comments = (n) => (n === 1 ? bt.comment1 : (bt.commentN || "").replace("{n}", n));
+  const ago = (date) => {
+    const d = Math.max(0, Math.floor((Date.now() - Date.parse(date)) / 864e5));
+    return d === 0 ? bt.today : d === 1 ? bt.day1 : (bt.dayN || "").replace("{n}", d);
+  };
+  const line = (p) => {
+    const status = postStatus(p), kind = postKind(p);
+    const out = el("p", { className: "fbb-line" });
+    if (status !== "new") out.append(el("span", { className: `fbb-status s-${status}`, textContent: bt.statuses?.[status] || status }));
+    out.append(el("span", { className: "fbb-cat", textContent: bt.boards?.[kind] || kind }));
+    return out;
+  };
+  const avatar = (user) => {
+    const a = el("span", { className: "fbb-avatar" });
+    if (user?.avatar_url) a.append(el("img", { src: `${user.avatar_url}&s=48`, alt: "", loading: "lazy" }));
+    else a.append(icon("user"));
+    a.title = user?.login || "";
+    return a;
+  };
   const row = (issue) => {
     const p = issue.data;
-    const kind = postKind(p), status = postStatus(p), written = postLang(p);
-    const vote = el("button", { type: "button", className: "fbb-vote" }, el("span", { className: "fbb-up", textContent: "▲" }), el("b", { textContent: String(issue.count("+1")) }));
+    const written = postLang(p);
+    const vote = el("button", { type: "button", className: "fbb-vote" }, icon("chevron-up"), el("b", { textContent: String(issue.count("+1")) }));
     vote.setAttribute("aria-label", `${bt.votes}: ${issue.count("+1")}`);
     vote.setAttribute("aria-pressed", String(!!issue.mine?.has("+1")));
     vote.onclick = () => issue.toggle("+1");
-    const open = el("a", { href: `#p-${p.number}`, className: "fbb-title", textContent: p.title });
     const meta = el("div", { className: "fbb-meta" },
-      chip(`k-${kind}`, bt.kinds?.[kind] || kind),
-      chip(`s-${status}`, bt.statuses?.[status] || status),
-      el("span", { textContent: p.user?.login || "" }),
-      el("span", { textContent: `💬 ${p.comments || 0}` }));
+      el("span", {}, icon("message-square"), comments(p.comments || 0)),
+      avatar(p.user),
+      el("span", {}, icon("clock"), ago(p.created_at)));
     if (written && written !== pageLang) meta.append(el("span", { className: "fb-lang", textContent: (bt.written || "").replace("{lang}", LANG_NAMES[written] || written) }));
-    return el("li", { className: "fbb-item" }, vote, el("div", { className: "fbb-main" }, open, meta));
+    const main = el("div", { className: "fbb-main" }, line(p), el("a", { href: `#p-${p.number}`, className: "fbb-title", textContent: p.title }));
+    const text = plain(p.body_html);
+    if (text) main.append(el("p", { className: "fbb-excerpt", textContent: text }));
+    main.append(meta);
+    return el("li", { className: "fbb-item" }, vote, main);
   };
+  const active = (status) => status === "new" || status === "planned" || status === "progress";
+  const statusOk = (status) => !state.status || (state.status === "active" ? active(status) : status === state.status);
   const counts = () => {
     for (const tab of root.querySelectorAll(".fbb-tab")) {
       const k = tab.dataset.kind;
@@ -605,15 +637,16 @@ async function board() {
     if (!posts.length && examples.length) {
       const shown = examples
         .filter((x) => state.kind === "all" || x.dataset.kind === state.kind)
-        .filter((x) => !state.status || x.dataset.status === state.status)
-        .filter((x) => !q || x.textContent.toLowerCase().includes(q));
+        .filter((x) => statusOk(x.dataset.status))
+        .filter((x) => !q || x.textContent.toLowerCase().includes(q))
+        .sort((a, b) => (state.sort === "top" ? b.dataset.votes - a.dataset.votes : a.dataset.days - b.dataset.days));
       list.replaceChildren(...(shown.length ? shown : [el("li", { className: "fbb-empty", textContent: bt.nothing })]));
       counts();
       return;
     }
     const shown = posts
       .filter((i) => state.kind === "all" || postKind(i.data) === state.kind)
-      .filter((i) => !state.status || postStatus(i.data) === state.status)
+      .filter((i) => statusOk(postStatus(i.data)))
       .filter((i) => !q || i.data.title.toLowerCase().includes(q) || plain(i.data.body_html).toLowerCase().includes(q))
       .sort((a, b) => (state.sort === "top" ? b.count("+1") - a.count("+1") : 0) || Date.parse(b.data.created_at) - Date.parse(a.data.created_at));
     list.replaceChildren(...(shown.length ? shown.map(row) : [el("li", { className: "fbb-empty", textContent: posts.length ? bt.nothing : bt.empty })]));
@@ -652,19 +685,19 @@ async function board() {
     }
     list.hidden = bar.hidden = true;
     const p = issue.data;
-    const kind = postKind(p), status = postStatus(p), written = postLang(p);
-    const backLink = el("a", { href: "#", className: "fbb-back", textContent: `← ${bt.back}` });
+    const written = postLang(p);
+    const backLink = el("a", { href: "#", className: "fbb-back" }, icon("arrow-left"), bt.back);
     backLink.onclick = (e) => { e.preventDefault(); history.pushState(null, "", location.pathname + location.search); show(); };
-    const meta = el("div", { className: "fbb-meta" }, chip(`k-${kind}`, bt.kinds?.[kind] || kind), chip(`s-${status}`, bt.statuses?.[status] || status),
-      el("a", { href: p.user?.html_url, rel: "noopener", textContent: p.user?.login || "" }),
-      el("time", { dateTime: p.created_at, textContent: new Date(p.created_at).toLocaleDateString(lang, { day: "numeric", month: "short", year: "numeric" }) }));
+    const meta = el("div", { className: "fbb-meta" },
+      el("a", { href: p.user?.html_url, rel: "noopener" }, avatar(p.user), p.user?.login || ""),
+      el("span", {}, icon("clock"), el("time", { dateTime: p.created_at, textContent: new Date(p.created_at).toLocaleDateString(lang, { day: "numeric", month: "short", year: "numeric" }) })));
     if (written && written !== pageLang) meta.append(el("span", { className: "fb-lang", textContent: (bt.written || "").replace("{lang}", LANG_NAMES[written] || written) }));
     const body = el("div", { className: "prose fbb-body" });
     body.innerHTML = p.body_html || ""; // rendered and sanitized by GitHub
     const block = root.querySelector("[data-fbb-block]").content.firstElementChild.cloneNode(true);
     block.dataset.fbIssue = String(p.number);
     block.querySelectorAll('a[href^="https://github.com/"]').forEach((a) => { a.href = a.href.replace(/\/issues(#.*)?$/, `/issues/${p.number}$1`); });
-    detail.replaceChildren(backLink, el("h2", { className: "fbb-detail-title", textContent: p.title }), meta, body, block);
+    detail.replaceChildren(backLink, line(p), el("h2", { className: "fbb-detail-title", textContent: p.title }), meta, body, block);
     detail.hidden = false;
     detail.scrollIntoView({ block: "start" });
     await attach(block, issue, lang, false);

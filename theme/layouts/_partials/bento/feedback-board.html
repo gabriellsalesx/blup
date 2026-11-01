@@ -16,37 +16,59 @@ saying so only in Blup Studio's preview. */ -}}
   "kinds" (dict "feature" (T "fbbOne_feature") "bug" (T "fbbOne_bug") "improvement" (T "fbbOne_improvement") "other" (T "fbbOne_other"))
   "statuses" (dict "new" (T "fbbStatus_new") "planned" (T "fbbStatus_planned") "progress" (T "fbbStatus_progress") "done" (T "fbbStatus_done") "declined" (T "fbbStatus_declined"))
   "empty" (T "fbbEmpty") "nothing" (T "fbbNothing") "back" (T "fbbBack") "written" (T "fbbWritten") "votes" (T "fbVote")
-  "comments" (T "fbComments") "error" (T "fbError") "send" (T "fbbSend") -}}
-<main id="main" class="roadmap fbb-page">
-  <header class="roadmap-head">
-    <h1>{{ partial "title.html" . }}</h1>
-    {{- with .Description | default (partial "content.html" . | plainify | htmlUnescape | strings.TrimSpace) }}<p>{{ . }}</p>{{ end }}
-  </header>
-  {{- if $repo }}
-  <div class="fbb" data-fb-board data-fbb-text="{{ $text | jsonify }}" data-fbb-issues="https://github.com/{{ $repo }}/issues">
-    <div class="fbb-bar">
-      <div class="fbb-tabs" role="tablist" aria-label="{{ T "fbbKind" }}">
+  "comments" (T "fbComments") "error" (T "fbError") "send" (T "fbbSend")
+  "boards" (dict "feature" (T "fbbKind_feature") "bug" (T "fbbKind_bug") "improvement" (T "fbbKind_improvement") "other" (T "fbbKind_other"))
+  "comment1" (T "fbbComment1") "commentN" (T "fbbCommentN") "today" (T "fbbToday") "day1" (T "fbbDay1") "dayN" (T "fbbDayN") -}}
+<main id="main" class="fbb-page">
+  <div class="fbb"{{ if $repo }} data-fb-board data-fbb-text="{{ $text | jsonify }}" data-fbb-issues="https://github.com/{{ $repo }}/issues"{{ end }}>
+    {{- /* The categories, FeedLog's "Boards": all, then one per kind. */}}
+    <nav class="fbb-side" aria-label="{{ T "fbbBoards" }}">
+      <h2>{{ T "fbbBoards" }}</h2>
+      <div class="fbb-tabs" role="tablist">
         {{- range slice "all" "feature" "bug" "improvement" "other" }}
-        <button type="button" role="tab" class="fbb-tab k-{{ . }}" data-kind="{{ . }}" aria-selected="{{ eq . "all" }}"><span>{{ T (printf "fbbKind_%s" .) }}</span><b data-count></b></button>
+        {{- $k := . }}
+        {{- $n := len $examples }}{{ if ne $k "all" }}{{ $n = len (where $examples "kind" $k) }}{{ end }}
+        <button type="button" role="tab" class="fbb-tab" data-kind="{{ $k }}" aria-selected="{{ eq $k "all" }}">
+          <svg class="icon" aria-hidden="true"><use href="#i-{{ cond (eq $k "all") "layout-grid" "folder" }}"/></svg>
+          <span>{{ T (printf "fbbKind_%s" $k) }}</span><b data-count>{{ $n }}</b>
+        </button>
         {{- end }}
       </div>
-      <div class="fbb-tools">
-        <select data-fbb-status aria-label="{{ T "fbbStatus" }}">
-          <option value="">{{ T "fbbAllStatus" }}</option>
-          {{- range $statuses }}<option value="{{ . }}">{{ T (printf "fbbStatus_%s" .) }}</option>{{ end }}
-        </select>
-        <div class="fbb-sort" role="tablist" aria-label="{{ T "fbbSort" }}">
-          <button type="button" role="tab" data-sort="top" aria-selected="true">{{ T "fbbTop" }}</button>
-          <button type="button" role="tab" data-sort="recent" aria-selected="false">{{ T "fbbRecent" }}</button>
+    </nav>
+    <div class="fbb-content">
+      <header class="fbb-bar">
+        <h1>{{ partial "title.html" . }}</h1>
+        <div class="fbb-tools">
+          <label class="fbb-filter">
+            <svg class="icon" aria-hidden="true"><use href="#i-list-filter"/></svg>
+            <select data-fbb-status aria-label="{{ T "fbbStatus" }}">
+              <option value="">{{ T "fbbAllStatus" }}</option>
+              <option value="active">{{ T "fbbActive" }}</option>
+              {{- range $statuses }}<option value="{{ . }}">{{ T (printf "fbbStatus_%s" .) }}</option>{{ end }}
+            </select>
+          </label>
+          <div class="fbb-sort" role="tablist" aria-label="{{ T "fbbSort" }}">
+            <button type="button" role="tab" data-sort="top" aria-selected="true">{{ T "fbbTop" }}</button>
+            <button type="button" role="tab" data-sort="recent" aria-selected="false">{{ T "fbbRecent" }}</button>
+          </div>
+          <label class="fbb-search">
+            <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="search" data-fbb-search placeholder="{{ T "fbbSearch" }}" aria-label="{{ T "fbbSearch" }}">
+          </label>
+          {{- if $repo }}
+          <a class="button fbb-new" data-fbb-new href="https://github.com/{{ $repo }}/issues/new"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>{{ T "fbbNew" }}</a>
+          {{- end }}
         </div>
-        <input type="search" data-fbb-search placeholder="{{ T "fbbSearch" }}" aria-label="{{ T "fbbSearch" }}">
-        <a class="button" data-fbb-new href="https://github.com/{{ $repo }}/issues/new"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"/></svg>{{ T "fbbNew" }}</a>
-      </div>
+      </header>
+      {{- if not $repo }}<p class="fbb-note">{{ T "fbbOff" }}</p>{{ end }}
+      {{- if and $examples $preview }}<p class="fbb-note" data-fbb-note>{{ T "fbbExamples" }}</p>{{ end }}
+      <ol class="fbb-list" data-fbb-list aria-live="polite">
+        {{- if $examples }}{{ partial "bento/feedback-examples.html" $examples }}
+        {{- else if $repo }}<li class="fbb-empty">{{ T "fbbLoading" }}</li>{{ end }}
+      </ol>
+      <article class="fbb-detail" data-fbb-detail hidden></article>
     </div>
-    {{- if and $examples $preview }}<p class="fbb-note" data-fbb-note hidden>{{ T "fbbExamples" }}</p>{{ end }}
-    <ol class="fbb-list" data-fbb-list aria-live="polite"><li class="fbb-empty">{{ T "fbbLoading" }}</li></ol>
-    {{- with $examples }}<template data-fbb-examples>{{ partial "bento/feedback-examples.html" . }}</template>{{ end }}
-    <article class="fbb-detail" data-fbb-detail hidden></article>
+    {{- if $repo }}
     <dialog class="fbb-dialog" data-fbb-dialog aria-labelledby="fbb-new-title">
       <form method="dialog" class="fbb-form">
         <h2 id="fbb-new-title">{{ T "fbbNew" }}</h2>
@@ -65,15 +87,9 @@ saying so only in Blup Studio's preview. */ -}}
         </div>
       </form>
     </dialog>
+    {{- end }}
+    {{- if $repo }}
     <template data-fbb-block>{{ partial "bento/feedback-block.html" (dict "n" 0 "url" (printf "https://github.com/%s/issues" $repo) "kind" "roadmap") }}</template>
+    {{- end }}
   </div>
-  {{- else }}
-  <p class="empty">{{ T "fbbOff" }}</p>
-  {{- with $examples }}
-  <div class="fbb">
-    {{- if $preview }}<p class="fbb-note">{{ T "fbbExamples" }}</p>{{ end }}
-    <ol class="fbb-list">{{ partial "bento/feedback-examples.html" . }}</ol>
-  </div>
-  {{- end }}
-  {{- end }}
 </main>

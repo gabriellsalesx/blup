@@ -10,30 +10,35 @@ examples:
     status: planned
     votes: 42
     comments: 8
+    days: 2
     body: "Seguir el tema del sistema, sin cambiarlo a mano cada noche."
   - title: "La búsqueda no encuentra palabras con tilde"
     kind: bug
     status: progress
     votes: 17
     comments: 3
+    days: 9
     body: "Buscar \"configuración\" no trae nada, pero \"configuracion\" sí."
   - title: "Atajo para crear una nota nueva"
     kind: improvement
     status: new
     votes: 11
     comments: 2
+    days: 15
     body: "Un atajo de teclado ayudaría mucho a quien escribe todo el día."
   - title: "Exportar a PDF"
     kind: feature
     status: done
     votes: 29
     comments: 5
+    days: 22
     body: "Poder descargar una página entera en PDF para enviarla por correo."
   - title: "Versión para Windows XP"
     kind: other
     status: declined
     votes: 3
     comments: 1
+    days: 40
     body: "Todavía uso una computadora vieja en la oficina."
 ---
 %%

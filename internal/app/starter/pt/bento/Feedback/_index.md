@@ -10,30 +10,35 @@ examples:
     status: planned
     votes: 42
     comments: 8
+    days: 2
     body: "Seguir o tema do sistema, sem precisar trocar à mão toda noite."
   - title: "Busca não acha palavras com acento"
     kind: bug
     status: progress
     votes: 17
     comments: 3
+    days: 9
     body: "Procurar \"configuração\" não traz nada, mas \"configuracao\" traz."
   - title: "Atalho para criar uma nota nova"
     kind: improvement
     status: new
     votes: 11
     comments: 2
+    days: 15
     body: "Um atalho de teclado ajudaria muito quem escreve o dia todo."
   - title: "Exportar para PDF"
     kind: feature
     status: done
     votes: 29
     comments: 5
+    days: 22
     body: "Poder baixar uma página inteira em PDF para mandar por e-mail."
   - title: "Versão para Windows XP"
     kind: other
     status: declined
     votes: 3
     comments: 1
+    days: 40
     body: "Ainda uso um computador antigo no escritório."
 ---
 %%

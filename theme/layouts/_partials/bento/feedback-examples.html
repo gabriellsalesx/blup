@@ -1,18 +1,24 @@
 {{- /* Example requests of the feedback board, from the "examples" list of
-the section's note: on the board while it has no real request (or
-comments are off), as the other sections bring example notes. A click opens the request's text. Param: the examples. */ -}}
+the section's note: on the board while it has no real request (or comments
+are off), as the other sections bring example notes. The same card
+feedback.js draws for a real request. Param: the examples. */ -}}
 {{- range . }}
 {{- $kind := .kind | default "other" }}{{ $status := .status | default "new" }}
-<li class="fbb-item fbb-example" data-kind="{{ $kind }}" data-status="{{ $status }}">
-  <span class="fbb-vote" aria-label="{{ T "fbVote" }}: {{ .votes | default 0 }}"><span class="fbb-up">▲</span><b>{{ .votes | default 0 }}</b></span>
-  <details class="fbb-main">
-    <summary class="fbb-title">{{ .title }}</summary>
+{{- $comments := int (.comments | default 0) }}{{ $days := int (.days | default 0) }}
+<li class="fbb-item fbb-example" data-kind="{{ $kind }}" data-status="{{ $status }}" data-votes="{{ .votes | default 0 }}" data-days="{{ $days }}">
+  <span class="fbb-vote" aria-label="{{ T "fbVotes" }}: {{ .votes | default 0 }}"><svg class="icon" aria-hidden="true"><use href="#i-chevron-up"/></svg><b>{{ .votes | default 0 }}</b></span>
+  <div class="fbb-main">
+    <p class="fbb-line">
+      {{- if ne $status "new" }}<span class="fbb-status s-{{ $status }}">{{ T (printf "fbbStatus_%s" $status) }}</span>{{ end -}}
+      <span class="fbb-cat">{{ T (printf "fbbKind_%s" $kind) }}</span>
+    </p>
+    <span class="fbb-title">{{ .title }}</span>
+    {{- with .body }}<p class="fbb-excerpt">{{ . }}</p>{{ end }}
     <div class="fbb-meta">
-      <span class="fbb-chip k-{{ $kind }}">{{ T (printf "fbbOne_%s" $kind) }}</span>
-      <span class="fbb-chip s-{{ $status }}">{{ T (printf "fbbStatus_%s" $status) }}</span>
-      <span>💬 {{ .comments | default 0 }}</span>
+      <span><svg class="icon" aria-hidden="true"><use href="#i-message-square"/></svg>{{ cond (eq $comments 1) (T "fbbComment1") (replace (T "fbbCommentN") "{n}" (string $comments)) }}</span>
+      <span class="fbb-avatar" aria-hidden="true"><svg class="icon"><use href="#i-user"/></svg></span>
+      <span><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>{{ cond (eq $days 0) (T "fbbToday") (cond (eq $days 1) (T "fbbDay1") (replace (T "fbbDayN") "{n}" (string $days))) }}</span>
     </div>
-    {{- with .body }}<p class="fbb-ex-body">{{ . }}</p>{{ end }}
-  </details>
+  </div>
 </li>
 {{- end }}

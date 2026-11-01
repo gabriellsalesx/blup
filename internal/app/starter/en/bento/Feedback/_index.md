@@ -10,30 +10,35 @@ examples:
     status: planned
     votes: 42
     comments: 8
+    days: 2
     body: "Follow the system theme instead of switching by hand every night."
   - title: "Search misses accented words"
     kind: bug
     status: progress
     votes: 17
     comments: 3
+    days: 9
     body: "Searching for \"café\" finds nothing, but \"cafe\" does."
   - title: "Shortcut to create a new note"
     kind: improvement
     status: new
     votes: 11
     comments: 2
+    days: 15
     body: "A keyboard shortcut would help a lot when writing all day."
   - title: "Export to PDF"
     kind: feature
     status: done
     votes: 29
     comments: 5
+    days: 22
     body: "Download a whole page as a PDF to send by email."
   - title: "Windows XP version"
     kind: other
     status: declined
     votes: 3
     comments: 1
+    days: 40
     body: "I still use an old computer at the office."
 ---
 %%

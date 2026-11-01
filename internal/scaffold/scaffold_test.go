@@ -433,21 +433,22 @@ func TestFeedbackBoard(t *testing.T) {
 		}
 		page := string(b)
 		if !on {
-			if strings.Contains(page, "data-fb-board") || !strings.Contains(page, `<p class="empty">`) {
-				t.Error("without comments the board is a note, not the board")
+			if strings.Contains(page, "data-fb-board") || strings.Contains(page, "data-fbb-new") || !strings.Contains(page, "O quadro de feedback precisa dos comentários") {
+				t.Error("without comments the board can't take requests and says why")
 			}
 			// The examples still show (as the other sections' notes); the
 			// notice saying so is the preview's only.
-			if !strings.Contains(page, `<li class="fbb-item fbb-example" data-kind="bug" data-status="planned">`) || strings.Contains(page, "fbb-note") {
+			if !strings.Contains(page, `<li class="fbb-item fbb-example" data-kind="bug" data-status="planned"`) || strings.Contains(page, "data-fbb-note") {
 				t.Error("without comments the examples show, without the preview's notice")
 			}
 			continue
 		}
 		for _, want := range []string{
 			`data-fb-board`, `data-fbb-issues="https://github.com/ana/produto-feedback/issues"`,
-			`data-kind="bug"`, `data-kind="improvement"`, `<dialog class="fbb-dialog"`,
-			`<template data-fbb-block>`, `Peça e vote.`,
-			`<template data-fbb-examples>`, `<summary class="fbb-title">Modo escuro</summary>`,
+			`data-kind="bug" aria-selected="false"`, `data-kind="improvement"`, `<b data-count>1</b>`, `<dialog class="fbb-dialog"`,
+			`<template data-fbb-block>`, 
+			`<span class="fbb-title">Modo escuro</span>`, `<use href="#i-message-square"/>`, `<use href="#i-chevron-up"/>`,
+			`<span class="fbb-status s-planned">Planejado</span>`, `<span class="fbb-cat">Relatos de bug</span>`,
 		} {
 			if !strings.Contains(page, want) {
 				t.Errorf("the board page is missing %q", want)
