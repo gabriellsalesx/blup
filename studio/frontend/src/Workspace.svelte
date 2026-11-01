@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
-  import { HyprlandSetup, OpenURL, Sites, SearchNotes, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, CreateDatabase, SaveDatabaseSchema, DailyNote, RenameItem, MoveItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, OpenURL, Sites, RecentSites, SearchNotes, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, CreateDatabase, SaveDatabaseSchema, DailyNote, RenameItem, MoveItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings, SearchHit } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -40,6 +40,8 @@
   import Paperclip from "@lucide/svelte/icons/paperclip";
   import Users from "@lucide/svelte/icons/users";
   import Trash2 from "@lucide/svelte/icons/trash-2";
+  import House from "@lucide/svelte/icons/house";
+  import { blupOf, homeView } from "./blups.svelte";
   import PenLine from "@lucide/svelte/icons/pen-line";
   import Palette from "@lucide/svelte/icons/palette";
   import Languages from "@lucide/svelte/icons/languages";
@@ -72,7 +74,6 @@
   const TrashPanel = lazy(() => import("./TrashPanel.svelte"));
   const AuthorsPanel = lazy(() => import("./AuthorsPanel.svelte"));
   const AttachmentsPanel = lazy(() => import("./AttachmentsPanel.svelte"));
-  const DeleteSite = lazy(() => import("./DeleteSite.svelte"));
 
   let { site, onBack, onSwitch }: { site: SiteInfo; onBack: () => void; onSwitch: (s: SiteInfo) => void } = $props();
 
@@ -86,6 +87,11 @@
   let query = $state("");
   let switching = $state(false);
   let others = $state<SiteInfo[]>([]);
+  // The switcher: sites and vaults apart, the ones opened lately first,
+  // five of each; "See all" opens the home screen with that list whole.
+  const SWITCH_MAX = 5;
+  const otherSites = $derived(others.filter((o) => o.kind !== "notes"));
+  const otherVaults = $derived(others.filter((o) => o.kind === "notes"));
 
   const flat = (nodes: Node[]): Node[] => nodes.flatMap((n) => (n.dir ? flat(n.children ?? []) : [n]));
   const findDir = (nodes: Node[], path: string): Node | undefined => {
@@ -278,7 +284,17 @@
       else { reveal(rel + "/x"); folder = rel; }
     } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
   }
-  async function loadSites() { others = ((await Sites().catch(() => [])) ?? []).filter((o) => o.dir !== site.dir); }
+  async function loadSites() {
+    const [all, recent] = await Promise.all([Sites().catch(() => []), RecentSites().catch(() => [])]);
+    const rank = (dir: string) => { const i = (recent ?? []).findIndex((r) => r.dir === dir); return i < 0 ? Infinity : i; };
+    others = (all ?? []).filter((o) => o.dir !== site.dir)
+      .sort((a, b) => rank(a.dir) - rank(b.dir) || a.title.localeCompare(b.title));
+  }
+  async function seeAll(which: "sites" | "vaults") {
+    homeView.expand = which;
+    switching = false;
+    await back();
+  }
 
   let tree = $state<Node[]>([]);
   let current = $state(""); // path of the open note (or canvas, or drawing)
@@ -379,7 +395,6 @@
   }
   let prefsOpen = $state(false);
   let prefsTab = $state("general");
-  let deletingSite = $state(""); // a site in the delete window (from the switcher)
 
   // Once: the tip about the shortcut (Alt+Space by default) that shows and
   // hides the Studio from anywhere. On a Hyprland that isn't Omarchy, the
@@ -753,18 +768,21 @@
       {/if}
       <!-- The site switcher, like Obsidian's vault switcher. -->
       <div class="switcher">
-        <button class="vault" onclick={(e) => { e.stopPropagation(); switching = !switching; if (switching) loadSites(); }}><ChevronsUpDown size={15} /><span>{site.title}</span></button>
+        <button class="vault" onclick={(e) => { e.stopPropagation(); switching = !switching; if (switching) loadSites(); }} aria-expanded={switching}>{#if switching}<ChevronsDownUp size={15} />{:else}<ChevronsUpDown size={15} />{/if}<span>{site.title}</span></button>
         <button class="foot" title={t.prefs.helpIcon} onclick={() => OpenURL(DOCS)}><CircleHelp size={17} strokeWidth={1.75} /></button>
         <button class="foot" title={t.prefs.gear} onclick={() => (prefsOpen = true)}><Gear size={17} strokeWidth={1.75} /></button>
         {#if switching}
           <div class="vault-menu" role="menu">
-            {#each others as o (o.dir)}
-              <div class="vault-row">
-                <button onclick={async () => { await save(); StopPreview(); onSwitch(o); }}>{o.title}</button>
-                <button class="vault-del" title={t.del.deleteSite.replace("{name}", o.title)} aria-label={t.del.deleteSite.replace("{name}", o.title)} onclick={(e) => { e.stopPropagation(); switching = false; deletingSite = o.dir; }}><Trash2 size={15} /></button>
-              </div>
+            {#each [{ label: t.side.sitesLabel, list: otherSites, key: "sites" as const }, { label: t.side.vaultsLabel, list: otherVaults, key: "vaults" as const }] as sec (sec.key)}
+              {#if sec.list.length}
+                <p class="vault-head">{sec.label}</p>
+                {#each sec.list.slice(0, SWITCH_MAX) as o (o.dir)}
+                  <button class="vault-item" onclick={async () => { await save(); StopPreview(); onSwitch(o); }}><img src="/blups/{blupOf(o)}.svg" alt="" /><span>{o.title}</span></button>
+                {/each}
+                {#if sec.list.length > SWITCH_MAX}<button class="vault-more" onclick={() => seeAll(sec.key)}>{t.side.seeAll.replace("{n}", String(sec.list.length))}</button>{/if}
+              {/if}
             {/each}
-            <button class="all" onclick={back}>{t.side.allSites}</button>
+            <button class="all" onclick={back}><House size={15} />{t.side.allSites}</button>
           </div>
         {/if}
       </div>
@@ -848,7 +866,6 @@
   {#if prefsOpen}
     <SettingsModal start={prefsTab} siteLang={settings?.lang} onClose={() => { prefsOpen = false; prefsTab = "general"; }} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
   {/if}
-  {#if deletingSite}{#await DeleteSite() then { default: C }}<C dir={deletingSite} onClose={() => (deletingSite = "")} onDone={(dir) => { const name = others.find((o) => o.dir === dir)?.title ?? ""; deletingSite = ""; loadSites(); toast(t.toast.siteDeleted.replace("{name}", name)); }} />{/await}{/if}
   {#if cloudTip && !showTip}
     <!-- Once there is a site: keeping the notes in the cloud (optional). -->
     <aside class="cloud-tip" aria-label={t.hello.tipTitle}>
@@ -967,11 +984,13 @@
   .vault-menu { position: absolute; z-index: 6; inset-inline: .6rem; inset-block-end: calc(100% - .2rem); display: grid; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .18); }
   .vault-menu button { text-align: start; padding: .45rem .6rem; border-radius: .35rem; font-size: .875rem; }
   .vault-menu button:hover { background: var(--soft); }
-  .vault-row { display: flex; align-items: center; }
-  .vault-row > button:first-child { flex: 1; min-width: 0; text-align: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .vault-del { display: grid; place-items: center; flex: none; width: 1.9rem !important; padding: .35rem !important; color: var(--muted); }
-  .vault-del:hover { color: var(--red); }
-  .vault-menu .all { border-block-start: 1px solid var(--line); margin-block-start: .2rem; padding-block-start: .55rem; color: var(--muted); }
+  .vault-head { padding: .45rem .6rem .2rem; font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .vault-head:not(:first-child) { margin-block-start: .2rem; border-block-start: 1px solid var(--line); padding-block-start: .6rem; }
+  .vault-menu .vault-item { display: flex; align-items: center; gap: .55rem; min-width: 0; }
+  .vault-item img { width: 1.15rem; flex: none; }
+  .vault-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vault-menu .vault-more { color: var(--blue); font-size: .8rem; font-weight: 600; }
+  .vault-menu .all { display: flex; align-items: center; gap: .55rem; border-block-start: 1px solid var(--line); margin-block-start: .2rem; padding-block-start: .55rem; color: var(--muted); }
   .bar { grid-row: 1; grid-column: 3 / -1; display: flex; align-items: center; gap: .6rem; padding: .55rem 1rem; border-block-end: 1px solid var(--line); background: var(--panel); min-width: 0; }
   .ws.no-side .bar { grid-column: 2 / -1; }
   .crumbs { display: flex; align-items: center; min-width: 0; max-width: 45%; overflow: hidden; font-size: .85rem; white-space: nowrap; }

@@ -9,6 +9,8 @@
   import { toast, toastError } from "./toast.svelte";
   import BlupLogo from "./ui/BlupLogo.svelte";
   import Trash from "@lucide/svelte/icons/trash-2";
+  import Search from "@lucide/svelte/icons/search";
+  import { blupOf, homeView } from "./blups.svelte";
 
   // The list of sites, organized by the user: drag a site onto another to
   // make a folder, onto a folder to put it inside, onto a card's edge to
@@ -187,7 +189,27 @@
   let home = $state("");
   HomeDir().then((h) => (home = h));
   const short = (v: string) => (home && v.startsWith(home) ? "~" + v.slice(home.length) : v);
-  const blupOf = (s?: SiteInfo) => ({ bento: "turma-4", nori: "turma-2" })[s?.model ?? ""] ?? "turma-3";
+
+  // Each list shows two rows of cards (the "Create" card counts); "See
+  // all" shows it whole, with a search by name. The columns follow the
+  // window.
+  let cols = $state(3);
+  const measure = (el: HTMLElement) => {
+    const ro = new ResizeObserver(() => (cols = Math.max(1, getComputedStyle(el).gridTemplateColumns.split(" ").length)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  };
+  const limit = $derived(cols * 2 - 1);
+  let whole = $state({ sites: homeView.expand === "sites", vaults: homeView.expand === "vaults" });
+  homeView.expand = "";
+  let query = $state({ sites: "", vaults: "" });
+  const match = (s: SiteInfo | undefined, q: string) => !!s && s.title.toLocaleLowerCase().includes(q.trim().toLocaleLowerCase());
+  const siteItems = $derived(items.filter((it) => it.folder || !isVault(it.site)));
+  const siteCount = $derived(Object.values(sites).filter((s) => s.kind !== "notes").length);
+  // Searching shows the matching sites themselves, also those in folders.
+  const foundSites = $derived(Object.values(sites).filter((s) => s.kind !== "notes" && match(s, query.sites)).sort((a, b) => a.title.localeCompare(b.title)));
+  const shownItems = $derived(whole.sites ? siteItems : siteItems.slice(0, limit));
+  const shownVaults = $derived(whole.vaults ? vaults.filter((v) => match(v, query.vaults)) : vaults.slice(0, limit));
   const folders = $derived(items.filter((i) => i.folder));
   const focus = (el: HTMLInputElement) => { el.focus(); el.select(); };
 </script>
@@ -248,6 +270,19 @@
   </div>
 {/snippet}
 
+{#snippet searchBox(key: "sites" | "vaults")}
+  <label class="find"><Search size={16} /><input type="text" bind:value={query[key]} placeholder={h.find} aria-label={h.find} /></label>
+{/snippet}
+
+<!-- "See all (n)" when the list is longer than two rows, "Show less" when whole. -->
+{#snippet more(key: "sites" | "vaults", cards: number, total: number)}
+  {#if whole[key]}
+    <button class="more-btn" onclick={() => { whole[key] = false; query[key] = ""; }}>{h.less}</button>
+  {:else if cards > limit}
+    <button class="more-btn" onclick={() => (whole[key] = true)}>{h.seeAll.replace("{n}", String(total))}</button>
+  {/if}
+{/snippet}
+
 {#if deleting}<DeleteSite dir={deleting} onClose={() => (deleting = "")} onDone={deleted} />{/if}
 
 <main class="home">
@@ -279,13 +314,17 @@
       <h2>{t.sites}</h2>
       <p class="muted">{t.sitesHelp} {items.length > 1 ? h.hint : ""}</p>
       {#if error}<p class="error">{t.error}: {error}</p>{/if}
-      <div class="grid">
+      {#if whole.sites}{@render searchBox("sites")}{/if}
+      <div class="grid" {@attach measure}>
         <button class="site new" onclick={onNew}>
           <img src="/blups/blup.svg" alt="" />
           <strong>{t.ob.newSite}</strong>
           <span class="muted">{t.ob.newSiteHelp}</span>
         </button>
-        {#each items as it (keyOf(it))}
+        {#if whole.sites && query.sites.trim()}
+          {#each foundSites as s (s.dir)}{@render siteCard(s.dir, false)}{/each}
+        {:else}
+        {#each shownItems as it (keyOf(it))}
           {#if it.folder}
             {@const f = it.folder}
             <div class="site folder"
@@ -296,7 +335,7 @@
               class:after={over?.key === "f:" + f && over.zone === "after"}
               class:into={over?.key === "f:" + f && over.zone === "into"}>
               <button class="open" onclick={() => (open = f)}>
-                <span class="minis">{#each (it.sites ?? []).slice(0, 4) as d (d)}<img src="/blups/{blupOf(sites[d])}.svg" alt="" />{/each}</span>
+                <span class="minis">{#each (it.sites ?? []).slice(0, 3) as d (d)}<img src="/blups/{blupOf(sites[d])}.svg" alt="" />{/each}</span>
                 {#if renaming === f}
                   <input class="name" type="text" value={f} use:focus onclick={(e) => e.stopPropagation()} onblur={(e) => rename(f, e.currentTarget.value)} onkeydown={(e) => e.key === "Enter" && e.currentTarget.blur()} />
                 {:else}
@@ -309,21 +348,27 @@
             {@render siteCard(it.site!, false)}
           {/if}
         {/each}
+        {/if}
       </div>
+      {#if whole.sites && query.sites.trim() && !foundSites.length}<p class="muted none">{h.none}</p>{/if}
+      {@render more("sites", siteItems.length, siteCount)}
     </section>
 
     <!-- Note vaults: notes that are not a site (coming next). -->
     <section class="vaults">
       <h2>{t.vaults.title}</h2>
       <p class="muted">{t.vaults.help}</p>
+      {#if whole.vaults}{@render searchBox("vaults")}{/if}
       <div class="grid">
         <button class="site new" onclick={onNewVault}>
           <img src="/blups/turma-7.svg" alt="" />
           <strong>{t.vaults.new}</strong>
           <span class="muted">{t.vaults.newHelp}</span>
         </button>
-        {#each vaults as v (v.dir)}{@render vaultCard(v)}{/each}
+        {#each shownVaults as v (v.dir)}{@render vaultCard(v)}{/each}
       </div>
+      {#if whole.vaults && !shownVaults.length && query.vaults.trim()}<p class="muted none">{h.none}</p>{/if}
+      {@render more("vaults", vaults.length, vaults.length)}
     </section>
   {/if}
 </main>
@@ -366,6 +411,11 @@
   .spacer { flex: 1; }
   .hint { font-size: .85rem; }
   .error { color: var(--red); }
+  .more-btn { margin-block-start: 1rem; padding: .45rem .9rem; border: 1px solid var(--line); border-radius: .5rem; font-size: .875rem; font-weight: 600; }
+  .more-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .find { display: flex; align-items: center; gap: .5rem; max-width: 22rem; margin-block-end: 1rem; color: var(--muted); }
+  .find input { flex: 1; min-width: 0; }
+  .none { margin-block-start: 1rem; }
   .menu hr { border: 0; border-block-start: 1px solid var(--line); margin: .25rem .2rem; }
   .menu .danger { display: flex; align-items: center; gap: .45rem; color: var(--red); }
 </style>
