@@ -10,6 +10,7 @@ Esta especificação descreve a implementação encontrada no repositório `gith
 | [Configuração](configuracao.md) | `blup.toml`, arquivos globais, preferências do Studio e propriedades das notas |
 | [Temas Hugo](temas-hugo.md) | Mochi, Nori, Bento, calendário do changelog, ícones Lucide, renderização, busca, PWA, proteção, feedback e consentimento |
 | [Quadro de Feedback](feedback.md) | Seção Bento do Studio, exemplos, pedidos, votos, status, `/posts`, limites e tradução |
+| [Podcast dos blogs](podcast.md) | Seção do Studio nos blogs, episódios das narrações, player, tela de bloqueio, feed para Spotify e Apple |
 | [Scaffold e build](scaffold-e-build.md) | Arquivos gerados, mounts, ferramentas, pipeline e mapa da prévia |
 | [Notas e sync](notas-e-sync.md) | Obsidian, wikilinks, sincronização, conflitos e recuperação em outra máquina |
 | [Publicação](publicacao.md) | Cloudflare Pages, GitHub Pages, autenticação e domínio próprio |

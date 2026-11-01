@@ -1,0 +1,107 @@
+/* The blog's podcast page (podcast/page.html): the episodes and the player
+at the bottom. Loaded only on that page (head/css.html). Uses the theme's
+own tokens, so it follows Mochi and Nori, light and dark: Nori's panel and
+ring when there, Mochi's grays otherwise. */
+@layer layout {
+  .pod-page { --pod-panel: var(--panel, var(--main-50)); --pod-ring: var(--ring, var(--main-200)); --pod-hover: var(--panel-hover, var(--main-100)); }
+  .pod-page.container > .pod, .pod-page.container > .page-head { max-width: 52rem; }
+  .pod-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+  .pod-lede { max-width: 40rem; font-size: 1.125rem; color: var(--main-600); }
+  .nori-head .pod-heading { margin-block-end: .5rem; }
+
+  /* Copy the feed's address (to paste in a podcast app). */
+  .pod-feed { position: relative; display: flex; margin-block-end: 1.25rem; }
+  .pod-feed button { display: inline-flex; align-items: center; gap: .375rem; padding: .375rem .75rem; border-radius: 999px; background: var(--pod-panel); box-shadow: 0 0 0 1px var(--pod-ring); font-size: .8125rem; font-weight: 600; color: var(--main-900); transition: background-color .15s; }
+  .pod-feed button:hover { background: var(--pod-hover); }
+  .pod-feed .icon-check, .pod-feed .feed-done { display: none; }
+  .pod-feed .copied .icon-check, .pod-feed .copied .feed-done { display: inline; }
+  .pod-feed .copied .icon-link, .pod-feed .copied .feed-label { display: none; }
+
+  /* The episodes. */
+  .pod-list { display: grid; margin: 0; padding: 0; list-style: none; }
+  .pod-ep { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 1.5rem; padding-block: 2rem; border-block-start: 1px solid var(--main-200); }
+  .pod-ep:first-child { border-block-start: 0; padding-block-start: .5rem; }
+  .pod-cover img, .pod-cover-none { display: block; width: 7rem; height: 7rem; border-radius: .75rem; object-fit: cover; background: var(--main-100); }
+  .pod-cover-none { display: grid; place-items: center; color: var(--main-400); }
+  .pod-cover-none .icon { width: 2rem; height: 2rem; }
+  .pod-body { display: grid; gap: .5rem; min-width: 0; }
+  .pod-date { font-size: .8125rem; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--main-500); font-variant-numeric: tabular-nums; }
+  .pod-title { font-size: 1.25rem; font-weight: 700; line-height: 1.35; color: var(--main-900); }
+  .pod-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .pod-desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; color: var(--main-600); }
+  .pod-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.25rem; margin-block-start: .5rem; }
+  .pod-play { display: inline-flex; align-items: center; gap: .75rem; padding: .375rem 1.125rem .375rem .375rem; border-radius: 999px; background: var(--pod-panel); box-shadow: 0 0 0 1px var(--pod-ring); font-weight: 600; color: var(--main-900); transition: background-color .15s; }
+  .pod-play:hover { background: var(--pod-hover); }
+  .pod-play[aria-pressed="true"] { box-shadow: 0 0 0 1.5px var(--main-900); }
+  .pod-play-icon { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--main-900); color: var(--main-25); }
+  .pod-play-icon .icon { width: .95rem; height: .95rem; fill: currentColor; stroke: none; }
+  .pod-play-icon .icon-play { margin-inline-start: 2px; }
+  .pod-play .icon-pause, .pod-play[aria-pressed="true"] .icon-play { display: none; }
+  .pod-play[aria-pressed="true"] .icon-pause { display: block; }
+  .pod-notes-btn { font-weight: 600; color: var(--main-900); }
+  .pod-notes-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .pod-notes { margin-block-start: 1rem; padding-block-start: 1rem; border-block-start: 1px solid var(--main-200); }
+  .pod-notes > .pod-open { display: inline-block; margin-block-start: 1rem; font-weight: 600; color: var(--main-900); text-decoration: underline; text-underline-offset: 3px; }
+  .pod-empty { padding: 3rem 1rem; border: 1px dashed var(--main-300); border-radius: 1rem; text-align: center; color: var(--main-500); }
+  .pod [hidden] { display: none !important; }
+
+  /* Nori: the boxed column of its lists. */
+  .nori-main .pod-list { background: var(--panel); border-radius: .5rem; box-shadow: 0 0 0 1px var(--ring); }
+  .nori-main .pod-ep { grid-template-columns: 4.5rem minmax(0, 1fr); gap: 1rem; padding: 1.25rem .75rem; }
+  .nori-main .pod-ep:first-child { padding-block-start: 1.25rem; }
+  .nori-main .pod-cover img, .nori-main .pod-cover-none { width: 4.5rem; height: 4.5rem; border-radius: .5rem; }
+  .nori-main .pod-title { font-size: 1rem; font-weight: 600; }
+  .nori-main .pod-desc { -webkit-line-clamp: 2; font-size: .9375rem; }
+  .nori-main .pod-play { padding-inline-end: .875rem; font-size: .875rem; }
+  .nori-main .pod-play-icon { width: 1.875rem; height: 1.875rem; }
+  .nori-main .pod-player-in, .nori-main .pod-queue { max-width: var(--column); }
+
+  @media (max-width: 40rem) {
+    .pod-ep { grid-template-columns: 4.5rem minmax(0, 1fr); gap: 1rem; padding-block: 1.5rem; }
+    .pod-cover img, .pod-cover-none { width: 4.5rem; height: 4.5rem; border-radius: .5rem; }
+    .pod-title { font-size: 1.0625rem; }
+  }
+
+  /* The player, fixed at the bottom; the page leaves room for it. */
+  body:has(.pod-player:not([hidden])) { padding-block-end: 6.5rem; }
+  .pod-player { position: fixed; z-index: 40; inset-inline: 0; inset-block-end: 0; padding: .75rem var(--gutter, 1rem) calc(.75rem + env(safe-area-inset-bottom)); border-block-start: 1px solid var(--main-200); background: color-mix(in srgb, var(--main-25) 92%, transparent); backdrop-filter: blur(12px); }
+  .pod-player-in { display: flex; align-items: center; gap: 1rem; max-width: 52rem; margin-inline: auto; }
+  .pod-toggle { display: grid; flex: none; place-items: center; width: 3.25rem; height: 3.25rem; border-radius: 50%; background: var(--main-900); color: var(--main-25); transition: transform .15s; }
+  .pod-toggle:hover { transform: scale(1.05); }
+  .pod-toggle:active { transform: scale(.96); }
+  .pod-toggle .icon { width: 1.25rem; height: 1.25rem; fill: currentColor; stroke: none; }
+  .pod-toggle .icon-play { margin-inline-start: 3px; }
+  .pod-toggle .icon-pause, .pod-player.playing .pod-toggle .icon-play { display: none; }
+  .pod-player.playing .pod-toggle .icon-pause { display: block; }
+  .pod-now { display: grid; flex: 1; gap: .25rem; min-width: 0; }
+  .pod-now-title { overflow: hidden; font-size: .875rem; font-weight: 600; color: var(--main-900); text-overflow: ellipsis; white-space: nowrap; }
+  .pod-controls { display: flex; align-items: center; gap: .25rem; }
+  .pod-seek { flex: 1; min-width: 4rem; margin-inline: .25rem; }
+  .pod-time { flex: none; font-size: .8125rem; color: var(--main-500); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pod-tool { position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; min-width: 2.25rem; height: 2.25rem; padding: 0 .375rem; border-radius: .5rem; color: var(--main-600); font-size: .8125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pod-tool:hover, .pod-tool[aria-expanded="true"] { background: var(--main-100); color: var(--main-900); }
+  .pod-tool small { position: absolute; font-size: .5rem; font-weight: 700; }
+  .pod-mute .icon-off, .pod-mute[aria-pressed="true"] .icon-on { display: none; }
+  .pod-mute[aria-pressed="true"] .icon-off { display: block; }
+
+  /* The queue: what plays next, from the current episode on. */
+  .pod-queue { max-width: 52rem; max-height: min(50vh, 24rem); margin: .75rem auto 0; overflow-y: auto; border-block-start: 1px solid var(--main-200); padding-block-start: .5rem; }
+  .pod-queue-title { padding: .25rem .5rem; font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--main-500); }
+  .pod-queue ol { margin: 0; padding: 0; list-style: none; }
+  .pod-queue button { display: flex; width: 100%; align-items: center; gap: .75rem; padding: .5rem; border-radius: .5rem; text-align: start; font-size: .875rem; color: var(--main-700); }
+  .pod-queue button:hover { background: var(--main-100); color: var(--main-900); }
+  .pod-queue button[aria-current="true"] { font-weight: 700; color: var(--main-900); }
+  .pod-queue button > span:first-child { flex: none; width: 1.5rem; color: var(--main-400); font-variant-numeric: tabular-nums; text-align: end; }
+  .pod-queue button > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Phones: the title and the bar on top, the tools below. */
+  @media (max-width: 40rem) {
+    body:has(.pod-player:not([hidden])) { padding-block-end: 8rem; }
+    .pod-player-in { gap: .75rem; }
+    .pod-toggle { width: 2.75rem; height: 2.75rem; }
+    .pod-controls { flex-wrap: wrap; }
+    .pod-seek { order: -1; flex-basis: 100%; margin-inline: 0; }
+    .pod-mute { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .pod-toggle { transition: none; } }
+}

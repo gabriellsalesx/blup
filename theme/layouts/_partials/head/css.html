@@ -5,6 +5,18 @@
 <link rel="preload" href="{{ "fonts/inter-latin.woff2" | relURL }}" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{{ $css.RelPermalink }}"{{ with $css.Data.Integrity }} integrity="{{ . }}"{{ end }}>
 {{- end }}
+{{- /* The podcast page's own styles (the player and the episodes), only
+there; and its feed, for podcast apps that look for it on the page. */}}
+{{- if partial "podcast/is.html" . }}
+{{- with resources.Get "css/podcast.css" }}
+  {{- $pod := . | css.Build (dict "minify" hugo.IsProduction) -}}
+  {{- if hugo.IsProduction }}{{ $pod = $pod | fingerprint }}{{ end }}
+<link rel="stylesheet" href="{{ $pod.RelPermalink }}"{{ with $pod.Data.Integrity }} integrity="{{ . }}"{{ end }}>
+{{- end }}
+{{- with .OutputFormats.Get "podcast" }}
+<link rel="alternate" type="application/rss+xml" title="{{ partial "title.html" $ }}" href="{{ .Permalink }}">
+{{- end }}
+{{- end }}
 {{- if true }}
 <script>document.documentElement.classList.add("js");try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 {{- end }}

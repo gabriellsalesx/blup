@@ -1,5 +1,7 @@
 {{- /* Responsive <img> for a vault image. Params: img, w (CSS px of the
-largest slot), ratio ("3:1", "16:9" or "" to keep), alt, class, eager. */ -}}
+largest slot), ratio ("3:1", "16:9" or "" to keep), alt, class, eager,
+sizes (when the slot is fixed, "112px"; by default the page's width on
+phones). */ -}}
 {{- $img := .img -}}
 {{- if in (slice "image/svg+xml" "image/gif") $img.MediaType.Type -}}
 <img src="{{ $img.RelPermalink }}" alt="{{ .alt }}"{{ with .class }} class="{{ . }}"{{ end }}{{ if not .eager }} loading="lazy"{{ end }}>
@@ -24,5 +26,5 @@ largest slot), ratio ("3:1", "16:9" or "" to keep), alt, class, eager. */ -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
-<img src="{{ $fallback.RelPermalink }}" srcset="{{ delimit $set ", " }}" sizes="(max-width: 48rem) 100vw, {{ .w | default 600 }}px" width="{{ $fallback.Width }}" height="{{ $fallback.Height }}" alt="{{ .alt }}"{{ with .class }} class="{{ . }}"{{ end }}{{ if .eager }} fetchpriority="high"{{ else }} loading="lazy"{{ end }} decoding="async">
+<img src="{{ $fallback.RelPermalink }}" srcset="{{ delimit $set ", " }}" sizes="{{ .sizes | default (printf "(max-width: 48rem) 100vw, %dpx" (.w | default 600)) }}" width="{{ $fallback.Width }}" height="{{ $fallback.Height }}" alt="{{ .alt }}"{{ with .class }} class="{{ . }}"{{ end }}{{ if .eager }} fetchpriority="high"{{ else }} loading="lazy"{{ end }} decoding="async">
 {{- end -}}

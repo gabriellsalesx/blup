@@ -1,0 +1,11 @@
+{{- /* A square JPEG of an image, for podcast apps and the lock screen
+(Apple Podcasts takes JPEG or PNG, from 1400 to 3000 px; WebP is for the
+page). Params: img (resource or false), size. Returns the resource or
+false (SVG and GIF can't be cropped). */ -}}
+{{- $r := false -}}
+{{- with .img -}}
+  {{- if not (in (slice "image/svg+xml" "image/gif") .MediaType.Type) -}}
+    {{- $r = .Fill (printf "%dx%d jpg q82 smart" $.size $.size) -}}
+  {{- end -}}
+{{- end -}}
+{{- return $r -}}

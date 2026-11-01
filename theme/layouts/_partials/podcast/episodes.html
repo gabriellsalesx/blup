@@ -1,0 +1,14 @@
+{{- /* The podcast's episodes: the posts of the site (in this language) that
+have a narration, newest first. Hidden posts and drafts stay out, and so
+do protected ones (the audio would give their text away). Returns a slice
+of dict page, audio (the MP3 resource), cover (image resource or false). */ -}}
+{{- $out := slice -}}
+{{- range (partial "visible.html" site.RegularPages).ByDate.Reverse -}}
+  {{- $page := . -}}
+  {{- if and $page.Params.audio (not $page.Draft) (not (partial "locked.html" $page)) -}}
+    {{- with partial "vault-resource.html" (dict "page" $page "path" $page.Params.audio) -}}
+      {{- $out = $out | append (dict "page" $page "audio" . "cover" (partial "mochi/cover.html" $page)) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- return $out -}}

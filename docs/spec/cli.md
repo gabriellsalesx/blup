@@ -58,7 +58,7 @@ A API `CreateSite`, em `internal/app/create_api.go`, recebe `NewSiteOptions` com
 
 Os exemplos estão embutidos em `internal/app/starter/{pt,en,es}/{mochi,nori,bento}` e em `starter/covers`. `starter.go` copia arquivos ausentes, preenche dados do site e permite acrescentar uma seção sem sobrescrever notas existentes. `templates.go` fornece templates de post para Mochi/Nori e de documentação, roadmap e changelog para Bento.
 
-Feedback tem modelo de pasta nos três idiomas, mas fica em `studioKinds`, separado de `docsKinds`. Os seletores da CLI e a validação de seções de `CreateSite` continuam usando somente `docsKinds`; o Studio acrescenta o quadro depois da criação pelo painel Seções. Isso é diferente de habilitar comentários e reações, opção de feedback que a CLI já oferece. Consulte o [quadro de Feedback](feedback.md).
+Feedback tem modelo de pasta nos três idiomas, mas fica em `studioKinds`, separado de `docsKinds`. Os seletores da CLI e a validação de seções de `CreateSite` continuam usando somente `docsKinds`; o Studio acrescenta o quadro depois da criação pelo painel Seções. Isso é diferente de habilitar comentários e reações, opção de feedback que a CLI já oferece. Consulte o [quadro de Feedback](feedback.md). O [Podcast dos blogs](podcast.md) segue a mesma regra: fica em `blogKinds`, a CLI não o oferece, e um blog novo nunca recebe a pasta `Podcast`.
 
 ## Gerar
 

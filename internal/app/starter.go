@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +39,19 @@ var docsKinds = []string{"docs", "roadmap", "changelog", "help", "blog"}
 // studioKinds are the bento sections only Blup Studio adds: the feedback
 // board (its requests are read and answered in the Studio).
 var studioKinds = []string{"feedback"}
+
+// blogKinds are the sections of a blog (mochi and nori) only Blup Studio
+// adds: the podcast (the narrations of the posts as episodes, with a feed
+// for Spotify and Apple Podcasts).
+var blogKinds = []string{"podcast"}
+
+// sectionKinds are the sections a site of model can add or remove.
+func sectionKinds(model string) []string {
+	if model == "bento" {
+		return append(slices.Clone(docsKinds), studioKinds...)
+	}
+	return slices.Clone(blogKinds)
+}
 
 // attachmentsFolders name the folder of images, by site language.
 var attachmentsFolders = map[string]string{"pt": "Anexos", "en": "Attachments", "es": "Adjuntos"}
@@ -92,11 +106,10 @@ func existingSections(site *config.Site) map[string]string {
 // bento model, sections lists the parts chosen (docs, roadmap, ...).
 func writeSamples(site *config.Site, sections []string) error {
 	skip := map[string]bool{}
-	if site.Model == "bento" {
-		for kind, folder := range starterSections(site) {
-			if kind != "authors" && !contains(sections, kind) {
-				skip[folder] = true
-			}
+	for kind, folder := range starterSections(site) {
+		// A blog's optional sections (the podcast) come only when added.
+		if site.Model == "bento" && kind != "authors" && !contains(sections, kind) || site.Model != "bento" && contains(blogKinds, kind) {
+			skip[folder] = true
 		}
 	}
 	return copyStarter(site, "", skip)

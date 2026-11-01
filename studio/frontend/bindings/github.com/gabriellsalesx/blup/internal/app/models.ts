@@ -556,6 +556,61 @@ export interface NoteLang {
 }
 
 /**
+ * PodcastFeed is the feed of one language.
+ */
+export interface PodcastFeed {
+    "lang": string;
+    "url": string;
+}
+
+/**
+ * PodcastInfo is the podcast as the Studio shows it.
+ */
+export interface PodcastInfo {
+    "folder": string;
+
+    /**
+     * the section's note, relative to the notes folder
+     */
+    "note": string;
+    "title": string;
+
+    /**
+     * the show's name when Title is empty
+     */
+    "siteName": string;
+    "description": string;
+    "author": string;
+    "email": string;
+    "category": string;
+    "explicit": boolean;
+
+    /**
+     * "[[cover.jpg]]", or "" for the newest episode's cover
+     */
+    "image": string;
+
+    /**
+     * The cover's size, to say when Apple would refuse it (it wants a
+     * square of 1400 to 3000 px). 0 when unknown.
+     */
+    "imageW": number;
+    "imageH": number;
+
+    /**
+     * The feeds (one per language of the site), full addresses when the
+     * site has a domain, else paths from the site's root.
+     */
+    "feeds": PodcastFeed[] | null;
+    "hasURL": boolean;
+
+    /**
+     * posts with a narration, in the site's language
+     */
+    "episodes": number;
+}
+
+/**
  * SearchHit is a note found by SearchNotes: by its name, its text, or
  * both; Lines are up to three lines where the text has the words.
  */

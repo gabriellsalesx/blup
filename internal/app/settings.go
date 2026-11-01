@@ -99,10 +99,11 @@ func LoadSettings(site *config.Site) (Settings, error) {
 		}
 	}
 	s.MenuOptions = append(s.MenuOptions, MenuItem{"Tags", "/tags/"})
-	if site.Model == "bento" {
+	{
 		have := existingSections(site)
-		// The feedback board is the Studio's only (the CLI doesn't offer it).
-		for _, k := range append(slices.Clone(docsKinds), studioKinds...) {
+		// Bento's parts, and a blog's podcast. The feedback board and the
+		// podcast are the Studio's only (the CLI doesn't offer them).
+		for _, k := range sectionKinds(site.Model) {
 			folder, ok := have[k]
 			if !ok {
 				folder = ""
@@ -237,15 +238,45 @@ func SetImage(site *config.Site, key, src string) (string, error) {
 	return attachmentFile(site, link), saved(site)
 }
 
-// AddSection creates a Bento section with its example notes.
+// AddSection creates a section with its example notes: a part of Bento, or
+// a blog's podcast. A site with its own menu gets the section in it.
 func AddSection(site *config.Site, kind string) error {
-	if site.Model != "bento" {
-		return errors.New("sections are part of Bento")
+	if !slices.Contains(sectionKinds(site.Model), kind) {
+		return errors.New("this site can't have a " + kind + " section")
 	}
 	if err := writeSection(site, kind); err != nil {
 		return err
 	}
+	if site.Model != "bento" {
+		if err := menuAdd(site, sectionFolder(site, kind)); err != nil {
+			return err
+		}
+	}
 	return saved(site)
+}
+
+// menuAdd puts folder in the home note's menu, when the site chose its own
+// menu (without one, the theme lists every folder already).
+func menuAdd(site *config.Site, folder string) error {
+	if folder == "" {
+		return nil
+	}
+	p := homeNotePath(site)
+	note, err := obsidian.ReadNote(p)
+	if err != nil {
+		return nil
+	}
+	menu := note.List("menu")
+	if len(menu) == 0 {
+		return nil
+	}
+	for _, l := range menu {
+		name, target, _ := strings.Cut(l, "|")
+		if strings.EqualFold(strings.TrimSpace(target), folder) || strings.EqualFold(strings.TrimSpace(name), folder) {
+			return nil
+		}
+	}
+	return obsidian.SetProperties(p, obsidian.Prop{Key: "menu", Value: append(menu, folder)})
 }
 
 // CheckCookieTool tells whether value is a valid ID for a cookie tool

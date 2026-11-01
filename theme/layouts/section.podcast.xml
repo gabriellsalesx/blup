@@ -1,0 +1,76 @@
+{{- /* The podcast's feed (feed.xml of the blog's Podcast section, its
+"podcast" output): what Spotify, Apple Podcasts and other apps read. One
+feed per language of the site, since an app expects one language per show.
+The show's details are the Podcast note's properties (podcast_author,
+podcast_email, podcast_category, podcast_explicit, image), with the site's
+name, description and author as defaults. Covers are square JPEGs of 1400
+px (Apple takes JPEG or PNG, 1400 to 3000 px): the note's image for the
+show, each post's cover for its episode. */ -}}
+{{- $set := partialCached "site/settings.html" . "site" -}}
+{{- $eps := partial "podcast/episodes.html" . -}}
+{{- $name := .Params.podcast_title | default $set.name -}}
+{{- $desc := .Description | default $set.description | default $name -}}
+{{- $author := .Params.podcast_author | default $set.author | default $set.name -}}
+{{- $explicit := cond (in (slice true "true" "yes" "sim" "sí" "si") .Params.podcast_explicit) "true" "false" -}}
+{{- /* The show's cover: the note's image, else the newest episode's
+cover, else the site's logo. */ -}}
+{{- $showImg := false -}}
+{{- with .Params.image }}{{ with partial "vault-resource.html" (dict "page" $ "path" .) }}{{ if eq .ResourceType "image" }}{{ $showImg = . }}{{ end }}{{ end }}{{ end -}}
+{{- if not $showImg }}{{ range $eps }}{{ if and (not $showImg) .cover }}{{ $showImg = .cover }}{{ end }}{{ end }}{{ end -}}
+{{- if not $showImg }}{{ $showImg = $set.logo }}{{ end -}}
+{{- $showArt := partial "podcast/art.html" (dict "img" $showImg "size" 1400) -}}
+{{- printf "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" | safeHTML }}
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>{{ $name }}</title>
+    <link>{{ .Permalink }}</link>
+    <description>{{ $desc }}</description>
+    <language>{{ site.Language.Locale }}</language>
+    {{- with .OutputFormats.Get "podcast" }}
+    <atom:link href="{{ .Permalink }}" rel="self" type="application/rss+xml"/>
+    {{- end }}
+    {{- with $eps }}{{ with (index . 0).page.Date }}{{ if not .IsZero }}
+    <lastBuildDate>{{ .Format "Mon, 02 Jan 2006 15:04:05 -0700" }}</lastBuildDate>
+    {{- end }}{{ end }}{{ end }}
+    <itunes:author>{{ $author }}</itunes:author>
+    {{- with .Params.podcast_email }}
+    <itunes:owner>
+      <itunes:name>{{ $author }}</itunes:name>
+      <itunes:email>{{ . }}</itunes:email>
+    </itunes:owner>
+    {{- end }}
+    {{- with $showArt }}
+    <itunes:image href="{{ .Permalink }}"/>
+    <image><url>{{ .Permalink }}</url><title>{{ $name }}</title><link>{{ $.Permalink }}</link></image>
+    {{- end }}
+    <itunes:category text="{{ .Params.podcast_category | default "Technology" }}"/>
+    <itunes:explicit>{{ $explicit }}</itunes:explicit>
+    <itunes:type>episodic</itunes:type>
+    {{- range $eps }}
+    {{- $page := .page }}
+    {{- $secs := int ($page.Params.audio_seconds | default 0) }}
+    {{- $art := partial "podcast/art.html" (dict "img" .cover "size" 1400) }}
+    <item>
+      <title>{{ partial "title.html" $page }}</title>
+      <link>{{ $page.Permalink }}</link>
+      {{- /* The same episode across new narrations and renamed files: the
+      note's translation key, else its address. */}}
+      <guid isPermaLink="false">{{ $page.Params.translationKey | default $page.RelPermalink }}</guid>
+      {{- if not $page.Date.IsZero }}
+      <pubDate>{{ $page.Date.Format "Mon, 02 Jan 2006 15:04:05 -0700" }}</pubDate>
+      {{- end }}
+      <description>{{ partial "description.html" $page }}</description>
+      <itunes:summary>{{ partial "description.html" $page }}</itunes:summary>
+      <enclosure url="{{ .audio.Permalink }}{{ with $page.Params.audio_hash }}?v={{ . }}{{ end }}" length="{{ len .audio.Content }}" type="audio/mpeg"/>
+      {{- with $secs }}
+      <itunes:duration>{{ . }}</itunes:duration>
+      {{- end }}
+      {{- with $art }}
+      <itunes:image href="{{ .Permalink }}"/>
+      {{- end }}
+      <itunes:explicit>{{ $explicit }}</itunes:explicit>
+      <itunes:episodeType>full</itunes:episodeType>
+    </item>
+    {{- end }}
+  </channel>
+</rss>

@@ -246,6 +246,11 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 	formats["blupmanifest"] = map[string]any{
 		"mediaType": "application/json", "baseName": "manifest", "isPlainText": true, "notAlternative": true,
 	}
+	// feed.xml: a blog's podcast (the Podcast section's own outputs list
+	// it), for Spotify, Apple Podcasts and other podcast apps.
+	formats["podcast"] = map[string]any{
+		"mediaType": "application/rss+xml", "baseName": "feed", "rel": "alternate",
+	}
 	home := []string{"html", "rss", "bluplocks", "blupmanifest"}
 	if feedbackOn(s) {
 		// Pages that get a feedback issue, read by the CLI (internal/app/feedback.go).

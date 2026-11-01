@@ -1,0 +1,102 @@
+{{- /* The blog's podcast (blup: podcast, turned on in Blup Studio): the
+posts' narrations as episodes, newest first, each with its cover, date,
+title, summary, "Listen" and the show notes (the post's text, brought in
+on demand so the player keeps going). One player at the bottom plays them
+in turn and shows the queue; podcast.js drives it. The feed for podcast
+apps is the section's "podcast" output (section.podcast.xml). The page's
+head (title and lede) is the model's own. Param: page. */ -}}
+{{- $p := .page -}}
+{{- $eps := partial "podcast/episodes.html" $p -}}
+{{- /* Blup Studio's preview on a system whose web view can't play MP3
+(see listen.html): the episodes without the player, since trying to play
+could hang the window. Never on the site. */ -}}
+{{- $play := not (and (eq (os.Getenv "HUGO_BLUP_MODE") "preview") (os.Getenv "HUGO_BLUP_NO_MP3")) -}}
+{{- $text := dict
+  "listen" (T "podListen") "pause" (T "podPause") "notes" (T "podNotes") "notesHide" (T "podNotesHide")
+  "notesError" (T "podNotesError") "openPost" (T "podOpenPost") "play" (T "listenPlay") "stop" (T "listenPause")
+  "mute" (T "podMute") "unmute" (T "podUnmute") -}}
+<div class="pod" data-podcast data-pod-text="{{ $text | jsonify }}">
+  {{- with $p.OutputFormats.Get "podcast" }}
+  <div class="pod-feed">
+    <button type="button" data-copy="{{ .Permalink }}" data-copied="{{ T "podFeedCopied" }}" data-failed="{{ T "copyFailed" }}" aria-label="{{ T "podFeedCopy" }}">
+      <svg class="icon icon-sm icon-link" aria-hidden="true"><use href="#i-podcast"/></svg>
+      <svg class="icon icon-sm icon-check" aria-hidden="true"><use href="#i-check"/></svg>
+      <span class="feed-label">{{ T "podFeed" }}</span>
+      <span class="feed-done" aria-hidden="true">{{ T "podFeedCopied" }}</span>
+    </button>
+    <span class="copy-tip" role="status" aria-live="polite"></span>
+  </div>
+  {{- end }}
+  {{- if $eps }}
+  <ol class="pod-list" data-pod-list>
+    {{- range $eps }}
+    {{- $page := .page }}{{ $audio := .audio }}
+    {{- $title := partial "title.html" $page }}
+    {{- $secs := int ($page.Params.audio_seconds | default 0) }}
+    {{- $len := "" }}{{ if $secs }}{{ $len = printf "%d:%02d" (div $secs 60) (mod $secs 60) }}{{ end }}
+    {{- $art := partial "podcast/art.html" (dict "img" .cover "size" 512) }}
+    <li class="pod-ep" data-pod-ep data-src="{{ $audio.RelPermalink }}{{ with $page.Params.audio_hash }}?v={{ . }}{{ end }}" data-title="{{ $title }}" data-url="{{ $page.RelPermalink }}"{{ with $art }} data-art="{{ .RelPermalink }}"{{ end }}{{ with $secs }} data-secs="{{ . }}"{{ end }}>
+      <div class="pod-cover">
+        {{- with .cover }}{{ partial "mochi/picture.html" (dict "img" . "w" 112 "ratio" "1:1" "alt" "" "sizes" "112px") }}
+        {{- else }}<span class="pod-cover-none"><svg class="icon" aria-hidden="true"><use href="#i-headphones"/></svg></span>{{ end }}
+      </div>
+      <div class="pod-body">
+        <p class="pod-date">{{ partial "date.html" $page }}{{ with $len }}<span aria-hidden="true"> · </span><span>{{ . }}</span>{{ end }}</p>
+        <h2 class="pod-title"><a href="{{ $page.RelPermalink }}">{{ $title }}</a></h2>
+        {{- with partial "description.html" $page }}<p class="pod-desc">{{ . }}</p>{{ end }}
+        <div class="pod-actions">
+          {{- if $play }}
+          <button type="button" class="pod-play" data-pod-play aria-pressed="false">
+            <span class="pod-play-icon" aria-hidden="true"><svg class="icon icon-play"><use href="#i-play"/></svg><svg class="icon icon-pause"><use href="#i-pause"/></svg></span>
+            <span data-pod-label>{{ T "podListen" }}</span>
+          </button>
+          {{- end }}
+          <button type="button" class="pod-notes-btn" data-pod-notes aria-expanded="false">{{ T "podNotes" }}</button>
+        </div>
+        <div class="pod-notes" data-pod-notes-box hidden></div>
+      </div>
+    </li>
+    {{- end }}
+  </ol>
+  {{- /* Ten at a time, like the blog's lists. */}}
+  <div class="load-more" data-pod-more-wrap hidden><a href="#" role="button" data-pod-more>{{ T "podMore" }}</a></div>
+  {{- else }}
+  <p class="pod-empty">{{ T "podEmpty" }}</p>
+  {{- end }}
+</div>
+{{- if and $eps $play }}
+{{- /* The player: one audio element for every episode (phones keep playing
+it with the screen off and move on to the next one only when it is the
+same element). Hidden until something plays or there is an episode to
+resume. */}}
+<div class="pod-player" data-pod-player hidden>
+  <audio preload="none"></audio>
+  <div class="pod-player-in">
+    <button type="button" class="pod-toggle" data-pod-toggle aria-label="{{ T "listenPlay" }}">
+      <svg class="icon icon-play" aria-hidden="true"><use href="#i-play"/></svg>
+      <svg class="icon icon-pause" aria-hidden="true"><use href="#i-pause"/></svg>
+    </button>
+    <div class="pod-now">
+      <p class="pod-now-title" data-pod-now></p>
+      <div class="pod-controls">
+        <button type="button" class="pod-tool" data-pod-skip="-15" aria-label="{{ T "listenBack" }}"><svg class="icon" aria-hidden="true"><use href="#i-rotate-ccw"/></svg><small>15</small></button>
+        <button type="button" class="pod-tool" data-pod-skip="15" aria-label="{{ T "listenAhead" }}"><svg class="icon" aria-hidden="true"><use href="#i-rotate-cw"/></svg><small>15</small></button>
+        <input class="listen-seek pod-seek" type="range" min="0" max="1000" value="0" step="1" data-pod-seek aria-label="{{ T "listenSeek" }}">
+        <span class="pod-time"><span data-pod-cur>0:00</span> / <span data-pod-len>0:00</span></span>
+        <button type="button" class="pod-tool pod-speed" data-pod-speed aria-label="{{ T "listenSpeed" }}">1×</button>
+        <button type="button" class="pod-tool pod-mute" data-pod-mute aria-pressed="false" aria-label="{{ T "podMute" }}">
+          <svg class="icon icon-on" aria-hidden="true"><use href="#i-volume-2"/></svg>
+          <svg class="icon icon-off" aria-hidden="true"><use href="#i-volume-x"/></svg>
+        </button>
+        <button type="button" class="pod-tool" data-pod-queue-btn aria-expanded="false" aria-label="{{ T "podQueue" }}" title="{{ T "podQueue" }}"><svg class="icon" aria-hidden="true"><use href="#i-list-music"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="pod-queue" data-pod-queue hidden>
+    <p class="pod-queue-title">{{ T "podQueue" }}</p>
+    <ol data-pod-queue-list></ol>
+  </div>
+</div>
+{{- $js := resources.Get "js/podcast.js" | js.Build (dict "minify" true "format" "esm") | fingerprint }}
+<script type="module" src="{{ $js.RelPermalink }}"></script>
+{{- end }}

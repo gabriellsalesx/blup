@@ -1,7 +1,12 @@
 package scaffold
 
 import (
+	"bytes"
 	"context"
+	"encoding/xml"
+	"image"
+	"image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -471,4 +476,123 @@ func TestFeedbackBoard(t *testing.T) {
 			t.Errorf("the preview's board does not say the requests are examples (%v)", err)
 		}
 	}
+}
+
+// A blog's podcast (blup: podcast), in Mochi and Nori: the episodes are the
+// posts with a narration (not hidden, not protected), with square WebP
+// covers on the page; the feed is valid RSS for podcast apps, with square
+// JPEG covers and the MP3's real size.
+func TestPodcastPage(t *testing.T) {
+	bin, ok := hugo.Find(context.Background())
+	if !ok {
+		t.Skip("hugo not installed")
+	}
+	var png bytes.Buffer
+	if err := pngEncode(&png); err != nil {
+		t.Fatal(err)
+	}
+	mp3 := bytes.Repeat([]byte{0xFF, 0xFB, 0x90, 0x00}, 300)
+	for _, model := range []string{"mochi", "nori"} {
+		t.Run(model, func(t *testing.T) {
+			vault := t.TempDir()
+			files := map[string][]byte{
+				"_index.md":         []byte("---\ntitle: Blog\n---\n"),
+				"Podcast/_index.md": []byte("---\ntitle: Podcast\nblup: podcast\ndescription: Ouça os posts.\noutputs: [html, podcast]\npodcast_email: dono@exemplo.com\npodcast_category: Education\n---\n"),
+				"Blog/Um.md":        []byte("---\ntitle: Episódio um\ndate: 2026-10-02\nimage: \"[[capa.png]]\"\naudio: \"[[um.mp3]]\"\naudio_seconds: 75\n---\nTexto um.\n"),
+				"Blog/Dois.md":      []byte("---\ntitle: Episódio dois\ndate: 2026-10-01\naudio: \"[[dois.mp3]]\"\n---\nTexto dois.\n"),
+				"Blog/Mudo.md":      []byte("---\ntitle: Sem narração\ndate: 2026-10-03\n---\nNada.\n"),
+				"Blog/Escondido.md": []byte("---\ntitle: Escondido\nhidden: true\naudio: \"[[um.mp3]]\"\n---\n"),
+				"Blog/Senha.md":     []byte("---\ntitle: Secreto\npassword: abc\naudio: \"[[um.mp3]]\"\n---\nSegredo.\n"),
+				"Anexos/capa.png":   png.Bytes(),
+				"Anexos/um.mp3":     mp3,
+				"Anexos/dois.mp3":   mp3[:400],
+			}
+			for rel, b := range files {
+				p := filepath.Join(vault, filepath.FromSlash(rel))
+				os.MkdirAll(filepath.Dir(p), 0o755)
+				if err := os.WriteFile(p, b, 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			dir := t.TempDir()
+			s := config.NewSite(dir)
+			s.Title, s.Lang, s.Model, s.Vault, s.Domain = "Blog", "pt", model, vault, "blog.exemplo.com"
+			if err := Write(s); err != nil {
+				t.Fatal(err)
+			}
+			if out, err := bin.Command(context.Background(), dir, "--logLevel", "warn").CombinedOutput(); err != nil {
+				t.Fatalf("hugo: %v\n%s", err, out)
+			}
+			page, err := os.ReadFile(filepath.Join(dir, "public", "podcast", "index.html"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			html := string(page)
+			if n := strings.Count(html, "data-pod-ep "); n != 2 {
+				t.Errorf("episodes on the page = %d, want 2", n)
+			}
+			for _, want := range []string{"Episódio um", "Episódio dois", "webp", "data-pod-player", "css/podcast", `type="application/rss+xml"`, "1:15"} {
+				if !strings.Contains(html, want) {
+					t.Errorf("the page is missing %q", want)
+				}
+			}
+			for _, not := range []string{"Sem narração", "Escondido", "Secreto"} {
+				if strings.Contains(html, not) {
+					t.Errorf("%q should not be an episode", not)
+				}
+			}
+			// The blog's other pages don't load the podcast's styles.
+			if blog, _ := os.ReadFile(filepath.Join(dir, "public", "blog", "index.html")); strings.Contains(string(blog), "css/podcast") || strings.Contains(string(blog), "data-pod-player") {
+				t.Error("the blog's section page loads the podcast")
+			}
+			raw, err := os.ReadFile(filepath.Join(dir, "public", "podcast", "feed.xml"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var feed struct {
+				Channel struct {
+					Title    string `xml:"title"`
+					Email    string `xml:"owner>email"`
+					Category struct {
+						Text string `xml:"text,attr"`
+					} `xml:"category"`
+					Items []struct {
+						Title     string `xml:"title"`
+						Enclosure struct {
+							URL    string `xml:"url,attr"`
+							Length int    `xml:"length,attr"`
+							Type   string `xml:"type,attr"`
+						} `xml:"enclosure"`
+						Image struct {
+							Href string `xml:"href,attr"`
+						} `xml:"http://www.itunes.com/dtds/podcast-1.0.dtd image"`
+						Duration string `xml:"duration"`
+					} `xml:"item"`
+				} `xml:"channel"`
+			}
+			if err := xml.Unmarshal(raw, &feed); err != nil {
+				t.Fatalf("feed: %v\n%s", err, raw)
+			}
+			c := feed.Channel
+			if c.Email != "dono@exemplo.com" || c.Category.Text != "Education" || len(c.Items) != 2 {
+				t.Fatalf("channel = %+v", c)
+			}
+			one := c.Items[0]
+			if one.Title != "Episódio um" || one.Enclosure.Length != len(mp3) || one.Enclosure.Type != "audio/mpeg" || !strings.HasPrefix(one.Enclosure.URL, "https://blog.exemplo.com/") || one.Duration != "75" {
+				t.Errorf("first episode = %+v", one)
+			}
+			if !strings.HasSuffix(one.Image.Href, ".jpg") || !strings.HasPrefix(one.Image.Href, "https://") {
+				t.Errorf("episode cover = %q, want a full address of a JPEG", one.Image.Href)
+			}
+		})
+	}
+}
+
+// pngEncode writes a small PNG (a post's cover).
+func pngEncode(w io.Writer) error {
+	img := image.NewRGBA(image.Rect(0, 0, 600, 400))
+	for i := range img.Pix {
+		img.Pix[i] = byte(i)
+	}
+	return png.Encode(w, img)
 }

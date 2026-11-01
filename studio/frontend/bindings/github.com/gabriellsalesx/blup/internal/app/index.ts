@@ -34,6 +34,8 @@ export type {
     NarrationCost,
     NewSiteOptions,
     NoteLang,
+    PodcastFeed,
+    PodcastInfo,
     SearchHit,
     Section,
     Settings,

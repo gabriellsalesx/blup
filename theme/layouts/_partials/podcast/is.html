@@ -1,0 +1,2 @@
+{{- /* Whether the page is a blog's Podcast section (blup: podcast). */ -}}
+{{- return and .IsSection (eq (lower (string (.Params.blup | default ""))) "podcast") -}}

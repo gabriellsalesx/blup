@@ -773,6 +773,13 @@ export function PickNoteImage(note: string): $CancellablePromise<string> {
 }
 
 /**
+ * Podcast is the open blog's podcast (the Podcast screen).
+ */
+export function Podcast(): $CancellablePromise<app$0.PodcastInfo> {
+    return $Call.ByID(69597854);
+}
+
+/**
  * Prefs reads the Studio's choices.
  */
 export function Prefs(): $CancellablePromise<$models.Prefs> {
@@ -986,6 +993,15 @@ export function SaveMenu(menu: app$0.MenuItem[] | null, buttonText: string, butt
  */
 export function SaveNote(rel: string, body: string, edits: $models.PropEdit[] | null): $CancellablePromise<void> {
     return $Call.ByID(1907519367, rel, body, edits);
+}
+
+/**
+ * SavePodcast sets the podcast's details from the Podcast screen (an empty
+ * value takes the property off: the site's name, author or the newest
+ * episode's cover stand in).
+ */
+export function SavePodcast(edits: $models.PropEdit[] | null): $CancellablePromise<app$0.PodcastInfo> {
+    return $Call.ByID(322492693, edits);
 }
 
 /**

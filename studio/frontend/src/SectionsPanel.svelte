@@ -31,7 +31,7 @@
 
 <div class="panel">
   <h1>{t.sec.title}</h1>
-  <p class="lead">{t.sec.lead}</p>
+  <p class="lead">{settings.model === "bento" ? t.sec.lead : t.sec.leadBlog}</p>
   {#if undo}
     <div class="undo"><span>{t.sec.removed.replace("{name}", label(undo.kind))}</span><button class="btn ghost" disabled={s.state.busy} onclick={restore}>{t.sec.undo}</button></div>
   {/if}
