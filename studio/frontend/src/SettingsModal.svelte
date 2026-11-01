@@ -85,6 +85,13 @@
   }
   function resetKeys() { setPref("keys", {}); }
   let tab = $state(start);
+  // Each section opens from its top: the list scrolled in a long one
+  // (Shortcuts, Narration) left a short one looking empty.
+  let bodyEl = $state<HTMLDivElement>();
+  $effect(() => {
+    void tab;
+    if (bodyEl) bodyEl.scrollTop = 0;
+  });
   let version = $state("");
   let lang = $state("");
   let conn = $state<Conn | null>(null);
@@ -296,7 +303,7 @@
       <h2>{tabs.find((x) => x.key === tab)?.label}</h2>
       <button class="close" title={t.attach.close} aria-label={t.attach.close} onclick={onClose}><X size={18} /></button>
     </header>
-    <div class="body">
+    <div class="body" bind:this={bodyEl}>
     {#if tab === "general"}
       <div class="item"><Switch label={k.autostart} help={k.autostartHelp} checked={autostart} onchange={setAutostart} /></div>
       <div class="item"><Switch label={k.tray} help={k.trayHelp} checked={!!look.tray} onchange={setTray} /></div>
@@ -429,22 +436,20 @@
         {#if localError}<p class="bad">{localError}</p>{/if}
       </div>
       <h3>OpenRouter</h3>
-      <p class="muted lead">{ai.openrouterLead}</p>
-      <div class="item">
-        <div class="text"><b>OpenRouter</b><small>{aiOn ? ai.on : ai.off}</small></div>
-        {#if aiOn}<button class="btn ghost" onclick={() => disconnect("openrouter")}>{s.disconnect}</button>{/if}
-      </div>
-      {#if aiOn === false}
+      {#if aiOn}
+        <div class="item">
+          <div class="text"><small>{ai.on}</small></div>
+          <button class="btn ghost" onclick={() => disconnect("openrouter")}>{s.disconnect}</button>
+        </div>
+      {:else if aiOn === false}
         <div class="item column">
-          <div class="text"><b>{ai.step1}</b><small>{ai.step1Help}</small></div>
-          <button class="btn ghost start" onclick={() => OpenAIKeyPage()}>{ai.openPage}</button>
-          <div class="text"><b>{ai.step2}</b></div>
+          <small class="muted">{ai.openrouterLead}</small>
           <form class="keyform" onsubmit={(e) => { e.preventDefault(); if (aiKey.trim()) connectAI(); }}>
-            <input type="password" bind:value={aiKey} placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false" aria-label={ai.step2} />
+            <input type="password" bind:value={aiKey} placeholder={ai.keyPh} autocomplete="off" spellcheck="false" aria-label={ai.keyPh} />
             <button class="btn" disabled={aiBusy || !aiKey.trim()}>{aiBusy ? ai.checking : s.connect}</button>
           </form>
           {#if aiError}<p class="bad">{aiError}</p>{/if}
-          <small class="muted">{ai.keyNote}</small>
+          <small class="muted">{ai.noKey} <button class="link" onclick={() => OpenAIKeyPage()}>{ai.makeKey}</button></small>
         </div>
       {/if}
     {:else if tab === "narration"}
@@ -474,14 +479,14 @@
                     {#if engine === "local"}<small class="muted">{v.female ? lv.female : lv.male}</small>{/if}
                     {#if !v.ready}<small class="muted">{engine === "local" ? lv.needInstall : engine === "blup" ? lv.needPlan : lv.needKey}</small>{/if}
                   </label>
-                  <button class="icon-btn listen" class:playing={playing === v.id} title={playing === v.id ? lv.stop : v.sample ? lv.listen : lv.listenMake} aria-label="{playing === v.id ? lv.stop : lv.listen}: {v.name}" onclick={() => listen(v, l)}>
+                  {#if v.ready}<button class="icon-btn listen" class:playing={playing === v.id} title={playing === v.id ? lv.stop : v.sample ? lv.listen : lv.listenMake} aria-label="{playing === v.id ? lv.stop : lv.listen}: {v.name}" onclick={() => listen(v, l)}>
                     <!-- The ring fills as the sample plays. -->
                     <svg class="ring" viewBox="0 0 36 36" aria-hidden="true">
                       <circle class="track" cx="18" cy="18" r="16" />
                       {#if playing === v.id}<circle class="fill" cx="18" cy="18" r="16" pathLength="100" stroke-dasharray="{played * 100} 100" />{/if}
                     </svg>
                     {#if playing === v.id}<Pause size={13} />{:else}<Play size={13} />{/if}
-                  </button>
+                  </button>{/if}
                 </div>
               {/each}
             {/if}
@@ -592,7 +597,6 @@
   .text { display: grid; gap: .15rem; font-size: .9rem; }
   .text small { color: var(--muted); font-size: .8rem; }
   select { width: auto; }
-  .start { align-self: flex-start; }
   .keyform { display: flex; gap: .5rem; }
   .item.column .row { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
   .dl { height: 6px; border-radius: 999px; background: var(--soft); overflow: hidden; }
