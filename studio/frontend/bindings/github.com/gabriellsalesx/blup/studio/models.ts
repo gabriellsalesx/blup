@@ -269,6 +269,11 @@ export interface RecentSite {
      * the notes folder
      */
     "folder": string;
+
+    /**
+     * "" a site, "notes" a vault of notes
+     */
+    "kind": string;
     "listed": boolean;
 }
 
@@ -292,6 +297,11 @@ export interface SiteInfo {
      * the notes folder
      */
     "folder": string;
+
+    /**
+     * "" a site, "notes" a vault of notes
+     */
+    "kind": string;
 }
 
 /**

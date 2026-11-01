@@ -55,6 +55,9 @@ type Site struct {
 	Author      string `toml:"author"`
 	Lang        string `toml:"lang"`   // "pt" or "en": language of the site itself
 	Model       string `toml:"model"`  // theme: "mochi" or "nori" (personal blog), "bento" (SaaS)
+	// Kind is "" for a site, or "notes" for a vault of notes: the same
+	// notes, editor and sync, but no site (no theme, preview or publishing).
+	Kind string `toml:"kind,omitempty"`
 	Vault       string `toml:"vault"`  // absolute path of the Obsidian vault
 	Folder      string `toml:"folder"` // folder inside the vault published as the site; "" = whole vault
 	Domain      string `toml:"domain,omitempty"`
@@ -312,3 +315,10 @@ func writeAtomic(path string, b []byte, mode os.FileMode) error {
 	}
 	return os.Rename(tmp.Name(), path)
 }
+
+// KindNotes is Site.Kind for a vault of notes.
+const KindNotes = "notes"
+
+// IsNotes tells whether this is a vault of notes rather than a site.
+func (s *Site) IsNotes() bool { return s.Kind == KindNotes }
+

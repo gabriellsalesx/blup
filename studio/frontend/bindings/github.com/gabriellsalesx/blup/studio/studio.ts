@@ -279,10 +279,25 @@ export function CreateSite(o: app$0.NewSiteOptions): $CancellablePromise<$models
 }
 
 /**
+ * CreateVault makes a vault of notes (notes "" = a new folder in
+ * Documents) and returns it, to open.
+ */
+export function CreateVault(title: string, notes: string): $CancellablePromise<$models.SiteInfo> {
+    return $Call.ByID(3165056722, title, notes);
+}
+
+/**
  * CurrentDomain is the site's custom domain ("" for the free address).
  */
 export function CurrentDomain(): $CancellablePromise<string> {
     return $Call.ByID(31178783);
+}
+
+/**
+ * DefaultVaultFolder is where a new vault named title keeps its notes.
+ */
+export function DefaultVaultFolder(title: string): $CancellablePromise<string> {
+    return $Call.ByID(4147870273, title);
 }
 
 /**

@@ -14,11 +14,14 @@
   // change the order. The "⋯" menu does the same without dragging.
   // With no site yet, the list shows only "New site": nothing opens by
   // itself, the person chooses when to start one.
-  let { onOpen, onNew }: { onOpen: (s: SiteInfo) => void; onNew: () => void } = $props();
+  let { onOpen, onNew, onNewVault }: { onOpen: (s: SiteInfo) => void; onNew: () => void; onNewVault: () => void } = $props();
 
   const h = t.home;
 
   let sites = $state<Record<string, SiteInfo>>({});
+  // Vaults of notes have a row of their own, below the sites.
+  const vaults = $derived(Object.values(sites).filter((s) => s.kind === "notes").sort((a, b) => a.title.localeCompare(b.title)));
+  const isVault = (dir: string | undefined) => !!dir && sites[dir]?.kind === "notes";
   let items = $state<HomeItem[]>([]);
   let loaded = $state(false);
   let error = $state("");
@@ -226,6 +229,24 @@
   {/if}
 {/snippet}
 
+{#snippet vaultCard(s: SiteInfo)}
+  <div class="site">
+    <button class="open" onclick={() => onOpen(s)}>
+      <img src="/blups/turma-7.svg" alt="" />
+      <span class="kind">{t.vaults.kind}</span>
+      <strong>{s.title}</strong>
+      <span class="path muted" title={s.folder}>{short(s.folder)}</span>
+    </button>
+    <button class="more" title={h.options} onclick={(e) => { e.stopPropagation(); menu = menu === s.dir ? "" : s.dir; }}><Ellipsis size={18} /></button>
+    {#if menu === s.dir}
+      <div class="menu" role="menu">
+        <button onclick={() => { menu = ""; forget(s.dir); }}>{t.del.forget}</button>
+        <button class="danger" onclick={() => { menu = ""; deleting = s.dir; }}><Trash size={15} />{t.del.deleteMenu}</button>
+      </div>
+    {/if}
+  </div>
+{/snippet}
+
 {#if deleting}<DeleteSite dir={deleting} onClose={() => (deleting = "")} onDone={deleted} />{/if}
 
 <main class="home">
@@ -284,7 +305,7 @@
                 <span class="muted">{h.count.replace("{n}", String(it.sites?.length ?? 0))}</span>
               </button>
             </div>
-          {:else}
+          {:else if !isVault(it.site)}
             {@render siteCard(it.site!, false)}
           {/if}
         {/each}
@@ -296,11 +317,12 @@
       <h2>{t.vaults.title}</h2>
       <p class="muted">{t.vaults.help}</p>
       <div class="grid">
-        <button class="site new" onclick={() => toast(t.vaults.soon)}>
+        <button class="site new" onclick={onNewVault}>
           <img src="/blups/turma-7.svg" alt="" />
-          <strong>{t.vaults.new} <span class="soon">{t.vaults.soon}</span></strong>
+          <strong>{t.vaults.new}</strong>
           <span class="muted">{t.vaults.newHelp}</span>
         </button>
+        {#each vaults as v (v.dir)}{@render vaultCard(v)}{/each}
       </div>
     </section>
   {/if}
@@ -313,7 +335,6 @@
   h2 { font-size: 1.75rem; font-weight: 700; letter-spacing: -.02em; }
   section > p { margin-block: .25rem 1.5rem; }
   .vaults { margin-block-start: 3rem; }
-  .soon { margin-inline-start: .35rem; padding: .1rem .45rem; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: .7rem; font-weight: 600; vertical-align: middle; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1rem; }
   .site { position: relative; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); transition: border-color .15s, transform .15s, box-shadow .15s, opacity .15s; }
   .site:hover { border-color: var(--muted); }

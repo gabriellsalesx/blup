@@ -3,6 +3,7 @@
   import Workspace from "./Workspace.svelte";
   import Onboarding from "./Onboarding.svelte";
   import Welcome from "./Welcome.svelte";
+  import VaultOnboarding from "./VaultOnboarding.svelte";
   import type { SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import { Sites } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { look, setPref } from "./theme.svelte";
@@ -11,6 +12,7 @@
   // The open site, the new site screens, or the list of sites.
   let site = $state<SiteInfo | null>(null);
   let creating = $state(false);
+  let creatingVault = $state(false);
 
   // The welcome screens, the first time on a computer without sites (one
   // that already has sites skips them). Then the Studio opens on the site
@@ -39,10 +41,12 @@
   {#key site.dir}
     <Workspace {site} onBack={() => (site = null)} onSwitch={(s) => (site = s)} />
   {/key}
+{:else if creatingVault}
+  <VaultOnboarding onCancel={() => (creatingVault = false)} onDone={(v) => { creatingVault = false; site = v; }} />
 {:else if creating}
   <Onboarding canCancel onCancel={() => (creating = false)} onDone={(s) => { creating = false; site = s; }} />
 {:else}
-  <Home onOpen={(s) => (site = s)} onNew={() => (creating = true)} />
+  <Home onOpen={(s) => (site = s)} onNew={() => (creating = true)} onNewVault={() => (creatingVault = true)} />
 {/if}
 
 <Toaster />

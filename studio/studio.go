@@ -47,6 +47,7 @@ type SiteInfo struct {
 	Title  string `json:"title"`
 	Model  string `json:"model"`
 	Folder string `json:"folder"` // the notes folder
+	Kind   string `json:"kind"`   // "" a site, "notes" a vault of notes
 }
 
 // Node is a folder or a note of the site.
@@ -75,7 +76,7 @@ func (s *Studio) Sites() ([]SiteInfo, error) {
 }
 
 func info(site *config.Site) SiteInfo {
-	return SiteInfo{Dir: site.Dir(), Title: site.Title, Model: site.Model, Folder: site.ContentDir()}
+	return SiteInfo{Dir: site.Dir(), Title: site.Title, Model: site.Model, Folder: site.ContentDir(), Kind: site.Kind}
 }
 
 // Open makes dir the open site (stopping the preview of the previous one)
@@ -193,6 +194,9 @@ func (s *Studio) StartPreview() (string, error) {
 	site, err := s.current()
 	if err != nil {
 		return "", err
+	}
+	if site.IsNotes() {
+		return "", errors.New("a vault of notes has no site to preview")
 	}
 	s.mu.Lock()
 	if s.preview != nil {

@@ -15,7 +15,8 @@
   import { toast } from "./toast.svelte";
   import CloudAccount from "./CloudAccount.svelte";
 
-  let { autostart = "" }: { autostart?: string } = $props();
+  // notes: a vault of notes has no site, so only syncing shows.
+  let { autostart = "", notes = false }: { autostart?: string; notes?: boolean } = $props();
   const p = t.pubs;
 
   let conn = $state<Conn | null>(null);
@@ -153,11 +154,12 @@
 </script>
 
 <div class="panel">
-  <h1>{p.title}</h1>
-  <p class="lead">{p.lead}</p>
+  <h1>{notes ? p.syncTitle : p.title}</h1>
+  <p class="lead">{notes ? t.vaults.syncLead : p.lead}</p>
   {#if error}<p class="bad box">{error}</p>{/if}
 
   {#if target && conn}
+    {#if !notes}
     <section class="card">
       <h2>{p.where}</h2>
       <div class="choices">
@@ -278,6 +280,7 @@
       {#if republish}<p class="box">{dm.republish}</p>{/if}
     </section>
 
+    {/if}
     <section class="card">
       <h2>{p.syncTitle}</h2>
       <p class="q">{cl.where}</p>

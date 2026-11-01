@@ -35,6 +35,7 @@ type sharedSite struct {
 	Author      string          `toml:"author"`
 	Lang        string          `toml:"lang"`
 	Model       string          `toml:"model"`
+	Kind        string          `toml:"kind,omitempty"` // "notes" for a vault of notes
 	Domain      string          `toml:"domain,omitempty"`
 	Deploy      config.Deploy   `toml:"deploy"`
 	Feedback    config.Feedback `toml:"feedback,omitempty"`
@@ -44,12 +45,12 @@ type sharedSite struct {
 func shareOf(s *config.Site) sharedSite {
 	return sharedSite{
 		Version: config.SiteVersion, Title: s.Title, Description: s.Description, Author: s.Author, Lang: s.Lang,
-		Model: s.Model, Domain: s.Domain, Deploy: s.Deploy, Feedback: s.Feedback, Cookies: s.Cookies,
+		Model: s.Model, Kind: s.Kind, Domain: s.Domain, Deploy: s.Deploy, Feedback: s.Feedback, Cookies: s.Cookies,
 	}
 }
 
 func (sh sharedSite) apply(s *config.Site) {
-	s.Title, s.Description, s.Author, s.Lang, s.Model = sh.Title, sh.Description, sh.Author, sh.Lang, sh.Model
+	s.Title, s.Description, s.Author, s.Lang, s.Model, s.Kind = sh.Title, sh.Description, sh.Author, sh.Lang, sh.Model, sh.Kind
 	s.Domain, s.Deploy, s.Feedback, s.Cookies = sh.Domain, sh.Deploy, sh.Feedback, sh.Cookies
 }
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, tick } from "svelte";
+  import { onDestroy, tick, untrack } from "svelte";
   import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
@@ -123,7 +123,8 @@
   let error = $state("");
   let previewURL = $state("");
   let previewSrc = $state(""); // the page shown: the open note's, when known
-  let previewOn = $state(!look.previewOff);
+  // Workspace is made again for each site (keyed by its folder).
+  let previewOn = $state(!look.previewOff && untrack(() => site.kind) !== "notes");
 
   // The files panel and the preview are as wide as the user drags them
   // (their edge, like Obsidian), within limits that keep the editor usable;
@@ -204,7 +205,14 @@
   let screen = $state("write");
   let settings = $state<Settings | null>(null);
   const reload = () => LoadSettings().then((s) => (settings = s)).catch((e) => (error = String(e)));
-  const screens = $derived([
+  // A vault of notes: the editor, attachments, sync and trash; no site.
+  const notesVault = $derived(site.kind === "notes");
+  const screens = $derived(notesVault ? [
+    { key: "write", label: t.nav.write, Icon: PenLine },
+    { key: "attach", label: t.nav.attach, Icon: Paperclip },
+    { key: "publish", label: t.sync, Icon: RefreshCw },
+    { key: "trash", label: t.nav.trash, Icon: Trash2 },
+  ] : [
     { key: "write", label: t.nav.write, Icon: PenLine },
     { key: "look", label: t.nav.look, Icon: Palette },
     { key: "authors", label: t.nav.authors, Icon: Users },
@@ -488,11 +496,11 @@
       <strong class="title">{site.title}</strong>
     {/if}
     <span class="spacer"></span>
-    <button class="btn ghost" onclick={togglePreview}>{previewOn ? "✓ " : ""}{t.preview}</button>
+    {#if !notesVault}<button class="btn ghost" onclick={togglePreview}>{previewOn ? "✓ " : ""}{t.preview}</button>{/if}
     <button class="btn ghost" title={cloudTitle} onclick={() => go("publish", "sync")}>
       {#if cloud?.state === "syncing"}<span class="spin"><RefreshCw size={14} /></span>{:else if cloud?.state === "error"}<CloudAlert size={14} class="bad" />{:else if cloud}<CloudCheck size={14} />{/if}{t.sync}
     </button>
-    <button class="btn" onclick={() => go("publish", "publish")}>{t.publish}</button>
+    {#if !notesVault}<button class="btn" onclick={() => go("publish", "publish")}>{t.publish}</button>{/if}
   </header>
 
   <section class="main" class:scroll={screen !== "write"}>
@@ -502,7 +510,7 @@
       {#if current}
         {#key current + ":" + reloadN}
           <div class="note">
-            <Props props={noteProps} {kind} note={current} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} />
+            {#if !notesVault}<Props props={noteProps} {kind} note={current} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} />{/if}
             <div class="body"><Editor {text} note={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onChange={changed} onSave={save} onError={(e) => (error = e)} /></div>
           </div>
         {/key}
@@ -516,7 +524,7 @@
         {:else if screen === "comments"}<CommentsPanel {settings} {reload} />
         {:else if screen === "cookies"}<CookiesPanel {settings} {reload} onOpenNote={openNote} />
         {:else if screen === "password"}<PasswordPanel {settings} {reload} />
-        {:else if screen === "publish"}<PublishPanel autostart={autostart} />
+        {:else if screen === "publish"}<PublishPanel autostart={autostart} notes={notesVault} />
         {:else if screen === "authors"}<AuthorsPanel onTree={async () => (tree = (await LoadTree()).children ?? [])} />
         {:else if screen === "attach"}<AttachmentsPanel onOpenNote={openNote} />
         {:else if screen === "trash"}<TrashPanel {reload} onTree={(n) => (tree = n.children ?? [])} />

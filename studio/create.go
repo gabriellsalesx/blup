@@ -189,3 +189,20 @@ func (s *Studio) RestoreSite(dir string) (SiteInfo, error) {
 	}
 	return info(site), app.RememberSite(dir)
 }
+
+// DefaultVaultFolder is where a new vault named title keeps its notes.
+func (s *Studio) DefaultVaultFolder(title string) string { return app.DefaultVaultNotesDir(title) }
+
+// CreateVault makes a vault of notes (notes "" = a new folder in
+// Documents) and returns it, to open.
+func (s *Studio) CreateVault(title, notes string) (SiteInfo, error) {
+	g, err := config.LoadGlobal()
+	if err != nil {
+		return SiteInfo{}, err
+	}
+	site, err := app.CreateVault(&g, title, notes)
+	if err != nil {
+		return SiteInfo{}, err
+	}
+	return info(site), nil
+}
