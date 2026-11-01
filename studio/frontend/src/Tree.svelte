@@ -17,7 +17,9 @@
   // The notes, like Obsidian's file explorer: folders open and close (open
   // is shared, so "collapse all" works), a vertical guide line inside each
   // open folder; clicking a folder also makes it the place for new notes.
-  // Right-click opens the item's menu (onMenu). Each item has its icon (a
+  // Right-click opens the item's menu (onMenu). A database is its records'
+  // folder with the database's icon: a click opens its table, a click on
+  // it again (or on its chevron) folds or unfolds its records. Each item has its icon (a
   // note, a folder open or closed, a canvas, a drawing); a note's sits
   // where a folder's chevron is. Notes can be dragged onto a canvas.
   //
@@ -101,7 +103,8 @@
 
 {#snippet icon(n: Node)}
   <span class="ico">
-    {#if n.dir}{#if open[n.path]}<FolderOpen size={15} strokeWidth={1.75} />{:else}<Folder size={15} strokeWidth={1.75} />{/if}
+    {#if n.dir && n.table}<Database size={15} strokeWidth={1.75} />
+    {:else if n.dir}{#if open[n.path]}<FolderOpen size={15} strokeWidth={1.75} />{:else}<Folder size={15} strokeWidth={1.75} />{/if}
     {:else if n.kind === "drawing"}<PenTool size={15} strokeWidth={1.75} />
     {:else if n.kind === "canvas"}<LayoutDashboard size={15} strokeWidth={1.75} />
     {:else if n.kind === "database"}<Database size={15} strokeWidth={1.75} />
@@ -136,8 +139,9 @@
         {/if}
       {:else if n.dir}
         <button class={["row", { selected: n.path === folder, target: over === n.path, active: !!n.table && n.table === current }]} draggable={!!onMove} ondragstart={(e) => dragStart(e, n)} ondragend={dragEnd}
-          ondragover={(e) => dragOver(e, n)} ondragleave={() => dragLeave(n)} ondrop={(e) => drop(e, n)} onclick={() => { if (n.table) { open[n.path] = true; onPick(n.table); } else open[n.path] = !open[n.path]; onFolder(n.path); }} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
-          <span class="chev" class:open={open[n.path]}><ChevronRight size={14} /></span>{@render icon(n)}<span class="name">{n.name}</span>
+          ondragover={(e) => dragOver(e, n)} ondragleave={() => dragLeave(n)} ondrop={(e) => drop(e, n)} onclick={() => { if (n.table && n.table !== current) { open[n.path] = true; onPick(n.table); } else open[n.path] = !open[n.path]; onFolder(n.path); }} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
+          <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+          <span class="chev" class:open={open[n.path]} onclick={(e) => { if (n.table) { e.stopPropagation(); open[n.path] = !open[n.path]; } }}><ChevronRight size={14} /></span>{@render icon(n)}<span class="name">{n.name}</span>
         </button>
         {#if open[n.path] && n.children}
           <Tree nodes={n.children} {current} {folder} bind:open {renaming} {creating} parent={n.path} {onPick} {onFolder} {onMenu} {onRename} {onCreate} {onMove} depth={depth + 1} />
