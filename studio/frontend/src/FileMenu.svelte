@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Clipboard } from "@wailsio/runtime";
-  import { RestoreSection, MoveItem, CopyNote, DeleteItem, NoteLink, ShowInFolder } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { RestoreSection, MoveItem, CopyNote, DeleteItem, NoteLink, ShowInFolder, ReadNote, NoteImage, SaveExport } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import FilePlus from "@lucide/svelte/icons/file-plus";
   import FolderPlus from "@lucide/svelte/icons/folder-plus";
@@ -14,6 +14,8 @@
   import PenTool from "@lucide/svelte/icons/pen-tool";
   import Database from "@lucide/svelte/icons/database";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
+  import FileDown from "@lucide/svelte/icons/file-down";
+  import Printer from "@lucide/svelte/icons/printer";
   import { t } from "./i18n";
   import type { NewKind } from "./boards";
   import { toast, toastError } from "./toast.svelte";
@@ -56,6 +58,26 @@
     toast(t.toast.noteDeleted.replace("{name}", node.name), { action: { label: t.toast.undo, run: () => Promise.all(where.map((w) => RestoreSection(w))).catch(toastError) } });
   });
   const copy = () => run(async () => { const to = await CopyNote(node.path); onChanged({ from: "", to, open: to }); toast(t.toast.noteCopied.replace("{name}", base(to))); });
+  // The note on its own: an HTML file, or the print window (and its PDF).
+  const isNote = $derived(!node.dir && node.path.toLowerCase().endsWith(".md"));
+  async function exported() {
+    const n = await ReadNote(node.path);
+    const title = String(n.props?.title || base(node.path));
+    return { title, body: n.body ?? "", image: (src: string) => NoteImage(node.path, src).catch(() => "") };
+  }
+  const exportHtml = () => run(async () => {
+    const { noteDocument } = await import("./export");
+    const n = await exported();
+    const file = await SaveExport(base(node.path), await noteDocument(n.title, n.body, t.lang, n.image));
+    if (file) toast(m.exported.replace("{path}", file));
+    onClose();
+  });
+  const printIt = () => run(async () => {
+    const { printNote } = await import("./export");
+    const n = await exported();
+    onClose();
+    await printNote(n.title, n.body, n.image);
+  });
   async function copyLink() {
     await Clipboard.SetText(await NoteLink(node.path, current));
     copied = true;
@@ -100,6 +122,10 @@
       {#if onHistory}<button onclick={() => { onHistory(node.path); onClose(); }}><History size={16} />{t.history.menu}</button>{/if}
     {/if}
     <hr />
+    {#if isNote}
+      <button onclick={exportHtml}><FileDown size={16} />{m.exportHtml}</button>
+      <button onclick={printIt}><Printer size={16} />{m.print}</button>
+    {/if}
     <button onclick={() => { ShowInFolder(node.path); onClose(); }}><FolderOpen size={16} />{m.show}</button>
     <hr />
     <button onclick={() => { onRename(node); onClose(); }}><Pencil size={16} />{m.rename}</button>

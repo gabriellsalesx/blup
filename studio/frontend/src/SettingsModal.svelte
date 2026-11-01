@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, BlupAccount as Account, AIQuota } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Settings from "@lucide/svelte/icons/settings";
@@ -99,6 +99,15 @@
   let agents = $state<Agent[]>([]);
   let error = $state("");
   Version().then((v) => (version = v));
+  // A newer Studio: checked once a day (from the day's answer otherwise),
+  // or now with the button.
+  let update = $state<{ newer: boolean; latest: string; url: string } | null>(null);
+  let updateState = $state<"" | "checking" | "fail">("");
+  CheckUpdate(false).then((u) => (update = u)).catch(() => {});
+  async function checkUpdate() {
+    updateState = "checking";
+    try { update = await CheckUpdate(true); updateState = ""; } catch { updateState = "fail"; }
+  }
   Language().then((l) => (lang = l));
   Agents().then((a) => (agents = a ?? []));
   // Blup Cloud: the account (for every vault and site) and how much of the
@@ -319,7 +328,7 @@
       {/each}
     {/each}
     <span class="navfill"></span>
-    <button class="appver" class:on={tab === "about"} onclick={() => (tab = "about")}><Info size={14} />Blup Studio {shownVersion}</button>
+    <button class="appver" class:on={tab === "about"} onclick={() => (tab = "about")}><Info size={14} />Blup Studio {shownVersion}{#if update?.newer}<span class="dot" title={s.updateNew.replace("{v}", update.latest)}></span>{/if}</button>
   </nav>
   <div class="side">
     <!-- The title and the X stay put; only what's below scrolls. -->
@@ -377,6 +386,13 @@
       <div class="item">
         <div class="text"><b>{s.version}</b><small>Blup Studio {shownVersion}</small></div>
         <button class="btn ghost" onclick={() => OpenURL("https://getblup.pages.dev/bento/changelog/")}>{s.news}</button>
+      </div>
+      <div class="item">
+        <div class="text"><b>{s.update}</b>
+          <small class:warn={update?.newer}>{version === "dev" ? s.updateDev : updateState === "checking" ? s.updateChecking : updateState === "fail" ? s.updateFail : update?.newer ? s.updateNew.replace("{v}", update.latest) : update?.latest ? s.updateCurrent : ""}</small>
+        </div>
+        {#if update?.newer}<button class="btn" onclick={() => OpenURL(update!.url)}>{s.updateGet}</button>
+        {:else if version !== "dev"}<button class="btn ghost" disabled={updateState === "checking"} onclick={checkUpdate}>{s.updateCheck}</button>{/if}
       </div>
       <div class="item">
         <div class="text"><b>{s.help}</b><small>{s.helpHelp}</small></div>
@@ -609,6 +625,8 @@
   .who-text small { padding: 0; font-size: .72rem; font-weight: 500; text-transform: none; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .navfill { flex: 1; }
   nav .appver { gap: .4rem; font-size: .75rem; }
+  .appver .dot { width: .45rem; height: .45rem; border-radius: 50%; background: var(--blue); }
+  .text small.warn { color: var(--blue); font-weight: 600; }
   .cloudbox { display: grid; gap: .75rem; padding-block: .5rem 1rem; border-block-end: 1px solid var(--line); font-size: .9rem; }
   .dl span.full { background: var(--red); }
   .num { font-size: .85rem; font-variant-numeric: tabular-nums; }

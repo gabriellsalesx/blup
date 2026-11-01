@@ -898,6 +898,15 @@ export function SaveDatabaseSchema(rel: string, schema: app$0.DBSchema): $Cancel
 }
 
 /**
+ * SaveExport asks where to save a note exported as HTML (name is the
+ * suggested file name) and writes html there. It returns the file's path,
+ * "" when the person cancels.
+ */
+export function SaveExport(name: string, html: string): $CancellablePromise<string> {
+    return $Call.ByID(2637792549, name, html);
+}
+
+/**
  * SaveLayout saves the home screen's order.
  */
 export function SaveLayout(items: $models.HomeItem[] | null): $CancellablePromise<void> {
