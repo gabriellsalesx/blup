@@ -218,8 +218,9 @@
   async function sampleBytes(v: Voice, lang: string): Promise<ArrayBuffer> {
     if (v.sample) {
       const res = await fetch(sample(v.id));
-      if (!res.ok) throw new Error(lv.noSample);
-      return res.arrayBuffer();
+      if (res.ok) return res.arrayBuffer();
+      // No recorded file after all: an OpenRouter voice gets one made.
+      if (v.engine !== "openrouter") throw new Error(res.statusText || String(res.status));
     }
     const b64 = await PreviewVoice(lang, v.id);
     const bin = atob(b64 ?? "");

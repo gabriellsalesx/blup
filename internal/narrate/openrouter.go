@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 )
@@ -43,6 +44,19 @@ func Known() ModelInfo {
 var knownVoices = map[string][]string{
 	"pt": {"pt-BR-Luana:MAI-Voice-2.1", "pt-BR-Caio:MAI-Voice-2.1", "pt-BR-Rafael:MAI-Voice-2.1", "pt-BR-Pedro:MAI-Voice-2.1", "pt-BR-Harper:MAI-Voice-2.1", "pt-BR-Grant:MAI-Voice-2.1"},
 	"en": {"en-US-Harper:MAI-Voice-2.1", "en-US-Olivia:MAI-Voice-2.1", "en-US-Iris:MAI-Voice-2.1", "en-US-Ethan:MAI-Voice-2.1", "en-US-Grant:MAI-Voice-2.1", "en-US-Jasper:MAI-Voice-2.1", "en-US-Sage:MAI-Voice-2.1"},
+}
+
+// HasSample tells whether the Studio carries a recorded sample of voice
+// (the recommended model's voices from Brazil and the US). OpenRouter
+// lists others too (Portugal, the UK, Australia, India): their sample is
+// made on demand.
+func HasSample(voice string) bool {
+	for _, l := range knownVoices {
+		if slices.Contains(l, voice) {
+			return true
+		}
+	}
+	return false
 }
 
 func langOf(lang string) string {

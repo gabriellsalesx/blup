@@ -187,7 +187,7 @@ func NarrationVoices(ctx context.Context, lang, model string) ([]Voice, error) {
 			if v == "" {
 				name = byLangCode(lang, "Voz padrão do modelo", "The model's default voice")
 			}
-			out = append(out, Voice{ID: joinChoice(m.ID, v), Name: name, Engine: "openrouter", Ready: creds.OpenRouterToken != "", Sample: m.ID == narrate.DefaultModel})
+			out = append(out, Voice{ID: joinChoice(m.ID, v), Name: name, Engine: "openrouter", Ready: creds.OpenRouterToken != "", Sample: m.ID == narrate.DefaultModel && narrate.HasSample(v)})
 		}
 	}
 	return out, err
