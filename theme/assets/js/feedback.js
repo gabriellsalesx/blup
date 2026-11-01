@@ -552,7 +552,11 @@ async function board() {
   const list = root.querySelector("[data-fbb-list]");
   const detail = root.querySelector("[data-fbb-detail]");
   const bar = root.querySelector(".fbb-bar");
-  const state = { kind: "all", status: "", sort: "top", q: "" };
+  // Ten requests at a time; "load more" shows ten more, a new filter
+  // starts again from ten.
+  const PAGE = 10;
+  const state = { kind: "all", status: "", sort: "top", q: "", limit: PAGE };
+  const more = root.querySelector("[data-fbb-more]");
   let posts = [];
   // Example requests (the section note's "examples", drawn by the page)
   // fill the board until a real one comes.
@@ -635,7 +639,12 @@ async function board() {
       tab.querySelector("[data-count]").textContent = String(n);
     }
   };
-  const draw = () => {
+  const page = (items) => {
+    more.parentElement.hidden = items.length <= state.limit;
+    return items.slice(0, state.limit);
+  };
+  const draw = (keep) => {
+    if (!keep) state.limit = PAGE;
     const q = state.q.trim().toLowerCase();
     if (note) note.hidden = !!posts.length;
     if (!posts.length && examples.length) {
@@ -644,7 +653,7 @@ async function board() {
         .filter((x) => statusOk(x.dataset.status))
         .filter((x) => !q || x.textContent.toLowerCase().includes(q))
         .sort((a, b) => (state.sort === "top" ? b.dataset.votes - a.dataset.votes : a.dataset.days - b.dataset.days));
-      list.replaceChildren(...(shown.length ? shown : [el("li", { className: "fbb-empty", textContent: bt.nothing })]));
+      list.replaceChildren(...(shown.length ? page(shown) : [el("li", { className: "fbb-empty", textContent: bt.nothing })]));
       counts();
       return;
     }
@@ -653,10 +662,15 @@ async function board() {
       .filter((i) => statusOk(postStatus(i.data)))
       .filter((i) => !q || i.data.title.toLowerCase().includes(q) || plain(i.data.body_html).toLowerCase().includes(q))
       .sort((a, b) => (state.sort === "top" ? b.count("+1") - a.count("+1") : 0) || Date.parse(b.data.created_at) - Date.parse(a.data.created_at));
-    list.replaceChildren(...(shown.length ? shown.map(row) : [el("li", { className: "fbb-empty", textContent: posts.length ? bt.nothing : bt.empty })]));
+    list.replaceChildren(...(shown.length ? page(shown).map(row) : [el("li", { className: "fbb-empty", textContent: posts.length ? bt.nothing : bt.empty })]));
     counts();
   };
-  for (const i of posts) i.views.push(() => { if (!list.hidden) draw(); });
+  for (const i of posts) i.views.push(() => { if (!list.hidden) draw(true); });
+  more.addEventListener("click", (e) => {
+    e.preventDefault();
+    state.limit += PAGE;
+    draw(true);
+  });
 
   root.querySelector(".fbb-tabs").addEventListener("click", (e) => {
     const tab = e.target.closest(".fbb-tab");
@@ -749,10 +763,10 @@ async function board() {
       detail.replaceChildren();
       list.hidden = bar.hidden = false;
       notes.forEach((x) => { x.hidden = x === note && !!posts.length; });
-      draw();
+      draw(true);
       return;
     }
-    list.hidden = bar.hidden = true;
+    list.hidden = bar.hidden = more.parentElement.hidden = true;
     notes.forEach((x) => { x.hidden = true; });
     if (exPage) {
       detail.hidden = true;
@@ -825,7 +839,7 @@ async function board() {
       });
       changed();
       const issue = new Issue({ ...p, reactions: p.reactions || {} });
-      issue.views.push(() => { if (!list.hidden) draw(); });
+      issue.views.push(() => { if (!list.hidden) draw(true); });
       posts.unshift(issue);
       form.reset();
       dialog.close();

@@ -70,6 +70,9 @@ saying so only in Blup Studio's preview. */ -}}
         {{- if $examples }}{{ partial "bento/feedback-examples.html" $examples }}
         {{- else if $repo }}<li class="fbb-empty">{{ T "fbbLoading" }}</li>{{ end }}
       </ol>
+      {{- /* "Load more", as in the changelog and the Nori lists: ten requests
+      at a time (they are all read at once; the button shows more). */}}
+      <div class="load-more" hidden><a href="#" role="button" data-fbb-more>{{ T "fbbLoadMore" }}</a></div>
       <article class="fbb-detail" data-fbb-detail hidden></article>
       {{- with $examples }}{{ partial "bento/feedback-example-pages.html" . }}{{ end }}
     </div>
