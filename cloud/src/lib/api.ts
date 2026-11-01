@@ -2,7 +2,7 @@
 
 import type { Usage } from "./usage.ts";
 
-export type Limits = { storageMB: number; maxFileMB: number; sites: number; devices: number; live: boolean; historyDays: number; aiUsage: number };
+export type Limits = { storageMB: number; maxFileMB: number; sites: number; customDomain: boolean; devices: number; live: boolean; historyDays: number; aiUsage: number };
 export type PlanInfo = { name: string; label: string; priceCents: number; yearlyCents: number; currency: "brl"; limits: Limits; perks: string[]; suggested: boolean };
 export type Me = {
 	id: string;
