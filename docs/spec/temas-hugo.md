@@ -12,7 +12,7 @@ Há um tema embutido chamado `blup`, com três modelos selecionados por `site.Pa
 | --- | --- |
 | `theme/layouts/_partials/mochi/` | Blog em cards, componentes compartilhados, imagens, autores, busca, proteção e scripts |
 | `theme/layouts/_partials/nori/` | Blog de coluna central, listas compactas, destaque e páginas próprias |
-| `theme/layouts/_partials/bento/` | Documentação, roadmap, changelog, ajuda, blog, navegação e feedback |
+| `theme/layouts/_partials/bento/` | Documentação, roadmap, changelog, ajuda, blog, quadro de Feedback e navegação |
 | `theme/layouts/_partials/site/` | Configuração, menu, redes, privacidade e perfis |
 | `theme/layouts/_partials/head/` | Metadados, SEO, JSON-LD e CSS |
 | `theme/layouts/_markup/` | Hooks de imagem, links, headings, callouts e fórmulas |
@@ -21,11 +21,17 @@ Há um tema embutido chamado `blup`, com três modelos selecionados por `site.Pa
 | `theme/assets/favicon.svg` | Favicon padrão e fallback de origem dos ícones do app |
 | `theme/assets/defaults/` | `apple-touch-icon.png`, `avatar.png` e `avatar.svg` padrão |
 | `theme/assets/og/` | Base e fonte da geração de imagem social |
-| `theme/i18n/{pt,en}.toml` | Textos dos temas, independentes das mensagens da CLI |
+| `theme/i18n/{pt,en,es}.toml` | Textos dos temas, independentes das mensagens da CLI e da interface do Studio |
 | `theme/static/fonts/` | Inter local em WOFF2 e licença |
 | `theme/data/lucide.json`, `theme/licenses/` | Dados de ícones e licença correspondente |
 
 O CSS passa por `css.Build`; tanto a minificação quanto o fingerprint da folha do modelo são condicionados a `hugo.IsProduction`. JavaScript passa por `js.Build` com minificação e fingerprint em ambos os modos. A fonte Inter é pré-carregada localmente. O código de busca é importado sob demanda. Não há etapa Node obrigatória para compilar o tema do site.
+
+### Ícones do quadro
+
+[mochi/icons.html](../../theme/layouts/_partials/mochi/icons.html) contém um sprite SVG inline, uma cópia por página, com símbolos `i-<nome>` referenciados por `<use>`. Os símbolos acrescentados para o quadro (`plus`, `folder`, `list-filter`, `user` e `message-square`) foram extraídos dos SVGs do Lucide baixado em `UNA-v.15.0.0-RC3/plugins_public/lucide/icons`; suas formas conferem com esses arquivos, sem desenho manual. `feedback.js` também usa `<use>` ao criar cartões e detalhes no navegador. O build Hugo inclui o sprite já convertido, sem gerá-lo de novo a partir dessa pasta externa.
+
+O partial [icon.html](../../theme/layouts/_partials/icon.html) é outro mecanismo: inclui um ícone pelo nome a partir de `theme/data/lucide.json`, com aviso e fallback para `circle-help` se desconhecido. A licença está em `theme/licenses/lucide-ISC.txt`. O comentário do sprite identifica separadamente símbolos de marcas existentes, vindos de `design/icones/contorno/`; a procedência Lucide dos símbolos novos do quadro não se estende a esses símbolos de marcas.
 
 ## Mochi
 
@@ -56,6 +62,7 @@ O tipo da página vem de `bento/kind.html`, pela propriedade `blup` da primeira 
 | `changelog` | `changelog.html`, `release.html`, `changelog-entry.html`: lista de versões e detalhes |
 | `help` | `help-home.html`, `help-collection.html`, `help-row.html`, `help-article.html`: coleções e artigos de ajuda |
 | `blog` | Usa peças do Mochi para posts e listagem de blog |
+| `feedback` | `feedback-board.html`, `feedback-examples.html`, `feedback-example-pages.html` e `feedback-block.html`: quadro de pedidos com votos e comentários, oferecido em Seções no Studio |
 | Sem tipo conhecido | `plain.html` e layouts de fallback |
 
 A home do Bento apresenta cartões para as seções reconhecidas, em ordem de peso. A documentação usa o índice da seção, suas páginas por peso e subpastas agrupadas; o título remove prefixos numéricos de exibição, mas isso não significa remover esses prefixos das URLs.
@@ -63,6 +70,16 @@ A home do Bento apresenta cartões para as seções reconhecidas, em ordem de pe
 O roadmap normaliza vários valores de `status` em `planned`, `progress` e `done`. Valor ausente ou não reconhecido cai em planejado. `category` fornece o rótulo; sem ela, tenta tag e depois o estado. As colunas abertas podem ser reordenadas por votos no cliente, com peso como desempate. `sort_by_votes: false` no `_index.md` impede a ordenação por votos.
 
 Remover ou adicionar uma seção é uma mudança nos arquivos de notas. O Studio oferece ações que movem a pasta à lixeira ou escrevem exemplos; o template apenas interpreta o que existe.
+
+### Seção Feedback
+
+Feedback é reconhecida por `blup: feedback`, inclusive quando a pasta tem outro nome. Fica em `studioKinds`, separada das cinco seções `docsKinds` do assistente de criação e da CLI; o Studio a acrescenta pelo painel Seções após criar o site. Há modelos em `internal/app/starter/{pt,en,es}/bento/Feedback/_index.md`.
+
+O quadro tem categorias fixas com contagens, menu próprio de status (todos, ativos e os cinco estados), Mais votados, Recentes, busca, Novo pedido e dez itens por vez com Carregar mais pedidos. O cartão inteiro abre o detalhe e o botão de voto tem ação própria. Categorias e opções de status não são editáveis pelo Studio. Pedidos reais são issues marcadas, abertas em `#p-N`; a leitura usa `/posts` do blup-api ou GitHub diretamente, e o dono altera etiquetas `status:` no painel Feedback do Studio.
+
+`examples` no front matter fornece títulos, corpos, votos, dias e comentários `replies`. Os exemplos aparecem também na publicação até haver um pedido real carregado; somente a prévia mostra o aviso de exemplo. Os detalhes `#ex-N` pertencem à mesma página. Sem comentários habilitados, filtros e exemplos funcionam, o voto é apenas local e Novo pedido explica a configuração necessária ao tentar enviar.
+
+Os controles são traduzidos por `theme/i18n/{pt,en,es}.toml`; título e exemplos vêm da tradução da nota, que pode exibir selo de IA. Pedidos e comentários reais conservam seu texto original em todos os idiomas. Em espanhol usa-se `solicitud`. O [contrato completo do quadro](feedback.md) detalha schema, status, login, limites, cache e tradução.
 
 ## Conteúdo, links e imagens
 
@@ -88,7 +105,7 @@ O hook de heading inclui âncoras a partir de H2 e suporta classe. `render-block
 
 `site/settings.html` lê `_index.md`: `site_name`, `site_description`, logo, favicon e redes; usa `blup.toml` como fallback do nome e descrição. `site/menu.html` resolve os itens na ordem salva, indica item atual e avisa para destinos não encontrados.
 
-`site/author-profile.html` lê a nota do autor como asset na pasta marcada `authors`, extraindo `photo`, `role`, `social` e bio Markdown. A foto pode cair para imagem no corpo. `mochi/authors.html` usa a taxonomia `authors` e depois o autor padrão. Perfis e taxonomia são coisas distintas.
+`site/author-profile.html` lê a nota do autor como asset na pasta marcada `authors`, extraindo `photo`, `role`, `social` e bio Markdown. Em uma versão traduzida do site procura primeiro `<autores>/<idioma>/<Nome>.md`, depois o perfil original; mantém o nome do arquivo, que identifica o autor. A foto pode cair para imagem no corpo. `mochi/authors.html` usa a taxonomia `authors` e depois o autor padrão. Perfis e suas traduções são recursos, excluídos das páginas de conteúdo; `/authors/` é a taxonomia. A tradução de cargo e bio está descrita em [Studio](studio.md#idiomas-e-tradução).
 
 O head inclui título composto, canonical, descrição, Open Graph, Twitter card, datas, tags e JSON-LD. `head/jsonld.html` emite `WebSite` para a home, `TechArticle` para toda página regular do Bento, inclusive blog e roadmap, e `BlogPosting` para páginas regulares dos demais modelos; também inclui breadcrumbs fora da home. `og-image.html` usa capa quando apropriado ou gera imagem social com os assets em `theme/assets/og/`. `hidden`, `noindex` e 404 recebem meta robots noindex.
 
@@ -122,17 +139,19 @@ A proteção envolve o corpo delimitado. Título, capa, autores, URL e outros da
 
 `feedback-kind.html` habilita feedback para roadmap, changelog e blog do Bento; em Mochi/Nori, para páginas de post que não sejam política de privacidade. O manifesto de publicação exclui páginas com `hidden`.
 
-`internal/app/feedback.go` cria ou atualiza uma issue por caminho de nota em minúsculas com `/`. A issue recebe um marcador `<!-- blup:<chave> -->` e label gerenciada. O mapeamento é salvo em `<site>/data/blup_feedback.json`, com repositório, URL do site, API de login habilitada e mapa de issues. O build pode repetir Hugo para incorporar a nova relação. Renomear a nota altera sua chave; não há identidade de feedback independente do caminho.
+`internal/app/feedback.go` cria ou atualiza uma issue por chave de nota em minúsculas com `/`. `bento/feedback-key.html` usa o caminho da original no idioma principal quando uma tradução ligada está disponível; assim todas as versões de uma página compartilham comentários, votos e reações. Sem original ligada, usa o caminho da própria página. A issue recebe um marcador `<!-- blup:<chave> -->` e label gerenciada. O mapeamento é salvo em `<site>/data/blup_feedback.json`, com repositório, URL do site, API de login habilitada e mapa de issues. O build pode repetir Hugo para incorporar a nova relação. Renomear a original altera sua chave; não há identidade de feedback independente do caminho.
 
 Configurar feedback cria ou usa um repositório público `<slug>-feedback`, ativa issues e verifica permissões. O site de hospedagem pode estar no GitHub ou Cloudflare. `appInstalled` consulta `/installed?repo=...` no serviço de login; somente instalação confirmada acrescenta `data-fb-api` aos scripts gerados. Sem ela, os controles encaminham ao GitHub.
 
-`feedback.js` lê contagens e comentários, faz login GitHub pelo serviço, recebe e valida estado do retorno, mantém autenticação no navegador e renova quando necessário. Visitante anônimo pode ler pelo serviço com cache; autenticado usa diretamente GitHub com sua chave. Existem caches em sessão e invalidação após mudanças.
+`feedback.js` lê contagens e comentários, faz login GitHub pelo serviço, recebe e valida estado do retorno e mantém autenticação em `sessionStorage`, restrita à aba, removendo entradas antigas de `localStorage`. Renova a autorização quando necessário. Visitante anônimo pode ler pelo serviço com cache; autenticado usa diretamente GitHub com sua chave. Existem caches em sessão e invalidação após mudanças. HTML recebido para corpos e prévias passa pela cópia de elementos permitidos em `markdown`, sem handlers, estilos ou embeds ativos; `safeURL` filtra endereços.
 
-O cliente não pagina a lista de issues nem a de comentários. Nas chamadas diretas ao GitHub pede `per_page=100` para cada uma e só usa a primeira resposta, podendo omitir issues ou comentários além desse conjunto. As leituras via serviço também não têm loop de paginação no navegador; o comportamento interno desse serviço não está neste repositório. A lista de nós de feedback é capturada uma vez ao carregar o script e não é ampliada por `blup:added`.
+O cliente não pagina a lista de issues nem a de comentários. Nas chamadas diretas ao GitHub pede `per_page=100` para cada uma e só usa a primeira resposta, podendo omitir issues ou comentários além desse conjunto. As leituras via serviço também não têm loop de paginação no navegador. No repositório irmão, `blup-api/src/index.ts` percorre até cinco páginas para `/issues`, até três para `/posts` e uma para `/comments`; o [contrato de `/posts`](feedback.md#leitura-por-posts-e-limites) distingue isso da paginação visual de dez itens. A lista de nós de feedback das páginas é capturada uma vez ao carregar o script e não é ampliada por `blup:added`; o quadro liga seus detalhes dinamicamente por `attach`.
 
-A seção Feedback do Bento (`blup: feedback`, só oferecida pelo Studio) é um quadro de pedidos (`bento/feedback-board.html`): abas por tipo (recurso, bug, melhoria, outro) com contagens, filtro de status, ordem por votos ou recentes, busca e um diálogo de novo pedido. Cada pedido é uma issue do repositório `-feedback` marcada com `<!-- blup:feedback kind=X lang=Y -->`; o status é a etiqueta `status: planned|progress|done|declined` (feito e recusado fecham a issue). `feedback.js` lê a lista pelo `/posts` do serviço de login (ou pelo GitHub) e abre o pedido em `#p-N` com o mesmo bloco de votos e comentários (`bento/feedback-block.html`). Mostra dez pedidos por vez, com "Carregar mais pedidos" como no changelog e nas listas do Nori (todos são lidos de uma vez; o botão só mostra mais). A seção vem com pedidos de exemplo (lista `examples` da nota, com comentários de exemplo), que ficam no quadro até chegar o primeiro pedido real. Sem comentários ligados, o quadro funciona nos exemplos e o Novo pedido diz o que falta.
+Os pedidos do [quadro Feedback](feedback.md) são issues independentes das notas, criadas por visitantes com `<!-- blup:feedback kind=X lang=Y -->`. O build não cria uma issue por exemplo da nota. `status: planned`, `status: progress`, `status: done` e `status: declined` são etiquetas geridas pelo Studio; Novo retira essas etiquetas, e Feito e Recusado também fecham a issue.
 
 Os controles permitem votar, reagir, escrever com prévia Markdown, responder por citação e remover comentários conforme permissões. Respostas são comentários na mesma issue, com citação e menção, sem árvore própria no banco do Blup. A API de login pertence a `github.com/gabriellsalesx/blup-api`; seu servidor não está implementado neste repositório.
+
+Ao postar pelo site, `feedback.js` acrescenta `<!-- blup:lang=pt -->` ao comentário, usando o idioma da página. Lido em outro idioma, o comentário mostra um rótulo como "comentado em English". A resposta por citação retira essa marca antes de montar o trecho citado. O texto real não é traduzido e comentários sem marca não têm idioma inferido. No quadro, a marca do pedido também permite informar em qual idioma ele foi escrito.
 
 ## Cookies e vídeos
 
@@ -162,5 +181,9 @@ Navegação tenta a rede antes; na falha, tenta a página em cache ignorando que
 
 ## Mapa do changelog (Bento)
 
-A página do changelog abre com um mapa dos últimos 12 meses, como o de contribuições do GitHub (`bento/changelog-map.html`): uma coluna por semana, um quadrado por dia. Um dia com versões ganha a cor do que elas foram (`bento/change-kind.html`): a propriedade `type` (`new`, `improvement`, `fix`, `security`, `breaking`), ou as tags em português, inglês ou espanhol (Correção, Bug, Novidade, Melhoria, Segurança...). Correção é vermelha, novidade verde, melhoria azul, segurança roxa e mudança importante laranja; num dia com várias versões vale a mais séria, em cor mais forte. Passar o mouse (ou focar) mostra o dia e as versões; clicar abre a versão. Tudo é feito na geração do site; o script só posiciona a caixa sobre a página e, em tela estreita, começa nos meses mais novos.
+A página do changelog abre com um mapa dos últimos 12 meses, como o de contribuições do GitHub ([changelog-map.html](../../theme/layouts/_partials/bento/changelog-map.html)): uma coluna por semana, um quadrado por dia, a partir de 364 dias antes da data do build, recuando até o domingo daquela semana. Usa as páginas visíveis recursivas da seção, independentemente da página atual da listagem, e desenha somente dias até hoje.
+
+[change-kind.html](../../theme/layouts/_partials/bento/change-kind.html) prefere `type` reconhecido (`new`, `improvement`, `fix`, `security`, `breaking`); senão procura termos nas tags em português, inglês ou espanhol. A prioridade é `breaking`, `security`, `fix`, `new`, `improvement` e `other`. Correção é vermelha, novidade verde, melhoria azul, segurança roxa e mudança importante laranja. Um dia com várias versões usa a categoria de maior prioridade e a classe `many`, com cor mais forte.
+
+Passar o mouse ou focar mostra a data e as versões daquele dia; clicar abre a primeira versão do grupo no permalink gerado. Há legenda e total de versões. O calendário é produzido no build, sem consulta remota; `blup.js` posiciona a caixa e põe o scroll nos meses mais novos. Meses, dias e rótulos acompanham o idioma da versão do site por Hugo e `theme/i18n`.
 

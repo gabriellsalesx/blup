@@ -35,11 +35,12 @@ const HASH = "blup-gh-hash";
 // --- the visitor's GitHub key -------------------------------------------
 
 let auth = null;
-try { auth = JSON.parse(localStorage.getItem(AUTH)); } catch {}
+// Keep visitor keys only for this tab. Remove keys left by older versions.
+try { localStorage.removeItem(AUTH); auth = JSON.parse(sessionStorage.getItem(AUTH)); } catch {}
 
 function saveAuth(a) {
   auth = a;
-  try { a ? localStorage.setItem(AUTH, JSON.stringify(a)) : localStorage.removeItem(AUTH); } catch {}
+  try { localStorage.removeItem(AUTH); a ? sessionStorage.setItem(AUTH, JSON.stringify(a)) : sessionStorage.removeItem(AUTH); } catch {}
 }
 
 // takeLogin reads the key the login service handed back after "#".
@@ -140,9 +141,43 @@ async function gh(url, { method = "GET", body, accept = "application/vnd.github+
 // --- rendering -----------------------------------------------------------
 
 function el(tag, props = {}, ...kids) {
+  for (const k of ["href", "src"]) if (k in props) props[k] = safeURL(props[k], k === "src");
   const e = Object.assign(document.createElement(tag), props);
   e.append(...kids.filter((k) => k != null));
   return e;
+}
+
+function safeURL(raw, image = false) {
+  if (typeof raw !== "string" || !raw.trim()) return "";
+  try {
+    const u = new URL(raw, location.href);
+    if (["https:", "http:"].includes(u.protocol) || (!image && u.protocol === "mailto:")) return u.href;
+  } catch {}
+  return "";
+}
+
+// Treat HTML from both GitHub and the read proxy as untrusted at insertion.
+// Copy semantic Markdown nodes, never event handlers, CSS, active embeds or SVG.
+function markdown(target, html) {
+  const doc = new DOMParser().parseFromString(typeof html === "string" ? html : "", "text/html");
+  const allowed = new Set(["P", "BR", "HR", "A", "IMG", "EM", "STRONG", "DEL", "S", "CODE", "PRE", "BLOCKQUOTE", "UL", "OL", "LI", "H1", "H2", "H3", "H4", "H5", "H6", "TABLE", "THEAD", "TBODY", "TR", "TH", "TD", "DETAILS", "SUMMARY", "DIV", "SPAN", "SUP", "SUB", "KBD"]);
+  const blocked = new Set(["SCRIPT", "STYLE", "SVG", "MATH", "IFRAME", "OBJECT", "EMBED", "TEMPLATE", "FORM", "INPUT", "BUTTON", "META", "LINK", "BASE"]);
+  const copy = (source, dest) => {
+    for (const n of source.childNodes) {
+      if (n.nodeType === Node.TEXT_NODE) { dest.append(document.createTextNode(n.textContent)); continue; }
+      if (n.nodeType !== Node.ELEMENT_NODE || blocked.has(n.tagName)) continue;
+      if (!allowed.has(n.tagName)) { copy(n, dest); continue; }
+      const e = document.createElement(n.tagName.toLowerCase());
+      for (const a of ["title", "alt"]) if (n.hasAttribute(a)) e.setAttribute(a, n.getAttribute(a));
+      if (n.tagName === "A") { e.href = safeURL(n.getAttribute("href")); e.rel = "noopener noreferrer"; }
+      if (n.tagName === "IMG") { e.src = safeURL(n.getAttribute("src"), true); e.loading = "lazy"; }
+      copy(n, e);
+      dest.append(e);
+    }
+  };
+  const fragment = document.createDocumentFragment();
+  copy(doc.body, fragment);
+  target.replaceChildren(fragment);
 }
 
 function comment(c, lang) {
@@ -154,7 +189,7 @@ function comment(c, lang) {
   });
   const body = el("div", { className: "fb-body prose" });
   // body_html is rendered and sanitized by GitHub.
-  body.innerHTML = c.body_html || "";
+  markdown(body, c.body_html);
   const head = el("div", { className: "fb-head" }, img, who, when);
   const written = LANG_MARK.exec(c.body || "")?.[1];
   if (written && pageLang && written !== pageLang && t.inLang) {
@@ -356,7 +391,7 @@ function form(node, issue, lang) {
         body: JSON.stringify({ text: area.value, mode: "gfm", context: repo }),
       });
       if (!res.ok) throw new Error(res.status);
-      preview.innerHTML = await res.text(); // GitHub's own sanitized HTML
+      markdown(preview, await res.text());
     } catch {
       preview.replaceChildren(el("p", { className: "fb-error", textContent: t.error || "" }));
     }
@@ -458,8 +493,8 @@ async function attach(node, issue, lang, back) {
   if (back) node.scrollIntoView({ block: "start" });
 }
 
-async function run() {
-  if (!repo || !nodes.length) return;
+async function run(found = nodes, first = true) {
+  if (!repo || !found.length) return;
   let list;
   try {
     list = await read(`/issues?repo=${encodeURIComponent(repo)}`, `${API}/issues?labels=blup&state=all&per_page=100`);
@@ -468,13 +503,20 @@ async function run() {
   }
   const issues = new Map(list.map((i) => [i.number, new Issue(i)]));
   const lang = document.documentElement.lang || undefined;
-  for (const node of nodes) {
+  for (const node of found) {
+    if (node.dataset.fbDone) continue;
+    node.dataset.fbDone = "1";
     const issue = issues.get(Number(node.dataset.fbIssue));
-    if (issue) await attach(node, issue, lang, back);
+    if (issue) await attach(node, issue, lang, first && back);
   }
+  if (!first) return;
   sortBoard();
   sortTabs(issues);
 }
+
+// "Load more" (blup.js) brought the next page's cards: their counts too
+// (the list read above is cached, so no new request for most of them).
+document.addEventListener("blup:added", (e) => run([...e.target.querySelectorAll("[data-fb-issue]")], false));
 
 // sortTabs: Nori's "Latest / Top / Discussions" tabs above the list of
 // posts. They show only when the posts have reactions and comments; Top
@@ -535,11 +577,12 @@ board();
 // the site's owner sets in Blup Studio; a closed request without one is done.
 const POST_MARK = /<!--\s*blup:feedback\s+kind=([a-z]+)(?:\s+lang=([a-z]{2}))?\s*-->/;
 const KINDS = ["feature", "bug", "improvement", "other"];
+const STATUSES = ["new", "planned", "progress", "done", "declined"];
 
 function postKind(p) { const k = POST_MARK.exec(p.body || "")?.[1]; return KINDS.includes(k) ? k : "other"; }
-function postLang(p) { return POST_MARK.exec(p.body || "")?.[2] || ""; }
+function postLang(p) { const l = POST_MARK.exec(p.body || "")?.[2]; return Object.hasOwn(LANG_NAMES, l) ? l : ""; }
 function postStatus(p) {
-  const l = (p.labels || []).map((x) => (typeof x === "string" ? x : x?.name || "")).find((n) => n.startsWith("status:"));
+  const l = (p.labels || []).map((x) => (typeof x === "string" ? x : x?.name || "")).find((n) => n.startsWith("status:") && STATUSES.includes(n.slice(7).trim()));
   if (l) return l.slice(7).trim();
   return p.state === "closed" ? "done" : "new";
 }
@@ -583,7 +626,7 @@ async function board() {
 
   // The list: the requests that pass the filters, in the chosen order,
   // each a card like the page's examples (feedback-examples.html).
-  const plain = (html) => { const d = document.createElement("div"); d.innerHTML = html || ""; return (d.textContent || "").trim(); };
+  const plain = (html) => { const d = document.createElement("div"); markdown(d, html); return (d.textContent || "").trim(); };
   const icon = (name) => {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("class", "icon");
@@ -782,7 +825,7 @@ async function board() {
       el("span", {}, icon("clock"), el("time", { dateTime: p.created_at, textContent: new Date(p.created_at).toLocaleDateString(lang, { day: "numeric", month: "short", year: "numeric" }) })));
     if (written && written !== pageLang) meta.append(el("span", { className: "fb-lang", textContent: (bt.written || "").replace("{lang}", LANG_NAMES[written] || written) }));
     const body = el("div", { className: "prose fbb-body" });
-    body.innerHTML = p.body_html || ""; // rendered and sanitized by GitHub
+    markdown(body, p.body_html);
     const block = root.querySelector("[data-fbb-block]").content.firstElementChild.cloneNode(true);
     block.dataset.fbIssue = String(p.number);
     block.querySelectorAll('a[href^="https://github.com/"]').forEach((a) => { a.href = a.href.replace(/\/issues(#.*)?$/, `/issues/${p.number}$1`); });
@@ -826,15 +869,16 @@ async function board() {
       err.hidden = false;
       return;
     }
-    const kind = f.kind.value || "other";
+    const kind = KINDS.includes(f.kind.value) ? f.kind.value : "other";
     const send = form.querySelector("[data-fbb-send]");
     send.disabled = true;
     err.hidden = true;
     try {
-      const mark = `<!-- blup:feedback kind=${kind}${pageLang ? ` lang=${pageLang}` : ""} -->`;
+      const written = Object.hasOwn(LANG_NAMES, pageLang) ? pageLang : "";
+      const mark = `<!-- blup:feedback kind=${kind}${written ? ` lang=${written}` : ""} -->`;
       const p = await gh(`${API}/issues`, {
         method: "POST",
-        body: { title, body: `${f.body.value.trim()}\n\n${mark}` },
+        body: { title, body: `${f.body.value.replace(/<!--\s*blup:feedback[\s\S]*?-->/g, "").trim()}\n\n${mark}` },
         accept: "application/vnd.github.full+json",
       });
       changed();

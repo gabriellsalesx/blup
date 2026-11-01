@@ -93,7 +93,7 @@ func boardPosts(issues []github.BoardIssue) []FeedbackPost {
 
 func boardStatus(i github.BoardIssue) string {
 	for _, l := range i.Labels {
-		if s, ok := strings.CutPrefix(l.Name, "status:"); ok {
+		if s, ok := strings.CutPrefix(l.Name, "status:"); ok && slices.Contains(BoardStatuses, strings.TrimSpace(s)) {
 			return strings.TrimSpace(s)
 		}
 	}
@@ -106,6 +106,9 @@ func boardStatus(i github.BoardIssue) string {
 // SetFeedbackStatus sets a request's status: its label (the other labels
 // stay), and closes it when done or declined (opens it again otherwise).
 func SetFeedbackStatus(ctx context.Context, site *config.Site, number int, status string) error {
+	if number <= 0 {
+		return errors.New("invalid feedback issue number")
+	}
 	if !slices.Contains(BoardStatuses, status) {
 		return errors.New("unknown status " + status)
 	}
@@ -113,33 +116,32 @@ func SetFeedbackStatus(ctx context.Context, site *config.Site, number int, statu
 	if err != nil {
 		return err
 	}
-	issues, err := c.RecentIssues(ctx, f.Owner, f.Repo, 3)
+	i, err := c.BoardIssue(ctx, f.Owner, f.Repo, number)
 	if err != nil {
 		return err
 	}
-	var labels []string
-	for _, i := range issues {
-		if i.Number != number {
-			continue
-		}
-		for _, l := range i.Labels {
-			if !strings.HasPrefix(l.Name, "status:") {
-				labels = append(labels, l.Name)
-			}
-		}
+	// The marker identifies a visitor request, never its authority: GitHub
+	// permissions and the owner's credential authorize this change.
+	if i.Number != number || i.PullRequest != nil || !boardMark.MatchString(i.Body) {
+		return errors.New("not a feedback request")
 	}
+	name := "status: " + status
 	if status != "new" {
-		name := "status: " + status
 		if err := c.EnsureLabel(ctx, f.Owner, f.Repo, name, statusColors[status], "blup"); err != nil {
 			return err
 		}
-		labels = append(labels, name)
+		if err := c.AddIssueLabels(ctx, f.Owner, f.Repo, number, []string{name}); err != nil {
+			return err
+		}
 	}
-	if labels == nil {
-		labels = []string{}
-	}
-	if err := c.SetIssueLabels(ctx, f.Owner, f.Repo, number, labels); err != nil {
-		return err
+	// Change only labels managed by this board. Replacing the complete
+	// list would erase labels added by another tool since our read.
+	for _, l := range i.Labels {
+		if s, ok := strings.CutPrefix(l.Name, "status:"); ok && slices.Contains(BoardStatuses, strings.TrimSpace(s)) && (status == "new" || l.Name != name) {
+			if err := c.RemoveIssueLabel(ctx, f.Owner, f.Repo, number, l.Name); err != nil {
+				return err
+			}
+		}
 	}
 	switch status {
 	case "done":

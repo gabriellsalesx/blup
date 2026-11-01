@@ -37,6 +37,8 @@ type Studio struct {
 	// previewCfg is the config the running preview started with: a newer
 	// one (a new language, a new language folder) needs a fresh start.
 	previewCfg []byte
+	// restarting lets one preview restart run at a time.
+	restarting sync.Mutex
 	// login is the Blup Cloud sign in waiting for the browser.
 	login  *blupcloud.Login
 	cancel context.CancelFunc
@@ -200,6 +202,11 @@ func (s *Studio) StartPreview() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return s.startPreview(site)
+}
+
+// startPreview runs the preview of site, as long as it is still the open one.
+func (s *Studio) startPreview(site *config.Site) (url string, err error) {
 	if site.IsNotes() {
 		return "", errors.New("a vault of notes has no site to preview")
 	}
@@ -262,14 +269,30 @@ func (s *Studio) StartPreview() (string, error) {
 		if !ok {
 			return "", errors.New("the preview stopped: " + strings.TrimSpace(log.String()))
 		}
-		s.mu.Lock()
-		s.preview, s.url, s.previewCfg = cmd, url, cfg
-		s.mu.Unlock()
-		return url, nil
+		return s.adopt(site, cmd, url, cfg)
 	case <-time.After(2 * time.Minute):
 		cmd.Process.Kill()
 		return "", errors.New("the preview took too long to start")
 	}
+}
+
+// adopt makes the started hugo the running preview. Starts can overlap (a
+// restart after sections changed while the window asks for the preview, or
+// another site opened meanwhile): the one that comes second is stopped, so
+// no hugo runs on unseen.
+func (s *Studio) adopt(site *config.Site, cmd *exec.Cmd, url string, cfg []byte) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.site != site {
+		cmd.Process.Kill()
+		return "", errors.New("another site was opened")
+	}
+	if s.preview != nil {
+		cmd.Process.Kill()
+		return s.url, nil
+	}
+	s.preview, s.url, s.previewCfg = cmd, url, cfg
+	return url, nil
 }
 
 // StopPreview stops the preview, if running.

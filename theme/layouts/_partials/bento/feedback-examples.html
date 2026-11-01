@@ -4,6 +4,8 @@ are off), as the other sections bring example notes. The same card
 feedback.js draws for a real request. Param: the examples. */ -}}
 {{- range $i, $e := . }}
 {{- $kind := .kind | default "other" }}{{ $status := .status | default "new" }}
+{{- if not (in (slice "feature" "bug" "improvement" "other") $kind) }}{{ $kind = "other" }}{{ end }}
+{{- if not (in (slice "new" "planned" "progress" "done" "declined") $status) }}{{ $status = "new" }}{{ end }}
 {{- $comments := len (.replies | default slice) }}{{ $days := int (.days | default 0) }}
 <li class="fbb-item fbb-example" data-kind="{{ $kind }}" data-status="{{ $status }}" data-votes="{{ .votes | default 0 }}" data-days="{{ $days }}">
   <button type="button" class="fbb-vote" aria-pressed="false" aria-label="{{ T "fbVote" }}"><svg class="icon" aria-hidden="true"><use href="#i-chevron-up"/></svg><b>{{ .votes | default 0 }}</b></button>

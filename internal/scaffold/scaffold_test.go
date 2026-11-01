@@ -448,13 +448,27 @@ func TestFeedbackBoard(t *testing.T) {
 		for _, want := range []string{
 			`data-fb-board`, `data-fbb-issues="https://github.com/ana/produto-feedback/issues"`,
 			`data-kind="bug" aria-selected="false"`, `data-kind="improvement"`, `<b data-count>1</b>`, `<dialog class="fbb-dialog"`,
-			`<template data-fbb-block>`, 
+			`<template data-fbb-block>`,
 			`<a class="fbb-title" href="#ex-0">Modo escuro</a>`, `data-fbb-ex="0"`, `data-fbb-example-block`, `role="listbox"`, `<use href="#i-message-square"/>`, `<use href="#i-chevron-up"/>`,
 			`<span class="fbb-status s-planned">Planejado</span>`, `<span class="fbb-cat">Relatos de bug</span>`,
 		} {
 			if !strings.Contains(page, want) {
 				t.Errorf("the board page is missing %q", want)
 			}
+		}
+		// The published board shows the examples without a word; the
+		// preview says they are examples, to be removed from the note.
+		if strings.Contains(page, "data-fbb-note") {
+			t.Error("the published board shows the preview's notice")
+		}
+		cmd := bin.Command(context.Background(), dir, "--logLevel", "warn", "--destination", "preview")
+		cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=preview")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("hugo: %v\n%s", err, out)
+		}
+		b, err = os.ReadFile(filepath.Join(dir, "preview", "feedback", "index.html"))
+		if err != nil || !strings.Contains(string(b), "data-fbb-note") {
+			t.Errorf("the preview's board does not say the requests are examples (%v)", err)
 		}
 	}
 }

@@ -44,6 +44,36 @@ Sem `-X ...app.Version=...`, o binário mantém `dev`, e a oferta automática de
 
 `internal/scaffold/scaffold_test.go` chama `hugo.Find`; se não houver Hugo compatível, pula a integração. `TestBuild` exercita Mochi e Bento com o cofre de `testdata/vault`, valida links, callouts, MathML, WebP, título, imagens sociais, proteção e notas escondidas. O teste de Hugo sem modo Blup verifica que não publica o corpo protegido em claro. Esse arquivo não inclui Nori no loop principal.
 
+### Feedback, tradução e changelog
+
+Os recursos da revisão de 01/11/2026 têm os seguintes testes de regressão no código:
+
+| Teste e arquivo | O que verifica |
+| --- | --- |
+| `TestSections`, `internal/obsidian/sections_test.go` | Identifica `blup: feedback` mesmo quando a pasta se chama de outra forma |
+| `TestFeedbackBoard`, `internal/scaffold/scaffold_test.go` | HTML do quadro, categorias, filtro próprio, formulário, exemplos e detalhes, inclusive com comentários desligados |
+| `TestBoardPosts`, `internal/app/feedback_board_test.go` | Filtra as marcas de pedido, lê idioma, votos, comentários e status, com fallback de tipo e de issue fechada |
+| `TestTranslateFeedbackExamples`, `internal/app/translate_test.go` | Traduz título, corpo e comentários de exemplo, preserva dados não textuais e marca a tradução como desatualizada quando o texto do exemplo muda |
+| `TestTranslateHomeAndSection`, `internal/app/translate_test.go` | Traduz rótulos, `linkTitle` e perfil do autor, mantendo os nomes de arquivo de índice e autor |
+| `TestBuildTranslated`, `internal/scaffold/scaffold_test.go` | Montagem dos idiomas, perfil traduzido como recurso e mesma issue para original e tradução |
+| `TestChangelogMap`, `internal/scaffold/scaffold_test.go` | Calendário antes da lista, cores, prioridade num dia com várias versões, link e exclusão de versões antigas do mapa |
+| `TestVoiceFor`, `internal/app/narration_api_test.go` | Escolhas locais/remotas e fallback quando uma voz não fala o idioma solicitado |
+| `TestSetFeedbackStatusAttacks` e `TestBoardStatusRejectsUnmanagedLabel`, `internal/app/feedback_board_test.go` | Recusa número, status e issue inválidos; altera pedido antigo sem substituir etiquetas de terceiros; ignora status desconhecido no backend |
+| `TestFeedbackTranslationRejectsMalformedTextsBeforeWriting`, `internal/app/translate_test.go` | Recusa lista de textos de exemplo inválida antes de gravar arquivos |
+| `TestPlaceSearchAcrossDisks`, `internal/app/preview_test.go` | Instala o índice da prévia com cópia quando rename devolve EXDEV |
+| `TestAdoptPreview`, `studio/preview_test.go` | Descarta processo duplicado ou de site anterior sem substituir a prévia já adotada |
+| `TestFeedbackBrowserAttacks`, `internal/app/feedback_security_test.go` | Exercita o script em Chromium headless contra persistência de autorização, classes, HTML ativo e metadados forjados; pula se Chromium não estiver instalado |
+| `TestFeedbackExamplesEscapeAndClasses`, `internal/app/feedback_security_test.go` | Confere escape dos textos de exemplo e fallback de categoria/status inválidos no Hugo |
+
+Para rodar os pacotes internos e o pacote desktop, separadamente:
+
+```sh
+go test ./internal/...
+(cd studio && go test .)
+```
+
+O teste de Chromium cobre as entradas de segurança descritas na tabela, sem uma suíte funcional completa das interações. Cartão clicável, votação dos exemplos, Carregar mais, menu de status, quebras de layout em `NoteLangs`/`SettingsModal` e preservação visual após reinício ainda precisam de verificação de interface quando o código dessas interações muda. A checagem de documentação verifica links locais, ausência de travessões e ausência de credenciais reais, sem abrir ou reiniciar o Studio.
+
 O workflow instala Hugo `0.169.0` antes de `go test ./...`, para não depender desse skip. Os testes HTTP dos provedores usam respostas simuladas e não provam disponibilidade das contas ou APIs reais em produção. O teste de modelos em `internal/config/config_test.go` também ainda não inclui Nori entre os casos positivos, embora `LoadSite` já o aceite.
 
 Variáveis de apoio encontradas nos testes:
@@ -87,10 +117,10 @@ go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o bin/blup
 
 O módulo contém testes específicos de Hyprland em `studio/hyprland_test.go`. Compilar o Studio desktop em Linux exige toolchain nativa e bibliotecas da pilha gráfica; não basta copiar o binário da CLI.
 
-As tarefas do projeto usam o CLI `wails3`. A dependência Wails do módulo está fixada em `v3.0.0`. A instalação do comando correspondente pode ser feita com:
+As tarefas do projeto usam o CLI `wails3`. A dependência Wails do módulo está fixada em `v3.1.0`. A instalação do comando correspondente pode ser feita com:
 
 ```sh
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
 ```
 
 Dentro de `studio`, os fluxos previstos são:
@@ -113,7 +143,7 @@ As variáveis de build incluem `DEV=true`, que escolhe perfil de desenvolvimento
 
 A implementação e os pacotes usam GTK4 e WebKitGTK 6.0, padrão Wails 3 deste projeto. A compilação nativa requer compilador C, pkg-config e headers/bibliotecas de desenvolvimento correspondentes da distribuição. O runtime do WebKitGTK usa GStreamer para mídia.
 
-A dependência Wails `v3.0.0` também oferece a tag `gtk3`: seus arquivos `pkg/application/linux_cgo_gtk3.go` e `linux_cgo.go` selecionam respectivamente `gtk+-3.0 webkit2gtk-4.1 gdk-3.0` ou `gtk4 webkitgtk-6.0` pelo pkg-config. `EXTRA_TAGS=gtk3` altera a pilha do build; os nomes de dependências no nfpm deste repositório continuam fixos para GTK4/WebKitGTK 6.0 e não se ajustam automaticamente à tag.
+A dependência Wails `v3.1.0` também oferece a tag `gtk3`: seus arquivos `pkg/application/linux_cgo_gtk3.go` e `linux_cgo.go` selecionam respectivamente `gtk+-3.0 webkit2gtk-4.1 gdk-3.0` ou `gtk4 webkitgtk-6.0` pelo pkg-config. `EXTRA_TAGS=gtk3` altera a pilha do build; os nomes de dependências no nfpm deste repositório continuam fixos para GTK4/WebKitGTK 6.0 e não se ajustam automaticamente à tag.
 
 Os nomes de dependências declarados pelo nfpm são:
 

@@ -106,6 +106,37 @@ type BoardIssue struct {
 	PullRequest *struct{} `json:"pull_request"`
 }
 
+// BoardIssue reads one issue, including requests older than the recent list.
+func (c *Client) BoardIssue(ctx context.Context, owner, repo string, number int) (BoardIssue, error) {
+	var out BoardIssue
+	if number <= 0 {
+		return out, errors.New("github: invalid issue number")
+	}
+	_, err := c.do(ctx, http.MethodGet, fmt.Sprintf("%s/issues/%d", repoPath(owner, repo), number), nil, &out)
+	return out, err
+}
+
+// AddIssueLabels adds labels without overwriting labels owned by other tools.
+func (c *Client) AddIssueLabels(ctx context.Context, owner, repo string, number int, labels []string) error {
+	if number <= 0 {
+		return errors.New("github: invalid issue number")
+	}
+	_, err := c.do(ctx, http.MethodPost, fmt.Sprintf("%s/issues/%d/labels", repoPath(owner, repo), number), map[string]any{"labels": labels}, nil)
+	return err
+}
+
+// RemoveIssueLabel removes only the named label. A concurrent removal is OK.
+func (c *Client) RemoveIssueLabel(ctx context.Context, owner, repo string, number int, label string) error {
+	if number <= 0 {
+		return errors.New("github: invalid issue number")
+	}
+	_, err := c.do(ctx, http.MethodDelete, fmt.Sprintf("%s/issues/%d/labels/%s", repoPath(owner, repo), number, url.PathEscape(label)), nil, nil)
+	if errors.Is(err, ErrNotFound) {
+		return nil
+	}
+	return err
+}
+
 // RecentIssues returns the newest issues (open and closed, without pull
 // requests), at most pages×100.
 func (c *Client) RecentIssues(ctx context.Context, owner, repo string, pages int) ([]BoardIssue, error) {
@@ -130,6 +161,9 @@ func (c *Client) RecentIssues(ctx context.Context, owner, repo string, pages int
 
 // SetIssueLabels replaces the labels of an issue.
 func (c *Client) SetIssueLabels(ctx context.Context, owner, repo string, number int, labels []string) error {
+	if number <= 0 {
+		return errors.New("github: invalid issue number")
+	}
 	_, err := c.do(ctx, http.MethodPut, fmt.Sprintf("%s/issues/%d/labels", repoPath(owner, repo), number), map[string]any{"labels": labels}, nil)
 	return err
 }
@@ -137,6 +171,9 @@ func (c *Client) SetIssueLabels(ctx context.Context, owner, repo string, number 
 // SetIssueState opens or closes an issue; reason is "completed" or
 // "not_planned" when closing.
 func (c *Client) SetIssueState(ctx context.Context, owner, repo string, number int, open bool, reason string) error {
+	if number <= 0 {
+		return errors.New("github: invalid issue number")
+	}
 	in := map[string]any{"state": "open"}
 	if !open {
 		in = map[string]any{"state": "closed", "state_reason": reason}

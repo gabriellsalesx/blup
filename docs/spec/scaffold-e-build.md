@@ -25,7 +25,7 @@ Os mounts usam os seguintes contratos:
 | Origem | Destino Hugo | Seleção |
 | --- | --- | --- |
 | `site.ContentDir()` | `content` | Markdown; exclui pastas ocultas, guias de agentes na raiz, perfis e templates configurados |
-| `site.Vault` | `assets/vault` | Anexos conhecidos do cofre inteiro e notas dos perfis |
+| `site.Vault` | `assets/vault` | Anexos conhecidos do cofre inteiro, perfis de autores e suas traduções |
 | `<site>/assets` | `assets` | Recursos de override |
 | `<site>/layouts` | `layouts` | Templates de override |
 | `<site>/static` | `static` | Cópia estática direta |
@@ -36,6 +36,10 @@ Os mounts usam os seguintes contratos:
 Os anexos elegíveis são `png`, `jpg`, `jpeg`, `webp`, `avif`, `gif`, `svg`, `bmp`, `tif`, `tiff`, `pdf`, `mp3`, `m4a`, `ogg`, `wav`, `flac`, `mp4`, `webm`, `mov` e `zip`, com padrões para extensão minúscula e maiúscula. Montá-los como assets permite publicar apenas os recursos efetivamente referenciados. Um arquivo em `static/` tem outro comportamento: ele entra como arquivo estático.
 
 `AGENTS.md`, `CLAUDE.md` e `GEMINI.md` na raiz das notas são guias de terminal excluídos do conteúdo. `obsidian.Sections` descobre a pasta de autores pelas propriedades do `_index.md` de pastas diretas. O diretório de templates vem de `.obsidian/templates.json`, ajustado em relação ao recorte publicado.
+
+Quando há traduções, `translationMounts` monta cada pasta `en`, `es` ou `pt` correspondente a outro idioma no lugar da pasta mãe, somente na versão daquele idioma, por `sites.matrix`. A pasta de autores é excluída desse percurso: seus perfis e traduções entram em `assets/vault` pelos padrões `<autores>/*.md` e `<autores>/*/*.md`, sem virar páginas de conteúdo. `site/author-profile.html` escolhe o perfil traduzido ou o original. `linkTitle` traduzido no índice fornece o nome curto da seção para os cartões e o menu.
+
+O scaffold inclui o tema do [quadro de Feedback](feedback.md), mas não transforma `examples` em páginas ou issues individuais. Hugo gera cartões e detalhes `#ex-N` no HTML da seção. Pedidos reais são lidos pelo navegador; mudar seu status não exige outro build.
 
 ## Hugo e Pagefind
 
@@ -81,9 +85,11 @@ Os modos são determinados por variável de ambiente, não apenas por `--environ
 
 A CLI usa um diretório temporário para montar o índice e move `pagefind/` para `<site>/.blup/preview/pagefind`. Seu build temporário usa a configuração padrão, `--buildDrafts`, base local e destino temporário. O índice não acompanha cada salvamento. `BLUP_NO_SEARCH` é verificado no build de publicação; `previewSearch` não consulta essa variável.
 
-A movimentação usa `os.Rename` do diretório criado por `os.MkdirTemp("", ...)` para o site, sem fallback de cópia. Se estiverem em sistemas de arquivos diferentes, o rename pode falhar com EXDEV; a rotina emite aviso e continua a prévia. Não houve execução nesta revisão para afirmar que esse cenário ocorreu nesta máquina.
+A rotina `placeSearch`, em `internal/app/preview.go`, remove o índice anterior e chama `moveDir` para levar `pagefind/` do temporário ao site. `moveDir`, em `internal/app/settings.go`, tenta rename e, se ele falhar, usa cópia e remoção da origem; assim aceita temporário e site em sistemas de arquivos diferentes. Uma falha restante emite aviso e a prévia continua.
 
 O Studio retorna uma prévia já em execução se houver processo registrado. Para iniciar, espera a URL até dois minutos. Após a URL, linhas com `Total in` geram `previewChanged`. Em Linux, ausência de plugin de áudio pode ocultar o player apenas nessa prévia.
+
+Ao adicionar, remover ou restaurar uma seção pelo Studio, `sectionsChanged` solicita reinício do servidor de prévia em execução. A cópia de uma pasta inteira pode terminar antes de o watcher Hugo começar a observá-la, deixando notas sem página mesmo após recarregar o iframe. `restartPreview` emite `previewChanged` se a URL permanece igual ou `previewRestarted` se mudou; o workspace volta à página da nota aberta. Para traduções, `previewFollows` compara a configuração gerada com a que iniciou o servidor e reinicia quando idiomas ou mounts mudam. Os detalhes estão em [Studio](studio.md#prévia).
 
 ## Saídas auxiliares e mapa
 

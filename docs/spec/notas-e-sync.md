@@ -16,7 +16,9 @@ Os templates do plugin nativo são escritos na pasta configurada em `.obsidian/t
 
 O corpo e o front matter YAML permanecem em arquivos `.md`. `SetProperties` altera os valores das chaves solicitadas usando nós YAML, preserva as demais e sua ordem, mas reserializa todo o front matter com yaml.v3 e indentação de dois espaços; a formatação das outras chaves pode mudar. Valor `nil` remove a chave, e a nota é criada quando ausente. `SetBody` troca o corpo preservando o front matter. Não há banco de dados obrigatório para escrever notas.
 
-`blup: docs`, `roadmap`, `changelog`, `help`, `blog` e `authors` no `_index.md` de uma pasta direta identificam sua função. O nome físico pode ser traduzido ou escolhido pelo usuário. `obsidian.Sections` lê somente `<pasta>/_index.md` das pastas diretas não ocultas e aplica um regex de linha ao arquivo inteiro. A linha `blup:` pode casar também no corpo, pois essa descoberta não restringe a leitura ao front matter. Não exige nomes fixos como `Docs`.
+`blup: docs`, `roadmap`, `changelog`, `help`, `blog`, `feedback` e `authors` no `_index.md` de uma pasta direta identificam sua função. O nome físico pode ser traduzido ou escolhido pelo usuário. `obsidian.Sections` lê somente `<pasta>/_index.md` das pastas diretas não ocultas e aplica o reconhecimento à área de propriedades delimitada no começo da nota, sem tratar exemplos no corpo como marca da pasta. Não exige nomes fixos como `Docs` ou `Feedback`.
+
+No [quadro de Feedback](feedback.md), a nota da seção guarda a lista `examples`, incluindo comentários `replies`, que viaja com as notas no sync. Os pedidos e comentários reais estão nas issues GitHub, sem um arquivo de nota por pedido; não entram nessa lista nem são copiados pelo sync de notas. As traduções da nota ficam em sua pasta de idioma, como os demais índices.
 
 ## Conversão de wikilinks
 

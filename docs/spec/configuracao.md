@@ -133,13 +133,13 @@ A senha geral é resolvida por `app.PostPassword`: primeiro `Site.Password`, dep
 | `lastSite` | texto | Último diretório técnico aberto |
 | `lastNotes` | mapa | Diretório técnico para última nota aberta |
 | `recent` | lista de texto | Até 12 sites recentes, inclusive os retirados da lista |
-| `voices` | mapa | Voz de narração de cada idioma (`pt`, `en`, `es`), para todos os sites |
+| `voices` | mapa | Voz de narração de cada idioma (`pt`, `en`, `es`), para todos os sites; a chave é o idioma da nota resolvido por `NoteOrigin`, incluindo traduções |
 | `welcomed` | booleano | Telas iniciais já foram vistas |
 | `cloudTip` | booleano | O convite ao Blup Cloud depois do primeiro site foi respondido |
 | `backupDir` | texto | Pasta da cópia diária das notas; vazio desliga |
 | `translateAI` | texto | Quem traduz: `local` (no computador) ou `cloud` (OpenRouter ou Blup Cloud); vazio usa o computador quando instalado |
 
-Voz local usa `kokoro:<id>`. Voz OpenRouter usa `<modelo>|<voz>`, inclusive voz vazia para o padrão do modelo. Nomes antigos sem separador são tratados como voz do modelo remoto recomendado.
+Voz local usa `kokoro:<id>`, voz pelo plano Blup Cloud usa `blup:<voz>` e voz OpenRouter usa `<modelo>|<voz>`, inclusive voz vazia para o padrão do modelo. Nomes antigos sem separador são tratados como voz do modelo remoto recomendado. A resolução por `voiceFor` e os fallbacks de idioma estão em [narração e voz](narracao-e-voz.md#idioma-da-nota-e-escolha-de-voz).
 
 `studio.json` é uma lista de `HomeItem`: item simples `{ "site": "/caminho" }` ou grupo `{ "folder": "Pessoais", "sites": ["/caminho"] }`. `Layout()` remove referências indisponíveis e duplicadas e acrescenta os sites conhecidos ainda não posicionados. Agrupamentos não são pastas físicas.
 
@@ -156,6 +156,7 @@ Voz local usa `kokoro:<id>`. Voz OpenRouter usa `<modelo>|<voz>`, inclusive voz 
 | `button_text`, `button_link` | Botão do cabeçalho |
 | `social` | Lista de URLs ou emails usada em redes sociais |
 | `title`, `description` | Título e descrição da página |
+| `linkTitle` | Nome curto da seção em cartões e menus; incluído na tradução da nota |
 | `date`, `publishDate`, `created` | Datas consideradas pelo scaffold; fallback varia por modelo |
 | `lastmod`, `updated`, `modified` | Atualização, com fallback ao mtime |
 | `tags`, `authors` | Taxonomias; autor padrão vem da configuração |
@@ -167,12 +168,18 @@ Voz local usa `kokoro:<id>`. Voz OpenRouter usa `<modelo>|<voz>`, inclusive voz 
 | `noindex` | Emite meta robots noindex; não é um controle de acesso |
 | `password` | Literal, ou `true`, `sim`, `yes` para senha geral |
 | `audio`, `audio_hash`, `audio_seconds` | Referência, revisão do texto e duração da narração |
-| `blup` em `_index.md` de pasta direta | `docs`, `roadmap`, `changelog`, `help`, `blog` ou `authors` |
+| `blup` em `_index.md` de pasta direta | `docs`, `roadmap`, `changelog`, `help`, `blog`, `feedback` ou `authors`; Feedback é oferecida em Seções no Studio |
 | `blup: privacy` | Identifica a política de privacidade |
 | `status`, `category` | Estado e categoria do roadmap |
 | `sort_by_votes: false` | Mantém a ordem do roadmap sem ordenar por votos |
+| `examples` em `blup: feedback` | Lista de pedidos de exemplo: `title`, `kind`, `status`, `votes`, `days`, `body` e `replies` com `author`, `days`, `text`; não cria issues |
+| `translationKey` | Identidade compartilhada entre original e traduções para ligar páginas no Hugo |
+| `translation_hash` | Impressão da original usada para indicar tradução desatualizada |
+| `ai_translated` | Marca de tradução com IA, removida ao marcar como revisada; permite o selo do tema |
 
-Perfis ficam na pasta com `blup: authors`, normalmente `Autores` ou `Writers`. Cada arquivo leva o nome do autor e usa `photo`, `role`, `social`; o corpo é a bio. A pasta é montada como recurso e excluída das páginas, enquanto `/authors/` é a taxonomia de posts.
+Perfis ficam na pasta com `blup: authors`, normalmente `Autores` ou `Writers`. Cada arquivo leva o nome do autor e usa `photo`, `role`, `social`; o corpo é a bio. A tradução mantém o nome em `<autores>/<idioma>/<Nome>.md` e traduz cargo e bio. A pasta, incluindo essas traduções, é montada como recurso e excluída das páginas, enquanto `/authors/` é a taxonomia de posts.
+
+No Feedback, `status` dentro de `examples` é apenas o estado do exemplo. Pedidos reais têm status nas etiquetas GitHub `status: planned`, `status: progress`, `status: done` ou `status: declined`; não há nota por pedido. Categorias e opções de status são fixas no código, sem configuração pelo Studio. O [contrato do quadro](feedback.md) detalha esses campos e o que é traduzido.
 
 O contrato portátil de `.blup/site.toml`, o estado do sync e os caches estão detalhados em [notas e sync](notas-e-sync.md) e [scaffold e build](scaffold-e-build.md).
 

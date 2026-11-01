@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	yamlv3 "go.yaml.in/yaml/v3"
+
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
 )
@@ -225,5 +227,42 @@ func TestTranslateFeedbackExamples(t *testing.T) {
 	write(t, root, "Feedback/_index.md", "---\ntitle: Feedback\nblup: feedback\nexamples:\n  - title: Modo claro\n---\n")
 	if langs, _ := NoteLangs(site, "Feedback/_index.md"); !langs[1].Stale {
 		t.Fatalf("after an example changed = %+v", langs)
+	}
+}
+
+func TestFeedbackTranslationRejectsMalformedTextsBeforeWriting(t *testing.T) {
+	for _, props := range []map[string]any{{examplesKey: []string{"only one"}}, {examplesKey: []string{"a", "b", "extra"}}, {examplesKey: []any{"a", 42}}, {examplesKey: nil}, nil} {
+		t.Run("invalid texts", func(t *testing.T) {
+			site := settingsSite(t)
+			root := site.ContentDir()
+			const src = "---\ntitle: Feedback\nexamples:\n  - title: Original\n    body: Texto\n---\n"
+			write(t, root, "Feedback/_index.md", src)
+			_, err := WriteTranslation(site, "Feedback/_index.md", "en", "Feedback", "", "", props)
+			if err == nil {
+				t.Fatal("malformed translated texts accepted")
+			}
+			got, _ := os.ReadFile(filepath.Join(root, "Feedback/_index.md"))
+			if string(got) != src {
+				t.Fatal("original modified before validation")
+			}
+			if _, err := os.Stat(filepath.Join(root, "Feedback/en/_index.md")); !os.IsNotExist(err) {
+				t.Fatal("translation written on invalid input")
+			}
+		})
+	}
+}
+
+func TestFeedbackExamplesUnexpectedYAMLTypes(t *testing.T) {
+	for _, yaml := range []string{"null", "42", "{title: wrong}", "[null, 1, {title: [bad], body: ok, replies: [null, {text: yes}, {text: [bad]}]}]"} {
+		var v any
+		if err := yamlv3.Unmarshal([]byte(yaml), &v); err != nil {
+			t.Fatal(err)
+		}
+		texts := exampleTexts(v)
+		i := 0
+		_ = walkExamples(v, func(s string) string { i++; return s })
+		if i != len(texts) {
+			t.Fatalf("different traversal count: %d / %d", i, len(texts))
+		}
 	}
 }

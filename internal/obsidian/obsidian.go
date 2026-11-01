@@ -298,8 +298,9 @@ var sectionKind = regexp.MustCompile(`(?m)^blup:\s*["']?(docs|roadmap|changelog|
 
 // Sections maps each special folder kind found directly inside dir (the
 // site folder) to its folder name. A folder has a kind when its _index note
-// has the property "blup: <kind>" (docs, roadmap, changelog, help, blog or
-// authors).
+// has the property "blup: <kind>" (docs, roadmap, changelog, help, blog,
+// feedback or authors). Only the properties count, as for the theme: the
+// same line in the text (an example, a code block) is not a mark.
 func Sections(dir string) map[string]string {
 	found := map[string]string{}
 	entries, err := os.ReadDir(dir)
@@ -314,7 +315,8 @@ func Sections(dir string) map[string]string {
 		if err != nil {
 			continue
 		}
-		if m := sectionKind.FindSubmatch(b); m != nil {
+		fm, _ := splitFrontMatter(string(b))
+		if m := sectionKind.FindStringSubmatch(fm); m != nil {
 			found[string(m[1])] = e.Name()
 		}
 	}

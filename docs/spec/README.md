@@ -1,6 +1,6 @@
 # Especificação técnica do Blup
 
-Esta especificação descreve a implementação encontrada no repositório `github.com/gabriellsalesx/blup`, com referência inicial no commit `975554b`, em 30/10/2026. Os caminhos citados são relativos à raiz do repositório. Os exemplos usam dados fictícios. Comportamentos de serviços externos são descritos conforme as chamadas e condições implementadas, sem presumir que uma conta remota esteja configurada.
+Esta especificação descreve a implementação encontrada no repositório `github.com/gabriellsalesx/blup`, com referência inicial no commit `975554b`, em 30/10/2026. A revisão de 01/11/2026 cobre os 14 commits de `c0514f3` a `dc6345c`, conferidos com `git show` e leitura do código, e as rotinas relacionadas de narração e idiomas. Os caminhos citados são relativos à raiz do repositório. Os exemplos usam dados fictícios. Comportamentos de serviços externos são descritos conforme as chamadas e condições implementadas, sem presumir que uma conta remota esteja configurada.
 
 ## Índice
 
@@ -8,12 +8,13 @@ Esta especificação descreve a implementação encontrada no repositório `gith
 | --- | --- |
 | [CLI](cli.md) | Comandos em português e inglês, menu, criação, geração, prévia, publicação, conversão, sync, personalização e atualização |
 | [Configuração](configuracao.md) | `blup.toml`, arquivos globais, preferências do Studio e propriedades das notas |
-| [Temas Hugo](temas-hugo.md) | Mochi, Nori, Bento, renderização, busca, PWA, proteção, feedback e consentimento |
+| [Temas Hugo](temas-hugo.md) | Mochi, Nori, Bento, calendário do changelog, ícones Lucide, renderização, busca, PWA, proteção, feedback e consentimento |
+| [Quadro de Feedback](feedback.md) | Seção Bento do Studio, exemplos, pedidos, votos, status, `/posts`, limites e tradução |
 | [Scaffold e build](scaffold-e-build.md) | Arquivos gerados, mounts, ferramentas, pipeline e mapa da prévia |
 | [Notas e sync](notas-e-sync.md) | Obsidian, wikilinks, sincronização, conflitos e recuperação em outra máquina |
 | [Publicação](publicacao.md) | Cloudflare Pages, GitHub Pages, autenticação e domínio próprio |
-| [Narração e voz](narracao-e-voz.md) | OpenRouter, preparação do texto, MP3, Kokoro e ferramentas locais |
-| [Studio](studio.md) | Wails, Svelte, editor, painéis, terminal, arquivos e integração desktop |
+| [Narração e voz](narracao-e-voz.md) | Idioma pela pasta da nota, voz por idioma, OpenRouter, Blup Cloud, MP3 e Kokoro |
+| [Studio](studio.md) | Wails, Svelte, editor, Feedback, tradução, reinício da prévia, painéis, terminal e integração desktop |
 | [Testes e build](testes-e-build.md) | Validação, compilação dos dois módulos, empacotamento e release |
 
 ## O que é o Blup
@@ -22,7 +23,7 @@ O Blup transforma uma pasta de notas Markdown em um site estático Hugo. A pasta
 
 Há dois executáveis. A CLI entra por `cmd/blup/main.go` e oferece fluxos interativos ou um comando de build. O Blup Studio entra por `studio/main.go` e expõe serviços Go a uma interface Svelte. Ambos usam os pacotes do módulo principal, sobretudo `internal/app`. O Studio é um módulo Go próprio, com `replace github.com/gabriellsalesx/blup => ../` em `studio/go.mod`.
 
-O site publicado é um conjunto de arquivos estáticos. Busca usa Pagefind no navegador. Comentários, reações e votos usam issues do GitHub; o serviço de login correspondente pertence a outro repositório. A narração pode usar OpenRouter ou um motor local opcional. Nenhum desses recursos transforma o site em um servidor Go.
+O site publicado é um conjunto de arquivos estáticos. Busca usa Pagefind no navegador. Comentários, reações, votos e pedidos do quadro de Feedback usam issues do GitHub; o serviço de login e leitura correspondente pertence ao repositório irmão `blup-api`. A narração pode usar OpenRouter, Blup Cloud ou um motor local opcional, com a voz escolhida pelo idioma da nota. Nenhum desses recursos transforma o site em um servidor Go.
 
 ## Peças e ligações
 
@@ -44,6 +45,10 @@ O site publicado é um conjunto de arquivos estáticos. Busca usa Pagefind no na
 | `studio/`, `studio/frontend/` | Aplicativo desktop, bindings, editor, prévia e painéis |
 
 O fluxo de publicação é: notas e configurações alimentam o scaffold; Hugo gera `public/`; o Blup atualiza os dados de feedback e pode repetir Hugo; criptografa regiões protegidas; cria busca e PWA; envia `public/` ao provedor. O sync das notas é uma operação separada da publicação.
+
+O [quadro de Feedback](feedback.md) é acrescentado em Seções pelo Studio. A nota marcada `blup: feedback` guarda exemplos; os pedidos reais são issues criadas pelos visitantes e lidas no navegador. O dono altera seus status no painel Feedback, sem republicar. Interface, exemplos e conversas têm contratos de idioma diferentes: o i18n traduz os controles, a tradução da nota cobre os exemplos e as conversas reais mantêm o texto de origem, compartilhado entre as versões do site.
+
+As demais mudanças dos 14 commits estão descritas em [Studio](studio.md#idiomas-e-tradução) e [Temas Hugo](temas-hugo.md): tradução de `linkTitle` e perfis de autores, comentários com indicação de idioma, selo de IA no quadro, calendário do changelog e disposição adaptável dos controles de idiomas e de Quem traduz. O reinício após mudanças de seções é do servidor local de prévia; não reinicia o aplicativo desktop.
 
 ## Diretórios que não devem ser confundidos
 
@@ -95,7 +100,7 @@ O [parecer do Prumo](../auditoria/conferencia-spec.md) foi conferido item por it
 
 O script de rolagem do item M9 também foi acrescentado à comparação entre prévia e publicação em scaffold e build. A observação final sobre empacotamento ganhou um link no documento do Studio.
 
-Os achados de código C1 a C5 não foram corrigidos no código. A spec registra o rename da busca que pode falhar entre sistemas de arquivos, sem afirmar execução desse caso; as limitações de carregar mais e feedback; a versão `dev` dos pacotes atuais do Studio; os clientes interativos de domínio e exclusão, sem presumir seu efeito numa janela sem terminal; e os comentários desatualizados. A tabela de instalação de voz e o workflow de release prevalecem sobre o comentário que atribui a geração das ferramentas ao workflow.
+Na revisão da conferência, os achados de código C1 a C5 foram documentados sem correção de código por este trabalho. Ela registrou o rename da busca que podia falhar entre sistemas de arquivos; as limitações de carregar mais e feedback; a versão `dev` dos pacotes do Studio; os clientes interativos de domínio e exclusão, sem presumir seu efeito numa janela sem terminal; e os comentários desatualizados. A revisão de 01/11/2026 atualiza os contratos que mudaram desde então, inclusive o fallback de cópia do índice da prévia e a descoberta de seções só nas propriedades. A tabela de instalação de voz e o workflow de release prevalecem sobre o comentário que atribui a geração das ferramentas ao workflow.
 
 ## Divergências com a conferência
 

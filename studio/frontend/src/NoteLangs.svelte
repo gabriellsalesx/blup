@@ -2,7 +2,7 @@
   import { NoteLangs, TranslateNote, MarkReviewed } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { NoteLang } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import { Events } from "@wailsio/runtime";
-  import { toast } from "./toast.svelte";
+  import { toast, toastError } from "./toast.svelte";
   import { t } from "./i18n";
   import { useLocal, translateNoteLocal } from "./localtranslate";
 
@@ -18,7 +18,7 @@
   let part = $state<{ done: number; total: number } | null>(null);
   let needKey = $state(false);
 
-  const load = (rel: string) => NoteLangs(rel).then((l) => { if (rel === note) langs = l ?? []; }).catch(() => (langs = []));
+  const load = (rel: string) => NoteLangs(rel).then((l) => { if (rel === note) langs = l ?? []; }).catch(() => { if (rel === note) langs = []; });
   $effect(() => { load(note); });
 
   const off = Events.On("translate", (ev: any) => { if (busy && ev.data?.lang === busy) part = { done: ev.data.done, total: ev.data.total }; });
@@ -48,7 +48,7 @@
   const label = (l: NoteLang) => (l.original ? tr.original : !l.exists ? tr.none : l.stale ? tr.stale : l.ai ? tr.aiMade : tr.reviewed);
   // Reviewed by the author: the site stops saying the AI made it.
   async function review(l: NoteLang) {
-    try { await MarkReviewed(l.path, l.ai); await load(note); } catch (e) { toast(String(e), { kind: "error" }); }
+    try { await MarkReviewed(l.path, l.ai); await load(note); } catch (e) { toastError(e); }
   }
 </script>
 

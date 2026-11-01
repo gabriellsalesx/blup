@@ -3,6 +3,8 @@ shows a real one: its text, then votes, reactions and comments, here the
 example's own. Param: the examples. */ -}}
 {{- range $i, $e := . }}
 {{- $kind := .kind | default "other" }}{{ $status := .status | default "new" }}{{ $days := int (.days | default 0) }}
+{{- if not (in (slice "feature" "bug" "improvement" "other") $kind) }}{{ $kind = "other" }}{{ end }}
+{{- if not (in (slice "new" "planned" "progress" "done" "declined") $status) }}{{ $status = "new" }}{{ end }}
 <article class="fbb-detail" data-fbb-ex="{{ $i }}" hidden>
   <a href="#" class="fbb-back" data-fbb-back><svg class="icon" aria-hidden="true"><use href="#i-arrow-left"/></svg>{{ T "fbbBack" }}</a>
   <p class="fbb-line">

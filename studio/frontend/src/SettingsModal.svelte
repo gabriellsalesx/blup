@@ -6,6 +6,7 @@
   import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, BlupAccount as Account, AIQuota } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
+  import { untrack } from "svelte";
   import Settings from "@lucide/svelte/icons/settings";
   import Palette from "@lucide/svelte/icons/palette";
   import PenLine from "@lucide/svelte/icons/pen-line";
@@ -85,7 +86,8 @@
     toast(keys ? t.toast.shortcutSet.replace("{keys}", keys) : t.toast.shortcutOff);
   }
   function resetKeys() { setPref("keys", {}); }
-  let tab = $state(start);
+  // The tab it opened on; the window changes it afterwards.
+  let tab = $state(untrack(() => start));
   // Each section opens from its top: the list scrolled in a long one
   // (Shortcuts, Narration) left a short one looking empty.
   let bodyEl = $state<HTMLDivElement>();

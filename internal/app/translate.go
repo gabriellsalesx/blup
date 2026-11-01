@@ -422,6 +422,23 @@ func WriteTranslation(site *config.Site, rel, lang, title, desc, body string, pr
 	if err != nil {
 		return "", err
 	}
+	if v, supplied := props[examplesKey]; supplied || len(exampleTexts(n.Props[examplesKey])) > 0 {
+		// Validate before changing either file. Silently dropping a malformed
+		// translation would still mark the original examples as up to date.
+		texts, ok := v.([]string)
+		if values, isList := v.([]any); isList {
+			ok = true
+			texts = make([]string, len(values))
+			for i, value := range values {
+				var isText bool
+				texts[i], isText = value.(string)
+				ok = ok && isText
+			}
+		}
+		if !ok || len(texts) != len(exampleTexts(n.Props[examplesKey])) {
+			return "", errors.New("translate: invalid feedback example texts")
+		}
+	}
 	// The note and its translations share a key, set on the original at
 	// its first translation.
 	key := n.String(linkKey)

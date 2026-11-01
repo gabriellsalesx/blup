@@ -52,11 +52,13 @@ Templates são um complemento: falha nessa etapa gera aviso na CLI. Na conversã
 
 `Slug` remove acentos, converte para minúsculas, mantém `a-z` e `0-9` e troca cada sequência dos demais caracteres, inclusive hífens, por um único `-`. Apara hífens nas pontas, limita a 50 caracteres, apara de novo após o corte e usa `site` para resultado vazio. O Cloudflare tem sanitização própria para nomes de projeto.
 
-A API `CreateSite`, em `internal/app/create_api.go`, recebe `NewSiteOptions` com `vault`, `folder`, `dir`, `model`, `sections`, `title`, `description`, `author`, `lang` e `adjustLinks`. Ela é usada pelo Studio, aceita pasta comum e Nori. Modelo diferente de `bento` ou `nori` vira `mochi`, sem erro; fora do Bento, descarta `sections`. Exige título não vazio, valida os tipos e a seleção não vazia de seções Bento, recusa `..` em `folder` e normaliza idioma diferente de `pt` para `en`.
+A API `CreateSite`, em `internal/app/create_api.go`, recebe `NewSiteOptions` com `vault`, `folder`, `dir`, `model`, `sections`, `title`, `description`, `author`, `lang` e `adjustLinks`. Ela é usada pelo Studio, aceita pasta comum e Nori. Modelo diferente de `bento` ou `nori` vira `mochi`, sem erro; fora do Bento, descarta `sections`. Exige título não vazio, valida os tipos e a seleção não vazia de seções Bento, recusa `..` em `folder` e normaliza idioma diferente de `pt` e `es` para `en`.
 
 `vault` e `dir` passam por `expandHome` antes da verificação de vazio: se `filepath.Abs` funcionar, uma entrada vazia vira o diretório atual, portanto essa verificação não garante rejeitar caminho vazio de entrada. O diretório técnico ainda precisa passar por `CheckSiteDir`. A API cria as pastas de notas e técnica quando ausentes, ignora silenciosamente falha nos templates e registra o site. Não executa as perguntas opcionais, o download Hugo ou a conversão do fluxo da CLI.
 
-Os exemplos estão embutidos em `internal/app/starter/{pt,en}/{mochi,nori,bento}` e em `starter/covers`. `starter.go` copia arquivos ausentes, preenche dados do site e permite acrescentar uma seção sem sobrescrever notas existentes. `templates.go` fornece templates de post para Mochi/Nori e de documentação, roadmap e changelog para Bento.
+Os exemplos estão embutidos em `internal/app/starter/{pt,en,es}/{mochi,nori,bento}` e em `starter/covers`. `starter.go` copia arquivos ausentes, preenche dados do site e permite acrescentar uma seção sem sobrescrever notas existentes. `templates.go` fornece templates de post para Mochi/Nori e de documentação, roadmap e changelog para Bento.
+
+Feedback tem modelo de pasta nos três idiomas, mas fica em `studioKinds`, separado de `docsKinds`. Os seletores da CLI e a validação de seções de `CreateSite` continuam usando somente `docsKinds`; o Studio acrescenta o quadro depois da criação pelo painel Seções. Isso é diferente de habilitar comentários e reações, opção de feedback que a CLI já oferece. Consulte o [quadro de Feedback](feedback.md).
 
 ## Gerar
 

@@ -413,12 +413,15 @@ func RestoreSection(site *config.Site, trashed string) error {
 	return saved(site)
 }
 
+// rename is os.Rename; tests make it fail as across disks.
+var rename = os.Rename
+
 // moveDir moves a folder, copying it when it goes to another disk.
 func moveDir(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
 	}
-	if err := os.Rename(src, dst); err == nil {
+	if err := rename(src, dst); err == nil {
 		return nil
 	}
 	err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {

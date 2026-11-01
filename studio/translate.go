@@ -78,12 +78,19 @@ func (s *Studio) previewFollows(site *config.Site) {
 
 // restartPreview starts the running preview again, and the window hears
 // its new address ("previewRestarted").
+// Restarts come one at a time, and only while the preview runs: one
+// stopped (or another site opened) meanwhile is not started again.
 func (s *Studio) restartPreview() {
+	s.restarting.Lock()
+	defer s.restarting.Unlock()
 	s.mu.Lock()
-	before := s.url
+	site, before, running := s.site, s.url, s.preview != nil
 	s.mu.Unlock()
+	if !running {
+		return
+	}
 	s.StopPreview()
-	url, err := s.StartPreview()
+	url, err := s.startPreview(site)
 	if err != nil {
 		return
 	}
@@ -100,12 +107,7 @@ func (s *Studio) restartPreview() {
 // (it watches the folder only after its files are written), so the new
 // section showed up only on a later change.
 func (s *Studio) sectionsChanged() {
-	s.mu.Lock()
-	running := s.preview != nil
-	s.mu.Unlock()
-	if running {
-		go s.restartPreview()
-	}
+	go s.restartPreview()
 }
 
 // FollowTranslations brings the preview up to date after translations

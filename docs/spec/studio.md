@@ -4,13 +4,13 @@ Fontes: [entrada desktop](../../studio/main.go), [serviço principal](../../stud
 
 ## Arquitetura
 
-O Studio é um aplicativo Wails v3 com backend Go e frontend Svelte 5, TypeScript e Vite. `studio/go.mod` declara Wails `v3.0.0` e usa o módulo principal por `replace => ../`. Não mantém outra implementação completa da CLI: chama os fluxos e APIs de `internal/app` para criar, configurar, publicar, sincronizar e narrar.
+O Studio é um aplicativo Wails v3 com backend Go e frontend Svelte 5, TypeScript e Vite. `studio/go.mod` declara Wails `v3.1.0` e usa o módulo principal por `replace => ../`. Não mantém outra implementação completa da CLI: chama os fluxos e APIs de `internal/app` para criar, configurar, publicar, sincronizar e narrar.
 
 `studio/main.go` embute `all:frontend/dist` no binário e registra uma instância de `Studio` como serviço Wails. O runtime serve os assets do frontend e faz a ponte de chamadas. A janela inicial mede 1360 por 860, com mínimo 900 por 560. O serviço mantém um site e um processo de prévia por vez.
 
 O frontend usa runes Svelte como `$state`, `$derived`, `$effect` e `$props`. A entrada `src/main.ts` carrega idioma, tema e mecanismo de undo antes de montar `App`. As traduções da janela ficam em `src/i18n.ts`; as mensagens de trabalho Go continuam em `internal/i18n`.
 
-O idioma inicial segue `config.Global.Lang`, senão o prefixo `pt` de `LANG`, senão inglês. `SetLanguage`, em `studio/about.go`, aceita `pt` ou `en`, converte outros valores para `en` e salva o idioma global. As Configurações recarregam a interface após a troca; as boas-vindas aplicam a tradução sem recarregar. Os rótulos da bandeja são montados no início em `studio/main.go` e só mudam ao reiniciar. Isso não troca o idioma dos sites existentes.
+O idioma inicial segue `config.Global.Lang`, senão `i18n.System()`, em `studio/main.go`. `SetLanguage`, em `studio/about.go`, aceita `pt`, `en` ou `es`, converte outros valores para `en` e salva o idioma global. As Configurações recarregam a interface após a troca. Os rótulos da bandeja são montados no início em `studio/main.go` e só mudam ao reiniciar. Isso não troca o idioma dos sites existentes.
 
 ## Bindings e eventos
 
@@ -25,6 +25,8 @@ Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsal
 | `notes.go` | Corpo/propriedades, criar nota/pasta, capa, imagens coladas e autores disponíveis |
 | `files.go` | Renomear, mover, copiar, lixeira, link Markdown, abrir no Obsidian e gerenciador de arquivos |
 | `settings.go` | Identidade, menu, redes, imagens, seções, cookies, senhas, feedback e lixeira |
+| `feedback_board.go` | `FeedbackPosts` e `SetFeedbackStatus`, para os pedidos reais do quadro Bento |
+| `translate.go`, `localtr.go` | Idiomas de notas e site, tradução remota/local, revisão, textos de propriedades e atualização da prévia |
 | `authors.go`, `attachments.go` | CRUD de perfis e gestão dos anexos |
 | `publish.go` | Contas, destino, publicação, sync e domínio |
 | `cloud.go` | Descoberta e recuperação GitHub, senha geral entre sites |
@@ -40,10 +42,13 @@ Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsal
 | --- | --- |
 | `progress` | `{kind, text}`; etapas, avisos e resultados de publicação/sync |
 | `previewChanged` | Notifica rebuild Hugo para recarregar a página da prévia |
+| `previewRestarted` | Nova URL quando o processo de prévia reiniciado muda de endereço |
 | `notesChanged` | Caminhos relativos separados por quebra de linha; alterações externas |
 | `term` | `{id, data, exit}`; bytes do terminal em base64 ou término |
 | `narrate` | `{note, done, total}`; progresso de narração |
 | `voiceInstall` | `{done, total, step}`; download do motor local |
+| `translate` | `{note, lang, done, total}`; partes da tradução remota de uma nota |
+| `translateSite` | `{lang, done, total, note}`; progresso da tradução do site |
 
 `running` em `publish.go` usa mutex e devolve `busy` se já houver publicação/sync em execução. Durante a operação encaminha `ui.Report` a eventos da janela e atribui `nil` ao hook ao terminar, sem restaurar um valor anterior. Esse mutex não é um agendador geral para todos os serviços.
 
@@ -245,6 +250,12 @@ Colunas e formas de ver são gravadas 300 ms depois da mudança (`SaveDatabaseSc
 
 `StartPreview` encontra ou baixa Hugo, gera scaffold e inicia servidor restrito a `127.0.0.1`, em memória, com rascunhos e `HUGO_BLUP_MODE=preview`. Desativa live reload nativo e observa log `Total in` para emitir `previewChanged`. Não executa o preparo Pagefind da CLI.
 
+`AddSection`, `RemoveSection` e `RestoreSection`, em [studio/settings.go](../../studio/settings.go), chamam `sectionsChanged` depois de uma operação bem-sucedida. Em [studio/translate.go](../../studio/translate.go), essa rotina solicita o reinício de uma prévia em execução. O motivo é a descoberta de pastas pelo watcher do Hugo: uma seção pode ser copiada com todas as notas antes de o watcher passar a observar a pasta, deixando páginas ausentes até outra alteração. Não basta recarregar o iframe para Hugo descobrir essas notas.
+
+`restartPreview` interrompe o servidor de prévia e inicia outro; se a URL continua igual, emite `previewChanged`, e se mudou, emite `previewRestarted` com o novo endereço. O workspace recebe o endereço e segue a página da nota aberta. A operação trata o servidor local da prévia, sem reiniciar o aplicativo desktop. O caminho de tradução também pode solicitar reinício por `previewFollows` quando mudam os mounts ou os idiomas da configuração gerada.
+
+Os reinícios são serializados pelo mutex `restarting`; a rotina retorna se a prévia já estiver parada. Ao aceitar um processo recém-iniciado, `adopt`, em `studio/studio.go`, confere o site atual e a existência de outro processo já adotado. Descarta o processo que pertence a um site anterior ou que perdeu a disputa, mantendo só uma prévia registrada.
+
 `Preview.svelte` usa dois iframes. O próximo carrega oculto, recebe a posição de scroll e assume o lugar quando sinaliza pronto; há fallback de quatro segundos. A comunicação usa `postMessage` e scripts que o tema injeta somente em prévia. O parâmetro `_blup` identifica os frames. Não é scroll sincronizado por linha de Markdown: conserva a posição da página e segue relações nota/URL.
 
 `PreviewPage` e `NoteAt` leem `blup-map.json` no servidor local. Editar outra nota leva à sua página; navegar em link de página com nota abre essa nota no editor. Taxonomias sem arquivo podem continuar sem correspondente.
@@ -258,15 +269,25 @@ Em Linux, `canPlayMP3` procura `libgstaudioparsers.so` nos diretórios GStreamer
 | Aparência, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, favicon, menu, botão e redes |
 | Autores, `AuthorsPanel.svelte` | Lista, perfil, foto/avatar, cargo, redes, bio, criação, renomeação e remoção |
 | Anexos, `AttachmentsPanel.svelte` | Lista por tipo, tamanho e usos, adição, renomeação, exclusão e acesso às notas que usam |
-| Seções, `SectionsPanel.svelte` | Somente Bento; acrescenta exemplos e remove seções para lixeira |
+| Seções, `SectionsPanel.svelte` | Somente Bento; acrescenta exemplos, inclusive Feedback, remove para a lixeira e oferece restaurar a seção removida |
 | Comentários, `CommentsPanel.svelte` | Ativa/desativa feedback, prepara repositório e orienta instalação do App |
-| Feedback, `FeedbackPanel.svelte` | Só no Bento com a seção Feedback: lista os pedidos do quadro (tipo, votos, comentários) e muda o status (`SetFeedbackStatus`, etiqueta no GitHub) |
+| Feedback, `FeedbackPanel.svelte` | Só no Bento com a seção Feedback: lista issues de pedidos via `FeedbackPosts`, filtra por categoria, abre no GitHub e muda o status via `SetFeedbackStatus` |
 | Cookies, `CookiesPanel.svelte` | Ferramentas, IDs, URLs próprias, banner e política |
 | Senha, `PasswordPanel.svelte` | Senha geral específica do site e estado da global |
 | Publicação, `PublishPanel.svelte` | Conectar contas, destino, publicar, acompanhar log, domínio e sync |
 | Lixeira, `TrashPanel.svelte` | Restaurar, excluir item e esvaziar |
 
 Perfis usam `internal/app/authors_api.go`, com avatares SVG embutidos em `internal/app/avatars`. Renomear autor ajusta as propriedades de posts conforme as rotinas implementadas. A pasta de perfis é identificada por `blup: authors`.
+
+### Seções e painel Feedback
+
+`internal/app/starter.go` separa `docsKinds` (`docs`, `roadmap`, `changelog`, `help`, `blog`) de `studioKinds` (`feedback`). `LoadSettings` oferece as duas listas no painel Seções. A criação continua usando as cinco seções de `docsKinds`; para ter o quadro, o dono acrescenta Feedback depois. A pasta modelo nos três idiomas tem `blup: feedback` e `examples`, reconhecida pela propriedade em `obsidian.Sections`, sem depender do nome `Feedback`.
+
+`Workspace.svelte` só oferece o painel Feedback quando `site.model` é `bento` e `settings.sections` contém `feedback` presente. Essa condição não exige comentários ligados; o serviço informa erro se faltam o repositório habilitado ou a credencial GitHub do dono. Os controles de ativação dos comentários e instalação do App permanecem no painel Comentários.
+
+[FeedbackPanel.svelte](../../studio/frontend/src/FeedbackPanel.svelte) carrega `FeedbackPosts` ao abrir e no botão Atualizar. O backend em `studio/feedback_board.go` obtém o site atual e delega a `internal/app/feedback_board.go`. A leitura consulta até três páginas de 100 issues, das mais novas para as mais antigas, e seleciona as marcas de pedido. O painel ordena por votos decrescentes, com número da issue como desempate, e oferece filtro de categoria com contagens. Mostra tipo, título, autor, comentários, votos e código de idioma; clicar no título abre a issue no navegador.
+
+O seletor de cada pedido chama `SetFeedbackStatus(number, status)`, com atualização otimista, indicação de salvamento e restauração do valor anterior em caso de erro. Os valores fixos são `new`, `planned`, `progress`, `done` e `declined`; Feito e Recusado fecham a issue, os outros reabrem. Categorias e opções de status não podem ser editadas por esse painel. Os exemplos da nota não entram na lista de issues nem recebem status por essa API. O [contrato do Feedback](feedback.md#issues-marcas-e-status) descreve marcas, etiquetas e limites de atualização no site, sem prometer refresh automático de uma aba já aberta.
 
 `internal/app/attachments_api.go` lista arquivos diretos da pasta de anexos, mais recentes primeiro, com categoria e notas que os mencionam. Renomeação ajusta referências encontradas nas notas. É uma gestão da pasta de anexos do site, não um catálogo de todos os arquivos em qualquer ponto do cofre.
 
@@ -285,6 +306,8 @@ A lixeira do Blup fica em `<site>/.blup/trash`, fora das notas, com diretório d
 - no rodapé, `Blup Studio v<versão>`, que abre a aba Sobre (versão, novidades, documentação e código).
 
 O link de ajuda é definido em `DOCS` nesse arquivo. A lista de modelos do OpenRouter não traz o Kokoro, que já roda grátis no computador.
+
+Nas escolhas em segmento de `SettingsModal.svelte`, os rótulos de cada botão permanecem numa linha (`white-space: nowrap`). Em Quem traduz, exibido quando a tradução local está instalada, a linha usa quebra flexível: as opções ficam ao lado da explicação enquanto couberem e passam para baixo quando falta largura. Isso altera a disposição visual, mantendo a preferência `translateAI` e as opções No computador e IA na nuvem.
 
 Os atalhos padrão de `src/keys.ts` são (os marcados com cofre só agem num cofre de anotações; a tela cheia só com um canvas ou desenho aberto):
 
@@ -315,15 +338,15 @@ Também em Configurações: a aba Narração tem uma voz padrão para cada idiom
 
 Um site é escrito no idioma de `lang` (`pt`, `en` ou `es`) e pode ser publicado nos outros, listados em `translations` no `blup.toml`. A tradução de `Pasta/Nota.md` fica numa pasta com o código do idioma, em minúsculas, com o nome traduzido (`Pasta/es/Nota traducida.md`). Original e traduções compartilham a propriedade `translationKey` (posta na original na primeira tradução, com o caminho dela), que o Hugo usa para ligar as páginas; uma tradução com o mesmo nome do arquivo original também vale. Quando uma tradução muda a configuração (um idioma ou uma pasta de idioma nova, que o Hugo só lê ao iniciar), a prévia reinicia sozinha e volta na página da nota aberta. O `hugo.toml` gerado (`internal/scaffold`) declara os idiomas e monta cada pasta de idioma no lugar da pasta mãe só naquele idioma (`sites.matrix`), então a página traduzida é a mesma página no outro idioma: o Hugo liga as duas, o tema mostra o seletor de idioma (`site/langs.html`) e `hreflang`, e um link para uma nota sem tradução cai na original.
 
-- Painel Idiomas na nota (`NoteLangs.svelte`): a original e cada idioma, com Abrir, Traduzir e Traduzir de novo. A tradução guarda `translation_hash`, a impressão da original (título, descrição e texto); quando a original muda, aparece como desatualizada.
+- Painel Idiomas na nota (`NoteLangs.svelte`): a original e cada idioma, com Abrir, Traduzir, Traduzir de novo e revisão. O bloco ocupa as duas colunas das propriedades por `grid-column: 1 / -1`; nomes e ações usam quebra flexível, colocando botões abaixo do nome quando falta espaço. A tradução guarda `translation_hash`, a impressão da original (versão do tradutor, título, descrição, texto e textos dos exemplos, quando presentes); quando essa impressão muda, uma tradução com hash salvo aparece desatualizada.
 - Tela Idiomas do site (`LangsPanel.svelte`): quantas notas estão traduzidas, desatualizadas e faltando em cada idioma, e Traduzir o que falta de uma vez.
 - Quem traduz (`internal/translate`): a IA do plano no Blup Cloud (`/api/ai/translate`, que monta o pedido no servidor e desconta o custo real) quando o plano inclui IA, senão a chave do OpenRouter (Claude Haiku 5.5). A nota vai em partes de até 12 KB, cortadas em linhas em branco fora de blocos de código. Código, links, imagens e o tipo dos callouts não mudam.
 - A tradução também traduz o que o site mostra fora do texto: na nota inicial, `site_description`, `button_text` e os rótulos do menu (`Nome | destino`: o nome; um item só com o nome de uma pasta usa o título traduzido da seção), e em qualquer nota `linkTitle` (o nome curto dos cartões e do menu), `category` e `tags` (`TextProps`). Quando o que a tradução cobre muda, `translateVersion` entra na impressão da original e as traduções antigas aparecem desatualizadas. A nota de uma seção (`_index.md`) mantém o nome na pasta do idioma, e é ela que dá o nome traduzido da seção, do blog, do roadmap, da documentação ou do changelog.
-- Na nota da seção Feedback (Bento), os pedidos de exemplo (`examples`) também são traduzidos: o título, o texto e os comentários de exemplo de cada um; votos, tipo, status, autores e datas ficam. Esses textos entram na impressão só dessa nota, então mudar um exemplo deixa a tradução desatualizada sem mexer nas outras notas. A página traduzida mostra o selo de traduzida por IA, como as outras. Os pedidos e comentários de verdade são os mesmos em todos os idiomas (as issues do GitHub), cada um com o idioma em que foi escrito.
+- Na nota da seção Feedback (Bento), `exampleTexts` e `walkExamples`, em `internal/app/translate.go`, percorrem `examples[].title`, `body` e `replies[].text`, para a tradução local e remota. Votos, tipo, status, autores e `days` ficam. Esses textos entram na impressão só das notas com `examples`, sem invalidar as outras por essa ampliação; mudar somente votos ou status não altera o hash. O cabeçalho do quadro inclui `site/ai-badge.html`, com selo quando há marca de IA e original ligada. Interface e categorias usam o i18n do tema; os exemplos dependem da tradução da nota; pedidos e comentários reais mantêm seus textos e idioma de origem, sem tradução automática. Veja [Feedback](feedback.md#idiomas-e-tradução).
 - Os perfis dos autores também são traduzidos (o cargo, `role`, e a bio), na pasta do idioma dentro da pasta de autores e com o mesmo nome (o nome é o autor). Cada idioma do site lê o perfil no seu idioma; sem tradução, o original. Como a pasta de autores, essas traduções nunca viram páginas.
 - Comentários, reações e votos: todas as versões de uma página usam a conversa da original (a mesma issue do GitHub, `bento/feedback-key.html`), então votos e reações somam os leitores de todos os idiomas. Um comentário guarda o idioma em que foi escrito (uma marca invisível no texto) e, visto em outra versão, mostra "comentado em English".
 - Uma tradução feita pela IA leva `ai_translated: true`, e o site mostra junto do título um selo "Traduzido com IA" que abre um balão com o idioma original e o link para ele (`site/ai-badge.html`, nos três temas). No painel Idiomas, "Marcar como revisada" tira a marca e o selo.
-- A narração de uma tradução usa a voz do idioma dela, e o arquivo de áudio leva o idioma no nome (`Nota (en).mp3`).
+- A narração consulta `NoteOrigin(site, rel)`: a pasta imediata `en`, `es` ou `pt` determina o idioma de uma tradução; fora dela usa o idioma principal. `Studio.Narrate` lê `Prefs.Voices[lang]`, e `app.Narrate` resolve a escolha por `voiceFor` naquele idioma, com fallback local ou remoto. O arquivo novo de uma tradução leva o idioma no nome (`Nota (en).mp3`), salvo quando uma referência existente a MP3 é reutilizada. As regras estão em [narração e voz](narracao-e-voz.md#idioma-da-nota-e-escolha-de-voz).
 - Tradução no computador (`internal/localtr`, `localtranslate.ts`, `public/bergamot`): o motor e os modelos do Firefox Translations (Bergamot 4.0 e modelos 3.0 de inglês com português e espanhol), baixados da Mozilla sob demanda (cerca de 100 MB, 145 MB no disco, cada arquivo conferido por SHA-256 antes e depois de descompactar) e servidos à janela em `/local-translate/`. Roda num worker; português e espanhol passam pelo inglês. Cada linha do Markdown vira HTML que o motor preserva: código, endereços, alvos de wikilinks, imagens e matemática vão em marcações com o próprio texto (só para contexto) e voltam exatamente como eram, com os espaços e a caixa baixa do original. A escolha de quem traduz fica em `translateAI` (vazio: no computador quando instalado).
 
 ## Busca, exportar e desempenho

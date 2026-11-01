@@ -95,16 +95,20 @@ func previewSearch(ctx context.Context, bin hugo.Binary, site *config.Site) {
 		if out, err := pagefind.Index(ctx, pf, tmp); err != nil {
 			return fmt.Errorf("%w: %s", err, out)
 		}
-		dest := filepath.Join(site.Dir(), filepath.FromSlash(scaffold.PreviewStatic), "pagefind")
-		if err := os.RemoveAll(dest); err != nil {
-			return err
-		}
-		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-			return err
-		}
-		return os.Rename(filepath.Join(tmp, "pagefind"), dest)
+		return placeSearch(site, tmp)
 	})
 	if err != nil {
 		ui.Warn(i18n.T("build.search_failed", err))
 	}
+}
+
+// placeSearch puts the index built in tmp where the preview serves it. The
+// temporary folder is often on another disk (/tmp in memory), where a plain
+// rename fails: moveDir copies then.
+func placeSearch(site *config.Site, tmp string) error {
+	dest := filepath.Join(site.Dir(), filepath.FromSlash(scaffold.PreviewStatic), "pagefind")
+	if err := os.RemoveAll(dest); err != nil {
+		return err
+	}
+	return moveDir(filepath.Join(tmp, "pagefind"), dest)
 }

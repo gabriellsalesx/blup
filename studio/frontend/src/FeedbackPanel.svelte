@@ -1,6 +1,7 @@
 <script lang="ts">
   import { FeedbackPosts, SetFeedbackStatus, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { FeedbackPost } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import ChevronUp from "@lucide/svelte/icons/chevron-up";
   import { toast, toastError } from "./toast.svelte";
   import { t } from "./i18n";
 
@@ -29,7 +30,8 @@
     p.status = status;
     saving = p.number;
     try { await SetFeedbackStatus(p.number, status); toast(f.saved); } catch (e) { p.status = before; toastError(e); }
-    saving = 0;
+    // Another request changed meanwhile keeps its menu off until it is saved.
+    if (saving === p.number) saving = 0;
   }
 </script>
 
@@ -37,10 +39,10 @@
   <h1>{f.title}</h1>
   <p class="lead">{f.lead}</p>
   <div class="fbp-bar">
-    <div class="fbp-kinds" role="tablist">
-      <button role="tab" aria-selected={kind === ""} class:on={kind === ""} onclick={() => (kind = "")}>{f.all} <b>{posts?.length ?? 0}</b></button>
+    <div class="fbp-kinds">
+      <button aria-pressed={kind === ""} class:on={kind === ""} onclick={() => (kind = "")}>{f.all} <b>{posts?.length ?? 0}</b></button>
       {#each KINDS as k (k)}
-        <button role="tab" aria-selected={kind === k} class:on={kind === k} onclick={() => (kind = k)}><span class="fbp-dot k-{k}"></span>{f.kinds[k]} <b>{(posts ?? []).filter((p) => p.kind === k).length}</b></button>
+        <button aria-pressed={kind === k} class:on={kind === k} onclick={() => (kind = k)}><span class="fbp-dot k-{k}"></span>{f.kinds[k]} <b>{(posts ?? []).filter((p) => p.kind === k).length}</b></button>
       {/each}
     </div>
     <button class="btn ghost" onclick={load}>{f.refresh}</button>
@@ -54,7 +56,7 @@
     <ul class="fbp-list">
       {#each shown as p (p.number)}
         <li class="card fbp-item">
-          <div class="fbp-votes"><b>{p.votes}</b><small>▲</small></div>
+          <div class="fbp-votes"><b>{p.votes}</b><ChevronUp size={14} aria-hidden="true" /></div>
           <div class="fbp-main">
             <button class="fbp-title" onclick={() => OpenURL(p.url)} title={f.open}>{p.title}</button>
             <small class="muted"><span class="fbp-dot k-{p.kind}"></span>{f.kinds[p.kind] ?? p.kind} · {p.author} · {f.comments.replace("{n}", String(p.comments))}{p.lang ? ` · ${p.lang}` : ""}</small>
@@ -79,7 +81,7 @@
   .fbp-list { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
   .fbp-item { display: flex; align-items: center; gap: 1rem; padding: .75rem 1rem; }
   .fbp-votes { display: grid; justify-items: center; min-width: 2.5rem; }
-  .fbp-votes small { color: var(--muted); font-size: .65rem; }
+  .fbp-votes :global(svg) { color: var(--muted); }
   .fbp-main { display: grid; gap: .2rem; flex: 1; min-width: 0; }
   .fbp-title { text-align: start; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .fbp-title:hover { color: var(--blue); }
