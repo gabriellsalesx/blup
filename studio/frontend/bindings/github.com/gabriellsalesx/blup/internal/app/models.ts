@@ -765,14 +765,20 @@ export interface SyncInfo {
 }
 
 /**
- * Target is where the site is published: "cloudflare" (Account, Project)
- * or "github" (Repo).
+ * Target is where the site is published: "blup" (Slug), "cloudflare"
+ * (Account, Project) or "github" (Repo).
  */
 export interface Target {
     "provider": string;
     "account": string;
     "project": string;
     "repo": string;
+    "slug": string;
+
+    /**
+     * SlugFixed: the site is already on Blup Cloud under Slug.
+     */
+    "slugFixed": boolean;
 
     /**
      * URL is the site's address, once published (read only).

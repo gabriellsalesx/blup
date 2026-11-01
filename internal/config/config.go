@@ -113,9 +113,17 @@ func (c Cookies) Tools() bool {
 
 // Deploy remembers where the site was published.
 type Deploy struct {
-	Provider   string     `toml:"provider,omitempty"` // "cloudflare" or "github"
+	Provider   string     `toml:"provider,omitempty"` // "blup", "cloudflare" or "github"
 	Cloudflare Cloudflare `toml:"cloudflare,omitempty"`
 	GitHub     GitHub     `toml:"github,omitempty"`
+	Blup       BlupSite   `toml:"blup,omitempty"`
+}
+
+// BlupSite is the site on Blup Cloud (paid plans): <Slug>.getblup.site.
+type BlupSite struct {
+	ID   string `toml:"id,omitempty"`
+	Slug string `toml:"slug,omitempty"`
+	URL  string `toml:"url,omitempty"`
 }
 
 type Cloudflare struct {

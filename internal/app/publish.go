@@ -40,6 +40,8 @@ func publish(ctx context.Context, g *config.Global, site *config.Site) error {
 	var live string
 	var err error
 	switch site.Deploy.Provider {
+	case "blup":
+		live, err = deployBlup(ctx, site)
 	case "cloudflare":
 		live, err = publishCloudflare(ctx, site)
 	default:

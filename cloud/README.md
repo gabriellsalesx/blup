@@ -15,7 +15,7 @@ A conta do Blup na nuvem: cadastro, login, planos e (em breve) a sincronização
 
 ## Pastas
 
-- `worker/`: a API. `index.ts` (rotas), `auth.ts` (Better Auth com o `env` da Cloudflare), `auth-options.ts` (as opções, também usadas pela CLI do Better Auth), `email.ts`, `db/` (esquema Drizzle).
+- `worker/`: a API. `index.ts` (rotas), `sites.ts` (publicar sites), `serve-site.ts` e `sites-entry.ts` (o Worker dos sites, `wrangler.sites.jsonc`), `site-rules.ts` (regras dos sites, com testes), `auth.ts` (Better Auth com o `env` da Cloudflare), `auth-options.ts` (as opções, também usadas pela CLI do Better Auth), `email.ts`, `db/` (esquema Drizzle).
 - `src/`: o painel (rotas `/entrar` e `/conta`).
 - `migrations/`: SQL do D1, gerado pelo `drizzle-kit`.
 - `static/`: fonte Inter e o Blup.
@@ -88,9 +88,20 @@ Um Worker só, com dois domínios (`env.production` no `wrangler.jsonc`):
 - **staff.getblup.io**: a staff, na raiz (`/`, `/contas/:id`, `/equipe`, `/registro`), com o Cloudflare Access na frente do domínio inteiro. O `reroute` do SvelteKit (`src/hooks.ts`) mostra as telas de `routes/staff` ali.
 - Com `STAFF_HOST` definido, cada domínio responde 404 para as telas e a API do outro. No computador (`STAFF_HOST` vazio) tudo fica em `localhost:8787`, com a staff em `/staff`.
 - O site institucional (getblup.io) é outro repositório.
+- **\*.getblup.site**: os sites publicados pela nuvem (planos pagos), num Worker à parte (`blup-sites`, `wrangler.sites.jsonc`): sem assets nem login, só lê o D1 e o bucket `blup-cloud-sites`. Ficar fora do Worker do painel importa: os assets do painel respondem antes do Worker em todo caminho fora de `/api`, então um site em outro domínio cairia no painel. No computador: `npx wrangler dev -c wrangler.sites.jsonc --port 8788` e o site abre em `http://nome.localhost:8788`.
+
+## Sites (planos pagos)
+
+O Blup Studio gera o site com o Hugo (`--minify --gc`), compacta em gzip os arquivos de texto (HTML, CSS, JS, JSON, XML, SVG) e manda só os que o site ainda não tem, pelo SHA-256 do que fica guardado. Uma publicação (`POST /api/sites/:id/deploys`) lista cada caminho e o seu arquivo e entra no ar de uma vez; a anterior e os arquivos que ninguém mais usa saem logo depois.
+
+- R2 (`SITES`): `s/<site>/f/<sha256>` (o arquivo, gzip quando o manifesto diz) e `s/<site>/d/<publicação>` (o manifesto). D1: `site` e `site_blob`.
+- Servir gasta o mínimo: o arquivo vai como está guardado (gzip, sem compactar de novo); a resposta fica no cache do data center com a publicação na chave (uma nova nunca mistura com a velha); a publicação no ar fica 30 s na memória do isolate e os manifestos enquanto ele vive. Páginas, feeds e o service worker são conferidos a cada visita (ETag, 304); arquivos com impressão digital no nome ficam um ano no navegador.
+- Plano Grátis: `sites: 0`, a API recusa criar, enviar e publicar (`PLAN`). Notas e sites somam no armazenamento do plano.
+- Domínio próprio nos sites (Max e Ultra) ainda não existe: o site sai no endereço `getblup.site`.
 
 ## Antes de publicar
 
 - Publicar com `npx wrangler deploy --env production` (os domínios já estão no `wrangler.jsonc`). Passkeys valem em `getblup.io` e subdomínios; as de teste do `localhost` não passam para lá.
-- Criar o D1 (`npx wrangler d1 create blup-cloud`) e o R2, e aplicar as migrações com `npm run db:migrate:remote`.
+- Criar o D1 (`npx wrangler d1 create blup-cloud`) e os buckets R2 (`blup-cloud-notes` e `blup-cloud-sites`), e aplicar as migrações com `npm run db:migrate:remote`.
+- Sites: na zona `getblup.site`, um registro curinga `*` (AAAA `100::`, com proxy) e publicar o Worker dos sites com `npx wrangler deploy -c wrangler.sites.jsonc --env production` (o mesmo ID do D1). Pôr `getblup.site` na Public Suffix List, para cada site ser um site à parte no navegador (cookies e armazenamento).
 - Trocar as chaves de teste do Turnstile pelas reais e ligar o envio de e-mail (`EMAIL_MODE` diferente de `log`).

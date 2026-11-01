@@ -1,6 +1,6 @@
 # Publicação e domínio próprio
 
-Fontes: [fluxo GitHub](../../internal/app/publish.go), [fluxo Cloudflare](../../internal/app/cloudflare.go), [APIs do Studio](../../internal/app/deploy_api.go), `internal/deploy/github/`, `internal/deploy/cfpages/` e `internal/app/domain_api.go`.
+Fontes: [fluxo GitHub](../../internal/app/publish.go), [fluxo Cloudflare](../../internal/app/cloudflare.go), [Blup Cloud](../../internal/app/blup_publish.go), [APIs do Studio](../../internal/app/deploy_api.go), `internal/blupcloud/sites.go`, `internal/deploy/github/`, `internal/deploy/cfpages/` e `internal/app/domain_api.go`.
 
 ## Destino e contas
 
@@ -11,6 +11,12 @@ Na CLI, `publish` pergunta o provedor se ainda estiver vazio, obtém credenciais
 `LoadConnections` verifica o usuário GitHub com a chave salva, devolvendo `githubError` quando falha; `Connections` é a estrutura de resposta. Para Cloudflare, a consulta de conexões informa a existência de token; `ConnectCloudflare` faz a verificação e lista as contas antes de salvar. `Disconnect` remove a chave local de GitHub, Cloudflare ou OpenRouter, sem revogar a chave no serviço.
 
 `PublishNow` obtém clientes por `savedGitHub` ou `savedCloudflare`, que devolvem erro quando falta chave, sem oferecer formulários de conexão. Já as APIs de domínio e de exclusão ainda chamam os clientes interativos da CLI, conforme descrito adiante. O build compartilhado também mantém suas próprias condições de senha e feedback, descritas em [CLI](cli.md).
+
+## Blup Cloud
+
+Destino `blup` (planos pagos; o Grátis tem `sites: 0`). `Site.Deploy.Blup` guarda `id`, `slug` e `url`: o endereço `<slug>.getblup.site` é escolhido antes da primeira publicação (sugestão pelo título, `blupSlug`) e fica fixo depois. `deployBlup` cria o site na nuvem na primeira vez (`ErrSlugTaken`, `ErrSitesLimit`, `ErrPlan`), gera com o mesmo `build` (Hugo com `--minify --gc`) para o endereço `getblup.site`, empacota com `blupcloud.PackSite` (arquivos de texto em gzip no nível máximo quando ficam menores; o hash é do que fica guardado) e envia com `DeploySite`: pergunta quais faltam, manda só esses (seis por vez) e publica a lista de caminhos. Se a nuvem disser que faltam arquivos, manda de novo uma vez. Domínio próprio no Blup Cloud ainda não existe. O servidor está em [cloud/README.md](../../cloud/README.md#sites-planos-pagos).
+
+Na tela Publicar do Studio, Blup Cloud é a primeira opção: sem conta, entra (`CloudAccount` com `notes={false}`, sem a senha das notas); no Grátis, explica que vem nos planos pagos e abre os planos; senão, pede o endereço e mostra quantos sites do plano estão em uso. A tela Publicar só trata do site; Sincronizar abre a mesma tela no modo das notas (`autostart` `sync`). O domínio próprio aparece só depois que o site está no ar pelo Cloudflare ou pelo GitHub, e os passos para conectar essas contas só aparecem ao tocar em Conectar a conta.
 
 ## Autenticação GitHub
 

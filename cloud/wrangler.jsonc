@@ -27,7 +27,13 @@
 			"migrations_dir": "migrations"
 		}
 	],
-	"r2_buckets": [{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" }],
+	// NOTES: as notas sincronizadas (cifradas). SITES: os arquivos dos sites
+	// publicados pela nuvem (planos pagos), que o Worker de
+	// wrangler.sites.jsonc serve em <nome>.SITES_DOMAIN.
+	"r2_buckets": [
+		{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" },
+		{ "binding": "SITES", "bucket_name": "blup-cloud-sites" }
+	],
 	// A sala ao vivo de cada conta (sincronização em tempo real dos planos
 	// pagos), com hibernação de WebSocket.
 	"durable_objects": { "bindings": [{ "name": "SYNC_LIVE", "class_name": "SyncLive" }] },
@@ -49,7 +55,10 @@
 		// Vazio no computador: a staff fica em localhost:8787/staff.
 		"STAFF_HOST": "",
 		// Vazio: o OpenRouter de verdade (os testes apontam para um falso).
-		"OPENROUTER_URL": ""
+		"OPENROUTER_URL": "",
+		// O endereço dos sites publicados (servidos pelo Worker de
+		// wrangler.sites.jsonc): nome.localhost no computador.
+		"SITES_DOMAIN": "localhost"
 	},
 	// Produção: npx wrangler deploy --env production. Um Worker com dois
 	// domínios: cloud.getblup.io (painel do usuário) e staff.getblup.io
@@ -73,7 +82,10 @@
 					"migrations_dir": "migrations"
 				}
 			],
-			"r2_buckets": [{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" }],
+			"r2_buckets": [
+				{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" },
+				{ "binding": "SITES", "bucket_name": "blup-cloud-sites" }
+			],
 			"durable_objects": { "bindings": [{ "name": "SYNC_LIVE", "class_name": "SyncLive" }] },
 			// Só manda a partir do no-reply (o domínio getblup.io precisa estar
 			// em Email Service > Email Sending na Cloudflare).
@@ -91,7 +103,8 @@
 				"TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
 				"EMAIL_MODE": "send",
 				"STAFF_HOST": "staff.getblup.io",
-				"OPENROUTER_URL": ""
+				"OPENROUTER_URL": "",
+				"SITES_DOMAIN": "getblup.site"
 			}
 		}
 	}

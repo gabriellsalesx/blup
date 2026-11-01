@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -143,13 +144,16 @@ func savedGitHub(ctx context.Context) (*github.Client, string, error) {
 	return c, login, nil
 }
 
-// Target is where the site is published: "cloudflare" (Account, Project)
-// or "github" (Repo).
+// Target is where the site is published: "blup" (Slug), "cloudflare"
+// (Account, Project) or "github" (Repo).
 type Target struct {
 	Provider string `json:"provider"`
 	Account  string `json:"account"`
 	Project  string `json:"project"`
 	Repo     string `json:"repo"`
+	Slug     string `json:"slug"`
+	// SlugFixed: the site is already on Blup Cloud under Slug.
+	SlugFixed bool `json:"slugFixed"`
 	// URL is the site's address, once published (read only).
 	URL string `json:"url"`
 }
@@ -158,7 +162,10 @@ type Target struct {
 // for a site never published.
 func LoadTarget(site *config.Site) Target {
 	d := site.Deploy
-	t := Target{Provider: d.Provider, Account: d.Cloudflare.Account, Project: d.Cloudflare.Project, Repo: d.GitHub.Repo}
+	t := Target{Provider: d.Provider, Account: d.Cloudflare.Account, Project: d.Cloudflare.Project, Repo: d.GitHub.Repo, Slug: d.Blup.Slug, SlugFixed: d.Blup.ID != ""}
+	if t.Slug == "" {
+		t.Slug = blupSlug(site.Title)
+	}
 	if t.Project == "" {
 		t.Project = cfpages.ProjectNameFromTitle(site.Title)
 	}
@@ -166,6 +173,8 @@ func LoadTarget(site *config.Site) Target {
 		t.Repo = Slug(site.Title)
 	}
 	switch {
+	case d.Provider == "blup" && d.Blup.URL != "":
+		t.URL = d.Blup.URL
 	case d.Provider == "cloudflare" && d.Cloudflare.Subdomain != "":
 		t.URL = siteURL(site, "https://"+d.Cloudflare.Subdomain+"/")
 	case d.Provider == "github" && d.GitHub.Owner != "" && d.GitHub.Repo != "":
@@ -177,6 +186,15 @@ func LoadTarget(site *config.Site) Target {
 // SetTarget saves where the site is published.
 func SetTarget(site *config.Site, t Target) error {
 	switch t.Provider {
+	case "blup":
+		// The address can change only before the first publish.
+		if site.Deploy.Blup.ID == "" {
+			slug := strings.TrimSpace(t.Slug)
+			if !blupcloud.SiteSlug.MatchString(slug) || strings.Contains(slug, "--") {
+				return errors.New(i18n.T("pub.blup_bad_slug"))
+			}
+			site.Deploy.Blup.Slug = slug
+		}
 	case "cloudflare":
 		if t.Account == "" {
 			return errors.New(i18n.T("pub.pick_account"))
@@ -205,6 +223,8 @@ func PublishNow(ctx context.Context, site *config.Site) (string, error) {
 	var live string
 	var err error
 	switch site.Deploy.Provider {
+	case "blup":
+		live, err = deployBlup(ctx, site)
 	case "cloudflare":
 		var c *cfpages.Client
 		if c, err = savedCloudflare(); err == nil {

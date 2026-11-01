@@ -6,6 +6,7 @@ import { activeSubscription, planOf, isOwner, GIFT_PLAN } from "./account";
 import { PLANS, SUGGESTED, planNamed } from "./plans";
 import { staffApi } from "./staff";
 import { syncApi } from "./sync";
+import { sitesApi } from "./sites";
 import { cleanUp } from "./cleanup";
 import { aiApi, aiUsageOf } from "./ai";
 import { devicesOf, isStudio, usageOf } from "./usage";
@@ -125,6 +126,7 @@ const routes = app
 
 app.route("/staff", staffApi);
 app.route("/sync", syncApi);
+app.route("/sites", sitesApi);
 app.route("/ai", aiApi);
 
 app.notFound((c) => c.json({ code: "NOT_FOUND" }, 404));

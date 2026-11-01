@@ -1,0 +1,96 @@
+package app
+
+import (
+	"context"
+	"errors"
+	"strings"
+
+	"github.com/gabriellsalesx/blup/internal/blupcloud"
+	"github.com/gabriellsalesx/blup/internal/config"
+	"github.com/gabriellsalesx/blup/internal/i18n"
+	"github.com/gabriellsalesx/blup/internal/ui"
+)
+
+// Publishing through Blup Cloud (paid plans): the site goes up minified and
+// gzipped and lives at <slug>.getblup.site, with nothing to set up.
+
+func init() {
+	registerErrors(
+		knownError{blupcloud.ErrPlan, "pub.blup_plan"},
+		knownError{blupcloud.ErrSitesLimit, "pub.blup_limit"},
+		knownError{blupcloud.ErrSlugTaken, "pub.blup_taken"},
+		knownError{blupcloud.ErrFileTooLarge, "pub.blup_too_large"},
+	)
+}
+
+// blupSlug suggests an address from the site's title: "Revista Nori" ->
+// "revista-nori".
+func blupSlug(title string) string {
+	s := Slug(title)
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case b.Len() > 0 && !strings.HasSuffix(b.String(), "-"):
+			b.WriteByte('-')
+		}
+	}
+	out := strings.Trim(b.String(), "-")
+	if len(out) > 40 {
+		out = strings.Trim(out[:40], "-")
+	}
+	if len(out) < 3 {
+		out = strings.Trim("site-"+out, "-")
+	}
+	return out
+}
+
+// deployBlup builds the site for its Blup Cloud address and sends it.
+func deployBlup(ctx context.Context, site *config.Site) (string, error) {
+	c, _, err := blupClient()
+	if err != nil {
+		return "", err
+	}
+	d := &site.Deploy.Blup
+	if d.ID == "" {
+		if d.Slug == "" {
+			d.Slug = blupSlug(site.Title)
+		}
+		s, err := c.CreateSite(ctx, d.Slug, site.Title)
+		if err != nil {
+			return "", err
+		}
+		d.ID, d.URL = s.ID, s.URL
+		// Kept at once: the address is the person's now, even if the
+		// upload fails.
+		if err := site.Save(); err != nil {
+			return "", err
+		}
+	}
+	if d.URL == "" {
+		return "", errors.New(i18n.T("pub.not_set"))
+	}
+	// Own domains on Blup Cloud come later: the site is built for its
+	// getblup.site address.
+	dir, err := build(ctx, site, d.URL)
+	if err != nil {
+		return "", err
+	}
+	var res blupcloud.DeployResult
+	if err := ui.Spin(ctx, i18n.T("pub.uploading"), func(ctx context.Context) error {
+		files, err := blupcloud.PackSite(dir)
+		if err != nil {
+			return err
+		}
+		res, err = c.DeploySite(ctx, d.ID, files)
+		return err
+	}); err != nil {
+		return "", err
+	}
+	ui.OK(i18n.T("pub.uploaded", res.Uploaded, res.Skipped))
+	if res.URL != "" {
+		d.URL = res.URL
+	}
+	return d.URL, nil
+}

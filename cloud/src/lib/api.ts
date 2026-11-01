@@ -25,10 +25,18 @@ export type AIShare = { percent: number; resetsAt: string; included: boolean };
 
 export type Device = { id: string; name: string; createdAt: string; lastSeen: string };
 
+// A site published through Blup Cloud (live: it has a deploy).
+export type Site = { id: string; slug: string; title: string; url: string; bytes: number; files: number; live: boolean; updatedAt: string };
+
 export const api = {
 	me: () => get<Me>("/me"),
 	plans: () => get<PlanInfo[]>("/plans"),
 	devices: () => get<{ devices: Device[] }>("/devices"),
+	sites: () => get<{ limit: number; sites: Site[] }>("/sites"),
+	takeDown: async (id: string) => {
+		const r = await fetch(`/api/sites/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" });
+		if (!r.ok) throw new Error(`takeDown: ${r.status}`);
+	},
 	disconnect: async (id: string) => {
 		const r = await fetch(`/api/devices/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" });
 		if (!r.ok) throw new Error(`disconnect: ${r.status}`);

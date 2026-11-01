@@ -1,0 +1,314 @@
+package blupcloud
+
+import (
+	"bytes"
+	"compress/gzip"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"io/fs"
+	"mime"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
+	"sync"
+)
+
+// Sites published through Blup Cloud (paid plans), at <slug>.getblup.site.
+// The site is built by Hugo already minified; here its text files are
+// gzipped (the cloud keeps and sends them that way) and only the files the
+// site doesn't have yet go up, by the hash of what is stored. A deploy then
+// names every path's file and goes live at once (cloud/worker/sites.ts).
+
+var (
+	// ErrPlan: the plan has no sites (Free).
+	ErrPlan = errors.New("blupcloud: the plan does not include sites")
+	// ErrSitesLimit: the plan's sites are all in use.
+	ErrSitesLimit = errors.New("blupcloud: the plan's sites are all in use")
+	// ErrSlugTaken: another site has that address.
+	ErrSlugTaken = errors.New("blupcloud: that address is taken")
+	// ErrFileTooLarge: a file is over the plan's size limit.
+	ErrFileTooLarge = errors.New("blupcloud: a file is over the plan's limit")
+)
+
+// SiteSlug is a site's address on Blup Cloud: <slug>.getblup.site.
+var SiteSlug = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$`)
+
+// Site is a site on Blup Cloud.
+type Site struct {
+	ID    string `json:"id"`
+	Slug  string `json:"slug"`
+	Title string `json:"title"`
+	URL   string `json:"url"`
+	Live  bool   `json:"live"`
+	Bytes int64  `json:"bytes"`
+	Files int    `json:"files"`
+}
+
+// Sites lists the account's sites and how many the plan allows (0: none,
+// -1: no limit).
+func (c *Client) Sites(ctx context.Context) ([]Site, int, error) {
+	var r struct {
+		Limit int    `json:"limit"`
+		Sites []Site `json:"sites"`
+	}
+	err := c.do(ctx, http.MethodGet, "/sites", nil, "", &r)
+	return r.Sites, r.Limit, siteErr(err)
+}
+
+// CreateSite reserves slug.getblup.site for a new site.
+func (c *Client) CreateSite(ctx context.Context, slug, title string) (Site, error) {
+	var s Site
+	err := c.do(ctx, http.MethodPost, "/sites", map[string]string{"slug": slug, "title": title}, "", &s)
+	return s, siteErr(err)
+}
+
+// DeleteSite takes a site down and deletes its files.
+func (c *Client) DeleteSite(ctx context.Context, id string) error {
+	return siteErr(c.do(ctx, http.MethodDelete, "/sites/"+url.PathEscape(id), nil, "", nil))
+}
+
+func siteErr(err error) error {
+	var e *apiError
+	if errors.As(err, &e) {
+		switch e.Code {
+		case "PLAN":
+			return ErrPlan
+		case "SITES_LIMIT":
+			return ErrSitesLimit
+		case "SLUG_TAKEN":
+			return ErrSlugTaken
+		case "TOO_LARGE":
+			return ErrFileTooLarge
+		}
+	}
+	return err
+}
+
+// SiteFile is one file of a built site, as it goes up.
+type SiteFile struct {
+	Path string `json:"path"` // "/posts/oi/index.html"
+	Hash string `json:"hash"` // SHA-256 of what is stored
+	Type string `json:"type"`
+	GZ   bool   `json:"gz"`
+	src  string // the file on disk
+	data []byte // what is stored, when gzipped (text files are small)
+}
+
+// Files that compress well: gzipped before going up.
+var textTypes = []string{"text/", "application/javascript", "application/json", "application/xml", "application/rss+xml", "application/atom+xml", "application/manifest+json", "image/svg+xml", "application/wasm", "font/ttf", "font/otf", "image/x-icon"}
+
+func mediaType(name string) string {
+	ext := strings.ToLower(path.Ext(name))
+	switch ext {
+	case ".webmanifest":
+		return "application/manifest+json"
+	case ".xml":
+		return "application/xml; charset=utf-8"
+	case ".mp3":
+		return "audio/mpeg"
+	case ".woff2":
+		return "font/woff2"
+	case ".avif":
+		return "image/avif"
+	case ".webp":
+		return "image/webp"
+	case ".ico":
+		return "image/x-icon"
+	case ".wasm":
+		return "application/wasm"
+	case ".pf_meta", ".pf_index", ".pf_fragment", ".pagefind":
+		return "application/octet-stream" // Pagefind's index: already compressed
+	}
+	t := mime.TypeByExtension(ext)
+	if t == "" {
+		return "application/octet-stream"
+	}
+	// Go adds "; charset=utf-8" to text types; the cloud takes only that one.
+	if base, params, ok := strings.Cut(t, ";"); ok {
+		if strings.Contains(strings.ToLower(params), "utf-8") {
+			return base + "; charset=utf-8"
+		}
+		return base
+	}
+	return t
+}
+
+func compressible(t string) bool {
+	return slices.ContainsFunc(textTypes, func(p string) bool { return strings.HasPrefix(t, p) })
+}
+
+// skipped are Cloudflare Pages' own files: they mean nothing here.
+var skipped = map[string]bool{"/_headers": true, "/_redirects": true, "/_routes.json": true, "/_worker.js": true}
+
+// PackSite reads a built site (dir): every file with its stored hash, text
+// files gzipped at the best level when that makes them smaller.
+func PackSite(dir string) ([]SiteFile, error) {
+	var out []SiteFile
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if strings.HasPrefix(d.Name(), ".") && p != dir {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasPrefix(d.Name(), ".") || !d.Type().IsRegular() {
+			return nil
+		}
+		rel, err := filepath.Rel(dir, p)
+		if err != nil {
+			return err
+		}
+		f := SiteFile{Path: "/" + filepath.ToSlash(rel), Type: mediaType(d.Name()), src: p}
+		if skipped[f.Path] {
+			return nil
+		}
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		stored := raw
+		if compressible(f.Type) && len(raw) > 256 {
+			var buf bytes.Buffer
+			w, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+			w.Write(raw)
+			if err := w.Close(); err != nil {
+				return err
+			}
+			if buf.Len() < len(raw) {
+				stored, f.GZ, f.data = buf.Bytes(), true, buf.Bytes()
+			}
+		}
+		sum := sha256.Sum256(stored)
+		f.Hash = hex.EncodeToString(sum[:])
+		out = append(out, f)
+		return nil
+	})
+	return out, err
+}
+
+func (f SiteFile) stored() ([]byte, error) {
+	if f.data != nil {
+		return f.data, nil
+	}
+	return os.ReadFile(f.src)
+}
+
+// DeployResult says what went up.
+type DeployResult struct {
+	URL      string
+	Uploaded int // files sent
+	Skipped  int // files the site already had
+}
+
+const siteUploads = 6 // files sent at once
+
+// DeploySite sends what the site lacks and makes files its live version.
+func (c *Client) DeploySite(ctx context.Context, siteID string, files []SiteFile) (DeployResult, error) {
+	base := "/sites/" + url.PathEscape(siteID)
+	byHash := map[string]SiteFile{}
+	for _, f := range files {
+		byHash[f.Hash] = f
+	}
+	hashes := make([]string, 0, len(byHash))
+	for h := range byHash {
+		hashes = append(hashes, h)
+	}
+	var res DeployResult
+	send := func(missing []string) error {
+		jobs := make(chan string)
+		errs := make(chan error, siteUploads)
+		var wg sync.WaitGroup
+		for range siteUploads {
+			wg.Go(func() {
+				for h := range jobs {
+					data, err := byHash[h].stored()
+					if err == nil {
+						err = siteErr(c.do(ctx, http.MethodPut, base+"/files/"+h, data, "application/octet-stream", nil))
+					}
+					if err != nil {
+						select {
+						case errs <- err:
+						default:
+						}
+					}
+				}
+			})
+		}
+	feed:
+		for _, h := range missing {
+			select {
+			case jobs <- h:
+			case err := <-errs:
+				close(jobs)
+				wg.Wait()
+				return err
+			case <-ctx.Done():
+				break feed
+			}
+		}
+		close(jobs)
+		wg.Wait()
+		select {
+		case err := <-errs:
+			return err
+		default:
+		}
+		res.Uploaded += len(missing)
+		return ctx.Err()
+	}
+	missingOf := func() ([]string, error) {
+		var missing []string
+		for i := 0; i < len(hashes); i += 1000 {
+			var r struct {
+				Missing []string `json:"missing"`
+			}
+			if err := c.do(ctx, http.MethodPost, base+"/missing", map[string]any{"hashes": hashes[i:min(i+1000, len(hashes))]}, "", &r); err != nil {
+				return nil, siteErr(err)
+			}
+			missing = append(missing, r.Missing...)
+		}
+		return missing, nil
+	}
+	missing, err := missingOf()
+	if err != nil {
+		return res, err
+	}
+	res.Skipped = len(hashes) - len(missing)
+	if err := send(missing); err != nil {
+		return res, err
+	}
+	// A deploy finishing elsewhere may have cleared files meanwhile: those
+	// go again, once.
+	for attempt := 0; ; attempt++ {
+		var r struct {
+			URL string `json:"url"`
+		}
+		err := c.do(ctx, http.MethodPost, base+"/deploys", map[string]any{"files": files}, "", &r)
+		var e *apiError
+		if errors.As(err, &e) && e.Code == "MISSING_FILES" && attempt == 0 {
+			again, err := missingOf()
+			if err != nil {
+				return res, err
+			}
+			if err := send(again); err != nil {
+				return res, err
+			}
+			continue
+		}
+		if err != nil {
+			return res, siteErr(err)
+		}
+		res.URL = r.URL
+		return res, nil
+	}
+}

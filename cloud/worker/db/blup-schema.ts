@@ -141,3 +141,44 @@ export const aiUsage = sqliteTable(
 	},
 	(t) => [index("ai_usage_user_idx").on(t.userId, t.createdAt)],
 );
+
+// A site published through Blup Cloud (paid plans), served at
+// <slug>.getblup.site (worker/serve-site.ts).
+export const site = sqliteTable(
+	"site",
+	{
+		id: text("id").primaryKey(),
+		userId: text("user_id").notNull(),
+		slug: text("slug").notNull().unique(),
+		title: text("title").notNull(),
+		// The live deploy: its manifest is s/<id>/d/<deploy> in R2 ("" before
+		// the first).
+		deploy: text("deploy").default("").notNull(),
+		// Bytes of the files stored (as stored: text files gzipped), and how
+		// many the live deploy has.
+		bytes: integer("bytes").default(0).notNull(),
+		files: integer("files").default(0).notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+	},
+	(t) => [index("site_user_idx").on(t.userId)],
+);
+
+// A file of a site in R2 (s/<site>/f/<sha256 of what is stored>): the same
+// file is stored once per site, whatever deploy or path uses it.
+export const siteBlob = sqliteTable(
+	"site_blob",
+	{
+		siteId: text("site_id").notNull(),
+		hash: text("hash").notNull(),
+		size: integer("size").notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.siteId, t.hash] })],
+);

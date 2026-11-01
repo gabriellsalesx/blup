@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { Events } from "@wailsio/runtime";
-  import { CurrentDomain, SetDomain, CheckDomain, RemoveDomain, Connections, OpenKeyPage, OpenURL, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, SyncStatus, Sync, SyncRemote, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { CurrentDomain, SetDomain, CheckDomain, RemoveDomain, Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, SyncStatus, Sync, SyncRemote, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, Target as Dest, SyncInfo, DomainStatus, BlupAccount } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Account } from "../bindings/github.com/gabriellsalesx/blup/internal/deploy/cfpages/models";
   import Check from "@lucide/svelte/icons/check";
@@ -16,8 +16,12 @@
   import CloudAccount from "./CloudAccount.svelte";
   import Choice from "./ui/Choice.svelte";
 
-  // notes: a vault of notes has no site, so only syncing shows.
+  // Two screens in one: publishing the site (where it goes, then its own
+  // domain once it is online) and syncing the notes. notes: a vault of notes
+  // has no site, so only syncing shows; a site's Sync button opens the
+  // sync part (autostart "sync").
   let { autostart = "", notes = false }: { autostart?: string; notes?: boolean } = $props();
+  const syncOnly = $derived(notes || autostart === "sync");
   const p = t.pubs;
 
   let conn = $state<Conn | null>(null);
@@ -91,14 +95,21 @@
     } catch (e) { error = msg(e); }
   }
   const msg = (e: unknown) => String(e).replace(/^(Runtime)?Error: /, "");
-  const connected = $derived(target?.provider === "cloudflare" ? !!conn?.cloudflare : !!conn?.github);
-  const ready = $derived(!!target?.provider && connected && (target.provider === "github" ? !!target.repo : !!target.account && !!target.project));
+  // Blup Cloud: the account signed in and a plan with sites (paid plans).
+  const SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
+  const blupOK = $derived(!!cloud?.signedIn && cloud.sitesMax !== 0);
+  const slugOK = $derived(!!target && SLUG.test(target.slug) && !target.slug.includes("--"));
+  const connected = $derived(target?.provider === "blup" ? blupOK : target?.provider === "cloudflare" ? !!conn?.cloudflare : !!conn?.github);
+  const ready = $derived(!!target?.provider && connected && (target.provider === "blup" ? slugOK : target.provider === "github" ? !!target.repo : !!target.account && !!target.project));
+  // The steps to connect a Cloudflare or GitHub account show on request.
+  let howTo = $state(false);
 
   async function pick(provider: string) {
     if (!target) return;
     target.provider = provider;
     if (provider === "cloudflare" && conn?.cloudflare && !accounts.length) accounts = (await CloudflareAccounts().catch(() => [])) ?? [];
     if (provider === "cloudflare" && !target.account && accounts.length) target.account = accounts[0].id;
+    howTo = false;
   }
 
   async function connect() {
@@ -155,21 +166,40 @@
 </script>
 
 <div class="panel">
-  <h1>{notes ? p.syncTitle : p.title}</h1>
-  <p class="lead">{notes ? t.vaults.syncLead : p.lead}</p>
+  <h1>{syncOnly ? p.syncTitle : p.title}</h1>
+  <p class="lead">{notes ? t.vaults.syncLead : syncOnly ? p.syncHelpSite : p.lead}</p>
   {#if error}<p class="bad box">{error}</p>{/if}
 
   {#if target && conn}
-    {#if !notes}
+    {#if !syncOnly}
     <section class="card">
       <h2>{p.where}</h2>
-      <div class="choices">
+      <div class="choices three">
+        <Choice title="Blup Cloud · {cl.recommended}" help={p.blupHelp} on={target.provider === "blup"} onclick={() => pick("blup")} />
         <Choice title="Cloudflare Pages" help={p.cfHelp} on={target.provider === "cloudflare"} onclick={() => pick("cloudflare")} />
         <Choice title="GitHub Pages" help={p.ghHelp} on={target.provider === "github"} onclick={() => pick("github")} />
       </div>
     </section>
 
-    {#if target.provider}
+    {#if target.provider === "blup"}
+      <section class="card">
+        <h2>Blup Cloud</h2>
+        <CloudAccount bind:account={cloud} notes={false} />
+        {#if cloud?.signedIn && cloud.sitesMax === 0}
+          <p class="box">{p.blupPaid}</p>
+          <div class="actions"><button class="btn" onclick={() => OpenBlupCloud("/conta/plano")}>{p.blupPlans}</button></div>
+        {:else if cloud?.signedIn}
+          <label class="field"><span>{p.blupAddress}</span>
+            <div class="row addr">
+              <input type="text" bind:value={target.slug} disabled={target.slugFixed} spellcheck="false" autocomplete="off" />
+              <span class="muted">.getblup.site</span>
+            </div>
+            <small class:bad={!slugOK}>{target.slugFixed ? p.blupFixed : p.blupAddressHelp}</small>
+          </label>
+          <small class="muted">{p.blupUsage.replace("{n}", String(cloud.sites)).replace("{max}", cloud.sitesMax < 0 ? "∞" : String(cloud.sitesMax))}</small>
+        {/if}
+      </section>
+    {:else if target.provider}
       <section class="card">
         <h2>{target.provider === "cloudflare" ? p.cfAccount : p.ghAccount}</h2>
         {#if connected}
@@ -189,6 +219,9 @@
           {:else}
             <label class="field"><span>{p.repo}</span><input type="text" bind:value={target.repo} /><small>{p.repoHelp}</small></label>
           {/if}
+        {:else if !howTo}
+          <p class="muted">{target.provider === "cloudflare" ? p.cfNeeds : p.ghNeeds}</p>
+          <div class="actions"><button class="btn" onclick={() => (howTo = true)}>{p.connectAccount}</button></div>
         {:else}
           <ol class="steps">
             <li>{p.step1} <button class="add" onclick={() => OpenKeyPage(target!.provider)}>{p.openForm} <External size={14} /></button></li>
@@ -201,7 +234,9 @@
           </div>
         {/if}
       </section>
+    {/if}
 
+    {#if target.provider}
       <section class="card publish">
         <div class="row">
           <div class="field"><span>{p.now}</span>{#if live}<small>{p.liveAt} <button class="link" onclick={() => OpenURL(live)}>{live}</button></small>{/if}</div>
@@ -221,6 +256,8 @@
       </section>
     {/if}
 
+    <!-- The own domain comes once the site is online (on Blup Cloud, later). -->
+    {#if target.provider && target.provider !== "blup" && (live || domain)}
     <section class="card">
       <h2>{dm.title}</h2>
       <p>{dm.help}</p>
@@ -276,11 +313,11 @@
       {#if derror}<p class="bad">{derror}</p>{/if}
       {#if republish}<p class="box">{dm.republish}</p>{/if}
     </section>
-
     {/if}
+
+    {:else}
     <section class="card">
-      <h2>{p.syncTitle}</h2>
-      <p class="q">{cl.where}</p>
+      <h2>{cl.where}</h2>
       <div class="choices">
         <Choice title="Blup Cloud · {cl.recommended}" help={cl.blupHelp} on={remote === "blup"} onclick={() => pickRemote("blup")} />
         <Choice title="GitHub" help={cl.ghHelp} on={remote === "github"} onclick={() => pickRemote("github")} />
@@ -317,6 +354,7 @@
       {/if}
       {#if syncError}<p class="bad">{syncError}</p>{/if}
     </section>
+    {/if}
   {/if}
 </div>
 
@@ -327,6 +365,9 @@
   .steps { display: grid; gap: .5rem; padding-inline-start: 1.25rem; font-size: .9rem; }
   .steps .add { display: inline-flex; margin-inline-start: .35rem; }
   .publish .row { align-items: center; }
+  .choices.three { grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+  .addr { align-items: center; gap: .35rem; }
+  .addr input { flex: 1; min-width: 0; }
   .btn.big { padding: .7rem 1.4rem; font-size: .95rem; }
   .link { color: var(--blue); text-decoration: underline; font-size: inherit; }
   .log { list-style: none; padding: .75rem; display: grid; gap: .35rem; max-height: 16rem; overflow: auto; border-radius: .5rem; background: var(--bg); font-size: .85rem; }

@@ -15,7 +15,9 @@
   // bare: the screen around already says what signing in is for (the
   // welcome), so only the button shows.
   // brief: the storage is shown around (the settings' usage), not here.
-  let { account = $bindable(null), bare = false, brief = false }: { account?: Account | null; bare?: boolean; brief?: boolean } = $props();
+  // notes: false when only the account matters (publishing a site), not
+  // the notes password.
+  let { account = $bindable(null), bare = false, brief = false, notes = true }: { account?: Account | null; bare?: boolean; brief?: boolean; notes?: boolean } = $props();
   const c = t.cloud;
 
   let error = $state("");
@@ -88,7 +90,7 @@
     <span class="spacer"></span>
     <button class="btn ghost" onclick={signOut}>{c.signOut}</button>
   </div>
-  {#if recovery}
+  {#if notes && recovery}
     <h3>{c.recoveryTitle}</h3>
     <p>{c.recoveryHelp}</p>
     <div class="row">
@@ -97,7 +99,7 @@
     </div>
     <label class="check"><input type="checkbox" bind:checked={kept} /> {c.kept}</label>
     <div class="actions"><button class="btn" disabled={!kept} onclick={finish}>{c.done}</button></div>
-  {:else if account.notes === "new"}
+  {:else if notes && account.notes === "new"}
     <h3><Lock size={16} /> {c.newTitle}</h3>
     <p>{c.newHelp}</p>
     <form class="grid" onsubmit={create}>
@@ -105,14 +107,14 @@
       <TextField type="password" label={c.confirm} bind:value={pw2} autocomplete="new-password" />
       <div class="actions"><button class="btn" disabled={busy || !pw || !pw2}>{c.create}</button></div>
     </form>
-  {:else if account.notes === "locked"}
+  {:else if notes && account.notes === "locked"}
     <h3><Lock size={16} /> {c.lockedTitle}</h3>
     <p>{c.lockedHelp}</p>
     <form class="grid" onsubmit={unlock}>
       <TextField type="password" label={c.secret} bind:value={secret} autocomplete="current-password" />
       <div class="actions"><button class="btn" disabled={busy || !secret.trim()}>{c.unlock}</button></div>
     </form>
-  {:else}
+  {:else if notes}
     <p class="muted">
       {account.live ? c.live : c.manual}
       {#if !brief}{c.storage.replace("{used}", size(account.storageBytes)).replace("{total}", size(account.storageMB * 1048576))}.{/if}

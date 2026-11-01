@@ -1,0 +1,32 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	// Os sites publicados pelo Blup Cloud (planos pagos), em <nome>.getblup.site.
+	// Um Worker à parte do painel: sem assets nem login, só lê o banco (D1) e
+	// os arquivos (R2) que o painel grava. Publicar:
+	// npx wrangler deploy -c wrangler.sites.jsonc --env production
+	"name": "blup-sites",
+	"main": "worker/sites-entry.ts",
+	"compatibility_date": "2026-10-28",
+	"observability": { "enabled": true },
+	// O mesmo banco do painel (troque o ID na hora de publicar, como lá).
+	"d1_databases": [
+		{ "binding": "DB", "database_name": "blup-cloud", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+	],
+	"r2_buckets": [{ "binding": "SITES", "bucket_name": "blup-cloud-sites" }],
+	// No computador: nome.localhost:<porta>.
+	"vars": { "SITES_DOMAIN": "localhost" },
+	"env": {
+		"production": {
+			"workers_dev": false,
+			"preview_urls": false,
+			// Um registro DNS curinga *.getblup.site (AAAA 100::, com proxy) e
+			// esta rota levam todos os sites a este Worker.
+			"routes": [{ "pattern": "*.getblup.site/*", "zone_name": "getblup.site" }],
+			"d1_databases": [
+				{ "binding": "DB", "database_name": "blup-cloud", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+			],
+			"r2_buckets": [{ "binding": "SITES", "bucket_name": "blup-cloud-sites" }],
+			"vars": { "SITES_DOMAIN": "getblup.site" }
+		}
+	}
+}

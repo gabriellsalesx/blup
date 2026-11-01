@@ -7,6 +7,7 @@ import { v7 as uuidv7 } from "uuid";
 import { auth, db } from "./auth";
 import { syncAccount, syncBlock, vault, vaultVersion } from "./db/schema";
 import { planOf } from "./account";
+import { storageUsed } from "./usage";
 
 // Sync of the notes of each site (a vault), end-to-end encrypted by the
 // Studio (internal/cloudcrypt): this side only ever sees sealed blocks,
@@ -160,7 +161,7 @@ export const syncApi = new Hono<App>()
 		const refs = new TextEncoder().encode([...new Set(blocks)].join("\n"));
 		const size = manifest.size + refs.byteLength;
 		if (!acc) return c.json({ code: "NO_KEY" }, 409);
-		if (acc.storageBytes + size > plan.limits.storageMB * MB) return c.json({ code: "QUOTA", limitMB: plan.limits.storageMB }, 413);
+		if ((await storageUsed(userId)) + size > plan.limits.storageMB * MB) return c.json({ code: "QUOTA", limitMB: plan.limits.storageMB }, 413);
 
 		const n = parent + 1;
 		const key = `u/${userId}/v/${id}/${n}-${uuidv7()}`;
@@ -204,7 +205,7 @@ export const syncApi = new Hono<App>()
 		if (have) return c.json({ ok: true });
 		const [plan, acc] = await Promise.all([planOf(userId), account(userId)]);
 		if (!acc) return c.json({ code: "NO_KEY" }, 409);
-		if (acc.storageBytes + body.byteLength > plan.limits.storageMB * MB) return c.json({ code: "QUOTA", limitMB: plan.limits.storageMB }, 413);
+		if ((await storageUsed(userId)) + body.byteLength > plan.limits.storageMB * MB) return c.json({ code: "QUOTA", limitMB: plan.limits.storageMB }, 413);
 		await c.env.NOTES.put(blockKey(userId, id), body);
 		const added = await db.insert(syncBlock).values({ userId, id, size: body.byteLength }).onConflictDoNothing().returning({ id: syncBlock.id });
 		if (added.length) await c.env.DB.prepare("UPDATE sync_account SET storage_bytes = storage_bytes + ? WHERE user_id = ?").bind(body.byteLength, userId).run();
