@@ -54,19 +54,22 @@
 </section>
 
 <style>
-  .back { max-height: 40%; overflow: auto; border-block-start: 1px solid var(--line); padding: .35rem 1rem .5rem; background: var(--panel); }
-  .head { display: flex; align-items: center; gap: .35rem; padding: .25rem .3rem; border-radius: .35rem; font-size: .85rem; font-weight: 600; color: var(--muted); }
+  /* Many mentions don't push the note away: the panel stops at a height and
+     its list scrolls inside, with room at the bottom. */
+  .back { flex: none; display: flex; flex-direction: column; max-height: min(18rem, 38%); border-block-start: 1px solid var(--line); padding: .35rem 1rem 0; background: var(--panel); }
+  .head { flex: none; display: flex; align-items: center; gap: .35rem; padding: .25rem .3rem; border-radius: .35rem; font-size: .85rem; font-weight: 600; color: var(--muted); }
   .head:hover { color: var(--text); }
   .chev { display: inline-grid; transition: transform .15s; }
   .chev.open { transform: rotate(90deg); }
   .n { padding: 0 .4rem; border-radius: 999px; background: var(--soft); font-size: .75rem; }
-  ul { list-style: none; padding: .2rem 0 0 1.2rem; display: grid; gap: .1rem; }
+  ul { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; list-style: none; padding: .2rem 0 .9rem 1.2rem; display: grid; align-content: start; gap: .1rem; }
   li button { display: grid; gap: .15rem; width: 100%; padding: .35rem .5rem; border-radius: .35rem; text-align: start; font-size: .88rem; }
-  .who { display: flex; align-items: baseline; gap: .5rem; }
-  .line { color: var(--muted); font-size: .82rem; line-height: 1.45; }
-  .line mark { background: none; color: var(--blue); font-weight: 600; }
   li button:hover { background: var(--soft); }
-  li b { font-weight: 500; color: var(--blue); }
-  li small { font-size: .75rem; }
-  .none { padding: .3rem 1.5rem; font-size: .85rem; }
+  .who { display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
+  li b { font-weight: 500; color: var(--blue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  li small { flex: none; font-size: .75rem; }
+  /* A long line shows two lines at most. */
+  .line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; color: var(--muted); font-size: .82rem; line-height: 1.45; }
+  .line mark { background: none; color: var(--blue); font-weight: 600; }
+  .none { padding: .3rem 1.5rem .9rem; font-size: .85rem; }
 </style>
