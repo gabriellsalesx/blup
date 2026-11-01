@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { SiteLangs, TranslateSite } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { SiteLangs, TranslateSite, TranslationTodo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteLangState, Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import { Events } from "@wailsio/runtime";
   import { toast, toastError } from "./toast.svelte";
   import { t } from "./i18n";
+  import { useLocal, translateNoteLocal } from "./localtranslate";
 
   // The site in other languages: how much of it is translated into each,
   // and translating what is missing (or out of date) with AI.
@@ -24,7 +25,16 @@
     busy = lang;
     progress = null;
     try {
-      const n = await TranslateSite(lang);
+      let n: number;
+      if (await useLocal()) {
+        // On the computer: note by note in the window.
+        const todo = (await TranslationTodo(lang)) ?? [];
+        for (const [i, rel] of todo.entries()) {
+          progress = { done: i, total: todo.length, note: rel };
+          await translateNoteLocal(rel, settings.lang, lang);
+        }
+        n = todo.length;
+      } else n = await TranslateSite(lang);
       toast(sl.finished.replace("{n}", String(n)).replace("{lang}", NAMES[lang]));
       onTree();
     } catch (e) { toastError(e); }

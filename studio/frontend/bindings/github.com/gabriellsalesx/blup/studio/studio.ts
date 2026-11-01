@@ -465,6 +465,14 @@ export function ImageData(file: string): $CancellablePromise<string> {
 }
 
 /**
+ * InstallLocalTranslate downloads, checks and unpacks the local
+ * translation; progress goes out as "translateInstall" events.
+ */
+export function InstallLocalTranslate(): $CancellablePromise<void> {
+    return $Call.ByID(1697240450);
+}
+
+/**
  * InstallLocalVoice downloads the local voice (engine, tools, model and
  * voices), checks each file and sets it up; progress goes out as
  * "voiceInstall" events.
@@ -493,6 +501,13 @@ export function Layout(): $CancellablePromise<$models.HomeItem[] | null> {
  */
 export function LinkedImage(link: string): $CancellablePromise<string> {
     return $Call.ByID(929506664, link);
+}
+
+/**
+ * LocalTranslate is the local translation's state.
+ */
+export function LocalTranslate(): $CancellablePromise<$models.LocalTranslateState> {
+    return $Call.ByID(484303937);
 }
 
 /**
@@ -809,6 +824,13 @@ export function RemoveImage(key: string): $CancellablePromise<void> {
 }
 
 /**
+ * RemoveLocalTranslate deletes the local translation.
+ */
+export function RemoveLocalTranslate(): $CancellablePromise<void> {
+    return $Call.ByID(990155909);
+}
+
+/**
  * RemoveLocalVoice deletes the local voice.
  */
 export function RemoveLocalVoice(): $CancellablePromise<void> {
@@ -956,6 +978,14 @@ export function SavePrefs(p: $models.Prefs): $CancellablePromise<void> {
  */
 export function SaveSocial(links: string[] | null): $CancellablePromise<void> {
     return $Call.ByID(3556203008, links);
+}
+
+/**
+ * SaveTranslation saves a translation made in the window and returns its
+ * path.
+ */
+export function SaveTranslation(rel: string, lang: string, title: string, description: string, body: string): $CancellablePromise<string> {
+    return $Call.ByID(1812394062, rel, lang, title, description, body);
 }
 
 /**
@@ -1169,6 +1199,13 @@ export function TranslateNote(rel: string, lang: string): $CancellablePromise<st
  */
 export function TranslateSite(lang: string): $CancellablePromise<number> {
     return $Call.ByID(1712606371, lang);
+}
+
+/**
+ * TranslationTodo lists the open site's notes to translate into lang.
+ */
+export function TranslationTodo(lang: string): $CancellablePromise<string[] | null> {
+    return $Call.ByID(2003953293, lang);
 }
 
 /**

@@ -159,7 +159,27 @@ func TranslateNote(ctx context.Context, site *config.Site, rel, lang string, pro
 	if err != nil {
 		return "", errors.New(describe(err))
 	}
+	return WriteTranslation(site, rel, lang, title, desc, body)
+}
 
+// WriteTranslation saves the translation of rel (or of rel's original)
+// into lang, made here or in the window (the local translation): the
+// original's properties with its own title and description, the text,
+// and the original's fingerprint. It returns the translation's path; the
+// site then publishes lang too.
+func WriteTranslation(site *config.Site, rel, lang, title, desc, body string) (string, error) {
+	if lang == site.Lang || !slices.Contains(config.SiteLangs, lang) {
+		return "", errors.New("translate: unknown language " + lang)
+	}
+	original, _ := NoteOrigin(site, rel)
+	op, err := notesPath(site, original)
+	if err != nil {
+		return "", err
+	}
+	n, err := obsidian.ReadNote(op)
+	if err != nil {
+		return "", err
+	}
 	target := translationPath(original, lang)
 	tp, err := notesPath(site, target)
 	if err != nil {
@@ -185,7 +205,7 @@ func TranslateNote(ctx context.Context, site *config.Site, rel, lang string, pro
 		{Key: hashKey, Value: sourceHash(n, original)},
 		{Key: "audio", Value: nil}, {Key: "audio_hash", Value: nil}, {Key: "audio_seconds", Value: nil},
 	}
-	if desc != "" {
+	if strings.TrimSpace(desc) != "" {
 		props = append(props, obsidian.Prop{Key: "description", Value: strings.TrimSpace(desc)})
 	}
 	if err := obsidian.SetProperties(tp, props...); err != nil {
@@ -325,4 +345,30 @@ func TranslateSite(ctx context.Context, site *config.Site, lang string, progress
 		progress(len(todo), len(todo), "")
 	}
 	return len(todo), addSiteLang(site, lang)
+}
+
+// TranslationTodo lists the site's notes without an up to date
+// translation into lang (for the local translation, which works in the
+// window note by note).
+func TranslationTodo(site *config.Site, lang string) ([]string, error) {
+	notes, err := siteOriginals(site)
+	if err != nil {
+		return nil, err
+	}
+	todo := []string{}
+	for _, rel := range notes {
+		if translationOf(site, rel, lang) != "done" {
+			todo = append(todo, rel)
+		}
+	}
+	return todo, nil
+}
+
+// LocalTranslateDir is where the local translation is installed.
+func LocalTranslateDir() (string, error) {
+	d, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(d, "blup", "translate"), nil
 }

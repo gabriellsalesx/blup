@@ -21,6 +21,8 @@ project.
 | [go-pty](https://github.com/aymanbagabas/go-pty) (terminal) | MIT | |
 | [fsnotify](https://github.com/fsnotify/fsnotify) | BSD-3-Clause | |
 | [golang.org/x/image](https://pkg.go.dev/golang.org/x/image) (previews) | BSD-3-Clause | |
+| [Bergamot](https://github.com/mozilla/translations) JavaScript glue of Firefox's translation engine (local translation), unchanged | MPL-2.0 | [studio/frontend/public/bergamot](studio/frontend/public/bergamot) |
+| [klauspost/compress](https://github.com/klauspost/compress) (unpacks the local translation's models) | BSD-3-Clause | |
 
 ## Blup (command line) and its themes
 
@@ -40,6 +42,18 @@ project.
 | --- | --- |
 | [Hugo](https://gohugo.io), builds the site | Apache-2.0 |
 | [Pagefind](https://pagefind.app), the site's search | MIT |
+
+### Blup Studio's local translation
+
+Downloaded only when the user turns on "Translation on the computer" in Blup
+Studio (Settings, AI): the same files Firefox downloads from Mozilla's
+Remote Settings, each pinned and checked by SHA-256
+([internal/localtr/localtr.go](internal/localtr/localtr.go)).
+
+| Part | License | Where it comes from |
+| --- | --- | --- |
+| Firefox Translations' engine, [Bergamot](https://github.com/mozilla/translations) 4.0 (Marian, compiled to WebAssembly) | MPL-2.0 | Mozilla's CDN (firefox-settings-attachments.cdn.mozilla.net) |
+| Firefox Translations' models (English with Portuguese and Spanish, version 3.0) | MPL-2.0 | same |
 
 ### Blup Studio's local voice
 

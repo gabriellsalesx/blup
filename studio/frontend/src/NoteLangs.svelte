@@ -4,6 +4,7 @@
   import { Events } from "@wailsio/runtime";
   import { toast } from "./toast.svelte";
   import { t } from "./i18n";
+  import { useLocal, translateNoteLocal } from "./localtranslate";
 
   // The note's languages: the original and each translation (a folder en,
   // es or pt next to the note), to open, translate with AI, or translate
@@ -28,7 +29,12 @@
     part = null;
     needKey = false;
     try {
-      await TranslateNote(note, lang);
+      // On the computer when it is installed (and chosen), else by the AI
+      // in the cloud.
+      const original = langs.find((l) => l.original);
+      if (original && (await useLocal())) {
+        await translateNoteLocal(original.path, original.lang, lang, (done, total) => (part = { done, total }));
+      } else await TranslateNote(note, lang);
       toast(tr.done.replace("{lang}", NAMES[lang]));
       await load(note);
     } catch (e) {

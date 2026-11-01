@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, BlupAccount as Account, AIQuota } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Settings from "@lucide/svelte/icons/settings";
@@ -207,6 +207,29 @@
     return pick?.ready ? pick.id : (list.find((v) => v.ready) ?? pick ?? list.find((v) => v.engine === "openrouter"))?.id ?? "";
   };
   const setVoice = (lang: string, id: string) => { setPref("voices", { ...(look.voices ?? {}), [lang]: id }); toast(ai.voiceSet); };
+
+  // The translation on the computer (Firefox's): downloaded on demand.
+  const lt = t.ltr;
+  let ltState = $state<{ installed: boolean; bytes: number } | null>(null);
+  let ltBusy = $state<{ done: number; total: number } | null>(null);
+  let ltError = $state("");
+  LocalTranslate().then((v) => (ltState = v)).catch(() => {});
+  const offLt = Events.On("translateInstall", (ev: any) => { if (ltBusy) ltBusy = ev.data; });
+  $effect(() => () => offLt());
+  async function installLt() {
+    ltError = "";
+    ltBusy = { done: 0, total: ltState?.bytes ?? 0 };
+    try { await InstallLocalTranslate(); ltState = await LocalTranslate(); toast(lt.ready); }
+    catch (e) { ltError = String(e).replace(/^(Runtime)?Error: /, ""); }
+    ltBusy = null;
+  }
+  async function removeLt() {
+    await RemoveLocalTranslate().catch((e) => (ltError = String(e)));
+    ltState = await LocalTranslate();
+    toast(lt.removed);
+  }
+  // Who translates: on the computer when installed, unless the cloud was chosen.
+  const ltWho = $derived(ltState?.installed && look.translateAI !== "cloud" ? "local" : "cloud");
 
   // The local voice: downloaded on demand, then ready to use.
   const lv = t.localVoice;
@@ -511,6 +534,34 @@
           </form>
           {#if aiError}<p class="bad">{aiError}</p>{/if}
           <small class="muted">{ai.noKey} <button class="link" onclick={() => OpenAIKeyPage()}>{ai.makeKey}</button></small>
+        </div>
+      {/if}
+      <h3>{lt.title}</h3>
+      <p class="muted lead">{lt.lead}</p>
+      <div class="item column">
+        <div class="row">
+          <div class="text"><b>{lt.localName}</b><small>{!ltState ? "" : ltState.installed ? lt.installed : lt.notInstalled}</small></div>
+          {#if ltState && !ltBusy}
+            {#if ltState.installed}<button class="btn ghost" onclick={removeLt}>{lt.remove}</button>
+            {:else}<button class="btn" onclick={installLt}>{lt.install.replace("{mb}", String(mb(ltState.bytes)))}</button>{/if}
+          {/if}
+        </div>
+        <small class="muted">{lt.localHelp.replace("{mb}", String(mb(ltState?.bytes || 100e6)))}</small>
+        {#if ltBusy}
+          <div class="dl" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={ltBusy.total ? Math.round((ltBusy.done / ltBusy.total) * 100) : 0}>
+            <span style:width={`${ltBusy.total ? Math.max(2, (ltBusy.done / ltBusy.total) * 100) : 2}%`}></span>
+          </div>
+          <small class="muted">{lt.downloading} {ltBusy.total ? `${mb(ltBusy.done)}/${mb(ltBusy.total)} MB` : ""}</small>
+        {/if}
+        {#if ltError}<p class="bad">{ltError}</p>{/if}
+      </div>
+      {#if ltState?.installed}
+        <div class="item">
+          <div class="text"><b>{lt.who}</b><small>{lt.whoHelp}</small></div>
+          <div class="seg">
+            <button class:on={ltWho === "local"} onclick={() => setPref("translateAI", "local")}>{lt.whoLocal}</button>
+            <button class:on={ltWho === "cloud"} onclick={() => setPref("translateAI", "cloud")}>{lt.whoCloud}</button>
+          </div>
         </div>
       {/if}
     {:else if tab === "narration"}

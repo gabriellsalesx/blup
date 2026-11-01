@@ -5,7 +5,7 @@ import type { Prefs as P } from "../bindings/github.com/gabriellsalesx/blup/stud
 import { setupSpell, enableSpell } from "./spell";
 import { t } from "./i18n";
 
-export const look = $state<P>({ theme: "system", editorFont: 16, editorWidth: "narrow", spellcheck: true, previewOff: false, termFont: 13, spellLang: "", words: [], sideWidth: 0, previewWidth: 0, tray: false, toggleKey: "Alt+Space", keys: {}, shortcutTip: false, lastSite: "", lastNotes: {}, recent: [], voices: {}, welcomed: false, cloudTip: false, backupDir: "" });
+export const look = $state<P>({ theme: "system", editorFont: 16, editorWidth: "narrow", spellcheck: true, previewOff: false, termFont: 13, spellLang: "", words: [], sideWidth: 0, previewWidth: 0, tray: false, toggleKey: "Alt+Space", keys: {}, shortcutTip: false, lastSite: "", lastNotes: {}, recent: [], voices: {}, welcomed: false, cloudTip: false, backupDir: "", translateAI: "" });
 
 // The spell check's dictionary: the one chosen, else the Studio's language.
 export const spellLang = () => look.spellLang || t.lang;

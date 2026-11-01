@@ -97,6 +97,15 @@ export interface Hyprland {
 }
 
 /**
+ * LocalTranslateState tells whether the local translation is installed
+ * and how much it downloads.
+ */
+export interface LocalTranslateState {
+    "installed": boolean;
+    "bytes": number;
+}
+
+/**
  * NarrateProgress is how many parts of the note were read aloud.
  */
 export interface NarrateProgress {
@@ -261,6 +270,11 @@ export interface Prefs {
      * a daily copy of the open site's notes goes here ("" = off)
      */
     "backupDir": string;
+
+    /**
+     * who translates: "local" (on the computer) or "cloud" (OpenRouter or Blup Cloud); "" = local when installed
+     */
+    "translateAI": string;
 }
 
 /**
@@ -338,6 +352,14 @@ export interface TermData {
     "id": string;
     "data": string;
     "exit": boolean;
+}
+
+/**
+ * TranslateInstallProgress is how much of the local translation came.
+ */
+export interface TranslateInstallProgress {
+    "done": number;
+    "total": number;
 }
 
 /**

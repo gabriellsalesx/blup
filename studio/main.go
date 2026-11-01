@@ -33,9 +33,11 @@ func main() {
 		Name:        "Blup Studio",
 		Description: "Write in Markdown, preview and publish your site",
 		Services:    []application.Service{application.NewService(studio)},
-		Assets:      application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
-		Mac:         application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
-		OnShutdown:  studio.shutdown,
+		// The local translation's engine and models are served from where
+		// they were downloaded (/local-translate/...).
+		Assets:     application.AssetOptions{Handler: application.AssetFileServerFS(assets), Middleware: serveLocalTranslate},
+		Mac:        application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
+		OnShutdown: studio.shutdown,
 		// Opening it again shows the window already running.
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "dev.blup.studio",

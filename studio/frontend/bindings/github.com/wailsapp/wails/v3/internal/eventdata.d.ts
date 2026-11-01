@@ -21,6 +21,7 @@ declare module "@wailsio/runtime" {
             "progress": main$0.Progress;
             "term": main$0.TermData;
             "translate": main$0.TranslateProgress;
+            "translateInstall": main$0.TranslateInstallProgress;
             "translateSite": main$0.TranslateSiteProgress;
             "voiceInstall": main$0.VoiceProgress;
         }
