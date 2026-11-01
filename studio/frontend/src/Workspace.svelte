@@ -117,6 +117,7 @@
     name = name?.trim() ?? "";
     if (!name || name === n.name) return;
     try {
+      if (n.path === current) await save(); // what was typed goes with it
       const to = await RenameItem(n.path, name);
       await menuChanged({ from: n.path, to });
       toast(t.toast.noteRenamed.replace("{name}", fileTitle(to)));
@@ -508,6 +509,15 @@
   onDestroy(() => clearTimeout(timer));
 </script>
 
+<!-- A vault note's top, scrolling with its text: its name (typing a new
+     one renames the file) and its properties. -->
+{#snippet noteHead()}
+  <input class="inline-title" value={fileTitle(current)} aria-label={t.menu.rename} spellcheck="false"
+    onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } else if (e.key === "Escape") { e.currentTarget.value = fileTitle(current); e.currentTarget.blur(); } }}
+    onblur={(e) => rename({ path: current, name: fileTitle(current), dir: false } as Node, e.currentTarget.value)} />
+  <NoteProps props={noteProps} onEdit={(k, v) => { noteProps[k] = v; editProp(k, v); }} />
+{/snippet}
+
 <svelte:window onresize={fit} onkeydown={shortcut} onclick={() => (switching = false)} />
 
 <div class="ws" class:no-preview={!previewOn} class:no-side={!sideOpen} class:resizing style:--side="{sideW}px" style:--prev={prevW ? `${prevW}px` : "minmax(0, 1fr)"}>
@@ -617,9 +627,8 @@
             <DrawingView path={current} full={fullOn} onFull={() => (full = !full)} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />
           {:else}
           <div class="note">
-            {#if notesVault}<NoteProps props={noteProps} onEdit={(k, v) => { noteProps[k] = v; editProp(k, v); }} />{/if}
             {#if !notesVault}<Props props={noteProps} {kind} note={current} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} />{/if}
-            <div class="body"><Editor {text} note={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onChange={changed} onSave={save} onError={(e) => (error = e)} onOpenNote={openNote} onNewBoard={notesVault ? (kind) => makeBoard(kind) : undefined} /></div>
+            <div class="body"><Editor {text} note={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onChange={changed} onSave={save} onError={(e) => (error = e)} onOpenNote={openNote} onNewBoard={notesVault ? (kind) => makeBoard(kind) : undefined} header={notesVault ? noteHead : undefined} /></div>
             {#if notesVault}<Backlinks note={current} onOpenNote={openNote} />{/if}
           </div>
           {/if}
@@ -782,6 +791,7 @@
   .outside { position: absolute; z-index: 2; inset-inline: 1rem; inset-block-start: .75rem; display: flex; gap: .5rem; align-items: center; padding: .5rem .75rem; border-radius: .5rem; background: var(--soft); font-size: .85rem; }
   .outside span { flex: 1; }
   .note { height: 100%; display: flex; flex-direction: column; }
+  .inline-title { width: 100%; margin-block-end: 1rem; padding: 0; border: 0; outline: none; background: transparent; color: var(--text); font: inherit; font-size: 2.1rem; font-weight: 800; line-height: 1.2; }
   .body { flex: 1; min-height: 0; }
   .hint { padding: 3rem 2rem; text-align: center; }
   .error { position: absolute; inset-inline: 1rem; inset-block-start: .75rem; z-index: 2; padding: .6rem .9rem; border-radius: .5rem; background: var(--soft); color: var(--red); font-size: .85rem; }

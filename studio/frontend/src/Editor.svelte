@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, type Snippet } from "svelte";
   import { EditorView, basicSetup } from "codemirror";
   import { keymap, Decoration, type DecorationSet } from "@codemirror/view";
   import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
@@ -99,12 +99,14 @@
   // onOpenNote: a link to another note was clicked (the workspace opens it,
   // and the preview follows).
   // onNewBoard (a vault of notes): makes a canvas or a drawing and gives its
-  // path, for the / menu.
-  let { text, note, notes = [], onChange, onSave, onError, onOpenNote, onNewBoard }: {
+  // path, for the / menu. header: what scrolls with the note, above its
+  // text (a vault's title and properties).
+  let { text, note, notes = [], header, onChange, onSave, onError, onOpenNote, onNewBoard }: {
     text: string; note: string; notes?: { name: string; path: string }[];
     onChange: (v: string) => void; onSave: () => void; onError?: (e: string) => void;
     onOpenNote?: (path: string) => void;
     onNewBoard?: (kind: "canvas" | "drawing") => Promise<string>;
+    header?: Snippet;
   } = $props();
   const te = t.editor;
   let host: HTMLDivElement;
@@ -609,7 +611,11 @@
     {/each}
   </div>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="editor" oncontextmenu={onMenu} class:wide={look.editorWidth === "wide"} style:--size="{look.editorFont}px" bind:this={host}></div>
+  <!-- The note scrolls as one page: the header, then the text. -->
+  <div class={["page", { wide: look.editorWidth === "wide", headed: !!header }]}>
+    {#if header}<div class="head">{@render header()}</div>{/if}
+    <div class="editor" oncontextmenu={onMenu} class:wide={look.editorWidth === "wide"} style:--size="{look.editorFont}px" bind:this={host}></div>
+  </div>
 </div>
 
 {#if ctx}<ContextMenu x={ctx.x} y={ctx.y} items={menuItems()} onClose={() => { ctx = null; view.focus(); }} />{/if}
@@ -649,16 +655,20 @@
   .drop-menu .ico.box.on { border-color: var(--blue); background: var(--blue); color: #fff; }
   .drop-menu hr { border: 0; border-block-start: 1px solid var(--line); margin: .25rem .2rem; }
   .bar .sep { width: 1px; height: 1.1rem; margin-inline: .3rem; background: var(--line); }
-  .editor { flex: 1; min-height: 0; overflow: hidden; }
+  .page { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; background: var(--panel); }
+  .head { width: 100%; max-width: 46rem; margin-inline: auto; padding: 2.25rem 2rem 0; }
+  .page.wide .head { max-width: none; }
+  .editor { flex: 1; }
   .editor :global(.cm-tooltip-autocomplete) { border: 1px solid var(--line); border-radius: .5rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); overflow: hidden; }
   .editor :global(.cm-tooltip-autocomplete > ul) { font-family: inherit !important; font-size: .875rem; max-height: 16rem !important; }
   .editor :global(.cm-tooltip-autocomplete > ul > li) { padding: .35rem .7rem !important; color: var(--text); }
   .editor :global(.cm-tooltip-autocomplete > ul > li[aria-selected]) { background: var(--soft) !important; color: var(--text) !important; }
   .editor :global(.cm-completionDetail) { margin-inline-start: .6rem; color: var(--muted); font-style: normal; font-size: .78rem; }
   .editor :global(.cm-completionMatchedText) { text-decoration: none; font-weight: 700; color: var(--blue); }
-  .editor :global(.cm-editor) { height: 100%; background: var(--panel); font-size: var(--size, 1rem); }
+  .editor :global(.cm-editor) { min-height: 100%; background: var(--panel); font-size: var(--size, 1rem); }
   .editor :global(.cm-editor.cm-focused) { outline: none; }
-  .editor :global(.cm-scroller) { font-family: "Inter", ui-sans-serif, system-ui, sans-serif; line-height: 1.7; padding: 2rem 0; }
+  .editor :global(.cm-scroller) { overflow: visible; font-family: "Inter", ui-sans-serif, system-ui, sans-serif; line-height: 1.7; padding: 2rem 0; }
+  .headed .editor :global(.cm-scroller) { padding-block-start: .75rem; }
   .editor :global(.cm-content) { max-width: 46rem; margin-inline: auto; padding-inline: 2rem; caret-color: var(--text); }
   .editor.wide :global(.cm-content) { max-width: none; }
   .editor :global(.cm-obs-comment) { opacity: .75; }
@@ -715,7 +725,7 @@
   .editor :global(.cm-obs-comment), .editor :global(.cm-obs-comment *) { color: var(--muted) !important; font-style: italic; }
   .editor :global(.cm-gutters) { display: none; }
   /* Links as their text (livemd.ts), in the links' purple. */
-  .editor :global(.cm-link-text) { color: light-dark(#7048e8, #a78bfa); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .editor :global(.cm-link-text) { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
   /* The chevron that folds a heading, in the margin at its left: on hover,
      or always when folded. */
   .editor :global(.cm-heading-line) { position: relative; }

@@ -51,7 +51,7 @@
   ul { list-style: none; padding: .2rem 0 0 1.2rem; display: grid; gap: .1rem; }
   li button { display: flex; align-items: baseline; gap: .5rem; width: 100%; padding: .3rem .5rem; border-radius: .35rem; text-align: start; font-size: .88rem; }
   li button:hover { background: var(--soft); }
-  li b { font-weight: 500; color: light-dark(#7048e8, #a78bfa); }
+  li b { font-weight: 500; color: var(--blue); }
   li small { font-size: .75rem; }
   .none { padding: .3rem 1.5rem; font-size: .85rem; }
 </style>

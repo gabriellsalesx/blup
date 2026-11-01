@@ -92,7 +92,7 @@
     if (canvas.width !== w * dpr || canvas.height !== h * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
     const g = canvas.getContext("2d")!;
     const css = getComputedStyle(host);
-    const col = { line: css.getPropertyValue("--line"), muted: css.getPropertyValue("--muted"), text: css.getPropertyValue("--text"), blue: "#3b82f6", purple: scheme.dark ? "#a78bfa" : "#7048e8", bg: css.getPropertyValue("--bg") };
+    const col = { line: css.getPropertyValue("--line"), muted: css.getPropertyValue("--muted"), text: css.getPropertyValue("--text"), accent: "#3b82f6", canvas: "#14b8a6", bg: css.getPropertyValue("--bg") };
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, w, h);
     g.translate(w / 2 + pan.x, h / 2 + pan.y);
@@ -106,16 +106,16 @@
     g.lineWidth = 1 / zoom;
     for (const e of edges) {
       const on = hover && (e.a === hover || e.b === hover);
-      g.strokeStyle = on ? col.purple : col.line;
+      g.strokeStyle = on ? col.accent : col.line;
       g.globalAlpha = hover && !on ? 0.25 : q ? 0.4 : 0.9;
       g.beginPath(); g.moveTo(e.a.x, e.a.y); g.lineTo(e.b.x, e.b.y); g.stroke();
     }
     for (const n of nodes) {
       const r = radius(n);
       g.globalAlpha = lit(n) ? 1 : 0.2;
-      g.fillStyle = n.path === current ? col.purple : n.kind === "canvas" ? col.blue : n.kind === "drawing" ? "#e0b000" : !n.degree ? col.muted : col.text;
+      g.fillStyle = n.path === current ? col.accent : n.kind === "canvas" ? col.canvas : n.kind === "drawing" ? "#e0b000" : !n.degree ? col.muted : col.text;
       g.beginPath(); g.arc(n.x, n.y, r, 0, Math.PI * 2); g.fill();
-      if (n === hover || n.path === current) { g.strokeStyle = col.purple; g.lineWidth = 2 / zoom; g.stroke(); g.lineWidth = 1 / zoom; }
+      if (n === hover || n.path === current) { g.strokeStyle = col.accent; g.lineWidth = 2 / zoom; g.stroke(); g.lineWidth = 1 / zoom; }
     }
     // Names: when close enough, or for what is lit.
     g.font = `${12 / zoom}px Inter, ui-sans-serif, system-ui, sans-serif`;
@@ -248,5 +248,5 @@
   .empty { position: absolute; inset: 0; display: grid; place-items: center; }
   .legend { display: flex; align-items: center; gap: .4rem; padding: .4rem .9rem; font-size: .75rem; }
   .dot { width: .6rem; height: .6rem; border-radius: 50%; margin-inline-start: .5rem; }
-  .dot.note { background: var(--text); } .dot.loose { background: var(--muted); } .dot.canvas { background: #3b82f6; } .dot.drawing { background: #e0b000; }
+  .dot.note { background: var(--text); } .dot.loose { background: var(--muted); } .dot.canvas { background: #14b8a6; } .dot.drawing { background: #e0b000; }
 </style>

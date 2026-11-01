@@ -69,14 +69,14 @@
 </section>
 
 <style>
-  .props { width: 100%; max-width: 46rem; margin-inline: auto; padding: 1.25rem 2rem .5rem; display: grid; gap: .15rem; }
+  .props { display: grid; gap: .15rem; padding-block-end: .5rem; border-block-end: 1px solid var(--line); }
   h2 { font-size: 1rem; font-weight: 600; color: var(--muted); margin-block-end: .35rem; }
   .row { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); align-items: center; min-height: 2.1rem; }
   .k { display: flex; align-items: center; gap: .55rem; color: var(--muted); font-size: .92rem; }
   input[type="date"] { justify-self: start; padding: .2rem .4rem; border: 1px solid transparent; border-radius: .35rem; background: transparent; color: var(--text); font: inherit; font-size: .92rem; color-scheme: light dark; }
   input[type="date"]:hover, input[type="date"]:focus { border-color: var(--line); outline: none; }
   .tags { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
-  .chip { display: inline-flex; align-items: center; gap: .2rem; padding: .12rem .3rem .12rem .6rem; border-radius: 999px; background: light-dark(#ede9fe, #2e2550); color: light-dark(#6d28d9, #c4b5fd); font-size: .88rem; }
+  .chip { display: inline-flex; align-items: center; gap: .2rem; padding: .12rem .3rem .12rem .6rem; border-radius: 999px; background: color-mix(in srgb, var(--blue) 16%, transparent); color: light-dark(#1d4ed8, #93c5fd); font-size: .88rem; }
   .chip button { display: grid; place-items: center; padding: .1rem; border-radius: 999px; color: inherit; opacity: .75; }
   .chip button:hover { opacity: 1; background: color-mix(in srgb, currentColor 18%, transparent); }
   .add { position: relative; }
