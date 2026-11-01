@@ -1,6 +1,8 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 )
@@ -83,5 +85,27 @@ func TestMentions(t *testing.T) {
 	}
 	if m := byPath["Mapa.canvas"]; m.Path == "" || len(m.Lines) != 0 {
 		t.Fatalf("canvas = %+v", m)
+	}
+}
+
+// The notes read for the map are kept and read again when they change.
+func TestMentionsFollowChanges(t *testing.T) {
+	site := settingsSite(t)
+	root := site.ContentDir()
+	write(t, root, "Maria.md", "Contato.")
+	write(t, root, "Reunião.md", "Falar com [[Maria]].\n")
+	if got, _ := Mentions(site, "Maria.md"); len(got) != 1 {
+		t.Fatalf("before = %+v", got)
+	}
+	write(t, root, "Reunião.md", "Sem menção nenhuma agora.\n")
+	if got, _ := Mentions(site, "Maria.md"); len(got) != 0 {
+		t.Fatalf("after the change = %+v", got)
+	}
+	if err := os.Remove(filepath.Join(root, "Reunião.md")); err != nil {
+		t.Fatal(err)
+	}
+	write(t, root, "Outra.md", "Com [Maria](Maria.md).\n")
+	if got, _ := Mentions(site, "Maria.md"); len(got) != 1 || got[0].Path != "Outra.md" {
+		t.Fatalf("after remove = %+v", got)
 	}
 }

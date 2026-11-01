@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gabriellsalesx/blup/internal/config"
 	"go.yaml.in/yaml/v3"
@@ -46,14 +48,43 @@ type Graph struct {
 var codeSpan = regexp.MustCompile("(?s)```.*?```|`[^`\n]*`")
 
 // NoteGraph reads the notes folder into the map of notes.
-func NoteGraph(site *config.Site) (Graph, error) { return noteGraph(site, nil) }
+func NoteGraph(site *config.Site) (Graph, error) {
+	g, _, err := noteGraph(site)
+	return g, err
+}
 
-// noteGraph is NoteGraph; found, when given, hears every link of a note
-// to another: the note's text (code taken out) and where the link is in it.
-func noteGraph(site *config.Site, found func(from, to, text string, at, end int)) (Graph, error) {
+// A note as read for the map: its tags and date, and its links (with the
+// line around each, for "mentioned in"). Kept per file and read again only
+// when the file changes (its time or size), so opening a note or the map
+// in a large vault reads just what changed since.
+type noteScan struct {
+	mod     time.Time
+	size    int64
+	tags    []string
+	created string
+	links   []scanLink
+}
+
+type scanLink struct {
+	target string // a path ([text](path.md), a canvas' file) or a name ([[Name]])
+	wiki   bool
+	line   Snippet
+}
+
+var (
+	scanMu    sync.Mutex
+	scanCache = map[string]map[string]*noteScan{} // notes folder -> path -> scan
+)
+
+// noteGraph is NoteGraph, with each link's line: links[from] lists, for
+// each link of from that reaches a note, where it goes and its line.
+func noteGraph(site *config.Site) (Graph, map[string][]resolvedLink, error) {
 	root := site.ContentDir()
 	var g Graph
-	texts := map[string]string{} // path -> what to read links from
+	scanMu.Lock()
+	old := scanCache[root]
+	scanMu.Unlock()
+	scans := make(map[string]*noteScan, len(old))
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -76,17 +107,22 @@ func noteGraph(site *config.Site, found func(from, to, text string, at, end int)
 			folder = ""
 		}
 		n := GraphNode{Path: rel, Name: graphName(rel), Folder: folder, Kind: kind, Tags: []string{}}
-		if info, err := d.Info(); err == nil {
-			n.Created = info.ModTime().Format("2006-01-02")
+		info, err := d.Info()
+		if err != nil {
+			return nil
 		}
+		n.Created = info.ModTime().Format("2006-01-02")
 		if kind != "drawing" {
-			if b, err := os.ReadFile(p); err == nil {
-				texts[rel] = string(b)
+			sc := old[rel]
+			if sc == nil || !sc.mod.Equal(info.ModTime()) || sc.size != info.Size() {
+				sc = scanNote(p, kind, info)
+			}
+			if sc != nil {
+				scans[rel] = sc
 				if kind == "note" {
-					var created string
-					n.Tags, created = noteMeta(string(b))
-					if created != "" {
-						n.Created = created
+					n.Tags = sc.tags
+					if sc.created != "" {
+						n.Created = sc.created
 					}
 				}
 			}
@@ -95,8 +131,12 @@ func noteGraph(site *config.Site, found func(from, to, text string, at, end int)
 		return nil
 	})
 	if err != nil {
-		return g, err
+		return g, nil, err
 	}
+	// Only the files still there are kept.
+	scanMu.Lock()
+	scanCache[root] = scans
+	scanMu.Unlock()
 
 	// Finding a note: by its path (with or without .md, any case), or by
 	// its name, one in the same folder first.
@@ -127,61 +167,96 @@ func noteGraph(site *config.Site, found func(from, to, text string, at, end int)
 	}
 
 	seen := map[GraphEdge]bool{}
-	link := func(from, to string) {
-		e := GraphEdge{From: from, To: to}
-		if to == "" || to == from || seen[e] {
-			return
-		}
-		seen[e] = true
-		g.Edges = append(g.Edges, e)
-	}
+	links := map[string][]resolvedLink{}
 	for _, n := range g.Nodes {
-		text, ok := texts[n.Path]
-		if !ok {
+		sc := scans[n.Path]
+		if sc == nil {
 			continue
 		}
-		if n.Kind == "canvas" {
-			for _, f := range canvasFiles(text) {
-				link(n.Path, find(f))
+		for _, l := range sc.links {
+			var to string
+			switch {
+			case l.wiki:
+				to = findName(l.target, n.Path)
+			case n.Kind == "canvas" || strings.HasPrefix(l.target, "/"):
+				to = find(l.target)
+			default:
+				to = find(path.Join(path.Dir(n.Path), l.target))
 			}
-			continue
-		}
-		text = codeSpan.ReplaceAllString(text, "")
-		for _, i := range mdLink.FindAllStringSubmatchIndex(text, -1) {
-			m := []string{text[i[0]:i[1]], text[i[2]:i[3]], text[i[4]:i[5]]}
-			raw := strings.Trim(m[2], "<>")
-			if strings.Contains(raw, "://") || strings.HasPrefix(raw, "mailto:") || strings.HasPrefix(raw, "#") {
+			if to == "" || to == n.Path {
 				continue
 			}
-			target, _, _ := strings.Cut(raw, "#")
-			target, _, _ = strings.Cut(target, "?")
-			if t, err := url.PathUnescape(target); err == nil {
-				target = t
-			}
-			if !strings.HasPrefix(target, "/") {
-				target = path.Join(path.Dir(n.Path), target)
-			}
-			to := find(target)
-			link(n.Path, to)
-			if found != nil && to != "" && to != n.Path {
-				// The link starts at its [ (the match starts at "](").
-				at := strings.LastIndex(text[:i[0]], "[")
-				if nl := strings.LastIndex(text[:i[0]], "\n"); at < 0 || at < nl {
-					at = i[0]
-				}
-				found(n.Path, to, text, at, i[1])
-			}
-		}
-		for _, i := range wikiLink.FindAllStringSubmatchIndex(text, -1) {
-			to := findName(strings.TrimSpace(text[i[2]:i[3]]), n.Path)
-			link(n.Path, to)
-			if found != nil && to != "" && to != n.Path {
-				found(n.Path, to, text, i[0], i[1])
+			links[n.Path] = append(links[n.Path], resolvedLink{to: to, line: l.line})
+			if e := (GraphEdge{From: n.Path, To: to}); !seen[e] {
+				seen[e] = true
+				g.Edges = append(g.Edges, e)
 			}
 		}
 	}
 	slices.SortFunc(g.Nodes, func(a, b GraphNode) int { return strings.Compare(a.Path, b.Path) })
-	return g, nil
+	return g, links, nil
+}
+
+type resolvedLink struct {
+	to   string
+	line Snippet
+}
+
+// scanNote reads a note (or a canvas) for the map; nil when unreadable.
+func scanNote(p, kind string, info fs.FileInfo) *noteScan {
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return nil
+	}
+	text := string(b)
+	sc := &noteScan{mod: info.ModTime(), size: info.Size()}
+	if kind == "canvas" {
+		for _, f := range canvasFiles(text) {
+			sc.links = append(sc.links, scanLink{target: f})
+		}
+		return sc
+	}
+	if kind == "note" {
+		sc.tags, sc.created = noteMeta(text)
+	}
+	text = codeSpan.ReplaceAllString(text, "")
+	for _, i := range mdLink.FindAllStringSubmatchIndex(text, -1) {
+		raw := strings.Trim(text[i[4]:i[5]], "<>")
+		if strings.Contains(raw, "://") || strings.HasPrefix(raw, "mailto:") || strings.HasPrefix(raw, "#") {
+			continue
+		}
+		target, _, _ := strings.Cut(raw, "#")
+		target, _, _ = strings.Cut(target, "?")
+		if t, err := url.PathUnescape(target); err == nil {
+			target = t
+		}
+		// The link starts at its [ (the match starts at "](").
+		at := strings.LastIndex(text[:i[0]], "[")
+		if nl := strings.LastIndex(text[:i[0]], "\n"); at < 0 || at < nl {
+			at = i[0]
+		}
+		sc.links = append(sc.links, scanLink{target: target, line: snippet(text, at, i[1])})
+	}
+	for _, i := range wikiLink.FindAllStringSubmatchIndex(text, -1) {
+		sc.links = append(sc.links, scanLink{target: strings.TrimSpace(text[i[2]:i[3]]), wiki: true, line: snippet(text, i[0], i[1])})
+	}
+	return sc
+}
+
+// snippet is the line around the link at text[at:end], as it reads.
+func snippet(text string, at, end int) Snippet {
+	ls := strings.LastIndex(text[:at], "\n") + 1
+	le := strings.Index(text[end:], "\n")
+	if le < 0 {
+		le = len(text)
+	} else {
+		le += end
+	}
+	return Snippet{
+		Before: clip(plainLine(text[ls:at], true), 70, true),
+		Link:   linkLabel(text[at:end]),
+		After:  clip(plainLine(text[end:le], false), 90, false),
+	}
 }
 
 func graphKind(rel string) string {
@@ -285,34 +360,25 @@ type Snippet struct {
 // Mentions are the notes (and canvases) that link to rel, with up to
 // three lines of each, in the order of the notes.
 func Mentions(site *config.Site, rel string) ([]Mention, error) {
-	lines := map[string][]Snippet{}
-	g, err := noteGraph(site, func(from, to, text string, at, end int) {
-		if to != rel || len(lines[from]) >= 3 {
-			return
-		}
-		ls := strings.LastIndex(text[:at], "\n") + 1
-		le := strings.Index(text[end:], "\n")
-		if le < 0 {
-			le = len(text)
-		} else {
-			le += end
-		}
-		lines[from] = append(lines[from], Snippet{
-			Before: clip(plainLine(text[ls:at], true), 70, true),
-			Link:   linkLabel(text[at:end]),
-			After:  clip(plainLine(text[end:le], false), 90, false),
-		})
-	})
+	g, links, err := noteGraph(site)
 	if err != nil {
 		return nil, err
 	}
 	out := []Mention{}
 	for _, n := range g.Nodes {
-		for _, e := range g.Edges {
-			if e.From == n.Path && e.To == rel {
-				out = append(out, Mention{Path: n.Path, Name: n.Name, Folder: n.Folder, Lines: lines[n.Path]})
-				break
+		var lines []Snippet
+		found := false
+		for _, l := range links[n.Path] {
+			if l.to != rel {
+				continue
 			}
+			found = true
+			if len(lines) < 3 && n.Kind == "note" {
+				lines = append(lines, l.line)
+			}
+		}
+		if found {
+			out = append(out, Mention{Path: n.Path, Name: n.Name, Folder: n.Folder, Lines: lines})
 		}
 	}
 	return out, nil

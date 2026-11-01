@@ -52,6 +52,7 @@
     const keep = p.open;
     p = { ...structuredClone(DEFAULTS), open: keep, panel: true };
     alpha = 1;
+    wake();
   }
 
   const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#14b8a6", "#ec4899", "#94a3b8"];
@@ -72,6 +73,8 @@
   let alpha = 1;
   let frame = 0;
   let dirty = true;
+  // A frame only when there is something to draw: an idle map costs nothing.
+  const wake = () => { dirty = true; if (!frame) frame = requestAnimationFrame(draw); };
 
   async function load() {
     const g = await NoteGraph().catch(() => null);
@@ -140,6 +143,7 @@
     nodes = keep;
     edges = list;
     alpha = 1;
+    wake();
   }
   $effect(() => { p.folder; p.tag; p.orphans; p.tagNodes; p.around; p.depth; p.boards; current; if (loaded) filter(); });
 
@@ -149,10 +153,10 @@
   function animate() {
     const order = [...nodes].sort((a, b) => (a.created || "9").localeCompare(b.created || "9"));
     anim = { start: performance.now(), rank: new Map(order.map((n, i) => [n, i])), length: Math.min(12000, Math.max(3000, order.length * 120)) };
-    dirty = true;
+    wake();
   }
-  $effect(() => { p.repel; p.link; p.distance; p.center; alpha = Math.max(alpha, 0.6); });
-  $effect(() => { JSON.stringify(p.groups); p.query; p.fade; p.size; p.line; p.arrows; dirty = true; });
+  $effect(() => { p.repel; p.link; p.distance; p.center; alpha = Math.max(alpha, 0.6); wake(); });
+  $effect(() => { JSON.stringify(p.groups); p.query; p.fade; p.size; p.line; p.arrows; wake(); });
 
   // A note's color: its group's (the first that fits), else by kind.
   const groupOf = (n: GNode) => p.groups.find((g) => {
@@ -161,9 +165,12 @@
   });
 
   function draw() {
-    frame = requestAnimationFrame(draw);
+    frame = 0;
     if (alpha > 0.01) { step(nodes, edges, alpha, p); alpha *= 0.985; dirty = true; }
     if (anim) dirty = true;
+    // Still moving (or appearing): the next frame; settled, it sleeps until
+    // something wakes it.
+    if (alpha > 0.01 || anim) frame = requestAnimationFrame(draw);
     if (!dirty || !canvas || !host) return;
     dirty = false;
     const dpr = devicePixelRatio || 1, w = host.clientWidth, h = host.clientHeight;
@@ -255,7 +262,7 @@
   function move(e: PointerEvent) {
     if (!drag) {
       const h = nodeAt(e);
-      if (h !== hover) { hover = h; dirty = true; host!.style.cursor = h ? "pointer" : "grab"; }
+      if (h !== hover) { hover = h; wake(); host!.style.cursor = h ? "pointer" : "grab"; }
       return;
     }
     if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 3) drag.moved = true;
@@ -264,7 +271,7 @@
       drag.node.x = m.x; drag.node.y = m.y;
       alpha = Math.max(alpha, 0.3);
     } else pan = { x: drag.px + e.clientX - drag.x, y: drag.py + e.clientY - drag.y };
-    dirty = true;
+    wake();
   }
   function up() {
     const d = drag;
@@ -279,7 +286,7 @@
     zoom = Math.min(Math.max(zoom * Math.exp(-e.deltaY * 0.0015), 0.15), 4);
     const after = toMap(e);
     pan = { x: pan.x + (after.x - before.x) * zoom, y: pan.y + (after.y - before.y) * zoom };
-    dirty = true;
+    wake();
   }
   function fit() {
     if (!nodes.length || !host) return;
@@ -287,7 +294,7 @@
     const w = Math.max(...xs) - Math.min(...xs) + 80, h = Math.max(...ys) - Math.min(...ys) + 80;
     zoom = Math.min(Math.max(Math.min(host.clientWidth / w, host.clientHeight / h), 0.15), 2);
     pan = { x: -((Math.max(...xs) + Math.min(...xs)) / 2) * zoom, y: -((Math.max(...ys) + Math.min(...ys)) / 2) * zoom };
-    dirty = true;
+    wake();
   }
 
   // Groups: a folder or a tag, and its color.
@@ -301,8 +308,8 @@
 
   onMount(() => {
     load().then(() => (fitting = setTimeout(fit, 900)));
-    frame = requestAnimationFrame(draw);
-    const ro = new ResizeObserver(() => (dirty = true));
+    wake();
+    const ro = new ResizeObserver(() => wake());
     ro.observe(host!);
     return () => ro.disconnect();
   });
@@ -329,7 +336,7 @@
 {/snippet}
 
 <div class="graph">
-  <div class="map" bind:this={host} role="application" aria-label={tg.title} onpointerdown={down} onpointermove={move} onpointerup={up} onpointerleave={() => { if (!drag && hover) { hover = null; dirty = true; } }} onwheel={wheel}>
+  <div class="map" bind:this={host} role="application" aria-label={tg.title} onpointerdown={down} onpointermove={move} onpointerup={up} onpointerleave={() => { if (!drag && hover) { hover = null; wake(); } }} onwheel={wheel}>
     <canvas bind:this={canvas}></canvas>
     {#if loaded && !count.notes}<p class="empty muted">{tg.empty}</p>{/if}
   </div>
