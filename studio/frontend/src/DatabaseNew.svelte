@@ -5,6 +5,7 @@
   import BookOpen from "@lucide/svelte/icons/book-open";
   import Table2 from "@lucide/svelte/icons/table-2";
   import { templates, type Template } from "./db";
+  import TextField from "./ui/TextField.svelte";
   import { t } from "./i18n";
 
   // A new database: pick what it is for (each comes with its columns and a
@@ -25,7 +26,6 @@
     e?.preventDefault();
     if (name.trim()) onCreate(name.trim(), pick);
   }
-  const focus = (el: HTMLInputElement) => { el.focus(); el.select(); };
 </script>
 
 <svelte:window onkeydown={(e) => e.key === "Escape" && onClose()} />
@@ -43,7 +43,8 @@
       </button>
     {/each}
   </div>
-  <label class="name"><span>{d.dbName}</span><input bind:value={name} use:focus oninput={() => (typed = true)} /></label>
+  <!-- svelte-ignore a11y_autofocus -->
+  <TextField label={d.dbName} bind:value={name} autofocus oninput={() => (typed = true)} />
   <div class="actions">
     <button type="button" class="btn ghost" onclick={onClose}>{t.ob.cancel}</button>
     <button class="btn" disabled={!name.trim()}>{d.create}</button>
@@ -67,8 +68,5 @@
   .ico { grid-row: 1 / 3; display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: .5rem; background: var(--soft); color: var(--blue); }
   .choice b { font-size: .92rem; }
   .choice small { font-size: .78rem; }
-  .name { display: grid; gap: .3rem; font-size: .85rem; color: var(--muted); }
-  .name input { padding: .55rem .7rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--bg); color: var(--text); font: inherit; font-size: 1rem; outline: none; }
-  .name input:focus { border-color: var(--blue); }
   .actions { display: flex; justify-content: flex-end; gap: .5rem; }
 </style>

@@ -10,7 +10,6 @@
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import ArrowUp from "@lucide/svelte/icons/arrow-up";
   import ArrowDown from "@lucide/svelte/icons/arrow-down";
-  import ListFilter from "@lucide/svelte/icons/list-filter";
   import X from "@lucide/svelte/icons/x";
   import FieldInput from "./FieldInput.svelte";
   import { TYPES, asText, compare, keyOf, matches, nextColor, optionColor } from "./db";
@@ -202,17 +201,16 @@
         {/if}
       </div>
       <span class="grow"></span>
-      <label class="search"><Search size={14} /><input bind:value={query} placeholder={d.search} aria-label={d.search} /></label>
+      <!-- The system's own fields (app.css); the icon sits inside. -->
+      <label class="search"><Search size={15} /><input type="text" bind:value={query} placeholder={d.search} aria-label={d.search} /></label>
       {#if selects.length}
-        <label class="filter"><ListFilter size={14} />
-          <select value={view.filter && view.match ? `${view.filter}\u0000${view.match}` : ""} aria-label={d.filter}
+        <select class="filter" value={view.filter && view.match ? `${view.filter}\u0000${view.match}` : ""} aria-label={d.filter}
             onchange={(e) => { const [f, m] = e.currentTarget.value.split("\u0000"); view.filter = f ?? ""; view.match = m ?? ""; saveSchema(); }}>
-            <option value="">{d.all}</option>
+            <option value="">{d.filter}: {d.all}</option>
             {#each selects as c (c.key)}
               <optgroup label={c.name}>{#each c.options ?? [] as o (o.value)}<option value={`${c.key}\u0000${o.value}`}>{o.value}</option>{/each}</optgroup>
             {/each}
           </select>
-        </label>
       {/if}
       {#if view.type === "board" && selects.length > 1}
         <select class="group" value={view.groupBy} aria-label={d.groupBy} onchange={(e) => { view.groupBy = e.currentTarget.value; saveSchema(); }}>
@@ -236,7 +234,7 @@
           </thead>
           <tbody>
             {#if adding === ""}
-              <tr class="new"><td colspan={schema.columns.length + 2}><input bind:value={newName} placeholder={d.newRecordPh} use:focus onkeydown={(e) => { if (e.key === "Enter") add(); if (e.key === "Escape") adding = null; }} onblur={() => add()} /></td></tr>
+              <tr class="new"><td colspan={schema.columns.length + 2}><input type="text" bind:value={newName} placeholder={d.newRecordPh} use:focus onkeydown={(e) => { if (e.key === "Enter") add(); if (e.key === "Escape") adding = null; }} onblur={() => add()} /></td></tr>
             {/if}
             {#each shown as r (r.path)}
               <tr>
@@ -261,7 +259,7 @@
             ondragover={(e) => { e.preventDefault(); overLane = lane.value; }} ondragleave={() => (overLane = null)} ondrop={() => drop(lane.value)}>
             <header><span class="dot"></span>{lane.value || d.noValue}<span class="n">{shown.filter((r) => asText(r.props?.[groupCol!.key]) === lane.value).length}</span></header>
             {#if adding === lane.value}
-              <input class="new-card" bind:value={newName} placeholder={d.newRecordPh} use:focus onkeydown={(e) => { if (e.key === "Enter") add(lane.value); if (e.key === "Escape") adding = null; }} onblur={() => add(lane.value)} />
+              <input type="text" bind:value={newName} placeholder={d.newRecordPh} use:focus onkeydown={(e) => { if (e.key === "Enter") add(lane.value); if (e.key === "Escape") adding = null; }} onblur={() => add(lane.value)} />
             {/if}
             {#each shown.filter((r) => asText(r.props?.[groupCol!.key]) === lane.value) as r (r.path)}
               <button class="bcard" draggable="true" ondragstart={() => (dragged = r)} ondragend={() => { dragged = null; overLane = null; }} onclick={() => onOpenNote(r.path)}>
@@ -280,7 +278,7 @@
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
     <div class="colmenu" style:left="{colMenu.x}px" style:top="{colMenu.y}px" onclick={(e) => e.stopPropagation()}>
       {#if menuCol}
-        <input value={menuCol.name} use:focus aria-label={d.columnName} onchange={(e) => { menuCol.name = e.currentTarget.value.trim() || menuCol.name; saveSchema(); }} onkeydown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+        <input type="text" value={menuCol.name} use:focus aria-label={d.columnName} onchange={(e) => { menuCol.name = e.currentTarget.value.trim() || menuCol.name; saveSchema(); }} onkeydown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
         <label class="kind"><span>{d.kind}</span>
           <select value={menuCol.type} onchange={(e) => { menuCol.type = e.currentTarget.value; saveSchema(); }}>
             {#each TYPES as ty (ty)}<option value={ty}>{d.types[ty]}</option>{/each}
@@ -291,7 +289,7 @@
             {#each menuCol.options ?? [] as o, i (i)}
               <div class="opt">
                 <button class="sw" style:background={optionColor(o.color)} title={d.color} aria-label={d.color} onclick={() => { o.color = nextColor(o.color); saveSchema(); }}></button>
-                <input value={o.value} aria-label={d.choice} onchange={(e) => renameOption(menuCol, o, e.currentTarget.value)} />
+                <input type="text" value={o.value} aria-label={d.choice} onchange={(e) => renameOption(menuCol, o, e.currentTarget.value)} />
                 <button class="x" title={d.removeChoice} aria-label={d.removeChoice} onclick={() => { menuCol.options = (menuCol.options ?? []).filter((_, k) => k !== i); saveSchema(); }}><X size={13} /></button>
               </div>
             {/each}
@@ -315,10 +313,10 @@
   .views button.on { background: var(--soft); color: var(--text); font-weight: 600; }
   .views .ghost { border: 1px dashed var(--line); }
   .grow { flex: 1; }
-  .search, .filter { display: flex; align-items: center; gap: .35rem; padding: .3rem .55rem; border: 1px solid var(--line); border-radius: .45rem; color: var(--muted); }
-  .search input { width: 11rem; border: 0; outline: none; background: transparent; color: var(--text); font: inherit; font-size: .86rem; }
-  .filter select, .group { border: 0; background: transparent; color: var(--text); font: inherit; font-size: .86rem; outline: none; }
-  .group { padding: .3rem .5rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--panel); }
+  .search { position: relative; display: block; width: 15rem; color: var(--muted); }
+  .search :global(svg) { position: absolute; inset-inline-start: .65rem; inset-block-start: 50%; translate: 0 -50%; pointer-events: none; }
+  .search input { padding-inline-start: 2.1rem; }
+  .filter, .group { width: auto; min-width: 8rem; }
   .btn { display: flex; align-items: center; gap: .35rem; }
 
   .scroll { overflow: auto; padding: 0 1rem 2rem; }
@@ -336,7 +334,7 @@
   tr:hover .del { opacity: 1; }
   .del:hover { background: var(--soft); color: var(--red); }
   tbody tr:hover { background: color-mix(in srgb, var(--soft) 60%, transparent); }
-  .new input, .new-card { width: 100%; padding: .45rem .6rem; border: 1px solid var(--blue); border-radius: .4rem; background: var(--panel); color: var(--text); font: inherit; outline: none; }
+  .new td { padding: .4rem .2rem; }
   .empty { padding: 2.5rem 1rem; text-align: center; }
 
   .board { display: flex; gap: .8rem; overflow: auto; padding: 1rem; align-items: flex-start; }
@@ -353,8 +351,8 @@
   .lane-add:hover { background: var(--soft); color: var(--text); }
 
   .colmenu { position: fixed; z-index: 80; width: 15.5rem; display: grid; gap: .3rem; padding: .45rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .28); }
-  .colmenu input, .colmenu select { width: 100%; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--bg); color: var(--text); font: inherit; font-size: .85rem; outline: none; }
   .kind { display: grid; gap: .2rem; font-size: .75rem; color: var(--muted); }
+  .opt input { padding-block: .35rem; }
   .opts { display: grid; gap: .25rem; padding: .3rem 0; border-block: 1px solid var(--line); }
   .opt { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .3rem; }
   .sw { width: 1rem; height: 1rem; border-radius: 50%; }

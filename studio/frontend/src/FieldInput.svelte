@@ -75,7 +75,7 @@
   {#if menu}
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
     <div class="menu" bind:this={menuEl} style:left="{menu.x}px" style:top="{menu.y}px" onclick={(e) => e.stopPropagation()}>
-      <input bind:value={typed} placeholder={d.findOrCreate} use:focus onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (choices[0] && choices[0].value.toLowerCase() === typed.trim().toLowerCase()) choose(choices[0].value); else create(); } if (e.key === "Escape") menu = null; }} />
+      <input type="text" bind:value={typed} placeholder={d.findOrCreate} use:focus onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (choices[0] && choices[0].value.toLowerCase() === typed.trim().toLowerCase()) choose(choices[0].value); else create(); } if (e.key === "Escape") menu = null; }} />
       <ul role="listbox" aria-label={column.name}>
         {#each choices as o (o.value)}
           <li><button role="option" aria-selected={list.includes(o.value)} onclick={() => choose(o.value)}><span class="chip" style:--c={optionColor(o.color)}>{o.value}</span>{#if list.includes(o.value)}<span class="on">✓</span>{/if}</button></li>
@@ -129,7 +129,6 @@
   .flink { padding: .1rem .3rem; color: var(--blue); text-decoration: underline; text-underline-offset: 3px; text-align: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   input[type="checkbox"] { width: 1.05rem; height: 1.05rem; margin: .3rem .4rem; accent-color: var(--blue); }
   .menu { position: fixed; z-index: 80; width: 14rem; display: grid; gap: .3rem; padding: .4rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .28); }
-  .menu input { width: 100%; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--bg); color: var(--text); font: inherit; font-size: .85rem; outline: none; }
   .menu ul { list-style: none; padding: 0; max-height: 14rem; overflow: auto; display: grid; gap: .1rem; }
   .menu li button { display: flex; align-items: center; justify-content: space-between; gap: .4rem; width: 100%; padding: .3rem .4rem; border-radius: .35rem; font-size: .85rem; text-align: start; }
   .menu li button:hover { background: var(--soft); }
