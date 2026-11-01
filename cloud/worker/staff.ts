@@ -10,6 +10,7 @@ import { billingEvent, passkey, session, staff, staffLog, subscription, user } f
 import { planNamed } from "./plans";
 import { hasEmail } from "./auth-options";
 import { usageOf } from "./usage";
+import { aiUsageOf } from "./ai";
 
 // The staff area (support and administration). In production Cloudflare
 // Access stands in front of /staff and /api/staff; here the Worker checks
@@ -150,12 +151,13 @@ export const staffApi = new Hono<App>()
 		]);
 		const active = subs.find((s) => ACTIVE.includes(s.status));
 		const plan = planNamed(active?.plan);
-		const usage = await usageOf(id);
+		const [usage, ai] = await Promise.all([usageOf(id), aiUsageOf(id, plan)]);
 		const stripeMode = /^[rs]k_live_/.test(c.env.STRIPE_SECRET_KEY) ? "" : "test/";
 		return c.json({
 			user: { id: u.id, email: hasEmail(u.email) ? u.email : null, emailVerified: u.emailVerified, createdAt: u.createdAt, banned: u.banned, banReason: u.banReason },
 			plan: { label: plan.label, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.cancelAt ?? active?.periodEnd ?? null, cancelAtPeriodEnd: !!(active?.cancelAtPeriodEnd || active?.cancelAt) },
 			usage,
+			ai: { percent: ai.percent, resetsAt: ai.resetsAt, included: plan.limits.aiUsage > 0 },
 			billing,
 			stripeUrl: u.stripeCustomerId ? `https://dashboard.stripe.com/${stripeMode}customers/${u.stripeCustomerId}` : null,
 			sessions,

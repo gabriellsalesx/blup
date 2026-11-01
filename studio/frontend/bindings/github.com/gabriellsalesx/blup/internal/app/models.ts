@@ -283,6 +283,22 @@ export interface Narration {
 }
 
 /**
+ * NarrationCost is what narrating a note through Blup Cloud would use.
+ */
+export interface NarrationCost {
+    /**
+     * of the month's allowance
+     */
+    "percent": number;
+
+    /**
+     * percent of the month still usable now
+     */
+    "left": number;
+    "enough": boolean;
+}
+
+/**
  * NewSiteOptions are the answers of the new site screens.
  */
 export interface NewSiteOptions {

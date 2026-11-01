@@ -96,3 +96,21 @@ func (s *Studio) Narrate(rel string) (app.Narration, error) {
 		application.Get().Event.Emit("narrate", NarrateProgress{rel, done, total})
 	})
 }
+
+// NarrationEstimate is what narrating the note would use of the month's AI
+// allowance, when the site's voice is read through Blup Cloud (nil
+// otherwise).
+func (s *Studio) NarrationEstimate(rel string) (*app.NarrationCost, error) {
+	site, err := s.current()
+	if err != nil {
+		return nil, err
+	}
+	if !app.NarratesThroughBlup(site.Lang, s.Prefs().Voices[site.Lang]) {
+		return nil, nil
+	}
+	c, err := app.EstimateNarration(context.Background(), site, rel)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}

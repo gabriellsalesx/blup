@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AuthorNames, PickCover, LinkedImage, AIConnected, LocalVoice, Narrate, NarrationHash } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { AuthorNames, PickCover, LinkedImage, AIConnected, LocalVoice, Narrate, NarrationHash, NarrationEstimate } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { Events } from "@wailsio/runtime";
   import { toast } from "./toast.svelte";
   import AudioLines from "@lucide/svelte/icons/audio-lines";
@@ -56,11 +56,14 @@
   // The narration is heard in the live preview, as on the site.
   const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
   let aiOn = $state<boolean | null>(null);
+  let cost = $state<{ percent: number; left: number; enough: boolean } | null>(null);
   let narrating = $state<{ done: number; total: number } | null>(null);
   const checkNarration = async () => {
     if (!canNarrate) return;
     // Ready with an OpenRouter key or the local voice installed.
-    aiOn = (await AIConnected().catch(() => false)) || (await LocalVoice().catch(() => null))?.installed === true;
+    // Through Blup Cloud: what this text would use of the month's AI.
+    cost = await NarrationEstimate(note).catch(() => null);
+    aiOn = !!cost || (await AIConnected().catch(() => false)) || (await LocalVoice().catch(() => null))?.installed === true;
     nowHash = await NarrationHash(note).catch(() => "");
   };
   checkNarration();
@@ -83,6 +86,7 @@
     try {
       const r = await Narrate(note);
       audio = r.link; audioHash = r.hash; nowHash = r.hash; seconds = Math.round(r.seconds);
+      cost = await NarrationEstimate(note).catch(() => null);
       onEdit("audio", r.link);
       onEdit("audio_hash", r.hash);
       onEdit("audio_seconds", Math.round(r.seconds));
@@ -221,7 +225,7 @@
                 <small class:warn={stale} class:muted={!stale}>{stale ? n.stale : n.fresh} {n.inPreview}</small>
               {/if}
               <div class="cover">
-                <button class="btn ghost" disabled={!!narrating} onclick={narrate}><AudioLines size={15} />
+                <button class="btn ghost" disabled={!!narrating || (cost !== null && !cost.enough)} onclick={narrate}><AudioLines size={15} />
                   {#if narrating}{n.working}{:else}{audio ? n.again : n.make}{/if}
                 </button>
                 {#if audio && !narrating}
@@ -234,6 +238,9 @@
                 </div>
                 <small class="muted stage">{stage}</small>
               {:else if !audio}<small class="muted">{n.help}</small>{/if}
+              {#if cost && !narrating}
+                <small class:muted={cost.enough} class:warn={!cost.enough}>{(cost.enough ? n.cost : n.costOver).replace("{p}", String(Math.max(1, cost.percent))).replace("{left}", String(cost.left))}</small>
+              {/if}
             {/if}
           </div>
         </div>

@@ -50,6 +50,13 @@
       "when": 1793494661721,
       "tag": "0006_limpeza",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793496080367,
+      "tag": "0007_uso_de_ia",
+      "breakpoints": true
     }
   ]
 }

@@ -16,3 +16,5 @@ ACCESS_AUD=coloque-o-aud-da-aplicacao-do-access
 STAFF_OWNER_EMAIL=voce@example.com
 # SÓ no computador (localhost): entra na staff sem o Access, como este e-mail.
 STAFF_DEV_EMAIL=voce@example.com
+# Narração pelo Blup Cloud (planos pagos): a chave do OpenRouter do Blup.
+OPENROUTER_API_KEY=sk-or-v1-coloque_a_sua

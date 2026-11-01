@@ -77,7 +77,7 @@
 		</Row>
 
 		<Row title="Uso" help="Só números: o conteúdo das notas é criptografado e a staff não vê.">
-			<UsageBars usage={d.usage} limits={d.plan.limits} />
+			<UsageBars usage={d.usage} limits={d.plan.limits} ai={d.ai} />
 		</Row>
 
 		<Row title="Pagamentos" help="O que o Stripe avisou: pagamentos, falhas, reembolsos, contestações e alertas de fraude.">

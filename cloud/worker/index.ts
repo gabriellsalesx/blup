@@ -7,6 +7,7 @@ import { PLANS, SUGGESTED, planNamed } from "./plans";
 import { staffApi } from "./staff";
 import { syncApi } from "./sync";
 import { cleanUp } from "./cleanup";
+import { aiApi, aiUsageOf } from "./ai";
 import { devicesOf, isStudio, usageOf } from "./usage";
 import { session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
@@ -88,9 +89,10 @@ const routes = app
 		// The portal cancels by setting cancel_at, not cancel_at_period_end.
 		const sub = await activeSubscription(user.id);
 		const plan = planNamed(sub?.plan);
-		const usage = await usageOf(user.id);
+		const [usage, ai] = await Promise.all([usageOf(user.id), aiUsageOf(user.id, plan)]);
 		return c.json({
 			usage,
+			ai: { percent: ai.percent, resetsAt: ai.resetsAt, included: plan.limits.aiUsage > 0 },
 			id: user.id,
 			email: hasEmail(user.email) ? user.email : null,
 			name: user.name,
@@ -122,6 +124,7 @@ const routes = app
 
 app.route("/staff", staffApi);
 app.route("/sync", syncApi);
+app.route("/ai", aiApi);
 
 app.notFound((c) => c.json({ code: "NOT_FOUND" }, 404));
 app.onError((err, c) => {

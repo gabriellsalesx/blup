@@ -243,6 +243,7 @@ type Account struct {
 			Devices     int  `json:"devices"`
 			Live        bool `json:"live"`
 			HistoryDays int  `json:"historyDays"`
+			AIUsage     int  `json:"aiUsage"` // AI through Blup Cloud, as a multiple of Pro's (0: none)
 		} `json:"limits"`
 	} `json:"plan"`
 	Usage struct {
@@ -381,3 +382,31 @@ func (c *Client) Versions(ctx context.Context, vault string, before int64) ([]Ve
 	}
 	return r.Versions, c.do(ctx, http.MethodGet, "/sync/vaults/"+url.PathEscape(vault)+"/versions"+q, nil, "", &r)
 }
+
+// AIUsage is the plan's AI allowance this month and what was used, in
+// millionths of a US dollar.
+type AIUsage struct {
+	MonthMicros     int64     `json:"monthMicros"`
+	WeekCapMicros   int64     `json:"weekCapMicros"`
+	UsedMonthMicros int64     `json:"usedMonthMicros"`
+	UsedWeekMicros  int64     `json:"usedWeekMicros"`
+	PerCharMicros   int64     `json:"perCharMicros"`
+	Percent         int       `json:"percent"`
+	ResetsAt        time.Time `json:"resetsAt"`
+}
+
+// Left is how much can still be spent now (the month's rest, or the
+// week's, whichever is smaller).
+func (u AIUsage) Left() int64 {
+	return max(0, min(u.MonthMicros-u.UsedMonthMicros, u.WeekCapMicros-u.UsedWeekMicros))
+}
+
+// AIUsage reads the account's AI allowance.
+func (c *Client) AIUsage(ctx context.Context) (AIUsage, error) {
+	var u AIUsage
+	return u, c.do(ctx, http.MethodGet, "/ai/usage", nil, "", &u)
+}
+
+// AIBaseURL is Blup Cloud's AI API, which speaks OpenRouter's: a narration
+// client pointed here with the session as its key narrates through the plan.
+func AIBaseURL() string { return BaseURL() + "/api/ai" }

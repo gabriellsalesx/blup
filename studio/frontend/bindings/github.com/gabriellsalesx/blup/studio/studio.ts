@@ -430,6 +430,15 @@ export function Narrate(rel: string): $CancellablePromise<app$0.Narration> {
 }
 
 /**
+ * NarrationEstimate is what narrating the note would use of the month's AI
+ * allowance, when the site's voice is read through Blup Cloud (nil
+ * otherwise).
+ */
+export function NarrationEstimate(rel: string): $CancellablePromise<app$0.NarrationCost | null> {
+    return $Call.ByID(2601430314, rel);
+}
+
+/**
  * NarrationHash is the fingerprint of what the note reads now (compared
  * with its audio_hash to tell an out of date narration).
  */

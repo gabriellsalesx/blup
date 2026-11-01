@@ -177,7 +177,7 @@
   }
 
   // Samples bundled with the Studio (public/voices): one sentence each.
-  const sample = (id: string) => `/voices/${id.startsWith("kokoro:") ? id.replace(":", "-") : (id.split("|")[1] ?? id).split(":")[0].toLowerCase()}.mp3`;
+  const sample = (id: string) => `/voices/${id.startsWith("kokoro:") ? id.replace(":", "-") : (id.split("|")[1] ?? id.replace(/^blup:/, "")).split(":")[0].toLowerCase()}.mp3`;
   // Voices of other models have no recorded sample: OpenRouter makes one
   // (a fraction of a cent, once; the Studio keeps it).
   async function sampleBytes(v: Voice, lang: string): Promise<ArrayBuffer> {
@@ -377,7 +377,7 @@
       {#each [["pt", ai.voicePt], ["en", ai.voiceEn]].filter(([l]) => !siteLang || l === (siteLang === "pt" ? "pt" : "en")) as [l, label] (l)}
         <div class="voices" role="radiogroup" aria-label={label}>
           <b>{label}</b>
-          {#each [["local", lv.groupLocal], ["openrouter", lv.groupOpenRouter]] as [engine, group] (engine)}
+          {#each [["local", lv.groupLocal], ["blup", lv.groupBlup], ["openrouter", lv.groupOpenRouter]] as [engine, group] (engine)}
             {#if voices[l].some((v) => v.engine === engine) || engine === "openrouter"}
               <small class="muted group">{group}</small>
               {#if engine === "openrouter" && models[l].length}
@@ -394,7 +394,7 @@
                     <input type="radio" name="voice-{l}" checked={chosen(l) === v.id} disabled={!v.ready} onchange={() => setVoice(l, v.id)} />
                     <span>{v.name}</span>
                     {#if engine === "local"}<small class="muted">{v.female ? lv.female : lv.male}</small>{/if}
-                    {#if !v.ready}<small class="muted">{engine === "local" ? lv.needInstall : lv.needKey}</small>{/if}
+                    {#if !v.ready}<small class="muted">{engine === "local" ? lv.needInstall : engine === "blup" ? lv.needPlan : lv.needKey}</small>{/if}
                   </label>
                   <button class="icon-btn listen" class:playing={playing === v.id} title={playing === v.id ? lv.stop : v.sample ? lv.listen : lv.listenMake} aria-label="{playing === v.id ? lv.stop : lv.listen}: {v.name}" onclick={() => listen(v, l)}>
                     <!-- The ring fills as the sample plays. -->

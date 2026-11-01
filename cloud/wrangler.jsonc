@@ -47,7 +47,9 @@
 		// "log" mostra o código no terminal em vez de mandar e-mail.
 		"EMAIL_MODE": "log",
 		// Vazio no computador: a staff fica em localhost:8787/staff.
-		"STAFF_HOST": ""
+		"STAFF_HOST": "",
+		// Vazio: o OpenRouter de verdade (os testes apontam para um falso).
+		"OPENROUTER_URL": ""
 	},
 	// Produção: npx wrangler deploy --env production. Um Worker com dois
 	// domínios: cloud.getblup.io (painel do usuário) e staff.getblup.io
@@ -88,7 +90,8 @@
 				// Troque pela chave de site real do Turnstile (é pública).
 				"TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
 				"EMAIL_MODE": "send",
-				"STAFF_HOST": "staff.getblup.io"
+				"STAFF_HOST": "staff.getblup.io",
+				"OPENROUTER_URL": ""
 			}
 		}
 	}

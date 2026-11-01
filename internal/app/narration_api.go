@@ -39,9 +39,14 @@ func AIConnected() (bool, error) {
 	return creds.OpenRouterToken != "", err
 }
 
-// localPrefix marks the voices of the local engine ("kokoro:pf_dora"); the
-// others are OpenRouter's.
-const localPrefix = "kokoro:"
+// localPrefix marks the voices of the local engine ("kokoro:pf_dora"),
+// blupPrefix those read through Blup Cloud on the plan's allowance
+// ("blup:pt-BR-Luana:MAI-Voice-2.1"); the others are OpenRouter's, with
+// the person's own key.
+const (
+	localPrefix = "kokoro:"
+	blupPrefix  = "blup:"
+)
 
 // LocalVoiceDir is where the local voice is installed (with Hugo's
 // download, in the user's cache folder).
@@ -159,6 +164,11 @@ func NarrationVoices(ctx context.Context, lang, model string) ([]Voice, error) {
 			out = append(out, Voice{ID: localPrefix + v.ID, Name: v.Name, Engine: "local", Female: v.Female, Ready: installed, Sample: true})
 		}
 	}
+	// Through Blup Cloud: the recommended model's voices, on paid plans.
+	included := blupAIIncluded(ctx)
+	for _, v := range narrate.VoicesFor(narrate.Known(), lang) {
+		out = append(out, Voice{ID: blupPrefix + v, Name: narrate.VoiceName(v), Engine: "blup", Ready: included, Sample: true})
+	}
 	if model == "" {
 		model = narrate.DefaultModel
 	}
@@ -196,6 +206,8 @@ func voiceFor(lang, chosen string) string {
 				return chosen
 			}
 		}
+	} else if v, ok := strings.CutPrefix(chosen, blupPrefix); ok {
+		return blupPrefix + narrate.VoiceFor(lang, v)
 	} else if model, voice := splitChoice(chosen); model != "" && (model != narrate.DefaultModel || narrate.VoiceFor(lang, voice) == voice) {
 		return joinChoice(model, voice)
 	}
@@ -361,6 +373,8 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 	var used string
 	if id, ok := strings.CutPrefix(voice, localPrefix); ok {
 		mp3, seconds, err = speakLocal(ctx, text, id, progress)
+	} else if v, ok := strings.CutPrefix(voice, blupPrefix); ok {
+		mp3, seconds, err = speakBlup(ctx, site, text, v, progress)
 	} else {
 		mp3, seconds, used, err = speakOpenRouter(ctx, site, text, voice, progress)
 	}

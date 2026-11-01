@@ -11,6 +11,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -141,5 +142,51 @@ func TestBlupHistory(t *testing.T) {
 	}
 	if d, _ = DeletedNotes(ctx, site); len(d) != 0 {
 		t.Fatalf("still deleted: %+v", d)
+	}
+}
+
+// Narration through Blup Cloud (BLUP_CLOUD_LIVE_TOKEN: Pro or above, with
+// the Worker's OpenRouter pointed at a fake one).
+func TestBlupNarration(t *testing.T) {
+	token := os.Getenv("BLUP_CLOUD_LIVE_TOKEN")
+	if token == "" {
+		t.Skip("BLUP_CLOUD_LIVE_TOKEN not set")
+	}
+	ctx := context.Background()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	(config.Credentials{BlupToken: token}).Save()
+	root := t.TempDir()
+	notes := filepath.Join(root, "notas")
+	os.MkdirAll(filepath.Join(root, "site"), 0o755)
+	os.MkdirAll(notes, 0o755)
+	site := config.NewSite(filepath.Join(root, "site"))
+	site.Title, site.Vault, site.Model, site.Lang = "Narração", notes, "mochi", "pt"
+	text := strings.Repeat("Era uma vez um blog que falava. ", 100) // ~3.200 characters
+	os.WriteFile(filepath.Join(notes, "post.md"), []byte("---\ntitle: Post\n---\n"+text+"\n"), 0o644)
+
+	voice := blupPrefix + "pt-BR-Luana:MAI-Voice-2.1"
+	if !NarratesThroughBlup("pt", voice) {
+		t.Fatal("blup voice not recognized")
+	}
+	cost, err := EstimateNarration(ctx, site, "post.md")
+	if err != nil || !cost.Enough || cost.Percent < 5 || cost.Percent > 20 {
+		t.Fatalf("estimate = %+v, %v", cost, err)
+	}
+	n, err := Narrate(ctx, site, "post.md", voice, nil)
+	if err != nil || n.Bytes == 0 {
+		t.Fatalf("narrate = %+v, %v", n, err)
+	}
+	after, _ := EstimateNarration(ctx, site, "post.md")
+	if after.Left >= cost.Left {
+		t.Fatalf("the allowance did not go down: %d -> %d", cost.Left, after.Left)
+	}
+	// A text larger than what is left is refused before anything is spent.
+	big := strings.Repeat("Texto enorme para narrar de uma vez só. ", 1000)
+	os.WriteFile(filepath.Join(notes, "enorme.md"), []byte("---\ntitle: Enorme\n---\n"+big+"\n"), 0o644)
+	if c, _ := EstimateNarration(ctx, site, "enorme.md"); c.Enough {
+		t.Fatalf("a huge text fits? %+v", c)
+	}
+	if _, err := Narrate(ctx, site, "enorme.md", voice, nil); err == nil || !strings.Contains(err.Error(), "uso de IA") {
+		t.Fatalf("huge text: %v", err)
 	}
 }

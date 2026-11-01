@@ -81,6 +81,11 @@
 		<Row title="Assinatura" help={current.renewsAt ? (current.cancelsAtPeriodEnd ? `Cancelada: o ${current.label} vale até ${when(current.renewsAt)}.` : `Renova em ${when(current.renewsAt)}.`) : undefined}>
 			{#snippet action()}<Button variant="secondary" {busy} onclick={manage}>Gerenciar</Button>{/snippet}
 		</Row>
+		<Row title="Uso de IA" help={data.me.ai.included ? `${data.me.ai.percent}% do uso de IA deste mês (narração). Renova em ${new Date(data.me.ai.resetsAt).toLocaleDateString("pt-BR", { day: "numeric", month: "long", timeZone: "UTC" })}.` : undefined}>
+			<div class="mt-3 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+				<div class="h-full rounded-full {data.me.ai.percent >= 90 ? 'bg-red-500' : 'bg-blup'}" style:width="{data.me.ai.percent}%"></div>
+			</div>
+		</Row>
 		<Row title="Faturas e pagamento" help="Baixe as faturas, troque o cartão ou cancele, na página segura do Stripe.">
 			{#snippet action()}<Button variant="secondary" {busy} onclick={manage}>Abrir</Button>{/snippet}
 		</Row>

@@ -18,6 +18,7 @@ export type {
     MenuItem,
     ModelOption,
     Narration,
+    NarrationCost,
     NewSiteOptions,
     Section,
     Settings,

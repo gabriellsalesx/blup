@@ -124,3 +124,20 @@ export const syncBlock = sqliteTable(
 	},
 	(t) => [primaryKey({ columns: [t.userId, t.id] })],
 );
+
+// What each AI request cost (narration through Blup Cloud), in millionths
+// of a US dollar: the plan's monthly AI allowance is checked against it.
+export const aiUsage = sqliteTable(
+	"ai_usage",
+	{
+		id: integer("id").primaryKey(),
+		userId: text("user_id").notNull(),
+		kind: text("kind").notNull(), // "narration"
+		units: integer("units").notNull(), // characters read
+		costMicros: integer("cost_micros").notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+	},
+	(t) => [index("ai_usage_user_idx").on(t.userId, t.createdAt)],
+);
