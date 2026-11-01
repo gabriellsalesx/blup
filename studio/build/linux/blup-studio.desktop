@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=blup-studio
+Exec=blup-studio
+Icon=blup-studio
+Categories=Development;
+Terminal=false
+Keywords=wails
+Version=1.0
+StartupNotify=false
