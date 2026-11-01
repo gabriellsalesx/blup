@@ -45,7 +45,12 @@ const (
 // and description: what the site shows (the site's description and button
 // on the home note, a help article's category, the tags) and the menu's
 // labels ("Name | target": the name).
-var TextProps = []string{"site_description", "button_text", "category", "tags", "menu", "role"}
+var TextProps = []string{"linkTitle", "site_description", "button_text", "category", "tags", "menu", "role"}
+
+// translateVersion goes into each translation's fingerprint: when what a
+// translation covers changes (a property more), the translations made
+// before show out of date, and Update the translations redoes them.
+const translateVersion = "2"
 
 // NoteLang is a language a note can be read in: its own (Original), or a
 // translation (Path, there or not yet, Stale when the original changed
@@ -177,6 +182,7 @@ func NoteLangs(site *config.Site, rel string) ([]NoteLang, error) {
 // title (or the file's name), the description and the text.
 func sourceHash(n obsidian.Note, rel string) string {
 	h := sha256.New()
+	h.Write([]byte(translateVersion))
 	for _, s := range []string{noteTitle(n, rel), n.String("description"), n.Body} {
 		h.Write([]byte(s))
 		h.Write([]byte{0})

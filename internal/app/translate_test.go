@@ -138,7 +138,7 @@ func TestTranslateHomeAndSection(t *testing.T) {
 	site := settingsSite(t)
 	root := site.ContentDir()
 	write(t, root, "_index.md", "---\ntitle: Início\nsite_description: Notas sobre bolos\nbutton_text: Assine\nmenu:\n  - Posts\n  - Loja | https://x.dev\n---\nOi\n")
-	write(t, root, "Posts/_index.md", "---\ntitle: Receitas\n---\n")
+	write(t, root, "Posts/_index.md", "---\ntitle: Receitas\nlinkTitle: Doces\n---\n")
 	if p, err := TranslateNote(context.Background(), site, "_index.md", "es", nil); err != nil || p != "es/_index.md" {
 		t.Fatalf("home = %s %v", p, err)
 	}
@@ -160,6 +160,10 @@ func TestTranslateHomeAndSection(t *testing.T) {
 	}
 	if todo, _ := TranslationTodo(site, "es"); slices.Contains(todo, "Autores/Ana.md") || !slices.Contains(todo, "Posts/Um.md") {
 		t.Fatalf("todo = %v", todo)
+	}
+	// A section's short name (its cards, its menu item) is translated too.
+	if sec, _ := obsidian.ReadNote(filepath.Join(root, "Posts", "es", "_index.md")); sec.String("linkTitle") != "ES(Doces)" {
+		t.Fatalf("section linkTitle = %+v", sec.Props)
 	}
 	if err := MarkReviewed(site, "Posts/es/_index.md", true); err != nil {
 		t.Fatal(err)
