@@ -5,6 +5,7 @@
     {{- with .Description }}<p>{{ . }}</p>{{ end }}
     {{- with partial "content.html" . | strings.TrimSpace }}<div class="prose">{{ . | safeHTML }}</div>{{ end }}
   </header>
+  {{ partial "bento/changelog-map.html" . }}
   <div class="changelog">
     {{- range $pager.Pages }}{{ partial "bento/release.html" (dict "page" . "link" true) }}{{ end }}
   </div>

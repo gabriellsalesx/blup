@@ -126,6 +126,24 @@ layout. Bundled into one file by css.Build. */
   .changelog-head { text-align: center; max-width: 42rem; margin-inline: auto; padding-block: 4rem 5rem; }
   .changelog-head .docs-title { font-size: clamp(2.25rem, 1.5rem + 3vw, 3.75rem); }
   .changelog-head p { margin-block-start: 1rem; font-size: 1.25rem; line-height: 1.6; color: var(--main-600); }
+  /* The changelog's map: a year of days, colored by what changed. */
+  .cl-map { --k-new: #22c55e; --k-improvement: #3b82f6; --k-fix: #ef4444; --k-security: #8b5cf6; --k-breaking: #f59e0b; --k-other: #64748b;
+    max-width: 64rem; margin: -2rem auto 3rem; padding: 1rem 1.25rem .9rem; border: 1px solid var(--main-200); border-radius: .75rem; }
+  .cl-scroll { overflow-x: auto; padding-block: .25rem; }
+  .cl-grid { display: grid; grid-template-columns: 2rem repeat(53, 11px); grid-template-rows: 1rem repeat(7, 11px); gap: 3px; width: max-content; margin-inline: auto; font-size: .7rem; color: var(--main-600); }
+  .cl-month { white-space: nowrap; line-height: 1rem; }
+  .cl-wday { line-height: 11px; }
+  .cl-day { display: block; width: 11px; height: 11px; border-radius: 2px; background: var(--main-200); }
+  a.cl-day { background: color-mix(in srgb, var(--k) 70%, transparent); outline-offset: 1px; }
+  a.cl-day.many { background: var(--k); }
+  a.cl-day:hover, a.cl-day:focus-visible { outline: 2px solid var(--k); }
+  .k-new { --k: var(--k-new); } .k-improvement { --k: var(--k-improvement); } .k-fix { --k: var(--k-fix); }
+  .k-security { --k: var(--k-security); } .k-breaking { --k: var(--k-breaking); } .k-other { --k: var(--k-other); }
+  .cl-legend .cl-day { background: var(--k); }
+  .cl-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; margin-block-start: .75rem; font-size: .8rem; color: var(--main-600); }
+  .cl-legend { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin: 0; padding: 0; list-style: none; }
+  .cl-legend li { display: inline-flex; align-items: center; gap: .35rem; }
+  .cl-tip { position: fixed; z-index: 60; max-width: 18rem; padding: .45rem .65rem; border-radius: .4rem; background: var(--main-900); color: var(--main-50, #fff); font-size: .78rem; line-height: 1.45; white-space: pre-line; pointer-events: none; box-shadow: var(--shadow-lg); }
   .changelog { max-width: 64rem; margin-inline: auto; padding-inline: var(--gutter); border-inline-start: 1px solid color-mix(in srgb, var(--main-900) 8%, transparent); }
   .release { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; padding-block: 5rem; padding-inline-start: 1.25rem; border-block-end: 1px solid color-mix(in srgb, var(--main-900) 6%, transparent); }
   .release:first-child { padding-block-start: 0; }

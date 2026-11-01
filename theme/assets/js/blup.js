@@ -261,3 +261,31 @@ async function saveButton(btn, src) {
     }
   });
 }
+
+// The changelog's map: hovering (or focusing) a day shows its versions in
+// a small box over the page (not clipped by the map's scroll).
+const clMap = document.querySelector(".cl-map");
+if (clMap) {
+  // On a narrow screen the map scrolls: it starts at the newest months.
+  const scroller = clMap.querySelector(".cl-scroll");
+  if (scroller) scroller.scrollLeft = scroller.scrollWidth;
+  let tip = null;
+  const show = (e) => {
+    const day = e.target.closest?.(".cl-day[data-tip]");
+    if (!day) return;
+    tip ??= document.body.appendChild(Object.assign(document.createElement("div"), { className: "cl-tip", role: "tooltip" }));
+    tip.textContent = day.dataset.tip;
+    tip.hidden = false;
+    const r = day.getBoundingClientRect(), t = tip.getBoundingClientRect();
+    const x = Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), innerWidth - t.width - 8);
+    const y = r.top - t.height - 8 < 8 ? r.bottom + 8 : r.top - t.height - 8;
+    tip.style.left = `${x}px`;
+    tip.style.top = `${y}px`;
+  };
+  const hide = () => { if (tip) tip.hidden = true; };
+  clMap.addEventListener("pointerover", show);
+  clMap.addEventListener("focusin", show);
+  clMap.addEventListener("pointerout", hide);
+  clMap.addEventListener("focusout", hide);
+  addEventListener("scroll", hide, { passive: true });
+}

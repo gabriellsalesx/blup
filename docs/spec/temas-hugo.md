@@ -157,3 +157,8 @@ O worker tem versão calculada por hash. A lista inicial inclui todos os `index.
 Navegação tenta a rede antes; na falha, tenta a página em cache ignorando query e depois a home em cache. Outros recursos da mesma origem/escopo tentam cache primeiro e podem ir para `blup-seen`. O worker não limpa nem revalida periodicamente esse cache, que pode manter conteúdo antigo de arquivos sem fingerprint; `blup-seen` e `blup-audio` sobrevivem à troca da versão principal. APIs de outra origem não são interceptadas.
 
 Áudio não é guardado automaticamente por streaming: o worker usa a cópia solicitada no player, inclusive respondendo a ranges com HTTP 206. A chave considera a URL com versão. `pwa.js` registra o worker e apresenta botão de instalar quando o navegador oferece `beforeinstallprompt`; a experiência de instalação depende do navegador. A prévia não registra esse worker pelo tema.
+
+## Mapa do changelog (Bento)
+
+A página do changelog abre com um mapa dos últimos 12 meses, como o de contribuições do GitHub (`bento/changelog-map.html`): uma coluna por semana, um quadrado por dia. Um dia com versões ganha a cor do que elas foram (`bento/change-kind.html`): a propriedade `type` (`new`, `improvement`, `fix`, `security`, `breaking`), ou as tags em português, inglês ou espanhol (Correção, Bug, Novidade, Melhoria, Segurança...). Correção é vermelha, novidade verde, melhoria azul, segurança roxa e mudança importante laranja; num dia com várias versões vale a mais séria, em cor mais forte. Passar o mouse (ou focar) mostra o dia e as versões; clicar abre a versão. Tudo é feito na geração do site; o script só posiciona a caixa sobre a página e, em tela estreita, começa nos meses mais novos.
+

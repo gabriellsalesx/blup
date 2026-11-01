@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/hugo"
@@ -331,4 +332,62 @@ func mustConfig(t *testing.T, s *config.Site, preview bool) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// TestChangelogMap: the changelog opens with a year of days, each version
+// on its day, colored by what it was, linking to it.
+func TestChangelogMap(t *testing.T) {
+	bin, ok := hugo.Find(context.Background())
+	if !ok {
+		t.Skip("hugo not installed")
+	}
+	vault := t.TempDir()
+	write := func(rel, text string) {
+		p := filepath.Join(vault, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	day := func(ago int) string { return time.Now().AddDate(0, 0, -ago).Format("2006-01-02") }
+	write("_index.md", "---\ntitle: Produto\n---\n")
+	write("Changelog/_index.md", "---\ntitle: Changelog\nblup: changelog\n---\n")
+	write("Changelog/v1.1.md", "---\ntitle: Versão 1.1\ndate: "+day(3)+"\ntags: [Correção]\n---\nCorrigido.\n")
+	write("Changelog/v1.0.md", "---\ntitle: Versão 1.0\ndate: "+day(40)+"\ntags: [Novidade, Melhoria]\n---\nNovo.\n")
+	write("Changelog/v0.9.md", "---\ntitle: Versão 0.9\ndate: "+day(40)+"\ntype: security\n---\nSeguro.\n")
+	write("Changelog/v0.1.md", "---\ntitle: Antiga\ndate: "+day(800)+"\n---\nVelha.\n")
+
+	dir := t.TempDir()
+	s := config.NewSite(dir)
+	s.Title, s.Lang, s.Model, s.Vault = "Produto", "pt", "bento", vault
+	if err := Write(s); err != nil {
+		t.Fatal(err)
+	}
+	out, err := bin.Command(context.Background(), dir, "--logLevel", "warn").CombinedOutput()
+	if err != nil {
+		t.Fatalf("hugo: %v\n%s", err, out)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "public", "changelog", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := string(b)
+	if strings.Count(page, `<a class="cl-day k-fix"`) != 1 || !strings.Contains(page, `href="/changelog/v1.1/" data-tip=`) {
+		t.Error("the fix should be one red day linking to its version")
+	}
+	// Two versions the same day: the most serious color (security), stronger.
+	if !strings.Contains(page, `<a class="cl-day k-security many"`) {
+		t.Error("two versions on a day: security color, marked many")
+	}
+	if !strings.Contains(page, "Versão 1.0 · Novidade") || !strings.Contains(page, "Versões nos últimos 12 meses: 3") {
+		t.Error("the day's box should list its versions; the total counts the year")
+	}
+	if strings.Contains(page, "Antiga ·") {
+		t.Error("a version older than a year is out of the map")
+	}
+	if i, j := strings.Index(page, "cl-map"), strings.Index(page, `class="changelog"`); i < 0 || j < i {
+		t.Error("the map comes before the list of versions")
+	}
 }

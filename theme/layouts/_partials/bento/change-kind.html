@@ -1,0 +1,23 @@
+{{- /* What a changelog entry is, for its color on the changelog's map: its
+"type" property (new, improvement, fix, security, breaking), else read from
+its tags, in Portuguese, English or Spanish ("Correção", "Bug", "Mejora"...),
+the most serious first. Returns the kind, "other" when none fits. */ -}}
+{{- $kinds := slice "breaking" "security" "fix" "new" "improvement" -}}
+{{- $words := dict
+  "breaking" (slice "breaking" "quebra" "removido" "removed" "remoção" "eliminado" "incompat")
+  "security" (slice "segurança" "seguranca" "security" "seguridad" "vulnerab")
+  "fix" (slice "bug" "fix" "correç" "correc" "corrig" "corrección" "corregido" "erro" "error" "falha" "fallo" "hotfix")
+  "new" (slice "novidade" "novo" "nova" "new" "novedad" "nuevo" "nueva" "lançamento" "lancamento" "launch" "lanzamiento" "feature" "recurso")
+  "improvement" (slice "melhoria" "improvement" "improve" "mejora" "otimiza" "optimi" "desempenho" "performance" "rendimiento") -}}
+{{- $out := "other" -}}
+{{- with .Params.type }}{{ if in $kinds (lower .) }}{{ $out = lower . }}{{ end }}{{ end -}}
+{{- if eq $out "other" -}}
+  {{- $tags := slice }}{{ range .Params.tags }}{{ $tags = $tags | append (lower (string .)) }}{{ end -}}
+  {{- range $kinds -}}
+    {{- $k := . -}}
+    {{- if eq $out "other" -}}
+      {{- range $tags }}{{ $t := . }}{{ range index $words $k }}{{ if strings.Contains $t . }}{{ $out = $k }}{{ end }}{{ end }}{{ end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- return $out -}}

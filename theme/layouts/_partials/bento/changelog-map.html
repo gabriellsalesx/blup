@@ -1,0 +1,60 @@
+{{- /* The changelog's map: the last twelve months as a grid of days, one
+column a week, like GitHub's contributions. A day with versions takes the
+color of what they were (bento/change-kind.html: a fix is red, something
+new green...), stronger with more of them; hovering shows the day and its
+versions, clicking opens the version. Built with the site, no requests.
+Param: the changelog's section page. */ -}}
+{{- $entries := partial "visible.html" .RegularPagesRecursive -}}
+{{- $order := slice "breaking" "security" "fix" "new" "improvement" "other" -}}
+{{- $names := dict "new" (T "clKindNew") "improvement" (T "clKindImprovement") "fix" (T "clKindFix") "security" (T "clKindSecurity") "breaking" (T "clKindBreaking") "other" (T "clKindOther") -}}
+{{- $today := time.AsTime (now.Format "2006-01-02") -}}
+{{- $start := $today.AddDate 0 0 (sub -364 (int $today.Weekday)) -}}
+{{- /* The entries of each day of the period. */ -}}
+{{- $days := dict -}}
+{{- $total := 0 -}}
+{{- range $entries -}}
+  {{- if and (not .Date.IsZero) (ge .Date.Unix $start.Unix) -}}
+    {{- $k := .Date.Format "2006-01-02" -}}
+    {{- $days = merge $days (dict $k ((index $days $k) | default slice | append .)) -}}
+    {{- $total = add $total 1 -}}
+  {{- end -}}
+{{- end -}}
+<section class="cl-map" aria-label="{{ T "clMapLabel" }}">
+  <div class="cl-scroll">
+    <div class="cl-grid">
+      {{- /* Months over their first week; three day names at the side. */}}
+      {{- $last := "" }}
+      {{- range $w := seq 0 52 }}
+        {{- $first := $start.AddDate 0 0 (mul $w 7) }}
+        {{- $m := $first.Format "2006-01" }}
+        {{- if and (ne $m $last) (lt $w 52) }}<span class="cl-month" style="grid-area: 1 / {{ add $w 2 }}">{{ $first | time.Format "Jan" }}</span>{{ end }}
+        {{- $last = $m }}
+      {{- end }}
+      {{- range $d := slice 1 3 5 }}<span class="cl-wday" style="grid-area: {{ add $d 2 }} / 1">{{ ($start.AddDate 0 0 $d) | time.Format "Mon" }}</span>{{ end }}
+      {{- range $w := seq 0 52 }}
+        {{- range $d := seq 0 6 }}
+          {{- $day := $start.AddDate 0 0 (add (mul $w 7) $d) }}
+          {{- if le $day.Unix $today.Unix }}
+            {{- $k := $day.Format "2006-01-02" }}
+            {{- $list := index $days $k }}
+            {{- if $list }}
+              {{- $kind := "other" }}
+              {{- range $order }}{{ $o := . }}{{ if eq $kind "other" }}{{ range $list }}{{ if eq (partial "bento/change-kind.html" .) $o }}{{ $kind = $o }}{{ end }}{{ end }}{{ end }}{{ end }}
+              {{- $tip := $day | time.Format ":date_long" }}
+              {{- range $list }}{{ $tip = printf "%s\n%s · %s" $tip (partial "title.html" .) (index $names (partial "bento/change-kind.html" .)) }}{{ end }}
+              <a class="cl-day k-{{ $kind }}{{ if gt (len $list) 1 }} many{{ end }}" style="grid-area: {{ add $d 2 }} / {{ add $w 2 }}" href="{{ (index $list 0).RelPermalink }}" data-tip="{{ $tip }}" aria-label="{{ replace $tip "\n" " · " }}"></a>
+            {{- else }}
+              <span class="cl-day" style="grid-area: {{ add $d 2 }} / {{ add $w 2 }}"></span>
+            {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    </div>
+  </div>
+  <div class="cl-foot">
+    <span>{{ T "clMapTotal" (dict "Count" $total) }}</span>
+    <ul class="cl-legend">
+      {{- range slice "new" "improvement" "fix" "security" "breaking" }}<li><span class="cl-day k-{{ . }}"></span>{{ index $names . }}</li>{{ end }}
+    </ul>
+  </div>
+</section>
