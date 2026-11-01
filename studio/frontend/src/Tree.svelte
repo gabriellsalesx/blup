@@ -1,6 +1,8 @@
 <script lang="ts" module>
   // The item being dragged, shared by every level of the tree.
   let dragged = $state("");
+  // The folders that hold translations, by their language.
+  const LANG_NAMES: Record<string, string> = { pt: "Português", en: "English", es: "Español" };
 </script>
 
 <script lang="ts">
@@ -10,6 +12,7 @@
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import FileIcon from "@lucide/svelte/icons/file";
   import Folder from "@lucide/svelte/icons/folder";
+  import Globe from "@lucide/svelte/icons/globe";
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import Database from "@lucide/svelte/icons/database";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
@@ -102,8 +105,10 @@
 </script>
 
 {#snippet icon(n: Node)}
+  <!-- A folder of translations (en, es, pt next to the notes): a globe. -->
   <span class="ico">
     {#if n.dir && n.table}<Database size={15} strokeWidth={1.75} />
+    {:else if n.dir && LANG_NAMES[n.name]}<Globe size={15} strokeWidth={1.75} />
     {:else if n.dir}{#if open[n.path]}<FolderOpen size={15} strokeWidth={1.75} />{:else}<Folder size={15} strokeWidth={1.75} />{/if}
     {:else if n.kind === "drawing"}<PenTool size={15} strokeWidth={1.75} />
     {:else if n.kind === "canvas"}<LayoutDashboard size={15} strokeWidth={1.75} />
@@ -141,7 +146,7 @@
         <button class={["row", { selected: n.path === folder, target: over === n.path, active: !!n.table && n.table === current }]} draggable={!!onMove} ondragstart={(e) => dragStart(e, n)} ondragend={dragEnd}
           ondragover={(e) => dragOver(e, n)} ondragleave={() => dragLeave(n)} ondrop={(e) => drop(e, n)} onclick={() => { if (n.table && n.table !== current) { open[n.path] = true; onPick(n.table); } else open[n.path] = !open[n.path]; onFolder(n.path); }} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
           <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-          <span class="chev" class:open={open[n.path]} onclick={(e) => { if (n.table) { e.stopPropagation(); open[n.path] = !open[n.path]; } }}><ChevronRight size={14} /></span>{@render icon(n)}<span class="name">{n.name}</span>
+          <span class="chev" class:open={open[n.path]} onclick={(e) => { if (n.table) { e.stopPropagation(); open[n.path] = !open[n.path]; } }}><ChevronRight size={14} /></span>{@render icon(n)}<span class="name">{n.name}</span>{#if !n.table && LANG_NAMES[n.name]}<small class="lang-name">{LANG_NAMES[n.name]}</small>{/if}
         </button>
         {#if open[n.path] && n.children}
           <Tree nodes={n.children} {current} {folder} bind:open {renaming} {creating} parent={n.path} {onPick} {onFolder} {onMenu} {onRename} {onCreate} {onMove} depth={depth + 1} />
@@ -166,6 +171,7 @@
   .row.note:hover { color: var(--text); }
   .row.note.active, .row.active, .row.selected { background: var(--soft); color: var(--text); opacity: 1; }
   .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lang-name { flex: none; margin-inline-start: .35rem; color: var(--muted); font-size: .72rem; }
   .ico { display: inline-grid; place-items: center; width: 1rem; flex: none; color: var(--muted); }
   .rename { flex: 1; min-width: 0; padding: .1rem .35rem; margin-block: -.1rem; border: 1px solid var(--blue); border-radius: .3rem; outline: none; background: var(--panel); color: var(--text); font: inherit; }
   .row.target { background: color-mix(in srgb, var(--blue) 18%, transparent); outline: 1px solid var(--blue); opacity: 1; }
