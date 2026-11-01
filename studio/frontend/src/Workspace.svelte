@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
-  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, CreateDatabase, SaveDatabaseSchema, DailyNote, RenameItem, MoveItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, OpenURL, Sites, SearchNotes, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, CreateDatabase, SaveDatabaseSchema, DailyNote, RenameItem, MoveItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
-  import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import type { Settings, SearchHit } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
   import Editor from "./Editor.svelte";
   import Database from "@lucide/svelte/icons/database";
@@ -88,7 +88,16 @@
     for (const n of nodes) if (n.dir) { if (n.path === path) return n; const f = findDir(n.children ?? [], path); if (f) return f; }
   };
   const folders = (nodes: Node[]): string[] => nodes.flatMap((n) => (n.dir ? [n.path, ...folders(n.children ?? [])] : []));
-  const found = $derived.by(() => (query.trim() ? flat(tree).filter((n) => n.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 80) : []));
+  // The search: names and texts of the notes, ignoring case and accents
+  // (in Go), asked a moment after the typing stops.
+  let found = $state<SearchHit[]>([]);
+  let searched = $state("");
+  $effect(() => {
+    const q = query.trim();
+    if (q.length < 2) { found = []; searched = q; return; }
+    const id = setTimeout(() => SearchNotes(q).then((h) => { if (query.trim() === q) { found = h ?? []; searched = q; } }).catch(() => {}), 180);
+    return () => clearTimeout(id);
+  });
   function expandAll() { for (const f of folders(tree)) openMap[f] = true; }
   const anyOpen = $derived(Object.values(openMap).some(Boolean));
   function reveal(path: string) {
@@ -677,9 +686,13 @@
           <input type="text" autofocus bind:value={query} placeholder={t.side.searchPh} />
           <ul>
             {#each found as n (n.path)}
-              <li><button class="hit" class:active={n.path === current} onclick={() => { screen = "write"; pick(n.path); }}><span>{n.name}</span><small class="muted">{n.path.split("/").slice(0, -1).join(" / ")}</small></button></li>
+              <li><button class="hit" class:active={n.path === current} onclick={() => { screen = "write"; pick(n.path); }}>
+                <span>{n.name}</span>
+                {#if n.folder}<small class="muted">{n.folder.split("/").join(" / ")}</small>{/if}
+                {#each n.lines ?? [] as l, i (i)}<small class="hit-line">{l.before}<mark>{l.link}</mark>{l.after}</small>{/each}
+              </button></li>
             {/each}
-            {#if query.trim() && !found.length}<li class="muted none">{t.side.nothing}</li>{/if}
+            {#if searched.length >= 2 && searched === query.trim() && !found.length}<li class="muted none">{t.side.nothing}</li>{/if}
           </ul>
         </div>
       {/if}
@@ -871,6 +884,8 @@
   .side-search ul { list-style: none; padding: 0; overflow: auto; }
   .hit { display: grid; width: 100%; text-align: start; padding: .35rem .5rem; border-radius: .35rem; font-size: .875rem; }
   .hit small { font-size: .72rem; }
+  .hit-line { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-block-start: .15rem; color: var(--muted); font-size: .75rem; line-height: 1.35; }
+  .hit-line mark { background: none; color: var(--blue); font-weight: 600; }
   .hit:hover, .hit.active { background: var(--soft); }
   .none { padding: .5rem; font-size: .85rem; }
   .switcher { position: relative; display: flex; align-items: center; gap: .15rem; padding: .45rem .6rem; border-block-start: 1px solid var(--line); }

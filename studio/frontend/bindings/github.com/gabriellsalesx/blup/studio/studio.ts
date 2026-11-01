@@ -196,6 +196,14 @@ export function CheckSiteDir(dir: string): $CancellablePromise<string> {
 }
 
 /**
+ * CheckUpdate tells whether a newer Blup Studio is out (force asks GitHub
+ * now instead of using the day's answer).
+ */
+export function CheckUpdate(force: boolean): $CancellablePromise<app$0.UpdateInfo> {
+    return $Call.ByID(642306771, force);
+}
+
+/**
  * CloseTerminal stops a terminal (and what runs in it).
  */
 export function CloseTerminal(id: string): $CancellablePromise<void> {
@@ -458,7 +466,7 @@ export function InstallLocalVoice(): $CancellablePromise<void> {
 }
 
 /**
- * Language is the Studio's language: "pt" or "en".
+ * Language is the Studio's language: "pt", "en" or "es".
  */
 export function Language(): $CancellablePromise<string> {
     return $Call.ByID(2596583864);
@@ -918,6 +926,14 @@ export function SaveSocial(links: string[] | null): $CancellablePromise<void> {
 }
 
 /**
+ * SearchNotes finds words in the open site's notes: their names first,
+ * then their texts, with the lines where they are.
+ */
+export function SearchNotes(query: string): $CancellablePromise<app$0.SearchHit[] | null> {
+    return $Call.ByID(3531004871, query);
+}
+
+/**
  * SetAutostart makes the Studio open (in the tray) when the computer starts.
  */
 export function SetAutostart(on: boolean): $CancellablePromise<void> {
@@ -947,7 +963,7 @@ export function SetGeneralPassword(password: string): $CancellablePromise<void> 
 }
 
 /**
- * SetLanguage changes the language of Blup and the Studio ("pt" or "en").
+ * SetLanguage changes the language of Blup and the Studio ("pt", "en" or "es").
  * The window reloads to show it.
  */
 export function SetLanguage(lang: string): $CancellablePromise<void> {
@@ -1160,7 +1176,7 @@ export function VoiceModels(lang: string): $CancellablePromise<app$0.ModelOption
 }
 
 /**
- * Voices lists the narration voices for sites in lang ("pt" or "en"): the
+ * Voices lists the narration voices for sites in lang ("pt", "en" or "es"): the
  * local ones, then those of the OpenRouter model ("" for the recommended).
  */
 export function Voices(lang: string, model: string): $CancellablePromise<app$0.Voice[] | null> {

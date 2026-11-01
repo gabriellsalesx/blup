@@ -243,7 +243,7 @@ export interface Prefs {
     "recent": string[] | null;
 
     /**
-     * the narration's voice for each site language ("pt", "en"); missing = the default
+     * the narration's voice for each site language ("pt", "en", "es"); missing = the default
      */
     "voices": { [_ in string]?: string } | null;
 

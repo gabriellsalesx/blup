@@ -518,6 +518,22 @@ export interface NewSiteOptions {
 }
 
 /**
+ * SearchHit is a note found by SearchNotes: by its name, its text, or
+ * both; Lines are up to three lines where the text has the words.
+ */
+export interface SearchHit {
+    "path": string;
+    "name": string;
+    "folder": string;
+    "inName": boolean;
+
+    /**
+     * Link holds the words found
+     */
+    "lines": Snippet[] | null;
+}
+
+/**
  * Section is one of Bento's parts.
  */
 export interface Section {
@@ -665,6 +681,18 @@ export interface TrashItem {
      */
     "origin": string;
     "dir": boolean;
+}
+
+/**
+ * UpdateInfo tells the Studio about a newer Blup: Newer when the latest
+ * release is above this build, with its notes and page.
+ */
+export interface UpdateInfo {
+    "current": string;
+    "latest": string;
+    "newer": boolean;
+    "notes": string;
+    "url": string;
 }
 
 /**

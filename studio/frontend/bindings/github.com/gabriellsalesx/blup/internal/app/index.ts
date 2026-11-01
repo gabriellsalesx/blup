@@ -32,6 +32,7 @@ export type {
     Narration,
     NarrationCost,
     NewSiteOptions,
+    SearchHit,
     Section,
     Settings,
     SiteParts,
@@ -39,5 +40,6 @@ export type {
     SyncInfo,
     Target,
     TrashItem,
+    UpdateInfo,
     Voice
 } from "./models.js";
