@@ -25,10 +25,41 @@ import (
 func notesPath(site *config.Site, rel string) (string, error) {
 	root := filepath.Clean(site.ContentDir())
 	p := filepath.Join(root, filepath.FromSlash(rel))
-	if rel == "" || p == root || !strings.HasPrefix(p, root+string(filepath.Separator)) {
+	if rel == "" || p == root || !strings.HasPrefix(p, root+string(filepath.Separator)) || !Within(root, p) {
 		return "", errors.New("outside the notes folder")
 	}
 	return p, nil
+}
+
+// Within tells whether p, followed through its links (symlinks), stays in
+// root: a link in the notes to a file elsewhere (~/.ssh) is not read or
+// written through. A path not made yet counts by its folder.
+func Within(root, p string) bool {
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return false
+	}
+	real, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		// A link to nothing (yet) would write wherever it points.
+		if _, lerr := os.Lstat(p); lerr == nil || !errors.Is(err, os.ErrNotExist) {
+			return false
+		}
+		dir, rest := p, ""
+		for {
+			rest = filepath.Join(filepath.Base(dir), rest)
+			dir = filepath.Dir(dir)
+			r, err := filepath.EvalSymlinks(dir)
+			if err == nil {
+				real = filepath.Join(r, rest)
+				break
+			}
+			if !errors.Is(err, os.ErrNotExist) || filepath.Dir(dir) == dir {
+				return false
+			}
+		}
+	}
+	return real == realRoot || strings.HasPrefix(real, realRoot+string(filepath.Separator))
 }
 
 func cleanName(name string) (string, error) {

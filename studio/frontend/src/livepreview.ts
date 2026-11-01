@@ -17,7 +17,7 @@ import { type EditorState, type Range } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { CALLOUTS, CALLOUT_ALIASES, calloutIcon } from "./callouts";
 
-export type LiveText = { copy: string; copied: string; code: string; pt: boolean };
+export type LiveText = { copy: string; copied: string; code: string; pt: boolean; remote: string };
 export type LiveOptions = {
   text: LiveText;
   image: (src: string) => Promise<string>; // an image's data: URL ("" when missing)
@@ -105,8 +105,11 @@ class CodeHead extends WidgetType {
   ignoreEvent() { return true; }
 }
 
-// The images already loaded, by their address in the note.
+// The images already loaded, by their address in the note; the web
+// addresses the writer chose to load (an image from the web tells its
+// server the note was opened, so it waits for a click).
 const loaded = new Map<string, string>();
+const allowed = new Set<string>();
 
 class Picture extends WidgetType {
   constructor(readonly src: string, readonly alt: string, readonly opts: LiveOptions) { super(); }
@@ -122,7 +125,17 @@ class Picture extends WidgetType {
       img.onload = () => view.requestMeasure();
       box.append(img);
     };
-    if (/^(https?:|data:)/.test(this.src)) show(this.src);
+    if (/^https?:/i.test(this.src) && !allowed.has(this.src)) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "cm-image-load";
+      let host = this.src;
+      try { host = new URL(this.src).host; } catch {}
+      b.textContent = this.opts.text.remote.replace("{host}", host);
+      b.addEventListener("mousedown", (e) => { e.preventDefault(); e.stopPropagation(); });
+      b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); allowed.add(this.src); b.remove(); show(this.src); });
+      box.append(b);
+    } else if (/^(https?:|data:image\/)/i.test(this.src)) show(this.src);
     else if (loaded.has(this.src)) show(loaded.get(this.src)!);
     else this.opts.image(this.src).then((url) => { loaded.set(this.src, url); show(url); }, () => show(""));
     return box;

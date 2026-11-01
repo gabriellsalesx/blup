@@ -143,7 +143,7 @@ O botão Nota do dia (`Ctrl+Alt+D`) chama `DailyNote(pasta, tag)` com os valores
   - bloco de código ganha fundo, a linguagem e o botão Copiar; as cercas ```` ``` ```` só aparecem com o cursor dentro do bloco, e o botão continua lá;
   - `---` vira uma linha (o front matter do topo fica como escrito);
   - item de lista com `-`, `*` ou `+` mostra um ponto; tarefa (`- [ ]`) mostra uma caixa que marca com um clique, e a feita fica riscada;
-  - imagem (`![](caminho)` relativo à nota, ou `![[foto.png]]`) aparece no lugar, lida por `NoteImage` como `data:` URL.
+  - imagem (`![](caminho)` relativo à nota, ou `![[foto.png]]`) aparece no lugar, lida por `NoteImage` como `data:` URL. Imagem da web (`https://…`) espera um clique em "Mostrar imagem de …", porque carregar avisa o servidor dela que a nota foi aberta.
 - Títulos recolhem como no Obsidian: uma seta à esquerda de cada `#` a `######` que tenha conteúdo recolhível, visível no hover ou sempre quando recolhido, esconde tudo até o próximo título do mesmo nível ou maior. Os atalhos de dobra vêm do `basicSetup` do CodeMirror: `Ctrl+Shift+[` recolhe, `Ctrl+Shift+]` mostra, `Ctrl+Alt+[` recolhe todos e `Ctrl+Alt+]` mostra todos.
 
 `Editor.svelte` tem dois menus de digitação, ativados só no começo da linha ou depois de um espaço (assim um e-mail não abre o `@`) e fora de código; Enter ou Tab escolhem.
@@ -337,3 +337,11 @@ Os comandos de compilação, dependências nativas e pacotes AppImage, nfpm, DMG
 ### Renomear, mover e copiar bancos
 
 Renomear ou mover um `.table` leva a pasta de registros junto (com o novo nome) e corrige os links para os registros (`followDatabase` em `internal/app/database.go`); renomear só a pasta de registros grava o novo nome no `.table`. `DatabaseOf` acha o banco pelo `.table` de mesmo nome ou por qualquer `.table` ao lado que nomeie a pasta. Não há "Fazer uma cópia" para `.table` (as duas cópias dividiriam a mesma pasta). Renomear uma opção de escolha renomeia o valor nos registros; num cofre, o número 0 fica gravado (só nos formulários de site 0 significa "sem valor").
+
+## Segurança do conteúdo
+
+- O site: o Hugo roda com o goldmark sem `unsafe`, então HTML escrito na nota (`<script>`, `<iframe>`, `onerror=`) sai como `<!-- raw HTML omitted -->`, e um link `javascript:` vira `#ZgotmplZ` pelo escape do template.
+- O Studio: o editor trata a nota como texto; o que ele desenha entra por `textContent`. Os cartões do canvas escapam o texto antes de virar HTML.
+- `OpenURL` só abre `http`, `https`, `mailto` e `tel`; outro endereço (`file:///…`, um esquema que abre um programa) é ignorado.
+- Caminhos: `notesPath`, `notePath` e `ImageData` exigem que o caminho, seguido pelos links simbólicos (`app.Within`), fique dentro da pasta das notas. Um link para nada também é recusado, porque escreveria onde ele aponta.
+- A prévia roda num iframe com `sandbox` (scripts e a própria origem, sem navegar a janela do Studio), e as mensagens dela só valem vindas da origem da prévia.

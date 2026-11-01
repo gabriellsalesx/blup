@@ -69,7 +69,7 @@ func (s *Studio) ImageData(file string) (string, error) {
 		return "", err
 	}
 	root := filepath.Clean(site.ContentDir()) + string(filepath.Separator)
-	if len(file) < len(root) || file[:len(root)] != root {
+	if len(file) < len(root) || file[:len(root)] != root || !app.Within(root, file) {
 		return "", errors.New("outside the notes folder")
 	}
 	b, err := os.ReadFile(file)

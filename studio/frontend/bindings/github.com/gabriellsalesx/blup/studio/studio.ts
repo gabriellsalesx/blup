@@ -631,6 +631,10 @@ export function OpenTerminal(agent: string, cols: number, rows: number): $Cancel
 
 /**
  * OpenURL opens an address in the browser.
+ * 
+ * Only web, e-mail and phone addresses: a link written in a note or a
+ * board (file:///…, or a scheme that starts a program) never reaches the
+ * system.
  */
 export function OpenURL(link: string): $CancellablePromise<void> {
     return $Call.ByID(1468396923, link);

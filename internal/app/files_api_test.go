@@ -137,3 +137,28 @@ func TestRenameFixesCanvas(t *testing.T) {
 		t.Fatalf("canvas after folder = %s", c)
 	}
 }
+
+// A link in the notes to a file elsewhere is not followed.
+func TestNotesPathSymlink(t *testing.T) {
+	site := settingsSite(t)
+	outside := filepath.Join(t.TempDir(), "segredo.txt")
+	if err := os.WriteFile(outside, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(site.ContentDir(), "foto.png")); err != nil {
+		t.Skip(err)
+	}
+	if err := os.Symlink(filepath.Join(t.TempDir(), "nada"), filepath.Join(site.ContentDir(), "vazio.md")); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{"foto.png", "vazio.md"} {
+		if _, err := notesPath(site, rel); err == nil {
+			t.Fatalf("%s followed out of the notes", rel)
+		}
+	}
+	for _, rel := range []string{"Nova pasta/Nota.md", "Nota.md"} {
+		if _, err := notesPath(site, rel); err != nil {
+			t.Fatalf("%s: %v", rel, err)
+		}
+	}
+}

@@ -42,14 +42,15 @@
 
   function onMessage(e: MessageEvent) {
     const d = e.data;
-    if (!d || typeof d.blup !== "string") return;
+    // Only the preview's own pages talk to the Studio.
+    if (e.origin !== origin() || !d || typeof d.blup !== "string") return;
     const m = new URLSearchParams(d.q || "").get("_blup");
     let idx = frames.findIndex((f) => f.mark && f.mark === m);
     // A page reached by a link inside has no mark: the frame it came from.
     if (idx < 0 && !m) idx = els.findIndex((el) => el && el.contentWindow === e.source);
     if (idx < 0) return;
     if (pending && idx === pending.idx) {
-      if (d.blup === "loaded") (e.source as Window | null)?.postMessage({ blup: "scrollTo", y: pending.y }, "*");
+      if (d.blup === "loaded") (e.source as Window | null)?.postMessage({ blup: "scrollTo", y: pending.y }, origin());
       else if (d.blup === "ready") { path = d.path; y = d.y; swap(idx); }
     } else if (idx === active) {
       if (d.blup === "loaded" && !m && d.path !== path) onNavigate?.(d.path);
@@ -80,7 +81,7 @@
 
 <div class="frames">
   {#each frames as f, i (i)}
-    {#if f.src}<iframe bind:this={els[i]} src={f.src} {title} class:hidden={i !== active}></iframe>{/if}
+    {#if f.src}<iframe bind:this={els[i]} src={f.src} {title} class:hidden={i !== active} sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>{/if}
   {/each}
 </div>
 

@@ -181,7 +181,7 @@ func (s *Studio) notePath(rel string) (string, error) {
 	}
 	root := filepath.Clean(site.ContentDir())
 	p := filepath.Join(root, filepath.FromSlash(rel))
-	if p != root && !strings.HasPrefix(p, root+string(filepath.Separator)) {
+	if p != root && !strings.HasPrefix(p, root+string(filepath.Separator)) || !app.Within(root, p) {
 		return "", errors.New("outside the notes folder")
 	}
 	return p, nil

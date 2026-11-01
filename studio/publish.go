@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"net/url"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -52,7 +55,15 @@ func (s *Studio) OpenKeyPage(account string) {
 }
 
 // OpenURL opens an address in the browser.
-func (s *Studio) OpenURL(link string) { _ = application.Get().Browser.OpenURL(link) }
+//
+// Only web, e-mail and phone addresses: a link written in a note or a
+// board (file:///…, or a scheme that starts a program) never reaches the
+// system.
+func (s *Studio) OpenURL(link string) {
+	if u, err := url.Parse(strings.TrimSpace(link)); err == nil && slices.Contains([]string{"http", "https", "mailto", "tel"}, strings.ToLower(u.Scheme)) {
+		_ = application.Get().Browser.OpenURL(u.String())
+	}
+}
 
 // ConnectGitHub checks and saves a GitHub key; it returns the login.
 func (s *Studio) ConnectGitHub(token string) (string, error) {

@@ -472,7 +472,7 @@
         linkConceal,
         headingFolds({ fold: te.fold, unfold: te.unfold }),
         livePreview({
-          text: { copy: te.copy, copied: te.copied, code: te.code, pt: t.lang === "pt" },
+          text: { copy: te.copy, copied: te.copied, code: te.code, pt: t.lang === "pt", remote: te.remoteImage },
           image: (src) => NoteImage(note, src),
           onCopy: (code) => void Clipboard.SetText(code),
         }),
@@ -708,6 +708,8 @@
   .editor :global(.cm-task-done) { color: var(--muted); text-decoration: line-through; }
   .editor :global(.cm-image) { display: block; margin-block: .3rem; }
   .editor :global(.cm-image img) { display: block; max-width: 100%; max-height: 28rem; border-radius: .4rem; }
+  .editor :global(.cm-image-load) { padding: .35rem .7rem; border: 1px dashed var(--line); border-radius: .4rem; color: var(--muted); font-size: .85em; cursor: pointer; }
+  .editor :global(.cm-image-load:hover) { border-color: var(--blue); color: var(--blue); }
   .editor :global(.cm-image.missing) { color: var(--muted); font-size: .85em; }
   .editor :global(.cm-highlight) { background: color-mix(in srgb, #facc15 38%, transparent); border-radius: 3px; }
   .editor :global(.cm-align-center) { text-align: center; }
