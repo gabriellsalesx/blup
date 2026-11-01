@@ -43,6 +43,13 @@
       "when": 1793490184534,
       "tag": "0005_aparelhos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793494661721,
+      "tag": "0006_limpeza",
+      "breakpoints": true
     }
   ]
 }

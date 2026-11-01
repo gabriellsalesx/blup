@@ -5,6 +5,7 @@ import { activeSubscription, planOf } from "./account";
 import { PLANS, SUGGESTED, planNamed } from "./plans";
 import { staffApi } from "./staff";
 import { syncApi } from "./sync";
+import { cleanUp } from "./cleanup";
 import { devicesOf, usageOf } from "./usage";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
@@ -143,5 +144,9 @@ export default {
 		}
 		if (url.pathname.startsWith("/api/")) return secure(await app.fetch(req, env, ctx));
 		return secure(await env.ASSETS.fetch(req));
+	},
+	// The daily clean-up of old versions and unused blocks.
+	async scheduled(_controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
+		ctx.waitUntil(cleanUp(env));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>;

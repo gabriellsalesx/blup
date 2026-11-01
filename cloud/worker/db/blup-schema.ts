@@ -65,6 +65,8 @@ export const syncAccount = sqliteTable("sync_account", {
 	// the quota check never adds up rows.
 	storageBytes: integer("storage_bytes").default(0).notNull(),
 	lastSyncAt: integer("last_sync_at", { mode: "timestamp_ms" }),
+	// The last daily clean-up (worker/cleanup.ts).
+	cleanedAt: integer("cleaned_at", { mode: "timestamp_ms" }),
 	createdAt: integer("created_at", { mode: "timestamp_ms" })
 		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 		.notNull(),

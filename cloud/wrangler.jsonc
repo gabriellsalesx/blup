@@ -6,6 +6,8 @@
 	// Better Auth usa AsyncLocalStorage.
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": { "enabled": true },
+	// A limpeza diária das versões antigas e dos blocos sem uso (04:00 UTC).
+	"triggers": { "crons": ["0 4 * * *"] },
 	"upload_source_maps": true,
 	// O painel (SvelteKit estático) é servido como assets; só a API passa
 	// pelo Worker.
@@ -55,6 +57,7 @@
 	"env": {
 		"production": {
 			"workers_dev": false,
+			"triggers": { "crons": ["0 4 * * *"] },
 			"preview_urls": false,
 			"routes": [
 				{ "pattern": "cloud.getblup.io", "custom_domain": true },
