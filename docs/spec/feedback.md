@@ -87,7 +87,7 @@ No cliente do site e no backend do Studio, o status vem da primeira etiqueta cuj
 
 Com serviço de login configurado, o site exige login GitHub para abrir o formulário real e cria a issue com a autorização do visitante. O envio valida a categoria contra a lista fixa, remove marcas de feedback escritas no corpo pelo visitante e acrescenta a marca gerada, com idioma somente entre `pt`, `en` e `es`. Sem esse serviço, Novo pedido encaminha ao formulário de issue do GitHub. Esse link externo não acrescenta automaticamente a marca; uma issue sem a marca não entra no quadro.
 
-As credenciais do visitante ficam em `sessionStorage`, restritas à aba; o cliente retira entradas antigas de `localStorage`. `feedback.js` copia o HTML de pedidos, comentários e prévias Markdown por uma lista de elementos permitidos, sem handlers, estilos, embeds ativos ou SVG. Endereços inseridos pelo cliente passam por `safeURL`. Os exemplos da nota usam o escape dos templates Hugo. Esse tratamento conserva o conteúdo de texto sem executar HTML fornecido por visitantes.
+As credenciais do visitante ficam em `localStorage`, no navegador dele, para não pedir login a cada visita (decisão do dono); sair apaga a chave. A defesa contra roubo dela é não executar HTML de visitantes (abaixo). `feedback.js` copia o HTML de pedidos, comentários e prévias Markdown por uma lista de elementos permitidos, sem handlers, estilos, embeds ativos ou SVG. Endereços inseridos pelo cliente passam por `safeURL`. Os exemplos da nota usam o escape dos templates Hugo. Esse tratamento conserva o conteúdo de texto sem executar HTML fornecido por visitantes.
 
 ## Leitura por `/posts` e limites
 

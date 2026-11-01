@@ -31,7 +31,7 @@ func TestFeedbackBrowserAttacks(t *testing.T) {
 			setup := `window.fetch=()=>Promise.reject(new Error("network disabled"));`
 			switch attack {
 			case "persistent token":
-				probe += `saveAuth({token:"test-only"}); if(localStorage.getItem(AUTH)) fail("token persisted"); if(!sessionStorage.getItem(AUTH)) fail("session token missing");`
+				probe += `saveAuth({token:"test-only"}); if(!localStorage.getItem(AUTH)) fail("token not kept on the browser"); saveAuth(null); if(localStorage.getItem(AUTH)) fail("sign out left the token");`
 			case "class injection":
 				probe += `if(postStatus({state:"open",labels:[{name:"status: done hidden"}]})!=="new") fail("unmanaged class accepted");`
 			case "forged metadata":

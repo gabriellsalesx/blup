@@ -35,12 +35,13 @@ const HASH = "blup-gh-hash";
 // --- the visitor's GitHub key -------------------------------------------
 
 let auth = null;
-// Keep visitor keys only for this tab. Remove keys left by older versions.
-try { localStorage.removeItem(AUTH); auth = JSON.parse(sessionStorage.getItem(AUTH)); } catch {}
+// The visitor stays signed in on this browser (the owner's choice: no
+// signing in again on each visit). Signing out removes the key.
+try { auth = JSON.parse(localStorage.getItem(AUTH)); } catch {}
 
 function saveAuth(a) {
   auth = a;
-  try { localStorage.removeItem(AUTH); a ? sessionStorage.setItem(AUTH, JSON.stringify(a)) : sessionStorage.removeItem(AUTH); } catch {}
+  try { a ? localStorage.setItem(AUTH, JSON.stringify(a)) : localStorage.removeItem(AUTH); } catch {}
 }
 
 // takeLogin reads the key the login service handed back after "#".
