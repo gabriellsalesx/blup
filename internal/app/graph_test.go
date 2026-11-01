@@ -8,7 +8,7 @@ import (
 func TestNoteGraph(t *testing.T) {
 	site := settingsSite(t)
 	root := site.ContentDir()
-	write(t, root, "Estudos.md", "---\ntags: [estudos, \"#hub\"]\n---\nVeja [Go](Linguagens/Go%20basico.md) e [[Rust]].\n`[[Exemplo]]` e https://x.dev\n")
+	write(t, root, "Estudos.md", "---\ntags: [estudos, \"#hub\"]\ncreated: 2026-05-22\n---\nVeja [Go](Linguagens/Go%20basico.md) e [[Rust]].\n`[[Exemplo]]` e https://x.dev\n")
 	write(t, root, "Linguagens/Go basico.md", "Volte para [[Estudos|o índice]].\n```\n[[Rust]]\n```\n")
 	write(t, root, "Linguagens/Rust.md", "Sem links.")
 	write(t, root, "Outra/Rust.md", "Mesmo nome, outra pasta.")
@@ -32,8 +32,8 @@ func TestNoteGraph(t *testing.T) {
 		t.Fatalf("a section's _index.md is not a note: %v", paths)
 	}
 	for _, n := range g.Nodes {
-		if n.Path == "Estudos.md" && !slices.Equal(n.Tags, []string{"estudos", "hub"}) {
-			t.Fatalf("tags = %v", n.Tags)
+		if n.Path == "Estudos.md" && (!slices.Equal(n.Tags, []string{"estudos", "hub"}) || n.Created != "2026-05-22") {
+			t.Fatalf("tags = %v, created = %q", n.Tags, n.Created)
 		}
 		if n.Path == "Fluxo.draw" && (n.Kind != "drawing" || n.Name != "Fluxo") {
 			t.Fatalf("drawing = %+v", n)

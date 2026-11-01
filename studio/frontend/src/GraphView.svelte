@@ -8,6 +8,7 @@
   import Plus from "@lucide/svelte/icons/plus";
   import Scan from "@lucide/svelte/icons/scan";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
+  import Play from "@lucide/svelte/icons/play";
   import { place, radius, step, type GEdge, type GNode } from "./graph";
   import { t } from "./i18n";
 
@@ -16,26 +17,28 @@
   // neighbors; a click opens it; dragging moves the map (or a note), the
   // wheel zooms.
   //
-  // Its choices are in a panel at the top right, in four parts that open
-  // and close: Filters (search, folder, tag, loose notes, around the open
-  // note, canvases and drawings), Groups (colors by folder or tag),
-  // Display (names, sizes, arrows) and Forces (how the notes push and
-  // pull). They are kept on this computer.
+  // Its choices are in a panel at the top right (240px, like Obsidian's),
+  // in four parts that open and close: Filters (search, folder, tag, tags
+  // as dots, loose notes, around the open note and how far, canvases and
+  // drawings), Groups (colors by folder or tag), Display (arrows, when
+  // names show, sizes, and Animate: the notes appear in the order they
+  // were made) and Forces (how the notes push and pull). Closed, it is a
+  // small button. The choices are kept on this computer.
   let { current, onOpenNote }: { current: string; onOpenNote: (path: string) => void } = $props();
   const tg = t.graph;
 
   type Group = { match: string; color: string }; // match: "folder:X" or "tag:Y"
   type Prefs = {
-    query: string; folder: string; tag: string; loose: boolean; around: boolean; boards: boolean;
+    query: string; folder: string; tag: string; tagNodes: boolean; orphans: boolean; around: boolean; depth: number; boards: boolean;
     groups: Group[];
-    names: boolean; size: number; line: number; arrows: boolean;
+    arrows: boolean; fade: number; size: number; line: number;
     repel: number; link: number; distance: number; center: number;
     open: Record<string, boolean>; panel: boolean;
   };
   const DEFAULTS: Prefs = {
-    query: "", folder: "", tag: "", loose: false, around: false, boards: true,
+    query: "", folder: "", tag: "", tagNodes: false, orphans: true, around: false, depth: 1, boards: true,
     groups: [],
-    names: false, size: 1, line: 1, arrows: false,
+    arrows: false, fade: 0.9, size: 1, line: 1,
     repel: 1, link: 1, distance: 70, center: 1,
     open: { filters: true }, panel: true,
   };
@@ -93,29 +96,62 @@
     filter();
   }
 
+  // Tags as dots (Filters): one per tag, joined to its notes; kept between
+  // filterings so they don't jump.
+  const tagDots = new Map<string, GNode>();
+  function tagDot(tag: string) {
+    let d = tagDots.get(tag);
+    if (!d) { d = { path: "#" + tag, name: "#" + tag, folder: "", kind: "tag", tags: [], created: "", x: (Math.random() - 0.5) * 300, y: (Math.random() - 0.5) * 300, vx: 0, vy: 0, degree: 0 }; tagDots.set(tag, d); }
+    return d;
+  }
+
   // What is shown, by the filters (the search only lights, it doesn't hide).
   function filter() {
     let keep = all.filter((n) =>
       (!p.folder || n.folder === p.folder || n.folder.startsWith(p.folder + "/")) &&
       (!p.tag || n.tags.includes(p.tag)) &&
-      (!p.loose || !n.degree) &&
+      (p.orphans || n.degree > 0) &&
       (p.boards || n.kind === "note"));
     if (p.around && current) {
+      // The open note and the notes up to `depth` links away.
       const near = new Set([current]);
-      for (const e of allEdges) {
-        if (e.a.path === current) near.add(e.b.path);
-        if (e.b.path === current) near.add(e.a.path);
+      for (let i = 0; i < p.depth; i++) {
+        for (const e of allEdges) {
+          if (near.has(e.a.path)) near.add(e.b.path);
+          if (near.has(e.b.path)) near.add(e.a.path);
+        }
       }
       keep = keep.filter((n) => near.has(n.path));
     }
     const shown = new Set(keep);
+    let list = allEdges.filter((e) => shown.has(e.a) && shown.has(e.b));
+    if (p.tagNodes) {
+      const dots: GNode[] = [];
+      for (const d of tagDots.values()) d.degree = 0;
+      for (const n of keep) for (const tag of n.tags) {
+        const d = tagDot(tag);
+        if (!d.degree) dots.push(d);
+        d.degree++;
+        list = [...list, { a: n, b: d }];
+      }
+      keep = [...keep, ...dots];
+    }
     nodes = keep;
-    edges = allEdges.filter((e) => shown.has(e.a) && shown.has(e.b));
+    edges = list;
     alpha = 1;
   }
-  $effect(() => { p.folder; p.tag; p.loose; p.around; p.boards; current; if (loaded) filter(); });
+  $effect(() => { p.folder; p.tag; p.orphans; p.tagNodes; p.around; p.depth; p.boards; current; if (loaded) filter(); });
+
+  // Animate: the notes appear in the order they were made, the links as
+  // both ends are there.
+  let anim: { start: number; rank: Map<GNode, number>; length: number } | null = null;
+  function animate() {
+    const order = [...nodes].sort((a, b) => (a.created || "9").localeCompare(b.created || "9"));
+    anim = { start: performance.now(), rank: new Map(order.map((n, i) => [n, i])), length: Math.min(12000, Math.max(3000, order.length * 120)) };
+    dirty = true;
+  }
   $effect(() => { p.repel; p.link; p.distance; p.center; alpha = Math.max(alpha, 0.6); });
-  $effect(() => { JSON.stringify(p.groups); p.query; p.names; p.size; p.line; p.arrows; dirty = true; });
+  $effect(() => { JSON.stringify(p.groups); p.query; p.fade; p.size; p.line; p.arrows; dirty = true; });
 
   // A note's color: its group's (the first that fits), else by kind.
   const groupOf = (n: GNode) => p.groups.find((g) => {
@@ -126,6 +162,7 @@
   function draw() {
     frame = requestAnimationFrame(draw);
     if (alpha > 0.01) { step(nodes, edges, alpha, p); alpha *= 0.985; dirty = true; }
+    if (anim) dirty = true;
     if (!dirty || !canvas || !host) return;
     dirty = false;
     const dpr = devicePixelRatio || 1, w = host.clientWidth, h = host.clientHeight;
@@ -143,8 +180,17 @@
     if (hover) { near.add(hover); for (const e of edges) { if (e.a === hover) near.add(e.b); if (e.b === hover) near.add(e.a); } }
     const lit = (n: GNode) => (hover ? near.has(n) : q ? n.name.toLowerCase().includes(q) : true);
     const r = (n: GNode) => radius(n, p.size);
+    // While animating, only what has appeared so far.
+    let upTo = Infinity;
+    if (anim) {
+      const k = (performance.now() - anim.start) / anim.length;
+      if (k >= 1) anim = null;
+      else upTo = k * anim.rank.size;
+    }
+    const here = (n: GNode) => !anim || (anim.rank.get(n) ?? 0) <= upTo;
 
     for (const e of edges) {
+      if (!here(e.a) || !here(e.b)) continue;
       const on = hover && (e.a === hover || e.b === hover);
       g.strokeStyle = on ? col.accent : col.line;
       g.globalAlpha = hover && !on ? 0.25 : q ? 0.4 : 0.9;
@@ -162,16 +208,19 @@
       }
     }
     for (const n of nodes) {
+      if (!here(n)) continue;
       g.globalAlpha = lit(n) ? 1 : 0.2;
-      g.fillStyle = n.path === current ? col.accent : groupOf(n)?.color ?? (n.kind === "canvas" ? "#14b8a6" : n.kind === "drawing" ? "#e0b000" : !n.degree ? col.muted : col.text);
+      g.fillStyle = n.path === current ? col.accent : groupOf(n)?.color ?? (n.kind === "tag" ? "#22c55e" : n.kind === "canvas" ? "#14b8a6" : n.kind === "drawing" ? "#e0b000" : !n.degree ? col.muted : col.text);
       g.beginPath(); g.arc(n.x, n.y, r(n), 0, Math.PI * 2); g.fill();
       if (n === hover || n.path === current) { g.strokeStyle = col.accent; g.lineWidth = 2 / zoom; g.stroke(); }
     }
-    // Names: always (Display), or when close enough, or for what is lit.
+    // Names: when the map is closer than the text threshold (Display; at
+    // 0, always), and for what is lit.
     g.font = `${12 / zoom}px Inter, ui-sans-serif, system-ui, sans-serif`;
     g.textAlign = "center";
     for (const n of nodes) {
-      const show = p.names || zoom > 0.9 || near.has(n) || n.path === current || (q && lit(n));
+      if (!here(n)) continue;
+      const show = zoom >= p.fade || near.has(n) || n.path === current || (q && lit(n));
       if (!show) continue;
       g.globalAlpha = lit(n) ? 1 : 0.25;
       g.fillStyle = col.text;
@@ -221,7 +270,7 @@
     drag = null;
     if (!d) return;
     if (d.node) d.node.pinned = false;
-    if (d.node && !d.moved) onOpenNote(d.node.path);
+    if (d.node && !d.moved && d.node.kind !== "tag") onOpenNote(d.node.path);
   }
   function wheel(e: WheelEvent) {
     e.preventDefault();
@@ -265,11 +314,11 @@
   </button>
 {/snippet}
 
-{#snippet slider(label: string, key: "size" | "line" | "repel" | "link" | "distance" | "center", min: number, max: number, stepBy: number)}
+{#snippet slider(label: string, key: "fade" | "depth" | "size" | "line" | "repel" | "link" | "distance" | "center", min: number, max: number, stepBy: number)}
   <label class="slider"><span>{label}</span><input type="range" {min} {max} step={stepBy} bind:value={p[key]} /></label>
 {/snippet}
 
-{#snippet toggle(label: string, key: "loose" | "around" | "boards" | "names" | "arrows", disabled = false)}
+{#snippet toggle(label: string, key: "orphans" | "tagNodes" | "around" | "boards" | "arrows", disabled = false)}
   <label class={["toggle", { disabled }]}><span>{label}</span><input type="checkbox" bind:checked={p[key]} {disabled} /><i aria-hidden="true"></i></label>
 {/snippet}
 
@@ -299,9 +348,11 @@
               {#each tagList as x (x)}<option value={x}>#{x}</option>{/each}
             </select>
           {/if}
-          {@render toggle(`${tg.loose} (${count.loose})`, "loose")}
-          {@render toggle(tg.around, "around", !current)}
+          {@render toggle(tg.tagNodes, "tagNodes")}
+          {@render toggle(`${tg.orphans} (${count.loose})`, "orphans")}
           {@render toggle(tg.boards, "boards")}
+          {@render toggle(tg.around, "around", !current)}
+          {#if p.around && current}{@render slider(tg.depth, "depth", 1, 4, 1)}{/if}
           <small class="muted">{tg.count.replace("{notes}", String(count.notes)).replace("{links}", String(count.links))}</small>
         </div>
       {/if}
@@ -325,10 +376,11 @@
       {@render section("display", tg.display)}
       {#if p.open.display}
         <div class="body">
-          {@render toggle(tg.names, "names")}
           {@render toggle(tg.arrows, "arrows")}
+          {@render slider(tg.fade, "fade", 0, 3, 0.05)}
           {@render slider(tg.size, "size", 0.5, 2.5, 0.1)}
           {@render slider(tg.line, "line", 0.5, 4, 0.1)}
+          <button class="cta" onclick={animate}><Play size={14} />{tg.animate}</button>
         </div>
       {/if}
 
@@ -358,21 +410,26 @@
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   .empty { position: absolute; inset: 0; display: grid; place-items: center; }
 
-  .panel { position: absolute; z-index: 3; inset-block-start: .9rem; inset-inline-end: .9rem; width: 17rem; max-height: calc(100% - 1.8rem); overflow-y: auto; border: 1px solid var(--line); border-radius: .75rem; background: color-mix(in srgb, var(--panel) 94%, transparent); box-shadow: 0 14px 40px rgb(0 0 0 / .25); backdrop-filter: blur(6px); }
-  header { display: flex; align-items: center; gap: .1rem; padding-inline-end: .4rem; }
+  /* Like Obsidian's: 240px wide, 12px from the corner, 13px text,
+     scrolling without a bar when the window is short. */
+  .panel { position: absolute; z-index: 3; inset-block-start: 12px; inset-inline-end: 12px; width: 240px; max-height: calc(100% - 16px); overflow-y: auto; scrollbar-width: none; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / .2); font-size: 13px; }
+  .panel::-webkit-scrollbar { display: none; }
+  header { display: flex; align-items: center; padding-inline-end: 4px; }
   header .sec { flex: 1; border-block-start: 0; }
-  .sec { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .8rem .9rem; border-block-start: 1px solid var(--line); font-size: .98rem; font-weight: 500; color: var(--text); text-align: start; }
+  .sec { display: flex; align-items: center; gap: .35rem; width: 100%; padding: 8px 12px; border-block-start: 1px solid var(--line); font-size: 13px; font-weight: 600; color: var(--text); text-align: start; }
   .sec:hover { background: var(--soft); }
   .chev { display: inline-grid; color: var(--muted); transition: transform .15s; }
   .chev.open { transform: rotate(90deg); }
-  .body { display: grid; gap: .55rem; padding: .1rem .9rem .9rem 2.2rem; }
-  .icon { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: .4rem; color: var(--muted); }
+  .body { display: grid; gap: 10px; padding: 2px 12px 14px 16px; }
+  .cta { display: flex; align-items: center; justify-content: center; gap: .35rem; width: 100%; margin-top: 2px; padding: 6px; border-radius: .45rem; background: var(--blue); color: #fff; font-size: 13px; font-weight: 600; }
+  .cta:hover { filter: brightness(1.08); }
+  .icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: .35rem; color: var(--muted); }
   .icon:hover { background: var(--soft); color: var(--text); }
-  .search, select { width: 100%; padding: .38rem .55rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--panel); color: var(--text); font: inherit; font-size: .86rem; }
+  .search, select { width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: .4rem; background: var(--panel); color: var(--text); font: inherit; font-size: 13px; }
   .search:focus, select:focus { outline: none; border-color: var(--blue); }
   small { font-size: .76rem; }
 
-  .toggle { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .86rem; color: var(--text); cursor: pointer; }
+  .toggle { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: 13px; color: var(--text); cursor: pointer; }
   .toggle.disabled { opacity: .45; cursor: default; }
   .toggle input { position: absolute; opacity: 0; pointer-events: none; }
   .toggle i { position: relative; flex: none; width: 2.1rem; height: 1.2rem; border-radius: 999px; background: var(--line); transition: background .15s; }
@@ -381,7 +438,7 @@
   .toggle input:checked + i::after { translate: .9rem 0; }
   .toggle input:focus-visible + i { outline: 2px solid var(--blue); outline-offset: 2px; }
 
-  .slider { display: grid; gap: .25rem; font-size: .86rem; color: var(--text); }
+  .slider { display: grid; gap: 6px; font-size: 13px; color: var(--text); }
   .slider input { width: 100%; accent-color: var(--blue); }
 
   .group { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .4rem; }
@@ -390,7 +447,7 @@
   .add:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
   .add:disabled { opacity: .4; }
 
-  .open { position: absolute; z-index: 3; inset-block-start: .9rem; inset-inline-end: .9rem; display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); color: var(--muted); box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
+  .open { position: absolute; z-index: 3; inset-block-start: 12px; inset-inline-end: 12px; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); color: var(--muted); box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
   .open:hover { color: var(--text); }
   .corner { position: absolute; z-index: 3; inset-block-end: .9rem; inset-inline-start: .9rem; display: flex; gap: .2rem; padding: .25rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); }
 </style>

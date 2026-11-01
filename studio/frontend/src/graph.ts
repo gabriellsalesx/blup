@@ -2,7 +2,7 @@
 // notes they join, and everything drifts to the middle, a little less each
 // step until it settles (a force simulation, written here, no library).
 
-export type GNode = { path: string; name: string; folder: string; kind: string; tags: string[]; x: number; y: number; vx: number; vy: number; degree: number; pinned?: boolean };
+export type GNode = { path: string; name: string; folder: string; kind: string; tags: string[]; created: string; x: number; y: number; vx: number; vy: number; degree: number; pinned?: boolean };
 export type GEdge = { a: GNode; b: GNode };
 
 export function place(nodes: GNode[]) {

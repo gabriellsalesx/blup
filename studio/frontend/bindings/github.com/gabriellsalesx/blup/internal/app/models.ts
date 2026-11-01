@@ -263,6 +263,11 @@ export interface GraphNode {
      */
     "kind": string;
     "tags": string[] | null;
+
+    /**
+     * 2006-01-02: its created property, else the file's date (the map's animation)
+     */
+    "created": string;
 }
 
 /**

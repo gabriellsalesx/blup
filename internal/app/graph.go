@@ -22,11 +22,12 @@ import (
 
 // GraphNode is a note (or a canvas, or a drawing).
 type GraphNode struct {
-	Path   string   `json:"path"` // relative to the notes folder, with "/"
-	Name   string   `json:"name"`
-	Folder string   `json:"folder"`
-	Kind   string   `json:"kind"` // note, canvas, drawing
-	Tags   []string `json:"tags"`
+	Path    string   `json:"path"` // relative to the notes folder, with "/"
+	Name    string   `json:"name"`
+	Folder  string   `json:"folder"`
+	Kind    string   `json:"kind"` // note, canvas, drawing
+	Tags    []string `json:"tags"`
+	Created string   `json:"created"` // 2006-01-02: its created property, else the file's date (the map's animation)
 }
 
 // GraphEdge is a link from one note to another.
@@ -71,11 +72,18 @@ func NoteGraph(site *config.Site) (Graph, error) {
 			folder = ""
 		}
 		n := GraphNode{Path: rel, Name: graphName(rel), Folder: folder, Kind: kind, Tags: []string{}}
+		if info, err := d.Info(); err == nil {
+			n.Created = info.ModTime().Format("2006-01-02")
+		}
 		if kind != "drawing" {
 			if b, err := os.ReadFile(p); err == nil {
 				texts[rel] = string(b)
 				if kind == "note" {
-					n.Tags = noteTags(string(b))
+					var created string
+					n.Tags, created = noteMeta(string(b))
+					if created != "" {
+						n.Created = created
+					}
 				}
 			}
 		}
@@ -176,22 +184,33 @@ func graphName(rel string) string {
 	return strings.TrimSuffix(base, fileExt(base))
 }
 
-// noteTags are a note's tags property (a list, or a text with commas).
-func noteTags(text string) []string {
+// noteMeta reads a note's tags property (a list, or a text with commas)
+// and its created date.
+func noteMeta(text string) (tags []string, created string) {
 	out := []string{}
 	norm := strings.ReplaceAll(text, "\r\n", "\n")
 	if !strings.HasPrefix(norm, "---\n") {
-		return out
+		return out, ""
 	}
 	end := strings.Index(norm[4:], "\n---")
 	if end < 0 {
-		return out
+		return out, ""
 	}
 	var fm struct {
-		Tags any `yaml:"tags"`
+		Tags    any `yaml:"tags"`
+		Created any `yaml:"created"`
 	}
 	if yaml.Unmarshal([]byte(norm[4:4+end]), &fm) != nil {
-		return out
+		return out, ""
+	}
+	switch c := fm.Created.(type) {
+	case string:
+		created = c
+	case interface{ Format(string) string }:
+		created = c.Format("2006-01-02")
+	}
+	if len(created) > 10 {
+		created = created[:10]
 	}
 	var raw []string
 	switch x := fm.Tags.(type) {
@@ -209,7 +228,7 @@ func noteTags(text string) []string {
 			out = append(out, t)
 		}
 	}
-	return out
+	return out, created
 }
 
 // canvasFiles are the files placed on a canvas (JSON Canvas file cards).
