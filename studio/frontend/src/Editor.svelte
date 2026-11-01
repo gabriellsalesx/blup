@@ -9,7 +9,7 @@
   import { StateField, RangeSetBuilder, type EditorState } from "@codemirror/state";
   import { look, setPref } from "./theme.svelte";
   import { spellcheck, wordAt, suggest, addWord, complete, skipAt } from "./spell";
-  import { autocompletion, startCompletion, acceptCompletion, completionStatus, closeCompletion, moveCompletionSelection, type CompletionContext, type Completion } from "@codemirror/autocomplete";
+  import { autocompletion, startCompletion, acceptCompletion, completionStatus, closeCompletion, moveCompletionSelection, selectedCompletion, type CompletionContext, type Completion } from "@codemirror/autocomplete";
   import { Prec } from "@codemirror/state";
   import { undo, redo, undoDepth, redoDepth } from "@codemirror/commands";
   import { undoHandlers } from "./undo";
@@ -36,6 +36,7 @@
   import { wrap, prefix, block, link, insert, heading, align, alignAt, headingAt, ALIGN_LINE, callout } from "./mdcommands";
   import { CALLOUTS, calloutIcon } from "./callouts";
   import { mdExtras } from "./mdextras";
+  import { linkConceal, headingFolds } from "./livemd";
   import Highlighter from "@lucide/svelte/icons/highlighter";
   import AlignLeft from "@lucide/svelte/icons/text-align-start";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
@@ -97,10 +98,13 @@
   // [[ ).
   // onOpenNote: a link to another note was clicked (the workspace opens it,
   // and the preview follows).
-  let { text, note, notes = [], onChange, onSave, onError, onOpenNote }: {
+  // onNewBoard (a vault of notes): makes a canvas or a drawing and gives its
+  // path, for the / menu.
+  let { text, note, notes = [], onChange, onSave, onError, onOpenNote, onNewBoard }: {
     text: string; note: string; notes?: { name: string; path: string }[];
     onChange: (v: string) => void; onSave: () => void; onError?: (e: string) => void;
     onOpenNote?: (path: string) => void;
+    onNewBoard?: (kind: "canvas" | "drawing") => Promise<string>;
   } = $props();
   const te = t.editor;
   let host: HTMLDivElement;
@@ -186,6 +190,8 @@
   // way to the menu in one go: no blink between the two.
   async function onMenu(e: MouseEvent) {
     const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
+    // On a link: the cursor goes in it, which shows it as written, to edit.
+    if (pos != null && linkAt(view, pos) && view.state.selection.main.empty) view.dispatch({ selection: EditorSelection.cursor(pos) });
     const w = pos == null ? null : wordAt(view, pos);
     if (!w) { e.preventDefault(); closeCompletion(view); ctx = { x: e.clientX, y: e.clientY }; return; }
     e.preventDefault();
@@ -228,6 +234,76 @@
     return { from: m.from + 2, options, validFor: /^[^\]\n|#]*$/ };
   }
 
+  // @ mentions (at the start of a line or after a space, so e-mails don't
+  // open it): a note of the site (its link) or a date.
+  const startsWord = (ctx: CompletionContext, at: number) => at === ctx.state.doc.lineAt(at).from || /\s/.test(ctx.state.sliceDoc(at - 1, at));
+  const dateText = (d: Date) => d.toLocaleDateString(t.lang === "pt" ? "pt-BR" : "en-US", { day: "2-digit", month: "2-digit", year: "numeric" });
+  function dates(): Completion[] {
+    const day = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d; };
+    const long = (d: Date) => d.toLocaleDateString(t.lang === "pt" ? "pt-BR" : "en-US", { weekday: "long", day: "numeric", month: "long" });
+    const list: [string, Date][] = [[te.today, day(0)], [te.tomorrow, day(1)], [te.yesterday, day(-1)]];
+    // The next days of the week, by name ("sexta-feira").
+    for (let n = 2; n <= 7; n++) list.push([day(n).toLocaleDateString(t.lang === "pt" ? "pt-BR" : "en-US", { weekday: "long" }), day(n)]);
+    return list.map(([label, d], i) => ({ label, detail: long(d), type: "mention", section: { name: te.secDates, rank: 1 }, boost: -i, apply: dateText(d) }));
+  }
+  function mentions(ctx: CompletionContext) {
+    const m = ctx.matchBefore(/@[^\s@\[\]()]*/u);
+    if (!m || !startsWord(ctx, m.from) || skipAt(ctx.view!, m.from)) return null;
+    const noteOptions: Completion[] = notes.filter((n) => n.name !== "_index" && n.path !== note).map((n) => ({
+      label: n.name, detail: n.path.includes("/") ? n.path.slice(0, n.path.lastIndexOf("/")) : "", type: "mention",
+      section: { name: te.secNotes, rank: 0 },
+      apply: (v: EditorView, _c: Completion, from: number, to: number) => {
+        const md = mdLink(n.name, n);
+        v.dispatch({ changes: { from: from - 1, to, insert: md }, selection: EditorSelection.cursor(from - 1 + md.length) });
+      },
+    }));
+    const dateOptions = dates().map((o) => ({ ...o, apply: (v: EditorView, _c: Completion, from: number, to: number) => {
+      const s = o.apply as string;
+      v.dispatch({ changes: { from: from - 1, to, insert: s }, selection: EditorSelection.cursor(from - 1 + s.length) });
+    } }));
+    return { from: m.from + 1, options: [...noteOptions, ...dateOptions], validFor: /^[^\s@\[\]()]*$/u };
+  }
+
+  // / actions (at the start of a line or after a space): what the toolbar
+  // and the right-click menu do, by typing.
+  function actions(ctx: CompletionContext) {
+    const m = ctx.matchBefore(/\/[\p{L}\d]*/u);
+    if (!m || !startsWord(ctx, m.from) || skipAt(ctx.view!, m.from)) return null;
+    const act = (label: string, detail: string, run: () => void, rank = 0): Completion => ({
+      label, detail, type: "action", boost: -rank,
+      apply: (v: EditorView, _c: Completion, from: number, to: number) => {
+        v.dispatch({ changes: { from: from - 1, to, insert: "" } });
+        run();
+      },
+    });
+    let r = 0;
+    const list: Completion[] = [
+      ...[1, 2, 3].map((n) => act(te.headingN.replace("{n}", String(n)), "#".repeat(n), () => heading(view, n), r++)),
+      act(te.list, "-", () => prefix(view, "- ", LIST), r++),
+      act(te.olist, "1.", () => prefix(view, (i) => `${i + 1}. `, LIST), r++),
+      act(te.task, "[ ]", () => prefix(view, "- [ ] ", LIST), r++),
+      act(te.quote, ">", () => prefix(view, "> ", QUOTE), r++),
+      act(te.callout, "", () => callout(view, "tip", "", t.lang === "pt" ? "Dica" : "Tip", te.calloutText), r++),
+      act(te.table, "", newTable, r++),
+      act(te.codeBlock, "```", () => block(view, "```\n\n```", [4, 4]), r++),
+      act(te.hr, "---", () => block(view, "---"), r++),
+      act(te.linkNote, "", () => (picking = true), r++),
+      act(te.linkOut, "", () => link(view, te.linkText), r++),
+      act(te.image, "", pickImage, r++),
+      act(te.todayDate, "", () => insert(view, dateText(new Date())), r++),
+    ];
+    if (onNewBoard) {
+      const board = (kind: "canvas" | "drawing") => async () => {
+        try {
+          const path = await onNewBoard(kind);
+          if (path) insert(view, mdLink(path.split("/").pop()!.replace(/\.(draw|canvas)$/i, ""), { path }));
+        } catch (e) { onError?.(String(e).replace(/^(Runtime)?Error: /, "")); }
+      };
+      list.push(act(t.boards.newDrawing, "", board("drawing"), r++), act(t.boards.newCanvas, "", board("canvas"), r++));
+    }
+    return { from: m.from + 1, options: list, validFor: /^[\p{L}\d]*$/u };
+  }
+
   // While a word is typed (3 letters or more), like VS Code: corrections
   // when it is misspelled, then words of this note and of the dictionary
   // that start with it. Tab puts the chosen one in place.
@@ -235,6 +311,7 @@
     if (ctx.view && wordAt(ctx.view, ctx.pos)) return null; // fixSuggestions
     const m = ctx.matchBefore(/\p{L}[\p{L}\p{M}'’-]*/u);
     if (!m || m.to - m.from < 3 || !look.spellcheck || skipAt(ctx.view!, ctx.pos)) return null;
+    if (/[@/]/.test(ctx.state.sliceDoc(m.from - 1, m.from))) return null; // the @ and / menus
     if (!ctx.explicit && ctx.state.sliceDoc(m.to, m.to + 1).match(/\p{L}/u)) return null; // inside a word
     const word = m.text;
     const r = await complete(word);
@@ -385,6 +462,8 @@
         EditorView.lineWrapping,
         commentField,
         mdExtras,
+        linkConceal,
+        headingFolds({ fold: te.fold, unfold: te.unfold }),
         tables(t.editor.tableUi),
         EditorView.contentAttributes.of({ spellcheck: "false" }), // ours, below
         spellcheck,
@@ -394,9 +473,12 @@
           { key: "Mod-i", preventDefault: true, run: (v) => (wrap(v, "*", te.italicText), true) },
           { key: "Mod-k", preventDefault: true, run: (v) => (link(v, te.linkText), true) },
         ]),
-        autocompletion({ override: [noteLinks, fixSuggestions, wordSuggestions], icons: false, defaultKeymap: false, activateOnTypingDelay: 150 }),
+        autocompletion({ override: [noteLinks, mentions, actions, fixSuggestions, wordSuggestions], icons: false, defaultKeymap: false, activateOnTypingDelay: 150 }),
         // Tab takes the suggestion; Enter stays a new line.
         Prec.highest(keymap.of([
+          // Enter takes the choice of the @ and / menus (elsewhere, it is a
+          // new line, below).
+          { key: "Enter", run: (v) => (completionStatus(v.state) === "active" && ["mention", "action"].includes(selectedCompletion(v.state)?.type ?? "") ? acceptCompletion(v) : false) },
           // Enter at the end of an aligned paragraph: the new line goes after
           // its hidden {.text-center}, which stays with the paragraph.
           { key: "Enter", run: (v) => {
@@ -632,6 +714,16 @@
   .fix hr { border: 0; border-block-start: 1px solid var(--line); margin: .25rem .2rem; }
   .editor :global(.cm-obs-comment), .editor :global(.cm-obs-comment *) { color: var(--muted) !important; font-style: italic; }
   .editor :global(.cm-gutters) { display: none; }
+  /* Links as their text (livemd.ts), in the links' purple. */
+  .editor :global(.cm-link-text) { color: light-dark(#7048e8, #a78bfa); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  /* The chevron that folds a heading, in the margin at its left: on hover,
+     or always when folded. */
+  .editor :global(.cm-heading-line) { position: relative; }
+  .editor :global(.cm-fold-chevron) { position: absolute; inset-inline-start: -1.35rem; inset-block-start: 50%; translate: 0 -50%; display: grid; place-items: center; width: 1.1rem; height: 1.1rem; border-radius: .3rem; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .1s; }
+  .editor :global(.cm-heading-line:hover .cm-fold-chevron), .editor :global(.cm-fold-chevron.folded) { opacity: 1; }
+  .editor :global(.cm-fold-chevron:hover) { background: var(--soft); color: var(--text); }
+  .editor :global(.cm-fold-chevron.folded svg) { rotate: -90deg; }
+  .editor :global(.cm-foldPlaceholder) { margin-inline-start: .4rem; padding: 0 .35rem; border: 1px solid var(--line); border-radius: .3rem; background: var(--soft); color: var(--muted); cursor: pointer; }
   .editor :global(.cm-activeLine) { background: transparent; }
   .editor :global(.cm-line) { color: var(--text); }
   /* CodeMirror draws its own cursor and selection: visible in dark too. */

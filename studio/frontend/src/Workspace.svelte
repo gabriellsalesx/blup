@@ -11,6 +11,10 @@
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import PenTool from "@lucide/svelte/icons/pen-tool";
   import Props from "./Props.svelte";
+  import NoteProps from "./NoteProps.svelte";
+  import Backlinks from "./Backlinks.svelte";
+  import GraphView from "./GraphView.svelte";
+  import Waypoints from "@lucide/svelte/icons/waypoints";
   import Preview from "./Preview.svelte";
   import TerminalPanel from "./TerminalPanel.svelte";
   import HistoryModal from "./HistoryModal.svelte";
@@ -87,15 +91,19 @@
   // A new canvas or drawing, right away, no name to ask: "Drawing
   // 2026-11-01 14.05.33", in its own folder at the top (or in the folder
   // whose menu made it), then open.
-  async function quickBoard(kind: "canvas" | "drawing", where?: string) {
+  async function makeBoard(kind: "canvas" | "drawing", where?: string) {
     const b = t.boards;
     const p = (n: number) => String(n).padStart(2, "0"), d = new Date();
     const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`;
     const name = `${kind === "canvas" ? b.canvasName : b.drawingName} ${stamp}`;
     const dir = where ?? (kind === "canvas" ? b.canvasFolder : b.drawingFolder);
+    const rel = await (kind === "canvas" ? CreateCanvas : CreateDrawing)(dir, name);
+    tree = (await LoadTree()).children ?? [];
+    return rel;
+  }
+  async function quickBoard(kind: "canvas" | "drawing", where?: string) {
     try {
-      const rel = await (kind === "canvas" ? CreateCanvas : CreateDrawing)(dir, name);
-      tree = (await LoadTree()).children ?? [];
+      const rel = await makeBoard(kind, where);
       reveal(rel);
       screen = "write";
       await pick(rel);
@@ -276,6 +284,7 @@
   const notesVault = $derived(site.kind === "notes");
   const screens = $derived(notesVault ? [
     { key: "write", label: t.nav.write, Icon: PenLine },
+    { key: "graph", label: t.graph.title, Icon: Waypoints },
     { key: "attach", label: t.nav.attach, Icon: Paperclip },
     { key: "publish", label: t.sync, Icon: RefreshCw },
     { key: "trash", label: t.nav.trash, Icon: Trash2 },
@@ -386,11 +395,18 @@
     if (previewOn && !previewURL) startPreview();
   }
 
-  // A note's; a canvas or a drawing saves itself.
+  // A note's; a canvas or a drawing saves itself. In a vault, a note keeps
+  // when it was made and when it changed last (Properties).
+  const today = () => { const d = new Date(), p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
   async function save() {
     if (status === "saved" || !current || board) return;
     clearTimeout(timer);
     status = "saving";
+    if (notesVault) {
+      const d = today();
+      if (!noteProps.created) { noteProps.created = d; edits.created = d; }
+      if (pending !== written && !("updated" in edits) && String(noteProps.updated ?? "").slice(0, 10) !== d) { noteProps.updated = d; edits.updated = d; }
+    }
     try {
       const changed = edits;
       edits = {};
@@ -502,6 +518,12 @@
     {#each screens as { key, label, Icon } (key)}
       <button class="rib" class:active={screen === key} title={label} onclick={async () => { await save(); autostart = ""; screen = key; error = ""; }}><Icon size={19} strokeWidth={1.75} /></button>
     {/each}
+    {#if notesVault}
+      <!-- Making things: a canvas, a drawing (opened right away). -->
+      <span class="sep"></span>
+      <button class="rib" title={t.boards.newCanvas} onclick={() => quickBoard("canvas")}><LayoutDashboard size={19} strokeWidth={1.75} /></button>
+      <button class="rib" title={t.boards.newDrawing} onclick={() => quickBoard("drawing")}><PenTool size={19} strokeWidth={1.75} /></button>
+    {/if}
     <span class="grow"></span>
     <button class="rib" class:active={termOpen} title={t.term.button + (keysOf(look.keys, "terminal") ? ` (${keysOf(look.keys, "terminal")})` : "")} onclick={() => (termOpen = !termOpen)}><SquareTerminal size={19} strokeWidth={1.75} /></button>
   </nav>
@@ -516,10 +538,6 @@
       {#if sideTab === "files"}
         <div class="side-tools">
           <button title={t.side.newNote} onclick={() => startCreate("note")}><SquarePen size={17} strokeWidth={1.75} /></button>
-          {#if notesVault}
-            <button title={t.boards.newCanvas} onclick={() => quickBoard("canvas")}><LayoutDashboard size={17} strokeWidth={1.75} /></button>
-            <button title={t.boards.newDrawing} onclick={() => quickBoard("drawing")}><PenTool size={17} strokeWidth={1.75} /></button>
-          {/if}
           <button title={t.side.newFolder} onclick={() => startCreate("folder")}><FolderPlus size={17} strokeWidth={1.75} /></button>
           <!-- One button: collapse when a folder is open, else expand. -->
           {#if anyOpen}
@@ -599,14 +617,18 @@
             <DrawingView path={current} full={fullOn} onFull={() => (full = !full)} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />
           {:else}
           <div class="note">
+            {#if notesVault}<NoteProps props={noteProps} onEdit={(k, v) => { noteProps[k] = v; editProp(k, v); }} />{/if}
             {#if !notesVault}<Props props={noteProps} {kind} note={current} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} />{/if}
-            <div class="body"><Editor {text} note={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onChange={changed} onSave={save} onError={(e) => (error = e)} onOpenNote={openNote} /></div>
+            <div class="body"><Editor {text} note={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onChange={changed} onSave={save} onError={(e) => (error = e)} onOpenNote={openNote} onNewBoard={notesVault ? (kind) => makeBoard(kind) : undefined} /></div>
+            {#if notesVault}<Backlinks note={current} onOpenNote={openNote} />{/if}
           </div>
           {/if}
         {/key}
       {:else}
         <p class="hint muted">{t.pickNote}</p>
       {/if}
+    {:else if screen === "graph"}
+      <GraphView {current} onOpenNote={openNote} />
     {:else if settings}
       {#key screen}
         {#if screen === "look"}<LookPanel {settings} {reload} />

@@ -521,6 +521,14 @@ export function NoteAt(page: string): $CancellablePromise<string> {
 }
 
 /**
+ * NoteGraph is the map of the notes: every note, canvas and drawing, and
+ * the links between them (the map of notes, and "mentioned in").
+ */
+export function NoteGraph(): $CancellablePromise<app$0.Graph> {
+    return $Call.ByID(3428709406);
+}
+
+/**
  * NoteHistory lists the earlier contents of a note, newest first.
  */
 export function NoteHistory(path: string): $CancellablePromise<blupcloud$0.NoteVersion[] | null> {
@@ -1014,6 +1022,14 @@ export function SyncRemote(): $CancellablePromise<string> {
  */
 export function SyncStatus(): $CancellablePromise<app$0.SyncInfo> {
     return $Call.ByID(2157542883);
+}
+
+/**
+ * Tags are the tags used in the notes' properties (tags: [a, b] or
+ * tags: a), the most used first, for the tags field's suggestions.
+ */
+export function Tags(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(1949770163);
 }
 
 /**

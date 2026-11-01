@@ -232,6 +232,40 @@ export interface FeedbackSetup {
 }
 
 /**
+ * Graph is the map of the notes.
+ */
+export interface Graph {
+    "nodes": GraphNode[] | null;
+    "edges": GraphEdge[] | null;
+}
+
+/**
+ * GraphEdge is a link from one note to another.
+ */
+export interface GraphEdge {
+    "from": string;
+    "to": string;
+}
+
+/**
+ * GraphNode is a note (or a canvas, or a drawing).
+ */
+export interface GraphNode {
+    /**
+     * relative to the notes folder, with "/"
+     */
+    "path": string;
+    "name": string;
+    "folder": string;
+
+    /**
+     * note, canvas, drawing
+     */
+    "kind": string;
+    "tags": string[] | null;
+}
+
+/**
  * LiveState is reported to the window.
  */
 export interface LiveState {

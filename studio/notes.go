@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
@@ -247,6 +248,12 @@ func (s *Studio) createFile(folder, name, ext, text string) (string, error) {
 		}
 		if ext == ".md" {
 			text = "---\ntitle: " + strconv.Quote(base) + "\n---\n\n"
+			// A vault's note has no page title: it starts with its dates
+			// (Properties), the name being the file's.
+			if site, err := s.current(); err == nil && site.IsNotes() {
+				today := time.Now().Format("2006-01-02")
+				text = "---\ncreated: " + today + "\nupdated: " + today + "\n---\n\n"
+			}
 		}
 		return rel, os.WriteFile(p, []byte(text), 0o644)
 	}
