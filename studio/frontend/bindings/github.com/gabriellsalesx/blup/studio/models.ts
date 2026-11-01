@@ -256,6 +256,11 @@ export interface Prefs {
      * the invitation to Blup Cloud, after the first site, was answered
      */
     "cloudTip": boolean;
+
+    /**
+     * a daily copy of the open site's notes goes here ("" = off)
+     */
+    "backupDir": string;
 }
 
 /**

@@ -102,6 +102,14 @@ export function AutostartEnabled(): $CancellablePromise<boolean> {
 }
 
 /**
+ * BackupNow copies the open site's notes now (once a day: today's copy is
+ * kept) and returns the zip's path.
+ */
+export function BackupNow(): $CancellablePromise<string> {
+    return $Call.ByID(2081806244);
+}
+
+/**
  * BlupAIUsage is how much of the plan's AI allowance was used this month.
  */
 export function BlupAIUsage(): $CancellablePromise<app$0.AIQuota> {
@@ -685,6 +693,14 @@ export function PasteImage(note: string, name: string, data: string): $Cancellab
  */
 export function PickAuthorPhoto(name: string): $CancellablePromise<string> {
     return $Call.ByID(1003733496, name);
+}
+
+/**
+ * PickBackupDir asks for the backup folder ("" when the person cancels);
+ * the window saves it in the preferences.
+ */
+export function PickBackupDir(): $CancellablePromise<string> {
+    return $Call.ByID(3202855944);
 }
 
 /**

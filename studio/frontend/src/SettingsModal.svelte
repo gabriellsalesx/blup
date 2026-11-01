@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, BlupAccount as Account, AIQuota } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Settings from "@lucide/svelte/icons/settings";
@@ -140,6 +140,17 @@
       newPw = "";
       toast(v ? t.pw.generalSaved : t.pw.generalRemoved);
     } catch (e) { toastError(e); }
+  }
+  // The daily copy of the notes: a folder, or off.
+  let backingUp = $state(false);
+  async function pickBackup() {
+    const dir = await PickBackupDir().catch(() => "");
+    if (dir) setPref("backupDir", dir);
+  }
+  async function backupNow() {
+    backingUp = true;
+    try { toast(s.backupDone.replace("{path}", await BackupNow())); } catch (e) { toastError(e); }
+    backingUp = false;
   }
   async function changeLang(l: string) {
     await SetLanguage(l);
@@ -341,6 +352,15 @@
       <div class="item"><Switch label={k.autostart} help={k.autostartHelp} checked={autostart} onchange={setAutostart} /></div>
       <div class="item"><Switch label={k.tray} help={k.trayHelp} checked={!!look.tray} onchange={setTray} /></div>
       {#if deskError}<p class="bad">{deskError}</p>{/if}
+      <div class="item">
+        <div class="text"><b>{s.backup}</b><small>{look.backupDir || s.backupOff}</small><small>{s.backupHelp}</small></div>
+        <span class="keyrow">
+          {#if look.backupDir}
+            <button class="btn ghost" disabled={backingUp} onclick={backupNow}>{s.backupNow}</button>
+            <button class="btn ghost" onclick={() => setPref("backupDir", "")}>{s.backupStop}</button>
+          {:else}<button class="btn ghost" onclick={pickBackup}>{s.backupPick}</button>{/if}
+        </span>
+      </div>
       <div class="item">
         <div class="text"><b>{s.lang}</b><small>{s.langHelp}</small></div>
         <select value={lang} onchange={(e) => changeLang(e.currentTarget.value)}>

@@ -113,6 +113,7 @@ type Prefs struct {
 	Voices       map[string]string `json:"voices"`       // the narration's voice for each site language ("pt", "en", "es"); missing = the default
 	Welcomed     bool              `json:"welcomed"`     // the welcome screen (start, or bring the sites of an account) was seen
 	CloudTip     bool              `json:"cloudTip"`     // the invitation to Blup Cloud, after the first site, was answered
+	BackupDir    string            `json:"backupDir"`    // a daily copy of the open site's notes goes here ("" = off)
 }
 
 func prefsFile() (string, error) {

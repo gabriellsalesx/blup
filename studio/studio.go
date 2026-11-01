@@ -96,6 +96,7 @@ func (s *Studio) Open(dir string) (Node, error) {
 	watchNotes(site.ContentDir())
 	s.startLive(site)
 	s.remember(dir)
+	s.backupLater(site)
 	return s.Tree()
 }
 
