@@ -4,6 +4,7 @@
   import type { SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Loader from "@lucide/svelte/icons/loader-circle";
   import CloudAccount from "./CloudAccount.svelte";
+  import StepScreen from "./ui/StepScreen.svelte";
   import { t } from "./i18n";
   import { setPref } from "./theme.svelte";
 
@@ -47,70 +48,53 @@
   }
 </script>
 
-<div class="wel">
-  <div class="center">
-    {#if step === "start"}
-      <img class="scene" src="/scenes/blog-pessoal.svg" alt="" />
-      <h1>{h.title}</h1>
-      <p class="lead">{h.lead}</p>
-      <div class="choices">
-        <button class="btn big" onclick={start}>{h.start}</button>
-        <button class="btn ghost big" onclick={() => (step = "account")}>{h.account}</button>
-      </div>
-    {:else if step === "account"}
-      <img class="scene" src="/scenes/boas-vindas-encontrados.svg" alt="" />
-      <h1>{h.accountTitle}</h1>
-      <p class="lead">{h.accountLead} {t.cloud.signInHelp}</p>
-      <div class="box" class:plain={!account?.signedIn}><CloudAccount bind:account bare /></div>
-      <div class="nav">
-        <button class="btn ghost" onclick={() => (step = "start")}>{t.wel.back}</button>
-        <button class="link" onclick={start}>{h.instead}</button>
-      </div>
-    {:else}
-      <img class="scene" src="/scenes/boas-vindas-encontrados.svg" alt="" />
-      {#if sites === null}
-        <p class="muted row"><span class="spin"><Loader size={16} /></span>{h.looking}</p>
-      {:else if sites.length}
-        <h1>{h.bringTitle}</h1>
-        <p class="lead">{h.bringLead}</p>
-        <ul class="found">
-          {#each sites as s (s.vault)}
-            <li>
-              <img src="/blups/turma-3.svg" alt="" />
-              <b>{s.title}</b>
-              {#if s.dir}<small class="muted">{h.here}</small>
-              {:else}<button class="btn" disabled={!!bringing} onclick={() => bring(s)}>{#if bringing === s.vault}<span class="spin"><Loader size={14} /></span>{h.bringing}{:else}{h.bring}{/if}</button>{/if}
-            </li>
-          {/each}
-        </ul>
-      {:else}
-        <h1>{h.noneTitle}</h1>
-        <p class="lead">{h.noneLead}</p>
-      {/if}
-      <div class="nav">
-        <button class="btn ghost" onclick={() => (step = "account")}>{t.wel.back}</button>
-        <button class="btn" onclick={start}>{h.fresh}</button>
-      </div>
+{#if step === "start"}
+  <StepScreen image="/scenes/blog-pessoal.svg" title={h.title} lead={h.lead}>
+    <div class="start-buttons">
+      <button class="btn big" onclick={start}>{h.start}</button>
+      <button class="btn ghost big" onclick={() => (step = "account")}>{h.account}</button>
+    </div>
+    <p class="note">{h.optional}</p>
+  </StepScreen>
+{:else if step === "account"}
+  <StepScreen image="/scenes/boas-vindas-encontrados.svg" title={h.accountTitle} lead="{h.accountLead} {t.cloud.signInHelp}">
+    <div class="box" class:card={account?.signedIn}><CloudAccount bind:account bare /></div>
+    {#if error}<p class="bad">{error}</p>{/if}
+    <p class="note">{h.optional}</p>
+    {#snippet actions()}
+      <button class="btn ghost" onclick={() => (step = "start")}>{t.wel.back}</button>
+      <button class="link" onclick={start}>{h.instead}</button>
+    {/snippet}
+  </StepScreen>
+{:else}
+  <StepScreen image="/scenes/boas-vindas-encontrados.svg" title={sites === null ? h.looking : sites.length ? h.bringTitle : h.noneTitle} lead={sites === null ? "" : sites.length ? h.bringLead : h.noneLead}>
+    {#if sites === null}
+      <span class="spin"><Loader size={20} /></span>
+    {:else if sites.length}
+      <ul class="found">
+        {#each sites as s (s.vault)}
+          <li>
+            <img src="/blups/turma-3.svg" alt="" />
+            <b>{s.title}</b>
+            {#if s.dir}<small class="muted">{h.here}</small>
+            {:else}<button class="btn" disabled={!!bringing} onclick={() => bring(s)}>{#if bringing === s.vault}<span class="spin"><Loader size={14} /></span>{h.bringing}{:else}{h.bring}{/if}</button>{/if}
+          </li>
+        {/each}
+      </ul>
     {/if}
     {#if error}<p class="bad">{error}</p>{/if}
-    {#if step !== "bring"}<p class="note">{h.optional}</p>{/if}
-  </div>
-</div>
+    {#snippet actions()}
+      <button class="btn ghost" onclick={() => (step = "account")}>{t.wel.back}</button>
+      <button class="btn" onclick={start}>{h.fresh}</button>
+    {/snippet}
+  </StepScreen>
+{/if}
 
 <style>
-  .wel { position: relative; height: 100%; overflow: auto; display: grid; place-items: center; padding: 3rem 1.5rem; }
-  .center { width: min(100%, 34rem); display: grid; justify-items: center; gap: 1rem; text-align: center; }
-  .scene { width: min(100%, 24rem); aspect-ratio: 320 / 200; }
-  h1 { font-size: 1.85rem; font-weight: 800; letter-spacing: -.03em; }
-  .lead { color: var(--muted); font-size: 1.02rem; margin-block-start: -.4rem; }
-  .choices { display: grid; gap: .6rem; width: min(100%, 22rem); margin-block-start: .5rem; }
-  .btn.big { padding: .8rem 1.6rem; font-size: 1rem; justify-content: center; }
+  .start-buttons { display: grid; gap: .6rem; width: min(100%, 22rem); margin-block-start: .5rem; }
   .note { color: var(--muted); font-size: .85rem; }
-  .box { width: 100%; display: grid; gap: .75rem; padding: 1.1rem 1.2rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--panel); text-align: start; }
-  .box.plain { padding: 0; border: none; background: none; width: min(100%, 22rem); }
-  .nav { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-block-start: .5rem; }
-  .link { color: var(--blue); font-weight: 600; font-size: .92rem; }
-  .row { display: inline-flex; align-items: center; gap: .4rem; }
+  .box { width: min(100%, 22rem); }
+  .box.card { width: 100%; text-align: start; }
   .spin { display: inline-grid; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .found { list-style: none; padding: 0; display: grid; gap: .4rem; width: 100%; }

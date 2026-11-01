@@ -45,6 +45,18 @@ Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsal
 
 `running` em `publish.go` usa mutex e devolve `busy` se já houver publicação/sync em execução. Durante a operação encaminha `ui.Report` a eventos da janela e atribui `nil` ao hook ao terminar, sem restaurar um valor anterior. Esse mutex não é um agendador geral para todos os serviços.
 
+## Componentes de interface
+
+Telas novas usam os componentes de `frontend/src/ui/` e as classes globais de `app.css`, para todo campo, opção e botão terem a mesma aparência:
+
+| Componente | Uso |
+| --- | --- |
+| `TextField` | Campo de texto com rótulo em cima e ajuda ou erro embaixo; `large` para o nome de um site ou cofre novo |
+| `Choice` | Uma opção entre poucas, em cartão com título, linha de ajuda e o anel azul quando escolhida |
+| `StepScreen` | Tela inteira centralizada das boas-vindas e da criação: imagem, título, linha de apoio, conteúdo e os botões embaixo |
+
+Classes globais: `.btn` (`.ghost`, `.big`), `.card`, `.field`, `.choices`, `.link`, `.actions`, `.row`, `.muted`, `.bad`, `.ok`, `.badge`.
+
 ## Telas de entrada
 
 `App.svelte` escolhe boas-vindas, home, criação ou workspace. Se `welcomed` ainda é falso e não há sites conhecidos, exibe `Welcome.svelte`. Se já houver sites, marca boas-vindas como vistas. Pode reabrir `lastSite` desde que continue entre os sites válidos; o workspace tenta reabrir a última nota.

@@ -6,6 +6,7 @@
   import Copy from "@lucide/svelte/icons/copy";
   import Check from "@lucide/svelte/icons/check";
   import { t } from "./i18n";
+  import TextField from "./ui/TextField.svelte";
 
   // Blup Cloud on this computer, step by step: signing in through the
   // browser, then the notes password (created here, or typed when it was
@@ -99,16 +100,16 @@
     <h3><Lock size={16} /> {c.newTitle}</h3>
     <p>{c.newHelp}</p>
     <form class="grid" onsubmit={create}>
-      <input type="password" bind:value={pw} placeholder={c.password} autocomplete="new-password" />
-      <input type="password" bind:value={pw2} placeholder={c.confirm} autocomplete="new-password" />
+      <TextField type="password" label={c.password} bind:value={pw} autocomplete="new-password" help={c.short} />
+      <TextField type="password" label={c.confirm} bind:value={pw2} autocomplete="new-password" />
       <div class="actions"><button class="btn" disabled={busy || !pw || !pw2}>{c.create}</button></div>
     </form>
   {:else if account.notes === "locked"}
     <h3><Lock size={16} /> {c.lockedTitle}</h3>
     <p>{c.lockedHelp}</p>
-    <form class="row" onsubmit={unlock}>
-      <input type="password" bind:value={secret} placeholder={c.secret} autocomplete="current-password" />
-      <button class="btn" disabled={busy || !secret.trim()}>{c.unlock}</button>
+    <form class="grid" onsubmit={unlock}>
+      <TextField type="password" label={c.secret} bind:value={secret} autocomplete="current-password" />
+      <div class="actions"><button class="btn" disabled={busy || !secret.trim()}>{c.unlock}</button></div>
     </form>
   {:else}
     <p class="muted">
@@ -127,7 +128,7 @@
   .code { font-family: ui-monospace, monospace; font-size: 1.8rem; font-weight: 700; letter-spacing: .2em; }
   .who { align-items: center; font-size: .9rem; }
   .spacer { flex: 1; }
-  .grid { display: grid; gap: .5rem; max-width: 24rem; }
+  .grid { display: grid; gap: 1rem; max-width: 26rem; }
   .recovery { font-size: .95rem; user-select: all; padding: .5rem .75rem; border-radius: .5rem; background: var(--soft); word-break: break-all; }
   .check { display: flex; align-items: center; gap: .5rem; font-size: .9rem; }
   .link { color: var(--blue); text-decoration: underline; font-size: inherit; }

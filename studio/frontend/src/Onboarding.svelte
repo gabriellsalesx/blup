@@ -1,4 +1,6 @@
 <script lang="ts">
+  import TextField from "./ui/TextField.svelte";
+  import Choice from "./ui/Choice.svelte";
   import { CloudSites, BringSite, Connections, RecentSites, RestoreSite, OpenExisting, HomeDir, Vaults, VaultFolders, SuggestPlaces, CheckSiteDir, NeedsLinkAdjust, PickFolder, CreateSite } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteInfo, Vault, RecentSite } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { CloudSite } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
@@ -272,13 +274,13 @@
         <h1>{o.nameQ}</h1>
         <p class="lead">{o.nameLead}</p>
         <div class="card">
-          <label class="field"><span>{o.name}</span><input class="title" type="text" bind:value={title} placeholder={o.namePh} /></label>
-          <label class="field"><span>{o.description}</span><input type="text" bind:value={description} placeholder={o.descriptionPh} /></label>
-          <label class="field"><span>{o.author}</span><input type="text" bind:value={author} /><small>{o.authorHelp}</small></label>
+          <TextField large label={o.name} bind:value={title} placeholder={o.namePh} />
+          <TextField label={o.description} bind:value={description} placeholder={o.descriptionPh} />
+          <TextField label={o.author} bind:value={author} help={o.authorHelp} />
           <div class="field"><span>{o.siteLang}</span>
             <div class="langs">
-              <button class="choice" class:on={lang === "pt"} onclick={() => (lang = "pt")}>Português</button>
-              <button class="choice" class:on={lang === "en"} onclick={() => (lang = "en")}>English</button>
+              <Choice title="Português" on={lang === "pt"} onclick={() => (lang = "pt")} />
+              <Choice title="English" on={lang === "en"} onclick={() => (lang = "en")} />
             </div>
           </div>
         </div>
@@ -286,9 +288,9 @@
         <h1>{o.notesQ}</h1>
         <p class="lead">{o.notesLead}</p>
         <div class="wheres">
-          <button class="choice where" class:on={where === "new"} onclick={() => (where = "new")}><b>{o.whereNew}</b><span>{o.whereNewHelp}</span></button>
-          <button class="choice where" class:on={where === "vault"} onclick={() => (where = "vault")}><b>{o.whereVault}</b><span>{o.whereVaultHelp}</span></button>
-          <button class="choice where" class:on={where === "pick"} onclick={() => (where = "pick")}><b>{o.wherePick}</b><span>{o.wherePickHelp}</span></button>
+          <Choice title={o.whereNew} help={o.whereNewHelp} on={where === "new"} onclick={() => (where = "new")} />
+          <Choice title={o.whereVault} help={o.whereVaultHelp} on={where === "vault"} onclick={() => (where = "vault")} />
+          <Choice title={o.wherePick} help={o.wherePickHelp} on={where === "pick"} onclick={() => (where = "pick")} />
         </div>
         <div class="card">
           {#if where === "new"}
@@ -391,12 +393,8 @@
   .kind { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--blue); }
   .picked { position: absolute; inset-block-start: .75rem; inset-inline-end: .75rem; display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--blue); color: #fff; }
   .list { gap: 1.1rem; }
-  input.title { font-size: 1.25rem; font-weight: 600; padding: .7rem .8rem; }
   .langs, .wheres { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
   .wheres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .choice { display: grid; gap: .3rem; text-align: start; padding: .85rem 1rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); font-weight: 600; }
-  .choice span { font-size: .8rem; font-weight: 400; color: var(--muted); }
-  .choice.on { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
   code { flex: 1; min-width: 0; padding: .5rem .7rem; border-radius: .45rem; background: var(--soft); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .review { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 1.5rem; }
   .mascot-r { width: 5rem; }

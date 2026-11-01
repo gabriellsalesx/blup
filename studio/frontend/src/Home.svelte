@@ -7,6 +7,7 @@
   import ThemePicker from "./ThemePicker.svelte";
   import DeleteSite from "./DeleteSite.svelte";
   import { toast, toastError } from "./toast.svelte";
+  import BlupLogo from "./ui/BlupLogo.svelte";
   import Trash from "@lucide/svelte/icons/trash-2";
 
   // The list of sites, organized by the user: drag a site onto another to
@@ -251,8 +252,7 @@
 
 <main class="home">
   <header>
-    <img src="/blup.svg" alt="" width="40" height="40" />
-    <h1>Blup Studio</h1>
+    <h1><BlupLogo class="wordmark" /><span class="sr">Blup Studio</span></h1>
     <span class="spacer"></span>
     <ThemePicker />
   </header>
@@ -331,7 +331,9 @@
 <style>
   .home { height: 100%; overflow: auto; padding: 3rem clamp(1.5rem, 6vw, 5rem); }
   header { display: flex; align-items: center; gap: .75rem; margin-block-end: 3rem; }
-  h1 { font-size: 1.25rem; font-weight: 700; }
+  h1 { display: flex; }
+  h1 :global(.wordmark) { height: 2.4rem; width: auto; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   h2 { font-size: 1.75rem; font-weight: 700; letter-spacing: -.02em; }
   section > p { margin-block: .25rem 1.5rem; }
   .vaults { margin-block-start: 3rem; }

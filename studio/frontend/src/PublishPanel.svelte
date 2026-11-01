@@ -14,6 +14,7 @@
   import { t } from "./i18n";
   import { toast } from "./toast.svelte";
   import CloudAccount from "./CloudAccount.svelte";
+  import Choice from "./ui/Choice.svelte";
 
   // notes: a vault of notes has no site, so only syncing shows.
   let { autostart = "", notes = false }: { autostart?: string; notes?: boolean } = $props();
@@ -163,12 +164,8 @@
     <section class="card">
       <h2>{p.where}</h2>
       <div class="choices">
-        <button class="choice" class:on={target.provider === "cloudflare"} onclick={() => pick("cloudflare")}>
-          <b>Cloudflare Pages</b><span>{p.cfHelp}</span>
-        </button>
-        <button class="choice" class:on={target.provider === "github"} onclick={() => pick("github")}>
-          <b>GitHub Pages</b><span>{p.ghHelp}</span>
-        </button>
+        <Choice title="Cloudflare Pages" help={p.cfHelp} on={target.provider === "cloudflare"} onclick={() => pick("cloudflare")} />
+        <Choice title="GitHub Pages" help={p.ghHelp} on={target.provider === "github"} onclick={() => pick("github")} />
       </div>
     </section>
 
@@ -285,8 +282,8 @@
       <h2>{p.syncTitle}</h2>
       <p class="q">{cl.where}</p>
       <div class="choices">
-        <button class="choice" class:on={remote === "blup"} onclick={() => pickRemote("blup")}><b>Blup Cloud · {cl.recommended}</b><span>{cl.blupHelp}</span></button>
-        <button class="choice" class:on={remote === "github"} onclick={() => pickRemote("github")}><b>GitHub</b><span>{cl.ghHelp}</span></button>
+        <Choice title="Blup Cloud · {cl.recommended}" help={cl.blupHelp} on={remote === "blup"} onclick={() => pickRemote("blup")} />
+        <Choice title="GitHub" help={cl.ghHelp} on={remote === "github"} onclick={() => pickRemote("github")} />
       </div>
       {#if remote === "blup"}
         <CloudAccount bind:account={cloud} />
@@ -325,10 +322,6 @@
 
 <style>
   .box { padding: .75rem 1rem; border-radius: .5rem; background: var(--soft); }
-  .choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
-  .choice { display: grid; gap: .3rem; text-align: start; padding: 1rem; border: 1px solid var(--line); border-radius: .6rem; }
-  .choice span { font-size: .8rem; color: var(--muted); }
-  .choice.on { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
   .status { align-items: center; }
   .spacer { flex: 1; }
   .steps { display: grid; gap: .5rem; padding-inline-start: 1.25rem; font-size: .9rem; }
