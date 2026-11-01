@@ -7,7 +7,7 @@
     {{- if .link }}
     <h2><a href="{{ $p.RelPermalink }}">{{ partial "title.html" $p }}</a></h2>
     {{- else }}
-    <h1>{{ partial "title.html" $p }}</h1>
+    <h1>{{ partial "title.html" $p }}</h1>{{ partial "site/ai-badge.html" $p }}
     {{- end }}
     {{- with $p.GetTerms "tags" }}
     <ul class="chips">

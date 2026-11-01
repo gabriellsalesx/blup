@@ -57,14 +57,20 @@ func (s *Studio) InstallLocalTranslate() error {
 func (s *Studio) RemoveLocalTranslate() error { return localtr.Remove(localTranslateDir()) }
 
 // SaveTranslation saves a translation made in the window and returns its
-// path; follow brings the preview up to date (false while a whole site is
-// being translated: FollowTranslations at the end).
-func (s *Studio) SaveTranslation(rel, lang, title, description, body string, follow bool) (string, error) {
+// path; props are the translated texts of the note's other properties (as
+// TranslationTexts listed them). follow brings the preview up to date
+// (false while a whole site is being translated: FollowTranslations at the
+// end).
+func (s *Studio) SaveTranslation(rel, lang, title, description, body string, props map[string][]string, follow bool) (string, error) {
 	site, err := s.current()
 	if err != nil {
 		return "", err
 	}
-	out, err := app.WriteTranslation(site, rel, lang, title, description, body)
+	tr := map[string]any{}
+	for k, v := range props {
+		tr[k] = v
+	}
+	out, err := app.WriteTranslation(site, rel, lang, title, description, body, tr)
 	if err == nil && follow {
 		s.previewFollows(site)
 	}
@@ -78,4 +84,28 @@ func (s *Studio) TranslationTodo(lang string) ([]string, error) {
 		return nil, err
 	}
 	return app.TranslationTodo(site, lang)
+}
+
+// TranslationTexts are the texts of a note's properties a translation
+// translates too (the menu's labels, the site's description...).
+func (s *Studio) TranslationTexts(rel string) (map[string][]string, error) {
+	site, err := s.current()
+	if err != nil {
+		return nil, err
+	}
+	n, err := app.ReadSiteNote(site, rel)
+	if err != nil {
+		return nil, err
+	}
+	return app.PropTexts(n), nil
+}
+
+// MarkReviewed marks a translation reviewed (the site stops showing it was
+// made by AI), or not.
+func (s *Studio) MarkReviewed(rel string, reviewed bool) error {
+	site, err := s.current()
+	if err != nil {
+		return err
+	}
+	return app.MarkReviewed(site, rel, reviewed)
 }

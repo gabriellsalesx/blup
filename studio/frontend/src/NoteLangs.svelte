@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { NoteLangs, TranslateNote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { NoteLangs, TranslateNote, MarkReviewed } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { NoteLang } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import { Events } from "@wailsio/runtime";
   import { toast } from "./toast.svelte";
@@ -45,7 +45,11 @@
     busy = "";
     part = null;
   }
-  const label = (l: NoteLang) => (l.original ? tr.original : !l.exists ? tr.none : l.stale ? tr.stale : tr.ready);
+  const label = (l: NoteLang) => (l.original ? tr.original : !l.exists ? tr.none : l.stale ? tr.stale : l.ai ? tr.aiMade : tr.reviewed);
+  // Reviewed by the author: the site stops saying the AI made it.
+  async function review(l: NoteLang) {
+    try { await MarkReviewed(l.path, l.ai); await load(note); } catch (e) { toast(String(e), { kind: "error" }); }
+  }
 </script>
 
 {#if langs.length}
@@ -59,6 +63,7 @@
           </div>
           <span class="lang-acts">
             {#if l.exists && l.path !== note}<button class="btn ghost" onclick={() => onOpen(l.path)}>{tr.open}</button>{/if}
+            {#if l.exists && !l.original && !l.stale}<button class="btn ghost" disabled={!!busy} onclick={() => review(l)}>{l.ai ? tr.markReviewed : tr.unmarkReviewed}</button>{/if}
             {#if !l.original}
               <button class="btn ghost" disabled={!!busy} onclick={() => translate(l.lang)}>{l.exists ? tr.again : tr.translate}</button>
             {/if}

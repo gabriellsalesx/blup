@@ -196,7 +196,8 @@ func TestBuildTranslated(t *testing.T) {
 	write("Receitas Doces/en/Bolo de Cenoura.md", "---\ntitle: Carrot Cake\ntranslationKey: bolo\n---\nA cake. See [the guide](../01%20-%20Guia/01%20-%20Instalar.md).\n")
 	// A translation under its own name, linked by translationKey.
 	write("Receitas Doces/Bolo de Cenoura.md", "---\ntranslationKey: bolo\n---\nSem título no frontmatter nem H1.\n\n## Modo de preparo\nMisture tudo.\n")
-	write("Receitas Doces/es/Pastel de zanahoria.md", "---\ntitle: Pastel de zanahoria\ntranslationKey: bolo\n---\nUn pastel.\n")
+	write("Receitas Doces/es/Pastel de zanahoria.md", "---\ntitle: Pastel de zanahoria\ntranslationKey: bolo\nai_translated: true\n---\nUn pastel.\n")
+	write("Receitas Doces/es/_index.md", "---\ntitle: Recetas dulces\n---\n")
 	write("01 - Guia/es/Instalar.md", "---\ntitle: Instalar\n---\nVer [el pastel](../Receitas%20Doces/Bolo%20de%20Cenoura.md).\n")
 	write("en/Início.md", "---\ntitle: Welcome to the kitchen\n---\nHello.\n")
 
@@ -234,7 +235,17 @@ func TestBuildTranslated(t *testing.T) {
 	if !strings.Contains(en, `href="/01---guia/01---instalar/"`) && !strings.Contains(en, "href=/01---guia/01---instalar/") {
 		t.Errorf("english page: link to an untranslated note should reach the original")
 	}
-	read("es/receitas-doces/pastel-de-zanahoria/index.html")
+	// Made by AI: the page says so and links to the original.
+	if p := read("es/receitas-doces/pastel-de-zanahoria/index.html"); !strings.Contains(p, "Traducido con IA") || !strings.Contains(p, "/receitas-doces/bolo-de-cenoura/") || !strings.Contains(p, "Português") {
+		t.Error("spanish page: the AI translation mark is missing")
+	}
+	if p := read("en/receitas-doces/bolo-de-cenoura/index.html"); strings.Contains(p, "Translated with AI") {
+		t.Error("a reviewed translation shows no AI mark")
+	}
+	// The section in Spanish has its translated name.
+	if p := read("es/receitas-doces/index.html"); !strings.Contains(p, "Recetas dulces") {
+		t.Error("spanish section: translated name missing")
+	}
 	// A link to the original reaches its translation in the same language.
 	if g := read("es/01---guia/instalar/index.html"); !strings.Contains(g, "/es/receitas-doces/pastel-de-zanahoria/") {
 		t.Error("spanish page: a link should reach the spanish translation")

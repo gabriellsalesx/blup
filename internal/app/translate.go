@@ -36,7 +36,16 @@ import (
 const (
 	hashKey = "translation_hash"
 	linkKey = "translationKey"
+	// aiKey marks a translation made by AI (the site shows it); the author
+	// takes it off by marking the translation reviewed.
+	aiKey = "ai_translated"
 )
+
+// TextProps are the properties a translation translates besides the title
+// and description: what the site shows (the site's description and button
+// on the home note, a help article's category, the tags) and the menu's
+// labels ("Name | target": the name).
+var TextProps = []string{"site_description", "button_text", "category", "tags", "menu"}
 
 // NoteLang is a language a note can be read in: its own (Original), or a
 // translation (Path, there or not yet, Stale when the original changed
@@ -47,6 +56,7 @@ type NoteLang struct {
 	Original bool   `json:"original"`
 	Exists   bool   `json:"exists"`
 	Stale    bool   `json:"stale"`
+	AI       bool   `json:"ai"` // made by AI, not marked reviewed
 }
 
 // NoteOrigin is the original of a note and the note's language: a note in
@@ -155,6 +165,7 @@ func NoteLangs(site *config.Site, rel string) ([]NoteLang, error) {
 			if t, err := obsidian.ReadNote(p); err == nil {
 				nl.Exists = true
 				nl.Stale = t.String(hashKey) != "" && t.String(hashKey) != sum
+				nl.AI = t.Props[aiKey] == true
 			}
 		}
 		out = append(out, nl)
@@ -229,7 +240,93 @@ func TranslateNote(ctx context.Context, site *config.Site, rel, lang string, pro
 	if err != nil {
 		return "", errors.New(describe(err))
 	}
-	return WriteTranslation(site, rel, lang, title, desc, body)
+	props := map[string]any{}
+	for k, v := range PropTexts(n) {
+		out := make([]string, len(v))
+		for i, text := range v {
+			if out[i], err = c.Text(ctx, text, site.Lang, lang, nil); err != nil {
+				return "", errors.New(describe(err))
+			}
+			out[i] = strings.TrimSpace(out[i])
+		}
+		props[k] = out
+	}
+	return WriteTranslation(site, rel, lang, title, desc, body, props)
+}
+
+// PropTexts are the texts to translate in a note's TextProps: each one's
+// values (one for a single value; a menu line's name only).
+func PropTexts(n obsidian.Note) map[string][]string {
+	out := map[string][]string{}
+	for _, k := range TextProps {
+		var texts []string
+		for _, v := range n.List(k) {
+			if k == "menu" {
+				name, _, ok := strings.Cut(v, "|")
+				if !ok {
+					continue // a folder or note by its name: the site shows its translated title
+				}
+				v = name
+			}
+			if v = strings.TrimSpace(v); v != "" {
+				texts = append(texts, v)
+			}
+		}
+		if len(texts) > 0 {
+			out[k] = texts
+		}
+	}
+	return out
+}
+
+// translatedProps puts the translated texts (as PropTexts lists them)
+// back in n's properties.
+func translatedProps(n obsidian.Note, tr map[string]any) []obsidian.Prop {
+	var props []obsidian.Prop
+	for k, v := range tr {
+		texts := toStrings(v)
+		orig := n.List(k)
+		if !slices.Contains(TextProps, k) || len(texts) == 0 || len(orig) == 0 {
+			continue
+		}
+		if k == "menu" {
+			i := 0
+			out := make([]string, len(orig))
+			for j, line := range orig {
+				out[j] = line
+				if _, target, ok := strings.Cut(line, "|"); ok && strings.TrimSpace(line[:strings.Index(line, "|")]) != "" && i < len(texts) {
+					out[j] = texts[i] + " | " + strings.TrimSpace(target)
+					i++
+				}
+			}
+			props = append(props, obsidian.Prop{Key: k, Value: out})
+			continue
+		}
+		if _, single := n.Props[k].(string); single {
+			props = append(props, obsidian.Prop{Key: k, Value: texts[0]})
+		} else {
+			props = append(props, obsidian.Prop{Key: k, Value: texts})
+		}
+	}
+	return props
+}
+
+func toStrings(v any) []string {
+	switch x := v.(type) {
+	case []string:
+		return x
+	case []any:
+		out := make([]string, 0, len(x))
+		for _, i := range x {
+			if s, ok := i.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	case string:
+		return []string{x}
+	}
+	return nil
 }
 
 // WriteTranslation saves the translation of rel (or of rel's original)
@@ -237,7 +334,7 @@ func TranslateNote(ctx context.Context, site *config.Site, rel, lang string, pro
 // original's properties with its own title and description, the text,
 // and the original's fingerprint. It returns the translation's path; the
 // site then publishes lang too.
-func WriteTranslation(site *config.Site, rel, lang, title, desc, body string) (string, error) {
+func WriteTranslation(site *config.Site, rel, lang, title, desc, body string, props map[string]any) (string, error) {
 	if lang == site.Lang || !slices.Contains(config.SiteLangs, lang) {
 		return "", errors.New("translate: unknown language " + lang)
 	}
@@ -262,6 +359,10 @@ func WriteTranslation(site *config.Site, rel, lang, title, desc, body string) (s
 	}
 	// Where it is already, else under its translated title.
 	target := translationPath(site, original, n, lang)
+	// A section's note keeps its name: it is the section in that language.
+	if target == "" && strings.EqualFold(path.Base(original), "_index.md") {
+		target = path.Join(path.Dir(original), lang, "_index.md")
+	}
 	if target == "" {
 		if target, err = translationName(site, path.Join(path.Dir(original), lang), safeFileName(strings.TrimSpace(title)), original); err != nil {
 			return "", err
@@ -286,15 +387,17 @@ func WriteTranslation(site *config.Site, rel, lang, title, desc, body string) (s
 	if err := obsidian.SetBody(tp, body); err != nil {
 		return "", err
 	}
-	props := []obsidian.Prop{
+	set := []obsidian.Prop{
 		{Key: "title", Value: strings.TrimSpace(title)},
 		{Key: hashKey, Value: sourceHash(n, original)},
+		{Key: aiKey, Value: true},
 		{Key: "audio", Value: nil}, {Key: "audio_hash", Value: nil}, {Key: "audio_seconds", Value: nil},
 	}
 	if strings.TrimSpace(desc) != "" {
-		props = append(props, obsidian.Prop{Key: "description", Value: strings.TrimSpace(desc)})
+		set = append(set, obsidian.Prop{Key: "description", Value: strings.TrimSpace(desc)})
 	}
-	if err := obsidian.SetProperties(tp, props...); err != nil {
+	set = append(set, translatedProps(n, props)...)
+	if err := obsidian.SetProperties(tp, set...); err != nil {
 		return "", err
 	}
 	return target, addSiteLang(site, lang)
@@ -489,4 +592,27 @@ func LocalTranslateDir() (string, error) {
 		return "", err
 	}
 	return filepath.Join(d, "blup", "translate"), nil
+}
+
+// MarkReviewed marks the translation at rel reviewed by its author (the
+// site stops showing it was made by AI), or not.
+func MarkReviewed(site *config.Site, rel string, reviewed bool) error {
+	p, err := notesPath(site, rel)
+	if err != nil {
+		return err
+	}
+	var v any = true
+	if reviewed {
+		v = nil
+	}
+	return obsidian.SetProperties(p, obsidian.Prop{Key: aiKey, Value: v})
+}
+
+// ReadSiteNote reads the note at rel of the site.
+func ReadSiteNote(site *config.Site, rel string) (obsidian.Note, error) {
+	p, err := notesPath(site, rel)
+	if err != nil {
+		return obsidian.Note{}, err
+	}
+	return obsidian.ReadNote(p)
 }

@@ -19,7 +19,7 @@
   <main id="main" class="docs-main">
     <article class="docs-article">
       <header>
-        <h1 class="docs-title">{{ $title }}</h1>
+        <h1 class="docs-title">{{ $title }}</h1>{{ partial "site/ai-badge.html" . }}
         {{- with .Description }}<p>{{ . }}</p>{{ end }}
       </header>
       {{ partial "bento/body.html" . }}

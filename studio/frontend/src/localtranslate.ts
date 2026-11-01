@@ -5,7 +5,7 @@
 // addresses, wikilink targets, images, math) become tags holding their own
 // text, only for context: they come back exactly as they were.
 
-import { ReadNote, SaveTranslation, LocalTranslate } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+import { ReadNote, SaveTranslation, LocalTranslate, TranslationTexts } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
 import { look } from "./theme.svelte";
 
 type Item = { text: string; html: boolean };
@@ -207,5 +207,11 @@ export async function translateNoteLocal(original: string, from: string, to: str
   const title = await translateText(String(props.title || name), from, to);
   const desc = props.description ? await translateText(String(props.description), from, to) : "";
   const body = await translateMarkdown(n.body ?? "", from, to, progress);
-  return SaveTranslation(original, to, title, desc, body, follow);
+  // The other texts the site shows (menu labels, the site's description...).
+  const texts: Record<string, string[]> = {};
+  const found = (await TranslationTexts(original).catch(() => null)) ?? {};
+  for (const [k, list] of Object.entries(found)) {
+    texts[k] = await Promise.all((list ?? []).map((x: string) => translateText(x, from, to)));
+  }
+  return SaveTranslation(original, to, title, desc, body, texts, follow);
 }

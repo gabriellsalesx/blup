@@ -3,7 +3,7 @@
   <article class="docs-article">
     <header>
       {{ partial "mochi/breadcrumb.html" (dict "items" (slice (dict "name" (partial "title.html" .FirstSection) "url" .FirstSection.RelPermalink) (dict "name" (partial "title.html" .)))) }}
-      <h1 class="docs-title">{{ partial "title.html" . }}</h1>
+      <h1 class="docs-title">{{ partial "title.html" . }}</h1>{{ partial "site/ai-badge.html" . }}
       <p><span class="status" data-status="{{ $status }}">{{ T (printf "status_%s" $status) }}</span>{{ with .Params.category }} <span class="chip">{{ . }}</span>{{ end }}</p>
     </header>
     {{ partial "bento/body.html" . }}

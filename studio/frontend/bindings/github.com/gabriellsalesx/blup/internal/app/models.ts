@@ -528,6 +528,11 @@ export interface NoteLang {
     "original": boolean;
     "exists": boolean;
     "stale": boolean;
+
+    /**
+     * made by AI, not marked reviewed
+     */
+    "ai": boolean;
 }
 
 /**

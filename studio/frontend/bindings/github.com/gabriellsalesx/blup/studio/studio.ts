@@ -527,6 +527,14 @@ export function LocalVoice(): $CancellablePromise<app$0.LocalVoice> {
 }
 
 /**
+ * MarkReviewed marks a translation reviewed (the site stops showing it was
+ * made by AI), or not.
+ */
+export function MarkReviewed(rel: string, reviewed: boolean): $CancellablePromise<void> {
+    return $Call.ByID(231409274, rel, reviewed);
+}
+
+/**
  * Mentions are the notes that link to rel, with the lines where they do
  * ("mentioned in").
  */
@@ -990,11 +998,13 @@ export function SaveSocial(links: string[] | null): $CancellablePromise<void> {
 
 /**
  * SaveTranslation saves a translation made in the window and returns its
- * path; follow brings the preview up to date (false while a whole site is
- * being translated: FollowTranslations at the end).
+ * path; props are the translated texts of the note's other properties (as
+ * TranslationTexts listed them). follow brings the preview up to date
+ * (false while a whole site is being translated: FollowTranslations at the
+ * end).
  */
-export function SaveTranslation(rel: string, lang: string, title: string, description: string, body: string, follow: boolean): $CancellablePromise<string> {
-    return $Call.ByID(1812394062, rel, lang, title, description, body, follow);
+export function SaveTranslation(rel: string, lang: string, title: string, description: string, body: string, props: { [_ in string]?: string[] | null } | null, follow: boolean): $CancellablePromise<string> {
+    return $Call.ByID(1812394062, rel, lang, title, description, body, props, follow);
 }
 
 /**
@@ -1208,6 +1218,14 @@ export function TranslateNote(rel: string, lang: string): $CancellablePromise<st
  */
 export function TranslateSite(lang: string): $CancellablePromise<number> {
     return $Call.ByID(1712606371, lang);
+}
+
+/**
+ * TranslationTexts are the texts of a note's properties a translation
+ * translates too (the menu's labels, the site's description...).
+ */
+export function TranslationTexts(rel: string): $CancellablePromise<{ [_ in string]?: string[] | null } | null> {
+    return $Call.ByID(1075733447, rel);
 }
 
 /**

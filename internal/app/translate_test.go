@@ -49,8 +49,11 @@ func TestTranslateNote(t *testing.T) {
 	if o.String("translationKey") != "Posts/Bolo" || n.String("translationKey") != "Posts/Bolo" {
 		t.Fatalf("keys = %q %q", o.String("translationKey"), n.String("translationKey"))
 	}
-	if n.String("title") != "EN(Bolo)" || n.String("description") != "EN(Um bolo)" || strings.TrimSpace(n.Body) != "EN(Texto do bolo.)" || n.Props["audio"] != nil || len(n.List("tags")) != 1 {
+	if n.String("title") != "EN(Bolo)" || n.String("description") != "EN(Um bolo)" || strings.TrimSpace(n.Body) != "EN(Texto do bolo.)" || n.Props["audio"] != nil {
 		t.Fatalf("translation = %+v", n)
+	}
+	if n.Props["ai_translated"] != true || n.List("tags")[0] != "EN(doce)" {
+		t.Fatalf("ai mark or tags = %+v", n.Props)
 	}
 	if site.OtherLangs()[0] != "en" {
 		t.Fatalf("site languages = %v", site.Translations)
@@ -112,5 +115,43 @@ func TestTranslateSite(t *testing.T) {
 	before := calls
 	if n, _ := TranslateSite(context.Background(), site, "es", nil); n != 0 || calls != before {
 		t.Fatal("up to date notes should not be translated again")
+	}
+}
+
+// The home note's menu labels and the site's texts are translated; a
+// section's note keeps its name.
+func TestTranslateHomeAndSection(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	creds, _ := config.LoadCredentials()
+	creds.OpenRouterToken = "k"
+	_ = creds.Save()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct{ Messages []struct{ Content string } }
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": "ES(" + req.Messages[1].Content + ")"}, "finish_reason": "stop"}}})
+	}))
+	defer srv.Close()
+	openRouterURL = srv.URL
+	defer func() { openRouterURL = "" }()
+
+	site := settingsSite(t)
+	root := site.ContentDir()
+	write(t, root, "_index.md", "---\ntitle: Início\nsite_description: Notas sobre bolos\nbutton_text: Assine\nmenu:\n  - Posts\n  - Loja | https://x.dev\n---\nOi\n")
+	write(t, root, "Posts/_index.md", "---\ntitle: Receitas\n---\n")
+	if p, err := TranslateNote(context.Background(), site, "_index.md", "es", nil); err != nil || p != "es/_index.md" {
+		t.Fatalf("home = %s %v", p, err)
+	}
+	h, _ := obsidian.ReadNote(filepath.Join(root, "es", "_index.md"))
+	if m := h.List("menu"); len(m) != 2 || m[0] != "Posts" || m[1] != "ES(Loja) | https://x.dev" || h.String("site_description") != "ES(Notas sobre bolos)" || h.String("button_text") != "ES(Assine)" {
+		t.Fatalf("home props = %+v", h.Props)
+	}
+	if p, err := TranslateNote(context.Background(), site, "Posts/_index.md", "es", nil); err != nil || p != "Posts/es/_index.md" {
+		t.Fatalf("section = %s %v", p, err)
+	}
+	if err := MarkReviewed(site, "Posts/es/_index.md", true); err != nil {
+		t.Fatal(err)
+	}
+	if langs, _ := NoteLangs(site, "Posts/_index.md"); langs[2].AI || !langs[2].Exists {
+		t.Fatalf("reviewed = %+v", langs)
 	}
 }

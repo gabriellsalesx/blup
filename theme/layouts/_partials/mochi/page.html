@@ -17,6 +17,7 @@
         <h1 class="h2">{{ $title }}</h1>
         {{- with .Description }}<p>{{ . }}</p>{{ end }}
         {{ partial "mochi/byline.html" (dict "page" . "long" true) }}
+        {{ partial "site/ai-badge.html" . }}
         {{ partial "listen.html" . }}
       </div>
       {{- with $cover }}
