@@ -64,7 +64,7 @@
   let sideTab = $state<"files" | "search">("files");
   let openMap = $state<Record<string, boolean>>({});
   let folder = $state(""); // where new notes go: the folder clicked last
-  let creating = $state<NewKind | null>(null);
+  let creating = $state<"note" | "folder" | null>(null);
   let newName = $state("");
   let query = $state("");
   let switching = $state(false);
@@ -80,9 +80,27 @@
     for (let i = 1; i <= parts.length; i++) openMap[parts.slice(0, i).join("/")] = true;
     folder = parts.join("/");
   }
-  function startCreate(kind: NewKind) { newName = ""; creating = kind; }
-  const createIn = $derived(creating === "folder" ? t.side.folderIn : creating === "canvas" ? t.boards.canvasIn : creating === "drawing" ? t.boards.drawingIn : t.side.noteIn);
-  const createPh = $derived(creating === "folder" ? t.side.folderPh : creating === "canvas" ? t.boards.canvasPh : creating === "drawing" ? t.boards.drawingPh : t.side.notePh);
+  function startCreate(kind: "note" | "folder") { newName = ""; creating = kind; }
+  const createIn = $derived(creating === "folder" ? t.side.folderIn : t.side.noteIn);
+  const createPh = $derived(creating === "folder" ? t.side.folderPh : t.side.notePh);
+
+  // A new canvas or drawing, right away, no name to ask: "Drawing
+  // 2026-11-01 14.05.33", in its own folder at the top (or in the folder
+  // whose menu made it), then open.
+  async function quickBoard(kind: "canvas" | "drawing", where?: string) {
+    const b = t.boards;
+    const p = (n: number) => String(n).padStart(2, "0"), d = new Date();
+    const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}`;
+    const name = `${kind === "canvas" ? b.canvasName : b.drawingName} ${stamp}`;
+    const dir = where ?? (kind === "canvas" ? b.canvasFolder : b.drawingFolder);
+    try {
+      const rel = await (kind === "canvas" ? CreateCanvas : CreateDrawing)(dir, name);
+      tree = (await LoadTree()).children ?? [];
+      reveal(rel);
+      screen = "write";
+      await pick(rel);
+    } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
 
   // The right-click menu of a note or folder.
   let menu = $state<{ node: Node; x: number; y: number } | null>(null);
@@ -103,8 +121,9 @@
     if (open) { reveal(open); screen = "write"; await pick(open); }
   }
   async function menuNew(kind: NewKind, f: string) {
-    folder = f;
     openMap[f] = true;
+    if (kind === "canvas" || kind === "drawing") { quickBoard(kind, f); return; }
+    folder = f;
     startCreate(kind);
   }
   async function finishCreate() {
@@ -112,8 +131,7 @@
     creating = null;
     if (!kind || !name) return;
     try {
-      const make = { note: CreateNote, folder: CreateFolder, canvas: CreateCanvas, drawing: CreateDrawing }[kind];
-      const rel = await make(folder, name);
+      const rel = kind === "note" ? await CreateNote(folder, name) : await CreateFolder(folder, name);
       tree = (await LoadTree()).children ?? [];
       if (kind !== "folder") { reveal(rel); screen = "write"; await pick(rel); }
       else { reveal(rel + "/x"); folder = rel; }
@@ -463,8 +481,8 @@
         <div class="side-tools">
           <button title={t.side.newNote} onclick={() => startCreate("note")}><SquarePen size={17} strokeWidth={1.75} /></button>
           {#if notesVault}
-            <button title={t.boards.newCanvas} onclick={() => startCreate("canvas")}><LayoutDashboard size={17} strokeWidth={1.75} /></button>
-            <button title={t.boards.newDrawing} onclick={() => startCreate("drawing")}><PenTool size={17} strokeWidth={1.75} /></button>
+            <button title={t.boards.newCanvas} onclick={() => quickBoard("canvas")}><LayoutDashboard size={17} strokeWidth={1.75} /></button>
+            <button title={t.boards.newDrawing} onclick={() => quickBoard("drawing")}><PenTool size={17} strokeWidth={1.75} /></button>
           {/if}
           <button title={t.side.newFolder} onclick={() => startCreate("folder")}><FolderPlus size={17} strokeWidth={1.75} /></button>
           <!-- One button: collapse when a folder is open, else expand. -->
