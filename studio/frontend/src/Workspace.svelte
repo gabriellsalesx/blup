@@ -246,17 +246,15 @@
   let tree = $state<Node[]>([]);
   let current = $state(""); // path of the open note (or canvas, or drawing)
   const board = $derived(boardKind(current));
-  // The path at the top: each folder opens in the files panel; a database
-  // (the folder of the open record) shows marked and opens its table.
+  // The path at the top: the folders, as text; a database (the folder of
+  // the open record) shows marked and opens its table.
   const crumbs = $derived(current.split("/").slice(0, -1).map((name, i, parts) => {
     const path = parts.slice(0, i + 1).join("/");
     return { name, path, table: findDir(tree, path)?.table ?? "" };
   }));
-  async function goCrumb(c: { path: string; table: string }) {
-    if (c.table) { screen = "write"; await pick(c.table); return; }
-    sideOpen = true; sideTab = "files";
-    reveal(c.path + "/x");
-    folder = c.path;
+  async function goCrumb(c: { table: string }) {
+    screen = "write";
+    await pick(c.table);
   }
   // Full screen: a canvas or a drawing alone in the window (F, or Esc to
   // leave); only while one is open.
@@ -685,7 +683,8 @@
     {#if screen === "write" && current}
       <nav class="crumbs" aria-label={t.side.files}>
         {#each crumbs as c (c.path)}
-          <button class={["crumb", { db: !!c.table }]} title={c.table ? t.db.openDb : c.name} onclick={() => goCrumb(c)}>{#if c.table}<Database size={13} />{/if}{c.name}</button><span class="slash">/</span>
+          {#if c.table}<button class="crumb db" title={t.db.openDb} onclick={() => goCrumb(c)}><Database size={13} />{c.name}</button>
+          {:else}<span class="crumb">{c.name}</span>{/if}<span class="slash">/</span>
         {/each}
       </nav>
       <strong class="title">{fileTitle(current)}</strong>
@@ -867,7 +866,7 @@
   .ws.no-side .bar { grid-column: 2 / -1; }
   .crumbs { display: flex; align-items: center; min-width: 0; max-width: 45%; overflow: hidden; font-size: .85rem; white-space: nowrap; }
   .crumb { flex: none; display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .35rem; border-radius: .35rem; color: var(--muted); }
-  .crumb:hover { background: var(--soft); color: var(--text); }
+
   /* The database a record belongs to, marked. */
   .crumb.db { background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--blue); font-weight: 600; }
   .crumb.db:hover { background: color-mix(in srgb, var(--blue) 22%, transparent); }

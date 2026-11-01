@@ -6,12 +6,12 @@
   import { t } from "./i18n";
 
   // "Mentioned in": the notes (and canvases) with a link to this one, under
-  // the editor; a click opens one. Folded or not, as last left.
+  // the editor; a click opens one. It always starts open.
   let { note, onOpenNote }: { note: string; onOpenNote: (path: string) => void } = $props();
   const tb = t.backlinks;
 
   let from = $state<{ path: string; name: string; folder: string }[]>([]);
-  let open = $state((() => { try { return localStorage.getItem("blup.backlinks") !== "closed"; } catch { return true; } })());
+  let open = $state(true);
   // Read again when notes change on disk (a link added or taken out).
   let changes = $state(0);
   let wait: ReturnType<typeof setTimeout> | undefined;
@@ -26,10 +26,7 @@
       from = (g.edges ?? []).filter((e) => e.to === me).map((e) => names.get(e.from)!).filter(Boolean);
     }).catch(() => (from = []));
   });
-  function toggle() {
-    open = !open;
-    try { localStorage.setItem("blup.backlinks", open ? "open" : "closed"); } catch {}
-  }
+  const toggle = () => (open = !open);
 </script>
 
 <section class="back" aria-label={tb.title}>
