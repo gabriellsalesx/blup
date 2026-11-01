@@ -37,8 +37,6 @@ var (
 	ErrMoved = errors.New("blupcloud: the notes changed on another computer")
 	// ErrQuota: the plan's storage is full.
 	ErrQuota = errors.New("blupcloud: the plan's storage is full")
-	// ErrVaultsLimit: the plan allows no more synced folders.
-	ErrVaultsLimit = errors.New("blupcloud: the plan allows no more synced folders")
 	// ErrDevicesLimit: the plan allows no more computers signed in.
 	ErrDevicesLimit = errors.New("blupcloud: the plan allows no more computers")
 	// ErrDenied: the sign in was refused in the browser.
@@ -121,8 +119,6 @@ func (c *Client) do(ctx context.Context, method, path string, body any, contentT
 			return ErrMoved
 		case e.Code == "QUOTA":
 			return ErrQuota
-		case e.Code == "VAULTS_LIMIT":
-			return ErrVaultsLimit
 		case e.Code == "DEVICES_LIMIT":
 			return ErrDevicesLimit
 		}
@@ -223,7 +219,6 @@ type Account struct {
 		Limits struct {
 			StorageMB   int  `json:"storageMB"`
 			MaxFileMB   int  `json:"maxFileMB"`
-			Vaults      int  `json:"vaults"` // -1 = no limit
 			Sites       int  `json:"sites"`
 			Devices     int  `json:"devices"`
 			Live        bool `json:"live"`

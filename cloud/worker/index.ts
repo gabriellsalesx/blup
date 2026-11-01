@@ -85,7 +85,7 @@ const routes = app
 		// The portal cancels by setting cancel_at, not cancel_at_period_end.
 		const sub = await activeSubscription(user.id);
 		const plan = planNamed(sub?.plan);
-		const usage = await usageOf(user.id, sub?.periodEnd);
+		const usage = await usageOf(user.id);
 		return c.json({
 			usage,
 			id: user.id,

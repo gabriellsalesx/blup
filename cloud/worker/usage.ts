@@ -12,22 +12,20 @@ export async function devicesOf(userId: string): Promise<number> {
 }
 
 // What an account is using: storage of the synced notes, folders synced,
-// sites published by Blup, AI credits this month, Studio devices and the
-// last sync. Only numbers (the notes themselves are encrypted on the
-// person's computer). Sites and AI credits stay 0 until those exist. Both the
+// sites published by Blup, Studio devices and the last sync. Only numbers
+// (the notes themselves are encrypted on the person's computer). Sites stay
+// 0 until publishing through the cloud exists. Both the
 // account panel and the staff read this one place.
 
 export type Usage = {
 	storageBytes: number;
 	vaults: number;
 	sites: number;
-	aiCreditsUsed: number;
-	aiCreditsResetAt: string | null; // when this month's credits start over
 	devices: number; // Blup Studio installs signed in
 	lastSyncAt: string | null;
 };
 
-export async function usageOf(userId: string, periodEnd?: Date | null): Promise<Usage> {
+export async function usageOf(userId: string): Promise<Usage> {
 	const [[acc], [{ n }], devices] = await Promise.all([
 		db.select({ storageBytes: syncAccount.storageBytes, lastSyncAt: syncAccount.lastSyncAt }).from(syncAccount).where(eq(syncAccount.userId, userId)).limit(1),
 		db.select({ n: count() }).from(vault).where(eq(vault.userId, userId)),
@@ -37,8 +35,6 @@ export async function usageOf(userId: string, periodEnd?: Date | null): Promise<
 		storageBytes: acc?.storageBytes ?? 0,
 		vaults: n,
 		sites: 0,
-		aiCreditsUsed: 0,
-		aiCreditsResetAt: periodEnd ? periodEnd.toISOString() : null,
 		devices,
 		lastSyncAt: acc?.lastSyncAt ? acc.lastSyncAt.toISOString() : null,
 	};

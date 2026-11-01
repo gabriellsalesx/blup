@@ -3,8 +3,6 @@ export type Usage = {
 	storageBytes: number;
 	vaults: number;
 	sites: number;
-	aiCreditsUsed: number;
-	aiCreditsResetAt: string | null;
 	devices: number;
 	lastSyncAt: string | null;
 };

@@ -2,8 +2,8 @@
 
 import type { Usage } from "./usage.ts";
 
-export type Limits = { storageMB: number; maxFileMB: number; vaults: number; sites: number; devices: number; aiCredits: number; live: boolean; historyDays: number };
-export type PlanInfo = { name: string; label: string; priceCents: number; currency: "brl" | "usd"; limits: Limits; perks: string[] };
+export type Limits = { storageMB: number; maxFileMB: number; sites: number; devices: number; live: boolean; historyDays: number };
+export type PlanInfo = { name: string; label: string; priceCents: number; currency: "usd"; limits: Limits; perks: string[] };
 export type Me = {
 	id: string;
 	email: string | null; // null: an account made with a passkey, no e-mail linked yet

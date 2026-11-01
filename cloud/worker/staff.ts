@@ -150,7 +150,7 @@ export const staffApi = new Hono<App>()
 		]);
 		const active = subs.find((s) => ACTIVE.includes(s.status));
 		const plan = planNamed(active?.plan);
-		const usage = await usageOf(id, active?.periodEnd);
+		const usage = await usageOf(id);
 		const stripeMode = /^[rs]k_live_/.test(c.env.STRIPE_SECRET_KEY) ? "" : "test/";
 		return c.json({
 			user: { id: u.id, email: hasEmail(u.email) ? u.email : null, emailVerified: u.emailVerified, createdAt: u.createdAt, banned: u.banned, banReason: u.banReason },

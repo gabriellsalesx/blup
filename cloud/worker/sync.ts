@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { and, count, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { v7 as uuidv7 } from "uuid";
@@ -101,8 +101,6 @@ export const syncApi = new Hono<App>()
 	.post("/vaults", zValidator("json", z.object({ name: b64.min(1) })), async (c) => {
 		const userId = c.get("userId");
 		if (!(await account(userId))) return c.json({ code: "NO_KEY" }, 409);
-		const [plan, [{ n }]] = await Promise.all([planOf(userId), db.select({ n: count() }).from(vault).where(eq(vault.userId, userId))]);
-		if (plan.limits.vaults >= 0 && n >= plan.limits.vaults) return c.json({ code: "VAULTS_LIMIT", limit: plan.limits.vaults }, 403);
 		const id = uuidv7();
 		await db.insert(vault).values({ id, userId, name: c.req.valid("json").name });
 		return c.json({ id, head: 0 }, 201);

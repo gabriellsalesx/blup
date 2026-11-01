@@ -63,8 +63,8 @@ func TestLiveSync(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.CreateVault(ctx, name); me.Plan.Limits.Vaults == 1 && !errors.Is(err, ErrVaultsLimit) {
-		t.Fatalf("second vault on a one-vault plan: %v", err)
+	if _, err := c.CreateVault(ctx, name); err != nil {
+		t.Fatalf("a second vault (no limit): %v", err)
 	}
 
 	maxFile := int64(me.Plan.Limits.MaxFileMB) << 20
