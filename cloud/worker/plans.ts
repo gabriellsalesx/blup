@@ -80,8 +80,8 @@ export const PLANS: Plan[] = [
 		currency: "brl",
 		lookupKey: "blup_ultra_mensal",
 		yearlyLookupKey: "blup_ultra_anual",
-		limits: { storageMB: 51200, maxFileMB: 500, sites: -1, customDomain: true, devices: -1, live: true, historyDays: 365, aiUsage: 5 },
-		perks: ["50 GB de notas, sincronizadas em tempo real", "Computadores sem limite", "Arquivos de até 500 MB", "Histórico de versões de 12 meses", "Sites sem limite no ar pelo Blup, com domínio próprio", "Suporte prioritário e novidades antes"],
+		limits: { storageMB: 51200, maxFileMB: 500, sites: 10, customDomain: true, devices: -1, live: true, historyDays: 365, aiUsage: 5 },
+		perks: ["50 GB de notas, sincronizadas em tempo real", "Computadores sem limite", "Arquivos de até 500 MB", "Histórico de versões de 12 meses", "10 sites no ar pelo Blup, com domínio próprio", "Suporte prioritário e novidades antes"],
 	},
 ];
 
