@@ -206,25 +206,32 @@ func (s *Studio) CreateFolder(folder, name string) (string, error) {
 }
 
 func (s *Studio) create(folder, name string, dir bool) (string, error) {
+	if dir {
+		return s.createFile(folder, name, "", "")
+	}
+	return s.createFile(folder, name, ".md", "")
+}
+
+// createFile makes a file named name+ext in folder with text (a note gets
+// its title), or a folder when ext is "", and returns its path. A taken
+// name gets a number.
+func (s *Studio) createFile(folder, name, ext, text string) (string, error) {
 	name = strings.TrimSpace(strings.Map(func(r rune) rune {
 		if strings.ContainsRune(`/\:*?"<>|#^[]`, r) {
 			return -1
 		}
 		return r
 	}, name))
+	name = boardName(strings.TrimSuffix(name, ".md"))
 	if name == "" || strings.HasPrefix(name, ".") {
 		return "", errors.New("invalid name")
 	}
-	name = strings.TrimSuffix(name, ".md")
 	for i := 1; ; i++ {
 		base := name
 		if i > 1 {
 			base = fmt.Sprintf("%s %d", name, i)
 		}
-		rel := strings.TrimPrefix(folder+"/"+base, "/")
-		if !dir {
-			rel += ".md"
-		}
+		rel := strings.TrimPrefix(folder+"/"+base, "/") + ext
 		p, err := s.notePath(rel)
 		if err != nil {
 			return "", err
@@ -232,13 +239,16 @@ func (s *Studio) create(folder, name string, dir bool) (string, error) {
 		if _, err := os.Stat(p); err == nil {
 			continue
 		}
-		if dir {
+		if ext == "" {
 			return rel, os.MkdirAll(p, 0o755)
 		}
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			return "", err
 		}
-		return rel, os.WriteFile(p, []byte("---\ntitle: "+strconv.Quote(base)+"\n---\n\n"), 0o644)
+		if ext == ".md" {
+			text = "---\ntitle: " + strconv.Quote(base) + "\n---\n\n"
+		}
+		return rel, os.WriteFile(p, []byte(text), 0o644)
 	}
 }
 

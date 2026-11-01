@@ -100,3 +100,20 @@ func TestCopyDeleteRestore(t *testing.T) {
 		t.Fatal("the notes folder itself can't be deleted")
 	}
 }
+
+// A canvas or a drawing keeps its own extension when renamed or copied.
+func TestRenameAndCopyKeepBoardExt(t *testing.T) {
+	site := settingsSite(t)
+	root := site.ContentDir()
+	write(t, root, "Ideias.canvas", "{}")
+	write(t, root, "Mapa.draw", "{}")
+	if rel, err := RenameItem(site, "Ideias.canvas", "Projetos"); err != nil || rel != "Projetos.canvas" {
+		t.Fatalf("rename canvas = %q, %v", rel, err)
+	}
+	if rel, err := RenameItem(site, "Mapa.draw", "Fluxo.draw"); err != nil || rel != "Fluxo.draw" {
+		t.Fatalf("rename drawing = %q, %v", rel, err)
+	}
+	if rel, err := CopyNote(site, "Fluxo.draw"); err != nil || rel != "Fluxo 2.draw" {
+		t.Fatalf("copy drawing = %q, %v", rel, err)
+	}
+}

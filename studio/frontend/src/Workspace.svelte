@@ -1,10 +1,15 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
-  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
   import Editor from "./Editor.svelte";
+  import CanvasView from "./CanvasView.svelte";
+  import DrawingView from "./DrawingView.svelte";
+  import { boardKind, fileTitle, type NewKind } from "./boards";
+  import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
+  import PenTool from "@lucide/svelte/icons/pen-tool";
   import Props from "./Props.svelte";
   import Preview from "./Preview.svelte";
   import TerminalPanel from "./TerminalPanel.svelte";
@@ -59,7 +64,7 @@
   let sideTab = $state<"files" | "search">("files");
   let openMap = $state<Record<string, boolean>>({});
   let folder = $state(""); // where new notes go: the folder clicked last
-  let creating = $state<"note" | "folder" | null>(null);
+  let creating = $state<NewKind | null>(null);
   let newName = $state("");
   let query = $state("");
   let switching = $state(false);
@@ -75,7 +80,9 @@
     for (let i = 1; i <= parts.length; i++) openMap[parts.slice(0, i).join("/")] = true;
     folder = parts.join("/");
   }
-  function startCreate(kind: "note" | "folder") { newName = ""; creating = kind; }
+  function startCreate(kind: NewKind) { newName = ""; creating = kind; }
+  const createIn = $derived(creating === "folder" ? t.side.folderIn : creating === "canvas" ? t.boards.canvasIn : creating === "drawing" ? t.boards.drawingIn : t.side.noteIn);
+  const createPh = $derived(creating === "folder" ? t.side.folderPh : creating === "canvas" ? t.boards.canvasPh : creating === "drawing" ? t.boards.drawingPh : t.side.notePh);
 
   // The right-click menu of a note or folder.
   let menu = $state<{ node: Node; x: number; y: number } | null>(null);
@@ -95,7 +102,7 @@
     if (to && !open) reveal(to);
     if (open) { reveal(open); screen = "write"; await pick(open); }
   }
-  async function menuNew(kind: "note" | "folder", f: string) {
+  async function menuNew(kind: NewKind, f: string) {
     folder = f;
     openMap[f] = true;
     startCreate(kind);
@@ -105,16 +112,18 @@
     creating = null;
     if (!kind || !name) return;
     try {
-      const rel = kind === "note" ? await CreateNote(folder, name) : await CreateFolder(folder, name);
+      const make = { note: CreateNote, folder: CreateFolder, canvas: CreateCanvas, drawing: CreateDrawing }[kind];
+      const rel = await make(folder, name);
       tree = (await LoadTree()).children ?? [];
-      if (kind === "note") { reveal(rel); screen = "write"; await pick(rel); }
+      if (kind !== "folder") { reveal(rel); screen = "write"; await pick(rel); }
       else { reveal(rel + "/x"); folder = rel; }
     } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
   }
   async function loadSites() { others = ((await Sites().catch(() => [])) ?? []).filter((o) => o.dir !== site.dir); }
 
   let tree = $state<Node[]>([]);
-  let current = $state(""); // path of the open note
+  let current = $state(""); // path of the open note (or canvas, or drawing)
+  const board = $derived(boardKind(current));
   let text = $state("");
   let noteProps = $state<Record<string, any>>({});
   let kind = $state("");
@@ -246,7 +255,8 @@
   const offNotes = Events.On("notesChanged", async (ev: any) => {
     const list = String(ev.data ?? "").split("\n");
     try { tree = (await LoadTree()).children ?? []; } catch {}
-    if (!current || !list.some((p) => p.toLowerCase() === current.toLowerCase())) return;
+    // A canvas or a drawing looks after itself.
+    if (!current || board || !list.some((p) => p.toLowerCase() === current.toLowerCase())) return;
     const note = await ReadNote(current).catch(() => null);
     // Our own saves come back here too: only a text that is neither what
     // we wrote last nor what is being typed came from outside.
@@ -318,8 +328,9 @@
     if (previewOn && !previewURL) startPreview();
   }
 
+  // A note's; a canvas or a drawing saves itself.
   async function save() {
-    if (status === "saved" || !current) return;
+    if (status === "saved" || !current || board) return;
     clearTimeout(timer);
     status = "saving";
     try {
@@ -354,6 +365,16 @@
   async function pick(path: string, page = "") {
     if (path === current) return;
     await save();
+    // A canvas or a drawing: its own screen reads it.
+    if (boardKind(path)) {
+      current = path;
+      text = ""; pending = ""; written = ""; noteProps = {}; edits = {};
+      status = "saved";
+      error = "";
+      if (look.lastNotes?.[site.dir] !== path) setPref("lastNotes", { ...(look.lastNotes ?? {}), [site.dir]: path });
+      reveal(path);
+      return;
+    }
     try {
       const note = await ReadNote(path);
       text = note.body;
@@ -437,6 +458,10 @@
       {#if sideTab === "files"}
         <div class="side-tools">
           <button title={t.side.newNote} onclick={() => startCreate("note")}><SquarePen size={17} strokeWidth={1.75} /></button>
+          {#if notesVault}
+            <button title={t.boards.newCanvas} onclick={() => startCreate("canvas")}><LayoutDashboard size={17} strokeWidth={1.75} /></button>
+            <button title={t.boards.newDrawing} onclick={() => startCreate("drawing")}><PenTool size={17} strokeWidth={1.75} /></button>
+          {/if}
           <button title={t.side.newFolder} onclick={() => startCreate("folder")}><FolderPlus size={17} strokeWidth={1.75} /></button>
           <!-- One button: collapse when a folder is open, else expand. -->
           {#if anyOpen}
@@ -447,9 +472,9 @@
         </div>
         {#if creating}
           <div class="create">
-            <small class="muted">{creating === "note" ? t.side.noteIn : t.side.folderIn} {folder || site.title}</small>
+            <small class="muted">{createIn} {folder || site.title}</small>
             <!-- svelte-ignore a11y_autofocus -->
-            <input type="text" autofocus bind:value={newName} placeholder={creating === "note" ? t.side.notePh : t.side.folderPh}
+            <input type="text" autofocus bind:value={newName} placeholder={createPh}
               onkeydown={(e) => { if (e.key === "Enter") finishCreate(); if (e.key === "Escape") creating = null; }} onblur={() => setTimeout(() => (creating = null), 150)} />
           </div>
         {/if}
@@ -490,7 +515,7 @@
 
   <header class="bar">
     {#if screen === "write" && current}
-      <span class="crumbs muted">{current.split("/").slice(0, -1).join(" / ")}{current.includes("/") ? " / " : ""}</span><strong class="title">{current.split("/").pop()?.replace(/\.md$/, "")}</strong>
+      <span class="crumbs muted">{current.split("/").slice(0, -1).join(" / ")}{current.includes("/") ? " / " : ""}</span><strong class="title">{fileTitle(current)}</strong>
       <span class="status muted">{status === "saved" ? t.saved : status === "saving" ? t.saving : t.unsaved}</span>
     {:else}
       <strong class="title">{site.title}</strong>
@@ -509,10 +534,16 @@
     {#if screen === "write"}
       {#if current}
         {#key current + ":" + reloadN}
+          {#if board === "canvas"}
+            <CanvasView path={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOpenNote={openNote} onOutside={() => reloadN++} />
+          {:else if board === "drawing"}
+            <DrawingView path={current} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />
+          {:else}
           <div class="note">
             {#if !notesVault}<Props props={noteProps} {kind} note={current} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} />{/if}
             <div class="body"><Editor {text} note={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onChange={changed} onSave={save} onError={(e) => (error = e)} onOpenNote={openNote} /></div>
           </div>
+          {/if}
         {/key}
       {:else}
         <p class="hint muted">{t.pickNote}</p>
@@ -580,7 +611,7 @@
     {#key historyFor}<HistoryModal path={historyFor} onClose={() => (historyFor = "")} />{/key}
   {/if}
   {#if menu}
-    <FileMenu node={menu.node} x={menu.x} y={menu.y} {current} folders={folders(tree)} onClose={() => (menu = null)} onChanged={menuChanged} onNew={menuNew} onHistory={cloudHistory ? (p) => (historyFor = p) : undefined} />
+    <FileMenu node={menu.node} x={menu.x} y={menu.y} {current} folders={folders(tree)} boards={notesVault} onClose={() => (menu = null)} onChanged={menuChanged} onNew={menuNew} onHistory={cloudHistory ? (p) => (historyFor = p) : undefined} />
   {/if}
   {#if termStarted}
     <div class="term" class:min={!termOpen} style:height="{termHeight}px">

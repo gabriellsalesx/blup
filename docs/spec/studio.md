@@ -97,6 +97,14 @@ O corretor usa Hunspell em WebAssembly dentro de `spell.worker.ts`. Carrega dici
 
 `Props.svelte` expõe título, descrição, data, tags, autores, imagem, rascunho, escondido e senha. Para Bento também usa ordem pela propriedade `weight`, status e categoria quando aplicáveis. Propriedades adicionais desconhecidas pelo formulário ficam no arquivo. A narração aparece apenas fora de `_index.md`, sem `blup` preenchido e com tipo vazio ou `blog`; atualiza `audio`, `audio_hash` e `audio_seconds` e avisa quando o hash do texto difere. As condições e os motores estão em [narração e voz](narracao-e-voz.md).
 
+## Canvas e desenhos (cofres de anotações)
+
+Num cofre de anotações, a árvore lista também canvases (`.canvas`) e desenhos (`.draw`), com ícone próprio, e a lateral e o menu de pasta criam os dois (`CreateCanvas`, `CreateDrawing`). Os dois são do próprio Studio, feitos em Svelte, sem biblioteca de terceiros; não precisam abrir no Obsidian (só as notas em Markdown precisam). `boards.go` lê e grava (`ReadBoard`, `SaveBoard`, só essas extensões), guarda imagens coladas na pasta de anexos (`SaveBoardImage`) e entrega imagens do cofre como `data:` (`BoardFile`). Renomear e copiar mantêm a extensão (`fileExt`). A sincronização e a lixeira tratam esses arquivos como qualquer outro.
+
+`CanvasView.svelte` (lógica em `canvas.ts`) grava no formato aberto JSON Canvas: cartões de texto em Markdown, notas do cofre (`CanvasFile.svelte` mostra o texto, ou a imagem), links da web e grupos, ligados por setas com texto e cor. Mover a tela arrastando, zoom com Ctrl e a roda, dois cliques criam um cartão, arrastar do ponto lateral cria uma seta, notas arrastadas da árvore viram cartões, e há desfazer e refazer.
+
+`DrawingView.svelte` (lógica em `draw.ts`) é o editor de desenho: retângulo, losango, elipse, seta, linha, desenho livre, texto (solto ou dentro da forma), borracha e imagens, com cor, fundo, espessura, tracejado e tamanho de texto, seleção por caixa, redimensionar, duplicar, ordem, atalhos de teclado, desfazer e exportar PNG para os anexos. O arquivo é JSON com um elemento por linha. As duas telas salvam sozinhas e recarregam quando o arquivo muda fora do editor (evento `notesChanged`), se não houver mudança própria pendente.
+
 ## Prévia
 
 `StartPreview` encontra ou baixa Hugo, gera scaffold e inicia servidor restrito a `127.0.0.1`, em memória, com rascunhos e `HUGO_BLUP_MODE=preview`. Desativa live reload nativo e observa log `Total in` para emitir `previewChanged`. Não executa o preparo Pagefind da CLI.

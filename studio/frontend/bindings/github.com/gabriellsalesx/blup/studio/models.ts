@@ -112,6 +112,11 @@ export interface Node {
      */
     "path": string;
     "dir": boolean;
+
+    /**
+     * canvas or drawing (vaults); "" for a note
+     */
+    "kind"?: string;
     "children"?: Node[] | null;
 }
 

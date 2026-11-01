@@ -148,6 +148,13 @@ export function BlupSites(): $CancellablePromise<app$0.BlupSite[] | null> {
 }
 
 /**
+ * BoardFile is a file of the vault as a data: URL: an image on a board.
+ */
+export function BoardFile(rel: string): $CancellablePromise<string> {
+    return $Call.ByID(418840684, rel);
+}
+
+/**
  * BringBlupSite makes a site kept on Blup Cloud on this computer and opens it.
  */
 export function BringBlupSite(vault: string): $CancellablePromise<$models.SiteInfo> {
@@ -246,6 +253,20 @@ export function Connections(): $CancellablePromise<app$0.Connections> {
  */
 export function CopyNote(rel: string): $CancellablePromise<string> {
     return $Call.ByID(2428963207, rel);
+}
+
+/**
+ * CreateCanvas makes a canvas named name in folder and returns its path.
+ */
+export function CreateCanvas(folder: string, name: string): $CancellablePromise<string> {
+    return $Call.ByID(141328418, folder, name);
+}
+
+/**
+ * CreateDrawing makes a drawing named name in folder and returns its path.
+ */
+export function CreateDrawing(folder: string, name: string): $CancellablePromise<string> {
+    return $Call.ByID(1425546176, folder, name);
 }
 
 /**
@@ -676,6 +697,13 @@ export function Read(rel: string): $CancellablePromise<string> {
 }
 
 /**
+ * ReadBoard returns a canvas's or a drawing's file as it is.
+ */
+export function ReadBoard(rel: string): $CancellablePromise<string> {
+    return $Call.ByID(1824243794, rel);
+}
+
+/**
  * ReadNote returns a note's properties and text.
  */
 export function ReadNote(rel: string): $CancellablePromise<$models.NoteData> {
@@ -775,6 +803,22 @@ export function SaveAbout(name: string, description: string, author: string): $C
  */
 export function SaveAuthor(old: string, a: app$0.Author): $CancellablePromise<void> {
     return $Call.ByID(1485168776, old, a);
+}
+
+/**
+ * SaveBoard saves a canvas or a drawing.
+ */
+export function SaveBoard(rel: string, text: string): $CancellablePromise<void> {
+    return $Call.ByID(2915428373, rel, text);
+}
+
+/**
+ * SaveBoardImage keeps an image pasted on a board (or a drawing exported
+ * as an image) in the attachments folder, its bytes in base64, and returns
+ * its path in the vault.
+ */
+export function SaveBoardImage(board: string, name: string, data: string): $CancellablePromise<string> {
+    return $Call.ByID(3418155018, board, name, data);
 }
 
 /**
@@ -996,7 +1040,8 @@ export function Trash(): $CancellablePromise<app$0.TrashItem[] | null> {
 
 /**
  * Tree is the open site's folders and notes, folders first, by name.
- * Hidden folders (.obsidian, .git...) are left out.
+ * Hidden folders (.obsidian, .git...) are left out. A vault of notes lists
+ * its canvases and drawings too.
  */
 export function Tree(): $CancellablePromise<$models.Node> {
     return $Call.ByID(1427577990);

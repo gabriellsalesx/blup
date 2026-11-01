@@ -45,9 +45,25 @@ func cleanName(name string) (string, error) {
 
 func i18nInvalidName() string { return "invalid name" }
 
-// RenameItem renames a note (name without .md) or folder, keeping it where
-// it is. It returns the new path.
+// fileExt is the extension a file keeps when renamed or copied: a note's
+// .md, a vault's canvases and drawings, or any other.
+func fileExt(name string) string {
+	n := strings.ToLower(name)
+	for _, ext := range []string{".draw", ".canvas", ".md"} {
+		if strings.HasSuffix(n, ext) {
+			return name[len(name)-len(ext):]
+		}
+	}
+	return path.Ext(name)
+}
+
+// RenameItem renames a note (name without its extension) or folder,
+// keeping it where it is. It returns the new path.
 func RenameItem(site *config.Site, rel, name string) (string, error) {
+	ext := fileExt(rel)
+	if ext != "" && strings.HasSuffix(strings.ToLower(name), strings.ToLower(ext)) {
+		name = name[:len(name)-len(ext)]
+	}
 	name, err := cleanName(strings.TrimSuffix(name, ".md"))
 	if err != nil {
 		return "", err
@@ -61,7 +77,7 @@ func RenameItem(site *config.Site, rel, name string) (string, error) {
 		return "", err
 	}
 	if !st.IsDir() {
-		name += ".md"
+		name += ext
 	}
 	newRel := path.Join(path.Dir(rel), name)
 	if path.Dir(rel) == "." {
@@ -112,7 +128,8 @@ func moveItem(site *config.Site, from, to string, dir bool) error {
 	return fixLinks(site, from, to, dir)
 }
 
-// CopyNote makes a copy of a note next to it ("Name 2.md") and returns it.
+// CopyNote makes a copy of a note (or a canvas or drawing) next to it
+// ("Name 2.md") and returns it.
 func CopyNote(site *config.Site, rel string) (string, error) {
 	src, err := notesPath(site, rel)
 	if err != nil {
@@ -122,11 +139,12 @@ func CopyNote(site *config.Site, rel string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	base := strings.TrimSuffix(path.Base(rel), ".md")
+	ext := fileExt(rel)
+	base := strings.TrimSuffix(path.Base(rel), ext)
 	for i := 2; ; i++ {
-		newRel := path.Join(path.Dir(rel), fmt.Sprintf("%s %d.md", base, i))
+		newRel := path.Join(path.Dir(rel), fmt.Sprintf("%s %d%s", base, i, ext))
 		if path.Dir(rel) == "." {
-			newRel = fmt.Sprintf("%s %d.md", base, i)
+			newRel = fmt.Sprintf("%s %d%s", base, i, ext)
 		}
 		p, err := notesPath(site, newRel)
 		if err != nil {

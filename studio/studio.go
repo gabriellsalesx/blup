@@ -55,6 +55,7 @@ type Node struct {
 	Name     string `json:"name"`
 	Path     string `json:"path"` // relative to the notes folder, with "/"
 	Dir      bool   `json:"dir"`
+	Kind     string `json:"kind,omitempty"` // canvas or drawing (vaults); "" for a note
 	Children []Node `json:"children,omitempty"`
 }
 
@@ -107,7 +108,8 @@ func (s *Studio) current() (*config.Site, error) {
 }
 
 // Tree is the open site's folders and notes, folders first, by name.
-// Hidden folders (.obsidian, .git...) are left out.
+// Hidden folders (.obsidian, .git...) are left out. A vault of notes lists
+// its canvases and drawings too.
 func (s *Studio) Tree() (Node, error) {
 	site, err := s.current()
 	if err != nil {
@@ -136,6 +138,8 @@ func (s *Studio) Tree() (Node, error) {
 					return nil, err
 				}
 				dirs = append(dirs, Node{Name: name, Path: p, Dir: true, Children: kids})
+			} else if kind := boardKind(name); kind != "" && site.IsNotes() {
+				notes = append(notes, Node{Name: boardName(name), Path: p, Kind: kind})
 			} else if strings.EqualFold(filepath.Ext(name), ".md") {
 				notes = append(notes, Node{Name: strings.TrimSuffix(name, filepath.Ext(name)), Path: p})
 			}

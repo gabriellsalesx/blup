@@ -3,7 +3,7 @@
   import { t } from "./i18n";
 
   // Pick a note to link to: a search over every note of the site.
-  let { notes, onPick, onClose }: { notes: { name: string; path: string }[]; onPick: (n: { name: string; path: string }) => void; onClose: () => void } = $props();
+  let { notes, title, onPick, onClose }: { notes: { name: string; path: string }[]; title?: string; onPick: (n: { name: string; path: string }) => void; onClose: () => void } = $props();
   const te = t.editor;
   let query = $state("");
   let pick = $state(0);
@@ -18,8 +18,8 @@
 </script>
 
 <div class="shade" role="presentation" onclick={onClose}></div>
-<div class="picker" role="dialog" aria-modal="true" aria-label={te.linkNote}>
-  <header><h2>{te.linkNote}</h2><button class="close" title={t.attach.close} onclick={onClose}><X size={18} /></button></header>
+<div class="picker" role="dialog" aria-modal="true" aria-label={title ?? te.linkNote}>
+  <header><h2>{title ?? te.linkNote}</h2><button class="close" title={t.attach.close} onclick={onClose}><X size={18} /></button></header>
   <input type="text" bind:value={query} oninput={() => (pick = 0)} onkeydown={key} placeholder={te.findNote} use:focus />
   <ul>
     {#each found as n, i (n.path)}

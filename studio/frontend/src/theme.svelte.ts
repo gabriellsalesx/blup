@@ -12,11 +12,18 @@ export const spellLang = () => look.spellLang || (t.lang === "pt" ? "pt" : "en")
 let spellWords: number | undefined;
 const spell = () => { setupSpell(spellLang(), look.words ?? []); enableSpell(look.spellcheck); };
 
+// Whether the Studio is dark now (chosen, or the system's), for what draws
+// its own colors (the drawings).
+const media = matchMedia("(prefers-color-scheme: dark)");
+export const scheme = $state({ dark: media.matches });
+
 function apply() {
   const root = document.documentElement;
   if (look.theme === "system") delete root.dataset.theme;
   else root.dataset.theme = look.theme;
+  scheme.dark = look.theme === "dark" || (look.theme !== "light" && media.matches);
 }
+media.addEventListener("change", apply);
 
 export async function loadTheme() {
   try { Object.assign(look, await Prefs()); } catch {}

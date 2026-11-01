@@ -12,16 +12,20 @@
   import Pencil from "@lucide/svelte/icons/pencil";
   import Trash from "@lucide/svelte/icons/trash-2";
   import History from "@lucide/svelte/icons/history";
+  import PenTool from "@lucide/svelte/icons/pen-tool";
+  import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import { t } from "./i18n";
+  import type { NewKind } from "./boards";
   import { toast, toastError } from "./toast.svelte";
 
   // The right-click menu of the file explorer, and its small dialogs
   // (rename, move to, delete).
-  let { node, x, y, current, folders, onClose, onChanged, onNew, onHistory }: {
+  let { node, x, y, current, folders, boards = false, onClose, onChanged, onNew, onHistory }: {
     node: Node; x: number; y: number; current: string; folders: string[];
     onClose: () => void;
     onChanged: (change: { from: string; to: string | null; open?: string }) => void;
-    onNew: (kind: "note" | "folder", folder: string) => void;
+    boards?: boolean; // a vault of notes: new canvases and drawings too
+    onNew: (kind: NewKind, folder: string) => void;
     // Earlier versions on Blup Cloud (only when the plan keeps them).
     onHistory?: (path: string) => void;
   } = $props();
@@ -38,7 +42,7 @@
     error = "";
     try { await fn(); } catch (e) { error = msg(e); }
   }
-  const base = (p: string) => p.split("/").pop()!.replace(/\.md$/, "");
+  const base = (p: string) => p.split("/").pop()!.replace(/\.(draw|canvas|md)$/i, "");
   const rename = () => run(async () => { const to = await RenameItem(node.path, name); onChanged({ from: node.path, to }); toast(t.toast.noteRenamed.replace("{name}", base(to))); });
   const move = (f: string) => run(async () => { const to = await MoveItem(node.path, f); onChanged({ from: node.path, to }); toast(t.toast.noteMoved.replace("{folder}", f || m.top)); });
   // To the Blup trash, with Undo in the toast (the tree follows the files).
@@ -76,6 +80,10 @@
   <div class="menu" bind:this={menuEl} style:left="{pos.x}px" style:top="{pos.y}px" role="menu">
     {#if node.dir}
       <button onclick={() => { onNew("note", node.path); onClose(); }}><FilePlus size={16} />{m.newNote}</button>
+      {#if boards}
+        <button onclick={() => { onNew("canvas", node.path); onClose(); }}><LayoutDashboard size={16} />{t.boards.newCanvas}</button>
+        <button onclick={() => { onNew("drawing", node.path); onClose(); }}><PenTool size={16} />{t.boards.newDrawing}</button>
+      {/if}
       <button onclick={() => { onNew("folder", node.path); onClose(); }}><FolderPlus size={16} />{m.newFolder}</button>
       <hr />
     {:else}
