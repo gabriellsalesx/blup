@@ -73,6 +73,15 @@ async function dropOldVersions(env: Cloudflare.Env, userId: string, vaultId: str
 export const syncApi = new Hono<App>()
 	.use(signedIn)
 
+	// The live room (plans with live sync): a WebSocket that says when a
+	// vault moved on another computer.
+	.get("/live", async (c) => {
+		if (c.req.header("upgrade") !== "websocket") return c.json({ code: "UPGRADE_REQUIRED" }, 426);
+		const userId = c.get("userId");
+		if (!(await planOf(userId)).limits.live) return c.json({ code: "NOT_LIVE" }, 403);
+		return c.env.SYNC_LIVE.getByName(userId).fetch(c.req.raw);
+	})
+
 	// The master key, wrapped by the notes password and the recovery key.
 	.get("/key", async (c) => {
 		const a = await account(c.get("userId"));
@@ -168,6 +177,8 @@ export const syncApi = new Hono<App>()
 		}
 		await c.env.DB.prepare("UPDATE sync_account SET storage_bytes = storage_bytes + ?, last_sync_at = ?, updated_at = ? WHERE user_id = ?").bind(size, now, now, userId).run();
 		c.executionCtx.waitUntil(dropOldVersions(c.env, userId, id, n, plan.limits.historyDays));
+		// The account's other computers hear of it at once (live plans).
+		if (plan.limits.live) c.executionCtx.waitUntil(c.env.SYNC_LIVE.getByName(userId).notify(id, n));
 		return c.json({ n }, 201);
 	})
 

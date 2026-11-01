@@ -100,6 +100,44 @@ export function BindHyprland(accel: string): $CancellablePromise<void> {
 }
 
 /**
+ * BlupAccount is the Blup Cloud account signed in here (SignedIn false
+ * when none).
+ */
+export function BlupAccount(): $CancellablePromise<app$0.BlupAccount> {
+    return $Call.ByID(1555261248);
+}
+
+/**
+ * BlupLogin starts signing in: it opens Blup Cloud in the browser, where
+ * the person checks the code and approves. Then call BlupLoginWait.
+ */
+export function BlupLogin(): $CancellablePromise<$models.BlupLoginCode> {
+    return $Call.ByID(2562943350);
+}
+
+/**
+ * BlupLoginCancel gives up waiting for the browser.
+ */
+export function BlupLoginCancel(): $CancellablePromise<void> {
+    return $Call.ByID(3932829260);
+}
+
+/**
+ * BlupLoginWait waits for the approval in the browser (BlupLoginCancel stops
+ * it) and returns the account.
+ */
+export function BlupLoginWait(): $CancellablePromise<app$0.BlupAccount> {
+    return $Call.ByID(2313318555);
+}
+
+/**
+ * BlupSignOut leaves Blup Cloud on this computer.
+ */
+export function BlupSignOut(): $CancellablePromise<void> {
+    return $Call.ByID(130332116);
+}
+
+/**
  * BringSite makes a site found on GitHub on this computer and opens it.
  */
 export function BringSite(owner: string, repo: string): $CancellablePromise<$models.SiteInfo> {
@@ -199,6 +237,13 @@ export function CreateFolder(folder: string, name: string): $CancellablePromise<
  */
 export function CreateNote(folder: string, name: string): $CancellablePromise<string> {
     return $Call.ByID(1198333690, folder, name);
+}
+
+/**
+ * CreateNotesPassword turns sync on and returns the recovery key (shown once).
+ */
+export function CreateNotesPassword(password: string): $CancellablePromise<string> {
+    return $Call.ByID(2494476778, password);
 }
 
 /**
@@ -426,6 +471,13 @@ export function OpenAIKeyPage(): $CancellablePromise<void> {
  */
 export function OpenAttachment(name: string): $CancellablePromise<void> {
     return $Call.ByID(1254002543, name);
+}
+
+/**
+ * OpenBlupCloud opens the account panel in the browser.
+ */
+export function OpenBlupCloud(page: string): $CancellablePromise<void> {
+    return $Call.ByID(2160663514, page);
 }
 
 /**
@@ -736,6 +788,13 @@ export function SetPassword(password: string): $CancellablePromise<void> {
 }
 
 /**
+ * SetSyncRemote picks where the open site's notes are synced.
+ */
+export function SetSyncRemote(remote: string): $CancellablePromise<void> {
+    return $Call.ByID(2182594583, remote);
+}
+
+/**
  * SetTarget saves where the open site is published.
  */
 export function SetTarget(t: app$0.Target): $CancellablePromise<app$0.Target> {
@@ -822,6 +881,13 @@ export function Sync(): $CancellablePromise<app$0.SyncInfo> {
 }
 
 /**
+ * SyncRemote is where the open site's notes are synced: "blup" or "github".
+ */
+export function SyncRemote(): $CancellablePromise<string> {
+    return $Call.ByID(2025102391);
+}
+
+/**
  * SyncStatus tells what syncing the notes would send and receive.
  */
 export function SyncStatus(): $CancellablePromise<app$0.SyncInfo> {
@@ -864,6 +930,13 @@ export function Tree(): $CancellablePromise<$models.Node> {
  */
 export function UndoAI(id: string): $CancellablePromise<void> {
     return $Call.ByID(440093366, id);
+}
+
+/**
+ * UnlockNotes opens the notes here with the notes password or the recovery key.
+ */
+export function UnlockNotes(secret: string): $CancellablePromise<void> {
+    return $Call.ByID(2596498707, secret);
 }
 
 /**

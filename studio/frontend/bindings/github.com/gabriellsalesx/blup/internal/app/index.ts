@@ -4,6 +4,7 @@
 export type {
     Attachment,
     Author,
+    BlupAccount,
     Change,
     CloudSite,
     Connections,
@@ -12,6 +13,7 @@ export type {
     DeleteProblem,
     DomainStatus,
     FeedbackSetup,
+    LiveState,
     LocalVoice,
     MenuItem,
     ModelOption,

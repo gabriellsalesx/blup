@@ -142,6 +142,7 @@ func (s *Studio) closeIfOpen(dir string) {
 	s.StopPreview()
 	closeTerminals(s)
 	watchNotes("")
+	s.startLive(nil)
 	s.mu.Lock()
 	s.site = nil
 	s.mu.Unlock()

@@ -37,6 +37,7 @@ type TermData struct {
 func init() {
 	application.RegisterEvent[TermData]("term")
 	application.RegisterEvent[string]("notesChanged")
+	application.RegisterEvent[app.LiveState]("cloudSync")
 }
 
 // Agent is an AI agent's command line.
@@ -220,6 +221,8 @@ func closeTerminals(s *Studio) {
 var (
 	watchMu sync.Mutex
 	watcher *fsnotify.Watcher
+	// onNotesChanged is told too (the live sync).
+	onNotesChanged func()
 )
 
 // watchNotes tells the window when notes change on disk (an agent, another
@@ -284,6 +287,12 @@ func watchNotes(root string) {
 						timer = nil
 						mu.Unlock()
 						application.Get().Event.Emit("notesChanged", strings.Join(list, "\n"))
+						watchMu.Lock()
+						f := onNotesChanged
+						watchMu.Unlock()
+						if f != nil {
+							f()
+						}
 					})
 				}
 				mu.Unlock()

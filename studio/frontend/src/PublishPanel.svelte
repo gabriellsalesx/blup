@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { Events } from "@wailsio/runtime";
-  import { CurrentDomain, SetDomain, CheckDomain, RemoveDomain, Connections, OpenKeyPage, OpenURL, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, SyncStatus, Sync } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
-  import type { Connections as Conn, Target as Dest, SyncInfo, DomainStatus } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import { CurrentDomain, SetDomain, CheckDomain, RemoveDomain, Connections, OpenKeyPage, OpenURL, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, SyncStatus, Sync, SyncRemote, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import type { Connections as Conn, Target as Dest, SyncInfo, DomainStatus, BlupAccount } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Account } from "../bindings/github.com/gabriellsalesx/blup/internal/deploy/cfpages/models";
   import Check from "@lucide/svelte/icons/check";
   import Alert from "@lucide/svelte/icons/circle-alert";
@@ -13,6 +13,7 @@
   import { Clipboard } from "@wailsio/runtime";
   import { t } from "./i18n";
   import { toast } from "./toast.svelte";
+  import CloudAccount from "./CloudAccount.svelte";
 
   let { autostart = "" }: { autostart?: string } = $props();
   const p = t.pubs;
@@ -32,6 +33,21 @@
   let sync = $state<SyncInfo | null>(null);
   let syncing = $state(false);
   let syncError = $state("");
+  // Where the notes go: Blup Cloud (encrypted) or a GitHub repository.
+  let remote = $state("");
+  let cloud = $state<BlupAccount | null>(null);
+  const cl = t.cloud;
+  SyncRemote().then((r) => (remote = r));
+  async function pickRemote(r: string) {
+    await SetSyncRemote(r);
+    remote = r; sync = null; syncError = ""; checkedCloud = false;
+  }
+  const canSync = $derived(remote === "blup" ? cloud?.signedIn && cloud.notes === "ready" : !!conn?.github);
+  // Blup Cloud ready for the first time: see what a sync would do (once).
+  let checkedCloud = false;
+  $effect(() => {
+    if (remote === "blup" && cloud?.notes === "ready" && !checkedCloud) { checkedCloud = true; checkSync(); }
+  });
 
   // The custom domain: typed here, connected where the site is published;
   // the DNS records still missing are listed to copy.
@@ -132,7 +148,7 @@
 
   load().then(() => {
     if (autostart === "publish" && ready) publish();
-    if (autostart === "sync" && conn?.github) checkSync();
+    if (autostart === "sync" && remote === "github" && conn?.github) checkSync();
   });
 </script>
 
@@ -264,8 +280,14 @@
 
     <section class="card">
       <h2>{p.syncTitle}</h2>
-      <p>{p.syncHelp}</p>
-      {#if !conn.github}
+      <p class="q">{cl.where}</p>
+      <div class="choices">
+        <button class="choice" class:on={remote === "blup"} onclick={() => pickRemote("blup")}><b>Blup Cloud · {cl.recommended}</b><span>{cl.blupHelp}</span></button>
+        <button class="choice" class:on={remote === "github"} onclick={() => pickRemote("github")}><b>GitHub</b><span>{cl.ghHelp}</span></button>
+      </div>
+      {#if remote === "blup"}
+        <CloudAccount bind:account={cloud} />
+      {:else if remote === "github" && !conn.github}
         <p class="muted">{p.syncNeedsGitHub}</p>
         <ol class="steps">
           <li>{p.step1} <button class="add" onclick={() => OpenKeyPage("github")}>{p.openForm} <External size={14} /></button></li>
@@ -276,18 +298,24 @@
           <input type="password" bind:value={ghKey} placeholder={p.pasteKey} autocomplete="off" />
           <button class="btn" disabled={connecting || !ghKey.trim()} onclick={connectGitHubForSync}>{connecting ? p.checking : p.connect}</button>
         </div>
-        {#if syncError}<p class="bad">{syncError}</p>{/if}
-      {:else}
+      {:else if remote === "github"}
+        <p>{p.syncHelp}</p>
+      {/if}
+      {#if canSync}
         {#if sync}
           <p class="sum">{sync.upToDate && !sync.send && !sync.receive ? p.syncUpToDate : p.syncPlan.replace("{send}", String(sync.send)).replace("{receive}", String(sync.receive))} · <b>{sync.repo}</b></p>
           {#each sync.conflicts ?? [] as c (c)}<p class="bad">{p.conflict} {c}</p>{/each}
+          {#if sync.tooLarge?.length}
+            <p class="warn">{cl.tooLarge.replace("{mb}", String(cloud?.maxFileMB ?? 100))}</p>
+            <ul class="large">{#each sync.tooLarge as f (f)}<li>{f}</li>{/each}</ul>
+          {/if}
         {/if}
-        {#if syncError}<p class="bad">{syncError}</p>{/if}
         <div class="actions">
           <button class="btn ghost" disabled={syncing} onclick={checkSync}><Refresh size={14} />{p.syncCheck}</button>
           <button class="btn" disabled={syncing} onclick={runSync}>{syncing ? p.syncing : p.syncNow}</button>
         </div>
       {/if}
+      {#if syncError}<p class="bad">{syncError}</p>{/if}
     </section>
   {/if}
 </div>
@@ -322,5 +350,6 @@
   .dns code { font-size: .85rem; user-select: all; }
   .q { font-size: .85rem; }
   .danger-text { color: var(--red); }
+  .large { margin: 0; padding-inline-start: 1.25rem; font-size: .85rem; color: var(--muted); }
   .btn.danger { background: var(--red); color: #fff; }
 </style>

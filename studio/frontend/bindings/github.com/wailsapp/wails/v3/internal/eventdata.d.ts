@@ -7,11 +7,15 @@ import type { Events } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import type * as app$0 from "../../../../gabriellsalesx/blup/internal/app/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import type * as main$0 from "../../../../gabriellsalesx/blup/studio/models.js";
 
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
+            "cloudSync": app$0.LiveState;
             "narrate": main$0.NarrateProgress;
             "notesChanged": string;
             "progress": main$0.Progress;

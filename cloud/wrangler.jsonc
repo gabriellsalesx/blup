@@ -26,6 +26,10 @@
 		}
 	],
 	"r2_buckets": [{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" }],
+	// A sala ao vivo de cada conta (sincronização em tempo real dos planos
+	// pagos), com hibernação de WebSocket.
+	"durable_objects": { "bindings": [{ "name": "SYNC_LIVE", "class_name": "SyncLive" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["SyncLive"] }],
 	"send_email": [{ "name": "EMAIL" }],
 	"ratelimits": [
 		// Pedidos de código por e-mail: por IP, por minuto.
@@ -65,6 +69,7 @@
 				}
 			],
 			"r2_buckets": [{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" }],
+			"durable_objects": { "bindings": [{ "name": "SYNC_LIVE", "class_name": "SyncLive" }] },
 			"send_email": [{ "name": "EMAIL" }],
 			"ratelimits": [
 				{ "name": "OTP_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }

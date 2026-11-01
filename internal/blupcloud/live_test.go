@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/gabriellsalesx/blup/internal/cloudcrypt"
 	"github.com/gabriellsalesx/blup/internal/notesync"
@@ -148,4 +149,44 @@ func TestLiveSync(t *testing.T) {
 
 	me, _ = c.Me(ctx)
 	t.Logf("uso: %d bytes, %d cofres", me.Usage.StorageBytes, me.Usage.Vaults)
+}
+
+// The account's live room (the account must be on a live plan): a new
+// version saved by one computer reaches the others at once.
+func TestLiveRoom(t *testing.T) {
+	token := os.Getenv("BLUP_CLOUD_LIVE_TOKEN")
+	if token == "" {
+		t.Skip("BLUP_CLOUD_LIVE_TOKEN not set")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	c := New(token)
+	master, _, w, _ := cloudcrypt.NewKeys("senha das notas")
+	if err := c.SaveKey(ctx, w); err != nil {
+		t.Fatal(err)
+	}
+	keys, _ := cloudcrypt.Derive(master)
+	name, _ := keys.SealName("Ao vivo")
+	v, err := c.CreateVault(ctx, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make(chan Moved, 1)
+	go c.Listen(ctx, func(m Moved) { got <- m })
+	time.Sleep(time.Second) // joined
+
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "nota.md"), []byte("oi\n"), 0o644)
+	sy := &notesync.Syncer{Remote: &Remote{Client: New(token), Keys: keys, Vault: v.ID}, Dir: dir, StateFile: filepath.Join(t.TempDir(), "state.json")}
+	if _, err := sy.Sync(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case m := <-got:
+		if m.Vault != v.ID || m.N != 1 {
+			t.Fatalf("moved = %+v", m)
+		}
+	case <-ctx.Done():
+		t.Fatal("no message from the live room")
+	}
 }

@@ -30,6 +30,13 @@ type Credentials struct {
 	// PostPassword is the general password of protected posts, for every
 	// site without its own (Site.Password).
 	PostPassword string `toml:"post_password,omitempty"`
+	// BlupToken is Blup Studio's session on Blup Cloud (signed in through
+	// the browser).
+	BlupToken string `toml:"blup_token,omitempty"`
+	// NotesKey is the master key that encrypts the notes synced through Blup
+	// Cloud (base64), opened once with the notes password. Without it here
+	// the notes cannot be read, so it never leaves this computer in clear.
+	NotesKey string `toml:"notes_key,omitempty"`
 }
 
 // SiteVersion is the format of blup.toml this Blup writes. When a release
@@ -151,8 +158,13 @@ func (f Feedback) AppSlug() string {
 
 // NoteSync is where "blup sync" keeps a copy of the notes.
 type NoteSync struct {
-	Owner string `toml:"owner,omitempty"`
-	Repo  string `toml:"repo,omitempty"`
+	// Remote is where the notes go: "" or "github" (a private repository),
+	// or "blup" (Blup Cloud, end-to-end encrypted).
+	Remote string `toml:"remote,omitempty"`
+	Owner  string `toml:"owner,omitempty"`
+	Repo   string `toml:"repo,omitempty"`
+	// Vault is the folder's id on Blup Cloud.
+	Vault string `toml:"vault,omitempty"`
 }
 
 type GitHub struct {

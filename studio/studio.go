@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gabriellsalesx/blup/internal/app"
+	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/hugo"
 	"github.com/gabriellsalesx/blup/internal/scaffold"
@@ -33,6 +34,11 @@ type Studio struct {
 	site    *config.Site
 	preview *exec.Cmd
 	url     string
+	// login is the Blup Cloud sign in waiting for the browser.
+	login  *blupcloud.Login
+	cancel context.CancelFunc
+	// live keeps the open site synced through Blup Cloud (live plans).
+	live *app.Live
 }
 
 // SiteInfo describes a site in the list.
@@ -85,6 +91,7 @@ func (s *Studio) Open(dir string) (Node, error) {
 	s.site = site
 	s.mu.Unlock()
 	watchNotes(site.ContentDir())
+	s.startLive(site)
 	s.remember(dir)
 	return s.Tree()
 }

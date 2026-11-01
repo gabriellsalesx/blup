@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/deploy/cfpages"
@@ -233,10 +234,28 @@ type SyncInfo struct {
 	UpToDate   bool     `json:"upToDate"`
 	TrashCount int      `json:"trashCount"`
 	Trash      string   `json:"trash"`
+	// TooLarge are files over the plan's (or GitHub's) size limit: they are
+	// not synced.
+	TooLarge []string `json:"tooLarge"`
 }
 
-// syncer prepares the private notes repository (created the first time).
+func tooLarge(rep notesync.Report) []string {
+	var out []string
+	for _, p := range rep.Skipped {
+		if rep.SkipReasons[p] == notesync.SkipTooLarge {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// syncer prepares where the notes go: Blup Cloud, or the private notes
+// repository on GitHub (created the first time).
 func syncer(ctx context.Context, site *config.Site) (*notesync.Syncer, string, error) {
+	if site.Sync.Remote == RemoteBlup {
+		sy, err := blupSyncer(ctx, site)
+		return sy, "Blup Cloud", err
+	}
 	c, login, err := savedGitHub(ctx)
 	if err != nil {
 		return nil, "", err
@@ -280,7 +299,7 @@ func SyncStatus(ctx context.Context, site *config.Site) (SyncInfo, error) {
 	}
 	return SyncInfo{
 		Repo: repo, Send: len(plan.Uploaded) + len(plan.Deleted), Receive: len(plan.Downloaded) + len(plan.DeletedLocal),
-		Conflicts: plan.Conflicts, UpToDate: plan.UpToDate && len(plan.Conflicts) == 0,
+		Conflicts: plan.Conflicts, UpToDate: plan.UpToDate && len(plan.Conflicts) == 0, TooLarge: tooLarge(plan),
 	}, nil
 }
 
@@ -291,7 +310,13 @@ func SyncNow(ctx context.Context, site *config.Site) (SyncInfo, error) {
 
 // syncSite syncs; share puts this computer's settings next to the notes
 // first (a site just brought from GitHub only receives).
+// syncMu runs one sync at a time (the button and the live sync share the
+// state file).
+var syncMu sync.Mutex
+
 func syncSite(ctx context.Context, site *config.Site, share bool) (SyncInfo, error) {
+	syncMu.Lock()
+	defer syncMu.Unlock()
 	sy, repo, err := syncer(ctx, site)
 	if err != nil {
 		return SyncInfo{}, err
@@ -313,6 +338,6 @@ func syncSite(ctx context.Context, site *config.Site, share bool) (SyncInfo, err
 	}
 	return SyncInfo{
 		Repo: repo, Send: len(rep.Uploaded) + len(rep.Deleted), Receive: len(rep.Downloaded) + len(rep.DeletedLocal),
-		Conflicts: rep.ConflictCopies, UpToDate: true, TrashCount: len(rep.DeletedLocal), Trash: rep.Trash,
+		Conflicts: rep.ConflictCopies, UpToDate: true, TrashCount: len(rep.DeletedLocal), Trash: rep.Trash, TooLarge: tooLarge(rep),
 	}, nil
 }

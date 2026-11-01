@@ -32,6 +32,7 @@ project.
 | [go-yaml](https://github.com/yaml/go-yaml) | Apache-2.0 | |
 | [BLAKE3](https://lukechampine.com/blake3) | MIT | |
 | [golang.org/x/net, x/text, x/crypto](https://pkg.go.dev/golang.org/x) | BSD-3-Clause | |
+| [coder/websocket](https://github.com/coder/websocket) (Blup Cloud live sync) | ISC | |
 
 ## Downloaded when needed (not bundled)
 

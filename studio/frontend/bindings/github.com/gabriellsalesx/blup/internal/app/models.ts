@@ -63,6 +63,39 @@ export interface Author {
 }
 
 /**
+ * BlupAccount is the signed in account as Blup Studio shows it.
+ */
+export interface BlupAccount {
+    "signedIn": boolean;
+    "email": string;
+
+    /**
+     * "free", "pro", "max", "ultra"
+     */
+    "plan": string;
+
+    /**
+     * "Grátis", "Pro"...
+     */
+    "label": string;
+
+    /**
+     * Live: the plan syncs each note as it is saved and hears of the other
+     * computers at once; without it, sync is by button.
+     */
+    "live": boolean;
+    "maxFileMB": number;
+    "storageMB": number;
+    "storageBytes": number;
+
+    /**
+     * Notes: "new" (no notes password yet), "locked" (created on another
+     * computer, not typed here) or "ready".
+     */
+    "notes": string;
+}
+
+/**
  * Change is a note or file that differs from a snapshot.
  */
 export interface Change {
@@ -178,6 +211,19 @@ export interface FeedbackSetup {
      */
     "installURL": string;
     "appName": string;
+}
+
+/**
+ * LiveState is reported to the window.
+ */
+export interface LiveState {
+    /**
+     * "syncing", "synced" or "error"
+     */
+    "state": string;
+    "at": string;
+    "error"?: string;
+    "info": SyncInfo;
 }
 
 /**
@@ -371,6 +417,12 @@ export interface SyncInfo {
     "upToDate": boolean;
     "trashCount": number;
     "trash": string;
+
+    /**
+     * TooLarge are files over the plan's (or GitHub's) size limit: they are
+     * not synced.
+     */
+    "tooLarge": string[] | null;
 }
 
 /**

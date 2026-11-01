@@ -107,6 +107,8 @@ app.onError((err, c) => {
 
 export type AppType = typeof routes;
 
+export { SyncLive } from "./live";
+
 // The security headers of static/_headers, on what the Worker itself
 // serves (Cloudflare applies _headers only to assets it serves directly).
 const SECURITY_HEADERS: Record<string, string> = {
@@ -119,6 +121,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 function secure(res: Response): Response {
+	if (res.status === 101) return res; // a WebSocket: copying it would drop the socket
 	const out = new Response(res.body, res);
 	for (const [k, v] of Object.entries(SECURITY_HEADERS)) if (!out.headers.has(k)) out.headers.set(k, v);
 	return out;

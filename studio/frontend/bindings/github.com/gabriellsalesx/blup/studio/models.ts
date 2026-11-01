@@ -17,6 +17,14 @@ export interface Agent {
 }
 
 /**
+ * BlupLoginCode is what the person checks in the browser.
+ */
+export interface BlupLoginCode {
+    "code": string;
+    "url": string;
+}
+
+/**
  * Found is what OpenExisting found in the folder the user picked.
  */
 export interface Found {

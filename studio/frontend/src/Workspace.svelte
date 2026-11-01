@@ -24,6 +24,9 @@
   import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
   import ChevronsDownUp from "@lucide/svelte/icons/chevrons-down-up";
   import { Events } from "@wailsio/runtime";
+  import CloudCheck from "@lucide/svelte/icons/cloud-check";
+  import CloudAlert from "@lucide/svelte/icons/cloud-alert";
+  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import LookPanel from "./LookPanel.svelte";
   import SectionsPanel from "./SectionsPanel.svelte";
   import CommentsPanel from "./CommentsPanel.svelte";
@@ -249,6 +252,12 @@
   }
   onDestroy(() => offNotes());
 
+  // Live sync through Blup Cloud (paid plans): its state on the Sync button.
+  let cloud = $state<{ state: string; error?: string } | null>(null);
+  const offCloud = Events.On("cloudSync", (ev: any) => (cloud = ev.data));
+  onDestroy(() => offCloud());
+  const cloudTitle = $derived(!cloud ? undefined : cloud.state === "error" ? t.cloudError.replace("{error}", cloud.error ?? "") : cloud.state === "syncing" ? t.cloudSyncing : t.cloudSynced);
+
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pending = ""; // text not saved yet
   let written = ""; // the text the editor wrote to disk last
@@ -463,7 +472,9 @@
     {/if}
     <span class="spacer"></span>
     <button class="btn ghost" onclick={togglePreview}>{previewOn ? "✓ " : ""}{t.preview}</button>
-    <button class="btn ghost" onclick={() => go("publish", "sync")}>{t.sync}</button>
+    <button class="btn ghost" title={cloudTitle} onclick={() => go("publish", "sync")}>
+      {#if cloud?.state === "syncing"}<span class="spin"><RefreshCw size={14} /></span>{:else if cloud?.state === "error"}<CloudAlert size={14} class="bad" />{:else if cloud}<CloudCheck size={14} />{/if}{t.sync}
+    </button>
     <button class="btn" onclick={() => go("publish", "publish")}>{t.publish}</button>
   </header>
 
@@ -614,4 +625,6 @@
   .body { flex: 1; min-height: 0; }
   .hint { padding: 3rem 2rem; text-align: center; }
   .error { position: absolute; inset-inline: 1rem; inset-block-start: .75rem; z-index: 2; padding: .6rem .9rem; border-radius: .5rem; background: var(--soft); color: var(--red); font-size: .85rem; }
+  .spin { display: inline-grid; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
