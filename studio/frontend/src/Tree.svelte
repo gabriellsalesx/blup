@@ -150,9 +150,10 @@
 </ul>
 
 <style>
-  ul { list-style: none; padding: 0; display: grid; gap: 1px; }
+  /* A little room between the items, so their highlights never touch. */
+  ul { list-style: none; padding: 0; display: grid; gap: 3px; }
   /* The guide line of an open folder, under its chevron. */
-  ul.nested { margin-inline-start: .95rem; padding-inline-start: .35rem; border-inline-start: 1px solid var(--line); }
+  ul.nested { margin-block-start: 3px; margin-inline-start: .95rem; padding-inline-start: .35rem; border-inline-start: 1px solid var(--line); }
   .row { display: flex; align-items: center; gap: .35rem; width: 100%; min-height: 1.9rem; text-align: start; padding: .3rem .5rem .3rem .3rem; border-radius: .35rem; font-size: .875rem; color: var(--text); opacity: .85; }
   .row:hover { background: var(--soft); opacity: 1; }
   .row.note { color: var(--muted); opacity: 1; }
