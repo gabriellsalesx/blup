@@ -154,7 +154,7 @@ type Voice struct {
 	Sample bool   `json:"sample"`
 }
 
-// NarrationVoices lists the voices for a site in lang ("pt" or "en"): the
+// NarrationVoices lists the voices for a site in lang ("pt", "en" or "es"): the
 // local ones, then those of the OpenRouter model (the recommended one when
 // model is "").
 func NarrationVoices(ctx context.Context, lang, model string) ([]Voice, error) {
@@ -185,7 +185,7 @@ func NarrationVoices(ctx context.Context, lang, model string) ([]Voice, error) {
 		for _, v := range narrate.VoicesFor(m, lang) {
 			name := narrate.VoiceName(v)
 			if v == "" {
-				name = byLangCode(lang, "Voz padrão do modelo", "The model's default voice")
+				name = byLangCode(lang, "Voz padrão do modelo", "The model's default voice", "Voz predeterminada del modelo")
 			}
 			out = append(out, Voice{ID: joinChoice(m.ID, v), Name: name, Engine: "openrouter", Ready: creds.OpenRouterToken != "", Sample: m.ID == narrate.DefaultModel && narrate.HasSample(v)})
 		}
@@ -193,9 +193,12 @@ func NarrationVoices(ctx context.Context, lang, model string) ([]Voice, error) {
 	return out, err
 }
 
-func byLangCode(lang, pt, en string) string {
-	if lang == "pt" {
+func byLangCode(lang, pt, en, es string) string {
+	switch lang {
+	case "pt":
 		return pt
+	case "es":
+		return es
 	}
 	return en
 }
@@ -259,12 +262,12 @@ func resolveOpenRouter(ctx context.Context, lang, choice string) (model, voice, 
 			return m.ID, vs[0], m.Name + ", " + voiceName(vs[0], lang), nil
 		}
 	}
-	return "", "", "", errors.New(byLangCode(lang, "O OpenRouter não tem nenhuma voz para o idioma do site agora. Use a voz local.", "OpenRouter has no voice for the site's language right now. Use the local voice."))
+	return "", "", "", errors.New(byLangCode(lang, "O OpenRouter não tem nenhuma voz para o idioma do site agora. Use a voz local.", "OpenRouter has no voice for the site's language right now. Use the local voice.", "OpenRouter no tiene ninguna voz para el idioma del sitio en este momento. Usa la voz local."))
 }
 
 func voiceName(v, lang string) string {
 	if v == "" {
-		return byLangCode(lang, "voz padrão", "default voice")
+		return byLangCode(lang, "voz padrão", "default voice", "voz predeterminada")
 	}
 	return narrate.VoiceName(v)
 }
@@ -291,7 +294,8 @@ func PreviewVoice(ctx context.Context, lang, choice string) ([]byte, error) {
 	}
 	text := byLangCode(lang,
 		"Olá! Esta é a voz que vai ler os seus posts. Quem prefere escutar aperta o play e ouve tudo, como um podcast.",
-		"Hi! This is the voice that will read your posts. Anyone who would rather listen just presses play and hears it all, like a podcast.")
+		"Hi! This is the voice that will read your posts. Anyone who would rather listen just presses play and hears it all, like a podcast.",
+		"¡Hola! Esta es la voz que va a leer tus posts. Quien prefiera escuchar solo presiona play y lo oye todo, como un podcast.")
 	b, err := (&narrate.Client{Key: creds.OpenRouterToken, BaseURL: openRouterURL}).Speak(ctx, model, text, voice)
 	if err != nil {
 		return nil, err
@@ -367,10 +371,10 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 		return Narration{}, err
 	}
 	if note.String("password") != "" && note.String("password") != "false" {
-		return Narration{}, errors.New(byLang(site, "Posts com senha não ganham narração: o áudio entregaria o texto.", "Password protected posts are not narrated: the audio would give the text away."))
+		return Narration{}, errors.New(byLang(site, "Posts com senha não ganham narração: o áudio entregaria o texto.", "Password protected posts are not narrated: the audio would give the text away.", "Los posts con contraseña no tienen narración: el audio revelaría el texto."))
 	}
 	if strings.Count(text, " ") < 3 {
-		return Narration{}, errors.New(byLang(site, "A nota ainda não tem texto para narrar.", "The note has no text to narrate yet."))
+		return Narration{}, errors.New(byLang(site, "A nota ainda não tem texto para narrar.", "The note has no text to narrate yet.", "La nota todavía no tiene texto para narrar."))
 	}
 	voice = voiceFor(site.Lang, voice)
 	var mp3 []byte
@@ -387,7 +391,7 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 		return Narration{}, err
 	}
 	if len(mp3) > maxAudio {
-		return Narration{}, errors.New(byLang(site, "A narração passou de 25 MB, o máximo que o site publica. Divida o post em partes.", "The narration is over 25 MB, the most the site publishes. Split the post into parts."))
+		return Narration{}, errors.New(byLang(site, "A narração passou de 25 MB, o máximo que o site publica. Divida o post em partes.", "The narration is over 25 MB, the most the site publishes. Split the post into parts.", "La narración pasa de 25 MB, el máximo que publica el sitio. Divide el post en partes."))
 	}
 	file := narrationFile(site, rel, note)
 	dest := filepath.Join(site.ContentDir(), attachmentsFolder(site), file)
@@ -432,7 +436,7 @@ func speakOpenRouter(ctx context.Context, site *config.Site, text, choice string
 		}
 		a, err := client.Speak(ctx, model, part, voice)
 		if errors.Is(err, narrate.ErrModelGone) {
-			return nil, 0, "", errors.New(byLang(site, "O modelo de voz saiu do OpenRouter agora há pouco. Escolha outro nas configurações de IA.", "The voice model just left OpenRouter. Pick another in the AI settings."))
+			return nil, 0, "", errors.New(byLang(site, "O modelo de voz saiu do OpenRouter agora há pouco. Escolha outro nas configurações de IA.", "The voice model just left OpenRouter. Pick another in the AI settings.", "El modelo de voz acaba de salir de OpenRouter. Elige otro en la configuración de IA."))
 		}
 		if err != nil {
 			return nil, 0, "", err
@@ -470,9 +474,6 @@ func narrationFile(site *config.Site, rel string, note obsidian.Note) string {
 }
 
 // byLang picks the text in the site's language.
-func byLang(site *config.Site, pt, en string) string {
-	if site.Lang == "pt" {
-		return pt
-	}
-	return en
+func byLang(site *config.Site, pt, en, es string) string {
+	return byLangCode(site.Lang, pt, en, es)
 }

@@ -18,7 +18,7 @@
 
   const load = async () => (items = (await Trash()) ?? []);
   load();
-  const when = (d: string) => new Date(d).toLocaleString(t.lang === "pt" ? "pt-BR" : "en", { dateStyle: "medium", timeStyle: "short" });
+  const when = (d: string) => new Date(d).toLocaleString(t.locale, { dateStyle: "medium", timeStyle: "short" });
 
   const restore = (p: string) => s.run(async () => { onTree(await RestoreSection(p)); await load(); reload(); }, t.toast.restored);
   const drop = (p: string) => s.run(async () => { await DeleteFromTrash(p); asking = ""; await load(); }, t.toast.deletedForGood);

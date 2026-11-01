@@ -88,7 +88,7 @@ func CreateSite(g *config.Global, o NewSiteOptions) (*config.Site, error) {
 			return nil, errors.New("unknown section " + k)
 		}
 	}
-	if o.Lang != "pt" {
+	if o.Lang != "pt" && o.Lang != "es" {
 		o.Lang = "en"
 	}
 	o.Vault, o.Dir = expandHome(o.Vault), expandHome(o.Dir)

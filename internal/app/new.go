@@ -84,7 +84,7 @@ func newSite(ctx context.Context, g *config.Global) error {
 		{nil, func() error { return ui.Ask(i18n.T("new.author"), i18n.T("new.optional"), "", &author, nil) }},
 		{nil, func() error {
 			return ui.Choose(i18n.T("new.site_lang"), i18n.T("new.site_lang_help"), &siteLang,
-				ui.Option("English", "en"), ui.Option("Português", "pt"))
+				ui.Option("English", "en"), ui.Option("Português", "pt"), ui.Option("Español", "es"))
 		}},
 		{nil, func() (err error) { dir, err = askSiteDir(title, dir); return }},
 		{nil, func() error {

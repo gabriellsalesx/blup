@@ -112,7 +112,7 @@
   });
   const size = (n: number) => (n < 1 << 30 ? `${Math.max(0, n / (1 << 20)).toFixed(n < 10 << 20 ? 1 : 0)} MB` : `${(n / (1 << 30)).toFixed(1)} GB`);
   const pct = (used: number, max: number) => (max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0);
-  const day = (iso: string) => new Date(iso).toLocaleDateString(t.lang === "pt" ? "pt-BR" : "en-US", { day: "numeric", month: "long" });
+  const day = (iso: string) => new Date(iso).toLocaleDateString(t.locale, { day: "numeric", month: "long" });
   const count = (n: number, max: number) => (max > 0 ? `${n} / ${max}` : `${n} · ${s.unlimited}`);
   // "1.4.0" reads v1.4.0; a build without a version ("dev") as it is.
   const shownVersion = $derived(/^\d/.test(version) ? `v${version}` : version);
@@ -331,6 +331,7 @@
         <select value={lang} onchange={(e) => changeLang(e.currentTarget.value)}>
           <option value="pt">Português</option>
           <option value="en">English</option>
+          <option value="es">Español</option>
         </select>
       </div>
     {:else if tab === "cloud"}

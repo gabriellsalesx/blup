@@ -6,7 +6,8 @@ import (
 )
 
 // System is the computer's language as Blup speaks it: Portuguese when the
-// system is in Portuguese (Brazil or elsewhere), English otherwise.
+// system is in Portuguese (Brazil or elsewhere), Spanish when it is in
+// Spanish, English otherwise.
 func System() Lang {
 	for _, l := range systemLocales() {
 		l = strings.ToLower(l)
@@ -15,6 +16,9 @@ func System() Lang {
 		}
 		if strings.HasPrefix(l, "pt") {
 			return "pt"
+		}
+		if strings.HasPrefix(l, "es") {
+			return "es"
 		}
 		return "en"
 	}

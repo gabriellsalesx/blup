@@ -15,9 +15,9 @@
 import { EditorView, Decoration, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { type EditorState, type Range } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { CALLOUTS, CALLOUT_ALIASES, calloutIcon } from "./callouts";
+import { CALLOUTS, CALLOUT_ALIASES, calloutIcon, calloutName } from "./callouts";
 
-export type LiveText = { copy: string; copied: string; code: string; pt: boolean; remote: string };
+export type LiveText = { copy: string; copied: string; code: string; lang: string; remote: string };
 export type LiveOptions = {
   text: LiveText;
   image: (src: string) => Promise<string>; // an image's data: URL ("" when missing)
@@ -225,7 +225,7 @@ function build(view: EditorView, opts: LiveOptions): DecorationSet {
                 const known = CALLOUT_ALIASES[type] ?? type;
                 const c = CALLOUTS.find((x) => x.type === known);
                 const own = line.text.slice(head[0].length).trim();
-                const name = own ? "" : c ? (opts.text.pt ? c.pt : c.en) : head[1];
+                const name = own ? "" : c ? calloutName(c, opts.text.lang) : head[1];
                 out.push(Decoration.replace({ widget: new CalloutHead(c?.type ?? "note", name) }).range(line.from, line.from + head[0].length));
               } else if (m) out.push(hide.range(line.from, line.from + m[0].length));
             }

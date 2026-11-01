@@ -33,7 +33,7 @@ func writePrivacyNote(site *config.Site, contact string) (string, error) {
 	if p := privacyNote(site); p != "" {
 		return p, nil
 	}
-	name := map[string]string{"pt": "Política de privacidade.md"}[site.Lang]
+	name := map[string]string{"pt": "Política de privacidade.md", "es": "Política de privacidad.md"}[site.Lang]
 	if name == "" {
 		name = "Privacy policy.md"
 	}
@@ -120,6 +120,37 @@ var privacyTexts = map[string]privacyText{
 		choicesBanner:     "You can change your cookie choices anytime with the **Cookies** link in the footer.",
 		changes:           "Changes to this policy",
 		changesText:       "When this policy changes, the date below changes too.",
+	},
+	"es": {
+		title:             "Política de privacidad",
+		description:       "Cómo este sitio trata los datos de quienes lo visitan.",
+		todo:              "%%\nPlantilla creada por Blup a partir de las herramientas del sitio. Revisa cada parte, completa lo que falte y borra lo que no aplique. Este comentario no aparece en el sitio.\nSi cambias las herramientas en blup customize, actualiza esta página.\n%%",
+		updated:           "Última actualización: %s.",
+		dateFormat:        "02/01/2006",
+		who:               "Quién se encarga de este sitio",
+		whoText:           "Este sitio lo mantiene %s. Para cualquier asunto de privacidad, escribe a %s.",
+		contactTodo:       "[tu correo de contacto]",
+		collect:           "Qué se recopila",
+		collectNone:       "Este sitio no pide registro y no usa herramientas de estadísticas ni de anuncios.",
+		collectIntro:      "Este sitio no pide registro. Los datos de abajo vienen de las herramientas que usa:",
+		ga:                "**Google Analytics**: cuenta visitas, páginas vistas, tiempo en el sitio, tipo de dispositivo y región aproximada. Usa cookies de Google y solo se carga si aceptas **Estadísticas** en el aviso de cookies. Consulta la [política de privacidad de Google](https://policies.google.com/privacy).",
+		gtm:               "**Google Tag Manager**: carga las etiquetas de medición y de anuncios configuradas en Google. Solo se carga si aceptas **Estadísticas** o **Marketing**, y las etiquetas de Google respetan cada elección. Consulta la [política de privacidad de Google](https://policies.google.com/privacy).",
+		umami:             "**Umami**: cuenta visitas y páginas vistas de forma agregada, sin cookies y sin identificarte. Solo se carga si aceptas **Estadísticas**.",
+		plausible:         "**Plausible**: cuenta visitas y páginas vistas de forma agregada, sin cookies y sin identificarte. Solo se carga si aceptas **Estadísticas**.",
+		pixel:             "**Meta Pixel**: mide el resultado de los anuncios en Facebook e Instagram. Usa cookies de Meta y solo se carga si aceptas **Marketing**. Consulta la [política de privacidad de Meta](https://www.facebook.com/privacy/policy).",
+		youtube:           "**Videos de YouTube**: vienen de youtube-nocookie.com y solo se cargan si aceptas **Videos y contenido externo** o haces clic en **Cargar video**. Después de eso, YouTube puede usar cookies. Consulta la [política de privacidad de Google](https://policies.google.com/privacy).",
+		comments:          "**Comentarios y reacciones**: para comentar o reaccionar, inicias sesión con tu cuenta de GitHub. El comentario, tu nombre de usuario y tu foto quedan públicos en GitHub. Consulta la [declaración de privacidad de GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).",
+		browser:           "Qué queda en tu navegador",
+		browserText:       "Para que el sitio funcione, tu navegador guarda algunos datos que nunca se nos envían:\n\n- tu elección de tema claro u oscuro;\n- tu elección en el aviso de cookies, por un año;\n- la conexión con GitHub, si iniciaste sesión para comentar, hasta que cierres sesión;\n- una copia del sitio, para que abra sin internet cuando está instalado como app.",
+		hosting:           "Alojamiento",
+		hostingCloudflare: "El sitio está alojado en Cloudflare Pages, que registra datos técnicos de acceso, como la dirección IP y el navegador, para entregar las páginas y proteger el sitio contra ataques. Consulta la [política de privacidad de Cloudflare](https://www.cloudflare.com/privacypolicy/).",
+		hostingGitHub:     "El sitio está alojado en GitHub Pages, que registra datos técnicos de acceso, como la dirección IP, para entregar las páginas y proteger el sitio contra ataques. Consulta la [declaración de privacidad de GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).",
+		hostingOther:      "[Indica dónde está alojado el sitio y qué registra ese servicio.]",
+		choices:           "Tus opciones",
+		choicesText:       "Puedes borrar los datos de este sitio en la configuración de tu navegador, y pedir información sobre tus datos o su eliminación por el contacto de arriba.",
+		choicesBanner:     "Puedes cambiar tus elecciones de cookies en cualquier momento con el enlace **Cookies** del pie de página.",
+		changes:           "Cambios en esta política",
+		changesText:       "Cuando esta política cambie, la fecha de abajo cambia también.",
 	},
 }
 

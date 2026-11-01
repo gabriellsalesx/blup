@@ -104,7 +104,8 @@ func speakBlup(ctx context.Context, site *config.Site, text, voice string, progr
 	if _, cost := costOf(u, text); !cost.Enough {
 		return nil, 0, errors.New(byLang(site,
 			fmt.Sprintf("Este texto usaria %d%% do seu uso de IA do mês, e agora sobram %d%%. Use a voz no computador (grátis) ou um plano maior.", cost.Percent, cost.Left),
-			fmt.Sprintf("This text would use %d%% of your monthly AI allowance, and %d%% is left now. Use the voice on the computer (free) or a bigger plan.", cost.Percent, cost.Left)))
+			fmt.Sprintf("This text would use %d%% of your monthly AI allowance, and %d%% is left now. Use the voice on the computer (free) or a bigger plan.", cost.Percent, cost.Left),
+			fmt.Sprintf("Este texto usaría %d%% de tu cuota mensual de IA, y ahora te queda %d%%. Usa la voz de la computadora (gratis) o un plan mayor.", cost.Percent, cost.Left)))
 	}
 	parts := narrate.Split(text, narrate.MaxPart)
 	client := &narrate.Client{Key: creds.BlupToken, BaseURL: blupcloud.AIBaseURL()}
@@ -116,7 +117,7 @@ func speakBlup(ctx context.Context, site *config.Site, text, voice string, progr
 		a, err := client.Speak(ctx, narrate.DefaultModel, part, voice)
 		switch {
 		case errors.Is(err, narrate.ErrNoCredits):
-			return nil, 0, errors.New(byLang(site, "O uso de IA do mês acabou durante a narração. Ele renova no dia 1.", "The month's AI allowance ran out during the narration. It renews on the 1st."))
+			return nil, 0, errors.New(byLang(site, "O uso de IA do mês acabou durante a narração. Ele renova no dia 1.", "The month's AI allowance ran out during the narration. It renews on the 1st.", "La cuota mensual de IA se acabó durante la narración. Se renueva el día 1."))
 		case errors.Is(err, narrate.ErrInvalidKey):
 			return nil, 0, errors.New(describe(blupcloud.ErrSignedOut))
 		case err != nil:

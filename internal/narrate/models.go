@@ -118,7 +118,7 @@ func voiceLang(v string) string {
 	return ""
 }
 
-// VoicesFor are the voices of m that read a site in lang ("pt" or "en"):
+// VoicesFor are the voices of m that read a site in lang ("pt", "en" or "es"):
 // those whose name says that language, and those that say none when the
 // model speaks many languages (else only for English). The model's
 // default voice ("") stands for a model without named voices.

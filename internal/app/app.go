@@ -104,6 +104,7 @@ func chooseLanguage(g *config.Global) error {
 	if err := ui.Choose("Language / Idioma", "", &lang,
 		ui.Option("English", i18n.EN),
 		ui.Option("Português", i18n.PT),
+		ui.Option("Español", i18n.ES),
 	); err != nil {
 		return err
 	}

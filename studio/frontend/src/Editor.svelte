@@ -34,7 +34,7 @@
   import Redo from "@lucide/svelte/icons/redo-2";
   import { EditorSelection } from "@codemirror/state";
   import { wrap, prefix, block, link, insert, heading, align, alignAt, headingAt, ALIGN_LINE, callout } from "./mdcommands";
-  import { CALLOUTS, calloutIcon } from "./callouts";
+  import { CALLOUTS, calloutIcon, calloutName } from "./callouts";
   import { mdExtras } from "./mdextras";
   import { linkConceal, headingFolds } from "./livemd";
   import { livePreview } from "./livepreview";
@@ -180,7 +180,7 @@
       ] },
       { label: te.insertMenu, Icon: ListPlus, sub: [
         { label: te.table, Icon: Table, run: newTable },
-        { label: te.callout, Icon: Info, run: () => callout(view, "tip", calloutFold ? "-" : "", t.lang === "pt" ? "Dica" : "Tip", te.calloutText) },
+        { label: te.callout, Icon: Info, run: () => callout(view, "tip", calloutFold ? "-" : "", calloutName(CALLOUTS.find((c) => c.type === "tip")!, t.lang), te.calloutText) },
         { label: te.image, Icon: ImageIcon, run: pickImage },
         { label: te.codeBlock, Icon: CodeBlock, run: () => block(view, "```\n\n```", [4, 4]) },
         { label: te.hr, Icon: Minus, run: () => block(view, "---") },
@@ -244,13 +244,13 @@
   // @ mentions (at the start of a line or after a space, so e-mails don't
   // open it): a note of the site (its link, [@Name](path.md)) or a date.
   const startsWord = (ctx: CompletionContext, at: number) => at === ctx.state.doc.lineAt(at).from || /\s/.test(ctx.state.sliceDoc(at - 1, at));
-  const dateText = (d: Date) => d.toLocaleDateString(t.lang === "pt" ? "pt-BR" : "en-US", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const dateText = (d: Date) => d.toLocaleDateString(t.locale, { day: "2-digit", month: "2-digit", year: "numeric" });
   function dates(): Completion[] {
     const day = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d; };
-    const long = (d: Date) => d.toLocaleDateString(t.lang === "pt" ? "pt-BR" : "en-US", { weekday: "long", day: "numeric", month: "long" });
+    const long = (d: Date) => d.toLocaleDateString(t.locale, { weekday: "long", day: "numeric", month: "long" });
     const list: [string, Date][] = [[te.today, day(0)], [te.tomorrow, day(1)], [te.yesterday, day(-1)]];
     // The next days of the week, by name ("sexta-feira").
-    for (let n = 2; n <= 7; n++) list.push([day(n).toLocaleDateString(t.lang === "pt" ? "pt-BR" : "en-US", { weekday: "long" }), day(n)]);
+    for (let n = 2; n <= 7; n++) list.push([day(n).toLocaleDateString(t.locale, { weekday: "long" }), day(n)]);
     return list.map(([label, d], i) => ({ label, detail: long(d), type: "mention", section: { name: te.secDates, rank: 1 }, boost: -i, apply: dateText(d) }));
   }
   function mentions(ctx: CompletionContext) {
@@ -291,7 +291,7 @@
       act(te.olist, "1.", () => prefix(view, (i) => `${i + 1}. `, LIST), r++),
       act(te.task, "[ ]", () => prefix(view, "- [ ] ", LIST), r++),
       act(te.quote, ">", () => prefix(view, "> ", QUOTE), r++),
-      act(te.callout, "", () => callout(view, "tip", "", t.lang === "pt" ? "Dica" : "Tip", te.calloutText), r++),
+      act(te.callout, "", () => callout(view, "tip", "", calloutName(CALLOUTS.find((c) => c.type === "tip")!, t.lang), te.calloutText), r++),
       act(te.table, "", newTable, r++),
       act(te.codeBlock, "```", () => block(view, "```\n\n```", [4, 4]), r++),
       act(te.hr, "---", () => block(view, "---"), r++),
@@ -447,8 +447,8 @@
     { key: "callout", label: te.callout, Icon: Info, svg: () => calloutIcon(CALLOUTS.find((c) => c.type === "info")!, 17).replace(/stroke="rgb\([^)]*\)"/, 'stroke="currentColor"'), items: [
       // The quote callout is the one with a source (the plain quote is the
       // ❝ button): its title asks for the author.
-      ...CALLOUTS.map((c) => ({ label: c.type === "quote" ? te.quoteSource : t.lang === "pt" ? c.pt : c.en, svg: calloutIcon(c), tint: c.color,
-        run: () => callout(view, c.type, calloutFold ? "-" : "", c.type === "quote" ? te.sourceTitle : t.lang === "pt" ? c.pt : c.en, te.calloutText) })),
+      ...CALLOUTS.map((c) => ({ label: c.type === "quote" ? te.quoteSource : calloutName(c, t.lang), svg: calloutIcon(c), tint: c.color,
+        run: () => callout(view, c.type, calloutFold ? "-" : "", c.type === "quote" ? te.sourceTitle : calloutName(c, t.lang), te.calloutText) })),
       { label: te.foldable, run: () => { calloutFold = !calloutFold; }, check: () => calloutFold, keep: true },
     ] as MenuItem[] },
     { key: "sep2" },
@@ -473,7 +473,7 @@
         linkConceal,
         headingFolds({ fold: te.fold, unfold: te.unfold }),
         livePreview({
-          text: { copy: te.copy, copied: te.copied, code: te.code, pt: t.lang === "pt", remote: te.remoteImage },
+          text: { copy: te.copy, copied: te.copied, code: te.code, lang: t.lang, remote: te.remoteImage },
           image: (src) => NoteImage(note, src),
           onCopy: (code) => void Clipboard.SetText(code),
         }),

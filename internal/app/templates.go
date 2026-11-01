@@ -38,6 +38,7 @@ func writeTemplates(site *config.Site) error {
 
 var templates = map[string][]note{
 	"pt/mochi": {{"Post do blog.md", "---\ntitle: \"{{title}}\"\ndate: {{date:YYYY-MM-DD}}\ndescription: \ntags: \ndraft: false\n---\n\n"}},
+	"es/mochi": {{"Post del blog.md", "---\ntitle: \"{{title}}\"\ndate: {{date:YYYY-MM-DD}}\ndescription: \ntags: \ndraft: false\n---\n\n"}},
 	"en/mochi": {{"Blog post.md", "---\ntitle: \"{{title}}\"\ndate: {{date:YYYY-MM-DD}}\ndescription: \ntags: \ndraft: false\n---\n\n"}},
 }
 
@@ -46,6 +47,11 @@ var docsTemplates = map[string][]note{
 		{"Página da documentação.md", "---\ntitle: \"{{title}}\"\ndescription: \nweight: 10\n---\n\n"},
 		{"Item do roadmap.md", "---\ntitle: \"{{title}}\"\ndescription: \nstatus: planejado\ncategory: \n---\n\n"},
 		{"Versão do changelog.md", "---\ntitle: \"{{title}}\"\ndate: {{date:YYYY-MM-DD}}\ntags: \n---\n\n"},
+	},
+	"es": {
+		{"Página de la documentación.md", "---\ntitle: \"{{title}}\"\ndescription: \nweight: 10\n---\n\n"},
+		{"Elemento de la hoja de ruta.md", "---\ntitle: \"{{title}}\"\ndescription: \nstatus: planeado\ncategory: \n---\n\n"},
+		{"Versión del changelog.md", "---\ntitle: \"{{title}}\"\ndate: {{date:YYYY-MM-DD}}\ntags: \n---\n\n"},
 	},
 	"en": {
 		{"Docs page.md", "---\ntitle: \"{{title}}\"\ndescription: \nweight: 10\n---\n\n"},

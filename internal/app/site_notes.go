@@ -21,7 +21,7 @@ func homeNotePath(site *config.Site) string {
 
 // authorsFolders are the names of a new authors folder, by site language.
 // Not "Authors": /authors/ is where the theme lists each author's posts.
-var authorsFolders = map[string]string{"pt": "Autores", "en": "Writers"}
+var authorsFolders = map[string]string{"pt": "Autores", "en": "Writers", "es": "Escritores"}
 
 // authorsDir is the folder of author notes, created (with its _index note)
 // when the site has none.
@@ -43,6 +43,7 @@ func authorsDir(site *config.Site) (string, error) {
 
 var authorsAbout = map[string]string{
 	"pt": "Uma nota por autor, com o nome da pessoa. Propriedades: **photo** (imagem), **role** (cargo) e **social** (links dos perfis). O texto da nota é a bio. Nos posts, escreva `authors: [Nome]`.\n\nEsta pasta não vira página do site.",
+	"es": "Una nota por autor, con el nombre de la persona. Propiedades: **photo** (imagen), **role** (cargo) y **social** (enlaces de los perfiles). El texto de la nota es la bio. En los posts, escribe `authors: [Nombre]`.\n\nEsta carpeta no se publica como páginas.",
 	"en": "One note per author, named after the person. Properties: **photo** (image), **role** and **social** (profile links). The note's text is the bio. In posts, write `authors: [Name]`.\n\nThis folder is not published as pages.",
 }
 

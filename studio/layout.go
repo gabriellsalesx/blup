@@ -110,7 +110,7 @@ type Prefs struct {
 	LastSite     string            `json:"lastSite"`     // the site open when the Studio closed
 	LastNotes    map[string]string `json:"lastNotes"`    // site folder -> the note open there last
 	Recent       []string          `json:"recent"`       // sites opened lately, newest first (even ones taken out of the list)
-	Voices       map[string]string `json:"voices"`       // the narration's voice for each site language ("pt", "en"); missing = the default
+	Voices       map[string]string `json:"voices"`       // the narration's voice for each site language ("pt", "en", "es"); missing = the default
 	Welcomed     bool              `json:"welcomed"`     // the welcome screen (start, or bring the sites of an account) was seen
 	CloudTip     bool              `json:"cloudTip"`     // the invitation to Blup Cloud, after the first site, was answered
 }

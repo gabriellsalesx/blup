@@ -8,22 +8,24 @@ import (
 	"testing"
 )
 
-// Every message exists in both languages with the same placeholders.
+// Every message exists in every language with the same placeholders.
 func TestCatalogsMatch(t *testing.T) {
 	verbs := regexp.MustCompile(`%[dsvq]`)
-	for key, en := range messages[EN] {
-		pt, ok := messages[PT][key]
-		if !ok {
-			t.Errorf("missing PT translation for %q", key)
-			continue
+	for _, l := range []Lang{PT, ES} {
+		for key, en := range messages[EN] {
+			tr, ok := messages[l][key]
+			if !ok {
+				t.Errorf("missing %s translation for %q", l, key)
+				continue
+			}
+			if a, b := verbs.FindAllString(en, -1), verbs.FindAllString(tr, -1); strings.Join(a, "") != strings.Join(b, "") {
+				t.Errorf("%s %q: placeholders differ: %v vs %v", l, key, a, b)
+			}
 		}
-		if a, b := verbs.FindAllString(en, -1), verbs.FindAllString(pt, -1); strings.Join(a, "") != strings.Join(b, "") {
-			t.Errorf("%q: placeholders differ: %v vs %v", key, a, b)
-		}
-	}
-	for key := range messages[PT] {
-		if _, ok := messages[EN][key]; !ok {
-			t.Errorf("missing EN translation for %q", key)
+		for key := range messages[l] {
+			if _, ok := messages[EN][key]; !ok {
+				t.Errorf("missing EN translation for %s key %q", l, key)
+			}
 		}
 	}
 }

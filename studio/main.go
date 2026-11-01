@@ -61,8 +61,11 @@ func main() {
 		Hidden:           hidden, // opened with the computer: straight to the tray
 	})
 	trayLabels := [2]string{"Open Blup Studio", "Quit"}
-	if lang == "pt" {
+	switch lang {
+	case "pt":
 		trayLabels = [2]string{"Abrir o Blup Studio", "Sair"}
+	case "es":
+		trayLabels = [2]string{"Abrir Blup Studio", "Salir"}
 	}
 	setupDesktop(studio, app, win, trayLabels)
 	if err := app.Run(); err != nil {

@@ -281,6 +281,7 @@
             <div class="langs">
               <Choice title="Português" on={lang === "pt"} onclick={() => (lang = "pt")} />
               <Choice title="English" on={lang === "en"} onclick={() => (lang = "en")} />
+              <Choice title="Español" on={lang === "es"} onclick={() => (lang = "es")} />
             </div>
           </div>
         </div>
@@ -394,6 +395,7 @@
   .picked { position: absolute; inset-block-start: .75rem; inset-inline-end: .75rem; display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--blue); color: #fff; }
   .list { gap: 1.1rem; }
   .langs, .wheres { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+  .langs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .wheres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   code { flex: 1; min-width: 0; padding: .5rem .7rem; border-radius: .45rem; background: var(--soft); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .review { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 1.5rem; }

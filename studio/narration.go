@@ -57,7 +57,7 @@ func (s *Studio) ConnectAI(key string) error {
 // OpenAIKeyPage opens OpenRouter's page of keys in the browser.
 func (s *Studio) OpenAIKeyPage() { s.OpenURL(narrate.KeyPage) }
 
-// Voices lists the narration voices for sites in lang ("pt" or "en"): the
+// Voices lists the narration voices for sites in lang ("pt", "en" or "es"): the
 // local ones, then those of the OpenRouter model ("" for the recommended).
 func (s *Studio) Voices(lang, model string) ([]app.Voice, error) {
 	return app.NarrationVoices(context.Background(), lang, model)

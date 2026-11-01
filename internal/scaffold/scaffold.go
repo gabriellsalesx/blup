@@ -89,9 +89,9 @@ type mount struct {
 
 // HugoConfig renders hugo.toml for the site (or its preview variant).
 func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
-	locale := "en-US"
-	if s.Lang == "pt" {
-		locale = "pt-BR"
+	locale := map[string]string{"pt": "pt-BR", "es": "es"}[s.Lang]
+	if locale == "" {
+		locale = "en-US"
 	}
 	folder := path.Clean(filepath.ToSlash(s.Folder))
 	if folder == "." {

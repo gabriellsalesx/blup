@@ -8,7 +8,7 @@ import { t } from "./i18n";
 export const look = $state<P>({ theme: "system", editorFont: 16, editorWidth: "narrow", spellcheck: true, previewOff: false, termFont: 13, spellLang: "", words: [], sideWidth: 0, previewWidth: 0, tray: false, toggleKey: "Alt+Space", keys: {}, shortcutTip: false, lastSite: "", lastNotes: {}, recent: [], voices: {}, welcomed: false, cloudTip: false });
 
 // The spell check's dictionary: the one chosen, else the Studio's language.
-export const spellLang = () => look.spellLang || (t.lang === "pt" ? "pt" : "en");
+export const spellLang = () => look.spellLang || t.lang;
 let spellWords: number | undefined;
 const spell = () => { setupSpell(spellLang(), look.words ?? []); enableSpell(look.spellcheck); };
 

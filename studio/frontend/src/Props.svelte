@@ -26,7 +26,7 @@
   let draft = $state(props.draft === true);
   let hidden = $state(props.hidden === true);
   const pw0 = props.password === undefined || props.password === null || props.password === false ? "" : String(props.password);
-  let pwMode = $state(pw0 === "" ? "none" : ["sim", "yes", "true"].includes(pw0.toLowerCase()) ? "general" : "own");
+  let pwMode = $state(pw0 === "" ? "none" : ["sim", "sí", "si", "yes", "true"].includes(pw0.toLowerCase()) ? "general" : "own");
   let pwOwn = $state(pwMode === "own" ? pw0 : "");
   let weight = $state(props.weight ? Number(props.weight) : 0);
   let status = $state(String(props.status ?? ""));
@@ -106,7 +106,7 @@
   }
 
   function password() {
-    onEdit("password", pwMode === "none" ? null : pwMode === "general" ? (t.lang === "pt" ? "sim" : "yes") : pwOwn);
+    onEdit("password", pwMode === "none" ? null : pwMode === "general" ? ({ pt: "sim", es: "sí" }[t.lang] ?? "yes") : pwOwn);
   }
   // The switch turns the password on (the site's general one first).
   let pwOn = $state(pwMode !== "none");
@@ -156,7 +156,7 @@
   // _index (the menu) and Bento's docs, help center and roadmap.
   const ordered = $derived(isIndex || ["docs", "help", "roadmap"].includes(kind));
 
-  const statuses = t.lang === "pt" ? ["planejado", "em andamento", "concluído"] : ["planned", "in progress", "done"];
+  const statuses = { pt: ["planejado", "em andamento", "concluído"], es: ["planeado", "en curso", "listo"] }[t.lang] ?? ["planned", "in progress", "done"];
 </script>
 
 <section class="props">

@@ -28,10 +28,10 @@ const KeyPage = "https://openrouter.ai/settings/keys"
 const DefaultModel = "microsoft/mai-voice-2.1"
 
 // locales maps a site language to the voices' locale.
-var locales = map[string]string{"pt": "pt-BR", "en": "en-US"}
+var locales = map[string]string{"pt": "pt-BR", "en": "en-US", "es": "es-MX"}
 
 // defaultVoices are the voices used until the user picks another.
-var defaultVoices = map[string]string{"pt": "pt-BR-Luana:MAI-Voice-2.1", "en": "en-US-Harper:MAI-Voice-2.1"}
+var defaultVoices = map[string]string{"pt": "pt-BR-Luana:MAI-Voice-2.1", "en": "en-US-Harper:MAI-Voice-2.1", "es": "es-MX-Valeria:MAI-Voice-2.1"}
 
 // knownVoices are DefaultModel's voices for each language, used when
 // OpenRouter's list can't be read.
@@ -60,13 +60,14 @@ func HasSample(voice string) bool {
 }
 
 func langOf(lang string) string {
-	if lang == "pt" {
-		return "pt"
+	switch lang {
+	case "pt", "es":
+		return lang
 	}
 	return "en"
 }
 
-// DefaultVoice is the voice for a site in lang ("pt" or "en").
+// DefaultVoice is the voice for a site in lang ("pt", "en" or "es").
 func DefaultVoice(lang string) string { return defaultVoices[langOf(lang)] }
 
 // VoiceFor returns voice when it speaks lang, else the language's default.

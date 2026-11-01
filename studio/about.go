@@ -11,10 +11,10 @@ import (
 // Version is the Studio's version (set at build time, like the CLI's).
 func (s *Studio) Version() string { return app.Version }
 
-// SetLanguage changes the language of Blup and the Studio ("pt" or "en").
+// SetLanguage changes the language of Blup and the Studio ("pt", "en" or "es").
 // The window reloads to show it.
 func (s *Studio) SetLanguage(lang string) error {
-	if lang != "pt" && lang != "en" {
+	if lang != "pt" && lang != "en" && lang != "es" {
 		lang = "en"
 	}
 	g, err := config.LoadGlobal()

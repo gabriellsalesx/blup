@@ -18,7 +18,7 @@
   let busy = $state(false);
 
   const msg = (e: unknown) => String(e).replace(/^(Runtime)?Error: /, "");
-  const when = (d: string) => new Date(d).toLocaleString(t.lang === "pt" ? "pt-BR" : "en", { dateStyle: "medium", timeStyle: "short" });
+  const when = (d: string) => new Date(d).toLocaleString(t.locale, { dateStyle: "medium", timeStyle: "short" });
 
   // One note per modal: the parent keys it by path.
   async function load() {

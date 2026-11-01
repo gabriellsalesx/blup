@@ -17,8 +17,11 @@ import (
 // WriteAgentGuides creates the guides that are missing.
 func WriteAgentGuides(site *config.Site) error {
 	guide := agentGuideEN
-	if site.Lang == "pt" {
+	switch site.Lang {
+	case "pt":
 		guide = agentGuidePT
+	case "es":
+		guide = agentGuideES
 	}
 	for _, name := range scaffold.AgentGuides {
 		body := "@AGENTS.md\n"
@@ -135,4 +138,57 @@ help or blog.
   GEMINI.md).
 - Don't run Hugo: the Studio's preview updates by itself. To publish, the
   person uses the Studio's Publish button.
+`
+
+const agentGuideES = `# Este es un sitio de Blup
+
+Esta carpeta es un sitio. Blup convierte las notas en páginas con Hugo, y
+Blup Studio muestra una vista previa en vivo. Escribe siempre en español.
+
+## Cómo las notas se vuelven el sitio
+
+- Cada nota .md se vuelve una página; cada carpeta se vuelve una sección.
+- La nota _index.md de una carpeta es la página de la sección.
+- La _index.md de la raíz guarda la configuración del sitio (site_name,
+  site_description, logo, favicon, menu, social, button_text, button_link).
+  Solo cámbiala si te lo piden.
+
+## Propiedades (al inicio de la nota, en YAML)
+
+- title, description: título y resumen.
+- date: una fecha como 2026-10-29.
+- tags: [Una, Otra]; authors: [Nombre].
+- image: "[[portada.jpg]]" (portada).
+- draft: true (solo en la vista previa); hidden: true (fuera de las listas
+  y de Google).
+- password: sí (la contraseña general del sitio) o una contraseña propia.
+- weight: orden en los menús (menor primero).
+
+## Secciones del tema Bento
+
+La _index.md de cada sección tiene la propiedad blup: docs, roadmap,
+changelog, help o blog.
+- Roadmap: una nota por elemento, con status (planeado, en curso o listo) y
+  category.
+- Changelog: una nota por versión, con date y tags.
+
+## Escritura
+
+- Enlaces entre notas en Markdown estándar, con ruta relativa:
+  [texto](../Carpeta/Nota.md). Enlaces a títulos: Nota.md#titulo.
+- Las imágenes van en la carpeta de adjuntos (Adjuntos); usa
+  ![descripción](../Adjuntos/foto.jpg).
+- Video de YouTube: ![título](https://www.youtube.com/watch?v=...).
+- Funcionan los callouts de Obsidian (> [!tip] Título), las fórmulas
+  ($x^2$), las notas al pie y las tareas. Los %%comentarios%% nunca llegan
+  al sitio.
+- Nada de rayas ni guiones largos (— o –) en el texto.
+
+## No hagas
+
+- No borres ni renombres carpetas a menos que te lo pidan.
+- No toques la carpeta .obsidian ni estos archivos (AGENTS.md, CLAUDE.md,
+  GEMINI.md).
+- No ejecutes Hugo: la vista previa del Studio se actualiza sola. Para
+  publicar, la persona usa el botón Publicar del Studio.
 `

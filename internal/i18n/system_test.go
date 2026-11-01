@@ -9,7 +9,9 @@ func TestSystem(t *testing.T) {
 	}{
 		{"", "pt_BR.UTF-8", "pt"},
 		{"", "pt_PT.UTF-8", "pt"},
-		{"", "es_ES.UTF-8", "en"},
+		{"", "es_ES.UTF-8", "es"},
+		{"", "es_MX.UTF-8", "es"},
+		{"", "et_EE.UTF-8", "en"},
 		{"", "en_US.UTF-8", "en"},
 		{"C", "pt_BR.UTF-8", "pt"}, // C says nothing: the next one decides
 		{"", "", "en"},

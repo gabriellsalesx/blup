@@ -1,5 +1,5 @@
-// Package i18n holds every user-facing string of the CLI in English and
-// Portuguese. Keys are short English identifiers; T falls back to English
+// Package i18n holds every user-facing string of the CLI in English,
+// Portuguese and Spanish. Keys are short English identifiers; T falls back to English
 // and then to the key itself, so a missing translation never breaks output.
 package i18n
 
@@ -13,17 +13,19 @@ type Lang string
 const (
 	EN Lang = "en"
 	PT Lang = "pt"
+	ES Lang = "es"
 )
 
 var current = EN
 
 // Set changes the active language.
 func Set(l Lang) {
-	if l == PT {
-		current = PT
-		return
+	switch l {
+	case PT, ES:
+		current = l
+	default:
+		current = EN
 	}
-	current = EN
 }
 
 // Current returns the active language.

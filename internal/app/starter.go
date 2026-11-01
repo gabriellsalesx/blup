@@ -36,7 +36,7 @@ var starter embed.FS
 var docsKinds = []string{"docs", "roadmap", "changelog", "help", "blog"}
 
 // attachmentsFolders name the folder of images, by site language.
-var attachmentsFolders = map[string]string{"pt": "Anexos", "en": "Attachments"}
+var attachmentsFolders = map[string]string{"pt": "Anexos", "en": "Attachments", "es": "Adjuntos"}
 
 func attachmentsFolder(site *config.Site) string {
 	if f := attachmentsFolders[site.Lang]; f != "" {

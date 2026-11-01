@@ -27,10 +27,11 @@ func PasteImage(site *config.Site, note, name string, data []byte) (string, erro
 	}
 	base := safeFileName(strings.TrimSuffix(filepath.Base(name), filepath.Ext(name)))
 	if base == "" || strings.EqualFold(base, "image") {
-		base = "Imagem " + time.Now().Format("2006-01-02 150405")
-		if site.Lang != "pt" {
-			base = "Image " + time.Now().Format("2006-01-02 150405")
+		base = map[string]string{"pt": "Imagem ", "es": "Imagen "}[site.Lang]
+		if base == "" {
+			base = "Image "
 		}
+		base += time.Now().Format("2006-01-02 150405")
 	}
 	folder := attachmentsFolder(site)
 	dir := filepath.Join(site.ContentDir(), folder)

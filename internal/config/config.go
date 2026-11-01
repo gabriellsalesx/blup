@@ -53,7 +53,7 @@ type Site struct {
 	Title       string `toml:"title"`
 	Description string `toml:"description"`
 	Author      string `toml:"author"`
-	Lang        string `toml:"lang"`   // "pt" or "en": language of the site itself
+	Lang        string `toml:"lang"`   // "pt", "en" or "es": language of the site itself
 	Model       string `toml:"model"`  // theme: "mochi" or "nori" (personal blog), "bento" (SaaS)
 	// Kind is "" for a site, or "notes" for a vault of notes: the same
 	// notes, editor and sync, but no site (no theme, preview or publishing).

@@ -117,6 +117,7 @@ func feedbackBody(site *config.Site, p feedbackPage) string {
 	text := map[string]string{
 		"pt": "Vote com 👍, reaja ou comente aqui: tudo aparece no site.",
 		"en": "Vote with 👍, react or comment here: it all shows up on the site.",
+		"es": "Vota con 👍, reacciona o comenta aquí: todo aparece en el sitio.",
 	}[site.Lang]
 	if text == "" {
 		text = "Vote with 👍, react or comment here: it all shows up on the site."
@@ -130,8 +131,11 @@ func feedbackBody(site *config.Site, p feedbackPage) string {
 
 // feedbackRepoDescription is in the site's language: visitors read it.
 func feedbackRepoDescription(site *config.Site) string {
-	if site.Lang == "pt" {
+	switch site.Lang {
+	case "pt":
 		return fmt.Sprintf("Votos, reações e comentários de %s (gerenciado pelo blup)", site.Title)
+	case "es":
+		return fmt.Sprintf("Votos, reacciones y comentarios de %s (gestionado por blup)", site.Title)
 	}
 	return fmt.Sprintf("Votes, reactions and comments of %s (managed by blup)", site.Title)
 }
