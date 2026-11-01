@@ -86,6 +86,7 @@ func (s *Studio) AddSection(kind string) (Node, error) {
 	if err := s.with(func(site *config.Site) error { return app.AddSection(site, kind) }); err != nil {
 		return Node{}, err
 	}
+	s.sectionsChanged()
 	return s.Tree()
 }
 
@@ -142,6 +143,7 @@ func (s *Studio) RemoveSection(kind string) (Removed, error) {
 	if err != nil {
 		return Removed{}, err
 	}
+	s.sectionsChanged()
 	tree, err := s.Tree()
 	return Removed{trash, tree}, err
 }
@@ -151,6 +153,7 @@ func (s *Studio) RestoreSection(trash string) (Node, error) {
 	if err := s.with(func(site *config.Site) error { return app.RestoreSection(site, trash) }); err != nil {
 		return Node{}, err
 	}
+	s.sectionsChanged()
 	return s.Tree()
 }
 

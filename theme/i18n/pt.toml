@@ -59,6 +59,7 @@ fbbBodyPh = "Conte os detalhes: o que aconteceu, o que você esperava, como repr
 fbbSend = "Enviar pedido"
 fbbCancel = "Cancelar"
 fbbOff = "O quadro de feedback precisa dos comentários ligados (no Blup Studio, em Comentários)."
+fbbExamples = "Pedidos de exemplo, como as notas de exemplo das outras seções: somem quando chegar o primeiro pedido de verdade. Para tirar antes, apague a lista examples na nota da pasta Feedback. Este aviso só aparece na pré-visualização."
 clKindNew = "Novidade"
 clKindImprovement = "Melhoria"
 clKindFix = "Correção"

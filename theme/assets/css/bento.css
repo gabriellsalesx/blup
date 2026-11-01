@@ -211,6 +211,12 @@ layout. Bundled into one file by css.Build. */
   .fbb-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .05rem .5rem; border-radius: 999px; background: var(--main-100); color: var(--main-700); font-size: .75rem; font-weight: 500; }
   .fbb-chip[class*=" k-"]::before { content: ""; width: .45rem; height: .45rem; border-radius: 50%; background: var(--k); }
   .fbb .k-feature { --k: var(--k-feature); } .fbb .k-bug { --k: var(--k-bug); } .fbb .k-improvement { --k: var(--k-improvement); } .fbb .k-other { --k: var(--k-other); }
+  .fbb-note { margin: 0; padding: .625rem .875rem; border: 1px dashed var(--main-300); border-radius: .5rem; color: var(--main-600); font-size: .8125rem; }
+  .fbb-example .fbb-vote { cursor: default; }
+  .fbb-example summary { cursor: pointer; list-style: none; }
+  .fbb-example summary::-webkit-details-marker { display: none; }
+  .fbb-example details[open] summary { margin-block-end: .4rem; }
+  .fbb-ex-body { margin: .25rem 0 0; color: var(--main-700); font-size: .875rem; }
   .fbb-empty { padding: 2rem 1rem; text-align: center; color: var(--main-500); font-size: .875rem; }
   .fbb-detail { display: grid; gap: .875rem; }
   .fbb-back { font-size: .875rem; color: var(--main-600); }

@@ -404,7 +404,7 @@ func TestFeedbackBoard(t *testing.T) {
 		vault := t.TempDir()
 		for rel, text := range map[string]string{
 			"_index.md":          "---\ntitle: Produto\n---\n",
-			"Feedback/_index.md": "---\ntitle: Feedback\nblup: feedback\ndescription: Peça e vote.\n---\n",
+			"Feedback/_index.md": "---\ntitle: Feedback\nblup: feedback\ndescription: Peça e vote.\nexamples:\n  - title: Modo escuro\n    kind: bug\n    status: planned\n    votes: 7\n---\n",
 		} {
 			p := filepath.Join(vault, filepath.FromSlash(rel))
 			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
@@ -436,12 +436,18 @@ func TestFeedbackBoard(t *testing.T) {
 			if strings.Contains(page, "data-fb-board") || !strings.Contains(page, `<p class="empty">`) {
 				t.Error("without comments the board is a note, not the board")
 			}
+			// The examples still show (as the other sections' notes); the
+			// notice saying so is the preview's only.
+			if !strings.Contains(page, `<li class="fbb-item fbb-example" data-kind="bug" data-status="planned">`) || strings.Contains(page, "fbb-note") {
+				t.Error("without comments the examples show, without the preview's notice")
+			}
 			continue
 		}
 		for _, want := range []string{
 			`data-fb-board`, `data-fbb-issues="https://github.com/ana/produto-feedback/issues"`,
 			`data-kind="bug"`, `data-kind="improvement"`, `<dialog class="fbb-dialog"`,
 			`<template data-fbb-block>`, `Peça e vote.`,
+			`<template data-fbb-examples>`, `<summary class="fbb-title">Modo escuro</summary>`,
 		} {
 			if !strings.Contains(page, want) {
 				t.Errorf("the board page is missing %q", want)

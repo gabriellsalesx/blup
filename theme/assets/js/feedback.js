@@ -554,6 +554,10 @@ async function board() {
   const bar = root.querySelector(".fbb-bar");
   const state = { kind: "all", status: "", sort: "top", q: "" };
   let posts = [];
+  // In Blup Studio's preview, example requests (the section note's
+  // "examples") fill the board until a real one comes.
+  const examples = [...(root.querySelector("[data-fbb-examples]")?.content.children || [])];
+  const note = root.querySelector("[data-fbb-note]");
 
   try {
     const raw = await read(
@@ -563,8 +567,10 @@ async function board() {
     );
     posts = raw.filter((p) => !p.pull_request && POST_MARK.test(p.body || "")).map((p) => new Issue(p));
   } catch {
-    list.replaceChildren(el("li", { className: "fbb-empty", textContent: bt.error }));
-    return;
+    if (!examples.length) {
+      list.replaceChildren(el("li", { className: "fbb-empty", textContent: bt.error }));
+      return;
+    }
   }
 
   // The list: the requests that pass the filters, in the chosen order.
@@ -589,11 +595,22 @@ async function board() {
   const counts = () => {
     for (const tab of root.querySelectorAll(".fbb-tab")) {
       const k = tab.dataset.kind;
-      tab.querySelector("[data-count]").textContent = String(posts.filter((i) => k === "all" || postKind(i.data) === k).length);
+      const n = posts.length ? posts.filter((i) => k === "all" || postKind(i.data) === k).length : examples.filter((x) => k === "all" || x.dataset.kind === k).length;
+      tab.querySelector("[data-count]").textContent = String(n);
     }
   };
   const draw = () => {
     const q = state.q.trim().toLowerCase();
+    if (note) note.hidden = !!posts.length;
+    if (!posts.length && examples.length) {
+      const shown = examples
+        .filter((x) => state.kind === "all" || x.dataset.kind === state.kind)
+        .filter((x) => !state.status || x.dataset.status === state.status)
+        .filter((x) => !q || x.textContent.toLowerCase().includes(q));
+      list.replaceChildren(...(shown.length ? shown : [el("li", { className: "fbb-empty", textContent: bt.nothing })]));
+      counts();
+      return;
+    }
     const shown = posts
       .filter((i) => state.kind === "all" || postKind(i.data) === state.kind)
       .filter((i) => !state.status || postStatus(i.data) === state.status)

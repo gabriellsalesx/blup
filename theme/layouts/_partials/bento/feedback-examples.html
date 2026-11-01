@@ -1,0 +1,18 @@
+{{- /* Example requests of the feedback board, from the "examples" list of
+the section's note: on the board while it has no real request (or
+comments are off), as the other sections bring example notes. A click opens the request's text. Param: the examples. */ -}}
+{{- range . }}
+{{- $kind := .kind | default "other" }}{{ $status := .status | default "new" }}
+<li class="fbb-item fbb-example" data-kind="{{ $kind }}" data-status="{{ $status }}">
+  <span class="fbb-vote" aria-label="{{ T "fbVote" }}: {{ .votes | default 0 }}"><span class="fbb-up">▲</span><b>{{ .votes | default 0 }}</b></span>
+  <details class="fbb-main">
+    <summary class="fbb-title">{{ .title }}</summary>
+    <div class="fbb-meta">
+      <span class="fbb-chip k-{{ $kind }}">{{ T (printf "fbbOne_%s" $kind) }}</span>
+      <span class="fbb-chip s-{{ $status }}">{{ T (printf "fbbStatus_%s" $status) }}</span>
+      <span>💬 {{ .comments | default 0 }}</span>
+    </div>
+    {{- with .body }}<p class="fbb-ex-body">{{ . }}</p>{{ end }}
+  </details>
+</li>
+{{- end }}

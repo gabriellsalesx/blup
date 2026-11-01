@@ -71,12 +71,40 @@ func (s *Studio) previewFollows(site *config.Site) {
 	s.mu.Lock()
 	stale := s.preview != nil && !bytes.Equal(s.previewCfg, now)
 	s.mu.Unlock()
-	if !stale {
+	if stale {
+		s.restartPreview()
+	}
+}
+
+// restartPreview starts the running preview again, and the window hears
+// its new address ("previewRestarted").
+func (s *Studio) restartPreview() {
+	s.mu.Lock()
+	before := s.url
+	s.mu.Unlock()
+	s.StopPreview()
+	url, err := s.StartPreview()
+	if err != nil {
 		return
 	}
-	s.StopPreview()
-	if url, err := s.StartPreview(); err == nil {
-		application.Get().Event.Emit("previewRestarted", url)
+	// Same address: the window only reloads the page it shows.
+	if url == before {
+		application.Get().Event.Emit("previewChanged", "")
+		return
+	}
+	application.Get().Event.Emit("previewRestarted", url)
+}
+
+// sectionsChanged restarts a running preview after a section folder came
+// or went: Hugo's watcher misses the notes of a folder created at once
+// (it watches the folder only after its files are written), so the new
+// section showed up only on a later change.
+func (s *Studio) sectionsChanged() {
+	s.mu.Lock()
+	running := s.preview != nil
+	s.mu.Unlock()
+	if running {
+		go s.restartPreview()
 	}
 }
 

@@ -5,6 +5,11 @@ and a status the site's owner sets in the Studio. feedback.js reads and
 writes them live (no rebuild); the page only draws the frame. Every
 language of the site shows the same board. Param: the section page. */ -}}
 {{- $repo := site.Params.blup.feedback -}}
+{{- /* Example requests (the note's "examples", as the other sections
+bring example notes): on the board until the first real request. The note
+saying so only in Blup Studio's preview. */ -}}
+{{- $examples := .Params.examples | default slice -}}
+{{- $preview := eq (os.Getenv "HUGO_BLUP_MODE") "preview" -}}
 {{- $kinds := slice "feature" "bug" "improvement" "other" -}}
 {{- $statuses := slice "new" "planned" "progress" "done" "declined" -}}
 {{- $text := dict
@@ -38,7 +43,9 @@ language of the site shows the same board. Param: the section page. */ -}}
         <a class="button" data-fbb-new href="https://github.com/{{ $repo }}/issues/new"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"/></svg>{{ T "fbbNew" }}</a>
       </div>
     </div>
+    {{- if and $examples $preview }}<p class="fbb-note" data-fbb-note hidden>{{ T "fbbExamples" }}</p>{{ end }}
     <ol class="fbb-list" data-fbb-list aria-live="polite"><li class="fbb-empty">{{ T "fbbLoading" }}</li></ol>
+    {{- with $examples }}<template data-fbb-examples>{{ partial "bento/feedback-examples.html" . }}</template>{{ end }}
     <article class="fbb-detail" data-fbb-detail hidden></article>
     <dialog class="fbb-dialog" data-fbb-dialog aria-labelledby="fbb-new-title">
       <form method="dialog" class="fbb-form">
@@ -62,5 +69,11 @@ language of the site shows the same board. Param: the section page. */ -}}
   </div>
   {{- else }}
   <p class="empty">{{ T "fbbOff" }}</p>
+  {{- with $examples }}
+  <div class="fbb">
+    {{- if $preview }}<p class="fbb-note">{{ T "fbbExamples" }}</p>{{ end }}
+    <ol class="fbb-list">{{ partial "bento/feedback-examples.html" . }}</ol>
+  </div>
+  {{- end }}
   {{- end }}
 </main>
