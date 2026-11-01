@@ -11,3 +11,13 @@ func (s *Studio) NoteGraph() (app.Graph, error) {
 	}
 	return app.NoteGraph(site)
 }
+
+// Mentions are the notes that link to rel, with the lines where they do
+// ("mentioned in").
+func (s *Studio) Mentions(rel string) ([]app.Mention, error) {
+	site, err := s.current()
+	if err != nil {
+		return nil, err
+	}
+	return app.Mentions(site, rel)
+}

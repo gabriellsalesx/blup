@@ -46,7 +46,11 @@ type Graph struct {
 var codeSpan = regexp.MustCompile("(?s)```.*?```|`[^`\n]*`")
 
 // NoteGraph reads the notes folder into the map of notes.
-func NoteGraph(site *config.Site) (Graph, error) {
+func NoteGraph(site *config.Site) (Graph, error) { return noteGraph(site, nil) }
+
+// noteGraph is NoteGraph; found, when given, hears every link of a note
+// to another: the note's text (code taken out) and where the link is in it.
+func noteGraph(site *config.Site, found func(from, to, text string, at, end int)) (Graph, error) {
 	root := site.ContentDir()
 	var g Graph
 	texts := map[string]string{} // path -> what to read links from
@@ -143,7 +147,8 @@ func NoteGraph(site *config.Site) (Graph, error) {
 			continue
 		}
 		text = codeSpan.ReplaceAllString(text, "")
-		for _, m := range mdLink.FindAllStringSubmatch(text, -1) {
+		for _, i := range mdLink.FindAllStringSubmatchIndex(text, -1) {
+			m := []string{text[i[0]:i[1]], text[i[2]:i[3]], text[i[4]:i[5]]}
 			raw := strings.Trim(m[2], "<>")
 			if strings.Contains(raw, "://") || strings.HasPrefix(raw, "mailto:") || strings.HasPrefix(raw, "#") {
 				continue
@@ -156,10 +161,23 @@ func NoteGraph(site *config.Site) (Graph, error) {
 			if !strings.HasPrefix(target, "/") {
 				target = path.Join(path.Dir(n.Path), target)
 			}
-			link(n.Path, find(target))
+			to := find(target)
+			link(n.Path, to)
+			if found != nil && to != "" && to != n.Path {
+				// The link starts at its [ (the match starts at "](").
+				at := strings.LastIndex(text[:i[0]], "[")
+				if nl := strings.LastIndex(text[:i[0]], "\n"); at < 0 || at < nl {
+					at = i[0]
+				}
+				found(n.Path, to, text, at, i[1])
+			}
 		}
-		for _, m := range wikiLink.FindAllStringSubmatch(text, -1) {
-			link(n.Path, findName(strings.TrimSpace(m[1]), n.Path))
+		for _, i := range wikiLink.FindAllStringSubmatchIndex(text, -1) {
+			to := findName(strings.TrimSpace(text[i[2]:i[3]]), n.Path)
+			link(n.Path, to)
+			if found != nil && to != "" && to != n.Path {
+				found(n.Path, to, text, i[0], i[1])
+			}
 		}
 	}
 	slices.SortFunc(g.Nodes, func(a, b GraphNode) int { return strings.Compare(a.Path, b.Path) })
@@ -245,4 +263,103 @@ func canvasFiles(text string) []string {
 		}
 	}
 	return out
+}
+
+// Mention is a note that links to another one, and the lines where it
+// does, for "mentioned in": each line in three parts, the link (as it
+// reads) between what comes before and after it, plain text.
+type Mention struct {
+	Path   string    `json:"path"`
+	Name   string    `json:"name"`
+	Folder string    `json:"folder"`
+	Lines  []Snippet `json:"lines"`
+}
+
+// Snippet is a line around a link.
+type Snippet struct {
+	Before string `json:"before"`
+	Link   string `json:"link"`
+	After  string `json:"after"`
+}
+
+// Mentions are the notes (and canvases) that link to rel, with up to
+// three lines of each, in the order of the notes.
+func Mentions(site *config.Site, rel string) ([]Mention, error) {
+	lines := map[string][]Snippet{}
+	g, err := noteGraph(site, func(from, to, text string, at, end int) {
+		if to != rel || len(lines[from]) >= 3 {
+			return
+		}
+		ls := strings.LastIndex(text[:at], "\n") + 1
+		le := strings.Index(text[end:], "\n")
+		if le < 0 {
+			le = len(text)
+		} else {
+			le += end
+		}
+		lines[from] = append(lines[from], Snippet{
+			Before: clip(plainLine(text[ls:at], true), 70, true),
+			Link:   linkLabel(text[at:end]),
+			After:  clip(plainLine(text[end:le], false), 90, false),
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := []Mention{}
+	for _, n := range g.Nodes {
+		for _, e := range g.Edges {
+			if e.From == n.Path && e.To == rel {
+				out = append(out, Mention{Path: n.Path, Name: n.Name, Folder: n.Folder, Lines: lines[n.Path]})
+				break
+			}
+		}
+	}
+	return out, nil
+}
+
+var (
+	lineMarks  = regexp.MustCompile(`^\s*(?:#{1,6}\s+|(?:>\s?)+|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)*`)
+	inlineMark = regexp.MustCompile(`\*\*|__|~~|==|%%`)
+	mdText     = regexp.MustCompile(`!?\[([^\]\n]*)\]\([^)\n]*\)`)
+	wikiText   = regexp.MustCompile(`!?\[\[([^\]|#\n]+)(?:#[^\]|\n]*)?(?:\|([^\]\n]*))?\]\]`)
+)
+
+// plainLine is a piece of a line as it reads: links as their text, no
+// Markdown marks (start: the piece begins the line, with its # > - marks).
+func plainLine(s string, start bool) string {
+	if start {
+		s = lineMarks.ReplaceAllString(s, "")
+	}
+	s = mdText.ReplaceAllString(s, "$1")
+	s = wikiText.ReplaceAllStringFunc(s, func(m string) string { return linkLabel(m) })
+	return inlineMark.ReplaceAllString(s, "")
+}
+
+// linkLabel is how a link reads: [text](…) is text, [[Name|text]] is
+// text, [[Name]] is Name.
+func linkLabel(s string) string {
+	if m := wikiText.FindStringSubmatch(s); m != nil {
+		if m[2] != "" {
+			return m[2]
+		}
+		return strings.TrimSpace(m[1])
+	}
+	if m := mdText.FindStringSubmatch(s); m != nil {
+		return m[1]
+	}
+	return s
+}
+
+// clip keeps up to n letters of s, the end of it (tail) or its start,
+// with … where it was cut.
+func clip(s string, n int, tail bool) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	if tail {
+		return "…" + strings.TrimLeft(string(r[len(r)-n:]), " ")
+	}
+	return strings.TrimRight(string(r[:n]), " ") + "…"
 }

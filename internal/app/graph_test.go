@@ -54,3 +54,34 @@ func TestNoteGraph(t *testing.T) {
 		t.Errorf("edges = %v (links in code count?)", g.Edges)
 	}
 }
+
+// "Mentioned in" shows the line of each mention, the link as it reads.
+func TestMentions(t *testing.T) {
+	site := settingsSite(t)
+	root := site.ContentDir()
+	write(t, root, "Maria.md", "Contato.")
+	write(t, root, "Reunião.md", "# Pauta\n- Conversei com [@Maria](Maria.md) sobre o **orçamento**.\nNada aqui.\n")
+	write(t, root, "Diário/Hoje.md", "> Ligar para [[Maria|a Maria]] e [Ana](../Ana.md) amanhã\n")
+	write(t, root, "Mapa.canvas", `{"nodes":[{"id":"a","type":"file","file":"Maria.md"}],"edges":[]}`)
+
+	got, err := Mentions(site, "Maria.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("mentions = %+v", got)
+	}
+	byPath := map[string]Mention{}
+	for _, m := range got {
+		byPath[m.Path] = m
+	}
+	if l := byPath["Reunião.md"].Lines; len(l) != 1 || l[0] != (Snippet{Before: "Conversei com ", Link: "@Maria", After: " sobre o orçamento."}) {
+		t.Fatalf("reunião = %+v", l)
+	}
+	if l := byPath["Diário/Hoje.md"].Lines; len(l) != 1 || l[0] != (Snippet{Before: "Ligar para ", Link: "a Maria", After: " e Ana amanhã"}) {
+		t.Fatalf("diário = %+v", l)
+	}
+	if m := byPath["Mapa.canvas"]; m.Path == "" || len(m.Lines) != 0 {
+		t.Fatalf("canvas = %+v", m)
+	}
+}

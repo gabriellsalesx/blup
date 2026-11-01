@@ -481,6 +481,14 @@ export function LocalVoice(): $CancellablePromise<app$0.LocalVoice> {
 }
 
 /**
+ * Mentions are the notes that link to rel, with the lines where they do
+ * ("mentioned in").
+ */
+export function Mentions(rel: string): $CancellablePromise<app$0.Mention[] | null> {
+    return $Call.ByID(3465124741, rel);
+}
+
+/**
  * MoveItem moves a note or folder into folder (links follow).
  */
 export function MoveItem(rel: string, folder: string): $CancellablePromise<string> {

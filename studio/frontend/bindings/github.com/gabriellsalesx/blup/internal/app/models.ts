@@ -377,6 +377,18 @@ export interface LocalVoice {
 }
 
 /**
+ * Mention is a note that links to another one, and the lines where it
+ * does, for "mentioned in": each line in three parts, the link (as it
+ * reads) between what comes before and after it, plain text.
+ */
+export interface Mention {
+    "path": string;
+    "name": string;
+    "folder": string;
+    "lines": Snippet[] | null;
+}
+
+/**
  * MenuItem is an entry of the top menu: a name and where it leads (a
  * folder of the site, "/", "/tags/" or an address).
  */
@@ -560,6 +572,15 @@ export interface SiteParts {
     "published": string;
     "syncRepo": string;
     "feedback": string;
+}
+
+/**
+ * Snippet is a line around a link.
+ */
+export interface Snippet {
+    "before": string;
+    "link": string;
+    "after": string;
 }
 
 /**

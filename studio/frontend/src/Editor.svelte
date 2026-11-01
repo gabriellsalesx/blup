@@ -242,7 +242,7 @@
   }
 
   // @ mentions (at the start of a line or after a space, so e-mails don't
-  // open it): a note of the site (its link) or a date.
+  // open it): a note of the site (its link, [@Name](path.md)) or a date.
   const startsWord = (ctx: CompletionContext, at: number) => at === ctx.state.doc.lineAt(at).from || /\s/.test(ctx.state.sliceDoc(at - 1, at));
   const dateText = (d: Date) => d.toLocaleDateString(t.lang === "pt" ? "pt-BR" : "en-US", { day: "2-digit", month: "2-digit", year: "numeric" });
   function dates(): Completion[] {
@@ -260,7 +260,8 @@
       label: n.name, detail: n.path.includes("/") ? n.path.slice(0, n.path.lastIndexOf("/")) : "", type: "mention",
       section: { name: te.secNotes, rank: 0 },
       apply: (v: EditorView, _c: Completion, from: number, to: number) => {
-        const md = mdLink(n.name, n);
+        // The @ stays in the link's text: a mention reads "@Name", in blue.
+        const md = mdLink("@" + n.name, n);
         v.dispatch({ changes: { from: from - 1, to, insert: md }, selection: EditorSelection.cursor(from - 1 + md.length) });
       },
     }));
