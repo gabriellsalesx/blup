@@ -154,7 +154,7 @@ O botão Nota do dia (`Ctrl+Alt+D`) chama `DailyNote(pasta, tag)` com os valores
 
 `Backlinks.svelte` ("Mencionada em") fica sob cada nota do cofre: lista as origens das arestas que chegam à nota aberta, com nome e pasta, e abre a escolhida. Recolhido ou aberto, lembra a última escolha em `localStorage` (`blup.backlinks`). A lista é calculada ao abrir a nota.
 
-`GraphView.svelte` é a tela Mapa de notas (`Ctrl+G` alterna com Escrever). Cada nota é um ponto, cada link uma linha; o raio cresce com a raiz do número de links (`graph.ts`). O layout é uma simulação de forças própria, sem biblioteca: repulsão entre pares até 420 px, molas nos links, gravidade para o centro, amortecimento e `alpha` que decai até parar; começa em espiral. Passar o mouse acende a nota e os vizinhos; clique abre; arrastar um ponto o move (fixo enquanto arrasta); arrastar o vazio move o mapa; a roda dá zoom de 0,15 a 4. Os botões Ver tudo (enquadra) e Ler as notas de novo (o mapa não se atualiza sozinho) ficam na tela.
+`GraphView.svelte` é a tela Mapa de notas (`Ctrl+Alt+G` alterna com Escrever). Cada nota é um ponto, cada link uma linha; o raio cresce com a raiz do número de links (`graph.ts`). O layout é uma simulação de forças própria, sem biblioteca: repulsão entre pares até 420 px, molas nos links, gravidade para o centro, amortecimento e `alpha` que decai até parar; começa em espiral. Passar o mouse acende a nota e os vizinhos; clique abre; arrastar um ponto o move (fixo enquanto arrasta); arrastar o vazio move o mapa; a roda dá zoom de 0,15 a 4. Os botões Ver tudo (enquadra) e Ler as notas de novo ficam na tela; o mapa também se atualiza sozinho quando notas mudam no disco (evento `notesChanged`).
 
 O painel do canto (Ajustes do mapa) tem quatro partes que abrem e fecham, botão Voltar ao padrão e Fechar (vira um ícone). Tudo é salvo em `localStorage` (`blup.graph`).
 
@@ -204,7 +204,7 @@ Tipos de coluna (`db.ts`, rótulo em português): `text` Texto, `number` Número
 
 ### Criar
 
-Novo banco de dados (faixa lateral ou `Ctrl+Alt+B`) abre `DatabaseNew.svelte`: escolher um modelo e o nome (o do modelo, até o usuário digitar outro). `CreateDatabase` sempre grava em `Bancos de dados/` (o workspace passa pasta vazia), cria a pasta de registros e o `.table`; nome tomado, no arquivo ou na pasta, ganha número ("Clientes 2").
+Novo banco de dados (faixa lateral ou `Ctrl+Alt+B`) abre `DatabaseNew.svelte`: escolher um modelo e o nome (o do modelo, até o usuário digitar outro). `CreateDatabase` grava na pasta de bancos do idioma do Studio (`Bancos de dados/` ou `Databases/`), cria a pasta de registros e o `.table`; nome tomado, no arquivo ou na pasta, ganha número ("Clientes 2").
 
 | Modelo | Colunas | Quadro por |
 | --- | --- | --- |
@@ -275,7 +275,7 @@ Os atalhos padrão de `src/keys.ts` são (os marcados com cofre só agem num cof
 | --- | --- |
 | Nova nota | `Ctrl+N` |
 | Nota do dia (cofre) | `Ctrl+Alt+D` |
-| Mapa de notas (cofre) | `Ctrl+G` |
+| Mapa de notas (cofre) | `Ctrl+Alt+G` |
 | Novo canvas (cofre) | `Ctrl+Alt+C` |
 | Novo desenho (cofre) | `Ctrl+Alt+W` |
 | Novo banco de dados (cofre) | `Ctrl+Alt+B` |
@@ -325,3 +325,7 @@ Fora do Omarchy, salva a preferência e mostra linha em sintaxe Hyprland para o 
 Essas descrições registram efeitos do produto. A criação desta spec não executa essas rotinas nem altera configurações do desktop.
 
 Os comandos de compilação, dependências nativas e pacotes AppImage, nfpm, DMG, NSIS e MSIX estão em [testes e build](testes-e-build.md).
+
+### Renomear, mover e copiar bancos
+
+Renomear ou mover um `.table` leva a pasta de registros junto (com o novo nome) e corrige os links para os registros (`followDatabase` em `internal/app/database.go`); renomear só a pasta de registros grava o novo nome no `.table`. `DatabaseOf` acha o banco pelo `.table` de mesmo nome ou por qualquer `.table` ao lado que nomeie a pasta. Não há "Fazer uma cópia" para `.table` (as duas cópias dividiriam a mesma pasta). Renomear uma opção de escolha renomeia o valor nos registros; num cofre, o número 0 fica gravado (só nos formulários de site 0 significa "sem valor").
