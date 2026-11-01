@@ -12,7 +12,7 @@
   import Database from "@lucide/svelte/icons/database";
   import CalendarDays from "@lucide/svelte/icons/calendar-days";
   import type { DBSchema } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
-  import { templates, type Template } from "./db";
+  import type { Template } from "./db";
   import { boardKind, fileTitle, type NewKind } from "./boards";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import PenTool from "@lucide/svelte/icons/pen-tool";
@@ -26,7 +26,6 @@
   import HistoryModal from "./HistoryModal.svelte";
   import FileMenu from "./FileMenu.svelte";
   import ContextMenu, { type MenuEntry } from "./ContextMenu.svelte";
-  import SquareKanban from "@lucide/svelte/icons/square-kanban";
   import SettingsModal, { DOCS } from "./SettingsModal.svelte";
   import Gear from "@lucide/svelte/icons/settings";
   import CircleHelp from "@lucide/svelte/icons/circle-question-mark";
@@ -146,15 +145,6 @@
       await pick(rel);
     } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
   }
-  // A kanban board: a list of tasks that opens on its board, no questions
-  // asked ("Kanban board", numbered when taken).
-  async function newKanban() {
-    const tasks = templates().find((x) => x.id === "tasks")!;
-    const views = [...(tasks.schema.views ?? [])].sort((a, b) => (a.type === "board" ? -1 : b.type === "board" ? 1 : 0));
-    dbFolder = "";
-    await newDatabase(t.db.kanbanName, { ...tasks, schema: { ...tasks.schema, views } });
-  }
-
   // A right-click on the empty part of the files: what can be made at the
   // top (a site's notes only take notes and folders).
   let sideMenu = $state<{ x: number; y: number } | null>(null);
@@ -171,7 +161,6 @@
       "sep" as const,
       { label: t.boards.newCanvas, Icon: LayoutDashboard, run: () => quickBoard("canvas") },
       { label: t.db.newDb, Icon: Database, run: () => { dbFolder = ""; dbNew = true; } },
-      { label: t.db.newKanban, Icon: SquareKanban, run: newKanban },
       { label: t.boards.newDrawing, Icon: PenTool, run: () => quickBoard("drawing") },
     ] : []),
   ];
