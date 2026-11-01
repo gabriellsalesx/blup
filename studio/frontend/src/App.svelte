@@ -35,7 +35,7 @@
 {#if !ready}
   <!-- Finding the last site. -->
 {:else if welcome}
-  <Welcome onDone={() => (welcome = false)} />
+  <Welcome onStart={() => { welcome = false; hasSites = false; creating = true; }} onOpen={(s) => { welcome = false; site = s; }} />
 {:else if site}
   {#key site.dir}
     <Workspace {site} onBack={() => (site = null)} onSwitch={(s) => (site = s)} />

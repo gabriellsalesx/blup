@@ -11,7 +11,9 @@
   // browser, then the notes password (created here, or typed when it was
   // created on another computer). `account` is ready to sync when its
   // notes are "ready".
-  let { account = $bindable(null) }: { account?: Account | null } = $props();
+  // bare: the screen around already says what signing in is for (the
+  // welcome), so only the button shows.
+  let { account = $bindable(null), bare = false }: { account?: Account | null; bare?: boolean } = $props();
   const c = t.cloud;
 
   let error = $state("");
@@ -64,8 +66,10 @@
 </script>
 
 {#if account && !account.signedIn}
-  <h3>{c.signInTitle}</h3>
-  <p>{c.signInHelp}</p>
+  {#if !bare}
+    <h3>{c.signInTitle}</h3>
+    <p>{c.signInHelp}</p>
+  {/if}
   {#if login}
     <p class="muted">{c.waiting}</p>
     <p class="code">{login.code}</p>
@@ -74,7 +78,7 @@
       <button class="btn ghost" onclick={cancel}>{c.cancel}</button>
     </div>
   {:else}
-    <div class="actions"><button class="btn" onclick={signIn}>{c.signIn}</button></div>
+    <div class="actions" class:wide={bare}><button class="btn" onclick={signIn}>{c.signIn}</button></div>
   {/if}
 {:else if account}
   <div class="row who">
@@ -118,6 +122,8 @@
 
 <style>
   h3 { display: flex; align-items: center; gap: .4rem; font-size: 1rem; margin: .5rem 0 0; }
+  .actions.wide { display: grid; justify-content: stretch; width: 100%; }
+  .actions.wide .btn { width: 100%; justify-content: center; padding: .8rem 1.6rem; font-size: 1rem; }
   .code { font-family: ui-monospace, monospace; font-size: 1.8rem; font-weight: 700; letter-spacing: .2em; }
   .who { align-items: center; font-size: .9rem; }
   .spacer { flex: 1; }

@@ -101,6 +101,19 @@ export interface BlupAccount {
 }
 
 /**
+ * BlupSite is a site synced through Blup Cloud.
+ */
+export interface BlupSite {
+    "vault": string;
+    "title": string;
+
+    /**
+     * Dir is the site's folder when it is already on this computer.
+     */
+    "dir": string;
+}
+
+/**
  * Change is a note or file that differs from a snapshot.
  */
 export interface Change {

@@ -218,3 +218,17 @@ func (s *Studio) DeletedNotes() ([]blupcloud.DeletedFile, error) {
 	}
 	return app.DeletedNotes(context.Background(), site)
 }
+
+// BlupSites lists the sites kept on Blup Cloud (to bring them here).
+func (s *Studio) BlupSites() ([]app.BlupSite, error) {
+	return app.BlupSites(context.Background())
+}
+
+// BringBlupSite makes a site kept on Blup Cloud on this computer and opens it.
+func (s *Studio) BringBlupSite(vault string) (SiteInfo, error) {
+	site, err := app.BringBlupSite(context.Background(), vault)
+	if err != nil {
+		return SiteInfo{}, err
+	}
+	return info(site), nil
+}

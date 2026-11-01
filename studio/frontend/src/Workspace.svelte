@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from "svelte";
-  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -188,6 +188,15 @@
   let manual = $state(false);
   HyprlandSetup(look.toggleKey ?? "").then((h) => (manual = h.on && !h.auto)).catch(() => {});
   function okTip() { setPref("shortcutTip", true); }
+  // The invitation to Blup Cloud: once, to whoever has a site and no account.
+  let signedIn = $state(true);
+  BlupAccount().then((a) => (signedIn = a.signedIn)).catch(() => {});
+  const cloudTip = $derived(!look.cloudTip && !signedIn);
+  async function cloudYes() {
+    setPref("cloudTip", true);
+    await SetSyncRemote("blup").catch(() => {});
+    go("publish", "sync");
+  }
   function chooseTip() { setPref("shortcutTip", true); prefsTab = "keys"; prefsOpen = true; }
   let previewBusy = $state(false);
 
@@ -530,6 +539,20 @@
     <SettingsModal start={prefsTab} siteLang={settings?.lang} onClose={() => { prefsOpen = false; prefsTab = "general"; }} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
   {/if}
   {#if deletingSite}<DeleteSite dir={deletingSite} onClose={() => (deletingSite = "")} onDone={(dir) => { const name = others.find((o) => o.dir === dir)?.title ?? ""; deletingSite = ""; loadSites(); toast(t.toast.siteDeleted.replace("{name}", name)); }} />{/if}
+  {#if cloudTip && !showTip}
+    <!-- Once there is a site: keeping the notes in the cloud (optional). -->
+    <aside class="cloud-tip" aria-label={t.hello.tipTitle}>
+      <img src="/scenes/boas-vindas-encontrados.svg" alt="" />
+      <div>
+        <b>{t.hello.tipTitle}</b>
+        <p>{t.hello.tipLead}</p>
+        <div class="tip-actions start">
+          <button class="btn" onclick={cloudYes}>{t.hello.tipYes}</button>
+          <button class="btn ghost" onclick={() => setPref("cloudTip", true)}>{t.hello.tipNo}</button>
+        </div>
+      </div>
+    </aside>
+  {/if}
   {#if showTip}
     <!-- Centered like a modal, so it isn't missed. -->
     <div class="tip-shade" role="presentation"></div>
@@ -572,6 +595,11 @@
   .tip b { font-size: 1.1rem; }
   .tip p { margin-block: .4rem 1rem; font-size: .9rem; color: var(--muted); }
   .tip-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; }
+  .tip-actions.start { justify-content: flex-start; }
+  .cloud-tip { position: fixed; z-index: 30; inset-inline-end: 1.25rem; inset-block-end: 1.25rem; display: grid; grid-template-columns: 6rem 1fr; gap: 1rem; align-items: center; width: min(27rem, calc(100% - 2.5rem)); padding: 1rem 1.1rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 16px 40px rgb(0 0 0 / .2); }
+  .cloud-tip img { width: 6rem; }
+  .cloud-tip b { font-size: 1rem; }
+  .cloud-tip p { margin-block: .25rem .75rem; font-size: .87rem; color: var(--muted); }
   .resizer { position: absolute; z-index: 5; inset-block: 0; width: 7px; cursor: col-resize; }
   .resizer.right { inset-inline-end: -4px; }
   .resizer.left { inset-inline-start: 0; } /* the preview cuts what sticks out */

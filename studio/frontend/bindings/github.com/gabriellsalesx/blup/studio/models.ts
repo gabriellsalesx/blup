@@ -227,9 +227,14 @@ export interface Prefs {
     "voices": { [_ in string]?: string } | null;
 
     /**
-     * the welcome screens (language, GitHub, password, window) were seen
+     * the welcome screen (start, or bring the sites of an account) was seen
      */
     "welcomed": boolean;
+
+    /**
+     * the invitation to Blup Cloud, after the first site, was answered
+     */
+    "cloudTip": boolean;
 }
 
 /**

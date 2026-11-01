@@ -141,6 +141,20 @@ export function BlupSignOut(): $CancellablePromise<void> {
 }
 
 /**
+ * BlupSites lists the sites kept on Blup Cloud (to bring them here).
+ */
+export function BlupSites(): $CancellablePromise<app$0.BlupSite[] | null> {
+    return $Call.ByID(3471227051);
+}
+
+/**
+ * BringBlupSite makes a site kept on Blup Cloud on this computer and opens it.
+ */
+export function BringBlupSite(vault: string): $CancellablePromise<$models.SiteInfo> {
+    return $Call.ByID(1256618370, vault);
+}
+
+/**
  * BringSite makes a site found on GitHub on this computer and opens it.
  */
 export function BringSite(owner: string, repo: string): $CancellablePromise<$models.SiteInfo> {

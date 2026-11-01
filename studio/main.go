@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"slices"
-	"strings"
 
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/i18n"
@@ -22,12 +21,11 @@ var assets embed.FS
 
 func main() {
 	// The Studio speaks the language chosen in Blup (blup language), else
-	// the system's.
-	lang := "en"
+	// the system's: Portuguese on a computer in Portuguese, English on the
+	// others.
+	lang := string(i18n.System())
 	if g, err := config.LoadGlobal(); err == nil && g.Lang != "" {
 		lang = g.Lang
-	} else if strings.HasPrefix(strings.ToLower(os.Getenv("LANG")), "pt") {
-		lang = "pt"
 	}
 	i18n.Set(i18n.Lang(lang))
 	studio := &Studio{lang: lang}

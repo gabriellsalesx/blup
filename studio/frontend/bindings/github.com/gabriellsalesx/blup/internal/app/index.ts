@@ -5,6 +5,7 @@ export type {
     Attachment,
     Author,
     BlupAccount,
+    BlupSite,
     Change,
     CloudSite,
     Connections,
