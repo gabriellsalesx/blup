@@ -14,7 +14,7 @@ Propriedades da nota (todas opcionais):
 | Propriedade | Uso | Sem valor |
 | --- | --- | --- |
 | `podcast_title` | Nome do programa no feed | Nome do site |
-| `description` | Texto da página e do feed | Descrição do site |
+| `description` | Resumo do Google, do compartilhamento do link e do feed (não aparece na página) | Começo do texto da nota, depois a descrição do site |
 | `podcast_author` | `itunes:author` e dono | Autor do site |
 | `podcast_email` | `itunes:owner`, pelo qual Spotify e Apple confirmam a posse; fica público no feed | Sem `itunes:owner` |
 | `podcast_category` | `itunes:category`, nome da lista da Apple em inglês | `Technology` |
@@ -27,7 +27,7 @@ Propriedades da nota (todas opcionais):
 
 ## Página
 
-- `mochi/section.html` e `nori/section.html` desviam para o podcast quando `podcast/is.html` é verdadeiro. Cada modelo mantém o próprio cabeçalho: Mochi com breadcrumb e `.h1`, Nori com `.nori-head` na coluna estreita.
+- `mochi/section.html` e `nori/section.html` desviam para o podcast quando `podcast/is.html` é verdadeiro. Cada modelo mantém o próprio cabeçalho: Mochi com breadcrumb e `.h1`, Nori com `.nori-head` na coluna estreita. Embaixo do título vai o texto da nota (`content.html`, sem os comentários `%%`), como nas outras seções; a propriedade `description` fica para o Google, o compartilhamento e o feed.
 - `podcast/page.html` desenha a lista, o botão de copiar o feed, o "Carregar mais episódios" (dez por vez) e o player fixo. As capas usam `mochi/picture.html` com proporção `1:1`, WebP e `sizes` fixo de 112 px.
 - `assets/css/podcast.css` é carregado só nessa página (`head/css.html`), com os tokens do tema (`--main-*`, e `--panel`/`--ring` do Nori quando existem). O `<head>` também ganha o `<link rel="alternate">` do feed.
 - Na prévia do Studio sem suporte a MP3 (`HUGO_BLUP_NO_MP3`), a página mostra os episódios sem player, como `listen.html`.
@@ -53,7 +53,8 @@ Propriedades da nota (todas opcionais):
 
 `PodcastPanel.svelte` aparece no menu quando o blog tem a seção. Usa `Podcast()` e `SavePodcast()` (`studio/podcast.go`, `internal/app/podcast.go`):
 
-- Nome, descrição, autor, e-mail de contato, categoria (lista da Apple traduzida, valor em inglês), conteúdo explícito e capa (`PickCover`, com aviso quando a imagem não é um quadrado de 1400 a 3000 px).
+- O bloco Idiomas do Studio também aparece nas notas de seção (antes só nas outras), e a tradução da nota do Podcast fica em `Podcast/<idioma>/_index.md`, com as mesmas propriedades.
+- Nome, descrição (a do Google, do compartilhamento e do feed), autor, e-mail de contato, categoria (lista da Apple traduzida, valor em inglês), conteúdo explícito e capa (`PickCover`, com aviso quando a imagem não é um quadrado de 1400 a 3000 px).
 - Quantos episódios há: posts do idioma principal com narração que o podcast lista.
 - O endereço do feed de cada idioma, com Copiar e os atalhos para Spotify for Creators e Apple Podcasts Connect. Sem domínio, a tela explica que é preciso publicar com um.
 - `SavePodcast` só grava as propriedades da lista `PodcastProps` e recusa e-mail sem `@`.

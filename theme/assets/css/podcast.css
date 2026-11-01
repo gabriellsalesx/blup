@@ -6,7 +6,6 @@ ring when there, Mochi's grays otherwise. */
   .pod-page { --pod-panel: var(--panel, var(--main-50)); --pod-ring: var(--ring, var(--main-200)); --pod-hover: var(--panel-hover, var(--main-100)); }
   .pod-page.container > .pod, .pod-page.container > .page-head { max-width: 52rem; }
   .pod-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
-  .pod-lede { max-width: 40rem; font-size: 1.125rem; color: var(--main-600); }
   .nori-head .pod-heading { margin-block-end: .5rem; }
 
   /* Copy the feed's address (to paste in a podcast app). */

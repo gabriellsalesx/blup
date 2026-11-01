@@ -1,11 +1,13 @@
 {{- if partial "podcast/is.html" . -}}
-{{- /* The podcast (blup: podcast): Nori's own title and lede, then the
-episodes and the player, in the same column. */ -}}
+{{- /* The podcast (blup: podcast): Nori's own title and lede (the note's
+text, as on the other sections; its description is for Google, sharing
+and the feed), then the episodes and the player, in the same column. */ -}}
+{{- $lede := partial "content.html" . | plainify | htmlUnescape | strings.TrimSpace -}}
 <main id="main" class="nori-main pod-page">
   <div class="nori-column">
     <header class="nori-head">
       <div class="pod-heading"><h1 class="nori-title">{{ partial "title.html" . }}</h1>{{ partial "site/ai-badge.html" . }}</div>
-      {{- with .Description }}<p class="nori-lede">{{ . }}</p>{{ end }}
+      {{- with $lede }}<p class="nori-lede">{{ . }}</p>{{ end }}
     </header>
     {{ partial "podcast/page.html" (dict "page" .) }}
   </div>

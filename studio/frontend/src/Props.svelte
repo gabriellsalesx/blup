@@ -247,7 +247,7 @@
         </div>
       {/if}
 
-      {#if onOpenNote && !props.blup}<NoteLangs {note} onOpen={onOpenNote} {onSettings} />{/if}
+      {#if onOpenNote}<NoteLangs {note} onOpen={onOpenNote} {onSettings} />{/if}
 
       <button class="more wide" onclick={() => (more = !more)}>{more ? "−" : "+"} {p.more}</button>
       {#if more}

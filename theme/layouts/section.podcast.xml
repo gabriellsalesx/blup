@@ -9,7 +9,7 @@ show, each post's cover for its episode. */ -}}
 {{- $set := partialCached "site/settings.html" . "site" -}}
 {{- $eps := partial "podcast/episodes.html" . -}}
 {{- $name := .Params.podcast_title | default $set.name -}}
-{{- $desc := .Description | default $set.description | default $name -}}
+{{- $desc := partial "description.html" . | default $set.description | default $name -}}
 {{- $author := .Params.podcast_author | default $set.author | default $set.name -}}
 {{- $explicit := cond (in (slice true "true" "yes" "sim" "sí" "si") .Params.podcast_explicit) "true" "false" -}}
 {{- /* The show's cover: the note's image, else the newest episode's

@@ -497,7 +497,7 @@ func TestPodcastPage(t *testing.T) {
 			vault := t.TempDir()
 			files := map[string][]byte{
 				"_index.md":         []byte("---\ntitle: Blog\n---\n"),
-				"Podcast/_index.md": []byte("---\ntitle: Podcast\nblup: podcast\ndescription: Ouça os posts.\noutputs: [html, podcast]\npodcast_email: dono@exemplo.com\npodcast_category: Education\n---\n"),
+				"Podcast/_index.md": []byte("---\ntitle: Podcast\nblup: podcast\ndescription: Ouça os posts.\noutputs: [html, podcast]\npodcast_email: dono@exemplo.com\npodcast_category: Education\n---\nOs episódios do blog.\n\n%%\nComentário do autor.\n%%\n"),
 				"Blog/Um.md":        []byte("---\ntitle: Episódio um\ndate: 2026-10-02\nimage: \"[[capa.png]]\"\naudio: \"[[um.mp3]]\"\naudio_seconds: 75\n---\nTexto um.\n"),
 				"Blog/Dois.md":      []byte("---\ntitle: Episódio dois\ndate: 2026-10-01\naudio: \"[[dois.mp3]]\"\n---\nTexto dois.\n"),
 				"Blog/Mudo.md":      []byte("---\ntitle: Sem narração\ndate: 2026-10-03\n---\nNada.\n"),
@@ -530,6 +530,11 @@ func TestPodcastPage(t *testing.T) {
 			html := string(page)
 			if n := strings.Count(html, "data-pod-ep "); n != 2 {
 				t.Errorf("episodes on the page = %d, want 2", n)
+			}
+			// Under the title, the note's text (as on the other sections); the
+			// description is for Google and sharing, not on the page.
+			if !strings.Contains(html, "Os episódios do blog.") || strings.Contains(html, "Comentário do autor") || !strings.Contains(html, `name="description" content="Ouça os posts."`) {
+				t.Error("the lede should be the note's text and the description only the page's summary")
 			}
 			for _, want := range []string{"Episódio um", "Episódio dois", "webp", "data-pod-player", "css/podcast", `type="application/rss+xml"`, "1:15"} {
 				if !strings.Contains(html, want) {
@@ -574,7 +579,7 @@ func TestPodcastPage(t *testing.T) {
 				t.Fatalf("feed: %v\n%s", err, raw)
 			}
 			c := feed.Channel
-			if c.Email != "dono@exemplo.com" || c.Category.Text != "Education" || len(c.Items) != 2 {
+			if c.Email != "dono@exemplo.com" || c.Category.Text != "Education" || len(c.Items) != 2 || !strings.Contains(string(raw), "<description>Ouça os posts.</description>") {
 				t.Fatalf("channel = %+v", c)
 			}
 			one := c.Items[0]
