@@ -230,12 +230,13 @@ layout. Bundled into one file by css.Build. */
   /* The requests. */
   .fbb-list { display: grid; gap: 1rem; margin: 0; padding: 0; list-style: none; }
   .fbb-item { display: flex; align-items: flex-start; gap: 1.25rem; padding: 1.25rem; border: 1px solid var(--main-200); border-radius: 1rem; background: var(--main-25); transition: box-shadow .2s; }
-  .fbb-item:hover { box-shadow: var(--shadow-sm); }
+  /* The whole card opens the request (the title stays its link). */
+  .fbb-item { cursor: pointer; }
+  .fbb-item:hover { border-color: var(--main-300); box-shadow: var(--shadow-sm); }
   .fbb-vote { display: grid; justify-items: center; align-content: center; gap: .125rem; width: 3.25rem; height: 3.75rem; flex: none; border: 1px solid var(--main-200); border-radius: .5rem; background: var(--main-25); color: var(--main-900); font-size: 1rem; cursor: pointer; transition: background .15s, border-color .15s; }
   .fbb-vote .icon { width: 1.125rem; height: 1.125rem; }
   .fbb-vote:hover { border-color: var(--main-400); }
   .fbb-vote[aria-pressed="true"] { border-color: var(--primary-800); background: var(--primary-800); color: var(--on-primary); }
-  .fbb-example .fbb-vote { cursor: default; }
   .fbb-main { display: grid; gap: .375rem; min-width: 0; }
   .fbb-line { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-size: .8125rem; color: var(--main-500); }
   .fbb-status + .fbb-cat::before { content: "\2022"; margin-inline-end: .375rem; }
@@ -245,7 +246,6 @@ layout. Bundled into one file by css.Build. */
   .fbb-status.s-done { background: color-mix(in srgb, #22c55e 15%, transparent); color: light-dark(#15803d, #86efac); }
   .fbb-status.s-declined { background: color-mix(in srgb, #ef4444 13%, transparent); color: light-dark(#b91c1c, #fca5a5); }
   .fbb-title { font-size: 1.125rem; font-weight: 700; line-height: 1.35; color: var(--main-900); text-decoration: none; }
-  a.fbb-title:hover { text-decoration: underline; }
   .fbb-excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: .9375rem; color: var(--main-500); }
   .fbb-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin-block-start: .375rem; font-size: .8125rem; color: var(--main-500); }
   .fbb-meta > span, .fbb-meta > a { display: inline-flex; align-items: center; gap: .375rem; }

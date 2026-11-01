@@ -701,6 +701,13 @@ async function board() {
   });
   document.addEventListener("click", (e) => { if (!menu.contains(e.target)) openMenu(false); });
 
+  // A click anywhere on a card opens its request, as its title does (the
+  // vote button keeps its own click).
+  list.addEventListener("click", (e) => {
+    const card = e.target.closest(".fbb-item");
+    if (!card || e.target.closest(".fbb-vote, a")) return;
+    card.querySelector(".fbb-title")?.click();
+  });
   // An example's vote: it counts here only, to show how voting feels.
   list.addEventListener("click", (e) => {
     const v = e.target.closest(".fbb-example .fbb-vote");
