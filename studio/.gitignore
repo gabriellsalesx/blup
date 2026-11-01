@@ -8,4 +8,5 @@ build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 build/ios/xcode/overlay.json
 build/ios/xcode/gen/
 build/android/overlay.json
-build/android/gen/
+build/android/gen/# go build in this folder
+/studio
