@@ -341,3 +341,23 @@ func (c *Client) Commit(ctx context.Context, vault string, parent int64, blocks 
 	err = c.do(ctx, http.MethodPost, "/sync/vaults/"+url.PathEscape(vault)+"/versions", &buf, w.FormDataContentType(), &r)
 	return r.N, err
 }
+
+// VersionInfo is a version of a vault still kept.
+type VersionInfo struct {
+	N         int64     `json:"n"`
+	Size      int64     `json:"size"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// Versions lists the versions kept, newest first, 50 at a time: before 0
+// starts at the newest, else at the version before that one.
+func (c *Client) Versions(ctx context.Context, vault string, before int64) ([]VersionInfo, error) {
+	q := ""
+	if before > 0 {
+		q = "?before=" + strconv.FormatInt(before, 10)
+	}
+	var r struct {
+		Versions []VersionInfo `json:"versions"`
+	}
+	return r.Versions, c.do(ctx, http.MethodGet, "/sync/vaults/"+url.PathEscape(vault)+"/versions"+q, nil, "", &r)
+}

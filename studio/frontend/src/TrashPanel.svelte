@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { Trash, RestoreSection, DeleteFromTrash, EmptyTrash } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { Trash, RestoreSection, DeleteFromTrash, EmptyTrash, CloudHistory, DeletedNotes, RestoreNoteVersion } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { TrashItem } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import type { DeletedFile } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Folder from "@lucide/svelte/icons/folder";
   import FileText from "@lucide/svelte/icons/file-text";
@@ -22,6 +23,17 @@
   const restore = (p: string) => s.run(async () => { onTree(await RestoreSection(p)); await load(); reload(); }, t.toast.restored);
   const drop = (p: string) => s.run(async () => { await DeleteFromTrash(p); asking = ""; await load(); }, t.toast.deletedForGood);
   const empty = () => s.run(async () => { await EmptyTrash(); askingAll = false; await load(); }, t.toast.trashEmptied);
+
+  // Notes deleted that Blup Cloud's history still keeps (plans with history).
+  const h = t.history;
+  let cloud = $state<DeletedFile[] | null>(null);
+  CloudHistory().then(async (on) => { if (on) cloud = (await DeletedNotes().catch(() => [])) ?? []; });
+  const base = (p: string) => p.split("/").pop()?.replace(/\.md$/, "") ?? p;
+  const bringBack = (d: DeletedFile) => s.run(async () => {
+    await RestoreNoteVersion(d.path, d.n);
+    cloud = (cloud ?? []).filter((x) => x.path !== d.path);
+    reload();
+  }, h.broughtBack.replace("{name}", base(d.path)));
 </script>
 
 <div class="panel">
@@ -59,9 +71,26 @@
       {/if}
     </div>
   {/if}
+
+  {#if cloud}
+    <h2 class="sub">{h.deletedTitle}</h2>
+    <p class="muted">{h.deletedLead}</p>
+    {#if cloud.length === 0}
+      <p class="empty muted">{h.deletedNone}</p>
+    {:else}
+      {#each cloud as d (d.path)}
+        <section class="card item">
+          <span class="ico"><FileText size={20} /></span>
+          <div class="field"><span>{base(d.path)}</span><small>{d.path.includes("/") ? d.path.slice(0, d.path.lastIndexOf("/")).replaceAll("/", " / ") : t.menu.top} · {when(d.at)}</small></div>
+          <div class="row"><button class="btn ghost" disabled={s.state.busy} onclick={() => bringBack(d)}>{h.bringBack}</button></div>
+        </section>
+      {/each}
+    {/if}
+  {/if}
 </div>
 
 <style>
+  .sub { margin-block-start: 1.5rem; font-size: 1.05rem; }
   .item { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
   .ico { color: var(--muted); display: inline-grid; }
   .empty { padding: 2rem; border: 1px dashed var(--line); border-radius: .75rem; text-align: center; }

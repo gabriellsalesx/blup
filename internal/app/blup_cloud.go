@@ -43,7 +43,9 @@ type BlupAccount struct {
 	Label    string `json:"label"` // "Grátis", "Pro"...
 	// Live: the plan syncs each note as it is saved and hears of the other
 	// computers at once; without it, sync is by button.
-	Live         bool  `json:"live"`
+	Live bool `json:"live"`
+	// HistoryDays: how long old versions are kept (0: no history).
+	HistoryDays  int   `json:"historyDays"`
 	MaxFileMB    int   `json:"maxFileMB"`
 	StorageMB    int   `json:"storageMB"`
 	StorageBytes int64 `json:"storageBytes"`
@@ -84,7 +86,7 @@ func LoadBlupAccount(ctx context.Context) (BlupAccount, error) {
 	}
 	a := BlupAccount{
 		SignedIn: true, Plan: me.Plan.Name, Label: me.Plan.Label,
-		Live: me.Plan.Limits.Live, MaxFileMB: me.Plan.Limits.MaxFileMB,
+		Live: me.Plan.Limits.Live, HistoryDays: me.Plan.Limits.HistoryDays, MaxFileMB: me.Plan.Limits.MaxFileMB,
 		StorageMB: me.Plan.Limits.StorageMB, StorageBytes: me.Usage.StorageBytes,
 	}
 	if me.Email != nil {
@@ -202,9 +204,9 @@ func SetSyncRemote(site *config.Site, remote string) error {
 	return site.Save()
 }
 
-// blupSyncer is the Syncer of a site synced through Blup Cloud; its vault
-// is created the first time (named after the site, encrypted).
-func blupSyncer(ctx context.Context, site *config.Site) (*notesync.Syncer, error) {
+// blupRemote is the vault of a site synced through Blup Cloud; it is
+// created the first time (named after the site, encrypted).
+func blupRemote(ctx context.Context, site *config.Site) (*blupcloud.Remote, error) {
 	c, creds, err := blupClient()
 	if err != nil {
 		return nil, errors.New(describe(err))
@@ -238,8 +240,21 @@ func blupSyncer(ctx context.Context, site *config.Site) (*notesync.Syncer, error
 			return nil, err
 		}
 	}
+	return &blupcloud.Remote{
+		Client: c, Keys: keys, Vault: site.Sync.Vault,
+		MaxFile: int64(me.Plan.Limits.MaxFileMB) << 20,
+		Cache:   filepath.Join(site.Dir(), ".blup", "cloud-history", site.Sync.Vault),
+	}, nil
+}
+
+// blupSyncer is the Syncer of a site synced through Blup Cloud.
+func blupSyncer(ctx context.Context, site *config.Site) (*notesync.Syncer, error) {
+	r, err := blupRemote(ctx, site)
+	if err != nil {
+		return nil, err
+	}
 	return &notesync.Syncer{
-		Remote:    &blupcloud.Remote{Client: c, Keys: keys, Vault: site.Sync.Vault, MaxFile: int64(me.Plan.Limits.MaxFileMB) << 20},
+		Remote:    r,
 		Dir:       site.ContentDir(),
 		StateFile: filepath.Join(site.Dir(), ".blup", "sync-state.json"),
 	}, nil

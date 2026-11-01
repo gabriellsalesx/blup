@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from "svelte";
-  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -8,6 +8,7 @@
   import Props from "./Props.svelte";
   import Preview from "./Preview.svelte";
   import TerminalPanel from "./TerminalPanel.svelte";
+  import HistoryModal from "./HistoryModal.svelte";
   import FileMenu from "./FileMenu.svelte";
   import SettingsModal, { DOCS } from "./SettingsModal.svelte";
   import Gear from "@lucide/svelte/icons/settings";
@@ -256,6 +257,13 @@
   let cloud = $state<{ state: string; error?: string } | null>(null);
   const offCloud = Events.On("cloudSync", (ev: any) => (cloud = ev.data));
   onDestroy(() => offCloud());
+  // Earlier versions on Blup Cloud: checked when the site opens and after
+  // each live sync (signing in or changing plan turns it on).
+  let cloudHistory = $state(false);
+  let historyFor = $state("");
+  const checkHistory = () => CloudHistory().then((on) => (cloudHistory = on)).catch(() => {});
+  checkHistory();
+  $effect(() => { if (cloud?.state === "synced" && !cloudHistory) checkHistory(); });
   const cloudTitle = $derived(!cloud ? undefined : cloud.state === "error" ? t.cloudError.replace("{error}", cloud.error ?? "") : cloud.state === "syncing" ? t.cloudSyncing : t.cloudSynced);
 
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -537,8 +545,11 @@
       </div>
     </div>
   {/if}
+  {#if historyFor}
+    {#key historyFor}<HistoryModal path={historyFor} onClose={() => (historyFor = "")} />{/key}
+  {/if}
   {#if menu}
-    <FileMenu node={menu.node} x={menu.x} y={menu.y} {current} folders={folders(tree)} onClose={() => (menu = null)} onChanged={menuChanged} onNew={menuNew} />
+    <FileMenu node={menu.node} x={menu.x} y={menu.y} {current} folders={folders(tree)} onClose={() => (menu = null)} onChanged={menuChanged} onNew={menuNew} onHistory={cloudHistory ? (p) => (historyFor = p) : undefined} />
   {/if}
   {#if termStarted}
     <div class="term" class:min={!termOpen} style:height="{termHeight}px">

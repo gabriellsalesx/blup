@@ -24,5 +24,6 @@ export type {
     SiteInfo,
     TermData,
     Vault,
+    VersionText,
     VoiceProgress
 } from "./models.js";

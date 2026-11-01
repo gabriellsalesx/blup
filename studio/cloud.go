@@ -162,3 +162,59 @@ func (s *Studio) startLive(site *config.Site) {
 	onNotesChanged = l.Changed
 	watchMu.Unlock()
 }
+
+// CloudHistory tells whether the open site keeps old versions on Blup
+// Cloud (synced there, on a plan with history, notes opened here).
+func (s *Studio) CloudHistory() bool {
+	site, err := s.current()
+	if err != nil || site.Sync.Remote != app.RemoteBlup || site.Sync.Vault == "" {
+		return false
+	}
+	a, err := app.LoadBlupAccount(context.Background())
+	return err == nil && a.Notes == "ready" && a.HistoryDays > 0
+}
+
+// NoteHistory lists the earlier contents of a note, newest first.
+func (s *Studio) NoteHistory(path string) ([]blupcloud.NoteVersion, error) {
+	site, err := s.current()
+	if err != nil {
+		return nil, err
+	}
+	return app.NoteHistory(context.Background(), site, path)
+}
+
+// VersionText is a note's text in an earlier version (IsText false for
+// images and other files).
+type VersionText struct {
+	Text   string `json:"text"`
+	IsText bool   `json:"isText"`
+}
+
+// NoteVersionText reads a note as it was in version n.
+func (s *Studio) NoteVersionText(path string, n int64) (VersionText, error) {
+	site, err := s.current()
+	if err != nil {
+		return VersionText{}, err
+	}
+	text, ok, err := app.NoteVersionText(context.Background(), site, path, n)
+	return VersionText{Text: text, IsText: ok}, err
+}
+
+// RestoreNoteVersion puts a note back as it was in version n (the current
+// one stays in the history).
+func (s *Studio) RestoreNoteVersion(path string, n int64) error {
+	site, err := s.current()
+	if err != nil {
+		return err
+	}
+	return app.RestoreNoteVersion(context.Background(), site, path, n)
+}
+
+// DeletedNotes lists notes deleted that Blup Cloud still keeps.
+func (s *Studio) DeletedNotes() ([]blupcloud.DeletedFile, error) {
+	site, err := s.current()
+	if err != nil {
+		return nil, err
+	}
+	return app.DeletedNotes(context.Background(), site)
+}

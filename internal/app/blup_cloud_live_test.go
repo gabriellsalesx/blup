@@ -81,3 +81,65 @@ func TestBlupCloudStudio(t *testing.T) {
 		t.Fatal("still signed in")
 	}
 }
+
+// History on a plan that keeps it (BLUP_CLOUD_LIVE_TOKEN: an account on Pro
+// or above, new).
+func TestBlupHistory(t *testing.T) {
+	token := os.Getenv("BLUP_CLOUD_LIVE_TOKEN")
+	if token == "" {
+		t.Skip("BLUP_CLOUD_LIVE_TOKEN not set")
+	}
+	ctx := context.Background()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	(config.Credentials{BlupToken: token}).Save()
+	if _, err := CreateNotesPassword(ctx, "senha das notas"); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	notes := filepath.Join(root, "notas")
+	os.MkdirAll(filepath.Join(root, "site"), 0o755)
+	os.MkdirAll(notes, 0o755)
+	site := config.NewSite(filepath.Join(root, "site"))
+	site.Title, site.Vault, site.Model, site.Lang = "Histórico", notes, "mochi", "pt"
+	SetSyncRemote(site, RemoteBlup)
+	note := filepath.Join(notes, "diário.md")
+	for _, text := range []string{"um\n", "dois\n", "três\n"} {
+		os.WriteFile(note, []byte(text), 0o644)
+		if _, err := SyncNow(ctx, site); err != nil {
+			t.Fatal(err)
+		}
+	}
+	os.WriteFile(filepath.Join(notes, "rascunho.md"), []byte("apagar\n"), 0o644)
+	SyncNow(ctx, site)
+	os.Remove(filepath.Join(notes, "rascunho.md"))
+	SyncNow(ctx, site)
+
+	h, err := NoteHistory(ctx, site, "diário.md")
+	if err != nil || len(h) != 3 || !h[0].Current || h[1].Current {
+		t.Fatalf("history = %+v, %v", h, err)
+	}
+	if text, ok, err := NoteVersionText(ctx, site, "diário.md", h[2].N); err != nil || !ok || text != "um\n" {
+		t.Fatalf("oldest = %q, %v", text, err)
+	}
+	if err := RestoreNoteVersion(ctx, site, "diário.md", h[2].N); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(note); string(b) != "um\n" {
+		t.Fatalf("restored = %q", b)
+	}
+	SyncNow(ctx, site)
+	if h, _ = NoteHistory(ctx, site, "diário.md"); len(h) != 4 {
+		t.Fatalf("restoring is a new version: %d", len(h))
+	}
+
+	d, err := DeletedNotes(ctx, site)
+	if err != nil || len(d) != 1 || d[0].Path != "rascunho.md" {
+		t.Fatalf("deleted = %+v, %v", d, err)
+	}
+	if err := RestoreNoteVersion(ctx, site, d[0].Path, d[0].N); err != nil {
+		t.Fatal(err)
+	}
+	if d, _ = DeletedNotes(ctx, site); len(d) != 0 {
+		t.Fatalf("still deleted: %+v", d)
+	}
+}

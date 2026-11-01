@@ -34,6 +34,9 @@ type Remote struct {
 	Vault  string
 	// MaxFile is the plan's largest file in bytes (0 = notesync's default).
 	MaxFile int64
+	// Cache is a folder for the sealed manifests of old versions (they never
+	// change); "" fetches them every time.
+	Cache string
 
 	mu    sync.Mutex
 	known map[string][]string // sha -> blocks already in the vault
@@ -144,6 +147,10 @@ func (r *Remote) Download(ctx context.Context, f notesync.RemoteFile) ([]byte, e
 	if !ok {
 		return nil, errors.New("blupcloud: unknown file")
 	}
+	return r.download(ctx, mf)
+}
+
+func (r *Remote) download(ctx context.Context, mf manifestFile) ([]byte, error) {
 	var buf bytes.Buffer
 	for _, id := range mf.Blocks {
 		sealed, err := r.Client.Block(ctx, id)

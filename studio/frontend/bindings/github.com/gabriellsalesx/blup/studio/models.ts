@@ -308,6 +308,15 @@ export interface Vault {
 }
 
 /**
+ * VersionText is a note's text in an earlier version (IsText false for
+ * images and other files).
+ */
+export interface VersionText {
+    "text": string;
+    "isText": boolean;
+}
+
+/**
  * VoiceProgress is how much of the local voice was downloaded.
  */
 export interface VoiceProgress {

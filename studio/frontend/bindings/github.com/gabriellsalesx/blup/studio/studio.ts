@@ -16,6 +16,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as app$0 from "../internal/app/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as blupcloud$0 from "../internal/blupcloud/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as config$0 from "../internal/config/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -173,6 +176,14 @@ export function CloseTerminal(id: string): $CancellablePromise<void> {
 }
 
 /**
+ * CloudHistory tells whether the open site keeps old versions on Blup
+ * Cloud (synced there, on a plan with history, notes opened here).
+ */
+export function CloudHistory(): $CancellablePromise<boolean> {
+    return $Call.ByID(56040689);
+}
+
+/**
  * CloudSites lists the Blup sites found on the user's GitHub (their notes
  * synced to a private repository).
  */
@@ -297,6 +308,13 @@ export function DeleteItem(rel: string): $CancellablePromise<string> {
  */
 export function DeleteSite(dir: string, choice: app$0.DeleteChoice): $CancellablePromise<app$0.DeleteProblem[] | null> {
     return $Call.ByID(164179262, dir, choice);
+}
+
+/**
+ * DeletedNotes lists notes deleted that Blup Cloud still keeps.
+ */
+export function DeletedNotes(): $CancellablePromise<blupcloud$0.DeletedFile[] | null> {
+    return $Call.ByID(992879600);
 }
 
 /**
@@ -444,11 +462,25 @@ export function NoteAt(page: string): $CancellablePromise<string> {
 }
 
 /**
+ * NoteHistory lists the earlier contents of a note, newest first.
+ */
+export function NoteHistory(path: string): $CancellablePromise<blupcloud$0.NoteVersion[] | null> {
+    return $Call.ByID(3788350430, path);
+}
+
+/**
  * NoteLink is a Markdown link to the note at rel, written from the note at
  * from ("" for the top of the notes): [Name](../Folder/Name.md).
  */
 export function NoteLink(rel: string, $from: string): $CancellablePromise<string> {
     return $Call.ByID(56273166, rel, $from);
+}
+
+/**
+ * NoteVersionText reads a note as it was in version n.
+ */
+export function NoteVersionText(path: string, n: number): $CancellablePromise<$models.VersionText> {
+    return $Call.ByID(3844963441, path, n);
 }
 
 /**
@@ -669,6 +701,14 @@ export function RenameItem(rel: string, name: string): $CancellablePromise<strin
  */
 export function ResizeTerminal(id: string, cols: number, rows: number): $CancellablePromise<void> {
     return $Call.ByID(3867034702, id, cols, rows);
+}
+
+/**
+ * RestoreNoteVersion puts a note back as it was in version n (the current
+ * one stays in the history).
+ */
+export function RestoreNoteVersion(path: string, n: number): $CancellablePromise<void> {
+    return $Call.ByID(927319360, path, n);
 }
 
 /**

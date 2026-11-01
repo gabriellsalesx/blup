@@ -11,16 +11,19 @@
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import Pencil from "@lucide/svelte/icons/pencil";
   import Trash from "@lucide/svelte/icons/trash-2";
+  import History from "@lucide/svelte/icons/history";
   import { t } from "./i18n";
   import { toast, toastError } from "./toast.svelte";
 
   // The right-click menu of the file explorer, and its small dialogs
   // (rename, move to, delete).
-  let { node, x, y, current, folders, onClose, onChanged, onNew }: {
+  let { node, x, y, current, folders, onClose, onChanged, onNew, onHistory }: {
     node: Node; x: number; y: number; current: string; folders: string[];
     onClose: () => void;
     onChanged: (change: { from: string; to: string | null; open?: string }) => void;
     onNew: (kind: "note" | "folder", folder: string) => void;
+    // Earlier versions on Blup Cloud (only when the plan keeps them).
+    onHistory?: (path: string) => void;
   } = $props();
   const m = t.menu;
 
@@ -81,6 +84,7 @@
     <button onclick={() => (dialog = "move")}><FolderInput size={16} />{m.move}</button>
     {#if !node.dir}
       <button onclick={copyLink}><Link size={16} />{copied ? m.copied : m.link}</button>
+      {#if onHistory}<button onclick={() => { onHistory(node.path); onClose(); }}><History size={16} />{t.history.menu}</button>{/if}
     {/if}
     <hr />
     <button onclick={() => { OpenInObsidian(node.path); onClose(); }}><External size={16} />{m.obsidian}</button>

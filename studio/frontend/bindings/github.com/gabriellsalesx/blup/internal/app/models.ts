@@ -84,6 +84,11 @@ export interface BlupAccount {
      * computers at once; without it, sync is by button.
      */
     "live": boolean;
+
+    /**
+     * HistoryDays: how long old versions are kept (0: no history).
+     */
+    "historyDays": number;
     "maxFileMB": number;
     "storageMB": number;
     "storageBytes": number;
