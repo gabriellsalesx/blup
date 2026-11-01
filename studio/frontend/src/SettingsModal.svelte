@@ -18,6 +18,7 @@
   import Cloud from "@lucide/svelte/icons/cloud";
   import Info from "@lucide/svelte/icons/info";
   import CloudAccount from "./CloudAccount.svelte";
+  import { soundOut, warmSound } from "./audio";
   import { Events } from "@wailsio/runtime";
   import X from "@lucide/svelte/icons/x";
   import Check from "@lucide/svelte/icons/check";
@@ -231,15 +232,19 @@
   // moments stuttered; it also can't stream the app's wails:// addresses.
   // The start waits a moment for the sound output to wake up.
   let playing = $state("");
-  let audio: AudioContext | null = null;
+  // Warmed up once the window has painted (see audio.ts).
+  $effect(() => { const id = setTimeout(() => warmSound("/voices/kokoro-pf_dora.mp3"), 400); return () => clearTimeout(id); });
   let source: AudioBufferSourceNode | null = null;
   let startAt = 0;
   let length = 0;
   // How much of the sample has played (0 to 1), for the ring around ▶.
   let played = $state(0);
+  // Until it starts (a sample OpenRouter makes takes a few seconds) the
+  // ring turns, so the ▶ doesn't look stuck.
+  let sounding = $state(false);
   let frame = 0;
   const tick = () => {
-    if (audio && source && length > 0) played = Math.min(1, Math.max(0, (audio.currentTime - startAt) / length));
+    if (source && length > 0) played = Math.min(1, Math.max(0, (soundOut().currentTime - startAt) / length));
     frame = requestAnimationFrame(tick);
   };
   const stopSample = () => {
@@ -249,6 +254,7 @@
       source.disconnect();
     }
     source = null;
+    sounding = false;
     cancelAnimationFrame(frame);
     played = 0;
   };
@@ -260,7 +266,7 @@
     if (again) return;
     playing = id;
     try {
-      audio ??= new AudioContext();
+      const audio = soundOut();
       const [bytes] = await Promise.all([sampleBytes(v, lang), audio.resume()]);
       const buffer = await audio.decodeAudioData(bytes);
       if (playing !== id) return; // another one was tapped meanwhile
@@ -272,13 +278,14 @@
       length = buffer.duration;
       source = src;
       src.start(startAt);
+      sounding = true;
       frame = requestAnimationFrame(tick);
     } catch (e) {
       if (playing === id) playing = "";
       toast(`${lv.noSample} ${String(e).replace(/^(Runtime)?Error: /, "")}`, { kind: "error" });
     }
   }
-  $effect(() => () => { stopSample(); void audio?.close(); });
+  $effect(() => () => stopSample());
   async function connectAI() {
     aiBusy = true; aiError = "";
     try { await ConnectAI(aiKey); aiOn = true; aiKey = ""; toast(ai.connected); loadVoices(); aiChanged(); }
@@ -491,7 +498,7 @@
                     {#if engine === "local"}<small class="muted">{v.female ? lv.female : lv.male}</small>{/if}
                     {#if !v.ready}<small class="muted">{engine === "local" ? lv.needInstall : engine === "blup" ? lv.needPlan : lv.needKey}</small>{/if}
                   </label>
-                  {#if v.ready}<button class="icon-btn listen" class:playing={playing === v.id} title={playing === v.id ? lv.stop : v.sample ? lv.listen : lv.listenMake} aria-label="{playing === v.id ? lv.stop : lv.listen}: {v.name}" onclick={() => listen(v, l)}>
+                  {#if v.ready}<button class="icon-btn listen" class:playing={playing === v.id} class:loading={playing === v.id && !sounding} title={playing === v.id ? lv.stop : v.sample ? lv.listen : lv.listenMake} aria-label="{playing === v.id ? lv.stop : lv.listen}: {v.name}" onclick={() => listen(v, l)}>
                     <!-- The ring fills as the sample plays. -->
                     <svg class="ring" viewBox="0 0 36 36" aria-hidden="true">
                       <circle class="track" cx="18" cy="18" r="16" />
@@ -632,6 +639,9 @@
   .listen .ring .track { stroke: var(--line); }
   .listen .ring .fill { stroke: var(--blue); stroke-linecap: round; }
   .listen.playing { color: var(--blue); }
+  .listen.loading .ring { animation: ring-turn .9s linear infinite; }
+  .listen.loading .ring .fill { stroke-dasharray: 22 78; }
+  @keyframes ring-turn { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
   .keyform input { flex: 1; font-family: ui-monospace, monospace; }
   input[type="range"] { width: 11rem; accent-color: var(--blue); }
   .seg { display: inline-flex; gap: .2rem; padding: .2rem; border: 1px solid var(--line); border-radius: .6rem; }
