@@ -1,13 +1,15 @@
-import { and, count, eq, gt } from "drizzle-orm";
+import { and, count, eq, gt, like } from "drizzle-orm";
 import { db } from "./auth";
 import { session, syncAccount, vault } from "./db/schema";
 
-// Blup Studio's requests say who they are; its sessions are its devices.
+// Blup Studio's requests say who they are ("Blup Studio (Linux; my-pc)");
+// its sessions are its devices.
 export const STUDIO_AGENT = "Blup Studio";
+export const isStudio = like(session.userAgent, `${STUDIO_AGENT}%`);
 
 // Blup Studio installs signed in to an account now.
 export async function devicesOf(userId: string): Promise<number> {
-	const [{ n }] = await db.select({ n: count() }).from(session).where(and(eq(session.userId, userId), eq(session.userAgent, STUDIO_AGENT), gt(session.expiresAt, new Date())));
+	const [{ n }] = await db.select({ n: count() }).from(session).where(and(eq(session.userId, userId), isStudio, gt(session.expiresAt, new Date())));
 	return n;
 }
 

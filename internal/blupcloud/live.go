@@ -28,7 +28,7 @@ func (c *Client) Listen(ctx context.Context, moved func(Moved)) error {
 	u := c.BaseURL + "/api/sync/live"
 	u = "ws" + strings.TrimPrefix(u, "http") // http→ws, https→wss
 	conn, res, err := websocket.Dial(ctx, u, &websocket.DialOptions{
-		HTTPHeader: http.Header{"Authorization": {"Bearer " + c.Token}, "User-Agent": {"Blup Studio"}},
+		HTTPHeader: http.Header{"Authorization": {"Bearer " + c.Token}, "User-Agent": {UserAgent()}},
 	})
 	if err != nil {
 		if res != nil {

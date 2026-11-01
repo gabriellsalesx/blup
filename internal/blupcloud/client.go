@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -44,6 +45,25 @@ var (
 	// ErrExpired: the code shown was not approved in time.
 	ErrExpired = errors.New("blupcloud: the sign in code expired")
 )
+
+// UserAgent names this computer to Blup Cloud, as the account panel lists
+// it: "Blup Studio (Linux; my-pc)".
+func UserAgent() string {
+	host, _ := os.Hostname()
+	if host == "" {
+		host = "?"
+	}
+	osName := map[string]string{"linux": "Linux", "darwin": "macOS", "windows": "Windows"}[runtime.GOOS]
+	if osName == "" {
+		osName = runtime.GOOS
+	}
+	return fmt.Sprintf("Blup Studio (%s; %s)", osName, strings.Map(func(r rune) rune {
+		if r == '(' || r == ')' || r == ';' || r < ' ' {
+			return -1
+		}
+		return r
+	}, host))
+}
 
 // BaseURL is DefaultURL or BLUP_CLOUD_URL.
 func BaseURL() string {
@@ -101,7 +121,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any, contentT
 	if c.Token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
-	req.Header.Set("User-Agent", "Blup Studio")
+	req.Header.Set("User-Agent", UserAgent())
 	res, err := c.HTTP.Do(req)
 	if err != nil {
 		return err

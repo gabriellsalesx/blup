@@ -19,9 +19,16 @@ async function get<T>(path: string): Promise<T> {
 	return r.json() as Promise<T>;
 }
 
+export type Device = { id: string; name: string; createdAt: string; lastSeen: string };
+
 export const api = {
 	me: () => get<Me>("/me"),
 	plans: () => get<PlanInfo[]>("/plans"),
+	devices: () => get<{ devices: Device[] }>("/devices"),
+	disconnect: async (id: string) => {
+		const r = await fetch(`/api/devices/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" });
+		if (!r.ok) throw new Error(`disconnect: ${r.status}`);
+	},
 };
 
 export const money = (cents: number, currency: string = "brl") => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: currency.toUpperCase() });

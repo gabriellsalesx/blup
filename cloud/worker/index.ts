@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { auth, type Session } from "./auth";
+import { and, desc, eq, gt } from "drizzle-orm";
+import { auth, db, type Session } from "./auth";
 import { activeSubscription, planOf } from "./account";
 import { PLANS, SUGGESTED, planNamed } from "./plans";
 import { staffApi } from "./staff";
 import { syncApi } from "./sync";
 import { cleanUp } from "./cleanup";
-import { devicesOf, usageOf } from "./usage";
+import { devicesOf, isStudio, usageOf } from "./usage";
+import { session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
 
@@ -95,6 +97,27 @@ const routes = app
 			createdAt: user.createdAt,
 			plan: { name: plan.name, label: plan.label, limits: plan.limits, status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
 		});
+	})
+	// The Blup Studio installs signed in (each is a session), to see and
+	// disconnect them.
+	.get("/devices", session, signedIn, async (c) => {
+		const { user } = c.get("session")!;
+		const rows = await db
+			.select({ id: sessionTable.id, agent: sessionTable.userAgent, createdAt: sessionTable.createdAt, lastSeen: sessionTable.updatedAt })
+			.from(sessionTable)
+			.where(and(eq(sessionTable.userId, user.id), isStudio, gt(sessionTable.expiresAt, new Date())))
+			.orderBy(desc(sessionTable.updatedAt));
+		// "Blup Studio (Linux; my-pc)" -> "my-pc · Linux".
+		const name = (agent: string | null) => {
+			const m = /\((.+?);\s*(.+)\)/.exec(agent ?? "");
+			return m ? `${m[2]} · ${m[1]}` : "Blup Studio";
+		};
+		return c.json({ devices: rows.map((r) => ({ id: r.id, name: name(r.agent), createdAt: r.createdAt, lastSeen: r.lastSeen })) });
+	})
+	.delete("/devices/:id", session, signedIn, async (c) => {
+		const { user } = c.get("session")!;
+		await db.delete(sessionTable).where(and(eq(sessionTable.id, c.req.param("id")), eq(sessionTable.userId, user.id), isStudio));
+		return c.json({ ok: true });
 	});
 
 app.route("/staff", staffApi);
