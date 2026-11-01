@@ -135,7 +135,15 @@ O botão Nota do dia (`Ctrl+Alt+D`) chama `DailyNote(pasta, tag)` com os valores
 
 `livemd.ts` aproxima o editor da página lida:
 
-- Links aparecem só pelo texto, em azul (`--blue`) e sublinhados: `[[Nota]]` mostra o nome, `[[Nota|texto]]` mostra o texto, `[texto](nota.md)` e `[texto](https://…)` mostram o texto. A forma escrita volta enquanto o cursor ou a seleção toca o link (digitando, pelas setas ou com o clique direito). Imagens (`![…]`) e tudo que está dentro de código ficam como escritos. Um clique num link para outra nota a abre; um endereço da web abre no navegador só com Ctrl/Cmd e clique, para o clique simples continuar editando.
+- Links aparecem só pelo texto, em azul (`--blue`) e sublinhados: `[[Nota]]` mostra o nome, `[[Nota|texto]]` mostra o texto, `[texto](nota.md)` e `[texto](https://…)` mostram o texto. A forma escrita volta enquanto o cursor ou a seleção toca o link (digitando, pelas setas ou com o clique direito). Tudo que está dentro de código fica como escrito. Um clique num link para outra nota a abre; um endereço da web abre no navegador só com Ctrl/Cmd e clique, para o clique simples continuar editando.
+- O resto do Markdown também aparece desenhado (`livepreview.ts`), nos dois editores (site e notas). A marca volta enquanto o cursor está nela (marcas de texto) ou na linha (blocos):
+  - `**`, `*`, `~~`, `==` e a crase do código em linha somem e fica só o efeito; os `#` dos títulos também;
+  - citação (`>`) vira uma barra azul à esquerda, sem o `>`;
+  - callout (`> [!tip] Título`) mostra o ícone do tipo e o título, ou o nome do tipo quando não há título;
+  - bloco de código ganha fundo, a linguagem e o botão Copiar; as cercas ```` ``` ```` só aparecem com o cursor dentro do bloco, e o botão continua lá;
+  - `---` vira uma linha (o front matter do topo fica como escrito);
+  - item de lista com `-`, `*` ou `+` mostra um ponto; tarefa (`- [ ]`) mostra uma caixa que marca com um clique, e a feita fica riscada;
+  - imagem (`![](caminho)` relativo à nota, ou `![[foto.png]]`) aparece no lugar, lida por `NoteImage` como `data:` URL.
 - Títulos recolhem como no Obsidian: uma seta à esquerda de cada `#` a `######` que tenha conteúdo recolhível, visível no hover ou sempre quando recolhido, esconde tudo até o próximo título do mesmo nível ou maior. Os atalhos de dobra vêm do `basicSetup` do CodeMirror: `Ctrl+Shift+[` recolhe, `Ctrl+Shift+]` mostra, `Ctrl+Alt+[` recolhe todos e `Ctrl+Alt+]` mostra todos.
 
 `Editor.svelte` tem dois menus de digitação, ativados só no começo da linha ou depois de um espaço (assim um e-mail não abre o `@`) e fora de código; Enter ou Tab escolhem.

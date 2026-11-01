@@ -552,6 +552,14 @@ export function NoteHistory(path: string): $CancellablePromise<blupcloud$0.NoteV
 }
 
 /**
+ * NoteImage is an image a note shows (![](src), relative to the note, or
+ * ![[name.png]]) as a data: URL, for the editor. "" when it isn't found.
+ */
+export function NoteImage(note: string, src: string): $CancellablePromise<string> {
+    return $Call.ByID(2688340763, note, src);
+}
+
+/**
  * NoteLink is a Markdown link to the note at rel, written from the note at
  * from ("" for the top of the notes): [Name](../Folder/Name.md).
  */

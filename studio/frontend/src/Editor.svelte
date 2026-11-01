@@ -37,10 +37,11 @@
   import { CALLOUTS, calloutIcon } from "./callouts";
   import { mdExtras } from "./mdextras";
   import { linkConceal, headingFolds } from "./livemd";
+  import { livePreview } from "./livepreview";
   import Highlighter from "@lucide/svelte/icons/highlighter";
   import AlignLeft from "@lucide/svelte/icons/text-align-start";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
-  import { PasteImage, PickNoteImage, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { PasteImage, PickNoteImage, OpenURL, NoteImage } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { targetAt, type Target } from "./notelinks";
   import Bold from "@lucide/svelte/icons/bold";
   import Italic from "@lucide/svelte/icons/italic";
@@ -470,6 +471,11 @@
         mdExtras,
         linkConceal,
         headingFolds({ fold: te.fold, unfold: te.unfold }),
+        livePreview({
+          text: { copy: te.copy, copied: te.copied, code: te.code, pt: t.lang === "pt" },
+          image: (src) => NoteImage(note, src),
+          onCopy: (code) => void Clipboard.SetText(code),
+        }),
         tables(t.editor.tableUi),
         EditorView.contentAttributes.of({ spellcheck: "false" }), // ours, below
         spellcheck,
@@ -684,6 +690,25 @@
   .editor :global(.cm-callout-end) { padding-block-end: .3rem; border-end-start-radius: .3rem; }
   .editor :global(.cm-callout-head *) { color: rgb(var(--c)) !important; }
   .editor :global(.cm-callout :is(span)) { font-style: normal; }
+  /* The Markdown drawn as the page (livepreview.ts). */
+  .editor :global(.cm-quote) { border-inline-start: 3px solid var(--blue); padding-inline-start: .9rem !important; color: var(--muted); }
+  .editor :global(.cm-callout-icon) { display: inline-flex; align-items: center; gap: .4rem; vertical-align: -3px; margin-inline-end: .35rem; }
+  .editor :global(.cm-callout-name) { font-weight: 700; }
+  .editor :global(.cm-codeblock) { background: var(--soft); padding-inline: 1rem !important; font-family: ui-monospace, monospace; font-size: .9em; }
+  .editor :global(.cm-codeblock-first) { border-start-start-radius: .5rem; border-start-end-radius: .5rem; padding-block-start: .35rem; }
+  .editor :global(.cm-codeblock-last) { border-end-start-radius: .5rem; border-end-end-radius: .5rem; padding-block-end: .35rem; }
+  .editor :global(.cm-code-head) { display: inline-flex; align-items: center; justify-content: space-between; width: 100%; font-family: "Inter", ui-sans-serif, system-ui, sans-serif; }
+  .editor :global(.cm-code-head.raw) { width: auto; float: inline-end; }
+  .editor :global(.cm-code-lang) { color: var(--muted); font-size: .8rem; text-transform: lowercase; }
+  .editor :global(.cm-code-copy) { padding: .1rem .55rem; border: 1px solid var(--line); border-radius: .35rem; background: var(--panel); color: var(--muted); font-size: .75rem; cursor: pointer; }
+  .editor :global(.cm-code-copy:hover) { color: var(--blue); border-color: var(--blue); }
+  .editor :global(.cm-hr) { display: inline-block; width: 100%; height: 0; vertical-align: middle; border-block-start: 1px solid var(--line); }
+  .editor :global(.cm-bullet) { display: inline-block; width: 1ch; color: var(--muted); font-weight: 700; }
+  .editor :global(.cm-task-box) { width: 1rem; height: 1rem; margin: 0 .25rem 0 0; vertical-align: -2px; accent-color: var(--blue); cursor: pointer; }
+  .editor :global(.cm-task-done) { color: var(--muted); text-decoration: line-through; }
+  .editor :global(.cm-image) { display: block; margin-block: .3rem; }
+  .editor :global(.cm-image img) { display: block; max-width: 100%; max-height: 28rem; border-radius: .4rem; }
+  .editor :global(.cm-image.missing) { color: var(--muted); font-size: .85em; }
   .editor :global(.cm-highlight) { background: color-mix(in srgb, #facc15 38%, transparent); border-radius: 3px; }
   .editor :global(.cm-align-center) { text-align: center; }
   .editor :global(.cm-align-right) { text-align: end; }

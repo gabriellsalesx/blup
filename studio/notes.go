@@ -4,7 +4,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -208,6 +210,30 @@ func (s *Studio) LinkedImage(link string) (string, error) {
 	}
 	f := app.AttachmentFile(site, link)
 	if f == "" {
+		return "", nil
+	}
+	return s.ImageData(f)
+}
+
+// NoteImage is an image a note shows (![](src), relative to the note, or
+// ![[name.png]]) as a data: URL, for the editor. "" when it isn't found.
+func (s *Studio) NoteImage(note, src string) (string, error) {
+	site, err := s.current()
+	if err != nil {
+		return "", err
+	}
+	if strings.HasPrefix(src, "[[") {
+		f := app.AttachmentFile(site, src)
+		if f == "" {
+			return "", nil
+		}
+		return s.ImageData(f)
+	}
+	if u, err := url.PathUnescape(src); err == nil {
+		src = u
+	}
+	f := filepath.Join(site.ContentDir(), filepath.FromSlash(path.Join(path.Dir("/"+note), src)))
+	if _, err := os.Stat(f); err != nil {
 		return "", nil
 	}
 	return s.ImageData(f)
