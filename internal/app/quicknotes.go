@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -106,4 +107,43 @@ func DailyNote(site *config.Site, folder, tag string, now time.Time) (string, er
 		return rel, nil // opened again the same minute: that time is there already
 	}
 	return rel, os.WriteFile(p, []byte(text+"\n\n"+heading+"\n\n"), 0o644)
+}
+
+// VaultTags are the tags used in the notes' properties, the most used
+// first (the tags field's suggestions).
+func VaultTags(site *config.Site) ([]string, error) {
+	count := map[string]int{}
+	root := site.ContentDir()
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			if p != root && strings.HasPrefix(d.Name(), ".") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.EqualFold(filepath.Ext(p), ".md") {
+			return nil
+		}
+		if b, err := os.ReadFile(p); err == nil {
+			tags, _ := noteMeta(string(b))
+			for _, t := range tags {
+				count[t]++
+			}
+		}
+		return nil
+	})
+	out := make([]string, 0, len(count))
+	for t := range count {
+		out = append(out, t)
+	}
+	slices.SortFunc(out, func(a, b string) int {
+		if count[a] != count[b] {
+			return count[b] - count[a]
+		}
+		return strings.Compare(strings.ToLower(a), strings.ToLower(b))
+	})
+	return out, err
 }

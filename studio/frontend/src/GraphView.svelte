@@ -300,7 +300,7 @@
   const nextColor = (c: string) => COLORS[(COLORS.indexOf(c) + 1) % COLORS.length];
 
   onMount(() => {
-    load().then(() => setTimeout(fit, 900));
+    load().then(() => (fitting = setTimeout(fit, 900)));
     frame = requestAnimationFrame(draw);
     const ro = new ResizeObserver(() => (dirty = true));
     ro.observe(host!);
@@ -310,7 +310,8 @@
   // place).
   let wait: ReturnType<typeof setTimeout> | undefined;
   const off = Events.On("notesChanged", () => { clearTimeout(wait); wait = setTimeout(load, 600); });
-  onDestroy(() => { cancelAnimationFrame(frame); off(); clearTimeout(wait); });
+  let fitting: ReturnType<typeof setTimeout> | undefined;
+  onDestroy(() => { cancelAnimationFrame(frame); off(); clearTimeout(wait); clearTimeout(fitting); });
 </script>
 
 {#snippet section(key: string, title: string)}

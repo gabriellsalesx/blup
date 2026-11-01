@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, tick, untrack } from "svelte";
+  import { onDestroy, onMount, tick, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
   import { OpenURL, ReadBoard, SaveBoard } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import StickyNote from "@lucide/svelte/icons/sticky-note";
@@ -30,8 +30,9 @@
   // the wheel (or a pinch) to zoom. Two clicks on the board make a card;
   // dragging from the dot on a card's side makes an arrow. Notes dragged
   // from the files panel land as cards.
-  let { path, notes, full, onFull, onStatus, onError, onOpenNote, onOutside }: {
+  let { path, notes, full, onFull, onStatus, onError, onOpenNote, onOutside, bindSave }: {
     path: string; notes: NoteRef[];
+    bindSave?: (save: () => Promise<void>) => void; // the workspace saves first before a rename, move or delete
     full: boolean; // full screen: the canvas alone in the window
     onFull: () => void;
     onStatus: (s: "saved" | "saving" | "unsaved") => void;
@@ -378,6 +379,9 @@
       return;
     }
     if (!board?.isConnected) return;
+    // Keys go to the board unless something else has the focus (the files
+    // panel, the ribbon, a window over it); Ctrl+Alt is the Studio's.
+    if ((e.target as HTMLElement)?.closest?.(".side, .ribbon, [role=dialog], [role=menu]") || e.altKey) return;
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
     else if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); }
@@ -422,6 +426,7 @@
     const now = await ReadBoard(path).catch(() => written);
     if (now.trimEnd() !== written.trimEnd() && !dirty) onOutside();
   });
+  onMount(() => bindSave?.(save));
   onDestroy(() => { off(); save(); });
 
   const arrowTo = $derived(drag?.kind === "arrow" ? drag : null);

@@ -67,7 +67,7 @@
         <span class="chip">{tag}<button title={p.remove.replace("{tag}", tag)} aria-label={p.remove.replace("{tag}", tag)} onclick={() => setTags(tags.filter((x) => x !== tag))}><X size={12} /></button></span>
       {/each}
       <span class="add">
-        <input bind:value={draft} onkeydown={key} onblur={() => setTimeout(() => addTag(), 120)} placeholder={tags.length ? "" : p.addTag} aria-label={p.addTag} />
+        <input bind:value={draft} onkeydown={key} onblur={() => addTag()} placeholder={tags.length ? "" : p.addTag} aria-label={p.addTag} />
         {#if draft.trim() && suggestions.length}
           <ul class="sug" role="listbox">
             {#each suggestions as s (s)}<li><button onmousedown={(e) => { e.preventDefault(); addTag(s); }}>{s}</button></li>{/each}

@@ -46,3 +46,15 @@ func TestDailyNote(t *testing.T) {
 		t.Fatalf("daily note = %q", s)
 	}
 }
+
+func TestVaultTags(t *testing.T) {
+	site := settingsSite(t)
+	root := site.ContentDir()
+	write(t, root, "A.md", "---\ntags: [estudos, \"#hub\"]\n---\n")
+	write(t, root, "B.md", "---\ntags: estudos, go\n---\n")
+	write(t, root, ".escondida/C.md", "---\ntags: [segredo]\n---\n")
+	got, err := VaultTags(site)
+	if err != nil || !slices.Equal(got, []string{"estudos", "go", "hub"}) {
+		t.Fatalf("tags = %v, %v", got, err)
+	}
+}

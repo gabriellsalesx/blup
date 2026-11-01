@@ -80,7 +80,8 @@ type Database struct {
 	Records []DBRecord `json:"records"`
 }
 
-// DatabaseFolder is where new databases go.
+// DatabaseFolder is where new databases go when no folder is given (the
+// Studio gives one in its language).
 const DatabaseFolder = "Bancos de dados"
 
 func dbPath(site *config.Site, rel string) (string, error) {
@@ -207,19 +208,11 @@ func ReadDatabase(site *config.Site, rel string) (Database, error) {
 // and its text.
 func splitProps(text string) (map[string]any, string) {
 	props := map[string]any{}
-	norm := strings.ReplaceAll(strings.TrimPrefix(text, "\ufeff"), "\r\n", "\n")
-	if !strings.HasPrefix(norm, "---\n") {
-		return props, norm
-	}
-	end := strings.Index(norm[4:], "\n---")
-	if end < 0 {
-		return props, norm
-	}
-	_ = yaml.Unmarshal([]byte(norm[4:4+end]), &props)
+	fm, body := splitFront(text)
+	_ = yaml.Unmarshal([]byte(fm), &props)
 	for k, v := range props {
 		props[k] = plainValue(v)
 	}
-	body := norm[4+end+4:]
 	return props, strings.TrimLeft(body, "\n")
 }
 
@@ -345,11 +338,7 @@ func followDatabase(site *config.Site, from, to string, dir bool) error {
 	}
 	if dir && path.Dir(from) == path.Dir(to) {
 		// The records' folder renamed by itself: its .table follows the name.
-		table := path.Join(path.Dir(from), path.Base(from)+".table")
-		if path.Dir(from) == "." {
-			table = path.Base(from) + ".table"
-		}
-		p, err := notesPath(site, table)
+		p, err := notesPath(site, path.Join(path.Dir(from), path.Base(from)+".table"))
 		if err != nil {
 			return nil
 		}

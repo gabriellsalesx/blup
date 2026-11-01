@@ -72,11 +72,15 @@ func (s *Studio) ReadBoard(rel string) (string, error) {
 	return string(b), err
 }
 
-// SaveBoard saves a canvas or a drawing.
+// SaveBoard saves a canvas or a drawing. One that is no longer there
+// (moved, renamed or sent to the trash meanwhile) is not made again.
 func (s *Studio) SaveBoard(rel, text string) error {
 	p, err := s.boardPath(rel)
 	if err != nil {
 		return err
+	}
+	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
+		return nil
 	}
 	return os.WriteFile(p, []byte(text), 0o644)
 }

@@ -168,28 +168,6 @@ func (s *Studio) notePath(rel string) (string, error) {
 	return p, nil
 }
 
-// Read returns a note's text.
-func (s *Studio) Read(rel string) (string, error) {
-	p, err := s.notePath(rel)
-	if err != nil {
-		return "", err
-	}
-	b, err := os.ReadFile(p)
-	return string(b), err
-}
-
-// Write saves a note (the preview picks it up by itself).
-func (s *Studio) Write(rel, text string) error {
-	p, err := s.notePath(rel)
-	if err != nil {
-		return err
-	}
-	if filepath.Ext(p) != ".md" {
-		return errors.New("only notes (.md) can be saved")
-	}
-	return os.WriteFile(p, []byte(text), 0o644)
-}
-
 var serverURL = regexp.MustCompile(`https?://(localhost|127\.0\.0\.1):\d+/\S*`)
 
 // StartPreview runs the site's live preview (hugo server, as blup preview)

@@ -102,14 +102,6 @@ export function AutostartEnabled(): $CancellablePromise<boolean> {
 }
 
 /**
- * BindHyprland saves the shortcut and, on Omarchy, writes it in Hyprland's
- * config (elsewhere the user pastes the line the Shortcuts screen shows).
- */
-export function BindHyprland(accel: string): $CancellablePromise<void> {
-    return $Call.ByID(1409658509, accel);
-}
-
-/**
  * BlupAccount is the Blup Cloud account signed in here (SignedIn false
  * when none).
  */
@@ -722,13 +714,6 @@ export function Publish(): $CancellablePromise<string> {
 }
 
 /**
- * Read returns a note's text.
- */
-export function Read(rel: string): $CancellablePromise<string> {
-    return $Call.ByID(1824482770, rel);
-}
-
-/**
  * ReadBoard returns a canvas's or a drawing's file as it is.
  */
 export function ReadBoard(rel: string): $CancellablePromise<string> {
@@ -845,7 +830,8 @@ export function SaveAuthor(old: string, a: app$0.Author): $CancellablePromise<vo
 }
 
 /**
- * SaveBoard saves a canvas or a drawing.
+ * SaveBoard saves a canvas or a drawing. One that is no longer there
+ * (moved, renamed or sent to the trash meanwhile) is not made again.
  */
 export function SaveBoard(rel: string, text: string): $CancellablePromise<void> {
     return $Call.ByID(2915428373, rel, text);
@@ -1158,13 +1144,6 @@ export function VoiceModels(lang: string): $CancellablePromise<app$0.ModelOption
  */
 export function Voices(lang: string, model: string): $CancellablePromise<app$0.Voice[] | null> {
     return $Call.ByID(766145645, lang, model);
-}
-
-/**
- * Write saves a note (the preview picks it up by itself).
- */
-export function Write(rel: string, text: string): $CancellablePromise<void> {
-    return $Call.ByID(600911317, rel, text);
 }
 
 /**

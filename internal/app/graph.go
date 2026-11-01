@@ -188,19 +188,15 @@ func graphName(rel string) string {
 // and its created date.
 func noteMeta(text string) (tags []string, created string) {
 	out := []string{}
-	norm := strings.ReplaceAll(text, "\r\n", "\n")
-	if !strings.HasPrefix(norm, "---\n") {
-		return out, ""
-	}
-	end := strings.Index(norm[4:], "\n---")
-	if end < 0 {
+	front, _ := splitFront(text)
+	if front == "" {
 		return out, ""
 	}
 	var fm struct {
 		Tags    any `yaml:"tags"`
 		Created any `yaml:"created"`
 	}
-	if yaml.Unmarshal([]byte(norm[4:4+end]), &fm) != nil {
+	if yaml.Unmarshal([]byte(front), &fm) != nil {
 		return out, ""
 	}
 	switch c := fm.Created.(type) {

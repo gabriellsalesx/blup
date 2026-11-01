@@ -213,7 +213,7 @@ func (s *Studio) SetTray(on bool) error {
 // Studio ("" removes it) and saves it.
 func (s *Studio) SetToggleHotkey(accel string) error {
 	if onHyprland() {
-		return s.BindHyprland(accel)
+		return s.bindHyprland(accel)
 	}
 	if err := setHotkey(accel); err != nil {
 		return err

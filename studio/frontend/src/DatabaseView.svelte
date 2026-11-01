@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, untrack } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
   import { AddRecord, DeleteItem, ReadDatabase, RestoreSection, SaveDatabaseSchema, SetProps } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { DBColumn, DBRecord, DBSchema, DBView } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
@@ -22,12 +22,12 @@
   // columns (Hot, Warm, Cold). Each record is a note: its name opens it.
   // The search looks in every field and in the notes' text; a choice
   // filters; a column's title sorts and edits it; "+" adds a column.
-  let { path, notes, onOpenNote, onStatus, onError, onOutside }: {
+  let { path, notes, onOpenNote, onStatus, onError, bindSave }: {
     path: string; notes: { name: string; path: string }[];
+    bindSave?: (save: () => Promise<void>) => void; // the workspace saves first before a rename, move or delete
     onOpenNote: (path: string) => void;
     onStatus: (s: "saved" | "saving" | "unsaved") => void;
     onError: (e: string) => void;
-    onOutside: () => void;
   } = $props();
   const d = t.db;
   const clean = (e: unknown) => String(e).replace(/^(Runtime)?Error: /, "");
@@ -54,16 +54,22 @@
 
   // The columns and views, saved a moment after a change.
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let dirty = false;
   function saveSchema() {
+    dirty = true;
     onStatus("unsaved");
     clearTimeout(timer);
-    timer = setTimeout(async () => {
-      if (!schema) return;
-      onStatus("saving");
-      try { await SaveDatabaseSchema(path, $state.snapshot(schema) as DBSchema); onStatus("saved"); }
-      catch (e) { onStatus("unsaved"); onError(clean(e)); }
-    }, 300);
+    timer = setTimeout(flush, 300);
   }
+  async function flush() {
+    clearTimeout(timer);
+    if (!dirty || !schema) return;
+    dirty = false;
+    onStatus("saving");
+    try { await SaveDatabaseSchema(path, $state.snapshot(schema) as DBSchema); onStatus("saved"); }
+    catch (e) { dirty = true; onStatus("unsaved"); onError(clean(e)); }
+  }
+  onMount(() => bindSave?.(flush));
 
   // What is shown: the search, the view's filter and its order.
   const shown = $derived.by(() => {
@@ -172,12 +178,11 @@
   const off = Events.On("notesChanged", (ev: any) => {
     const dir = path.replace(/[^/]*$/, "") + (schema?.records ?? "") + "/";
     const list = String(ev.data ?? "").split("\n");
-    if (list.some((p) => p === path || p.startsWith(dir))) {
-      if (list.includes(path)) onOutside();
-      else load();
-    }
+    // Read again in place (the view, the search and the menus stay),
+    // unless a change of its own is waiting to be saved.
+    if (list.some((p) => p === path || p.startsWith(dir)) && !dirty) load();
   });
-  onDestroy(() => { off(); clearTimeout(timer); });
+  onDestroy(() => { off(); flush(); });
   const focus = (el: HTMLInputElement) => { el.focus(); el.select(); };
 </script>
 

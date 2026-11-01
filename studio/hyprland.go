@@ -101,9 +101,9 @@ func (s *Studio) HyprlandSetup(accel string) Hyprland {
 	return h
 }
 
-// BindHyprland saves the shortcut and, on Omarchy, writes it in Hyprland's
+// bindHyprland saves the shortcut and, on Omarchy, writes it in Hyprland's
 // config (elsewhere the user pastes the line the Shortcuts screen shows).
-func (s *Studio) BindHyprland(accel string) error {
+func (s *Studio) bindHyprland(accel string) error {
 	if !onHyprland() {
 		return errors.New("not on Hyprland")
 	}

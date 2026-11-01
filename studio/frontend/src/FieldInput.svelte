@@ -37,6 +37,13 @@
     menu = { x: Math.min(r.left, innerWidth - 230), y: Math.min(r.bottom + 4, innerHeight - 280) };
     typed = "";
   }
+  let menuEl = $state<HTMLDivElement>();
+  $effect(() => {
+    if (!menu) return;
+    const close = (e: PointerEvent) => { if (!menuEl?.contains(e.target as Node)) menu = null; };
+    addEventListener("pointerdown", close, true);
+    return () => removeEventListener("pointerdown", close, true);
+  });
   const choices = $derived((column.options ?? []).filter((o) => o.value.toLowerCase().includes(typed.trim().toLowerCase())));
   function choose(v: string) {
     if (column.type === "multi") onChange(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
@@ -60,8 +67,6 @@
   const focus = (el: HTMLInputElement) => el.focus();
 </script>
 
-<svelte:window onclick={() => (menu = null)} />
-
 {#if column.type === "select" || column.type === "multi"}
   <button class={["chips", { compact }]} onclick={(e) => { e.stopPropagation(); openMenu(e); }} aria-haspopup="listbox" aria-label={column.name}>
     {#each list as v (v)}<span class="chip" style:--c={optionColor(option(v)?.color)}>{v}</span>{/each}
@@ -69,7 +74,7 @@
   </button>
   {#if menu}
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-    <div class="menu" style:left="{menu.x}px" style:top="{menu.y}px" onclick={(e) => e.stopPropagation()}>
+    <div class="menu" bind:this={menuEl} style:left="{menu.x}px" style:top="{menu.y}px" onclick={(e) => e.stopPropagation()}>
       <input bind:value={typed} placeholder={d.findOrCreate} use:focus onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (choices[0] && choices[0].value.toLowerCase() === typed.trim().toLowerCase()) choose(choices[0].value); else create(); } if (e.key === "Escape") menu = null; }} />
       <ul role="listbox" aria-label={column.name}>
         {#each choices as o (o.value)}

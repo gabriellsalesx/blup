@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, tick, untrack } from "svelte";
+  import { onDestroy, onMount, tick, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
   import { BoardFile, ReadBoard, SaveBoard, SaveBoardImage } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import MousePointer from "@lucide/svelte/icons/mouse-pointer-2";
@@ -37,8 +37,9 @@
   //
   // Moving around: the hand (or Space, or the middle button) drags the
   // board, the wheel scrolls it, Ctrl and the wheel (or a pinch) zoom.
-  let { path, full, onFull, onStatus, onError, onOutside }: {
+  let { path, full, onFull, onStatus, onError, onOutside, bindSave }: {
     path: string;
+    bindSave?: (save: () => Promise<void>) => void; // the workspace saves first before a rename, move or delete
     full: boolean; // full screen: the drawing alone in the window
     onFull: () => void;
     onStatus: (s: "saved" | "saving" | "unsaved") => void;
@@ -510,6 +511,9 @@
       return;
     }
     if (!host?.isConnected) return;
+    // Keys go to the board unless something else has the focus (the files
+    // panel, the ribbon, a window over it); Ctrl+Alt is the Studio's.
+    if ((e.target as HTMLElement)?.closest?.(".side, .ribbon, [role=dialog], [role=menu]") || e.altKey) return;
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (e.key === " " && !space) { space = true; e.preventDefault(); return; }
     if (mod && k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
@@ -544,6 +548,7 @@
     const now = await ReadBoard(path).catch(() => written);
     if (now.trimEnd() !== written.trimEnd() && !dirty) onOutside();
   });
+  onMount(() => bindSave?.(save));
   onDestroy(() => { off(); save(); });
 
   const sel = $derived(chosen.length && !editing && drag?.kind !== "draw" ? bounds(chosen) : null);

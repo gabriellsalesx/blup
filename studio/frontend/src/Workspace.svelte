@@ -132,7 +132,7 @@
   async function newDatabase(title: string, tpl: Template) {
     dbNew = false;
     try {
-      const rel = await CreateDatabase("", title, tpl.schema);
+      const rel = await CreateDatabase(t.db.folder, title, tpl.schema);
       tree = (await LoadTree()).children ?? [];
       reveal(rel);
       screen = "write";
@@ -179,6 +179,7 @@
     const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
     if (!path || parent === f || f === path || f.startsWith(path + "/")) return;
     try {
+      await save();
       const to = await MoveItem(path, f);
       await menuChanged({ from: path, to });
       if (f) openMap[f] = true;
@@ -209,7 +210,7 @@
     tree = (await LoadTree().catch(() => null))?.children ?? tree;
     const inside = from && (current === from || current.startsWith(from + "/"));
     if (inside && to === null) { current = ""; text = ""; pending = ""; status = "saved"; }
-    else if (inside && to) { current = to + current.slice(from.length); reveal(current); follow(current); }
+    else if (inside && to) { text = pending || text; current = to + current.slice(from.length); reveal(current); follow(current); }
     if (to && !open) reveal(to);
     if (open) { reveal(open); screen = "write"; await pick(open); }
   }
@@ -284,10 +285,11 @@
   // The Studio's shortcuts (Settings > Shortcuts); some are for vaults.
   const VAULT_ONLY: Action[] = ["dailyNote", "graph", "newCanvas", "newDrawing", "newDatabase"];
   function shortcut(e: KeyboardEvent) {
+    if (e.defaultPrevented) return; // the editor (or a board) used them
     const combo = comboOf(e);
     if (!combo) return;
     const a = ACTIONS.find((x) => keysOf(look.keys, x.key) === combo)?.key as Action | undefined;
-    if (!a || (!notesVault && VAULT_ONLY.includes(a))) return; // a site's keys stay the editor's
+    if (!a || (!notesVault && VAULT_ONLY.includes(a)) || (notesVault && a === "preview")) return; // each kind's own keys
     e.preventDefault();
     if (a === "terminal") termOpen = !termOpen;
     else if (a === "preview") togglePreview();
@@ -454,8 +456,12 @@
   // A note's; a canvas or a drawing saves itself. In a vault, a note keeps
   // when it was made and when it changed last (Properties).
   const today = () => { const d = new Date(), p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+  // A canvas, drawing or database gives its own save (boardSave), so a
+  // rename, move or delete waits for it like for a note's.
+  let boardSave: (() => Promise<void>) | null = null;
   async function save() {
-    if (status === "saved" || !current || board) return;
+    if (board) { await boardSave?.(); return; }
+    if (status === "saved" || !current) return;
     clearTimeout(timer);
     status = "saving";
     if (notesVault) {
@@ -468,7 +474,9 @@
       edits = {};
       written = pending;
       await SaveNote(current, pending, Object.entries(changed).map(([key, value]) => ({ key, value })));
-      status = "saved";
+      // Typed (or changed) while it was saving: that goes in the next save.
+      if (pending !== written || Object.keys(edits).length) later();
+      else status = "saved";
     } catch (e) {
       status = "unsaved";
       error = String(e);
@@ -616,7 +624,7 @@
         </div>
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="files" ondragover={overTop} ondrop={dropTop}>
-          <Tree nodes={tree} {current} {folder} open={openMap} {renaming} onRename={rename}
+          <Tree nodes={tree} {current} {folder} bind:open={openMap} {renaming} onRename={rename}
             creating={creating ? { folder, kind: creating, placeholder: creating === "folder" ? t.side.folderPh : t.side.notePh } : null} onCreate={finishCreate} onMove={notesVault ? moveTo : undefined} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} onMenu={openMenu} />
         </div>
       {:else}
@@ -673,11 +681,11 @@
       {#if current}
         {#key current + ":" + reloadN}
           {#if board === "canvas"}
-            <CanvasView path={current} full={fullOn} onFull={() => (full = !full)} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOpenNote={openNote} onOutside={() => reloadN++} />
+            <CanvasView path={current} bindSave={(fn) => (boardSave = fn)} full={fullOn} onFull={() => (full = !full)} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOpenNote={openNote} onOutside={() => reloadN++} />
           {:else if board === "drawing"}
-            <DrawingView path={current} full={fullOn} onFull={() => (full = !full)} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />
+            <DrawingView path={current} bindSave={(fn) => (boardSave = fn)} full={fullOn} onFull={() => (full = !full)} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />
           {:else if board === "database"}
-            <DatabaseView path={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onOpenNote={openNote} onStatus={(st) => (status = st)} onError={(e) => (error = e)} onOutside={() => reloadN++} />
+            <DatabaseView path={current} bindSave={(fn) => (boardSave = fn)} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onOpenNote={openNote} onStatus={(st) => (status = st)} onError={(e) => (error = e)} />
           {:else}
           <div class="note">
             {#if !notesVault}<Props props={noteProps} {kind} note={current} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} />{/if}

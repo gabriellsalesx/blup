@@ -117,3 +117,23 @@ func TestRenameAndCopyKeepBoardExt(t *testing.T) {
 		t.Fatalf("copy drawing = %q, %v", rel, err)
 	}
 }
+
+// A canvas's file cards follow a note renamed or a folder moved.
+func TestRenameFixesCanvas(t *testing.T) {
+	site := settingsSite(t)
+	root := site.ContentDir()
+	write(t, root, "Ideias/Uma.md", "texto")
+	write(t, root, "Mapa.canvas", "{\n\t\"nodes\":[\n\t\t{\"id\":\"a\",\"type\":\"file\",\"file\":\"Ideias/Uma.md\",\"x\":0}\n\t],\n\t\"edges\":[]\n}")
+	if _, err := RenameItem(site, "Ideias/Uma.md", "Duas"); err != nil {
+		t.Fatal(err)
+	}
+	if c := read(t, root, "Mapa.canvas"); !strings.Contains(c, `"file":"Ideias/Duas.md"`) || !strings.Contains(c, "\n\t\t{") {
+		t.Fatalf("canvas = %s", c)
+	}
+	if _, err := RenameItem(site, "Ideias", "Pensamentos"); err != nil {
+		t.Fatal(err)
+	}
+	if c := read(t, root, "Mapa.canvas"); !strings.Contains(c, `"file":"Pensamentos/Duas.md"`) {
+		t.Fatalf("canvas after folder = %s", c)
+	}
+}

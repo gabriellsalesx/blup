@@ -33,7 +33,7 @@
   // Making a note or folder (creating): its name is typed in a field at the
   // top of the folder it goes in; onCreate gets it (null: given up).
   type Creating = { folder: string; kind: "note" | "folder"; placeholder: string } | null;
-  let { nodes, current, folder, open, renaming = "", creating = null, parent = "", onPick, onFolder, onMenu, onRename, onCreate, onMove, depth = 0 }: {
+  let { nodes, current, folder, open = $bindable(), renaming = "", creating = null, parent = "", onPick, onFolder, onMenu, onRename, onCreate, onMove, depth = 0 }: {
     nodes: Node[]; current: string; folder: string; open: Record<string, boolean>; renaming?: string;
     creating?: Creating; parent?: string;
     onPick: (p: string) => void; onFolder: (p: string) => void; onMenu: (n: Node, e: MouseEvent) => void;
@@ -132,7 +132,7 @@
             onblur={(e) => finish(n, e.currentTarget.value)} />
         </div>
         {#if n.dir && open[n.path] && n.children}
-          <Tree nodes={n.children} {current} {folder} {open} {renaming} {creating} parent={n.path} {onPick} {onFolder} {onMenu} {onRename} {onCreate} {onMove} depth={depth + 1} />
+          <Tree nodes={n.children} {current} {folder} bind:open {renaming} {creating} parent={n.path} {onPick} {onFolder} {onMenu} {onRename} {onCreate} {onMove} depth={depth + 1} />
         {/if}
       {:else if n.dir}
         <button class={["row", { selected: n.path === folder, target: over === n.path }]} draggable={!!onMove} ondragstart={(e) => dragStart(e, n)} ondragend={dragEnd}
@@ -140,7 +140,7 @@
           <span class="chev" class:open={open[n.path]}><ChevronRight size={14} /></span>{@render icon(n)}<span class="name">{n.name}</span>
         </button>
         {#if open[n.path] && n.children}
-          <Tree nodes={n.children} {current} {folder} {open} {renaming} {creating} parent={n.path} {onPick} {onFolder} {onMenu} {onRename} {onCreate} {onMove} depth={depth + 1} />
+          <Tree nodes={n.children} {current} {folder} bind:open {renaming} {creating} parent={n.path} {onPick} {onFolder} {onMenu} {onRename} {onCreate} {onMove} depth={depth + 1} />
         {/if}
       {:else}
         <button class="row note" class:active={n.path === current} draggable="true" ondragstart={(e) => dragStart(e, n)} ondragend={dragEnd} ondragover={(e) => dragOver(e, n)} ondrop={(e) => drop(e, n)} onclick={() => onPick(n.path)} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>

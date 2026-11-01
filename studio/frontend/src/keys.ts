@@ -6,7 +6,7 @@ export type Action = "terminal" | "preview" | "newNote" | "search" | "sidebar" |
 export const ACTIONS: { key: Action; keys: string }[] = [
   { key: "newNote", keys: "Ctrl+N" },
   { key: "dailyNote", keys: "Ctrl+Alt+D" },
-  { key: "graph", keys: "Ctrl+G" },
+  { key: "graph", keys: "Ctrl+Alt+G" },
   { key: "newCanvas", keys: "Ctrl+Alt+C" },
   { key: "newDrawing", keys: "Ctrl+Alt+W" },
   { key: "newDatabase", keys: "Ctrl+Alt+B" },

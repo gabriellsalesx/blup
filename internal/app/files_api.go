@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -205,6 +206,36 @@ var mdLink = regexp.MustCompile(`(\]\()(<[^>]+>|[^)\s]+)((?:\s+"[^"]*")?\))`)
 // wikiLink is [[Name]], [[Name#heading]] or [[Name|alias]].
 var wikiLink = regexp.MustCompile(`\[\[([^\]|#]+)((?:#[^\]|]*)?(?:\|[^\]]*)?)\]\]`)
 
+// canvasFile is a file card of a canvas: "file":"Folder/Note.md".
+var canvasFile = regexp.MustCompile(`("file"\s*:\s*)("(?:[^"\\]|\\.)*")`)
+
+// fixCanvas points a canvas's file cards to where their files went (the
+// rest of the file stays as written).
+func fixCanvas(p string, moved func(string) (string, bool)) error {
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return err
+	}
+	text := string(b)
+	out := canvasFile.ReplaceAllStringFunc(text, func(m string) string {
+		parts := canvasFile.FindStringSubmatch(m)
+		var file string
+		if json.Unmarshal([]byte(parts[2]), &file) != nil {
+			return m
+		}
+		to, ok := moved(file)
+		if !ok {
+			return m
+		}
+		q, _ := json.Marshal(to)
+		return parts[1] + string(q)
+	})
+	if out == text {
+		return nil
+	}
+	return os.WriteFile(p, []byte(out), 0o644)
+}
+
 // fixLinks rewrites, in every note, the links to what moved from "from" to
 // "to" (a note, or a folder and all inside it), and the relative links
 // inside what moved. A renamed note's [[wikilinks]] follow its new name.
@@ -242,6 +273,9 @@ func fixLinks(site *config.Site, from, to string, dir bool) error {
 				return filepath.SkipDir
 			}
 			return nil
+		}
+		if strings.EqualFold(filepath.Ext(p), ".canvas") {
+			return fixCanvas(p, moved)
 		}
 		if !strings.EqualFold(filepath.Ext(p), ".md") {
 			return nil

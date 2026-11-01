@@ -86,7 +86,7 @@
       <button onclick={() => { onNew("folder", node.path); onClose(); }}><FolderPlus size={16} />{m.newFolder}</button>
       <hr />
     {:else}
-      <button onclick={copy}><Copy size={16} />{m.copy}</button>
+      {#if !node.path.toLowerCase().endsWith(".table")}<button onclick={copy}><Copy size={16} />{m.copy}</button>{/if}
     {/if}
     <button onclick={() => (dialog = "move")}><FolderInput size={16} />{m.move}</button>
     {#if !node.dir}
@@ -94,7 +94,7 @@
       {#if onHistory}<button onclick={() => { onHistory(node.path); onClose(); }}><History size={16} />{t.history.menu}</button>{/if}
     {/if}
     <hr />
-    <button onclick={() => { OpenInObsidian(node.path); onClose(); }}><External size={16} />{m.obsidian}</button>
+    {#if node.dir || /\.(md|canvas)$/i.test(node.path)}<button onclick={() => { OpenInObsidian(node.path); onClose(); }}><External size={16} />{m.obsidian}</button>{/if}
     <button onclick={() => { ShowInFolder(node.path); onClose(); }}><FolderOpen size={16} />{m.show}</button>
     <hr />
     <button onclick={() => { onRename(node); onClose(); }}><Pencil size={16} />{m.rename}</button>
