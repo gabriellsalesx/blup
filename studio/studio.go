@@ -55,7 +55,7 @@ type Node struct {
 	Name     string `json:"name"`
 	Path     string `json:"path"` // relative to the notes folder, with "/"
 	Dir      bool   `json:"dir"`
-	Kind     string `json:"kind,omitempty"` // canvas, drawing or database (vaults); "" for a note
+	Kind     string `json:"kind,omitempty"`  // canvas, drawing or database (vaults); "" for a note
 	Table    string `json:"table,omitempty"` // a database's folder: its .table (opened by a click)
 	Children []Node `json:"children,omitempty"`
 }

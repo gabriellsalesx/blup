@@ -132,10 +132,12 @@
   // A new database: its template and name are asked (DatabaseNew), then
   // it opens.
   let dbNew = $state(false);
+  let dbFolder = ""; // where it goes ("" the databases' folder)
   async function newDatabase(title: string, tpl: Template) {
     dbNew = false;
     try {
-      const rel = await CreateDatabase(t.db.folder, title, tpl.schema);
+      const rel = await CreateDatabase(dbFolder || t.db.folder, title, tpl.schema);
+      dbFolder = "";
       tree = (await LoadTree()).children ?? [];
       reveal(rel);
       screen = "write";
@@ -224,6 +226,7 @@
   async function menuNew(kind: NewKind, f: string) {
     openMap[f] = true;
     if (kind === "canvas" || kind === "drawing") { quickBoard(kind, f); return; }
+    if (kind === "database") { dbFolder = f; dbNew = true; return; }
     folder = f;
     startCreate(kind);
   }
@@ -309,7 +312,7 @@
     else if (a === "graph") { save(); screen = screen === "graph" ? "write" : "graph"; }
     else if (a === "newCanvas") quickBoard("canvas");
     else if (a === "newDrawing") quickBoard("drawing");
-    else if (a === "newDatabase") dbNew = true;
+    else if (a === "newDatabase") { dbFolder = ""; dbNew = true; }
   }
 
   // A smaller window keeps the editor's room.
@@ -604,7 +607,7 @@
       <span class="sep"></span>
       <button class="rib" title={t.boards.newCanvas} onclick={() => quickBoard("canvas")}><LayoutDashboard size={19} strokeWidth={1.75} /></button>
       <button class="rib" title={t.boards.newDrawing} onclick={() => quickBoard("drawing")}><PenTool size={19} strokeWidth={1.75} /></button>
-      <button class="rib" title={t.db.newDb} onclick={() => (dbNew = true)}><Database size={19} strokeWidth={1.75} /></button>
+      <button class="rib" title={t.db.newDb} onclick={() => { dbFolder = ""; dbNew = true; }}><Database size={19} strokeWidth={1.75} /></button>
       <button class="rib" title={t.daily.button} onclick={dailyNote}><CalendarDays size={19} strokeWidth={1.75} /></button>
     {/if}
     <span class="grow"></span>
@@ -765,7 +768,7 @@
       </div>
     </div>
   {/if}
-  {#if dbNew}<DatabaseNew onCreate={newDatabase} onClose={() => (dbNew = false)} />{/if}
+  {#if dbNew}<DatabaseNew onCreate={newDatabase} onClose={() => { dbNew = false; dbFolder = ""; }} />{/if}
   {#if historyFor}
     {#key historyFor}<HistoryModal path={historyFor} onClose={() => (historyFor = "")} />{/key}
   {/if}

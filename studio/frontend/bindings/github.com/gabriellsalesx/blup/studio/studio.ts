@@ -605,13 +605,6 @@ export function OpenExisting(): $CancellablePromise<$models.Found | null> {
 }
 
 /**
- * OpenInObsidian opens the note (or folder) in Obsidian.
- */
-export function OpenInObsidian(rel: string): $CancellablePromise<void> {
-    return $Call.ByID(2099748360, rel);
-}
-
-/**
  * OpenKeyPage opens, in the browser, the form for a new key of "github" or
  * "cloudflare", with the right permissions ticked.
  */

@@ -1,18 +1,18 @@
 <script lang="ts">
   import { Clipboard } from "@wailsio/runtime";
-  import { RestoreSection, MoveItem, CopyNote, DeleteItem, NoteLink, OpenInObsidian, ShowInFolder } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { RestoreSection, MoveItem, CopyNote, DeleteItem, NoteLink, ShowInFolder } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import FilePlus from "@lucide/svelte/icons/file-plus";
   import FolderPlus from "@lucide/svelte/icons/folder-plus";
   import Copy from "@lucide/svelte/icons/copy";
   import FolderInput from "@lucide/svelte/icons/folder-input";
   import Link from "@lucide/svelte/icons/link";
-  import External from "@lucide/svelte/icons/external-link";
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import Pencil from "@lucide/svelte/icons/pencil";
   import Trash from "@lucide/svelte/icons/trash-2";
   import History from "@lucide/svelte/icons/history";
   import PenTool from "@lucide/svelte/icons/pen-tool";
+  import Database from "@lucide/svelte/icons/database";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import { t } from "./i18n";
   import type { NewKind } from "./boards";
@@ -87,6 +87,7 @@
       {#if boards && !node.table}
         <button onclick={() => { onNew("canvas", node.path); onClose(); }}><LayoutDashboard size={16} />{t.boards.newCanvas}</button>
         <button onclick={() => { onNew("drawing", node.path); onClose(); }}><PenTool size={16} />{t.boards.newDrawing}</button>
+        <button onclick={() => { onNew("database", node.path); onClose(); }}><Database size={16} />{t.db.newDb}</button>
       {/if}
       {#if !node.table}<button onclick={() => { onNew("folder", node.path); onClose(); }}><FolderPlus size={16} />{m.newFolder}</button>{/if}
       <hr />
@@ -99,7 +100,6 @@
       {#if onHistory}<button onclick={() => { onHistory(node.path); onClose(); }}><History size={16} />{t.history.menu}</button>{/if}
     {/if}
     <hr />
-    {#if (node.dir && !node.table) || /\.(md|canvas)$/i.test(node.path)}<button onclick={() => { OpenInObsidian(node.path); onClose(); }}><External size={16} />{m.obsidian}</button>{/if}
     <button onclick={() => { ShowInFolder(node.path); onClose(); }}><FolderOpen size={16} />{m.show}</button>
     <hr />
     <button onclick={() => { onRename(node); onClose(); }}><Pencil size={16} />{m.rename}</button>

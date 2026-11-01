@@ -101,8 +101,7 @@
 
 {#snippet icon(n: Node)}
   <span class="ico">
-    {#if n.dir && n.kind === "database"}<Database size={15} strokeWidth={1.75} />
-    {:else if n.dir}{#if open[n.path]}<FolderOpen size={15} strokeWidth={1.75} />{:else}<Folder size={15} strokeWidth={1.75} />{/if}
+    {#if n.dir}{#if open[n.path]}<FolderOpen size={15} strokeWidth={1.75} />{:else}<Folder size={15} strokeWidth={1.75} />{/if}
     {:else if n.kind === "drawing"}<PenTool size={15} strokeWidth={1.75} />
     {:else if n.kind === "canvas"}<LayoutDashboard size={15} strokeWidth={1.75} />
     {:else if n.kind === "database"}<Database size={15} strokeWidth={1.75} />

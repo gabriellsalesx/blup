@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -59,15 +58,6 @@ func (s *Studio) NoteLink(rel, from string) string {
 		r = rel
 	}
 	return "[" + strings.TrimSuffix(path.Base(rel), ".md") + "](" + strings.ReplaceAll(filepath.ToSlash(r), " ", "%20") + ")"
-}
-
-// OpenInObsidian opens the note (or folder) in Obsidian.
-func (s *Studio) OpenInObsidian(rel string) error {
-	p, err := s.notePath(rel)
-	if err != nil {
-		return err
-	}
-	return openExternal("obsidian://open?path=" + url.QueryEscape(p))
 }
 
 // ShowInFolder opens the system's file manager where the note is.

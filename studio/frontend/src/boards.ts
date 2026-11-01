@@ -1,6 +1,6 @@
 // What the files panel creates: notes and folders, and in a vault of notes
 // canvases and drawings too (the Studio's own).
-export type NewKind = "note" | "folder" | "canvas" | "drawing";
+export type NewKind = "note" | "folder" | "canvas" | "drawing" | "database";
 export type BoardKind = "canvas" | "drawing" | "database";
 
 // The kind of a file of the vault: a canvas, a drawing, or "" for a note.
