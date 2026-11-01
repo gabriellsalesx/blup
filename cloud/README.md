@@ -29,7 +29,7 @@ npm run db:migrate:local
 npm run dev                      # http://localhost:8787
 ```
 
-Com `EMAIL_MODE=log` (o padrão no `wrangler.jsonc`), o código de login aparece no terminal em vez de ir por e-mail. As chaves do Turnstile no repositório são as de **teste** da Cloudflare, que sempre aprovam.
+Com `EMAIL_MODE=log` (o padrão no `wrangler.jsonc`), o código de login aparece no terminal em vez de ir por e-mail. Em produção os e-mails saem de `no-reply@getblup.io`: o domínio `getblup.io` precisa estar em **Email Service → Email Sending** na Cloudflare ("Onboard Domain", que cria os registros SPF, DKIM e DMARC), e o binding só aceita esse remetente. As chaves do Turnstile no repositório são as de **teste** da Cloudflare, que sempre aprovam.
 
 Abra pelo endereço `http://localhost:8787` (não `127.0.0.1`): a passkey e a origem confiável do login usam `localhost`.
 

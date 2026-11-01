@@ -20,7 +20,7 @@ export async function sendCode(env: Cloudflare.Env, email: string, code: string,
 	try {
 		await env.EMAIL.send({
 			to: email,
-			from: env.MAIL_FROM,
+			from: sender(env.MAIL_FROM),
 			subject,
 			text: `${subject}: ${code}\n\nVale por 10 minutos. Se não foi você, ignore este e-mail.`,
 			html: codeHtml(subject, code),
@@ -31,6 +31,12 @@ export async function sendCode(env: Cloudflare.Env, email: string, code: string,
 		const err = e as Error & { code?: string };
 		console.error("[blup] e-mail não enviado", err.code ?? "", err.message);
 	}
+}
+
+// "Blup <no-reply@getblup.io>" as Email Service's { name, email }.
+function sender(from: string) {
+	const m = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(from);
+	return m ? { name: m[1], email: m[2] } : from;
 }
 
 function codeHtml(subject: string, code: string) {
