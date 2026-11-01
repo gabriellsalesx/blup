@@ -556,7 +556,7 @@
         {#if ltError}<p class="bad">{ltError}</p>{/if}
       </div>
       {#if ltState?.installed}
-        <div class="item">
+        <div class="item who">
           <div class="text"><b>{lt.who}</b><small>{lt.whoHelp}</small></div>
           <div class="seg">
             <button class:on={ltWho === "local"} onclick={() => setPref("translateAI", "local")}>{lt.whoLocal}</button>
@@ -744,9 +744,14 @@
   .keyform input { flex: 1; font-family: ui-monospace, monospace; }
   input[type="range"] { width: 11rem; accent-color: var(--blue); }
   .seg { display: inline-flex; gap: .2rem; padding: .2rem; border: 1px solid var(--line); border-radius: .6rem; }
-  .seg button { padding: .35rem .7rem; border-radius: .45rem; font-size: .85rem; font-weight: 600; color: var(--muted); }
+  .seg button { padding: .35rem .7rem; border-radius: .45rem; font-size: .85rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
   .seg button.on { background: var(--soft); color: var(--text); }
   .seg.langs { margin-block: .25rem .5rem; }
+  /* Who translates: the choice keeps each option on one line, beside the
+     help while it fits, below it otherwise. */
+  .item.who { flex-wrap: wrap; gap: .75rem 1.5rem; }
+  .item.who .text { flex: 1 1 16rem; }
+  .item.who .seg { flex: none; }
   .item.column { flex-direction: column; align-items: stretch; gap: .6rem; }
   .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
   .chip { display: inline-flex; align-items: center; gap: .25rem; padding: .2rem .3rem .2rem .6rem; border: 1px solid var(--line); border-radius: 999px; font-size: .8rem; }
