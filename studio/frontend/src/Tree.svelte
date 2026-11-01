@@ -1,3 +1,8 @@
+<script lang="ts" module>
+  // The item being dragged, shared by every level of the tree.
+  let dragged = $state("");
+</script>
+
 <script lang="ts">
   import Tree from "./Tree.svelte";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
@@ -18,11 +23,59 @@
   // Renaming is right there, like Obsidian: the name becomes a field, all
   // of it selected. Enter or clicking away keeps it, Esc gives up
   // (onRename gets null).
-  let { nodes, current, folder, open, renaming = "", onPick, onFolder, onMenu, onRename, depth = 0 }: {
+  //
+  // Dragging (onMove): a note or a folder onto a folder goes inside it
+  // (onto a note, into that note's folder); a folder held over for a
+  // moment opens. The top of the vault is the
+  // empty room under the tree (Workspace).
+  let { nodes, current, folder, open, renaming = "", onPick, onFolder, onMenu, onRename, onMove, depth = 0 }: {
     nodes: Node[]; current: string; folder: string; open: Record<string, boolean>; renaming?: string;
     onPick: (p: string) => void; onFolder: (p: string) => void; onMenu: (n: Node, e: MouseEvent) => void;
-    onRename: (n: Node, name: string | null) => void; depth?: number;
+    onRename: (n: Node, name: string | null) => void;
+    onMove?: (path: string, folder: string) => void; // when items can be dragged
+    depth?: number;
   } = $props();
+
+  let over = $state(""); // the folder under what is dragged
+  let opening: ReturnType<typeof setTimeout> | undefined;
+  const parentOf = (p: string) => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
+  // Not into itself, its own folders, or where it already is.
+  const fits = (path: string, f: string) => !!path && f !== path && !f.startsWith(path + "/") && parentOf(path) !== f;
+
+  function dragStart(e: DragEvent, n: Node) {
+    if (!e.dataTransfer) return;
+    if (!n.dir) e.dataTransfer.setData("application/x-blup-note", n.path); // onto a canvas
+    if (!onMove) return;
+    e.dataTransfer.setData("application/x-blup-item", n.path);
+    e.dataTransfer.effectAllowed = "copyMove";
+    dragged = n.path;
+  }
+  const target = (n: Node) => (n.dir ? n.path : parentOf(n.path));
+  function dragOver(e: DragEvent, n: Node) {
+    if (!onMove || !dragged) return;
+    // Over a note: its folder (nothing to do when that is where it is).
+    e.preventDefault();
+    e.stopPropagation();
+    const ok = fits(dragged, target(n));
+    e.dataTransfer!.dropEffect = ok ? "move" : "none";
+    if (!n.dir || over === n.path) return;
+    over = ok ? n.path : "";
+    clearTimeout(opening);
+    if (ok) opening = setTimeout(() => (open[n.path] = true), 700);
+  }
+  function dragLeave(n: Node) {
+    if (over === n.path) { over = ""; clearTimeout(opening); }
+  }
+  function drop(e: DragEvent, n: Node) {
+    const path = dragged;
+    over = ""; clearTimeout(opening);
+    if (!onMove || !path) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dragged = "";
+    if (fits(path, target(n))) onMove(path, target(n));
+  }
+  const dragEnd = () => { dragged = ""; over = ""; clearTimeout(opening); };
 
   // Once per field: Enter and then the blur it causes count as one.
   let done = false;
@@ -55,17 +108,18 @@
             onblur={(e) => finish(n, e.currentTarget.value)} />
         </div>
         {#if n.dir && open[n.path] && n.children}
-          <Tree nodes={n.children} {current} {folder} {open} {renaming} {onPick} {onFolder} {onMenu} {onRename} depth={depth + 1} />
+          <Tree nodes={n.children} {current} {folder} {open} {renaming} {onPick} {onFolder} {onMenu} {onRename} {onMove} depth={depth + 1} />
         {/if}
       {:else if n.dir}
-        <button class="row" class:selected={n.path === folder} onclick={() => { open[n.path] = !open[n.path]; onFolder(n.path); }} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
+        <button class={["row", { selected: n.path === folder, target: over === n.path }]} draggable={!!onMove} ondragstart={(e) => dragStart(e, n)} ondragend={dragEnd}
+          ondragover={(e) => dragOver(e, n)} ondragleave={() => dragLeave(n)} ondrop={(e) => drop(e, n)} onclick={() => { open[n.path] = !open[n.path]; onFolder(n.path); }} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
           <span class="chev" class:open={open[n.path]}><ChevronRight size={14} /></span>{@render icon(n)}<span class="name">{n.name}</span>
         </button>
         {#if open[n.path] && n.children}
-          <Tree nodes={n.children} {current} {folder} {open} {renaming} {onPick} {onFolder} {onMenu} {onRename} depth={depth + 1} />
+          <Tree nodes={n.children} {current} {folder} {open} {renaming} {onPick} {onFolder} {onMenu} {onRename} {onMove} depth={depth + 1} />
         {/if}
       {:else}
-        <button class="row note" class:active={n.path === current} draggable="true" ondragstart={(e) => e.dataTransfer?.setData("application/x-blup-note", n.path)} onclick={() => onPick(n.path)} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
+        <button class="row note" class:active={n.path === current} draggable="true" ondragstart={(e) => dragStart(e, n)} ondragend={dragEnd} ondragover={(e) => dragOver(e, n)} ondrop={(e) => drop(e, n)} onclick={() => onPick(n.path)} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
           {@render icon(n)}<span class="name">{n.name}</span>
         </button>
       {/if}
@@ -85,6 +139,7 @@
   .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ico { display: inline-grid; place-items: center; width: 1rem; flex: none; color: var(--muted); }
   .rename { flex: 1; min-width: 0; padding: .1rem .35rem; margin-block: -.1rem; border: 1px solid var(--blue); border-radius: .3rem; outline: none; background: var(--panel); color: var(--text); font: inherit; }
+  .row.target { background: color-mix(in srgb, var(--blue) 18%, transparent); outline: 1px solid var(--blue); opacity: 1; }
   .chev { display: inline-grid; place-items: center; width: 1rem; flex: none; color: var(--muted); transition: transform .15s; }
   .chev.open { transform: rotate(90deg); }
 </style>

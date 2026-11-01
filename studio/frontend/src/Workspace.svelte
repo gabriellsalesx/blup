@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
-  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, RenameItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, OpenURL, Sites, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, RenameItem, MoveItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -113,6 +113,29 @@
       await menuChanged({ from: n.path, to });
       toast(t.toast.noteRenamed.replace("{name}", fileTitle(to)));
     } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
+
+  // Dragging in the tree: a note or a folder into another folder (or to
+  // the top, the room under the tree); links follow, like Move to. Only in
+  // a vault of notes for now (a site's folders are its sections).
+  async function moveTo(path: string, f: string) {
+    const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+    if (!path || parent === f || f === path || f.startsWith(path + "/")) return;
+    try {
+      const to = await MoveItem(path, f);
+      await menuChanged({ from: path, to });
+      if (f) openMap[f] = true;
+      toast(t.toast.noteMoved.replace("{folder}", f || t.menu.top));
+    } catch (e) { error = String(e).replace(/^(Runtime)?Error: /, ""); }
+  }
+  function overTop(e: DragEvent) {
+    if (notesVault && e.dataTransfer?.types.includes("application/x-blup-item")) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
+  }
+  function dropTop(e: DragEvent) {
+    const path = e.dataTransfer?.getData("application/x-blup-item");
+    if (!notesVault || !path) return;
+    e.preventDefault();
+    moveTo(path, "");
   }
 
   // The right-click menu of a note or folder.
@@ -513,8 +536,9 @@
               onkeydown={(e) => { if (e.key === "Enter") finishCreate(); if (e.key === "Escape") creating = null; }} onblur={() => setTimeout(() => (creating = null), 150)} />
           </div>
         {/if}
-        <div class="files">
-          <Tree nodes={tree} {current} {folder} open={openMap} {renaming} onRename={rename} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} onMenu={openMenu} />
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="files" ondragover={overTop} ondrop={dropTop}>
+          <Tree nodes={tree} {current} {folder} open={openMap} {renaming} onRename={rename} onMove={notesVault ? moveTo : undefined} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} onMenu={openMenu} />
         </div>
       {:else}
         <div class="side-search">
