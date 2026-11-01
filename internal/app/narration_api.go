@@ -122,9 +122,10 @@ func speechModels(ctx context.Context) ([]narrate.ModelInfo, error) {
 		return []narrate.ModelInfo{narrate.Known()}, err
 	}
 	// Kokoro runs on the computer for free (the local voice): not offered
-	// paid through OpenRouter.
+	// paid through OpenRouter. Seed's voices aren't used either.
 	return slices.DeleteFunc(list, func(m narrate.ModelInfo) bool {
-		return strings.Contains(strings.ToLower(m.ID), "kokoro")
+		id := strings.ToLower(m.ID + " " + m.Name)
+		return strings.Contains(id, "kokoro") || strings.Contains(id, "seed")
 	}), nil
 }
 

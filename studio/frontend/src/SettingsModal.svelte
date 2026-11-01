@@ -226,26 +226,31 @@
     for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
     return out.buffer;
   }
-  // The file is read whole and played from memory (a blob: address): the
-  // window's web view on Linux (WebKitGTK) can't stream audio from the
-  // app's own wails:// addresses.
+  // The file is read whole, decoded, and only then played (Web Audio): a
+  // media element decodes as it plays, and on Linux (WebKitGTK) its first
+  // moments stuttered; it also can't stream the app's wails:// addresses.
+  // The start waits a moment for the sound output to wake up.
   let playing = $state("");
-  let player: HTMLAudioElement | null = null;
-  let blobURL = "";
+  let audio: AudioContext | null = null;
+  let source: AudioBufferSourceNode | null = null;
+  let startAt = 0;
+  let length = 0;
   // How much of the sample has played (0 to 1), for the ring around ▶.
   let played = $state(0);
   let frame = 0;
   const tick = () => {
-    if (player && player.duration > 0) played = Math.min(1, player.currentTime / player.duration);
+    if (audio && source && length > 0) played = Math.min(1, Math.max(0, (audio.currentTime - startAt) / length));
     frame = requestAnimationFrame(tick);
   };
   const stopSample = () => {
-    player?.pause();
-    player = null;
+    if (source) {
+      source.onended = null;
+      try { source.stop(); } catch {}
+      source.disconnect();
+    }
+    source = null;
     cancelAnimationFrame(frame);
     played = 0;
-    if (blobURL) URL.revokeObjectURL(blobURL);
-    blobURL = "";
   };
   async function listen(v: Voice, lang: string) {
     const id = v.id;
@@ -255,18 +260,25 @@
     if (again) return;
     playing = id;
     try {
-      blobURL = URL.createObjectURL(new Blob([await sampleBytes(v, lang)], { type: "audio/mpeg" }));
-      if (playing !== id) return stopSample(); // another one was tapped meanwhile
-      player = new Audio(blobURL);
-      player.onended = () => { if (playing === id) { played = 1; setTimeout(() => { if (playing === id) { playing = ""; played = 0; } }, 250); } };
-      await player.play();
+      audio ??= new AudioContext();
+      const [bytes] = await Promise.all([sampleBytes(v, lang), audio.resume()]);
+      const buffer = await audio.decodeAudioData(bytes);
+      if (playing !== id) return; // another one was tapped meanwhile
+      const src = audio.createBufferSource();
+      src.buffer = buffer;
+      src.connect(audio.destination);
+      src.onended = () => { if (playing === id) { played = 1; setTimeout(() => { if (playing === id) { playing = ""; played = 0; } }, 250); } };
+      startAt = audio.currentTime + 0.08;
+      length = buffer.duration;
+      source = src;
+      src.start(startAt);
       frame = requestAnimationFrame(tick);
     } catch (e) {
       if (playing === id) playing = "";
       toast(`${lv.noSample} ${String(e).replace(/^(Runtime)?Error: /, "")}`, { kind: "error" });
     }
   }
-  $effect(() => () => stopSample());
+  $effect(() => () => { stopSample(); void audio?.close(); });
   async function connectAI() {
     aiBusy = true; aiError = "";
     try { await ConnectAI(aiKey); aiOn = true; aiKey = ""; toast(ai.connected); loadVoices(); aiChanged(); }
