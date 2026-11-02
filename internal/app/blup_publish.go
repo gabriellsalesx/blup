@@ -20,6 +20,7 @@ func init() {
 		knownError{blupcloud.ErrSitesLimit, "pub.blup_limit"},
 		knownError{blupcloud.ErrSlugTaken, "pub.blup_taken"},
 		knownError{blupcloud.ErrFileTooLarge, "pub.blup_too_large"},
+		knownError{blupcloud.ErrDeployBusy, "pub.blup_busy"},
 	)
 }
 

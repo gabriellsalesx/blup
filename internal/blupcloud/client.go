@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -41,6 +42,8 @@ var (
 	ErrQuota = errors.New("blupcloud: the plan's storage is full")
 	// ErrDevicesLimit: the plan allows no more computers signed in.
 	ErrDevicesLimit = errors.New("blupcloud: the plan allows no more computers")
+	// ErrDeployBusy: a publish of the same site is already under way.
+	ErrDeployBusy = errors.New("blupcloud: a publish of this site is already under way")
 	// ErrDenied: the sign in was refused in the browser.
 	ErrDenied = errors.New("blupcloud: sign in refused in the browser")
 	// ErrExpired: the code shown was not approved in time.
@@ -121,33 +124,24 @@ func (e *apiError) Error() string {
 }
 
 // do sends a request; body is JSON (any), raw bytes or a multipart form.
+// A 429 (a limit of Blup Cloud reached) is sent again when that is safe:
+// see send.
 func (c *Client) do(ctx context.Context, method, path string, body any, contentType string, out any) error {
-	var r io.Reader
+	var data []byte
 	switch b := body.(type) {
 	case nil:
 	case []byte:
-		r = bytes.NewReader(b)
+		data = b
 	case *bytes.Buffer:
-		r = b
+		data = b.Bytes()
 	default:
-		data, err := json.Marshal(b)
+		j, err := json.Marshal(b)
 		if err != nil {
 			return err
 		}
-		r, contentType = bytes.NewReader(data), "application/json"
+		data, contentType = j, "application/json"
 	}
-	req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+"/api"+path, r)
-	if err != nil {
-		return err
-	}
-	if contentType != "" {
-		req.Header.Set("Content-Type", contentType)
-	}
-	if c.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Token)
-	}
-	req.Header.Set("User-Agent", UserAgent())
-	res, err := c.HTTP.Do(req)
+	res, err := c.send(ctx, method, path, data, body != nil, contentType)
 	if err != nil {
 		return err
 	}
@@ -166,6 +160,8 @@ func (c *Client) do(ctx context.Context, method, path string, body any, contentT
 			return ErrQuota
 		case e.Code == "DEVICES_LIMIT":
 			return ErrDevicesLimit
+		case e.Code == "DEPLOY_BUSY":
+			return ErrDeployBusy
 		}
 		return e
 	}
@@ -197,6 +193,91 @@ func (c *Client) do(ctx context.Context, method, path string, body any, contentT
 		}
 		return json.Unmarshal(data, out)
 	}
+}
+
+// Retrying a 429: at most maxAttempts sends in all, waiting what the
+// answer's Retry-After says (up to maxRetryWait), or a short growing wait
+// with jitter when it says nothing.
+const (
+	maxAttempts  = 4
+	maxRetryWait = 60 * time.Second
+)
+
+// retrySleep waits d, or less when ctx ends (tests replace it).
+var retrySleep = func(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
+	}
+}
+
+// send makes the request, again on a 429 when it is safe to repeat: the
+// methods that are idempotent (GET, HEAD, PUT, DELETE: a file or block is
+// put under its hash) and the POSTs that only ask (".../missing"). Other
+// POSTs (create a site or vault, save a version, publish) are never sent
+// twice: their 429 goes back as is.
+func (c *Client) send(ctx context.Context, method, path string, data []byte, hasBody bool, contentType string) (*http.Response, error) {
+	for attempt := 0; ; attempt++ {
+		var r io.Reader
+		if hasBody {
+			r = bytes.NewReader(data)
+		}
+		req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+"/api"+path, r)
+		if err != nil {
+			return nil, err
+		}
+		if contentType != "" {
+			req.Header.Set("Content-Type", contentType)
+		}
+		if c.Token != "" {
+			req.Header.Set("Authorization", "Bearer "+c.Token)
+		}
+		req.Header.Set("User-Agent", UserAgent())
+		res, err := c.HTTP.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		if res.StatusCode != http.StatusTooManyRequests || attempt+1 >= maxAttempts || !retriable(method, path) {
+			return res, nil
+		}
+		wait := retryWait(res.Header.Get("Retry-After"), attempt)
+		io.Copy(io.Discard, io.LimitReader(res.Body, 1<<16))
+		res.Body.Close()
+		if err := retrySleep(ctx, wait); err != nil {
+			return nil, err
+		}
+	}
+}
+
+// retriable tells whether a request may be sent again after a 429.
+func retriable(method, path string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodPut, http.MethodDelete:
+		return true
+	case http.MethodPost:
+		p, _, _ := strings.Cut(path, "?")
+		return strings.HasSuffix(p, "/missing")
+	}
+	return false
+}
+
+// retryWait is how long to wait before sending again: Retry-After (seconds,
+// or a date) up to maxRetryWait, else 0.5 s, 1 s, 2 s... with jitter.
+func retryWait(header string, attempt int) time.Duration {
+	if h := strings.TrimSpace(header); h != "" {
+		if n, err := strconv.Atoi(h); err == nil && n >= 0 {
+			return min(time.Duration(n)*time.Second, maxRetryWait)
+		}
+		if t, err := http.ParseTime(h); err == nil {
+			return min(max(time.Until(t), 0), maxRetryWait)
+		}
+	}
+	base := 500 * time.Millisecond << min(attempt, 6)
+	return min(base+rand.N(base/2+1), maxRetryWait)
 }
 
 // Login is a sign in in progress: show Code and open URL; Wait returns the
