@@ -6,6 +6,7 @@
   import Switch from "./Switch.svelte";
   import X from "@lucide/svelte/icons/x";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
+  import IconPicker from "./ui/IconPicker.svelte";
   import { t } from "./i18n";
   import NoteLangs from "./NoteLangs.svelte";
 
@@ -24,6 +25,9 @@
   let tags = $state(list(props.tags));
   let authors = $state(list(props.authors));
   let image = $state(String(props.image ?? ""));
+  // A help collection (a folder of Bento's Help Center): its card's icon.
+  const isCollection = $derived(kind === "help" && isIndex && note.split("/").length === 3);
+  let icon = $state(String(props.icon ?? ""));
   let draft = $state(props.draft === true);
   let hidden = $state(props.hidden === true);
   const pw0 = props.password === undefined || props.password === null || props.password === false ? "" : String(props.password);
@@ -168,6 +172,9 @@
     <div class="grid">
       <label class="field wide"><span>{p.titleField}</span><input type="text" bind:value={title} oninput={() => onEdit("title", title)} /></label>
       <label class="field wide"><span>{p.description}</span><textarea rows="2" bind:value={description} oninput={() => onEdit("description", description)}></textarea><small>{p.descriptionHelp}</small></label>
+      {#if isCollection}
+        <div class="field wide"><span>{p.icon}</span><IconPicker value={icon} onPick={(n) => { icon = n; onEdit("icon", n); }} /><small>{p.iconHelp}</small></div>
+      {/if}
 
       {#if !isIndex}
         <label class="field"><span>{p.date}</span><input type="date" bind:value={date} onchange={() => onEdit("date", date)} /></label>

@@ -542,6 +542,14 @@ export function LocalVoice(): $CancellablePromise<app$0.LocalVoice> {
 }
 
 /**
+ * LucideIcons is the theme's Lucide icons (name -> SVG paths, JSON), for
+ * picking a help collection's icon: the same set the site can show.
+ */
+export function LucideIcons(): $CancellablePromise<string> {
+    return $Call.ByID(832415976);
+}
+
+/**
  * MarkReviewed marks a translation reviewed (the site stops showing it was
  * made by AI), or not.
  */

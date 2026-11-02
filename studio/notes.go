@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gabriellsalesx/blup"
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -185,6 +186,13 @@ func (s *Studio) kindOf(rel string) string {
 		}
 	}
 	return ""
+}
+
+// LucideIcons is the theme's Lucide icons (name -> SVG paths, JSON), for
+// picking a help collection's icon: the same set the site can show.
+func (s *Studio) LucideIcons() (string, error) {
+	b, err := blup.Theme.ReadFile("theme/data/lucide.json")
+	return string(b), err
 }
 
 // PickCover asks for an image, copies it into the site and returns the

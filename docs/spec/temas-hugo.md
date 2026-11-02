@@ -31,6 +31,8 @@ O CSS passa por `css.Build`; tanto a minificação quanto o fingerprint da folha
 
 [mochi/icons.html](../../theme/layouts/_partials/mochi/icons.html) contém um sprite SVG inline, uma cópia por página, com símbolos `i-<nome>` referenciados por `<use>`. Os símbolos acrescentados para o quadro (`plus`, `folder`, `list-filter`, `user` e `message-square`) foram extraídos dos SVGs do Lucide baixado em `UNA-v.15.0.0-RC3/plugins_public/lucide/icons`; suas formas conferem com esses arquivos, sem desenho manual. `feedback.js` também usa `<use>` ao criar cartões e detalhes no navegador. O build Hugo inclui o sprite já convertido, sem gerá-lo de novo a partir dessa pasta externa.
 
+Na Central de Ajuda do Bento (`bento/help-home.html`), cada coleção (subpasta) mostra o ícone da propriedade `icon` do seu `_index`, qualquer nome do Lucide; sem ela, os ícones se alternam. No Studio a propriedade é escolhida em Propriedades da nota da coleção (veja [Studio](studio.md)).
+
 O partial [icon.html](../../theme/layouts/_partials/icon.html) é outro mecanismo: inclui um ícone pelo nome a partir de `theme/data/lucide.json`, com aviso e fallback para `circle-help` se desconhecido. A licença está em `theme/licenses/lucide-ISC.txt`. O comentário do sprite identifica separadamente símbolos de marcas existentes, vindos de `design/icones/contorno/`; a procedência Lucide dos símbolos novos do quadro não se estende a esses símbolos de marcas.
 
 ## Mochi
