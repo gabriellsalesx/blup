@@ -509,3 +509,25 @@ func TestSiteFileTravels(t *testing.T) {
 		t.Fatal("the init file stays on GitHub")
 	}
 }
+
+// Ataque/acidente: o repositório some e volta vazio (ou alguém com acesso
+// a ele apaga tudo). As notas daqui não vão para a lixeira: voltam a subir.
+func TestEmptiedRemoteDeletesNothingHere(t *testing.T) {
+	f, _ := setup(t)
+	a := newComputer(t, f, "notas")
+	a.write(t, map[string]string{"a.md": "a", "b.md": "b", "c/d.md": "d"})
+	a.sync(t)
+	f.push("notas", map[string]string{"a.md": "", "b.md": "", "c/d.md": ""})
+	rep := a.sync(t)
+	if len(rep.DeletedLocal) != 0 {
+		t.Fatalf("deleted here: %v", rep.DeletedLocal)
+	}
+	equalMaps(t, "local", a.files(t), map[string]string{"a.md": "a", "b.md": "b", "c/d.md": "d"})
+	if got := f.files("notas"); got["a.md"] == "" || got["c/d.md"] == "" {
+		t.Fatalf("not sent back: %v", got)
+	}
+	// One note deleted elsewhere still is deleted here (the normal case).
+	f.push("notas", map[string]string{"b.md": ""})
+	rep = a.sync(t)
+	eq(t, "deleted here", rep.DeletedLocal, "b.md")
+}

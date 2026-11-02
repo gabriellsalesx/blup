@@ -16,7 +16,9 @@ async function inline(s: string, image: Images): Promise<string> {
   const imgs: Promise<void>[] = [];
   s = s.replace(/!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]|!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_, wiki, alt, src) => {
     const i = keep.push("") - 1;
-    imgs.push(image(wiki ? `[[${wiki}]]` : src).then((url) => { keep[i] = url ? `<img src="${url}" alt="${esc(alt ?? wiki ?? "")}">` : ""; }));
+    // Only an embedded image (data:image/...), escaped: an address from
+    // anywhere else never reaches the page as HTML.
+    imgs.push(image(wiki ? `[[${wiki}]]` : src).then((url) => { keep[i] = /^data:image\//i.test(url ?? "") ? `<img src="${esc(url)}" alt="${esc(alt ?? wiki ?? "")}">` : ""; }));
     return `\u0000${i}\u0000`;
   });
   await Promise.all(imgs);

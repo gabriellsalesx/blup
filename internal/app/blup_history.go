@@ -60,9 +60,13 @@ func RestoreNoteVersion(ctx context.Context, site *config.Site, path string, n i
 	if _, err := syncSite(ctx, site, true); err != nil {
 		return err
 	}
-	dst := filepath.Join(site.ContentDir(), filepath.FromSlash(path))
+	// Inside the notes, and not through a link (symlink) to elsewhere.
 	if !filepath.IsLocal(filepath.FromSlash(path)) {
 		return errors.New("app: invalid path")
+	}
+	dst, err := notesPath(site, path)
+	if err != nil {
+		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err

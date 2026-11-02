@@ -27,12 +27,12 @@
   </header>
   <div class="container post-body">
     <aside class="post-aside">
-      {{- if and (not $locked) (gt (len .Fragments.Headings) 0) }}{{ with .TableOfContents }}{{ if strings.Contains (string .) "<li" }}
+      {{- if not $locked }}{{ with partial "toc.html" . }}
       <div>
         <h2 class="toc-title">{{ T "onThisPage" }}</h2>
-        <div class="toc">{{ . }}</div>
+        <div class="toc">{{ . | safeHTML }}</div>
       </div>
-      {{- end }}{{ end }}{{ end }}
+      {{- end }}{{ end }}
       {{ partial "mochi/share.html" . }}
       {{- with $authors }}
       <div class="aside-authors">

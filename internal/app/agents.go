@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -29,10 +30,12 @@ func WriteAgentGuides(site *config.Site) error {
 			body = guide
 		}
 		p := filepath.Join(site.ContentDir(), name)
-		if _, err := os.Stat(p); err == nil {
+		// Lstat: a link there (to nothing, in a downloaded folder) is left
+		// alone, not followed to write the guide wherever it points.
+		if _, err := os.Lstat(p); err == nil {
 			continue
 		}
-		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		if err := writeNew(p, []byte(body)); err != nil && !errors.Is(err, os.ErrExist) {
 			return err
 		}
 	}

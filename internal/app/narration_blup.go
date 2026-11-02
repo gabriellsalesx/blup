@@ -75,17 +75,32 @@ func costOf(u blupcloud.AIUsage, perChar float64, text string) (micros int64, c 
 // perCharMicros is what a character costs with model through Blup Cloud
 // (millionths of a dollar): the recommended model's as the cloud says,
 // another's from OpenRouter's price list (the cloud charges the same).
-func perCharMicros(ctx context.Context, u blupcloud.AIUsage, model string) float64 {
+// ok is false when the price is not known (the model is not on the list,
+// is priced otherwise, or the list could not be read): the recommended
+// model's price would then hide what the cloud really charges, so the
+// narration is not started on a wrong estimate.
+func perCharMicros(ctx context.Context, u blupcloud.AIUsage, model string) (float64, bool) {
 	if model == narrate.DefaultModel || model == "" {
-		return float64(u.PerCharMicros)
+		return float64(u.PerCharMicros), u.PerCharMicros > 0
 	}
-	list, _ := speechModels(ctx)
+	list, err := speechModels(ctx)
+	if err != nil {
+		return 0, false
+	}
 	for _, m := range list {
 		if m.ID == model && m.PerThousand > 0 {
-			return m.PerThousand * 1000
+			return m.PerThousand * 1000, true
 		}
 	}
-	return float64(u.PerCharMicros)
+	return 0, false
+}
+
+// errUnknownPrice: what the voice model costs could not be checked now.
+func errUnknownPrice(lang string) error {
+	return errors.New(byLangCode(lang,
+		"Não deu para conferir agora quanto esse modelo de voz custa. Tente de novo em instantes ou escolha a voz recomendada.",
+		"The price of that voice model could not be checked now. Try again in a moment or pick the recommended voice.",
+		"No se pudo comprobar ahora cuánto cuesta ese modelo de voz. Inténtalo de nuevo en un momento o elige la voz recomendada."))
 }
 
 // EstimateNarration tells what narrating the note at rel through Blup
@@ -105,7 +120,11 @@ func EstimateNarration(ctx context.Context, site *config.Site, rel, voice string
 	}
 	_, lang := NoteOrigin(site, rel)
 	model, _ := blupChoice(strings.TrimPrefix(voiceFor(lang, voice), blupPrefix))
-	_, cost := costOf(u, perCharMicros(ctx, u, model), text)
+	per, ok := perCharMicros(ctx, u, model)
+	if !ok {
+		return NarrationCost{}, errUnknownPrice(lang)
+	}
+	_, cost := costOf(u, per, text)
 	return cost, nil
 }
 
@@ -120,7 +139,11 @@ func speakBlup(ctx context.Context, site *config.Site, text, model, voice string
 	if err != nil {
 		return nil, 0, errors.New(describe(err))
 	}
-	if _, cost := costOf(u, perCharMicros(ctx, u, model), text); !cost.Enough {
+	per, ok := perCharMicros(ctx, u, model)
+	if !ok {
+		return nil, 0, errUnknownPrice(site.Lang)
+	}
+	if _, cost := costOf(u, per, text); !cost.Enough {
 		return nil, 0, errors.New(byLang(site,
 			fmt.Sprintf("Este texto usaria %d%% do seu uso de IA do mês, e agora sobram %d%%. Use a voz no computador (grátis) ou um plano maior.", cost.Percent, cost.Left),
 			fmt.Sprintf("This text would use %d%% of your monthly AI allowance, and %d%% is left now. Use the voice on the computer (free) or a bigger plan.", cost.Percent, cost.Left),

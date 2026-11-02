@@ -49,3 +49,18 @@ func TestCreateSite(t *testing.T) {
 		t.Fatal("CheckSiteDir")
 	}
 }
+
+// TestDefaultNotesDirStaysInBlup: a title from another computer can't
+// place the notes folder outside Documents/Blup.
+func TestDefaultNotesDirStaysInBlup(t *testing.T) {
+	base := filepath.Dir(DefaultNotesDir("x"))
+	for _, title := range []string{"../../.config/autostart", `..\..\x`, "..", ".", "  ", "/etc", "a/../../b"} {
+		got := DefaultNotesDir(title)
+		if filepath.Dir(got) != base {
+			t.Errorf("%q -> %q, outside %q", title, got, base)
+		}
+	}
+	if got := filepath.Base(DefaultNotesDir("Meu Diário")); got != "Meu Diário" {
+		t.Errorf("plain title changed: %q", got)
+	}
+}

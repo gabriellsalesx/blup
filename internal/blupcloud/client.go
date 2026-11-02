@@ -73,6 +73,30 @@ func BaseURL() string {
 	return DefaultURL
 }
 
+// ErrBadVault: a vault id that is not one Blup Cloud makes (they are
+// UUIDs). Ids come from the cloud and name folders here, so anything else
+// (a "../" in particular) is refused.
+var ErrBadVault = errors.New("blupcloud: invalid vault id")
+
+// ValidVaultID tells whether id looks like a vault id: 1 to 64 letters,
+// digits and hyphens.
+func ValidVaultID(id string) bool {
+	if id == "" || len(id) > 64 {
+		return false
+	}
+	for _, c := range id {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+// maxBody bounds what is read from an answer: a sealed manifest (32 MiB at
+// most on the cloud) or block (4 MiB), with room to spare. A larger answer
+// is not Blup Cloud's and would only fill the memory.
+const maxBody = 64 << 20
+
 // Client calls Blup Cloud with a session token.
 type Client struct {
 	BaseURL string
@@ -144,14 +168,18 @@ func (c *Client) do(ctx context.Context, method, path string, body any, contentT
 		}
 		return e
 	}
+	limited := io.LimitReader(res.Body, maxBody+1)
 	switch o := out.(type) {
 	case nil:
 		return nil
 	case *[]byte:
-		*o, err = io.ReadAll(res.Body)
+		*o, err = io.ReadAll(limited)
+		if err == nil && len(*o) > maxBody {
+			*o, err = nil, errors.New("blupcloud: answer too large")
+		}
 		return err
 	default:
-		return json.NewDecoder(res.Body).Decode(out)
+		return json.NewDecoder(limited).Decode(out)
 	}
 }
 
@@ -291,13 +319,28 @@ func (c *Client) Vaults(ctx context.Context) ([]Vault, error) {
 	var r struct {
 		Vaults []Vault `json:"vaults"`
 	}
-	return r.Vaults, c.do(ctx, http.MethodGet, "/sync/vaults", nil, "", &r)
+	if err := c.do(ctx, http.MethodGet, "/sync/vaults", nil, "", &r); err != nil {
+		return nil, err
+	}
+	out := r.Vaults[:0]
+	for _, v := range r.Vaults {
+		if ValidVaultID(v.ID) {
+			out = append(out, v)
+		}
+	}
+	return out, nil
 }
 
 // CreateVault makes a vault with a sealed name.
 func (c *Client) CreateVault(ctx context.Context, name []byte) (Vault, error) {
 	v := Vault{Name: name}
-	return v, c.do(ctx, http.MethodPost, "/sync/vaults", map[string]any{"name": name}, "", &v)
+	if err := c.do(ctx, http.MethodPost, "/sync/vaults", map[string]any{"name": name}, "", &v); err != nil {
+		return v, err
+	}
+	if !ValidVaultID(v.ID) {
+		return Vault{}, ErrBadVault
+	}
+	return v, nil
 }
 
 // VaultHead returns a vault's current version number (0 = empty).
@@ -330,13 +373,32 @@ func (c *Client) Missing(ctx context.Context, ids []string) ([]string, error) {
 	return out, nil
 }
 
+// validBlockID: 64 hex digits (an HMAC-SHA256), as cloudcrypt makes them.
+func validBlockID(id string) bool {
+	if len(id) != 64 {
+		return false
+	}
+	for _, c := range id {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
 // PutBlock stores a sealed block.
 func (c *Client) PutBlock(ctx context.Context, id string, sealed []byte) error {
+	if !validBlockID(id) {
+		return cloudcrypt.ErrCorrupt
+	}
 	return c.do(ctx, http.MethodPut, "/sync/blocks/"+id, sealed, "application/octet-stream", nil)
 }
 
 // Block returns a sealed block.
 func (c *Client) Block(ctx context.Context, id string) ([]byte, error) {
+	if !validBlockID(id) {
+		return nil, cloudcrypt.ErrCorrupt
+	}
 	var b []byte
 	return b, c.do(ctx, http.MethodGet, "/sync/blocks/"+id, nil, "", &b)
 }

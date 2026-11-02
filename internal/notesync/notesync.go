@@ -303,8 +303,10 @@ func plan(local map[string]*localFile, remote map[string]*remoteFile, prev *stat
 }
 
 // snapshot reads both sides and plans. head.Version is "" for an empty
-// remote.
-func (s *Syncer) snapshot(ctx context.Context, prev *state, write bool, report func(Progress)) (Head, []*entry, map[string]*localFile, Report, error) {
+// remote. *prevp becomes nil when the remote was emptied (see below), so
+// the new state is not built on a snapshot nobody has anymore.
+func (s *Syncer) snapshot(ctx context.Context, prevp **state, write bool, report func(Progress)) (Head, []*entry, map[string]*localFile, Report, error) {
+	prev := *prevp
 	var rep Report
 	skip := map[string]bool{}
 	report(Progress{Phase: PhaseCompare})
@@ -312,7 +314,20 @@ func (s *Syncer) snapshot(ctx context.Context, prev *state, write bool, report f
 	if err != nil {
 		return head, nil, nil, rep, err
 	}
+	if prev != nil && prev.Commit != "" {
+		if o, ok := s.remote().(Ordered); ok && (head.Version == "" || o.Older(head.Version, prev.Commit)) {
+			return head, nil, nil, rep, fmt.Errorf("%w (%q, synced %q)", ErrRolledBack, head.Version, prev.Commit)
+		}
+	}
 	remote := remoteFiles(head.Files, &rep, skip)
+	if prev != nil && len(remote) == 0 && len(prev.Files) > 1 {
+		// The remote has no notes although several were synced with it (a
+		// repository deleted and made again, or emptied): compare without
+		// the last snapshot, so nothing here is deleted and all is sent.
+		// Emptying it on purpose from another computer is already refused
+		// there (ErrLocalFolderEmpty).
+		prev, *prevp = nil, nil
+	}
 	report(Progress{Phase: PhaseCompare, Done: len(remote), Total: len(remote)})
 	local, err := s.scan(prev, &rep, skip, report)
 	if err != nil {
@@ -396,7 +411,7 @@ func (s *Syncer) Status(ctx context.Context, progress func(Progress)) (Report, e
 	if err != nil {
 		return Report{}, err
 	}
-	head, entries, _, rep, err := s.snapshot(ctx, prev, false, report)
+	head, entries, _, rep, err := s.snapshot(ctx, &prev, false, report)
 	if err != nil {
 		return Report{}, err
 	}
@@ -428,7 +443,7 @@ func (s *Syncer) Sync(ctx context.Context, progress func(Progress)) (Report, err
 		if attempt > 0 {
 			report(Progress{Phase: PhaseRetry, Done: attempt, Total: attempts})
 		}
-		head, entries, local, rep, err := s.snapshot(ctx, prev, true, report)
+		head, entries, local, rep, err := s.snapshot(ctx, &prev, true, report)
 		if err != nil {
 			return Report{}, err
 		}

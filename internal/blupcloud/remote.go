@@ -51,6 +51,17 @@ func (r *Remote) ID() string { return "blup:" + r.Vault }
 
 func (r *Remote) Concurrency() int { return 4 }
 
+// Older: a vault's versions are numbered and only grow (notesync.Ordered).
+// A version that is not a number counts as older, so it is refused.
+func (r *Remote) Older(v, than string) bool {
+	a, err1 := strconv.ParseInt(v, 10, 64)
+	b, err2 := strconv.ParseInt(than, 10, 64)
+	if err2 != nil {
+		return false // nothing known to compare with
+	}
+	return err1 != nil || a < b
+}
+
 func (r *Remote) MaxFileSize() int64 {
 	if r.MaxFile > 0 {
 		return r.MaxFile
@@ -59,6 +70,9 @@ func (r *Remote) MaxFileSize() int64 {
 }
 
 func (r *Remote) Head(ctx context.Context, _ bool) (notesync.Head, error) {
+	if !ValidVaultID(r.Vault) {
+		return notesync.Head{}, ErrBadVault
+	}
 	n, err := r.Client.VaultHead(ctx, r.Vault)
 	if err != nil {
 		return notesync.Head{}, err

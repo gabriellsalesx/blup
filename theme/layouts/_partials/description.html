@@ -5,10 +5,18 @@ home falls back to site_description and then to its own text. */ -}}
 {{- $d := .Description -}}
 {{- if and (not $d) .IsHome }}{{ $d = (partialCached "site/settings.html" . "site").description }}{{ end -}}
 {{- if not $d -}}
-  {{- $h := cond .IsHome (string .Content) (string .Summary) -}}
-  {{- $h = replaceRE `(?s)^\s*<h1[^>]*>.*?</h1>` "" $h 1 -}}
-  {{- $h = replaceRE `<[^>]+>` " " (partial "uncomment.html" $h) -}}
-  {{- $d = $h | htmlUnescape | strings.TrimSpace -}}
+  {{- /* The summary first; when it is all comment, the whole text. */ -}}
+  {{- range cond .IsHome (slice (string .Content)) (slice (string .Summary) (string .Content)) -}}
+    {{- if not $d -}}
+      {{- $h := replaceRE `(?s)^\s*<h1[^>]*>.*?</h1>` "" . 1 -}}
+      {{- $h = partial "uncomment.html" $h -}}
+      {{- /* A summary can end inside a long comment: a "%%" left open hides
+      the rest, as in Obsidian (code is kept as written). */ -}}
+      {{- $h = replaceRE `(?s)(<(?:pre|code)\b.*?</(?:pre|code)>)|%%.*$` "$1" $h -}}
+      {{- $h = replaceRE `<[^>]+>` " " $h -}}
+      {{- $d = $h | htmlUnescape | strings.TrimSpace -}}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
 {{- $d = replaceRE `\s+` " " $d | truncate 160 -}}
 {{- return $d -}}

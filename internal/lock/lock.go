@@ -123,7 +123,9 @@ func Process(dir, global string) (int, error) {
 		if failure != nil {
 			return failure
 		}
-		if strings.Contains(out, "<blup-begin") {
+		// A stray end marker means a region closed early (the post's own
+		// text had one): what followed it would be left in clear.
+		if strings.Contains(out, "<blup-begin") || strings.Contains(out, "<blup-end") {
 			return fmt.Errorf("%w: %s", ErrLeftover, p)
 		}
 		return os.WriteFile(p, []byte(out), 0o644)

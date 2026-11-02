@@ -153,3 +153,25 @@ func TestCacheRoundTrip(t *testing.T) {
 		t.Fatalf("cache = %+v", got)
 	}
 }
+
+// A release whose files point at plain HTTP (a tampered API answer) is not
+// downloaded, and a redirect off HTTPS is refused.
+func TestApplyRefusesPlainHTTP(t *testing.T) {
+	name := AssetName("9.9.9")
+	rel := Release{Version: "9.9.9", assets: map[string]string{
+		name:            "http://evil.example/" + name,
+		"checksums.txt": "https://github.com/x/checksums.txt",
+	}}
+	exe := filepath.Join(t.TempDir(), "blup")
+	os.WriteFile(exe, []byte("old"), 0o755)
+	if err := (&Client{}).Apply(context.Background(), rel, exe); !errors.Is(err, ErrChecksum) {
+		t.Fatalf("err = %v, want ErrChecksum", err)
+	}
+	if b, _ := os.ReadFile(exe); string(b) != "old" {
+		t.Fatal("the executable changed")
+	}
+	req, _ := http.NewRequest(http.MethodGet, "http://evil.example/x", nil)
+	if httpsOnly(req, nil) == nil {
+		t.Fatal("redirect to http allowed")
+	}
+}

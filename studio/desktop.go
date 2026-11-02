@@ -239,6 +239,9 @@ func (s *Studio) SetTray(on bool) error {
 // SetToggleHotkey registers the global shortcut that shows and hides the
 // Studio ("" removes it) and saves it.
 func (s *Studio) SetToggleHotkey(accel string) error {
+	if accel != "" && !validAccel(accel) {
+		return errors.New("invalid shortcut")
+	}
 	if onHyprland() {
 		return s.bindHyprland(accel)
 	}

@@ -115,7 +115,7 @@ func eachNoteText(site *config.Site, fn func(path, text string)) {
 			}
 			return nil
 		}
-		if strings.EqualFold(filepath.Ext(p), ".md") {
+		if strings.EqualFold(filepath.Ext(p), ".md") && !isLink(d) {
 			if b, err := os.ReadFile(p); err == nil {
 				fn(p, string(b))
 			}
@@ -127,6 +127,9 @@ func eachNoteText(site *config.Site, fn func(path, text string)) {
 // RenameAttachment renames a file (keeping its extension) and fixes every
 // note that points to it. It returns the new name.
 func RenameAttachment(site *config.Site, old, name string) (string, error) {
+	if !attachmentName(old) {
+		return "", errors.New("not an attachment")
+	}
 	name, err := cleanName(strings.TrimSuffix(name, filepath.Ext(old)))
 	if err != nil {
 		return "", err
@@ -136,10 +139,13 @@ func RenameAttachment(site *config.Site, old, name string) (string, error) {
 		return name, nil
 	}
 	dir := attachmentsPath(site)
-	if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+	if !Within(site.ContentDir(), dir) {
+		return "", errors.New("the attachments folder is outside the notes folder")
+	}
+	if _, err := os.Lstat(filepath.Join(dir, name)); err == nil {
 		return "", errors.New(name + " already exists")
 	}
-	if err := os.Rename(filepath.Join(dir, filepath.Base(old)), filepath.Join(dir, name)); err != nil {
+	if err := os.Rename(filepath.Join(dir, old), filepath.Join(dir, name)); err != nil {
 		return "", err
 	}
 	pairs := []string{}
@@ -160,7 +166,17 @@ func RenameAttachment(site *config.Site, old, name string) (string, error) {
 
 // DeleteAttachment moves a file to the Blup trash.
 func DeleteAttachment(site *config.Site, name string) (string, error) {
-	return toTrash(site, attachmentsFolder(site)+"/"+filepath.Base(name))
+	if !attachmentName(name) {
+		return "", errors.New("not an attachment")
+	}
+	return toTrash(site, attachmentsFolder(site)+"/"+name)
+}
+
+// attachmentName tells whether name is a file name of the attachments
+// folder as the Attachments screen lists it: no folders ("../x", "a/b"),
+// not "." (the whole folder) and not hidden.
+func attachmentName(name string) bool {
+	return name != "" && name == filepath.Base(name) && !strings.ContainsAny(name, `/\`) && !strings.HasPrefix(name, ".")
 }
 
 // AddAttachments copies files into the attachments folder (a taken name
@@ -169,6 +185,9 @@ func AddAttachments(site *config.Site, files []string) ([]string, error) {
 	dir := attachmentsPath(site)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
+	}
+	if !Within(site.ContentDir(), dir) {
+		return nil, errors.New("the attachments folder is outside the notes folder")
 	}
 	out := []string{}
 	for _, f := range files {
@@ -183,12 +202,12 @@ func AddAttachments(site *config.Site, files []string) ([]string, error) {
 		}
 		name := base + ext
 		for i := 2; ; i++ {
-			if _, err := os.Stat(filepath.Join(dir, name)); errors.Is(err, fs.ErrNotExist) {
+			if _, err := os.Lstat(filepath.Join(dir, name)); errors.Is(err, fs.ErrNotExist) {
 				break
 			}
 			name = fmt.Sprintf("%s %d%s", base, i, ext)
 		}
-		if err := os.WriteFile(filepath.Join(dir, name), b, 0o644); err != nil {
+		if err := writeNew(filepath.Join(dir, name), b); err != nil {
 			return out, err
 		}
 		out = append(out, name)

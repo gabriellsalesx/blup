@@ -60,7 +60,25 @@ func (c *Client) http() *http.Client {
 	if c.HTTP != nil {
 		return c.HTTP
 	}
-	return &http.Client{Timeout: 60 * time.Second}
+	return &http.Client{Timeout: 60 * time.Second, CheckRedirect: httpsOnly}
+}
+
+// httpsOnly refuses a redirect off HTTPS: GitHub sends the download to its
+// file servers, always over HTTPS.
+func httpsOnly(req *http.Request, via []*http.Request) error {
+	if req.URL.Scheme != "https" {
+		return fmt.Errorf("update: redirect to %s refused", req.URL.Scheme)
+	}
+	if len(via) >= 10 {
+		return errors.New("update: too many redirects")
+	}
+	return nil
+}
+
+// secure tells whether a download address may be used: HTTPS only, unless
+// a test points the client at its own server.
+func (c *Client) secure(u string) bool {
+	return c.BaseURL != "" || strings.HasPrefix(u, "https://")
 }
 
 func (c *Client) base() string {
@@ -161,6 +179,9 @@ func (c *Client) Apply(ctx context.Context, rel Release, exe string) error {
 	sumsURL, ok := rel.assets["checksums.txt"]
 	if !ok {
 		return fmt.Errorf("%w: checksums.txt missing", ErrChecksum)
+	}
+	if !c.secure(url) || !c.secure(sumsURL) {
+		return fmt.Errorf("%w: download not over HTTPS", ErrChecksum)
 	}
 	sums, err := c.get(ctx, sumsURL)
 	if err != nil {

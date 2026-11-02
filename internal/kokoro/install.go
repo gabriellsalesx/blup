@@ -263,6 +263,11 @@ func fetch(ctx context.Context, d download, progress func(int64)) ([]byte, error
 			buf.Write(chunk[:k])
 			h.Write(chunk[:k])
 			n += int64(k)
+			// A server sending much more than the pinned size is not
+			// serving the pinned file: stop before it fills the memory.
+			if d.size > 0 && n > 2*d.size+1<<20 {
+				return nil, fmt.Errorf("download %s: larger than expected", path.Base(d.url))
+			}
 			if progress != nil {
 				progress(n)
 			}

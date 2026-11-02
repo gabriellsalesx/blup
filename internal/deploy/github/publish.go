@@ -257,7 +257,6 @@ func (c *Client) Publish(ctx context.Context, owner, repo, dir string, opts Publ
 	inline := map[string][]byte{} // path -> content for inline text files
 	var blobs []*localFile        // unique shas to upload as blobs
 	pendingSHA := map[string]bool{}
-	var inlineFiles []*localFile
 	var bytesTotal int64
 	for _, f := range files {
 		if known[f.sha] {
@@ -275,7 +274,6 @@ func (c *Client) Publish(ctx context.Context, owner, repo, dir string, opts Publ
 			}
 			if utf8.Valid(data) && bytes.IndexByte(data, 0) < 0 {
 				inline[f.path] = data
-				inlineFiles = append(inlineFiles, f)
 				bytesTotal += f.size
 				continue
 			}

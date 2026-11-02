@@ -19,6 +19,19 @@ type Limited interface {
 	MaxFileSize() int64
 }
 
+// Ordered is a Remote whose versions only move forward (Blup Cloud numbers
+// them 1, 2, 3...). Sync refuses a head older than the version it last
+// synced with: a cloud showing an old (still validly sealed) version would
+// otherwise undo the edits made since and move newer notes to the trash.
+type Ordered interface {
+	// Older reports whether version v comes before version than.
+	Older(v, than string) bool
+}
+
+// ErrRolledBack: the remote shows a version older than the one this
+// computer already synced with. Nothing was changed.
+var ErrRolledBack = errors.New("notesync: the remote shows an older version than the one already synced")
+
 // ErrNotFastForward is returned by Remote.Commit when someone else saved a
 // new version since Head: Sync then compares again.
 var ErrNotFastForward = errors.New("notesync: the remote moved on")

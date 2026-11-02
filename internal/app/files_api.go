@@ -62,6 +62,27 @@ func Within(root, p string) bool {
 	return real == realRoot || strings.HasPrefix(real, realRoot+string(filepath.Separator))
 }
 
+// writeNew creates the file p with data, failing when anything is there
+// already, a link included: a link to nothing (planted in a synced or
+// downloaded folder) would otherwise make the file wherever it points.
+func writeNew(p string, data []byte) error {
+	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		os.Remove(p)
+		return err
+	}
+	return f.Close()
+}
+
+// isLink tells whether a walked entry is a symbolic link: the walks that
+// rewrite notes leave links alone, so a note that is a link to a file
+// elsewhere (~/.bashrc) is never written through.
+func isLink(d fs.DirEntry) bool { return d.Type()&fs.ModeSymlink != 0 }
+
 func cleanName(name string) (string, error) {
 	name = strings.TrimSpace(strings.Map(func(r rune) rune {
 		if strings.ContainsRune(`/\:*?"<>|#^[]`, r) {
@@ -188,7 +209,7 @@ func CopyNote(site *config.Site, rel string) (string, error) {
 		if _, err := os.Stat(p); err == nil {
 			continue
 		}
-		return newRel, os.WriteFile(p, b, 0o644)
+		return newRel, writeNew(p, b)
 	}
 }
 
@@ -303,6 +324,9 @@ func fixLinks(site *config.Site, from, to string, dir bool) error {
 			if p != root && strings.HasPrefix(d.Name(), ".") {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+		if isLink(d) {
 			return nil
 		}
 		if strings.EqualFold(filepath.Ext(p), ".canvas") {

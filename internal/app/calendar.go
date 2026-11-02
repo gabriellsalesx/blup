@@ -249,7 +249,9 @@ func (ev Event) Occurrences(from, to time.Time) []time.Time {
 	return out
 }
 
-func day(t time.Time) time.Time { return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location()) }
+func day(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+}
 
 // monthDay is start's day of the month, months later (the month's last
 // day when it is shorter).

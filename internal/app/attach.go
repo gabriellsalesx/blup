@@ -38,14 +38,17 @@ func PasteImage(site *config.Site, note, name string, data []byte) (string, erro
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
+	if !Within(site.ContentDir(), dir) {
+		return "", errors.New("the attachments folder is outside the notes folder")
+	}
 	file := base + ext
 	for i := 2; ; i++ {
-		if _, err := os.Stat(filepath.Join(dir, file)); errors.Is(err, os.ErrNotExist) {
+		if _, err := os.Lstat(filepath.Join(dir, file)); errors.Is(err, os.ErrNotExist) {
 			break
 		}
 		file = fmt.Sprintf("%s %d%s", base, i, ext)
 	}
-	if err := os.WriteFile(filepath.Join(dir, file), data, 0o644); err != nil {
+	if err := writeNew(filepath.Join(dir, file), data); err != nil {
 		return "", err
 	}
 	rel, err := filepath.Rel(filepath.FromSlash(path.Dir("/"+note)), filepath.FromSlash("/"+folder+"/"+file))

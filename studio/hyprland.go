@@ -55,6 +55,25 @@ func hyprFile() (string, bool) {
 	return filepath.Join(home, ".config", "hypr", "bindings.conf"), false
 }
 
+// validAccel tells whether accel is a shortcut as the window records it
+// ("Ctrl+Shift+K", "Alt+Space", "Super+`", "F5"): parts joined by "+", each
+// a key name of letters and digits or one printable sign. Anything else
+// (a quote, a backslash, a comma, a line break) would go into Hyprland's
+// config as code: a binding that runs any command at the next reload.
+func validAccel(accel string) bool {
+	if accel == "" || len(accel) > 64 {
+		return false
+	}
+	for _, part := range strings.Split(accel, "+") {
+		if !accelPart.MatchString(part) {
+			return false
+		}
+	}
+	return true
+}
+
+var accelPart = regexp.MustCompile("^(?:[\\p{L}\\p{N}]+|[`~!@$%&*()\\-_=\\[\\]{};:<>./?|^])$")
+
 // hyprLine is the binding for accel ("Alt+Space"), in the config's language.
 func hyprLine(accel string, lua bool) string {
 	exe, _ := os.Executable()
@@ -81,6 +100,9 @@ var blupLine = regexp.MustCompile(`(?m)^.*(-- Blup Studio|# Blup Studio)\s*$\n?`
 func (s *Studio) HyprlandSetup(accel string) Hyprland {
 	if !onHyprland() {
 		return Hyprland{}
+	}
+	if accel != "" && !validAccel(accel) {
+		accel = ""
 	}
 	file, lua := hyprFile()
 	h := Hyprland{On: true, File: file, Auto: onOmarchy()}
@@ -121,6 +143,9 @@ func (s *Studio) bindHyprland(accel string) error {
 // writeBinding puts the Studio's binding for accel in Omarchy's bindings
 // file (replacing an older one; "" removes it) and reloads Hyprland.
 func writeBinding(accel string) error {
+	if accel != "" && !validAccel(accel) {
+		return errors.New("invalid shortcut")
+	}
 	file, lua := hyprFile()
 	b, err := os.ReadFile(file)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -143,7 +168,7 @@ func writeBinding(accel string) error {
 // shortcut on a first run) or when the Studio moved (an update, another
 // install place): the line must run this program.
 func fixBinding(accel string) {
-	if accel == "" || !onHyprland() || !onOmarchy() {
+	if accel == "" || !validAccel(accel) || !onHyprland() || !onOmarchy() {
 		return
 	}
 	// Only the app itself (not a test build, like blup-studio-server).

@@ -525,3 +525,30 @@ func TestJWTClaims(t *testing.T) {
 		t.Error("max_file_count_allowed")
 	}
 }
+
+// TestScanSkipsSymlinks: a symlink in the built site must never publish
+// the file it points to (it may be outside the site, like ~/.ssh).
+func TestScanSkipsSymlinks(t *testing.T) {
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "id_rsa")
+	if err := os.WriteFile(secret, []byte("PRIVATE KEY"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<p>oi</p>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(secret, filepath.Join(dir, "key.txt")); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, "fora")); err != nil {
+		t.Fatal(err)
+	}
+	files, err := scan(dir, 100, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 1 || files[0].name != "index.html" {
+		t.Fatalf("want only index.html, got %+v", files)
+	}
+}

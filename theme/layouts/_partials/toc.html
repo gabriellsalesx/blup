@@ -1,0 +1,20 @@
+{{- /* The table of contents, without the headings hidden in Obsidian
+comments (%% ... %%): Hugo lists every heading of the note, comments
+included, so entries whose heading is not in the published text are taken
+out. Returns the HTML, or "" when no entry is left. */ -}}
+{{- $toc := "" -}}
+{{- if gt (len .Fragments.Headings) 0 -}}
+  {{- $toc = string .TableOfContents -}}
+  {{- $content := string (partial "content.html" .) -}}
+  {{- range findRESubmatch `<a href="#([^"]+)">` $toc -1 -}}
+    {{- $id := index . 1 -}}
+    {{- if not (strings.Contains $content (printf `id="%s"` $id)) -}}
+      {{- $quoted := replaceRE `([\\.+*?()|\[\]{}^$])` `\$1` $id -}}
+      {{- $toc = replaceRE (printf `(?s)<li><a href="#%s">.*?</a>` $quoted) "<li>" $toc -}}
+    {{- end -}}
+  {{- end -}}
+  {{- /* Items left empty (a hidden heading without sub-headings). */ -}}
+  {{- range seq 3 }}{{ $toc = replaceRE `<li>\s*</li>|<ul>\s*</ul>` "" $toc }}{{ end -}}
+  {{- if not (strings.Contains $toc "<a ") }}{{ $toc = "" }}{{ end -}}
+{{- end -}}
+{{- return $toc -}}

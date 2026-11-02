@@ -2,8 +2,10 @@
 note. Returns an image resource from the vault, or false. */ -}}
 {{- $r := false -}}
 {{- $src := .Params.image | default .Params.cover -}}
-{{- if not $src -}}
-  {{- with findRESubmatch `!\[[^\]]*\]\(<?([^)>\s]+)` .RawContent 1 -}}
+{{- /* Never from the text of a protected note (its images are part of what
+the password hides) nor from inside an Obsidian comment (%% ... %%). */ -}}
+{{- if and (not $src) (not (partial "locked.html" .)) -}}
+  {{- with findRESubmatch `!\[[^\]]*\]\(<?([^)>\s]+)` (replaceRE `(?s)%%.*?(?:%%|$)` "" .RawContent) 1 -}}
     {{- $src = index (index . 0) 1 -}}
   {{- end -}}
 {{- end -}}

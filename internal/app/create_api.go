@@ -37,7 +37,18 @@ func DefaultNotesDir(title string) string {
 	if _, err := os.Stat(docs); err != nil {
 		docs = home
 	}
-	return filepath.Join(docs, "Blup", firstOf(strings.TrimSpace(title), "site"))
+	return filepath.Join(docs, "Blup", folderName(title))
+}
+
+// folderName makes a title (which may come from another computer, in a
+// synced vault's name or site.toml) one folder name: no separator and no
+// "." or "..", so the folder never lands outside Documents/Blup.
+func folderName(title string) string {
+	name := strings.TrimSpace(strings.NewReplacer("/", "-", "\\", "-").Replace(title))
+	if strings.Trim(name, ".") == "" {
+		return "site"
+	}
+	return name
 }
 
 // DefaultSiteDir is where a new site's files go (~/Sites/<name>).

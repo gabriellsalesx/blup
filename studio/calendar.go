@@ -122,8 +122,9 @@ func (s *Studio) remind(now time.Time) {
 				at, _ := ev.RemindAt(d)
 				key := dir + "|" + ev.Path + "|" + d.Format("2006-01-02") + "|" + ev.Remind
 				if at.After(now.Add(-12*time.Hour)) && at.Before(now.AddDate(0, 0, 31)) {
-					sum := sha256.Sum256([]byte(key))
-					mail = append(mail, blupcloud.Reminder{ID: hex.EncodeToString(sum[:16]), At: at.UnixMilli()})
+					// Only the time and an opaque id go up (an HMAC under a
+					// key of this computer): never the title, path or text.
+					mail = append(mail, blupcloud.Reminder{ID: app.ReminderID(key), At: at.UnixMilli()})
 				}
 				if at.After(now) || now.Sub(at) > 12*time.Hour {
 					continue

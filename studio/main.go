@@ -35,7 +35,7 @@ func main() {
 		Services:    []application.Service{application.NewService(studio)},
 		// The local translation's engine and models are served from where
 		// they were downloaded (/local-translate/...).
-		Assets:     application.AssetOptions{Handler: application.AssetFileServerFS(assets), Middleware: serveLocalTranslate},
+		Assets:     application.AssetOptions{Handler: application.AssetFileServerFS(assets), Middleware: assetMiddleware},
 		Mac:        application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
 		OnShutdown: studio.shutdown,
 		// Opening it again shows the window already running.

@@ -26,6 +26,7 @@ func init() {
 		knownError{blupcloud.ErrExpired, "blup.err_expired"},
 		knownError{cloudcrypt.ErrWrongPassword, "blup.err_password"},
 		knownError{errNotesLocked, "blup.err_locked"},
+		knownError{notesync.ErrRolledBack, "blup.err_rolled_back"},
 	)
 }
 
@@ -236,6 +237,9 @@ func blupRemote(ctx context.Context, site *config.Site) (*blupcloud.Remote, erro
 	me, err := c.Me(ctx)
 	if err != nil {
 		return nil, errors.New(describe(err))
+	}
+	if site.Sync.Vault != "" && !blupcloud.ValidVaultID(site.Sync.Vault) {
+		return nil, blupcloud.ErrBadVault // it names a folder here
 	}
 	if site.Sync.Vault == "" {
 		name, err := keys.SealName(site.Title)

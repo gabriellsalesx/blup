@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -87,6 +88,11 @@ func copyAttachment(site *config.Site, src, name string) (string, error) {
 	dest := filepath.Join(site.ContentDir(), attachmentsFolder(site), file)
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return "", err
+	}
+	// Not through a link (the attachments folder, or a file of the same
+	// name) to somewhere outside the notes.
+	if !Within(site.ContentDir(), dest) {
+		return "", errors.New("outside the notes folder")
 	}
 	if err := os.WriteFile(dest, b, 0o644); err != nil {
 		return "", err

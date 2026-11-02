@@ -77,9 +77,22 @@ func DefaultParams() (Params, error) {
 	return Params{Time: 3, MemoryKiB: 64 * 1024, Threads: 4, Salt: salt}, nil
 }
 
+// The most a wrapping may ask of this computer. The parameters come from
+// the cloud with the wrapped key: without a ceiling, a cloud (or someone
+// in the middle) could ask for terabytes of memory and crash the Studio
+// every time the notes password is typed. Room is left to raise them.
+const (
+	maxTime      = 64
+	maxMemoryKiB = 4 << 20 // 4 GiB
+	maxSalt      = 1024
+)
+
 func (p Params) derive(password string) ([]byte, error) {
 	if p.Time == 0 || p.MemoryKiB == 0 || p.Threads == 0 || len(p.Salt) < 16 {
 		return nil, errors.New("cloudcrypt: invalid key parameters")
+	}
+	if p.Time > maxTime || p.MemoryKiB > maxMemoryKiB || len(p.Salt) > maxSalt {
+		return nil, errors.New("cloudcrypt: key parameters too costly for this computer")
 	}
 	return argon2.IDKey([]byte(password), p.Salt, p.Time, p.MemoryKiB, p.Threads, KeySize), nil
 }

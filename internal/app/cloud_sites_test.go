@@ -66,4 +66,3 @@ func TestFreeDir(t *testing.T) {
 		t.Fatalf("got %s", got)
 	}
 }
-

@@ -159,10 +159,18 @@ func readSchema(p string) (DBSchema, error) {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return s, fmt.Errorf("the database file can't be read: %w", err)
 	}
-	if s.Records == "" {
+	// The records' folder is a name next to the .table: a path in a file
+	// that came from elsewhere ("../../.config/autostart") would read and
+	// write notes outside the vault.
+	if !recordsName(s.Records) {
 		s.Records = strings.TrimSuffix(filepath.Base(p), filepath.Ext(p))
 	}
 	return s, nil
+}
+
+// recordsName tells whether name is a folder's name, not a path.
+func recordsName(name string) bool {
+	return name != "" && name != "." && name != ".." && !strings.ContainsAny(name, `/\`) && !strings.HasPrefix(name, ".") && filepath.VolumeName(name) == ""
 }
 
 // ReadDatabase reads a database and its records (the notes of its
@@ -178,6 +186,9 @@ func ReadDatabase(site *config.Site, rel string) (Database, error) {
 	}
 	db := Database{Schema: s, Records: []DBRecord{}}
 	dir := path.Join(path.Dir(rel), s.Records)
+	if _, err := notesPath(site, dir); err != nil {
+		return db, err
+	}
 	entries, err := os.ReadDir(filepath.Join(filepath.Dir(p), s.Records))
 	if errors.Is(err, os.ErrNotExist) {
 		return db, nil
@@ -260,20 +271,23 @@ func AddRecord(site *config.Site, rel, name string, props map[string]any) (strin
 	if name == "" {
 		return "", errors.New(i18nInvalidName())
 	}
-	dir := filepath.Join(filepath.Dir(p), s.Records)
+	dir, err := notesPath(site, path.Join(path.Dir(rel), s.Records))
+	if err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
 	file := name + ".md"
 	for i := 2; ; i++ {
-		if _, err := os.Stat(filepath.Join(dir, file)); errors.Is(err, os.ErrNotExist) {
+		if _, err := os.Lstat(filepath.Join(dir, file)); errors.Is(err, os.ErrNotExist) {
 			break
 		}
 		file = fmt.Sprintf("%s %d.md", name, i)
 	}
 	today := time.Now().Format("2006-01-02")
 	full := filepath.Join(dir, file)
-	if err := os.WriteFile(full, []byte("---\ncreated: "+today+"\nupdated: "+today+"\n---\n\n"), 0o644); err != nil {
+	if err := writeNew(full, []byte("---\ncreated: "+today+"\nupdated: "+today+"\n---\n\n")); err != nil {
 		return "", err
 	}
 	list := []obsidian.Prop{}

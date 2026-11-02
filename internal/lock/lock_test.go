@@ -140,3 +140,14 @@ func parse(t *testing.T, html string) Sealed {
 	}
 	return s
 }
+
+// A post whose own text carries an end marker would close its region
+// early and leave the rest in clear: the build fails instead.
+func TestProcessStrayEndMarker(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "x.html"), []byte(`<blup-begin data-id="abc"></blup-begin>A<blup-end></blup-end>SEGREDO<blup-end></blup-end>`), 0o644)
+	os.WriteFile(filepath.Join(dir, Manifest), []byte(`{"abc":"x"}`), 0o644)
+	if _, err := Process(dir, ""); !errors.Is(err, ErrLeftover) {
+		t.Fatalf("want ErrLeftover, got %v", err)
+	}
+}

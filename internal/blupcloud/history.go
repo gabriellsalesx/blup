@@ -37,24 +37,32 @@ type DeletedFile struct {
 
 // manifestAt reads (and caches) the manifest of version n.
 func (r *Remote) manifestAt(ctx context.Context, n int64) (manifest, error) {
+	if !ValidVaultID(r.Vault) || n <= 0 {
+		return manifest{}, ErrBadVault
+	}
 	var sealed []byte
 	cached := ""
 	if r.Cache != "" {
 		cached = filepath.Join(r.Cache, strconv.FormatInt(n, 10))
 		sealed, _ = os.ReadFile(cached)
 	}
-	if sealed == nil {
+	fresh := sealed == nil
+	if fresh {
 		var err error
 		if sealed, err = r.Client.Manifest(ctx, r.Vault, n); err != nil {
 			return manifest{}, err
 		}
-		if cached != "" && os.MkdirAll(r.Cache, 0o700) == nil {
-			_ = os.WriteFile(cached, sealed, 0o600)
-		}
 	}
 	plain, err := r.Keys.OpenManifest(r.Vault, n, sealed)
 	if err != nil {
+		if !fresh {
+			_ = os.Remove(cached) // a damaged copy: fetched again next time
+		}
 		return manifest{}, err
+	}
+	// Kept only once it opened: the cache never holds what the cloud made up.
+	if fresh && cached != "" && os.MkdirAll(r.Cache, 0o700) == nil {
+		_ = os.WriteFile(cached, sealed, 0o600)
 	}
 	var m manifest
 	if err := json.Unmarshal(plain, &m); err != nil {

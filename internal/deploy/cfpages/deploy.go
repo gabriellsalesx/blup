@@ -112,12 +112,15 @@ func scan(dir string, maxFiles int, progress func(Progress)) ([]fileEntry, error
 		if d.IsDir() {
 			return nil
 		}
-		info, err := os.Stat(p) // follow symlinks, like wrangler's stat()
+		// Only regular files: a symlink (unlike wrangler, which follows
+		// them) could point outside the site and publish whatever it
+		// reaches, as the GitHub and Blup Cloud uploads also skip them.
+		if !d.Type().IsRegular() {
+			return nil
+		}
+		info, err := d.Info()
 		if err != nil {
 			return err
-		}
-		if info.IsDir() || !info.Mode().IsRegular() {
-			return nil
 		}
 		if info.Size() > MaxFileSize {
 			return fmt.Errorf("%s is %d bytes, Pages accepts up to 25 MiB per file: %w", rel, info.Size(), ErrFileTooLarge)
@@ -460,8 +463,10 @@ func (c *Client) uploadBucket(ctx context.Context, sess *jwtSession, b *bucket, 
 	payload = nil
 	attempts, gateway, refreshes := 0, 0, 0
 	for {
+		// Barrier: wait while another bucket backs off.
 		gwMu.Lock()
-		gwMu.Unlock() //nolint:staticcheck // barrier: wait while another bucket backs off
+		//lint:ignore SA2001 intentional barrier
+		gwMu.Unlock()
 		tok := sess.get()
 		_, err := c.do(ctx, http.MethodPost, "/pages/assets/upload", tok, bytes.NewReader(body), "application/json", nil)
 		if err == nil {
