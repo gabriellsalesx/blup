@@ -2,6 +2,7 @@
   import { CalendarEvents, SaveEvent, DeleteItem, RestoreSection } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import ChevronLeft from "@lucide/svelte/icons/chevron-left";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
+  import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import Plus from "@lucide/svelte/icons/plus";
   import NotebookPen from "@lucide/svelte/icons/notebook-pen";
   import { t } from "./i18n";
@@ -61,6 +62,13 @@
   const title = $derived(new Intl.DateTimeFormat(t.locale, { month: "long", year: "numeric" }).format(new Date(year, month, 1)));
   const longDay = (s: string) => new Intl.DateTimeFormat(t.locale, { weekday: "long", day: "numeric", month: "long" }).format(parse(s));
   const shortDay = (s: string) => new Intl.DateTimeFormat(t.locale, { weekday: "short", day: "numeric", month: "short" }).format(parse(s));
+
+  // The month picker (a click on the month's name): any month of any year
+  // at once, the arrows stay for the next and the last.
+  let picker = $state(false);
+  let pickYear = $state(0);
+  const nowMonth = new Date().getMonth(), nowYear = new Date().getFullYear();
+  const monthNames = Array.from({ length: 12 }, (_, i) => new Intl.DateTimeFormat(t.locale, { month: "short" }).format(new Date(2026, i, 1)).replace(".", ""));
 
   function go(months: number) {
     const d = new Date(year, month + months, 1);
@@ -131,10 +139,33 @@
   </button>
 {/snippet}
 
+<svelte:window onkeydown={(e) => picker && e.key === "Escape" && (picker = false)} />
+
 <div class="cal">
   <section class="month">
     <header class="bar">
-      <h1>{title}</h1>
+      <div class="pick">
+        <button type="button" class="title" aria-expanded={picker} aria-label={c.pickMonth} title={c.pickMonth} onclick={() => { pickYear = year; picker = !picker; }}>
+          <h1>{title}</h1><ChevronDown size={18} />
+        </button>
+        {#if picker}
+          <!-- A click outside (or Esc) closes it. -->
+          <div class="scrim" role="presentation" onclick={() => (picker = false)}></div>
+          <div class="months" role="dialog" aria-label={c.pickMonth}>
+            <div class="year">
+              <button type="button" class="icon-btn" aria-label={c.prevYear} title={c.prevYear} onclick={() => pickYear--}><ChevronLeft size={18} /></button>
+              <b>{pickYear}</b>
+              <button type="button" class="icon-btn" aria-label={c.nextYear} title={c.nextYear} onclick={() => pickYear++}><ChevronRight size={18} /></button>
+            </div>
+            <div class="mgrid">
+              {#each monthNames as name, i (i)}
+                <button type="button" class={["m", { on: i === month && pickYear === year, now: i === nowMonth && pickYear === nowYear }]} onclick={() => { year = pickYear; month = i; picker = false; }}>{name}</button>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </div>
+      <span class="grow"></span>
       <div class="nav">
         <button type="button" class="icon-btn" aria-label={c.prev} title={c.prev} onclick={() => go(-1)}><ChevronLeft size={18} /></button>
         <button type="button" class="btn ghost" onclick={goToday}>{c.today}</button>
@@ -209,7 +240,21 @@
   .cal { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: 1.25rem; height: 100%; min-height: 0; padding: 1.25rem; }
   .month { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: .9rem; min-height: 0; }
   .bar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
-  h1 { flex: 1; min-width: 10rem; font-size: 1.35rem; font-weight: 700; }
+  h1 { font-size: 1.35rem; font-weight: 700; }
+  .grow { flex: 1; }
+  .pick { position: relative; }
+  .title { display: flex; align-items: center; gap: .35rem; padding: .2rem .5rem; margin-inline-start: -.5rem; border-radius: .5rem; color: var(--text); }
+  .title :global(svg) { color: var(--muted); }
+  .title:hover { background: var(--soft); }
+  .scrim { position: fixed; inset: 0; z-index: 20; }
+  .months { position: absolute; z-index: 21; inset-block-start: calc(100% + .4rem); inset-inline-start: -.5rem; display: grid; gap: .6rem; width: 17rem; padding: .75rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); box-shadow: 0 12px 32px rgb(0 0 0 / .18); }
+  .year { display: flex; align-items: center; justify-content: space-between; }
+  .year b { font-size: 1rem; }
+  .mgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem; }
+  .m { padding: .5rem 0; border-radius: .5rem; font-size: .85rem; font-weight: 600; text-transform: capitalize; color: var(--text); }
+  .m:hover { background: var(--soft); }
+  .m.now { color: var(--blue); }
+  .m.on { background: var(--blue); color: #fff; }
   h1::first-letter, .up-when small::first-letter { text-transform: uppercase; }
   .nav { display: flex; align-items: center; gap: .25rem; }
   .icon-btn { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .45rem; color: var(--muted); }

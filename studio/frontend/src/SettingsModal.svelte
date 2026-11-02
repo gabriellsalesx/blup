@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, BlupAccount as Account, AIQuota } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import { untrack } from "svelte";
@@ -39,6 +39,14 @@
   // siteLang is the open site's language: the AI tab shows only its voices.
   let { onClose, onPublish, start = "general", siteLang = "" }: { onClose: () => void; onPublish: () => void; start?: string; siteLang?: string } = $props();
   const s = t.prefs;
+  // The calendar's reminders: on unless turned off; in Max and Ultra also
+  // by e-mail, with the month's use.
+  let mailUse = $state<{ limit: number; used: number } | null>(null);
+  ReminderEmails().then((u) => (mailUse = u)).catch(() => {});
+  async function setNotify(on: boolean) {
+    look.notifications = on;
+    try { await SetNotifications(on); } catch (e) { look.notifications = !on; }
+  }
 
   // The sections, in groups: the Studio itself, what publishes the sites,
   // AI and voice. Blup Cloud (the account) sits above them, About below.
@@ -376,6 +384,8 @@
     {#if tab === "general"}
       <div class="item"><Switch label={k.autostart} help={k.autostartHelp} checked={autostart} onchange={setAutostart} /></div>
       <div class="item"><Switch label={k.tray} help={k.trayHelp} checked={!!look.tray} onchange={setTray} /></div>
+      <div class="item"><Switch label={s.notify} help={s.notifyHelp} checked={look.notifications} onchange={setNotify} /></div>
+      {#if mailUse && mailUse.limit > 0 && look.notifications}<p class="muted note">{s.notifyMail.replace("{used}", String(mailUse.used)).replace("{limit}", String(mailUse.limit))}</p>{/if}
       {#if deskError}<p class="bad">{deskError}</p>{/if}
       <div class="item">
         <div class="text"><b>{s.backup}</b><small>{look.backupDir || s.backupOff}</small><small>{s.backupHelp}</small></div>
@@ -714,6 +724,7 @@
   h3 { font-size: .95rem; font-weight: 700; margin-block: 1.25rem .25rem; }
   .lead { font-size: .85rem; margin-block-end: .5rem; }
   .item { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding-block: .85rem; border-block-end: 1px solid var(--line); }
+  .note { padding-block: .6rem 0; font-size: .8rem; }
   .item > :global(.switch) { flex: 1; }
   .text { display: grid; gap: .15rem; font-size: .9rem; }
   .text small { color: var(--muted); font-size: .8rem; }

@@ -863,6 +863,14 @@ export function RecentSites(): $CancellablePromise<$models.RecentSite[] | null> 
 }
 
 /**
+ * ReminderEmails is the month's use of reminder e-mails (zero signed out
+ * or on a plan without them).
+ */
+export function ReminderEmails(): $CancellablePromise<blupcloud$0.ReminderUse> {
+    return $Call.ByID(4190780829);
+}
+
+/**
  * RemoveDomain goes back to the free address.
  */
 export function RemoveDomain(): $CancellablePromise<void> {
@@ -1111,6 +1119,14 @@ export function SetGeneralPassword(password: string): $CancellablePromise<void> 
  */
 export function SetLanguage(lang: string): $CancellablePromise<void> {
     return $Call.ByID(1491808472, lang);
+}
+
+/**
+ * SetNotifications turns the reminders on or off; off, the ones waiting
+ * in Blup Cloud are cancelled right away.
+ */
+export function SetNotifications(on: boolean): $CancellablePromise<void> {
+    return $Call.ByID(4122299358, on);
 }
 
 /**

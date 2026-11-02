@@ -280,6 +280,11 @@ export interface Prefs {
      * the side menu shows each screen's name next to its icon
      */
     "railNames": boolean;
+
+    /**
+     * the calendar's reminders (on the computer and, in Max and Ultra, by e-mail); on by default
+     */
+    "notifications": boolean;
 }
 
 /**

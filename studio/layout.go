@@ -93,29 +93,30 @@ func (s *Studio) SaveLayout(items []HomeItem) error {
 
 // Prefs are the Studio's own choices (studio-prefs.json).
 type Prefs struct {
-	Theme        string            `json:"theme"`       // "system", "light" or "dark"
-	EditorFont   int               `json:"editorFont"`  // the editor's text size, in px
-	EditorWidth  string            `json:"editorWidth"` // "narrow" (a readable line) or "wide"
-	Spellcheck   bool              `json:"spellcheck"`
-	PreviewOff   bool              `json:"previewOff"`   // open sites without the preview
-	TermFont     int               `json:"termFont"`     // the terminal's text size, in px
-	SpellLang    string            `json:"spellLang"`    // the spell check's dictionary: "pt", "en" or "es" ("" = the Studio's language)
-	Words        []string          `json:"words"`        // words added to the dictionary
-	SideWidth    int               `json:"sideWidth"`    // the files panel, in px (0 = the default)
-	PreviewWidth int               `json:"previewWidth"` // the preview, in px (0 = half of the room)
-	Tray         bool              `json:"tray"`         // minimized, the Studio goes to the tray
-	ToggleKey    string            `json:"toggleKey"`    // global shortcut that shows and hides the Studio
-	Keys         map[string]string `json:"keys"`         // the Studio's shortcuts changed by the user (action -> keys)
-	ShortcutTip  bool              `json:"shortcutTip"`  // the tip about the global shortcut was answered
-	LastSite     string            `json:"lastSite"`     // the site open when the Studio closed
-	LastNotes    map[string]string `json:"lastNotes"`    // site folder -> the note open there last
-	Recent       []string          `json:"recent"`       // sites opened lately, newest first (even ones taken out of the list)
-	Voices       map[string]string `json:"voices"`       // the narration's voice for each site language ("pt", "en", "es"); missing = the default
-	Welcomed     bool              `json:"welcomed"`     // the welcome screen (start, or bring the sites of an account) was seen
-	CloudTip     bool              `json:"cloudTip"`     // the invitation to Blup Cloud, after the first site, was answered
-	BackupDir    string            `json:"backupDir"`    // a daily copy of the open site's notes goes here ("" = off)
-	TranslateAI  string            `json:"translateAI"`  // who translates: "local" (on the computer) or "cloud" (OpenRouter or Blup Cloud); "" = local when installed
-	RailNames    bool              `json:"railNames"`    // the side menu shows each screen's name next to its icon
+	Theme         string            `json:"theme"`       // "system", "light" or "dark"
+	EditorFont    int               `json:"editorFont"`  // the editor's text size, in px
+	EditorWidth   string            `json:"editorWidth"` // "narrow" (a readable line) or "wide"
+	Spellcheck    bool              `json:"spellcheck"`
+	PreviewOff    bool              `json:"previewOff"`    // open sites without the preview
+	TermFont      int               `json:"termFont"`      // the terminal's text size, in px
+	SpellLang     string            `json:"spellLang"`     // the spell check's dictionary: "pt", "en" or "es" ("" = the Studio's language)
+	Words         []string          `json:"words"`         // words added to the dictionary
+	SideWidth     int               `json:"sideWidth"`     // the files panel, in px (0 = the default)
+	PreviewWidth  int               `json:"previewWidth"`  // the preview, in px (0 = half of the room)
+	Tray          bool              `json:"tray"`          // minimized, the Studio goes to the tray
+	ToggleKey     string            `json:"toggleKey"`     // global shortcut that shows and hides the Studio
+	Keys          map[string]string `json:"keys"`          // the Studio's shortcuts changed by the user (action -> keys)
+	ShortcutTip   bool              `json:"shortcutTip"`   // the tip about the global shortcut was answered
+	LastSite      string            `json:"lastSite"`      // the site open when the Studio closed
+	LastNotes     map[string]string `json:"lastNotes"`     // site folder -> the note open there last
+	Recent        []string          `json:"recent"`        // sites opened lately, newest first (even ones taken out of the list)
+	Voices        map[string]string `json:"voices"`        // the narration's voice for each site language ("pt", "en", "es"); missing = the default
+	Welcomed      bool              `json:"welcomed"`      // the welcome screen (start, or bring the sites of an account) was seen
+	CloudTip      bool              `json:"cloudTip"`      // the invitation to Blup Cloud, after the first site, was answered
+	BackupDir     string            `json:"backupDir"`     // a daily copy of the open site's notes goes here ("" = off)
+	TranslateAI   string            `json:"translateAI"`   // who translates: "local" (on the computer) or "cloud" (OpenRouter or Blup Cloud); "" = local when installed
+	RailNames     bool              `json:"railNames"`     // the side menu shows each screen's name next to its icon
+	Notifications bool              `json:"notifications"` // the calendar's reminders (on the computer and, in Max and Ultra, by e-mail); on by default
 }
 
 func prefsFile() (string, error) {
@@ -128,7 +129,7 @@ func prefsFile() (string, error) {
 
 // Prefs reads the Studio's choices.
 func (s *Studio) Prefs() Prefs {
-	p := Prefs{Theme: "system", EditorFont: 16, EditorWidth: "narrow", Spellcheck: true, TermFont: 13, ToggleKey: "Alt+Space"}
+	p := Prefs{Theme: "system", EditorFont: 16, EditorWidth: "narrow", Spellcheck: true, TermFont: 13, ToggleKey: "Alt+Space", Notifications: true}
 	if f, err := prefsFile(); err == nil {
 		if b, err := os.ReadFile(f); err == nil {
 			_ = json.Unmarshal(b, &p)

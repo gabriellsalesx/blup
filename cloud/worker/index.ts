@@ -7,6 +7,7 @@ import { PLANS, SUGGESTED, planNamed } from "./plans";
 import { staffApi } from "./staff";
 import { syncApi } from "./sync";
 import { sitesApi } from "./sites";
+import { remindersApi, sendDue } from "./reminders";
 import { cleanUp } from "./cleanup";
 import { aiApi, aiUsageOf } from "./ai";
 import { devicesOf, isStudio, usageOf } from "./usage";
@@ -127,6 +128,7 @@ const routes = app
 app.route("/staff", staffApi);
 app.route("/sync", syncApi);
 app.route("/sites", sitesApi);
+app.route("/reminders", remindersApi);
 app.route("/ai", aiApi);
 
 app.notFound((c) => c.json({ code: "NOT_FOUND" }, 404));
@@ -161,6 +163,9 @@ function secure(res: Response): Response {
 // lives only on its own host (behind Cloudflare Access) and the account
 // panel only on the other: each answers "not found" for the other's pages
 // and API. Without it (this computer), both live on localhost.
+// The daily cron (wrangler.jsonc); the other one is the reminders'.
+const DAILY = "0 4 * * *";
+
 export default {
 	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
 		const url = new URL(req.url);
@@ -174,8 +179,10 @@ export default {
 		if (url.pathname.startsWith("/api/")) return secure(await app.fetch(req, env, ctx));
 		return secure(await env.ASSETS.fetch(req));
 	},
-	// The daily clean-up of old versions and unused blocks.
-	async scheduled(_controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
-		ctx.waitUntil(cleanUp(env));
+	// Every 5 minutes, the calendar's reminders by e-mail; once a day, the
+	// clean-up of old versions and unused blocks.
+	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
+		if (controller.cron === DAILY) ctx.waitUntil(cleanUp(env));
+		else ctx.waitUntil(sendDue(env));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>;

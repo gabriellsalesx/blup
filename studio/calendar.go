@@ -1,15 +1,22 @@
 package main
 
 import (
+	"cmp"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/gabriellsalesx/blup/internal/app"
+	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
@@ -48,6 +55,11 @@ var reminders struct {
 	ok   bool
 	mu   sync.Mutex
 	sent map[string]int64 // event path|day|remind -> when it was sent (unix)
+	// pushed: the last list of times sent to Blup Cloud (a hash), and when.
+	pushMu   sync.Mutex
+	pushed   string
+	pushedAt time.Time
+	failedAt time.Time
 }
 
 // startReminders checks the events every half minute. A reminder missed
@@ -86,11 +98,13 @@ func askNotifications() {
 }
 
 func (s *Studio) remind(now time.Time) {
+	on := s.Prefs().Notifications
 	g, err := config.LoadGlobal()
 	if err != nil {
 		return
 	}
 	changed := false
+	var mail []blupcloud.Reminder
 	for _, dir := range g.ExistingSites() {
 		site, err := config.LoadSite(dir)
 		if err != nil || site.Kind != "notes" {
@@ -98,16 +112,21 @@ func (s *Studio) remind(now time.Time) {
 		}
 		evs, _ := app.Events(site)
 		for _, ev := range evs {
-			if ev.Remind == "" {
+			if ev.Remind == "" || !on {
 				continue
 			}
-			// The reminder comes at most a week before.
-			for _, d := range ev.Occurrences(now.AddDate(0, 0, -1), now.AddDate(0, 0, 8)) {
+			// The reminder comes at most a week before; the e-mail list
+			// goes a month ahead.
+			for _, d := range ev.Occurrences(now.AddDate(0, 0, -1), now.AddDate(0, 0, 31)) {
 				at, _ := ev.RemindAt(d)
+				key := dir + "|" + ev.Path + "|" + d.Format("2006-01-02") + "|" + ev.Remind
+				if at.After(now.Add(-12*time.Hour)) && at.Before(now.AddDate(0, 0, 31)) {
+					sum := sha256.Sum256([]byte(key))
+					mail = append(mail, blupcloud.Reminder{ID: hex.EncodeToString(sum[:16]), At: at.UnixMilli()})
+				}
 				if at.After(now) || now.Sub(at) > 12*time.Hour {
 					continue
 				}
-				key := dir + "|" + ev.Path + "|" + d.Format("2006-01-02") + "|" + ev.Remind
 				reminders.mu.Lock()
 				done := reminders.sent[key] != 0
 				reminders.sent[key] = now.Unix()
@@ -116,18 +135,103 @@ func (s *Studio) remind(now time.Time) {
 					continue
 				}
 				changed = true
-				reminders.svc.SendNotification(notifications.NotificationOptions{
+				opts := notifications.NotificationOptions{
 					ID:    fmt.Sprintf("blup-%x", now.UnixNano()),
 					Title: ev.Title,
 					Body:  s.when(ev, d, now),
 					Data:  map[string]any{"dir": dir, "path": ev.Path, "date": d.Format("2006-01-02")},
-				})
+				}
+				// Linux shows no app icon by itself: Blup's goes as the image.
+				if icon := notifyIcon(); icon != "" {
+					opts.Attachments = []notifications.NotificationAttachment{{ID: "icon", Path: icon}}
+				}
+				reminders.svc.SendNotification(opts)
 			}
 		}
 	}
 	if changed {
 		saveSent(now)
 	}
+	pushMail(mail, now)
+}
+
+// pushMail sends the coming reminders' times to Blup Cloud (e-mailed in
+// Max and Ultra) when they changed, and every 6 hours anyway. Signed out
+// or offline, it tries again later. Notifications off sends none, which
+// cancels the ones waiting.
+func pushMail(list []blupcloud.Reminder, now time.Time) {
+	reminders.pushMu.Lock()
+	defer reminders.pushMu.Unlock()
+	slices.SortFunc(list, func(a, b blupcloud.Reminder) int { return cmp.Compare(a.At, b.At) })
+	if len(list) > 300 {
+		list = list[:300]
+	}
+	h := sha256.New()
+	for _, r := range list {
+		fmt.Fprintf(h, "%s %d\n", r.ID, r.At)
+	}
+	sum := hex.EncodeToString(h.Sum(nil))
+	if sum == reminders.pushed && now.Sub(reminders.pushedAt) < 6*time.Hour || now.Sub(reminders.failedAt) < 5*time.Minute {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	switch _, err := app.PushReminders(ctx, list); {
+	case err == nil:
+		reminders.pushed, reminders.pushedAt = sum, now
+	case errors.Is(err, blupcloud.ErrSignedOut):
+		reminders.pushed = "" // goes as soon as the person signs in
+	default:
+		reminders.failedAt = now // offline: again in a few minutes
+	}
+}
+
+// ReminderEmails is the month's use of reminder e-mails (zero signed out
+// or on a plan without them).
+func (s *Studio) ReminderEmails() blupcloud.ReminderUse {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	u, _ := app.ReminderEmails(ctx)
+	return u
+}
+
+// SetNotifications turns the reminders on or off; off, the ones waiting
+// in Blup Cloud are cancelled right away.
+func (s *Studio) SetNotifications(on bool) error {
+	p := s.Prefs()
+	p.Notifications = on
+	if err := savePrefs(p); err != nil {
+		return err
+	}
+	reminders.pushMu.Lock()
+	reminders.pushed, reminders.failedAt = "", time.Time{}
+	reminders.pushMu.Unlock()
+	if reminders.ok {
+		go s.remind(time.Now())
+	} else if !on {
+		go pushMail(nil, time.Now())
+	}
+	return nil
+}
+
+// notifyIcon is Blup's icon as a file, for Linux notifications ("" on the
+// other systems, which show the app's icon themselves).
+func notifyIcon() string {
+	if runtime.GOOS != "linux" {
+		return ""
+	}
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return ""
+	}
+	p := filepath.Join(dir, "blup", "notify-icon.png")
+	if b, err := os.ReadFile(p); err == nil && len(b) == len(trayIcon) {
+		return p
+	}
+	if os.MkdirAll(filepath.Dir(p), 0o755) != nil || os.WriteFile(p, trayIcon, 0o644) != nil {
+		return ""
+	}
+	return p
 }
 
 // when says when an event is, from now: "Today at 14:00", "Tomorrow",

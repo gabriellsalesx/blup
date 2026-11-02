@@ -12,6 +12,8 @@
 // the other computers hear of it at once; without it, sync is by button.
 // historyDays: how long old versions are kept. aiUsage: how much AI use
 // (narration, translation) per week, as a multiple of Pro's (0 = none).
+// reminderEmails: the calendar's reminders also sent by e-mail, per
+// month (0 = none; on the computer they are always free).
 export type Limits = {
 	storageMB: number;
 	maxFileMB: number;
@@ -21,6 +23,7 @@ export type Limits = {
 	live: boolean;
 	historyDays: number;
 	aiUsage: number;
+	reminderEmails: number;
 };
 
 export type Plan = {
@@ -44,7 +47,7 @@ export const FREE: Plan = {
 	priceCents: 0,
 	yearlyCents: 0,
 	currency: "brl",
-	limits: { storageMB: 50, maxFileMB: 10, sites: 0, customDomain: false, devices: 1, live: false, historyDays: 0, aiUsage: 0 },
+	limits: { storageMB: 50, maxFileMB: 10, sites: 0, customDomain: false, devices: 1, live: false, historyDays: 0, aiUsage: 0, reminderEmails: 0 },
 	perks: ["50 MB de notas, sincronizadas pelo botão", "1 computador conectado", "Arquivos de até 10 MB", "Criptografia de ponta a ponta"],
 };
 
@@ -58,7 +61,7 @@ export const PLANS: Plan[] = [
 		currency: "brl",
 		lookupKey: "blup_pro_mensal",
 		yearlyLookupKey: "blup_pro_anual",
-		limits: { storageMB: 1024, maxFileMB: 25, sites: 1, customDomain: false, devices: 2, live: true, historyDays: 30, aiUsage: 1 },
+		limits: { storageMB: 1024, maxFileMB: 25, sites: 1, customDomain: false, devices: 2, live: true, historyDays: 30, aiUsage: 1, reminderEmails: 0 },
 		perks: ["1 GB de notas, sincronizadas em tempo real", "2 computadores conectados", "Arquivos de até 25 MB", "Histórico de versões de 1 mês", "1 site no ar pelo Blup, no endereço seusite.getblup.site"],
 	},
 	{
@@ -69,8 +72,8 @@ export const PLANS: Plan[] = [
 		currency: "brl",
 		lookupKey: "blup_max_mensal",
 		yearlyLookupKey: "blup_max_anual",
-		limits: { storageMB: 10240, maxFileMB: 200, sites: 5, customDomain: true, devices: 3, live: true, historyDays: 365, aiUsage: 2 },
-		perks: ["10 GB de notas, sincronizadas em tempo real", "3 computadores conectados", "Arquivos de até 200 MB", "Histórico de versões de 12 meses", "5 sites no ar pelo Blup, com domínio próprio"],
+		limits: { storageMB: 10240, maxFileMB: 200, sites: 5, customDomain: true, devices: 3, live: true, historyDays: 365, aiUsage: 2, reminderEmails: 50 },
+		perks: ["10 GB de notas, sincronizadas em tempo real", "3 computadores conectados", "Arquivos de até 200 MB", "Histórico de versões de 12 meses", "5 sites no ar pelo Blup, com domínio próprio", "50 avisos da agenda por e-mail por mês"],
 	},
 	{
 		name: "ultra",
@@ -80,8 +83,8 @@ export const PLANS: Plan[] = [
 		currency: "brl",
 		lookupKey: "blup_ultra_mensal",
 		yearlyLookupKey: "blup_ultra_anual",
-		limits: { storageMB: 51200, maxFileMB: 500, sites: 10, customDomain: true, devices: -1, live: true, historyDays: 365, aiUsage: 5 },
-		perks: ["50 GB de notas, sincronizadas em tempo real", "Computadores sem limite", "Arquivos de até 500 MB", "Histórico de versões de 12 meses", "10 sites no ar pelo Blup, com domínio próprio", "Suporte prioritário e novidades antes"],
+		limits: { storageMB: 51200, maxFileMB: 500, sites: 10, customDomain: true, devices: -1, live: true, historyDays: 365, aiUsage: 5, reminderEmails: 100 },
+		perks: ["50 GB de notas, sincronizadas em tempo real", "Computadores sem limite", "Arquivos de até 500 MB", "Histórico de versões de 12 meses", "10 sites no ar pelo Blup, com domínio próprio", "100 avisos da agenda por e-mail por mês", "Suporte prioritário e novidades antes"],
 	},
 ];
 

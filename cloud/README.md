@@ -101,6 +101,14 @@ O Blup Studio gera o site com o Hugo (`--minify --gc`), compacta em gzip os arqu
 - Plano Grátis: `sites: 0`, a API recusa criar, enviar e publicar (`PLAN`). Notas e sites somam no armazenamento do plano.
 - Domínio próprio nos sites (Max e Ultra) ainda não existe: o site sai no endereço `getblup.site`.
 
+## Avisos da agenda por e-mail (Max e Ultra)
+
+O calendário dos cofres avisa no computador; nos planos Max (50 por mês) e Ultra (100 por mês) os avisos também chegam por e-mail. O Studio manda só o horário de cada aviso, com um código opaco (`PUT /api/reminders`); o nome, o tipo e as anotações do evento nunca saem do computador, e o e-mail só diz que há um lembrete, com o logo do Blup (`static/email/blup.png`).
+
+- D1: `reminder` (pendentes e enviados, pela chave conta + código) e `reminder_month` (envios do mês). Não precisa de fila à parte: a tabela é a fila. O cron `*/5 * * * *` (`sendDue`) pega até 200 avisos vencidos por vez, sobe a contagem do mês antes de enviar (com o limite no próprio `UPDATE`, então duas rodadas nunca passam do limite) e marca o envio; uma rodada que falha deixa o aviso para a seguinte. Acima do limite do mês, ou com mais de 12 horas de atraso, o aviso é pulado.
+- Custo: Email Service, 3.000 e-mails por mês no Workers Paid e depois US$ 0,35 a cada 1.000. O cron não cobra à parte.
+- Em `EMAIL_MODE=log` o aviso só aparece no terminal. Para testar o cron no computador: `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=*/5+*+*+*+*"`.
+
 ## Antes de publicar
 
 - Publicar com `npx wrangler deploy --env production` (os domínios já estão no `wrangler.jsonc`). Passkeys valem em `getblup.io` e subdomínios; as de teste do `localhost` não passam para lá.

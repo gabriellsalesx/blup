@@ -33,6 +33,15 @@ export interface NoteVersion {
 }
 
 /**
+ * ReminderUse is how many reminder e-mails the plan has this month (0:
+ * none) and how many went.
+ */
+export interface ReminderUse {
+    "limit": number;
+    "used": number;
+}
+
+/**
  * SlugCheck says whether a name can be a new site's address: "free",
  * "yours" (a site of this account has it), "taken" (with free names close
  * to it), "reserved" (kept by Blup) or "invalid".

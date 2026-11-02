@@ -4,5 +4,6 @@
 export type {
     DeletedFile,
     NoteVersion,
+    ReminderUse,
     SlugCheck
 } from "./models.js";

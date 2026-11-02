@@ -182,3 +182,30 @@ export const siteBlob = sqliteTable(
 	},
 	(t) => [primaryKey({ columns: [t.siteId, t.hash] })],
 );
+
+// A calendar reminder to send by e-mail (Max and Ultra). Only when: the
+// event itself (name, kind, notes) stays on the person's computer. `id` is
+// an opaque hash the Studio makes, to replace the list without repeats.
+// sentAt: when it went (0: skipped, over the month's limit or too late).
+export const reminder = sqliteTable(
+	"reminder",
+	{
+		userId: text("user_id").notNull(),
+		id: text("id").notNull(),
+		sendAt: integer("send_at", { mode: "timestamp_ms" }).notNull(),
+		sentAt: integer("sent_at", { mode: "timestamp_ms" }),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.id] }), index("reminder_due_idx").on(t.sentAt, t.sendAt)],
+);
+
+// Reminder e-mails sent per account and month ("2026-11"), for the plan's
+// monthly limit.
+export const reminderMonth = sqliteTable(
+	"reminder_month",
+	{
+		userId: text("user_id").notNull(),
+		month: text("month").notNull(),
+		sent: integer("sent").default(0).notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.month] })],
+);
