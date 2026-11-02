@@ -26,7 +26,7 @@ Clique em **Publicar**, no topo. Na primeira vez, escolha onde o site vai ficar:
 
 Entre com a sua conta do Blup e digite o endereço que quer. Enquanto você digita, o Studio confere se o nome está livre e, se não estiver, sugere outros parecidos. O endereço fica fixo depois da primeira publicação.
 
-Cada plano tem um número de sites: o Pro tem 1, o Max tem 5 e o Ultra tem 10. Domínio próprio nos sites do Blup Cloud está chegando, nos planos Max e Ultra.
+Cada plano tem um número de sites: o Pro tem 1, o Max tem 3 e o Ultra tem 10. Domínio próprio nos sites do Blup Cloud está chegando, nos planos Max e Ultra.
 
 ### Pelo Cloudflare ou pelo GitHub
 

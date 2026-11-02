@@ -8,7 +8,7 @@ Nos planos pagos, o Blup Cloud também hospeda os seus sites. O endereço é `no
 | Plano | Sites no ar |
 | --- | --- |
 | Pro | 1 |
-| Max | 5, com domínio próprio |
+| Max | 3, com domínio próprio |
 | Ultra | 10, com domínio próprio |
 
 ## Publicar

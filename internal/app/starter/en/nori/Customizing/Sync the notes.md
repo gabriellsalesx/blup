@@ -27,8 +27,8 @@ On another computer, sign in with the same account and type the notes password (
 | --- | --- | --- | --- | --- | --- | --- |
 | Free | R$ 0 | R$ 0 | 50 MB | With the button | 1 | No |
 | Pro | R$ 14.90 | R$ 149 | 1 GB | In real time | 2 | 1 month |
-| Max | R$ 29.90 | R$ 299 | 10 GB | In real time | 3 | 12 months |
-| Ultra | R$ 59.90 | R$ 599 | 50 GB | In real time | No limit | 12 months |
+| Max | R$ 29.90 | R$ 299 | 5 GB | In real time | 3 | 12 months |
+| Ultra | R$ 59.90 | R$ 599 | 10 GB | In real time | No limit | 12 months |
 
 In real time, the notes sync by themselves while you write. On the paid plans, right clicking a note shows its **Earlier versions**: pick one and bring it back. The paid plans also publish sites through Blup Cloud and include AI to narrate and translate.
 

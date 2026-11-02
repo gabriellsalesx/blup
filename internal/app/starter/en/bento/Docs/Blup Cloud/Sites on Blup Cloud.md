@@ -8,7 +8,7 @@ On the paid plans, Blup Cloud also hosts your sites. The address is `name.getblu
 | Plan | Sites online |
 | --- | --- |
 | Pro | 1 |
-| Max | 5, with a custom domain |
+| Max | 3, with a custom domain |
 | Ultra | 10, with a custom domain |
 
 ## Publish

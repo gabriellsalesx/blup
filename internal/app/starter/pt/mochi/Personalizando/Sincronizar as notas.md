@@ -27,8 +27,8 @@ Em outro computador, entre com a mesma conta e digite a senha das notas (ou a ch
 | --- | --- | --- | --- | --- | --- | --- |
 | Grátis | R$ 0 | R$ 0 | 50 MB | Pelo botão | 1 | Não |
 | Pro | R$ 14,90 | R$ 149 | 1 GB | Em tempo real | 2 | 1 mês |
-| Max | R$ 29,90 | R$ 299 | 10 GB | Em tempo real | 3 | 12 meses |
-| Ultra | R$ 59,90 | R$ 599 | 50 GB | Em tempo real | Sem limite | 12 meses |
+| Max | R$ 29,90 | R$ 299 | 5 GB | Em tempo real | 3 | 12 meses |
+| Ultra | R$ 59,90 | R$ 599 | 10 GB | Em tempo real | Sem limite | 12 meses |
 
 Em tempo real, as notas sincronizam sozinhas enquanto você escreve. Nos planos pagos, o botão direito numa nota mostra as **Versões anteriores**: escolha uma e traga de volta. Os planos pagos também publicam sites pelo Blup Cloud e incluem IA para narrar e traduzir.
 

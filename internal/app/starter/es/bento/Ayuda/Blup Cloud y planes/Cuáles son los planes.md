@@ -7,12 +7,12 @@ weight: 2
 | --- | --- | --- | --- | --- |
 | Precio por mes | R$ 0 | R$ 14,90 | R$ 29,90 | R$ 59,90 |
 | Precio por año | R$ 0 | R$ 149 | R$ 299 | R$ 599 |
-| Notas sincronizadas | 50 MB | 1 GB | 10 GB | 50 GB |
+| Notas sincronizadas | 50 MB | 1 GB | 5 GB | 10 GB |
 | Cuándo sincroniza | Con el botón | En tiempo real | En tiempo real | En tiempo real |
 | Computadoras | 1 | 2 | 3 | Sin límite |
-| Tamaño de cada archivo | Hasta 10 MB | Hasta 25 MB | Hasta 200 MB | Hasta 500 MB |
+| Tamaño de cada archivo | Hasta 10 MB | Hasta 25 MB | Hasta 50 MB | Hasta 100 MB |
 | Historial de versiones | No | 1 mes | 12 meses | 12 meses |
-| Sitios con Blup Cloud | Ninguno | 1 | 5 | 10 |
+| Sitios con Blup Cloud | Ninguno | 1 | 3 | 10 |
 | Dominio propio | No | No | Sí | Sí |
 | IA para narrar y traducir | No | Sí | Sí | Sí |
 

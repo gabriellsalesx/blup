@@ -198,7 +198,9 @@ func (s *Syncer) trashDir() string {
 
 func (s *Syncer) concurrency() int { return s.remote().Concurrency() }
 
-func (s *Syncer) maxFileSize() int64 {
+// MaxFileSize is the largest file this Syncer sends: the plan's limit on
+// Blup Cloud, GitHub's otherwise.
+func (s *Syncer) MaxFileSize() int64 {
 	if l, ok := s.remote().(Limited); ok {
 		return l.MaxFileSize()
 	}
@@ -616,7 +618,7 @@ func (s *Syncer) uploadOne(ctx context.Context, e *entry) (Change, error) {
 	if err != nil {
 		return Change{}, err
 	}
-	if int64(len(data)) > s.maxFileSize() {
+	if int64(len(data)) > s.MaxFileSize() {
 		return Change{}, github.ErrFileTooLarge
 	}
 	sha := github.BlobSHA(data)

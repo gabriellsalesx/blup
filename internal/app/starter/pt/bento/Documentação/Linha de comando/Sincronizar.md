@@ -33,4 +33,4 @@ O Blup compara e **mostra antes** quantas notas vai enviar, receber, apagar no G
 - Notas apagadas em outro computador vão para uma **lixeira fora das notas**, na pasta do site; o Blup mostra onde.
 - Se a pasta do site aparecer vazia mas já tinha notas, o Blup **para** e não apaga nada no GitHub.
 - Pastas que começam com ponto não são sincronizadas.
-- Arquivos acima de 100 MB ficam de fora, com aviso.
+- Arquivos acima de 100 MB, o limite do GitHub, ficam de fora, com aviso.

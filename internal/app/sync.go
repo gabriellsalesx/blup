@@ -129,7 +129,11 @@ func syncNotes(ctx context.Context, _ *config.Global, site *config.Site) error {
 		ui.Hint(i18n.T("sync.trash", len(rep.DeletedLocal), rep.Trash))
 	}
 	for _, p := range rep.Skipped {
-		ui.Warn(i18n.T("sync.skipped", p, i18n.T(fmt.Sprintf("sync.skip_%s", rep.SkipReasons[p]))))
+		reason := i18n.T(fmt.Sprintf("sync.skip_%s", rep.SkipReasons[p]))
+		if rep.SkipReasons[p] == notesync.SkipTooLarge {
+			reason = i18n.T("sync.skip_too_large", sy.MaxFileSize()>>20)
+		}
+		ui.Warn(i18n.T("sync.skipped", p, reason))
 	}
 	return nil
 }

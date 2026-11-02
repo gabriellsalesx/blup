@@ -20,12 +20,12 @@ The account works for all your vaults and sites, on this computer and on the oth
 | --- | --- | --- | --- | --- |
 | Price per month | R$ 0 | R$ 14.90 | R$ 29.90 | R$ 59.90 |
 | Price per year | R$ 0 | R$ 149 | R$ 299 | R$ 599 |
-| Notes in the cloud | 50 MB | 1 GB | 10 GB | 50 GB |
+| Notes in the cloud | 50 MB | 1 GB | 5 GB | 10 GB |
 | When it syncs | With the button | In real time | In real time | In real time |
 | Computers | 1 | 2 | 3 | No limit |
-| Size of each file | Up to 10 MB | Up to 25 MB | Up to 200 MB | Up to 500 MB |
+| Size of each file | Up to 10 MB | Up to 25 MB | Up to 50 MB | Up to 100 MB |
 | Version history | No | 1 month | 12 months | 12 months |
-| Sites online with Blup | None | 1 | 5 | 10 |
+| Sites online with Blup | None | 1 | 3 | 10 |
 | Custom domain on sites | No | No | Yes | Yes |
 | AI (narration and translation) | No | Yes | Twice the Pro | Five times the Pro |
 | Priority support | | | | Yes |

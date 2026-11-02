@@ -120,7 +120,7 @@ func (s *Syncer) scan(prev *state, rep *Report, skip map[string]bool, progress f
 		if err != nil {
 			return err
 		}
-		if info.Size() > s.maxFileSize() {
+		if info.Size() > s.MaxFileSize() {
 			rep.skip(key, SkipTooLarge)
 			skip[key] = true
 			return nil

@@ -8,7 +8,7 @@ En los planes de pago, Blup Cloud también aloja tus sitios. La dirección es `n
 | Plan | Sitios en línea |
 | --- | --- |
 | Pro | 1 |
-| Max | 5, con dominio propio |
+| Max | 3, con dominio propio |
 | Ultra | 10, con dominio propio |
 
 ## Publicar

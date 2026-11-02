@@ -531,3 +531,21 @@ func TestEmptiedRemoteDeletesNothingHere(t *testing.T) {
 	rep = a.sync(t)
 	eq(t, "deleted here", rep.DeletedLocal, "b.md")
 }
+
+type limitedRemote struct {
+	Remote
+	max int64
+}
+
+func (r limitedRemote) MaxFileSize() int64 { return r.max }
+
+// The largest file is GitHub's limit, or the plan's when the remote has one
+// (the CLI's warning names this number).
+func TestMaxFileSize(t *testing.T) {
+	if got := (&Syncer{}).MaxFileSize(); got != github.MaxFileSize {
+		t.Fatalf("github = %d", got)
+	}
+	if got := (&Syncer{Remote: limitedRemote{max: 50 << 20}}).MaxFileSize(); got != 50<<20 {
+		t.Fatalf("plan = %d", got)
+	}
+}
