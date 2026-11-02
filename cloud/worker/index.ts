@@ -23,7 +23,8 @@ const app = new Hono<App>().basePath("/api");
 app.use("*", async (c, next) => {
 	if (!mutationOriginAllowed(c.req.raw)) return c.json({ code: "ORIGIN_NOT_ALLOWED" }, 403);
 	await next();
-	if (!c.res.headers.has("cache-control")) c.header("cache-control", "no-store");
+	// A WebSocket (101) goes as it is: copying the response would drop the socket.
+	if (c.res.status !== 101 && !c.res.headers.has("cache-control")) c.header("cache-control", "no-store");
 });
 
 // Codes by e-mail cost a send each: a few per minute per address.
