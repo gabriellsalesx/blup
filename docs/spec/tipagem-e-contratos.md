@@ -1,6 +1,6 @@
 # Tipagem e contratos de dados
 
-Auditoria da rodada 2, conferida no código em 02/11/2026. Tipos de compilação descrevem valores esperados; dados vindos de HTTP, arquivos, armazenamento do navegador e sistema operacional exigem verificação em execução. Esta spec registra o estado implementado, incluindo limites residuais.
+Auditoria das rodadas 2 e 3, conferida no código em 02/11/2026. Tipos de compilação descrevem valores esperados; dados vindos de HTTP, arquivos, armazenamento do navegador e sistema operacional exigem verificação em execução. Esta spec registra o estado implementado, incluindo limites residuais.
 
 ## Hono, Zod e painel da conta
 
@@ -38,7 +38,7 @@ Os bindings em `studio/frontend/bindings/` são gerados de structs e métodos Go
 
 O frontend em `studio/frontend/src` não usa `any` para escapar da checagem; usa tipos das bibliotecas e estreitamento de `unknown`/propriedades dinâmicas. Isso não torna qualquer dado JSON válido por compilação, nem exige remover `any` legitimamente gerado a partir de `any` Go.
 
-[events.go](../../studio/events.go) registra `previewChanged` como string e `calendarOpen` como `{dir, path, date}`; os demais serviços registram seus eventos com o tipo correspondente. `main.ts` importa os bindings de eventos, que tipam `Events.On` e seu `data`. O runtime verifica o tipo na emissão. Dados de notificação retornados pelo sistema são convertidos por `calendarOpenData`, aceitando somente campos de texto. Registro tipado não é um schema de qualquer mensagem `postMessage` recebida do iframe: essa ponte também confere origem/frame e forma dos dados.
+[events.go](../../studio/events.go) registra `previewChanged` como string e `calendarOpen` como `{dir, path, date}`; os demais serviços registram seus eventos com o tipo correspondente. `republish` também é registrado como estrutura Go com diretório, estado, URL e erro. `main.ts` importa os bindings de eventos, que tipam `Events.On` e seu `data`. O runtime verifica o tipo na emissão. Dados de notificação retornados pelo sistema são convertidos por `calendarOpenData`, aceitando somente campos de texto. Registro tipado não é um schema de qualquer mensagem `postMessage` recebida do iframe: essa ponte também confere origem/frame e forma dos dados.
 
 ## Arquivos locais e sincronizados
 
@@ -46,7 +46,7 @@ O frontend em `studio/frontend/src` não usa `any` para escapar da checagem; usa
 | --- | --- |
 | `studio/layout.go` | Decodifica Prefs numa cópia; JSON danificado devolve os padrões completos; `SavePrefs` normaliza enums e faixas, preservando recentes |
 | `studio/calendar.go` | Registro de lembretes sempre retorna mapa não nulo e descarta instantes inválidos |
-| `frontend/src/canvas.ts` | Valida objeto, tipos, IDs e geometria finita; até 20.000 nós/40.000 arestas; remove duplicatas e ligações sem nós válidos |
+| `frontend/src/canvas.ts` | Valida objeto, tipos, IDs e geometria finita; até 20.000 nós/40.000 arestas; remove duplicatas e ligações sem nós válidos; tipos desconhecidos e arestas preservadas são guardados sem renderizar e recolocados ao salvar |
 | `frontend/src/draw.ts` | Valida tipos, limites de geometria e pontos; até 20.000 elementos/pontos nos limites definidos; descarta elementos inválidos e normaliza estilos |
 | `frontend/src/graph.ts` | Normaliza preferências de mapa do navegador em vez de confiar no JSON |
 | `internal/app/database.go` | Normaliza colunas, enums, IDs e referências de views do `.table`, preservando conteúdo válido |
@@ -60,6 +60,24 @@ O frontend em `studio/frontend/src` não usa `any` para escapar da checagem; usa
 Canvas e desenho preservam chaves extras compatíveis; normalização pode descartar só os elementos inválidos em vez de recusar o arquivo inteiro. Isso não significa rejeição universal de versões futuras de todo formato. A cifra autentica a origem dos bytes, mas não substitui validar a forma de um manifesto produzido por outro cliente com acesso à chave.
 
 O manifesto aceita arquivos até `notesync.MaxFileSize`, 100 MiB, e quantidade de blocos compatível com blocos de 4 MiB. A remontagem limita bytes recebidos ao tamanho declarado, exige tamanho final igual e verifica SHA. A lista de versões é limitada a 50 por página, exige números positivos em ordem decrescente e datas presentes; um head mais antigo que a base conhecida é recusado. Veja [sync cifrado](blup-cloud-sync.md).
+
+## Contratos acrescentados na rodada 3
+
+| Fronteira | Tipo e validação |
+| --- | --- |
+| `me.usage` | `storageLimitBytes: number`, `storageGraceUntil: string\|null`, `storageGraceLimitBytes: number\|null`, `historyBytes: number\|null` |
+| Go e Wails para histórico | Cliente e `app.BlupAccount` mantêm `HistoryBytes *int64`; o TS gerado conserva `number \| null`, e ausência não vira zero |
+| Carência Go | Datas inválidas ou limite ausente/negativo descartam a carência; o Studio recebe `graceUntil`/`graceLimit` e o limite atual |
+| Domínio | `disabled` entra no enum e `disableAt` é ISO UTC ou `null`; estado ativo/SSL ativo e direito ou prazo futuro determinam elegibilidade oficial |
+| Sites | `GET /api/sites` inclui `downgrade` nullable e distinção `published`/`live`; PUT retido estrito `{siteId}` com propriedade/prazo |
+| Preparo | Multipart com pai inteiro, lista de IDs únicos/tamanhos e File cifrado; resposta `{ticket, expiresAt, missing}` |
+| Cliente de preparo | Valida ticket antes de caminho/header, faltantes pertencentes à lista enviada e confirmação `n = parent + 1` |
+| Purga | Retorno `{freedBytes, storageBytes}` não negativo; escopo de cofre validado no cliente e autorização no servidor |
+| Logo | Go/TS validam `logo_link`; entrada portátil inválida é ignorada e o scaffold não a ativa |
+
+O cliente guarda `expiresAt` como texto, sem validar a data para controlar expiração local. O servidor controla a lease e os erros 409/410. Os tipos RPC continuam gerados da cadeia Hono. Veja [protocolo e limites](blup-cloud-sync.md#armazenamento-e-preparação-transacional).
+
+As duas corridas reportadas na revisão foram fechadas: domínio depende do claim retornado pelo D1, e PUT preparado usa estado lido após lease, chave física única por tentativa e CAS de adoção. Confirmação D1 perdida não deve apagar chave possivelmente adotada. Testes com barreiras verificam os cenários, sem afirmar que tipagem estática sozinha resolve concorrência.
 
 ## Limites residuais conhecidos
 

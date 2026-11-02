@@ -27,7 +27,7 @@ A documentação foi revisada em 02/11/2026 contra o código. Recursos disponív
 - Comentários, reações e votos em issues do GitHub, com login pelo serviço [blup-api](https://github.com/gabriellsalesx/blup-api). O Bento tem quadro de pedidos Feedback acrescentado pelo Studio.
 - Narração local com Kokoro ou remota com OpenRouter/Blup Cloud, com voz por idioma. Blogs podem agrupar as narrações num Podcast com página e feed.
 - Tradução local com Firefox Translations ou remota com IA, gravada em notas por idioma. Sites traduzidos escolhem uma versão existente conforme o visitante e lembram a escolha manual.
-- Publicação em Cloudflare Pages, GitHub Pages ou `nome.getblup.site` pelo Blup Cloud. Domínio próprio também no Blup Cloud Max/Ultra, com prova TXT/SSL; URLs absolutas do build continuam em `getblup.site`.
+- Publicação em Cloudflare Pages, GitHub Pages ou `nome.getblup.site` pelo Blup Cloud. Domínio próprio também no Blup Cloud Max/Ultra, com prova TXT/SSL e republicação para usar o endereço oficial nas URLs absolutas.
 - Sync por repositório privado GitHub, ou pelo Blup Cloud com cifra de ponta a ponta. Conta e senha das notas são mecanismos separados.
 - Lembretes genéricos por e-mail no Max, até 50 por mês, e Ultra, até 100, separados das notificações gratuitas do computador.
 

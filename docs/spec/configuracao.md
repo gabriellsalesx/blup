@@ -48,6 +48,8 @@ O pacote config cria seu diretório global com `0700`. O Studio também pode cri
 | `vault` | texto | Caminho da raiz das notas/cofre |
 | `folder` | texto | Subpasta publicada; vazio significa a raiz inteira |
 | `domain` | texto opcional | Host de domínio próprio; a URL de build usa `https://<domain>/` |
+| `home` | texto opcional | Bento: nome da pasta da seção exibida na home; vazio usa padrão (cartões, ou a única seção) |
+| `logo_link` | texto opcional | URL HTTP/HTTPS ou caminho do site iniciado por uma `/`; muda o destino do logo/nome no cabeçalho dos três modelos |
 | `password` | texto opcional | Senha geral deste site para notas marcadas com senha geral |
 
 `dir` é estado privado da estrutura Go, derivado do diretório passado a `LoadSite` ou `NewSite`. Não é serializado. `ContentDir()` retorna `filepath.Join(vault, folder)`.
@@ -55,7 +57,8 @@ O pacote config cria seu diretório global com `0700`. O Studio também pode cri
 | Tabela e campo | Tipo | Uso |
 | --- | --- | --- |
 | `[deploy].provider` | texto | `blup`, `github` ou `cloudflare` |
-| `[deploy.blup].id`, `.slug`, `.url` | texto | Identidade e endereço do site publicado em `getblup.site` |
+| `[deploy.blup].id`, `.slug`, `.url` | texto | Identidade e endereço nativo do site em `getblup.site` |
+| `[deploy.blup].base` | texto | BaseURL da última publicação; domínio próprio elegível ou endereço nativo; usada para detectar republicação |
 | `[deploy.cloudflare].account` | texto | ID da conta |
 | `[deploy.cloudflare].project` | texto | Nome do projeto Pages |
 | `[deploy.cloudflare].subdomain` | texto | Host real retornado pelo Pages, inclusive eventual sufixo |
@@ -104,6 +107,10 @@ provider = "github"
 owner = "maria"
 repo = "meu-blog"
 ```
+
+`SaveHome` aceita apenas Bento e uma pasta direta de seção reconhecida (`docs`, `roadmap`, `changelog`, `help`, `blog`, `feedback`), ou vazio para voltar ao padrão. Guarda o nome da pasta, não o tipo ou ID: renomear/remover a pasta invalida a escolha e o tema usa o padrão. Com uma só seção, a home a mostra automaticamente. A escolha segue em `.blup/site.toml`.
+
+`SaveLogoLink` apara espaços e aceita somente HTTP/HTTPS com host e sem credenciais na URL, ou caminho começando por uma única `/`. Recusa espaços/controles, barras invertidas, caracteres perigosos e mais de 2.000 caracteres. O frontend valida antes de salvar, e o Go valida novamente. Vazio volta à home do idioma; caminho segue a base do site, incluindo `/repo/` do GitHub Pages. O clique usa a mesma aba. O tema e a leitura portátil ignoram valor inválido em vez de transformá-lo em link ativo.
 
 ## Estado global e credenciais
 
@@ -192,7 +199,7 @@ Perfis ficam na pasta com `blup: authors`, normalmente `Autores` ou `Writers`. C
 
 No Feedback, `status` dentro de `examples` é apenas o estado do exemplo. Pedidos reais têm status nas etiquetas GitHub `status: planned`, `status: progress`, `status: done` ou `status: declined`; não há nota por pedido. Categorias e opções de status são fixas no código, sem configuração pelo Studio. O [contrato do quadro](feedback.md) detalha esses campos e o que é traduzido.
 
-O domínio próprio Blup Cloud fica em `site_domain` no servidor, não é gravado em `Site.Domain` ou `Deploy.Blup.URL` pelas APIs de vínculo. `Deploy` e `Feedback` ficam fora do TOML portátil; `translations` viaja. O contrato portátil de `.blup/site.toml`, o estado do sync e os caches estão detalhados em [notas e sync](notas-e-sync.md) e [scaffold e build](scaffold-e-build.md).
+O vínculo Blup Cloud fica em `site_domain`, com `disableAt` no contrato HTTP. Não é gravado em `Site.Domain` ou `Deploy.Blup.URL`; o publish registra a base usada em `Deploy.Blup.Base` e o Studio pode republicar ao mudar o endereço oficial. `Deploy` e `Feedback` ficam fora do TOML portátil; `translations`, `home` e `logo_link` viajam. Link inválido vindo do TOML portátil é ignorado. O contrato portátil de `.blup/site.toml`, o estado do sync e os caches estão detalhados em [notas e sync](notas-e-sync.md) e [scaffold e build](scaffold-e-build.md).
 
 Os campos `podcast_*`, `outputs` e `audio*` do programa e seus episódios estão em [Podcast](podcast.md). Eventos de cofre usam `date`, `time`, `event`, `repeat` e `remind`, conforme [Calendário e lembretes](calendario-e-lembretes.md). A preferência `blup-lang` do visitante fica no `localStorage` do site publicado, sem alterar `config.toml` ou as preferências do Studio.
 

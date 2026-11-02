@@ -1,6 +1,6 @@
 # Blup Cloud: conta, sincronização e planos
 
-Implementação conferida em 02/11/2026. Este documento descreve funções existentes, substituindo o plano inicial. Fontes: [cliente Go](../../internal/blupcloud/client.go), [coordenação](../../internal/app/blup_cloud.go), [criptografia](../../internal/cloudcrypt/cloudcrypt.go), [destino de sync](../../internal/blupcloud/remote.go), [API](../../cloud/worker/index.ts), [sync](../../cloud/worker/sync.ts) e [planos](../../cloud/worker/plans.ts).
+Implementação conferida em 02/11/2026, após a rodada 3. Este documento descreve funções existentes, substituindo o plano inicial. Fontes: [cliente Go](../../internal/blupcloud/client.go), [coordenação](../../internal/app/blup_cloud.go), [criptografia](../../internal/cloudcrypt/cloudcrypt.go), [destino de sync](../../internal/blupcloud/remote.go), [API](../../cloud/worker/index.ts), [sync](../../cloud/worker/sync.ts) e [planos](../../cloud/worker/plans.ts).
 
 ## Conta e autorização
 
@@ -31,7 +31,7 @@ Valores de `cloud/worker/plans.ts`, não uma promessa de preços externos. A API
 | E-mails de lembrete por mês | 0 | 0 | 50 | 100 |
 | Campo `customDomain` | `false` | `false` | `true` | `true` |
 
-Notas cifradas, manifestos, referências, histórico e arquivos de sites somam no armazenamento da conta. Max e Ultra permitem um domínio próprio por site, com prova TXT de propriedade e validação Cloudflare/SSL antes de servir. O endereço `nome.getblup.site` continua disponível. O domínio serve os mesmos arquivos; o build ainda usa o endereço `getblup.site` nas URLs absolutas. Veja [domínio Blup Cloud](publicacao.md#domínio-próprio-no-blup-cloud). Publicar por Cloudflare Pages ou GitHub Pages continua independente da assinatura.
+Notas cifradas, manifestos, referências, histórico e arquivos de sites somam no armazenamento da conta. Max e Ultra permitem um domínio próprio por site, com prova TXT de propriedade e validação Cloudflare/SSL antes de servir. O endereço `nome.getblup.site` continua disponível. Os dois hosts servem os mesmos arquivos. Quando domínio e SSL estão ativos e há direito ou carência válida, o cliente o escolhe como baseURL e o Studio republica para ajustar URLs absolutas; não há redirecionamento entre os dois hosts. Veja [domínio Blup Cloud](publicacao.md#domínio-próprio-no-blup-cloud). Publicar por Cloudflare Pages ou GitHub Pages continua independente da assinatura.
 
 `account.ts` considera assinaturas `active`, `trialing` e `past_due`; sem uma delas cai no Grátis. O proprietário configurado por secret recebe Ultra de cortesia somente com o e-mail correspondente verificado. Acrescentar alguém à staff não concede esse plano.
 
@@ -53,7 +53,10 @@ O manifesto cifrado contém `files`, mapa de caminho para SHA de blob Git, taman
 | D1 `vault` | Conta, ID, nome cifrado, versão atual e atualização |
 | D1 `vault_version` | Cofre, número, chave R2, tamanho e data |
 | D1 `sync_block` | Conta, ID HMAC, tamanho cifrado e data |
-| R2 `u/<conta>/b/<id>` | Bloco cifrado |
+| D1 `sync_transfer`, `sync_transfer_block` | Ticket, lease, reserva e recibos de blocos preparados |
+| D1 `vault_head_block`, `sync_garbage` | Referências atuais e fila de exclusão com bytes ainda contabilizados |
+| R2 `u/<conta>/b/<id>-<único>` | Bloco cifrado com chave física em `sync_block.object_key`; a leitura também aceita o layout antigo `b/<id>` |
+| R2 `u/<conta>/t/<ticket>/` | Manifesto e referências preparados, plano interno e blocos com chave única por tentativa |
 | R2 `u/<conta>/v/<cofre>/<n>-<id>/m` | Manifesto cifrado |
 | Mesmo prefixo com `/r` | Referências dos blocos, sem nomes de arquivos |
 
@@ -68,7 +71,11 @@ Rotas autenticadas de `cloud/worker/sync.ts`:
 | `GET /vaults/:id/versions/:n` | Receber manifesto cifrado |
 | `POST /blocks/missing` | Consultar até 1000 IDs; consultas D1 em lotes menores |
 | `PUT /blocks/:id`, `GET /blocks/:id` | Enviar ou baixar bloco da conta |
-| `POST /vaults/:id/versions` | Gravar manifesto e referências com versão pai |
+| `POST /vaults/:id/versions` | Protocolo anterior de manifesto e referências com versão pai, ainda aceito |
+| `POST /vaults/:id/prepare` | Preparar manifesto, referências/tamanhos e reserva líquida; recebe multipart |
+| `POST /vaults/:id/commit` | Confirmar `{ticket}`; devolve `{n}` |
+| `DELETE /preparations/:ticket` | Cancelar preparo e liberar reserva de forma idempotente |
+| `DELETE /vaults/:id/history` | Apagar histórico antigo desse cofre, preservando a versão atual |
 | `GET /live` | WebSocket para planos com `live` |
 
 O upload de bloco aceita até 4 MiB mais 64 bytes; manifesto até 32 MiB. O cliente limita arquivos pelo plano, corta os blocos e usa quatro operações concorrentes. Descompactar um valor cifrado tem limite local de 64 MiB. Uma resposta cifrada é autenticada antes do uso. O cliente valida a forma do manifesto, caminhos, SHA, tamanhos de até 100 MiB e quantidade de blocos antes de alterar estado. Durante a remontagem limita os bytes recebidos ao tamanho declarado, exige igualdade final e confere o SHA do arquivo. O limite lógico do plano também se aplica no envio; o servidor só enxerga blocos cifrados, não o tamanho em claro por arquivo.
@@ -76,6 +83,39 @@ O upload de bloco aceita até 4 MiB mais 64 bytes; manifesto até 32 MiB. O clie
 `Remote.Commit` cifra o manifesto para `parent + 1`. O servidor exige o mesmo `head` e confirma o avanço por operação condicional no D1. Se outra máquina avançou antes, responde 409 `MOVED`; o adaptador converte para `notesync.ErrNotFastForward` e o motor compara novamente. A conciliação preserva versões conflitantes em arquivos separados, como no destino GitHub.
 
 O adaptador implementa `notesync.Ordered`: depois de sincronizar uma versão, o cliente recusa `head` vazio, não numérico ou inferior ao número conhecido, com `ErrRolledBack`. Isso impede aceitar uma versão antiga ainda autenticamente cifrada naquele computador; sem base local anterior, não fornece uma âncora externa para identificar todo rollback. IDs de cofre têm validação de formato antes de compor rotas/pastas, e leituras HTTP limitam o corpo a 64 MiB.
+
+## Armazenamento e preparação transacional
+
+Fontes: [uso](../../cloud/worker/usage.ts), [storage](../../cloud/worker/sync-storage.ts), [preparo](../../cloud/worker/sync-transfers.ts), [purga de histórico](../../cloud/worker/sync-history.ts), [cliente](../../internal/blupcloud/prepare.go) e [adaptador](../../internal/blupcloud/remote.go).
+
+O uso soma blocos cifrados, manifestos/referências, histórico e arquivos dos sites, inclusive bytes aguardando exclusão confirmada. Ao observar uma redução de plano com uso acima do novo limite, `observePlan` abre 14 dias e conserva o teto do plano anterior; não eleva esse teto ao uso já excedente nem prolonga prazo que já está aberto. Sites e storage compartilham `grace_until`; domínio tem prazo próprio. Depois da carência, volta ao teto novo, preservando dados excedentes. Exceder espaço não dispara purga automática; rareamento por `historyDays`, purga manual e exclusão de conta são outras operações.
+
+| Campo de `GET /api/me`, em `usage` | Contrato |
+| --- | --- |
+| `storageBytes` | Total atual da conta, incluindo histórico |
+| `storageLimitBytes` | Limite do plano atual em bytes |
+| `storageGraceUntil` | Instante ISO UTC ou `null` |
+| `storageGraceLimitBytes` | Teto anterior durante a carência ou `null` |
+| `historyBytes` | Total de histórico da conta; `null` quando não pode ser apurado com segurança, por ocupação ou metadados indisponíveis |
+
+O Go mantém `historyBytes` como `*int64`; bindings levam `number | null` ao Studio. Não transforma ausência em zero. A interface mostra tamanho indisponível e oferece atualizar. O total é da conta, sem estimativa por cofre.
+
+O cliente continua o fluxo normal de envio. Só depois de `413 QUOTA` guarda blocos cifrados novos em memória e passa pelo preparo no commit. Acima do teto, a nuvem pode aceitar substituição que não aumenta o uso líquido. O crédito considera apenas versões removíveis pela política de histórico e blocos que nenhuma versão retida/cofre usa. Uma versão que aumenta o saldo líquido continua recusada. Há uma exceção explícita: versão sem blocos novos pode passar mesmo que o novo manifesto aumente o uso; esses bytes continuam contabilizados. Não se deve prometer teto físico estrito para esse caso.
+
+1. `POST /api/sync/vaults/:id/prepare` recebe multipart: `parent` inteiro em texto, `blocks` com JSON `[{id,size}]` de todos os blocos distintos da versão e `manifest` cifrado. Retorna `{ticket, expiresAt, missing}`. Usa o tamanho D1 de blocos existentes; `size: 0` só é válido se o bloco já existe. Um bloco ausente de tamanho zero é inválido.
+2. `PUT /api/sync/blocks/:id` recebe o bloco cifrado com `x-blup-upload-ticket`. Exige tamanho igual ao declarado. O corpo permanece limitado a 4 MiB mais 64 bytes.
+3. `POST /api/sync/vaults/:id/commit` recebe estritamente `{ticket}` e retorna `{n}`. Repetição de commit concluído devolve o mesmo número enquanto o recibo é mantido. Pai divergente retorna 409 `MOVED` com `head`; exclusividade de preparo/purga retorna 409 `SYNC_BUSY`.
+4. `DELETE /api/sync/preparations/:ticket` cancela sem tocar numa versão já confirmada. Ticket cancelado/expirado do dono retorna 410 `TICKET_EXPIRED` ao usar; ticket desconhecido ou alheio retorna 404. Inatividade expira em 30 minutos, renovável até 24 horas desde a criação. Recibos concluídos têm limpeza posterior; não são idempotência perpétua.
+
+O preparo mantém lease exclusiva da conta e reserva o saldo líquido. Uploads normais de blocos diferentes usam leases próprias, compatíveis com as quatro operações concorrentes do cliente, e não passam durante preparo/purga exclusivos. A confirmação D1 une troca de head, referências atuais, remoção lógica, registro de bytes e fila de descarte. Cada tentativa de PUT preparado usa chave R2 única, adotada por CAS `ready=0`; estado é relido depois de obter a lease. Um PUT atrasado não sobrescreve bytes já adotados. Confirmação D1 perdida não autoriza apagar uma chave que pode já estar em uso.
+
+A remoção lógica entra em `sync_garbage`; os bytes só são descontados após R2 confirmar a exclusão. Retirar a fila e descontar ocorre atomicamente, sem reembolso duplo. O cron repete falhas. Não há transação distribuída D1/R2, e uma chamada pode falhar depois de alguma etapa persistir.
+
+### Apagar histórico antigo de um cofre
+
+`DELETE /api/sync/vaults/:id/history`, sem corpo, preserva o head desse cofre e blocos ainda usados por qualquer versão retida da conta. Devolve `{freedBytes, storageBytes}`: bytes efetivamente descontados nesta chamada e uso total da conta. Sem histórico removível, `freedBytes` é zero. Falha R2 deixa descarte pendente e bytes contabilizados; uma repetição não desconta duas vezes.
+
+Exige sessão e propriedade do cofre; cofre alheio retorna 404, preparo/sync exclusivo retorna 409 `SYNC_BUSY`, abuso retorna 429. No Studio, `PurgeHistory` opera somente sobre `sync.vault` do site aberto e aparece quando `sync.remote = "blup"`. O tamanho mostrado é de toda a conta, mas a confirmação explica o escopo por cofre. Não apaga as notas locais, a versão atual ou automaticamente todo histórico da conta.
 
 ## Automação, histórico e outra máquina
 
@@ -104,7 +144,7 @@ Stripe é configurado pelo plugin Better Auth. O registro Customer é criado no 
 
 [quota.ts](../../cloud/worker/quota.ts) mantém reservas D1 de armazenamento, sites, cofres, aparelhos e IA. O teto de criação de cofres é 50 por conta em `sync.ts`, independente de não haver um campo comercial de cofres no plano. Uma operação condicional considera o uso durável e as reservas em andamento antes de admitir trabalho. O prazo padrão da reserva é dez minutos; a confirmação aplica as escritas e libera a reserva em lote D1. Liberação repetida é idempotente, e o cron remove reservas expiradas. Isso fecha as reproduções anteriores de ultrapassar cotas por pedidos simultâneos. Não equivale a uma transação distribuída com Stripe, OpenRouter, e-mail ou R2.
 
-Operações de controle com custo têm fusível de 120 pedidos por minuto por conta e IP (`ABUSE_LIMIT`); transferências têm 500 por dez segundos por conta (`BULK_LIMIT`). A solicitação de OTP mantém seu limite próprio de cinco por minuto por IP. As rotas exatas são selecionadas em `index.ts`; uma rejeição usa 429 e `Retry-After`. Reservas e limites comerciais continuam necessários mesmo quando o fusível ainda permite tráfego.
+Preparação, purga de histórico e escolha de site retido entram nas operações de controle. Operações de controle com custo têm fusível de 120 pedidos por minuto por conta e IP (`ABUSE_LIMIT`); transferências têm 500 por dez segundos por conta (`BULK_LIMIT`). A solicitação de OTP mantém seu limite próprio de cinco por minuto por IP. As rotas exatas são selecionadas em `index.ts`; uma rejeição usa 429 e `Retry-After`. Reservas e limites comerciais continuam necessários mesmo quando o fusível ainda permite tráfego.
 
 Uploads de sites usam staging R2, hash incremental e reserva antes de receber o corpo. Com `Content-Length` válido, verificam os bytes efetivamente recebidos e aceitam até o teto do plano, no máximo 100 MiB; sem esse header, o caminho de buffer limita a 4 MiB ou ao teto do plano, se menor. [Publicação](publicacao.md#api-e-armazenamento-dos-sites) explica leases e limpeza de versões anteriores.
 
@@ -114,7 +154,11 @@ Uploads de sites usam staging R2, hash incremental e reserva antes de receber o 
 
 Após 30 dias, o cron diário seleciona lotes de até 25 contas elegíveis. A purga aguarda a confirmação do cancelamento financeiro e percorre notas R2, sites R2, domínios e registros de produto/autenticação no D1. O Custom Hostname é removido na Cloudflare antes de apagar seus identificadores locais. Falha externa conserva os dados necessários para repetir; o prazo de 30 dias habilita a purga, sem prometer remoção no segundo exato. Cópias locais, conteúdo baixado por visitantes e retenções do próprio provedor de pagamento não são apagados por esse percurso.
 
-Ao passar de pago para Grátis, sites existentes têm prazo de 14 dias e aviso por e-mail. O prazo é persistido quando o sistema observa essa mudança, não recalculado a cada visita. Após expirar, o Worker deixa de servir os sites. Voltar a um plano pago remove esse bloqueio. Max/Ultra para Pro mantém o plano Pro e os sites existentes, com criação e operações sujeitas aos direitos atuais; não dispara o prazo de 14 dias. Domínio próprio deixa de ser servido fora de Max/Ultra, inclusive durante a tolerância do site no endereço `getblup.site`.
+Uma redução que deixa sites ou storage acima do novo direito abre carência de 14 dias, observada e persistida sem estender prazo já aberto. Durante o prazo, os sites existentes continuam servidos. Depois, Grátis mantém zero sites; Pro mantém um; outros planos mantêm a quantidade permitida. Arquivos e registros excedentes ficam preservados, e uma ampliação de direitos pode voltar a permiti-los. Exclusão/bloqueio da conta prevalece sobre carência.
+
+No downgrade para Pro, `GET /api/sites` acrescenta `downgrade: null | {limit, deadline, selectedSiteId, retainedSiteIds, selectionOpen}`. `deadline` é ISO UTC. `PUT /api/sites/retained` aceita estritamente `{siteId}` e devolve `{ok: true}`; só aceita site do dono, plano com um site e prazo aberto, podendo trocar a escolha até o fim. Sem escolha, retém o mais antigo por `created_at`, com desempate por ID. Após o prazo retorna 409 `SELECTION_CLOSED`; site alheio retorna 404. `published` indica que há deploy guardado; `live` considera o direito de entrega atual.
+
+Sair de Max/Ultra para Pro ou Grátis dá também 14 dias ao domínio próprio existente. `DomainInfo.disableAt` informa ISO UTC ou `null`; durante a carência ele pode permanecer `active` com SSL ativo. Voltar a Max/Ultra antes do desligamento limpa esse prazo. Ao vencer, o gateway bloqueia o hostname e o cron desativa/remove o Custom Hostname, preservando IDs em caso de falha externa. GET passa a `disabled`, SSL `pending`, registros vazios e hostname/prazo preservados. Depois de desligado, voltar ao plano elegível exige POST de reconfiguração e nova prova. O [contrato de domínio e URL oficial](publicacao.md#domínio-próprio-no-blup-cloud) detalha a republicação do Studio.
 
 ## Contratos de tipos
 

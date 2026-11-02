@@ -125,3 +125,6 @@ O token fine-grained orientado pelo Studio pede Contents/Pages/Issues em escrita
 A configuração `[feedback]` fica fora de `.blup/site.toml`, junto com `[deploy]`, para o sync não importar destinos de outra instalação. Os exemplos continuam viajando dentro da nota da seção, e `translations` acompanha a configuração portátil. Recuperar notas não equivale a reconectar o repositório público ou instalar o App. Tradução remota desses exemplos exige aceite explícito para o destino de IA, como qualquer nota enviada; conversas reais seguem sem tradução automática.
 
 Os retornos `FeedbackPosts`/`SetFeedbackStatus` passam pelos bindings Wails gerados e tipados. Os limites de paginação do quadro e do serviço de comentários acima continuam valendo; a tipagem do Blup Cloud não altera o contrato do repositório irmão `blup-api`.
+
+
+No Bento, a seção Feedback também pode ser a home por `home` em `blup.toml`; se for a única seção, é usada automaticamente. O quadro renderiza em `/` sem redirects, mantendo título/descrição do site na home e os detalhes por fragmento. O nome da pasta original continua sendo a origem da nota e das traduções. Veja [home do Bento](temas-hugo.md#home-do-bento-como-seção).

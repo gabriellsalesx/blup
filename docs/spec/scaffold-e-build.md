@@ -18,7 +18,7 @@ Os diretórios de overrides são preservados. O tema pode ser substituído parci
 - `lastmod` por `lastmod`, `updated`, `modified`, mtime.
 - Goldmark com quebra de linha compatível com a configuração `strictLineBreaks` do Obsidian, atributos de bloco e título, `==marca==` e passthrough de `$...$`/`$$...$$`.
 - Sumário com níveis H2 a H3. Autor padrão em cascade para páginas, quando configurado.
-- Parâmetros do modelo, descrição, autor, pasta publicada, pasta de perfis, feedback e cookies. Senhas e tokens não são parâmetros Hugo do scaffold.
+- Parâmetros do modelo, descrição, autor, pasta publicada, pasta de perfis, feedback e cookies. Bento recebe `home`; os três modelos recebem `logoLink` somente quando validado. Esses valores vêm de `blup.toml`, não de uma nota de conteúdo. Senhas e tokens não são parâmetros Hugo do scaffold.
 
 Os mounts usam os seguintes contratos:
 
@@ -35,7 +35,7 @@ Os mounts usam os seguintes contratos:
 
 Os anexos elegíveis são `png`, `jpg`, `jpeg`, `webp`, `avif`, `gif`, `svg`, `bmp`, `tif`, `tiff`, `pdf`, `mp3`, `m4a`, `ogg`, `wav`, `flac`, `mp4`, `webm`, `mov` e `zip`, com padrões para extensão minúscula e maiúscula. Montá-los como assets permite publicar apenas os recursos efetivamente referenciados. Um arquivo em `static/` tem outro comportamento: ele entra como arquivo estático.
 
-`AGENTS.md`, `CLAUDE.md` e `GEMINI.md` na raiz das notas são guias de terminal excluídos do conteúdo. `obsidian.Sections` descobre a pasta de autores pelas propriedades do `_index.md` de pastas diretas. O diretório de templates vem de `.obsidian/templates.json`, ajustado em relação ao recorte publicado.
+`INSTRUCTIONS.md`, `AGENTS.md`, `CLAUDE.md` e `GEMINI.md` na raiz das notas são guias de terminal excluídos do conteúdo. `obsidian.Sections` descobre a pasta de autores pelas propriedades do `_index.md` de pastas diretas. O diretório de templates vem de `.obsidian/templates.json`, ajustado em relação ao recorte publicado.
 
 Quando há traduções, `translationMounts` monta cada pasta `en`, `es` ou `pt` correspondente a outro idioma no lugar da pasta mãe, somente na versão daquele idioma, por `sites.matrix`. A pasta de autores é excluída desse percurso: seus perfis e traduções entram em `assets/vault` pelos padrões `<autores>/*.md` e `<autores>/*/*.md`, sem virar páginas de conteúdo. `site/author-profile.html` escolhe o perfil traduzido ou o original. `linkTitle` traduzido no índice fornece o nome curto da seção para os cartões e o menu.
 
@@ -63,6 +63,8 @@ Pagefind é fixado em `1.5.2`, com cache `<cache>/blup/pagefind-1.5.2/pagefind`,
 6. Remove o manifesto de feedback e criptografa regiões protegidas usando `internal/lock`. Incorpora anexos locais pequenos no HTML protegido, remove `blup-locks.json` e executa `lock.Prune` para mídias sem referência pública. Verifica marcadores provisórios mesmo com manifesto vazio. Se essa etapa falhar, apaga `public/` e encerra.
 7. Executa Pagefind depois da criptografia, exceto com `BLUP_NO_SEARCH` não vazio. Falha de busca gera aviso.
 8. Executa `pwa.Write` depois da busca, para o worker considerar a saída final. Falha de PWA também gera aviso.
+
+No publish Blup Cloud, `blupBase` escolhe domínio ativo com SSL/direito ou carência futura, senão o endereço nativo; falha temporária de consulta conserva a base anterior. O resultado registra `Deploy.Blup.Base`, e o Studio pode republicar para atualizar canonical, feed e sitemap. Isso não cria redirects entre hosts.
 
 O build não acrescenta `--buildDrafts`. Sem domínio ou URL de deploy informada, `buildCommand` usa `/`. A cópia opcional de saída é descrita em [CLI](cli.md).
 

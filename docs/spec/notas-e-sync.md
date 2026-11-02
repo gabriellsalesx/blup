@@ -102,11 +102,11 @@ Se o remoto reaparece vazio depois de uma base com mais de um arquivo, `snapshot
 | Viaja no TOML portátil | Fica fora dele |
 | --- | --- |
 | `version`, `title`, `description`, `author`, `lang`, `model`, `kind` | Caminhos `vault`, `folder` e diretório técnico |
-| `domain`, `translations` | `Site.Password` e senha global |
+| `domain`, `translations`, `home`, `logo_link` | `Site.Password` e senha global |
 | `cookies` | `deploy`, `feedback`, tokens, preferências Studio e estado local |
 | Identidade e idiomas do site | `sync`, reconstruído pelo destino escolhido |
 
-`sharedSite` não serializa `Deploy` nem `Feedback`, e a leitura de arquivos antigos não importa essas tabelas. A cópia portátil não troca contas ou destinos de publicação. `translations` usa presença explícita: se ausente num arquivo antigo, preserva os idiomas locais; lista presente e vazia limpa a lista, e valores presentes são filtrados para idiomas conhecidos, únicos e diferentes do principal. `domain` continua portátil, mas o vínculo de domínio Blup Cloud é estado separado no servidor.
+`sharedSite` não serializa `Deploy` nem `Feedback`, e a leitura de arquivos antigos não importa essas tabelas. A cópia portátil não troca contas ou destinos de publicação. `translations` usa presença explícita: se ausente num arquivo antigo, preserva os idiomas locais; lista presente e vazia limpa a lista, e valores presentes são filtrados para idiomas conhecidos, únicos e diferentes do principal. `domain`, `home` e `logo_link` continuam portáteis, mas o vínculo Blup Cloud é estado separado no servidor. A leitura filtra `logo_link` por `ValidLogoLink`; valor inválido volta à home. `home` guarda o nome da pasta e pode perder validade ao renomeá-la.
 
 Overrides em `layouts/`, `assets/`, `static/`, `i18n/` e `data/` do diretório técnico não são incluídos por esse mecanismo. As notas, inclusive YAML com senhas literais, continuam sendo arquivos enviados ao repositório de notas.
 
@@ -117,3 +117,14 @@ Overrides em `layouts/`, `assets/`, `static/`, `i18n/` e `data/` do diretório t
 Ao fim de sync normal, a aplicação aplica as configurações compartilhadas quando `.blup/site.toml` consta como arquivo recebido. A cópia remota de conflito desse arquivo não é aplicada automaticamente. O estado local, os conflitos e as lixeiras não formam uma operação transacional única com todos os arquivos do site.
 
 No Blup Cloud, o mesmo TOML portátil entra no manifesto cifrado; a descoberta e a recuperação usam `BlupSites`/`BringBlupSite`, sem tópico GitHub. O ID remoto fica em `sync.vault`; nome e manifesto são abertos no computador. O sync ao vivo dos planos pagos usa notificações de versão por WebSocket e a mesma comparação de três versões, sem edição colaborativa por caracteres. Veja [histórico e sync ao vivo](blup-cloud-sync.md).
+
+
+## Guias de agentes na pasta das notas
+
+[agents.go](../../internal/app/agents.go) usa os textos embutidos de [guides](../../internal/app/guides) para Mochi, Nori, Bento ou cofre `notes`. `INSTRUCTIONS.md` contém o guia por modelo/cofre; os três pontos de entrada `AGENTS.md`, `CLAUDE.md` e `GEMINI.md` apontam para ele. O texto dos guias é em inglês e informa o idioma de escrita do site pela substituição `{{LANGUAGE}}`.
+
+Esses arquivos ficam em `site.ContentDir()`, onde o terminal abre, que só corresponde à raiz inteira do cofre quando `folder` está vazio. São criados ao criar site/cofre, abrir um workspace ou terminal e nos caminhos de recuperação que chamam `WriteAgentGuides`. O Studio continua abrindo se não puder atualizar o guia naquele momento.
+
+Uma assinatura SHA-256 de textos conhecidos permite atualizar guias ainda intactos gerados pelo Blup, inclusive o `AGENTS.md` antigo. Arquivo editado pela pessoa não é sobrescrito. Links simbólicos, arquivos não regulares e existentes acima de 1 MiB são preservados. Os quatro nomes na raiz ficam fora das páginas Hugo, árvore de notas, busca e grafo; são arquivos locais de orientação, sem executar agentes ou enviar notas à IA por si sós.
+
+O sync cifrado da rodada 3 também tem preparo por ticket após recusa de cota e purga manual de histórico por cofre. Esses mecanismos não mudam a comparação base/disco/remoto, as cópias de conflito ou o requisito de autenticar e validar o manifesto; o contrato está em [Blup Cloud](blup-cloud-sync.md#armazenamento-e-preparação-transacional).

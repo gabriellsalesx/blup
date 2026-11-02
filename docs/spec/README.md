@@ -1,6 +1,6 @@
 # Especificação técnica do Blup
 
-Esta especificação descreve a implementação do repositório `github.com/gabriellsalesx/blup`, conferida em 02/11/2026, incluindo as alterações da rodada 2 de pré-deploy. A leitura do código prevalece sobre mensagens de commit e comentários antigos. Os caminhos citados são relativos à raiz. Exemplos são fictícios; integração implementada não comprova provisionamento de infraestrutura de produção.
+Esta especificação descreve a implementação do repositório `github.com/gabriellsalesx/blup`, conferida em 02/11/2026, incluindo as alterações estabilizadas da rodada 3 de pré-deploy. A leitura do código prevalece sobre mensagens de commit e comentários antigos. Os caminhos citados são relativos à raiz. Exemplos são fictícios; integração implementada não comprova provisionamento de infraestrutura de produção.
 
 Para a visão entre componentes, consulte [Arquitetura](../arquitetura.md). A operação está em [Deploy de produção](../deploy.md), e as fronteiras de confiança, em [Segurança](../seguranca.md).
 
@@ -62,15 +62,18 @@ A troca de idioma do Studio atualiza os textos sem recarregar a janela. Nos site
 
 O Podcast organiza narrações públicas em episódios e feed. O reinício após mudanças de seções trata o servidor local de prévia, sem reiniciar o desktop. Notas podem sincronizar pelo GitHub ou pelo Blup Cloud; só o segundo transporte cifra blocos, nomes e manifestos no cliente. Conteúdo enviado à IA e saída de sites públicos têm outras fronteiras de privacidade, descritas em [Segurança](../seguranca.md).
 
-## Contratos da rodada 2
+## Contratos atuais após a rodada 3
 
-- Blup Cloud: arquivo máximo de 10/25/100/100 MiB para Grátis/Pro/Max/Ultra; reservas D1 limitam concorrência de armazenamento, sites, aparelhos e IA. Publicação e limpeza usam leases e preservação temporária de manifestos.
-- Domínio próprio Max/Ultra: um hostname por site, prova TXT aleatória e SSL ativo. Serve os arquivos existentes; canonical/feed/sitemap continuam na baseURL `getblup.site`, sem republicação ao vincular.
-- Exclusão de conta: bloqueio e revogação imediatos, retenção de 30 dias e purga diária em lotes com repetição em falhas. Staff restaura antes do prazo/início da purga. Pago para Grátis tem 14 dias para os sites; Max/Ultra para Pro mantém sites e retira domínio próprio.
-- Autoatualização CLI: Ed25519 dos checksums e SHA-256 do pacote, com versão estritamente mais nova. Instalação inicial por scripts continua só com SHA-256. Builds `production` exigem versão `x.y.z`.
-- Sync portátil: `translations` viaja; `Deploy`, `Feedback`, credenciais e senha geral ficam fora. Eventos Wails são registrados e tipados; o painel cloud infere os DTOs de `AppType` Hono. A [spec de contratos](tipagem-e-contratos.md) registra as validações em execução e os wrappers externos ainda sem schema estrito.
+- Blup Cloud: arquivo máximo de 10/25/100/100 MiB para Grátis/Pro/Max/Ultra; reservas D1 e leases protegem admissão/publicação. Excesso após redução abre 14 dias com teto de storage anterior, contando histórico; depois volta ao novo limite sem apagar dados só por excesso.
+- Sites: depois da carência Pro retém um site escolhido até o prazo, ou o mais antigo por data/ID; Grátis retém zero. Arquivos dos demais permanecem guardados. Domínio próprio Max/Ultra tem carência própria de 14 dias e `disableAt`/`disabled`.
+- URL oficial: domínio e SSL ativos, com plano ou carência válida, podem ser baseURL. O Studio detecta mudança e republica em segundo plano, uma vez a cada dez minutos por site, para ajustar canonical/feed/sitemap; ambos os hosts servem o deploy sem redirects entre eles.
+- Sync: após 413, o cliente pode preparar uma versão, guardar blocos novos em memória e confirmar por ticket/reserva líquida. Purga manual de histórico é por cofre; o tamanho mostrado é da conta e pode ser `null`, sem virar zero. Versão atual e blocos compartilhados necessários são preservados.
+- Entrega: gateway sem cache consulta D1 em cada pedido e chama Workers Cache por site/deploy. `SITE_CACHE` executa purga persistente no contexto `CachedSite`; Early Hints e ganhos de custo reais exigem validação no ambiente Cloudflare.
+- Studio/tema: home Bento exibe seção escolhida ou única em `/`, com paginação em `/page/2/`; `logo_link` vale nos três temas, com validação e mesma aba. Canvas preserva cartões de tipos desconhecidos. Guias `INSTRUCTIONS.md` por modelo/cofre ficam na pasta das notas com três arquivos de entrada, preservando texto editado pela pessoa.
+- Exclusão de conta continua com bloqueio/revogação imediatos, retenção de 30 dias e purga diária em lotes/repetição. Autoatualização CLI usa Ed25519 dos checksums e SHA-256; instalação inicial permanece só SHA-256. Builds `production` exigem versão `x.y.z`.
+- Sync portátil inclui `translations`, `home` e `logo_link`; `Deploy`, `Feedback`, credenciais e senha geral ficam fora. Tipos RPC/Wails e os limites residuais estão em [tipagem e contratos](tipagem-e-contratos.md).
 
-O [relatório da rodada 2](../auditoria/rodada2-documentacao.md) registra os achados encaminhados, os checks executados e os limites que permanecem.
+Os relatórios das [rodada 2](../auditoria/rodada2-documentacao.md) e [rodada 3](../auditoria/rodada3-documentacao.md) registram o estado e os checks de cada conferência. O histórico da rodada anterior não substitui os contratos atuais acima.
 
 ## Diretórios que não devem ser confundidos
 

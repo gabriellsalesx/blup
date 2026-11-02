@@ -31,7 +31,7 @@ Anotações do compromisso.
 
 ## Tela
 
-`CalendarView.svelte` mostra seis semanas, dia selecionado, eventos desse dia e os próximos 30 dias a partir de hoje. Domingo inicia a semana em português/inglês; segunda em espanhol. Há setas, Hoje e seletor aberto pelo nome do mês, com os doze meses e navegação por ano. Clique escolhe o dia; duplo clique ou Enter abre criação. Aniversário novo sugere repetição anual; o formulário sugere aviso de um dia.
+`CalendarView.svelte` mostra seis semanas, dia selecionado, eventos desse dia e os próximos 30 dias a partir de hoje. Domingo inicia a semana em português/inglês; segunda em espanhol. Há setas, Hoje e seletor aberto pelo nome do mês, com os doze meses e navegação por ano. A criação tem um único botão Marcar neste dia no painel do dia selecionado; não há outro botão de adicionar no cabeçalho. Clique escolhe o dia; duplo clique ou Enter abre criação. Aniversário novo sugere repetição anual; o formulário sugere aviso de um dia.
 
 O dia mostra até três eventos e a quantidade restante; a lateral mostra a lista completa. Nota do dia abre hoje ou um arquivo de outro dia já existente; eventos também aparecem no topo da nota do dia no workspace. Feriados são calculados localmente para Brasil, Estados Unidos ou Espanha conforme o idioma da interface. Não são notas, não geram avisos e não são uma consulta a calendário oficial por localização. A escolha de exibi-los fica em `localStorage["blup.cal.holidays"]`.
 

@@ -29,7 +29,7 @@ Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsal
 | `translate.go`, `localtr.go` | Idiomas de notas e site, tradução remota/local, revisão, textos de propriedades e atualização da prévia |
 | `authors.go`, `attachments.go` | CRUD de perfis e gestão dos anexos |
 | `publish.go` | Contas, destino, publicação, sync e domínio |
-| `cloud.go` | Descoberta e recuperação GitHub, senha geral entre sites |
+| `cloud.go` | Conta/sync Blup Cloud, descoberta/recuperação GitHub, senha geral e `PurgeHistory` do cofre aberto |
 | `narration.go` | Modelos, vozes, amostras, instalação local, chave remota e geração |
 | `media.go` | Detecção local de reprodução MP3 por `canPlayMP3` |
 | `terminal.go` | Agentes instalados, PTY, entrada/saída, tamanho, snapshots e undo |
@@ -44,6 +44,7 @@ Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsal
 | `progress` | `{kind, text}`; etapas, avisos e resultados de publicação/sync |
 | `previewChanged` | String vazia; notifica rebuild Hugo para recarregar a página da prévia |
 | `calendarOpen` | `{dir, path, date}`; clique numa notificação de calendário |
+| `republish` | `{dir, state, url, error}`; republicação automática de domínio, com `start`, `done` ou `error` |
 | `previewRestarted` | Nova URL quando o processo de prévia reiniciado muda de endereço |
 | `notesChanged` | Caminhos relativos separados por quebra de linha; alterações externas |
 | `term` | `{id, data, exit}`; bytes do terminal em base64 ou término |
@@ -190,7 +191,7 @@ Canvases (`.canvas`) e desenhos (`.draw`) são do próprio Studio, feitos em Sve
 
 `CanvasView.svelte` (lógica em `canvas.ts`) grava no formato aberto JSON Canvas: cartões de texto em Markdown, notas do cofre (`CanvasFile.svelte` mostra o texto, ou a imagem), links da web e grupos, ligados por setas com texto e cor. Arrastar o vazio ou a roda move a tela; Ctrl e a roda, ou pinça, dão zoom; dois cliques criam um cartão; arrastar do ponto lateral de um cartão cria uma seta; notas arrastadas da árvore viram cartões. Teclado: Enter edita o selecionado, Delete ou Backspace apaga, `Ctrl+A` seleciona tudo, `Ctrl+Z`, `Ctrl+Shift+Z` e `Ctrl+Y` desfazem e refazem.
 
-`DrawingView.svelte` (lógica em `draw.ts`) desenha retângulo, losango, elipse, seta, linha, desenho livre, texto (solto ou dentro da forma), borracha e imagens, com cor, fundo (suave ou sólido), espessura, tracejado e tamanho de texto; seleção por caixa, redimensionar, duplicar, ordem e exportar PNG para os anexos. Cada ferramenta tem uma letra: H mover a tela, V selecionar, R retângulo, D losango, O elipse, A seta, L linha, P desenho livre, T texto, E borracha. Também: Espaço segurado move a tela, setas movem o selecionado (Shift, de 10 em 10), Enter escreve na forma ou no texto, `Ctrl+D` duplica, `Ctrl+=`, `Ctrl+-` e `Ctrl+0` aproximam, afastam e enquadram. O arquivo é JSON com um elemento por linha; cada elemento tem caixa `x, y, w, h`, e linhas, setas e traços guardam os pontos relativos a ela. Chaves desconhecidas no topo do arquivo são preservadas. Os parsers de `canvas.ts` e `draw.ts` validam a forma lida, tipos de elemento, IDs, geometria finita e limites de quantidade, descartando entradas inválidas e normalizando estilos. Canvas remove arestas sem nós válidos e duplicatas; desenho valida pontos necessários a cada ferramenta. Não há aceitação cega de um cast do JSON sincronizado; veja [contratos de arquivos](tipagem-e-contratos.md#arquivos-locais-e-sincronizados).
+`DrawingView.svelte` (lógica em `draw.ts`) desenha retângulo, losango, elipse, seta, linha, desenho livre, texto (solto ou dentro da forma), borracha e imagens, com cor, fundo (suave ou sólido), espessura, tracejado e tamanho de texto; seleção por caixa, redimensionar, duplicar, ordem e exportar PNG para os anexos. Cada ferramenta tem uma letra: H mover a tela, V selecionar, R retângulo, D losango, O elipse, A seta, L linha, P desenho livre, T texto, E borracha. Também: Espaço segurado move a tela, setas movem o selecionado (Shift, de 10 em 10), Enter escreve na forma ou no texto, `Ctrl+D` duplica, `Ctrl+=`, `Ctrl+-` e `Ctrl+0` aproximam, afastam e enquadram. O arquivo é JSON com um elemento por linha; cada elemento tem caixa `x, y, w, h`, e linhas, setas e traços guardam os pontos relativos a ela. Chaves desconhecidas no topo do arquivo são preservadas. Os parsers de `canvas.ts` e `draw.ts` validam a forma lida, tipos de elemento, IDs, geometria finita e limites de quantidade, descartando entradas inválidas e normalizando estilos. Canvas preserva cartões com tipo desconhecido e arestas com pontas existentes fora da área editável, para plugins/outros apps; não os renderiza nem os interpreta. Ao salvar, reinsere nos índices originais, contando preservados e visíveis nos limites. Se a pessoa apaga a ponta conhecida de uma aresta preservada, essa aresta não volta ao arquivo. Duplicatas e referências sem ponta válida continuam descartadas; desenho valida pontos necessários a cada ferramenta. Não há aceitação cega de um cast do JSON sincronizado; veja [contratos de arquivos](tipagem-e-contratos.md#arquivos-locais-e-sincronizados).
 
 As duas telas têm tela cheia (botão nos controles, F dentro da tela, ou o atalho `F11` do Studio): ocupam a janela inteira, sem faixa, árvore ou barra. Esc sai quando nada está selecionado (no desenho, também com a ferramenta de seleção). Salvam sozinhas e recarregam quando o arquivo muda fora do editor (evento `notesChanged`), se não houver mudança própria pendente.
 
@@ -268,7 +269,7 @@ Tela Calendário do cofre (`CalendarView.svelte`, `EventForm.svelte`, `calendar.
 
 O texto da nota fica livre para anotações (perguntas da entrevista, matéria da prova); o formulário de edição abre a nota. Trocar o título renomeia a nota (`RenameItem`, links seguem). Excluir manda para a lixeira, com Desfazer.
 
-A tela mostra o mês (seis semanas, domingo primeiro; segunda em espanhol), o dia escolhido com Marcar neste dia e Abrir a nota do dia (hoje sempre; outros dias quando a nota existe) e Próximos dias (30 dias). O nome do mês abre um seletor dos doze meses com navegação por ano; há setas e Hoje. Clique escolhe o dia; duplo clique ou Enter abre o formulário nesse dia. Cada dia exibe até três eventos e a contagem restante. Sem nenhum evento, o painel mostra o vazio com atalhos por tipo (aniversário, prova, entrevista). Feriados nacionais pelo idioma (Brasil, Estados Unidos, Espanha), calculados em `holidays.ts` (fixos, Páscoa e "n-ésimo dia da semana"); a caixa Mostrar feriados fica guardada no `localStorage`. Feriados não são eventos nem geram lembretes. Uma nota do dia mostra no topo os eventos daquele dia, e o clique leva ao calendário.
+O calendário tem um só botão Marcar neste dia no painel selecionado, além do duplo clique/Enter no dia; não repete adicionar no cabeçalho. A tela mostra o mês (seis semanas, domingo primeiro; segunda em espanhol), o dia escolhido com Marcar neste dia e Abrir a nota do dia (hoje sempre; outros dias quando a nota existe) e Próximos dias (30 dias). O nome do mês abre um seletor dos doze meses com navegação por ano; há setas e Hoje. Clique escolhe o dia; duplo clique ou Enter abre o formulário nesse dia. Cada dia exibe até três eventos e a contagem restante. Sem nenhum evento, o painel mostra o vazio com atalhos por tipo (aniversário, prova, entrevista). Feriados nacionais pelo idioma (Brasil, Estados Unidos, Espanha), calculados em `holidays.ts` (fixos, Páscoa e "n-ésimo dia da semana"); a caixa Mostrar feriados fica guardada no `localStorage`. Feriados não são eventos nem geram lembretes. Uma nota do dia mostra no topo os eventos daquele dia, e o clique leva ao calendário.
 
 Avisos: com o Studio aberto ou na bandeja, `startReminders` (no `ServiceStartup` do Studio) confere a cada 30 segundos os eventos de todos os cofres conhecidos e manda a notificação do sistema pelo serviço de notificações do Wails (iniciado à mão: sem suporte a notificações, o Studio abre igual). Um aviso perdido com o Studio fechado ainda chega em até 12 horas. Os enviados ficam em `reminders-sent.json` na pasta de configuração do Blup (esquecidos depois de um mês). Clicar no aviso traz a janela e abre o calendário no dia, se o cofre aberto for o do evento (evento `calendarOpen`). No macOS a permissão é pedida ao salvar o primeiro evento com aviso.
 
@@ -296,10 +297,10 @@ Em Linux, `canPlayMP3` procura `libgstaudioparsers.so` nos diretórios GStreamer
 
 | Tela | Operações atuais |
 | --- | --- |
-| Site, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, favicon, "Mostrar o nome ao lado do logo" (`SetShowName`, propriedade `header_name`), menu com submenus (`ui/MenuEditor.svelte`), botão e redes |
+| Site, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, link próprio do logo/nome (`SaveLogoLink`), favicon, "Mostrar o nome ao lado do logo" (`SetShowName`, propriedade `header_name`), menu com submenus (`ui/MenuEditor.svelte`), botão e redes |
 | Autores, `AuthorsPanel.svelte` | Lista, perfil, foto/avatar, cargo, redes, bio, criação, renomeação e remoção |
 | Anexos, `AttachmentsPanel.svelte` | Lista por tipo, tamanho e usos, adição, renomeação, exclusão e acesso às notas que usam |
-| Seções, `SectionsPanel.svelte` | Bento: seções de produto e Feedback; Mochi/Nori: Podcast. Adiciona modelos, remove para a lixeira e restaura |
+| Seções, `SectionsPanel.svelte` | Bento: seções de produto e Feedback; Mochi/Nori: Podcast. Adiciona modelos, remove para a lixeira e restaura; Bento escolhe a seção da home (`SaveHome`) |
 | Comentários, `CommentsPanel.svelte` | Ativa/desativa feedback, prepara repositório e orienta instalação do App |
 | Feedback, `FeedbackPanel.svelte` | Só no Bento com a seção Feedback: lista issues de pedidos via `FeedbackPosts`, filtra por categoria, abre no GitHub e muda o status via `SetFeedbackStatus` |
 | Cookies, `CookiesPanel.svelte` | Ferramentas, IDs, URLs próprias, banner e política |
@@ -314,6 +315,8 @@ Na nota de uma coleção da Central de Ajuda do Bento (`<pasta de ajuda>/<Coleç
 As redes do site e as de cada autor usam o mesmo componente, `ui/SocialLinks.svelte`: cada endereço com o ícone da rede, e um botão por rede (`NETWORKS` em `social.ts`: Instagram, X, LinkedIn, YouTube, Discord, GitHub, Facebook, WhatsApp, e-mail) que acrescenta uma linha com o começo do endereço e põe o cursor no fim. Ao salvar as redes do site, linhas só com o começo são descartadas.
 
 Perfis usam `internal/app/authors_api.go`, com avatares SVG embutidos em `internal/app/avatars`. Renomear autor ajusta as propriedades de posts conforme as rotinas implementadas. A pasta de perfis é identificada por `blup: authors`.
+
+Em Site, o link do logo é uma opção própria, que vale também para o nome ao lado dele e abre na mesma aba. Aceita HTTP/HTTPS ou caminho com uma `/`, seguindo a base do site (inclusive `/repo/`); frontend/Go validam e a leitura de sync ignora valor inválido. Em Seções do Bento, `SaveHome` salva o nome da pasta a mostrar na home. Vazio usa cartões ou a seção única; renomear a pasta invalida a escolha. A home mantém título/descrição do site e pagina em `/page/2/`, sem redirects.
 
 ### Seções e painel Feedback
 
@@ -387,11 +390,21 @@ Um site é escrito no idioma de `lang` (`pt`, `en` ou `es`) e pode ser publicado
 
 Antes do envio remoto, `aiconsent.ts`/`aiconsentui.ts` pedem aceite separado para OpenRouter e Blup. O backend também exige `ai-consent.json`, impedindo contornar a escolha pela chamada direta do binding. Configurações permite revogar. Narração e tradução remota recusam notas com senha; `TranslateSite` informa notas puladas e a tradução local permanece possível. O texto remoto é legível pelo serviço/provedor, diferente do sync cifrado.
 
-### Domínio e retirada de site Blup Cloud
+### Domínio, republicação e retirada de site Blup Cloud
 
-`BlupDomain.svelte` oferece `BlupDomain`, `SetBlupDomain` e `RemoveBlupDomain` para sites publicados em contas Max/Ultra. Mostra prova TXT, CNAME, estado de propriedade/SSL e orientação para domínio raiz, consultando a cada minuto enquanto está aberto e pendente. Não grava domínio no TOML nem troca a baseURL; URLs absolutas seguem `getblup.site`. A tela de apagar inclui `BlupSite` independentemente do provedor atualmente selecionado. Os contratos completos estão em [publicação](publicacao.md#domínio-próprio-no-blup-cloud).
+`BlupDomain.svelte` usa `BlupDomain`, `SetBlupDomain` e `RemoveBlupDomain` para configurar sites Max/Ultra já publicados. Mostra TXT/CNAME, estados e orientação de raiz; consulta a cada minuto enquanto aberto se estiver pendente ou com desligamento marcado. `disableAt` futuro permite exibir domínio ativo durante carência mesmo sem direito atual; `disabled` mostra a desativação e permite reconfigurar com plano elegível.
 
-Sair tenta esvaziar a fila de lembretes antes de encerrar a sessão. Sem rede, `signout-pending` conserva só o trabalho necessário à repetição, com modo `0600`; notas locais continuam no disco. Desligar notificações também repete cancelamento remoto enquanto necessário.
+`officialBase` só usa domínio com `active`, SSL `active` e plano elegível ou prazo futuro. `Deploy.Blup.Base` guarda a base da última publicação; offline/falha de consulta mantém essa base. Abrir o site ou consultar/alterar domínio pode detectar `Republish` e republicar em segundo plano, compartilhando o mutex de publish/sync, no máximo uma vez a cada dez minutos por site. Falha gera aviso e nova consulta pode tentar depois; operação já ocupada deixa a próxima consulta tentar. O evento `republish` leva progresso/resultado ao workspace. O novo build muda canonical/feed/sitemap, sem redirects entre hosts; não há serviço separado que faça isso com o Studio fechado.
+
+A tela de apagar inclui `BlupSite` independentemente do provedor atualmente selecionado. O contrato completo está em [publicação](publicacao.md#domínio-próprio-no-blup-cloud). Sair tenta esvaziar lembretes antes de encerrar sessão; sem rede, `signout-pending` conserva o trabalho com modo `0600`. Desligar notificações também repete cancelamento remoto.
+
+### Storage e limpeza do histórico
+
+`StorageBanner.svelte` aparece no workspace quando `storageBytes` supera `storageLimit`, com uso total, limite atual, prazo e teto anterior quando há carência. Permite fechar a faixa, ver planos e abrir `HistoryPurge`. O workspace recarrega conta depois do sync fora do estado `syncing`, para acompanhar recusa de cota ou espaço liberado. Editar/apagar pode continuar sincronizando acima do limite: o cliente tenta o fluxo normal e, após 413, mantém blocos cifrados novos na memória até o preparo/commit; crescimento líquido continua sujeito à recusa do servidor e à exceção de manifesto sem blocos novos.
+
+`HistoryPurge.svelte` aparece nas Configurações e na faixa compacta somente para notas com sync Blup Cloud. Mostra o total de histórico da conta; `historyBytes: null`, mantido por `*int64` no Go e bindings, exibe Tamanho indisponível agora e botão Atualizar. A nuvem não fornece estimativa de histórico por cofre. A confirmação explica que `PurgeHistory` apaga versões antigas só do cofre do site aberto, mantendo a versão atual e blocos compartilhados necessários. O retorno `freedBytes` informa o efetivamente descontado, e `storageBytes` atualiza o total; falha R2 conserva bytes/fila para repetição, sem zerar o total por suposição.
+
+O painel web da conta permite escolher o site retido no downgrade para Pro antes do prazo. O campo `downgrade` da resposta de `GET /api/sites` informa prazo/escolha; o PUT é `/api/sites/retained`. Após a carência, Pro mantém um e Grátis zero, preservando arquivos. [Blup Cloud](blup-cloud-sync.md#exclusão-retenção-e-mudança-de-plano) define direitos, prazos e erros.
 
 ## Busca, exportar e desempenho
 
@@ -405,7 +418,7 @@ Sair tenta esvaziar a fila de lembretes antes de encerrar a sessão. Sem rede, `
 
 O seletor reconhece Claude Code (`claude`), Codex (`codex`), OpenCode (`opencode`), Gemini CLI (`gemini`) e Antigravity (`agy`), verificando o PATH. Não instala esses programas. Ao iniciar um agente, dispara o comando dentro do shell; sair do agente deixa o shell aberto.
 
-`OpenTerminal` chama `WriteAgentGuides` ao abrir qualquer terminal, inclusive um shell sem agente. A função cria guias nas notas conforme suas regras de preservação. O scaffold exclui os três nomes de guia na raiz para que não virem páginas.
+`OpenTerminal` chama `WriteAgentGuides` ao abrir qualquer terminal, inclusive um shell sem agente. A função cria guias nas notas conforme suas regras de preservação. Além do terminal, criação/abertura do workspace cria ou atualiza guias intactos. `INSTRUCTIONS.md` contém o guia embutido por Mochi/Nori/Bento/cofre, em inglês com indicação do idioma de escrita; `AGENTS.md`, `CLAUDE.md` e `GEMINI.md` apontam para ele. Ficam em `ContentDir()`, que pode ser subpasta do cofre. Hashes conhecidos permitem atualizar textos ainda intactos, inclusive o AGENTS antigo; edição da pessoa nunca é sobrescrita. Os quatro nomes na raiz ficam fora do Hugo, árvore, busca e grafo. Veja [guias nas notas](notas-e-sync.md#guias-de-agentes-na-pasta-das-notas).
 
 Antes de iniciar agente, `TakeSnapshot` copia arquivos elegíveis para `<site>/.blup/snapshots`; guarda os cinco snapshots mais recentes, limita cada arquivo a 20 MiB e o conjunto a 300 MiB e ignora ocultos. `AIChanges` compara com o snapshot e `UndoAI` restaura o estado capturado, levando criações à lixeira segundo a rotina de undo. Os limites significam que não é backup integral garantido de todos os anexos grandes.
 

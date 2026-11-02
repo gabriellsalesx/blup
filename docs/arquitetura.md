@@ -1,6 +1,6 @@
 # Arquitetura do Blup
 
-Retrato do código em 02/11/2026. Consulte o [índice da spec](spec/README.md), o [guia de produção](deploy.md) e o [modelo de segurança](seguranca.md). Código e configuração versionados prevalecem sobre mensagens de commit e textos de exemplo.
+Retrato do código em 02/11/2026, incluindo os contratos finais da rodada 3. Consulte o [índice da spec](spec/README.md), o [guia de produção](deploy.md) e o [modelo de segurança](seguranca.md). Código e configuração versionados prevalecem sobre mensagens de commit e textos de exemplo.
 
 ## Componentes e fronteiras
 
@@ -63,6 +63,8 @@ O arquivo local de notas é legível no disco. A cifra de ponta a ponta é a fro
 
 O workspace lê corpo e propriedades separadamente, agenda salvamento e observa alterações externas. O editor grava na mesma pasta usada pelo Obsidian ou por agentes no terminal. Renomear e mover corrigem os formatos de links reconhecidos pelo código; conflito de edição não é um merge semântico automático. A lixeira e snapshots ficam fora da pasta publicada. Cofres acrescentam nota do dia, agenda, mapa, backlinks, `.canvas`, `.draw` e `.table`.
 
+A home Bento pode renderizar uma seção em `/`, com paginação em `/page/2/`, mantendo título/descrição do site e canonical unificado. `home` guarda o nome da pasta; `logo_link` controla o destino do logo em todos os modelos. Guias de agentes ficam em `ContentDir()`: `INSTRUCTIONS.md` contém o texto por modelo/cofre, e três arquivos de entrada apontam para ele; texto editado pela pessoa é preservado.
+
 A interface troca de idioma sem remontar a aplicação: `i18n-live.svelte.ts` fornece estado reativo e `i18n.ts` atualiza os grupos existentes. `Studio.SetLanguage` salva a escolha e atualiza a bandeja. O idioma do site e o das notas traduzidas são estados separados.
 
 ## Prévia e publicação
@@ -88,7 +90,7 @@ O scaffold substitui a cópia do tema e as configurações geradas, preservando 
 
 Adicionar, remover ou restaurar seções pode exigir reiniciar o processo Hugo da prévia: o watcher pode perder arquivos copiados antes de observar uma pasta nova. `sectionsChanged` trata esse caso; `previewFollows` trata mudança de idiomas/mounts. O Studio aberto não precisa reiniciar.
 
-GitHub Pages recebe blobs/árvores e Cloudflare Pages recebe Direct Upload. Blup Cloud usa a sessão da conta, reserva slug e recebe arquivos pelo hash do conteúdo armazenado, compactando recursos apropriados. O manifesto é ativado no D1 depois dos uploads; um Worker separado resolve os caminhos pelo manifesto e lê R2. O site usa `https://nome.getblup.site/`; Max/Ultra também vinculam um hostname próprio, após prova TXT e validação Cloudflare/SSL. O vínculo não muda a baseURL: URLs absolutas continuam em `getblup.site`. Reservas D1 limitam admissão concorrente, e leases serializam publicação/limpeza, preservando manifestos substituídos por pelo menos dez minutos.
+GitHub Pages recebe blobs/árvores e Cloudflare Pages recebe Direct Upload. Blup Cloud usa a sessão da conta, reserva slug e recebe arquivos pelo hash do conteúdo armazenado, compactando recursos apropriados. O manifesto é ativado no D1 depois dos uploads; um Worker separado autoriza cada pedido no D1 e chama um entrypoint com Workers Cache por site/deploy, que resolve o manifesto e lê R2 em miss. O site usa `https://nome.getblup.site/`; Max/Ultra também vinculam um hostname próprio, após prova TXT e validação Cloudflare/SSL. O cliente escolhe domínio ativo com SSL/direito ou carência válida como baseURL. O Studio republica em segundo plano quando essa base muda, sem redirecionar visitantes entre os dois hosts. Reservas D1 limitam admissão concorrente, e leases serializam publicação/limpeza, preservando manifestos substituídos por pelo menos dez minutos.
 
 Publicar é uma ação distinta de sincronizar. Um cofre sincronizado não fica público por isso; publicar o site não é backup das notas. [Publicação](spec/publicacao.md) descreve cache, concorrência e limites dos provedores.
 
@@ -105,8 +107,16 @@ sequenceDiagram
   K-->>S: Blocos cifrados, IDs HMAC e manifesto cifrado
   S->>W: Consultar faltantes e enviar blocos
   W->>R: Guardar por conta
-  S->>W: Commit com versao pai
-  W->>R: Avanco condicional da versao
+  alt Upload recusado por cota
+    S->>S: Guardar blocos cifrados novos em memoria
+    S->>W: Prepare: manifesto e tamanhos dos blocos
+    W->>R: Lease exclusiva e reserva liquida
+    W-->>S: Ticket e blocos faltantes
+    S->>W: Enviar faltantes sob ticket e confirmar
+  else Upload normal
+    S->>W: Commit com versao pai
+  end
+  W->>R: Head, referencias, uso e fila de descarte atomicos
   W-->>B: WebSocket: ID do cofre e nova versao
   B->>W: Baixar manifesto e blocos
   B->>B: Decifrar, comparar e gravar notas
@@ -114,7 +124,9 @@ sequenceDiagram
 
 O motor `notesync` compara base, disco e remoto. O adaptador GitHub trabalha com Git Data API; o adaptador Blup Cloud trabalha com blocos de 4 MiB e manifesto cifrado. A chave mestra é aleatória e fica embrulhada por senha e recuperação. A nuvem não recebe esses segredos em claro. Um commit concorrente causa 409 e nova comparação, preservando cópias em conflitos.
 
-Planos pagos têm debounce de dois segundos, avisos por Durable Object com WebSocket Hibernation e verificação a cada cinco minutos. Grátis usa o botão. O histórico tem prazo e rareamento, e consome a mesma cota. A configuração portátil inclui `translations`, identidade, domínio e cookies; exclui tokens, chave, senha geral, `Deploy` e `Feedback`. O cliente valida a forma do manifesto decifrado, caminhos, tamanhos de até 100 MiB e quantidade de blocos, e limita os bytes ao remontar antes de conferir SHA. Consulte [Blup Cloud](spec/blup-cloud-sync.md) e [notas e sync](spec/notas-e-sync.md).
+Planos pagos têm debounce de dois segundos, avisos por Durable Object com WebSocket Hibernation e verificação a cada cinco minutos. Grátis usa o botão. O histórico tem prazo e rareamento, e consome a mesma cota. A configuração portátil inclui `translations`, identidade, domínio, home Bento, link do logo e cookies; exclui tokens, chave, senha geral, `Deploy` e `Feedback`. O cliente valida a forma do manifesto decifrado, caminhos, tamanhos de até 100 MiB e quantidade de blocos, e limita os bytes ao remontar antes de conferir SHA. Consulte [Blup Cloud](spec/blup-cloud-sync.md) e [notas e sync](spec/notas-e-sync.md).
+
+Storage usa o total da conta, incluindo histórico. Uma redução com excesso abre 14 dias com o teto anterior; depois vale o novo limite, sem apagar dados só por excesso. O cliente tenta o fluxo normal e só prepara após 413, mantendo blocos novos em memória até o commit. O servidor admite substituições sem crescimento líquido e a exceção de versão sem blocos novos; não cria armazenamento gratuito separado para manifestos. Purga manual conserva a versão atual do cofre escolhido e só desconta bytes após confirmação R2. `historyBytes: null` permanece desconhecido no Go e na interface.
 
 ## Narrar, ouvir e traduzir
 
@@ -158,7 +170,7 @@ sequenceDiagram
 
 O plano resulta da assinatura reconhecida, ou cortesia específica do proprietário, e é conferido nas APIs. Stripe cuida do checkout e portal em suas próprias páginas. O código não armazena números de cartão. A staff usa Cloudflare Access, valida JWT novamente e aplica papéis `support`/`admin`; ações ficam no registro de auditoria. Não há impersonação do usuário ou interface de leitura de notas.
 
-O Worker da conta executa limpeza diária às 04:00 UTC, incluindo purga de contas elegíveis após 30 dias. A cada cinco minutos processa lembretes, reservas expiradas, limpeza de sites, cancelamentos financeiros pendentes e avisos de downgrade. Publicação de código, migração D1, objetos R2, configuração de e-mail e lançamento do Studio são operações diferentes. As tarefas e os limites de rollback estão em [deploy](deploy.md).
+O Worker da conta executa limpeza diária às 04:00 UTC, incluindo purga de contas elegíveis após 30 dias. A cada cinco minutos processa lembretes, reservas/tickets expirados, limpeza de sites, descarte de sync, cancelamentos financeiros, avisos de downgrade, desligamento de domínios e a fila de purgas do cache. Publicação de código, migração D1, objetos R2, configuração de e-mail e lançamento do Studio são operações diferentes. As tarefas e os limites de rollback estão em [deploy](deploy.md).
 
 ## Domínio, retenção e mudanças de direitos
 
@@ -168,9 +180,12 @@ flowchart TD
   TXT --> Provar[Conferir DNS em _blup.hostname]
   Provar --> CF[Cloudflare Custom Hostname e SSL]
   CF --> Ativo[Servir mesmos arquivos do site]
-  Plano[Mudanca de plano] --> Gratis[Pago para Gratis: 14 dias com aviso]
-  Gratis --> Fora[Parar novas entregas apos o prazo]
-  Plano --> Pro[Max ou Ultra para Pro: manter sites e retirar dominio]
+  Plano[Mudanca com excesso de sites ou storage] --> Prazo[14 dias sem ampliar prazo ja aberto]
+  Prazo --> Gratis[Gratis: zero sites depois do prazo]
+  Prazo --> Pro[Pro: site escolhido ou mais antigo]
+  Prazo --> Espaco[Storage: limite anterior durante a carencia]
+  Plano --> Dominio[Perda de dominio: prazo proprio de 14 dias]
+  Dominio --> Desligar[Gateway bloqueia e cron remove hostname apos prazo]
   Apagar[Excluir conta] --> Bloquear[Bloquear entrega e revogar sessoes agora]
   Bloquear --> Espera[Reter por 30 dias e tentar cancelar Stripe]
   Espera --> Restaurar[Staff pode restaurar antes da purga]
@@ -178,9 +193,29 @@ flowchart TD
   Purga --> Remover[Apagar Custom Hostnames antes dos identificadores D1]
 ```
 
-[lifecycle.ts](../cloud/worker/lifecycle.ts) centraliza direitos de conta, exclusão lógica e elegibilidade de purga. O Worker público confere essa condição no D1 antes de responder pela Cache API; não conserva o antigo cache de 30 segundos do head. O prazo de 14 dias é exclusivo de pago para Grátis, observado e persistido pelo sistema; voltar ao pago retira o bloqueio. Reduzir de Max/Ultra para Pro conserva sites existentes, com direitos atuais para novas operações e domínio próprio desativado.
-
+[lifecycle.ts](../cloud/worker/lifecycle.ts) persiste carências e direitos. O prazo de 14 dias agora cobre reduções com excesso de sites ou storage; Pro escolhe o único site retido em `PUT /api/sites/retained` até o prazo, e Grátis retém zero após ele. Sem escolha, fica o mais antigo por data e ID. Sites excedentes permanecem guardados. O domínio tem `disableAt` e estado `disabled`; Max/Ultra pode cancelar o desligamento antes de ocorrer, e reconfigura depois dele. Storage considera histórico e o teto anterior durante a carência, compartilhando `grace_until` com os sites.
 A exclusão lógica agenda purga após 30 dias e cancela sessões/lembretes imediatamente. A staff pode restaurar antes de vencer o prazo e antes de começar a purga, sem recriar assinatura cancelada. Falhas de Stripe, Cloudflare ou R2 mantêm estado para repetição; o cron não promete apagar no segundo exato. [Publicação](spec/publicacao.md) e [segurança](seguranca.md) detalham cópias de navegador e dados externos.
+
+## Entrega pública com gateway e cache
+
+```mermaid
+flowchart LR
+  Visitante[Visitante no hostname do site] --> Gateway[Default sem cache]
+  Gateway --> D1[Conta, deploy, quantidade, dominio e prazo no D1]
+  D1 --> Gateway
+  Gateway --> Cache[CachedSite por siteId e deploy]
+  Cache --> R2[R2 SITES somente no miss]
+  Cache --> Resposta[Gateway restaura Cache-Control, ETag e HEAD]
+  Resposta --> Visitante
+  Eventos[Bloqueio, remocao ou prazo vencido] --> Fila[Fila D1 por site e geracao]
+  Fila --> Cron[Cron por SITE_CACHE]
+  Cron --> Purga[CachedSite.purgePending no contexto do cache]
+  Purga --> Cache
+```
+
+O gateway executa em todo pedido e autoriza antes de chamar `ctx.exports.CachedSite({props:{siteId, deploy}})`. O cache interno tem TTL de 600 segundos e tags por site/deploy, sem cookies, Authorization ou query de visitante. O mapeamento de domínio pode estar em memória, mas host exato e prazo são revalidados no D1. A Cache API anterior foi removida. Purgas persistidas têm até cem tags por tentativa e limitador de uma por minuto, executadas pelo cron de cinco minutos no entrypoint dono do cache.
+
+O HTML oferece Link preload dos recursos conhecidos do manifesto, e o provisionamento solicita Early Hints; 103 real depende da infraestrutura. Cache não elimina cobrança por request ou consulta D1 do gateway. [Publicação](spec/publicacao.md#workers-cache-chaves-e-purga) e [deploy](deploy.md) explicam isolamento, custo, operação e validação ainda externa.
 
 ## Contratos entre linguagens e release
 
@@ -194,3 +229,6 @@ A separação de módulos segue a [documentação Go](https://go.dev/doc/modules
 
 
 Na rodada 2 também foram conferidos [Hono RPC](https://hono.dev/docs/guides/rpc), [validação Hono](https://hono.dev/docs/guides/validation), [tipagem Better Auth](https://better-auth.com/docs/concepts/typescript), [Ed25519 Go](https://pkg.go.dev/crypto/ed25519), [eventos Wails](https://v3.wails.io/guides/events-reference/) e [tipos SvelteKit](https://svelte.dev/docs/kit/types). MCP Svelte forneceu a documentação de TypeScript/estado; MCP Wails inspecionou o projeto sem executá-lo. Context7 forneceu referências oficiais atuais de Cloudflare for SaaS e Better Auth, complementadas pelos links oficiais de [deploy](deploy.md).
+
+
+Na rodada 3, Workers Cache foi conferido pelo MCP Context7 e pelas referências oficiais de [chaves](https://developers.cloudflare.com/workers/cache/cache-keys/), [purga](https://developers.cloudflare.com/workers/cache/purge/) e [limites](https://developers.cloudflare.com/workers/cache/limitations/). Early Hints segue a [documentação oficial](https://developers.cloudflare.com/workers/examples/103-early-hints/). As referências descrevem a API, sem comprovar provisionamento ou ganho de custo neste projeto.

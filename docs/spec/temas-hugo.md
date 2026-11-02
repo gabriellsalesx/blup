@@ -85,6 +85,14 @@ O roadmap normaliza vários valores de `status` em `planned`, `progress` e `done
 
 Remover ou adicionar uma seção é uma mudança nos arquivos de notas. O Studio oferece ações que movem a pasta à lixeira ou escrevem exemplos; o template apenas interpreta o que existe.
 
+### Home do Bento como seção
+
+`bento/home-target.html` escolhe a pasta configurada em `home`; sem escolha válida, usa a seção única quando houver só uma, ou os cartões das seções. A home renderiza essa seção em `/`, sem redirecionamento. O título e a descrição da home continuam sendo os do site, enquanto a lista, navegação e conteúdo da seção fornecem a área principal. Cada idioma encontra sua própria versão.
+
+`bento/link.html` usa a home do idioma para links que apontariam ao índice da seção escolhida. As páginas internas conservam seus endereços sob a pasta. `bento/pager-host.html` usa a home para paginar, como `/page/2/`, com suporte dos partials de listas/pager. Menus, breadcrumbs e links internos reconhecidos seguem o mesmo endereço. O índice de seção ainda pode ser acessado pelo arquivo gerado; canonical e `og:url` apontam à home, e `sitemap.xml` omite a entrada duplicada da seção. Não há regra de redirects no provedor.
+
+A escolha guarda o nome da pasta. Ao renomear/remover essa pasta, volta ao padrão: cartões, ou a única seção restante. `SaveHome` e o seletor Seções do Studio fazem essa configuração; `home` também viaja no TOML portátil.
+
 ### Seção Feedback
 
 Feedback é reconhecida por `blup: feedback`, inclusive quando a pasta tem outro nome. Fica em `studioKinds`, separada das cinco seções `docsKinds` do assistente de criação e da CLI; o Studio a acrescenta pelo painel Seções após criar o site. Há modelos em `internal/app/starter/{pt,en,es}/bento/Feedback/_index.md`.
@@ -126,6 +134,8 @@ O hook de heading inclui âncoras a partir de H2 e suporta classe. `render-block
 O head inclui título composto, canonical, descrição, Open Graph, Twitter card, datas, tags e JSON-LD. `head/jsonld.html` emite `WebSite` para a home, `TechArticle` para toda página regular do Bento, inclusive blog e roadmap, e `BlogPosting` para páginas regulares dos demais modelos; também inclui breadcrumbs fora da home. `og-image.html` usa capa quando apropriado ou gera imagem social com os assets em `theme/assets/og/`. `hidden`, `noindex` e 404 recebem meta robots noindex.
 
 `rss.xml` limita a 20 páginas recentes, retira escondidas e usa descrição genérica para protegidas. Na home e taxonomias do Bento filtra para notícias de blog e changelog. `robots.txt` e sitemap dependem também da geração Hugo; `hidden` é uma convenção de apresentação do tema, não uma remoção universal de todo arquivo ou referência.
+
+`site/logo-link.html` é compartilhado pelos cabeçalhos dos três modelos. Vazio leva à home do idioma; `logo_link` válido permite HTTP/HTTPS ou caminho iniciado por uma `/`. O caminho é resolvido com a base, preservando subpasta de GitHub Pages. O destino vale também para o nome ao lado do logo e abre na mesma aba. O scaffold filtra links inválidos, inclusive recebidos por sync; não é uma propriedade YAML da nota inicial.
 
 ## Busca Pagefind
 

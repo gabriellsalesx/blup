@@ -207,6 +207,23 @@ No cliente, `internal/app/blup_reminders_test.go` confere payload opaco; `narrat
 
 Testes HTTP locais usam portas efêmeras próprias. Se o sandbox impedir `httptest` de abrir sockets, é preciso executar o mesmo teste com a permissão apropriada, preservando portas e processos reservados. Para temporários grandes, use pasta da sessão e `TMPDIR`/`GOTMPDIR`; remova só os arquivos da própria execução. Testes de IA, Stripe e e-mail usam simulações; não comprovam entrega, cobrança ou publicação de produção.
 
+## Regressões da rodada 3
+
+| Arquivo | Cobertura |
+| --- | --- |
+| `cloud/worker/round3-security.test.ts` | Carências de domínio/storage, site retido, titularidade/prazo, preparação líquida, cancelamento/expiração, purga por cofre e R2 indisponível |
+| `cloud/worker/site-cache.test.ts` | Props/site/deploy, autorização antes do hit, headers de navegador, fila/geração de purga, limites e Early Hints |
+| `internal/blupcloud/prepare_test.go` | Multipart/ticket/header, blocos preparados, erros de contrato e sequência do commit |
+| `internal/blupcloud/history_test.go` | Purga, campos nullable, retorno e compatibilidade |
+| `internal/app/blup_base_test.go`, `studio/republish_test.go` | Domínio/SSL/plano/carência como base oficial, falha temporária e republicação controlada |
+| `internal/app/bento_home_test.go`, `logo_link_test.go` | Home como seção, URLs/pager/canonical/sitemap, nomes de pasta e links do logo nos três temas |
+| `internal/app/agents_test.go`, `agents_legacy_test.go` | Guias por modelo/cofre, preservação de edições e migração do texto antigo intacto |
+| `studio/frontend/tests/boards.test.ts`, `cloudhistory.test.ts`, `logolink.test.ts` | Canvas desconhecido preservado, total de conta/nullable e validação do link do logo |
+
+As corridas reportadas pela documentação têm testes normais com barreiras: PUT duplicado suspenso antes da lease e retomado depois do commit deve conservar bytes; upgrade que limpa `disable_at` antes do claim deve impedir DELETE externo. Há proteção de confirmação D1 perdida e regressão dos uploads normais paralelos, preservando exclusividade de preparo/purga. Verificar somente o status HTTP não comprova essas propriedades de integridade.
+
+A Lupa também informou aplicação das migrações `0000..0011` do zero por Wrangler no D1 local e EXPLAIN usando os novos índices. Esse resultado é evidência da validação da área Cloud, separada da suíte SQLite simulada e da configuração remota de produção. Não reaplique migrações remotas para validar Markdown.
+
 ## Alcance de validação desta documentação
 
 Esta spec foi produzida por inspeção do código, fixtures, testes e tarefas versionadas. Não registra como executados builds multiplataforma, empacotamentos, login em provedores ou publicação remota. Os comandos acima documentam os fluxos implementados; validações locais da documentação devem conferir links, caminhos e consistência com as fontes. Mudanças somente em Markdown não exigem recriar binários ou disparar operações de conta.

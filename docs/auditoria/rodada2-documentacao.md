@@ -1,6 +1,6 @@
 # Rodada 2: tipagem e documentação
 
-Conferência de 02/11/2026. A fase de auditoria foi somente leitura; os achados foram encaminhados via Maestri à Lupa (Cloud) e ao Prumo (Studio/Go), com arquivo, linha e correção sugerida. As alterações desta entrega são apenas documentação. A equipe responsável implementou as correções de código e seus testes; esta entrega conferiu o resultado e executou os checks de integração.
+Registro histórico da rodada 2 em 02/11/2026. As mudanças posteriores de carências, baseURL, sync e cache estão na [rodada 3](rodada3-documentacao.md); os contratos atuais estão no [índice da spec](../spec/README.md). A fase de auditoria foi somente leitura; os achados foram encaminhados via Maestri à Lupa (Cloud) e ao Prumo (Studio/Go), com arquivo, linha e correção sugerida. As alterações desta entrega são apenas documentação. A equipe responsável implementou as correções de código e seus testes; esta entrega conferiu o resultado e executou os checks de integração.
 
 ## Achados e fechamento
 
