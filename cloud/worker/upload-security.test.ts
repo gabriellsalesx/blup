@@ -35,7 +35,7 @@ describe("bounded file intake",()=>{
 		const req=new Request("https://upload.audit.invalid",{method:"POST",headers:{"content-length":"1"},body:new Uint8Array(10)});
 		await expect(boundedBody(req,5)).rejects.toMatchObject({status:413});
 	});
-	it("uses the approved 10/25/100/100 MiB file caps",()=>{
-		expect(PLANS.map(p=>p.limits.maxFileMB)).toEqual([10,25,100,100]);
+	it("uses the approved 10/25/50/100 MiB file caps",()=>{
+		expect(PLANS.map(p=>p.limits.maxFileMB)).toEqual([10,25,50,100]);
 	});
 });

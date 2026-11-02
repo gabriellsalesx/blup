@@ -60,8 +60,8 @@ export const PLANS: Plan[] = [
 
 		lookupKey: "blup_max_mensal",
 		yearlyLookupKey: "blup_max_anual",
-		limits: { storageMB: 10240, maxFileMB: 100, sites: 5, customDomain: true, devices: 3, live: true, historyDays: 365, aiUsage: 2, reminderEmails: 50 },
-		perks: ["10 GB de notas, sincronizadas em tempo real", "3 computadores conectados", "Arquivos de até 100 MB", "Histórico de versões de 12 meses", "5 sites no ar pelo Blup, com domínio próprio", "50 avisos da agenda por e-mail por mês"],
+		limits: { storageMB: 5120, maxFileMB: 50, sites: 3, customDomain: true, devices: 3, live: true, historyDays: 365, aiUsage: 2, reminderEmails: 50 },
+		perks: ["5 GB de notas, sincronizadas em tempo real", "3 computadores conectados", "Arquivos de até 50 MB", "Histórico de versões de 12 meses", "3 sites no ar pelo Blup, com domínio próprio", "50 avisos da agenda por e-mail por mês"],
 	},
 	{
 		name: "ultra",
@@ -69,8 +69,8 @@ export const PLANS: Plan[] = [
 
 		lookupKey: "blup_ultra_mensal",
 		yearlyLookupKey: "blup_ultra_anual",
-		limits: { storageMB: 51200, maxFileMB: 100, sites: 10, customDomain: true, devices: -1, live: true, historyDays: 365, aiUsage: 5, reminderEmails: 100 },
-		perks: ["50 GB de notas, sincronizadas em tempo real", "Computadores sem limite", "Arquivos de até 100 MB", "Histórico de versões de 12 meses", "10 sites no ar pelo Blup, com domínio próprio", "100 avisos da agenda por e-mail por mês", "Suporte prioritário e novidades antes"],
+		limits: { storageMB: 10240, maxFileMB: 100, sites: 10, customDomain: true, devices: -1, live: true, historyDays: 365, aiUsage: 5, reminderEmails: 100 },
+		perks: ["10 GB de notas, sincronizadas em tempo real", "Computadores sem limite", "Arquivos de até 100 MB", "Histórico de versões de 12 meses", "10 sites no ar pelo Blup, com domínio próprio", "100 avisos da agenda por e-mail por mês", "Suporte prioritário e novidades antes"],
 	},
 ];
 

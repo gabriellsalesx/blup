@@ -48,6 +48,20 @@ async function request(path:string, method="GET", body?:unknown, user="alice", h
 }
 
 describe("local attacks on actual Cloud routes", () => {
+	it.each([{plan:"max",storageMB:5120},{plan:"ultra",storageMB:10240}])("enforces the revised $plan storage boundary on block uploads",async({plan,storageMB})=>{
+		d1.sqlite.prepare("UPDATE subscription SET plan=? WHERE reference_id='alice'").run(plan);
+		const cap=storageMB*1024*1024;
+		d1.sqlite.prepare("UPDATE sync_account SET storage_bytes=? WHERE user_id='alice'").run(cap-1);
+		const upload=(hash:string)=>worker.fetch(new Request(`https://cloud.audit.invalid/api/sync/blocks/${hash}`,{method:"PUT",headers:{authorization:"Bearer audit-alice"},body:new Uint8Array([1])}),state.env,ctx);
+		expect((await upload(HASH)).status).toBe(201);
+		expect((await upload("b".repeat(64))).status).toBe(413);
+		expect(d1.sqlite.prepare("SELECT storage_bytes FROM sync_account WHERE user_id='alice'").get()?.storage_bytes).toBe(cap);
+	});
+	it("keeps concurrent Max site creation within three sites",async()=>{
+		const responses=await Promise.all(["second","third","fourth"].map(name=>request("/sites","POST",{slug:`max-${name}`,title:name})));
+		expect(responses.map(r=>r.status).sort()).toEqual([201,201,403]);
+		expect(d1.sqlite.prepare("SELECT count(*) AS n FROM site WHERE user_id='alice'").get()?.n).toBe(3);
+	});
 	it.each(["ban","sessions/revoke"])("closes existing live connections on staff %s",async action=>{
 		const revoke=vi.fn(async()=>{});
 		Object.assign(state.env,{STAFF_DEV_EMAIL:"owner@audit.invalid",STAFF_OWNER_EMAIL:"owner@audit.invalid",SYNC_LIVE:{getByName:()=>({revoke})}});
@@ -282,7 +296,7 @@ describe("round two: malicious inputs and resource failures",()=>{
 	});
 	it("rejects an oversized announced upload before consuming its body",async()=>{
 		let read=0;
-		const res=await worker.fetch(new Request(`https://cloud.audit.invalid/api/sites/site-a/files/${HASH}`,{method:"PUT",headers:{authorization:"Bearer audit-alice","content-length":String(100*1024*1024+1)},body:new ReadableStream({pull(c){read++;c.enqueue(new Uint8Array([1]));c.close();}}),duplex:"half"} as RequestInit),state.env,ctx);
+		const res=await worker.fetch(new Request(`https://cloud.audit.invalid/api/sites/site-a/files/${HASH}`,{method:"PUT",headers:{authorization:"Bearer audit-alice","content-length":String(50*1024*1024+1)},body:new ReadableStream({pull(c){read++;c.enqueue(new Uint8Array([1]));c.close();}}),duplex:"half"} as RequestInit),state.env,ctx);
 		expect(res.status).toBe(413);expect(read).toBeLessThanOrEqual(1);expect(sites.objects.size).toBe(0);
 	});
 	it("rate-limits both account and IP on expensive calls",async()=>{

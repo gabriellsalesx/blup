@@ -120,7 +120,7 @@ describe("storage grace and net reservations",()=>{
 		await observePlan(runtime.env.DB,"owner","max");
 		db.sqlite.prepare("UPDATE sync_account SET storage_bytes=? WHERE user_id='owner'").run(11*1024*MB);
 		await downgrade("pro");const first=await observePlan(runtime.env.DB,"owner","pro");
-		expect(first?.storageGraceLimit).toBe(10*1024*MB);
+		expect(first?.storageGraceLimit).toBe(5*1024*MB);
 		vi.setSystemTime(Date.now()+DAY);await downgrade("free");const later=await observePlan(runtime.env.DB,"owner","free");
 		expect(later?.graceUntil).toBe(first?.graceUntil);expect(later?.storageGraceLimit).toBe(first?.storageGraceLimit);
 		await downgradeNotices(runtime.env);expect(mail[0]?.text).toContain("armazenamento");expect(mail[0]?.text).toContain("16 de novembro de 2026");
@@ -129,7 +129,7 @@ describe("storage grace and net reservations",()=>{
 		await storedVault();await downgrade("free");
 		expect((await put("b".repeat(64),new Uint8Array([1]))).status).toBe(201);
 		const me=await(await request("/me")).json() as {usage:{storageLimitBytes:number;storageGraceLimitBytes:number;storageGraceUntil:string}};
-		expect(me.usage.storageLimitBytes).toBe(50*MB);expect(me.usage.storageGraceLimitBytes).toBe(10240*MB);
+		expect(me.usage.storageLimitBytes).toBe(50*MB);expect(me.usage.storageGraceLimitBytes).toBe(5120*MB);
 		vi.setSystemTime(Date.parse(me.usage.storageGraceUntil)+1);expect((await put("c".repeat(64),new Uint8Array([2]))).status).toBe(413);
 		const form=new FormData();form.set("parent","1");form.set("blocks","");form.set("manifest",new File(["longer"],"manifest"));
 		expect((await worker.fetch(new Request("https://cloud.audit.invalid/api/sync/vaults/vault-1/versions",{method:"POST",headers:{authorization:"Bearer audit-owner"},body:form}),runtime.env,ctx)).status).toBe(201);

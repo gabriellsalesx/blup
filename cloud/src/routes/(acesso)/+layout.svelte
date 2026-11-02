@@ -9,7 +9,7 @@
 	// screens on: a card split in two, the pitch on the left.
 	let { children } = $props();
 
-	const perks = ["100 MB grátis para sempre", "Ninguém lê suas notas, nem o Blup", "Seus sites no ar sem esforço"];
+	const perks = ["50 MB grátis para sempre", "Ninguém lê suas notas, nem o Blup", "Seus sites no ar sem esforço"];
 </script>
 
 <div class="relative min-h-dvh bg-blup md:grid md:place-items-center md:overflow-hidden md:bg-neutral-100 md:p-8 md:dark:bg-neutral-950">
