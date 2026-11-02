@@ -61,18 +61,6 @@ func ConvertTree(idx *Index, vaultRoot, subdir string, dryRun bool) (Report, err
 	return rep, nil
 }
 
-// Backup writes destZip with every .md file under subdir ("" = whole vault),
-// stored with its vault-relative path. Call it before ConvertTree writes.
-// To back up only the files a conversion will change, run ConvertTree with
-// dryRun and pass Report.Changed to BackupFiles.
-func Backup(vaultRoot, subdir, destZip string) error {
-	files, err := markdownFiles(vaultRoot, subdir)
-	if err != nil {
-		return err
-	}
-	return BackupFiles(vaultRoot, files, destZip)
-}
-
 // BackupFiles writes destZip with the given vault-relative files. The zip is
 // written to a temporary file first and renamed into place.
 func BackupFiles(vaultRoot string, files []string, destZip string) (err error) {

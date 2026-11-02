@@ -9,7 +9,7 @@ export type ColumnType = "text" | "number" | "phone" | "email" | "url" | "date" 
 export const TYPES: ColumnType[] = ["text", "number", "select", "multi", "date", "phone", "email", "url", "check", "link"];
 
 // The choices' colors: a tint behind, the color itself for the text.
-export const OPTION_COLORS = ["gray", "red", "orange", "yellow", "green", "blue", "pink"] as const;
+const OPTION_COLORS = ["gray", "red", "orange", "yellow", "green", "blue", "pink"] as const;
 const HEX: Record<string, string> = { gray: "#94a3b8", red: "#ef4444", orange: "#f59e0b", yellow: "#eab308", green: "#22c55e", blue: "#3b82f6", pink: "#ec4899" };
 export const optionColor = (c?: string) => HEX[c ?? "gray"] ?? HEX.gray;
 export const nextColor = (c?: string) => OPTION_COLORS[((OPTION_COLORS as readonly string[]).indexOf(c ?? "gray") + 1) % OPTION_COLORS.length];

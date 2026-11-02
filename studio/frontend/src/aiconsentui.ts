@@ -8,7 +8,7 @@ import { withConsent, type Dest } from "./aiconsent";
 export { ConsentCancelled, needsProvider } from "./aiconsent";
 
 /** Asks whether the note's text may go to dest; true when accepted. */
-export function askAIConsent(dest: Dest, action: "translate" | "narrate"): Promise<boolean> {
+function askAIConsent(dest: Dest, action: "translate" | "narrate"): Promise<boolean> {
   return new Promise((done) => {
     const box = mount(AIConsent, {
       target: document.body,

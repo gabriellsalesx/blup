@@ -24,6 +24,7 @@
   import { Events } from "@wailsio/runtime";
   import X from "@lucide/svelte/icons/x";
   import Check from "@lucide/svelte/icons/check";
+  import Copy from "@lucide/svelte/icons/copy";
   import ThemePicker from "./ThemePicker.svelte";
   import KeyRecorder from "./KeyRecorder.svelte";
   import { Clipboard } from "@wailsio/runtime";
@@ -83,6 +84,15 @@
   // which the Studio writes.
   let hypr = $state<{ on: boolean; file: string; line: string; auto: boolean } | null>(null);
   let lineCopied = $state(false);
+  // The account's id, told when asking for help.
+  let idCopied = $state(false);
+  async function copyId(id: string) {
+    try {
+      await Clipboard.SetText(id);
+      idCopied = true;
+      setTimeout(() => (idCopied = false), 1500);
+    } catch (e) { toastError(e); }
+  }
   HyprlandSetup(look.toggleKey ?? "").then((h) => (hypr = h));
   // The Studio's own shortcuts.
   function setKey(a: Action, keys: string) {
@@ -433,6 +443,12 @@
     {:else if tab === "cloud"}
       <p class="muted lead">{s.cloudLead}</p>
       <div class="cloudbox"><CloudAccount bind:account brief /></div>
+      {#if account?.signedIn && account.id}
+        <div class="item">
+          <div class="text"><b>{s.accountId}</b><small>{s.accountIdHelp}</small><code class="acct-id">{account.id}</code></div>
+          <button class="btn ghost copy" onclick={() => account && copyId(account.id)}>{#if idCopied}<Check size={14} />{s.idCopied}{:else}<Copy size={14} />{s.copyId}{/if}</button>
+        </div>
+      {/if}
       {#if account?.signedIn}
         <h3>{s.usage}</h3>
         <div class="item column">
@@ -760,6 +776,8 @@
   nav .appver { gap: .4rem; font-size: .75rem; }
   .appver .dot { width: .45rem; height: .45rem; border-radius: 50%; background: var(--blue); }
   .text small.warn { color: var(--blue); font-weight: 600; }
+  .acct-id { font-family: ui-monospace, monospace; font-size: .8rem; user-select: all; overflow-wrap: anywhere; }
+  .copy { display: inline-flex; align-items: center; gap: .35rem; flex-shrink: 0; }
   .cloudbox { display: grid; gap: .75rem; padding-block: .5rem 1rem; border-block-end: 1px solid var(--line); font-size: .9rem; }
   .dl span.full { background: var(--red); }
   .num { font-size: .85rem; font-variant-numeric: tabular-nums; }

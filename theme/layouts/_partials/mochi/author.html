@@ -1,4 +1,0 @@
-{{- /* First author of a page as a dict {name, url, avatar, initials, role}. */ -}}
-{{- $a := dict "name" "" "url" "" "avatar" false "initials" "" "role" "" -}}
-{{- with partial "mochi/authors.html" . }}{{ $a = index . 0 }}{{ end -}}
-{{- return $a -}}

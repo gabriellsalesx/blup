@@ -20,7 +20,6 @@ var messages = map[Lang]map[string]string{
 		"update.err_asset":    "This release has no download for your system yet.",
 		"update.err_writable": "I can't replace the blup file in its folder. Install again with the install script.",
 		"update.err_backup":   "There is no previous version to go back to.",
-		"tagline":             "your Obsidian vault as a website",
 		"credit":              "created by Gabriell Sales",
 		"yes":                 "Yes",
 		"no":                  "No",
@@ -58,7 +57,6 @@ Usage:
 		"key.continue": "continue",
 		"key.toggle":   "yes/no",
 		"key.confirm":  "confirm",
-		"key.quit":     "quit",
 		"key.back":     "back",
 
 		"menu.first_time":                  "Welcome! Let's create your first site. Just answer a few questions; pressing Enter keeps the suggestion.",
@@ -466,7 +464,6 @@ Usage:
 		"update.err_asset":    "Esta versão ainda não tem download para o seu sistema.",
 		"update.err_writable": "Não consigo trocar o arquivo do blup na pasta dele. Instale de novo com o script de instalação.",
 		"update.err_backup":   "Não há versão anterior para voltar.",
-		"tagline":             "seu vault do Obsidian como site",
 		"credit":              "criado por Gabriell Sales",
 		"yes":                 "Sim",
 		"no":                  "Não",
@@ -504,7 +501,6 @@ Uso:
 		"key.continue": "continuar",
 		"key.toggle":   "sim/não",
 		"key.confirm":  "confirmar",
-		"key.quit":     "sair",
 		"key.back":     "voltar",
 
 		"menu.first_time":                  "Bem-vindo! Vamos criar seu primeiro site. É só responder algumas perguntas; apertar Enter aceita a sugestão.",
@@ -912,7 +908,6 @@ Uso:
 		"update.err_asset":    "Esta versión todavía no tiene descarga para tu sistema.",
 		"update.err_writable": "No puedo reemplazar el archivo blup en su carpeta. Instala de nuevo con el script de instalación.",
 		"update.err_backup":   "No hay una versión anterior a la cual volver.",
-		"tagline":             "tu bóveda de Obsidian como sitio web",
 		"credit":              "creado por Gabriell Sales",
 		"yes":                 "Sí",
 		"no":                  "No",
@@ -950,7 +945,6 @@ Uso:
 		"key.continue": "continuar",
 		"key.toggle":   "sí/no",
 		"key.confirm":  "confirmar",
-		"key.quit":     "salir",
 		"key.back":     "volver",
 
 		"menu.first_time":                  "¡Bienvenido! Vamos a crear tu primer sitio. Solo responde algunas preguntas; presionar Enter mantiene la sugerencia.",

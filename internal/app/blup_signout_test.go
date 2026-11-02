@@ -111,3 +111,13 @@ func TestBlupSignOutCancelsReminders(t *testing.T) {
 		t.Fatal("nothing pending, nothing done")
 	}
 }
+
+// SignOutPending tells whether a sign out still has to reach Blup Cloud.
+func SignOutPending() bool {
+	f, err := signOutPendingFile()
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(f)
+	return err == nil
+}

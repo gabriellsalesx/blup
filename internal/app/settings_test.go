@@ -34,7 +34,9 @@ func TestSettingsRoundTrip(t *testing.T) {
 	if err := SaveSocial(site, []string{"not a link"}); err == nil {
 		t.Fatal("a bad link must be refused")
 	}
-	if err := SetPassword(site, "segredo"); err != nil {
+	// A site's own password, as older versions saved it.
+	site.Password = "segredo"
+	if err := site.Save(); err != nil {
 		t.Fatal(err)
 	}
 	img := filepath.Join(t.TempDir(), "logo.png")

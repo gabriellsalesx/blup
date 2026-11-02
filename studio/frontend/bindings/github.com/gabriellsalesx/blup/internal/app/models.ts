@@ -100,6 +100,12 @@ export interface Author {
  */
 export interface BlupAccount {
     "signedIn": boolean;
+
+    /**
+     * ID is the account's id on Blup Cloud: not a secret, the person tells
+     * it when asking for help.
+     */
+    "id": string;
     "email": string;
 
     /**

@@ -9,6 +9,7 @@
   import Plus from "@lucide/svelte/icons/plus";
   import NotePicker from "./NotePicker.svelte";
   import { optionColor, nextColor } from "./db";
+  import { typedValue } from "./fieldvalue";
   import { t } from "./i18n";
 
   // One field of a database's record, by its column's kind: written in a
@@ -26,7 +27,12 @@
   const text = $derived(value == null ? "" : String(value));
   const list = $derived(Array.isArray(value) ? value.map(String) : value ? [String(value)] : []);
   const option = (v: string) => column.options?.find((o) => o.value === v);
-  const commit = (v: string) => { if (v !== text) onChange(v); };
+  // What was typed, saved only when it changed (a number column keeps a
+  // finite number).
+  function commit(typed: string) {
+    const v = typedValue(column.type, typed, text);
+    if (v !== undefined) onChange(v);
+  }
 
   // The choices' list, under the field, over everything (a table's cell
   // would cut it).
@@ -101,7 +107,7 @@
   <span class="frow">
     <input class="fin" type={column.type === "number" ? "number" : column.type === "email" ? "email" : column.type === "phone" ? "tel" : column.type === "url" ? "url" : "text"}
       value={text} placeholder={compact ? "" : d.empty} aria-label={column.name}
-      onchange={(e) => commit(column.type === "number" && e.currentTarget.value !== "" ? (Number(e.currentTarget.value) as unknown as string) : e.currentTarget.value)}
+      onchange={(e) => commit(e.currentTarget.value)}
       onkeydown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
     {#if text && column.type === "phone"}
       <button class="mini" title={d.call} aria-label={d.call} onclick={() => OpenURL("tel:" + digits(text))}><Phone size={13} /></button>

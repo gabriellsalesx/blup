@@ -1214,13 +1214,6 @@ export function SetNotifications(on: boolean): $CancellablePromise<void> {
 }
 
 /**
- * SetPassword sets the general password of protected posts.
- */
-export function SetPassword(password: string): $CancellablePromise<void> {
-    return $Call.ByID(2274743879, password);
-}
-
-/**
  * SetProps changes properties of a note (a database's cell, from its
  * table or board): a nil, empty or false value removes it.
  */

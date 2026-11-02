@@ -2,6 +2,7 @@
   import { withAIConsent, ConsentCancelled } from "./aiconsentui";
   import { AuthorNames, PickCover, LinkedImage, AIConnected, LocalVoice, Narrate, NarrationHash, NarrationEstimate } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { Events } from "@wailsio/runtime";
+  import { untrack } from "svelte";
   import { toast } from "./toast.svelte";
   import AudioLines from "@lucide/svelte/icons/audio-lines";
   import Switch from "./Switch.svelte";
@@ -20,24 +21,28 @@
   let open = $state(false);
   let more = $state(false);
   const list = (v: Json | undefined): string[] => (Array.isArray(v) ? v.map(String) : v ? [String(v)] : []);
+  // The fields start from the note's properties as it opened (the
+  // component is made again for each note); edits go out through onEdit.
+  const start = untrack(() => props);
 
-  let title = $state(String(props.title ?? ""));
-  let description = $state(String(props.description ?? ""));
-  let date = $state(String(props.date ?? "").slice(0, 10));
-  let tags = $state(list(props.tags));
-  let authors = $state(list(props.authors));
-  let image = $state(String(props.image ?? ""));
+  let title = $state(String(start.title ?? ""));
+  let description = $state(String(start.description ?? ""));
+  let date = $state(String(start.date ?? "").slice(0, 10));
+  let tags = $state(list(start.tags));
+  let authors = $state(list(start.authors));
+  let image = $state(String(start.image ?? ""));
   // A help collection (a folder of Bento's Help Center): its card's icon.
   const isCollection = $derived(kind === "help" && isIndex && note.split("/").length === 3);
-  let icon = $state(String(props.icon ?? ""));
-  let draft = $state(props.draft === true);
-  let hidden = $state(props.hidden === true);
-  const pw0 = props.password === undefined || props.password === null || props.password === false ? "" : String(props.password);
-  let pwMode = $state(pw0 === "" ? "none" : ["sim", "sí", "si", "yes", "true"].includes(pw0.toLowerCase()) ? "general" : "own");
-  let pwOwn = $state(pwMode === "own" ? pw0 : "");
-  let weight = $state(props.weight ? Number(props.weight) : 0);
-  let status = $state(String(props.status ?? ""));
-  let category = $state(String(props.category ?? ""));
+  let icon = $state(String(start.icon ?? ""));
+  let draft = $state(start.draft === true);
+  let hidden = $state(start.hidden === true);
+  const pw0 = start.password === undefined || start.password === null || start.password === false ? "" : String(start.password);
+  const pwMode0 = pw0 === "" ? "none" : ["sim", "sí", "si", "yes", "true"].includes(pw0.toLowerCase()) ? "general" : "own";
+  let pwMode = $state(pwMode0);
+  let pwOwn = $state(pwMode0 === "own" ? pw0 : "");
+  let weight = $state(start.weight ? Number(start.weight) : 0);
+  let status = $state(String(start.status ?? ""));
+  let category = $state(String(start.category ?? ""));
 
   let cover = $state("");
   const loadCover = async () => (cover = image ? await LinkedImage(image).catch(() => "") : "");
@@ -54,11 +59,11 @@
   // attachments and the "audio" property links it. audio_hash is the
   // fingerprint of the text read, to tell when the post changed since.
   const n = t.narration;
-  const canNarrate = !isIndex && (kind === "" || kind === "blog") && !props.blup;
-  let audio = $state(String(props.audio ?? ""));
-  let audioHash = $state(String(props.audio_hash ?? ""));
+  const canNarrate = untrack(() => !isIndex && (kind === "" || kind === "blog") && !start.blup);
+  let audio = $state(String(start.audio ?? ""));
+  let audioHash = $state(String(start.audio_hash ?? ""));
   let nowHash = $state("");
-  let seconds = $state(Number(props.audio_seconds ?? 0));
+  let seconds = $state(Number(start.audio_seconds ?? 0));
   const audioFile = $derived(audio.replace(/^\[\[|\]\]$/g, ""));
   // The narration is heard in the live preview, as on the site.
   const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
@@ -117,7 +122,7 @@
     onEdit("password", pwMode === "none" ? null : pwMode === "general" ? ({ pt: "sim", es: "sí" }[t.lang] ?? "yes") : pwOwn);
   }
   // The switch turns the password on (the site's general one first).
-  let pwOn = $state(pwMode !== "none");
+  let pwOn = $state(pwMode0 !== "none");
   function togglePassword(on: boolean) {
     pwMode = on ? (pwMode === "none" ? "general" : pwMode) : "none";
     password();

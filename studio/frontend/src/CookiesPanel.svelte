@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { SaveCookies, CheckCookieTool } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Cookies } from "../bindings/github.com/gabriellsalesx/blup/internal/config/models";
@@ -9,6 +10,8 @@
   import X from "@lucide/svelte/icons/x";
 
   let { settings, reload, onOpenNote }: { settings: Settings; reload: () => void; onOpenNote: (path: string) => void } = $props();
+  // The form starts from the settings as the screen opened.
+  const start = untrack(() => settings);
 
   // The tools: key in blup.toml, field of config.Cookies, label, example.
   const tools = $derived([
@@ -19,13 +22,13 @@
     { key: "plausible", field: "Plausible", label: t.ck.plausible, ph: t.ck.plausiblePh, script: "PlausibleScript" },
   ] as const);
 
-  const c = $state<Cookies>({ ...settings.cookies });
+  const c = $state<Cookies>({ ...start.cookies });
   // Tools shown: the ones set, plus the ones being added.
   // svelte-ignore state_referenced_locally
   let shown = $state<string[]>(tools.filter((x) => c[x.field]).map((x) => x.key));
   let errors = $state<Record<string, string>>({});
   let addPick = $state("");
-  let page = $state(!settings.cookies.Privacy);
+  let page = $state(!start.cookies.Privacy);
   let contact = $state("");
   const s = saver();
 

@@ -40,20 +40,6 @@ func TestPasswordAndRecovery(t *testing.T) {
 		t.Fatal("a truncated recovery key was accepted")
 	}
 
-	// A new password keeps the recovery key working; the old one stops.
-	w2, err := ChangePassword(w, master, "senha nova")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := Unlock(w2, "cavalo bateria grampo"); !errors.Is(err, ErrWrongPassword) {
-		t.Fatalf("old password still opens: %v", err)
-	}
-	if got, err := Unlock(w2, "senha nova"); err != nil || !bytes.Equal(got, master) {
-		t.Fatalf("new password: %v", err)
-	}
-	if got, err := Recover(w2, recovery); err != nil || !bytes.Equal(got, master) {
-		t.Fatalf("recovery after change: %v", err)
-	}
 	if _, _, _, err := NewKeys(""); err == nil {
 		t.Fatal("empty password accepted")
 	}

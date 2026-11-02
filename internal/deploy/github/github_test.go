@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"slices"
@@ -436,92 +435,6 @@ func TestWaitBuild(t *testing.T) {
 	rp.builds = []map[string]any{{"status": "errored", "commit": "def", "error": map[string]any{"message": "Page build failed."}}}
 	if _, err := c.WaitBuild(ctx, "Maria", "blog", "", time.Minute); !errors.Is(err, ErrPagesBuildFailed) {
 		t.Fatalf("want ErrPagesBuildFailed, got %v", err)
-	}
-}
-
-func TestDeviceFlow(t *testing.T) {
-	var mu sync.Mutex
-	polls := 0
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		defer mu.Unlock()
-		if r.Header.Get("Accept") != "application/json" {
-			http.Error(w, "need json", 400)
-			return
-		}
-		r.ParseForm()
-		switch r.URL.Path {
-		case "/login/device/code":
-			if r.Form.Get("client_id") != "Iv1.abc" || r.Form.Get("scope") != "public_repo" {
-				writeJSON(w, 200, map[string]any{"error": "incorrect_client_credentials"})
-				return
-			}
-			writeJSON(w, 200, map[string]any{
-				"device_code": "dev123", "user_code": "WDJB-MJHT",
-				"verification_uri": "https://github.com/login/device", "expires_in": 900, "interval": 5,
-			})
-		case "/login/oauth/access_token":
-			if r.Form.Get("grant_type") != "urn:ietf:params:oauth:grant-type:device_code" || r.Form.Get("device_code") != "dev123" {
-				writeJSON(w, 200, map[string]any{"error": "unsupported_grant_type"})
-				return
-			}
-			polls++
-			switch polls {
-			case 1:
-				writeJSON(w, 200, map[string]any{"error": "authorization_pending"})
-			case 2:
-				writeJSON(w, 200, map[string]any{"error": "slow_down", "interval": 10})
-			case 3:
-				writeJSON(w, 200, map[string]any{"error": "slow_down"})
-			default:
-				writeJSON(w, 200, map[string]any{"access_token": "gho_x", "token_type": "bearer", "scope": "repo"})
-			}
-		}
-	}))
-	defer srv.Close()
-
-	var waits []time.Duration
-	df := &DeviceFlow{ClientID: "Iv1.abc", Scopes: []string{"public_repo"}, BaseURL: srv.URL, sleep: func(ctx context.Context, d time.Duration) error {
-		waits = append(waits, d)
-		return nil
-	}}
-	dc, err := df.Start(context.Background())
-	if err != nil || dc.UserCode != "WDJB-MJHT" || dc.Interval != 5 {
-		t.Fatalf("Start = %+v, %v", dc, err)
-	}
-	tok, err := df.Poll(context.Background(), dc)
-	if err != nil || tok.AccessToken != "gho_x" {
-		t.Fatalf("Poll = %+v, %v", tok, err)
-	}
-	want := []time.Duration{5 * time.Second, 5 * time.Second, 10 * time.Second, 15 * time.Second}
-	if !slices.Equal(waits, want) {
-		t.Fatalf("waits = %v, want %v", waits, want)
-	}
-
-	// Terminal errors.
-	for code, want := range map[string]error{
-		"expired_token":        ErrDeviceExpired,
-		"access_denied":        ErrAccessDenied,
-		"device_flow_disabled": ErrDeviceFlowDisabled,
-	} {
-		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			writeJSON(w, 200, map[string]any{"error": code})
-		}))
-		df := &DeviceFlow{ClientID: "x", BaseURL: s.URL, sleep: func(context.Context, time.Duration) error { return nil }}
-		_, err := df.Poll(context.Background(), &DeviceCode{DeviceCode: "d", Interval: 1, ExpiresIn: 60})
-		s.Close()
-		if !errors.Is(err, want) {
-			t.Errorf("%s: got %v", code, err)
-		}
-	}
-	// Expiry without answer.
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"error": "authorization_pending"})
-	}))
-	defer s.Close()
-	df = &DeviceFlow{ClientID: "x", BaseURL: s.URL, sleep: func(context.Context, time.Duration) error { return nil }}
-	if _, err := df.Poll(context.Background(), &DeviceCode{DeviceCode: "d", Interval: 5, ExpiresIn: 20}); !errors.Is(err, ErrDeviceExpired) {
-		t.Fatalf("want ErrDeviceExpired, got %v", err)
 	}
 }
 

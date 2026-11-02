@@ -223,7 +223,15 @@ var (
 	watcher *fsnotify.Watcher
 	// onNotesChanged is told too (the live sync).
 	onNotesChanged func()
+	// onFolderGone is told when a folder at the top of the notes is
+	// deleted for good (rm, "delete permanently" in another app): Hugo's
+	// watcher misses it, so the preview starts again (a Bento home that
+	// was the section cards may now be the only section left).
+	onFolderGone func()
 )
+
+// notesChanged tells the window which notes changed (one per line).
+var notesChanged = func(list string) { application.Get().Event.Emit("notesChanged", list) }
 
 // watchNotes tells the window when notes change on disk (an agent, another
 // editor), at most every half second. Hidden folders are left out.
@@ -242,6 +250,8 @@ func watchNotes(root string) {
 		return
 	}
 	watcher = w
+	// The folders at the top of the notes, to know a removed name was one.
+	top := map[string]bool{}
 	add := func(dir string) {
 		filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
 			if err != nil || !d.IsDir() {
@@ -249,6 +259,9 @@ func watchNotes(root string) {
 			}
 			if p != dir && strings.HasPrefix(d.Name(), ".") {
 				return filepath.SkipDir
+			}
+			if filepath.Dir(p) == root {
+				top[p] = true
 			}
 			_ = w.Add(p)
 			return nil
@@ -276,6 +289,15 @@ func watchNotes(root string) {
 						add(ev.Name)
 					}
 				}
+				if ev.Has(fsnotify.Remove) && top[ev.Name] {
+					delete(top, ev.Name)
+					watchMu.Lock()
+					f := onFolderGone
+					watchMu.Unlock()
+					if f != nil {
+						f()
+					}
+				}
 				mu.Lock()
 				changed[filepath.ToSlash(rel)] = true
 				if timer == nil {
@@ -288,7 +310,7 @@ func watchNotes(root string) {
 						changed = map[string]bool{}
 						timer = nil
 						mu.Unlock()
-						application.Get().Event.Emit("notesChanged", strings.Join(list, "\n"))
+						notesChanged(strings.Join(list, "\n"))
 						watchMu.Lock()
 						f := onNotesChanged
 						watchMu.Unlock()

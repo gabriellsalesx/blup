@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { SaveAbout, SaveMenu, SaveSocial, PickImage, RemoveImage, ImageData, SetShowName, SaveLogoLink } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Saved from "./Saved.svelte";
@@ -14,11 +15,14 @@
   import ListPlus from "@lucide/svelte/icons/list-plus";
 
   let { settings, reload }: { settings: Settings; reload: () => void } = $props();
+  // The forms start from the settings as the screen opened; each save
+  // reloads them.
+  const start = untrack(() => settings);
 
   // Name and description
-  let name = $state(settings.name);
-  let description = $state(settings.description);
-  let author = $state(settings.author);
+  let name = $state(start.name);
+  let description = $state(start.description);
+  let author = $state(start.author);
   const about = saver();
 
   // Images
@@ -26,17 +30,17 @@
   async function preview(key: "logo" | "favicon", file: string) {
     images[key] = file ? await ImageData(file).catch(() => "") : "";
   }
-  preview("logo", settings.logo);
-  preview("favicon", settings.favicon);
+  preview("logo", start.logo);
+  preview("favicon", start.favicon);
   const img = saver();
   let picked = false;
   const pick = (key: "logo" | "favicon") => img.run(async () => { picked = false; const f = await PickImage(key); if (f) { picked = true; await preview(key, f); } }, () => (picked ? t.toast.imageSet : false));
   const drop = (key: "logo" | "favicon") => img.run(async () => { await RemoveImage(key); images[key] = ""; }, t.toast.imageRemoved);
 
   // Menu and button
-  let menu = $state(toGroups((settings.menu ?? []).length ? settings.menu ?? [] : (settings.menuOptions ?? []).filter((o) => o.target !== "/tags/")));
-  let buttonText = $state(settings.buttonText);
-  let buttonLink = $state(settings.buttonLink);
+  let menu = $state(toGroups((start.menu ?? []).length ? start.menu ?? [] : (start.menuOptions ?? []).filter((o) => o.target !== "/tags/")));
+  let buttonText = $state(start.buttonText);
+  let buttonLink = $state(start.buttonLink);
   const menuSave = saver();
   const unused = $derived((settings.menuOptions ?? []).filter((o) => !menu.some((g) => g.item.target === o.target || g.kids.some((k) => k.target === o.target))));
   let addPick = $state("");
@@ -47,7 +51,7 @@
   }
 
   // The site's name next to the logo in the header, or the logo alone.
-  let showName = $state(settings.showName);
+  let showName = $state(start.showName);
   const nameSave = saver();
   const setShowName = (v: boolean) => nameSave.run(async () => { await SetShowName(v); reload(); });
 
@@ -70,7 +74,7 @@
   // Social links
   // As the author's profile: each link with its network's icon (an e-mail
   // keeps its mailto: so it shows the e-mail icon).
-  let social = $state<string[]>([...(settings.social ?? [])]);
+  let social = $state<string[]>([...(start.social ?? [])]);
   // A network picked but left with only the start of its address is dropped.
   const filled = () => social.map((u) => u.trim()).filter((u) => u && !NETWORKS.some((n) => n.prefix === u));
   const socialSave = saver();

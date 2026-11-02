@@ -170,20 +170,6 @@ func Recover(w Wrapped, recovery string) ([]byte, error) {
 	return master, nil
 }
 
-// ChangePassword wraps the master key with a new notes password, keeping the
-// recovery key as it is.
-func ChangePassword(w Wrapped, master []byte, password string) (Wrapped, error) {
-	if password == "" {
-		return Wrapped{}, errors.New("cloudcrypt: the notes password is empty")
-	}
-	nw, err := wrapPassword(master, password)
-	if err != nil {
-		return Wrapped{}, err
-	}
-	nw.ByRecovery = w.ByRecovery
-	return nw, nil
-}
-
 var recoveryEncoding = base32.StdEncoding.WithPadding(base32.NoPadding)
 
 // FormatRecovery shows a recovery key as groups of four characters.

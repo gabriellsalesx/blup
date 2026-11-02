@@ -116,9 +116,6 @@ func newIndex(root string, files []string) *Index {
 	return idx
 }
 
-// Files returns the vault-relative, slash-separated paths of all indexed files.
-func (idx *Index) Files() []string { return append([]string(nil), idx.files...) }
-
 // Resolve returns the vault-relative path of the file a wikilink target
 // (without "#heading" or "|alias") points to, as seen from the note at
 // notePath. It reports false when nothing matches.

@@ -27,7 +27,7 @@ function monthDay(start: Date, months: number): Date {
 }
 
 // occurrences(ev, from, to): the days in [from, to] the event happens on.
-export function occurrences(ev: Event, from: Date, to: Date): string[] {
+function occurrences(ev: Event, from: Date, to: Date): string[] {
   const start = parse(ev.date);
   const out: string[] = [];
   const add = (d: Date) => { if (d >= from && d <= to) out.push(iso(d)); };

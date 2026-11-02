@@ -137,7 +137,7 @@ const versionsPage = 50
 
 func (a Account) check() error {
 	l, u := a.Plan.Limits, a.Usage
-	if a.ID == "" || a.Plan.Name == "" || l.StorageMB < 0 || l.MaxFileMB < 0 || l.Sites < -1 || l.Devices < -1 ||
+	if !validOpaqueID(a.ID) || a.Plan.Name == "" || l.StorageMB < 0 || l.MaxFileMB < 0 || l.Sites < -1 || l.Devices < -1 ||
 		l.HistoryDays < 0 || l.AIUsage < 0 || u.StorageBytes < 0 || u.StorageLimitBytes < 0 || (u.HistoryBytes != nil && *u.HistoryBytes < 0) || u.Vaults < 0 || u.Sites < 0 || u.Devices < 0 {
 		return fmt.Errorf("%w: account", ErrBadAnswer)
 	}

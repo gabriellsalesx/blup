@@ -419,9 +419,12 @@ type HistoryPurge struct {
 // PurgeHistory deletes the old versions of a vault on the cloud; the
 // current one stays. Calling it again frees nothing more.
 func (c *Client) PurgeHistory(ctx context.Context, vaultID string) (HistoryPurge, error) {
-	var r HistoryPurge
 	if !ValidVaultID(vaultID) {
-		return r, ErrVaultMissing
+		return HistoryPurge{}, ErrVaultMissing
+	}
+	var r struct {
+		FreedBytes   *int64 `json:"freedBytes"`
+		StorageBytes *int64 `json:"storageBytes"`
 	}
 	err := c.do(ctx, http.MethodDelete, "/sync/vaults/"+url.PathEscape(vaultID)+"/history", nil, "", &r)
 	var e *apiError
@@ -431,10 +434,10 @@ func (c *Client) PurgeHistory(ctx context.Context, vaultID string) (HistoryPurge
 	if err != nil {
 		return HistoryPurge{}, err
 	}
-	if r.FreedBytes < 0 || r.StorageBytes < 0 {
+	if r.FreedBytes == nil || r.StorageBytes == nil || *r.FreedBytes < 0 || *r.StorageBytes < 0 {
 		return HistoryPurge{}, fmt.Errorf("%w: history purge", ErrBadAnswer)
 	}
-	return r, nil
+	return HistoryPurge{FreedBytes: *r.FreedBytes, StorageBytes: *r.StorageBytes}, nil
 }
 
 // Me returns the signed in account.
@@ -466,7 +469,14 @@ func (c *Client) Key(ctx context.Context) (cloudcrypt.Wrapped, error) {
 	var r struct {
 		Wrapped cloudcrypt.Wrapped `json:"wrapped"`
 	}
-	return r.Wrapped, c.do(ctx, http.MethodGet, "/sync/key", nil, "", &r)
+	if err := c.do(ctx, http.MethodGet, "/sync/key", nil, "", &r); err != nil {
+		return cloudcrypt.Wrapped{}, err
+	}
+	// A key with nothing sealed in it would read as a wrong password.
+	if w := r.Wrapped; len(w.ByPassword) == 0 || len(w.ByRecovery) == 0 || len(w.Params.Salt) == 0 {
+		return cloudcrypt.Wrapped{}, fmt.Errorf("%w: key", ErrBadAnswer)
+	}
+	return r.Wrapped, nil
 }
 
 // SaveKey stores the wrapped master key (the first time, or a new notes
@@ -485,13 +495,17 @@ type Vault struct {
 // Vaults lists the account's vaults.
 func (c *Client) Vaults(ctx context.Context) ([]Vault, error) {
 	var r struct {
-		Vaults []Vault `json:"vaults"`
+		Vaults *[]Vault `json:"vaults"`
 	}
 	if err := c.do(ctx, http.MethodGet, "/sync/vaults", nil, "", &r); err != nil {
 		return nil, err
 	}
-	out := r.Vaults[:0]
-	for _, v := range r.Vaults {
+	// Without the list, "no vaults" would make a second one.
+	if r.Vaults == nil {
+		return nil, fmt.Errorf("%w: vaults", ErrBadAnswer)
+	}
+	out := (*r.Vaults)[:0]
+	for _, v := range *r.Vaults {
 		if ValidVaultID(v.ID) {
 			out = append(out, v)
 		}
@@ -536,16 +550,42 @@ func (c *Client) Missing(ctx context.Context, ids []string) ([]string, error) {
 	var out []string
 	for len(ids) > 0 {
 		n := min(len(ids), 1000)
-		var r struct {
-			Missing []string `json:"missing"`
-		}
-		if err := c.do(ctx, http.MethodPost, "/sync/blocks/missing", map[string]any{"ids": ids[:n]}, "", &r); err != nil {
+		r, err := missingAnswer(func(r any) error {
+			return c.do(ctx, http.MethodPost, "/sync/blocks/missing", map[string]any{"ids": ids[:n]}, "", r)
+		}, ids[:n])
+		if err != nil {
 			return nil, err
 		}
-		out = append(out, r.Missing...)
+		out = append(out, r...)
 		ids = ids[n:]
 	}
 	return out, nil
+}
+
+// missingAnswer reads which of asked the cloud lacks: the list must be
+// there (without it nothing would go up) and name only what was asked,
+// each once.
+func missingAnswer(call func(out any) error, asked []string) ([]string, error) {
+	var r struct {
+		Missing *[]string `json:"missing"`
+	}
+	if err := call(&r); err != nil {
+		return nil, err
+	}
+	if r.Missing == nil || len(*r.Missing) > len(asked) {
+		return nil, fmt.Errorf("%w: missing", ErrBadAnswer)
+	}
+	set := make(map[string]bool, len(asked))
+	for _, id := range asked {
+		set[id] = true
+	}
+	for _, id := range *r.Missing {
+		if !set[id] {
+			return nil, fmt.Errorf("%w: missing", ErrBadAnswer)
+		}
+		delete(set, id) // each one once
+	}
+	return *r.Missing, nil
 }
 
 // validBlockID: 64 hex digits (an HMAC-SHA256), as cloudcrypt makes them.

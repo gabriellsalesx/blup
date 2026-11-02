@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { SetFeedback, SetupFeedback, FeedbackState, Connections, ConnectGitHub, OpenKeyPage, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Settings, FeedbackSetup } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Switch from "./Switch.svelte";
@@ -14,8 +15,10 @@
   // repository Blup creates, and the login app installed on it (so people
   // comment without leaving the site). After that, a switch.
   let { settings, reload }: { settings: Settings; reload: () => void } = $props();
+  // The switch starts from the settings as the screen opened.
+  const start = untrack(() => settings);
   const c = t.com;
-  let on = $state(settings.feedback);
+  let on = $state(start.feedback);
   let github = $state<string | null>(null); // the GitHub login, "" when not connected
   let key = $state("");
   let busy = $state(false);
@@ -25,7 +28,7 @@
   const msg = (e: unknown) => String(e).replace(/^(Runtime)?Error: /, "");
 
   Connections().then((x) => (github = x.github ?? "")).catch(() => (github = ""));
-  if (settings.feedbackRepo) FeedbackState().then((x) => (setup = x)).catch(() => {});
+  if (start.feedbackRepo) FeedbackState().then((x) => (setup = x)).catch(() => {});
 
   async function run(fn: () => Promise<void>) {
     busy = true; error = "";

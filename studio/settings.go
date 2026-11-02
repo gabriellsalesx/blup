@@ -124,11 +124,6 @@ func (s *Studio) SaveCookies(c config.Cookies, privacyPage bool, contact string)
 	return app.SaveCookies(site, c, privacyPage, contact)
 }
 
-// SetPassword sets the general password of protected posts.
-func (s *Studio) SetPassword(password string) error {
-	return s.with(func(site *config.Site) error { return app.SetPassword(site, password) })
-}
-
 // SetFeedback turns comments and reactions on or off.
 func (s *Studio) SetFeedback(on bool) error {
 	return s.with(func(site *config.Site) error { return app.SetFeedback(site, on) })

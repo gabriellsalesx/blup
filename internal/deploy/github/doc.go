@@ -25,8 +25,9 @@
 // Administration, so with these keys it is skipped.
 // Source: https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens
 //
-// [DeviceFlow] (OAuth App) is kept but unused: OAuth Apps only have
-// classic scopes and "repo" reaches every private repository.
+// There is no OAuth device flow: an OAuth App only has the classic scopes,
+// and "repo" reaches every private repository of the person. A GitHub App
+// would allow one limited to its repositories, registered by Blup's owner.
 //
 // # Limits handled
 //

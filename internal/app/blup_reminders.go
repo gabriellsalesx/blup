@@ -64,16 +64,6 @@ func saveSignOutPending(token string) error {
 	return os.Rename(tmp, f)
 }
 
-// SignOutPending tells whether a sign out still has to reach Blup Cloud.
-func SignOutPending() bool {
-	f, err := signOutPendingFile()
-	if err != nil {
-		return false
-	}
-	_, err = os.Stat(f)
-	return err == nil
-}
-
 // RetrySignOut finishes a sign out left half done offline: it cancels that
 // session's reminders and ends it. done is true when it did now (nothing
 // pending, or still offline: false).

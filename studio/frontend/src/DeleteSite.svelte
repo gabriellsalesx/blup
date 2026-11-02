@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { SiteParts, DeleteSite, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteParts as Parts, DeleteProblem } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import X from "@lucide/svelte/icons/x";
@@ -20,7 +21,8 @@
   let problems = $state<DeleteProblem[] | null>(null);
   const home = (p: string) => p.replace(/^\/home\/[^/]+|^\/Users\/[^/]+|^C:\\Users\\[^\\]+/, "~");
 
-  SiteParts(dir).then((p) => { parts = p; pick.notes = p.notesOwned; pick.blupSite = !!p.blupSite; }).catch((e) => (error = String(e)));
+  // The site whose parts are listed: the one the dialog opened for.
+  SiteParts(untrack(() => dir)).then((p) => { parts = p; pick.notes = p.notesOwned; pick.blupSite = !!p.blupSite; }).catch((e) => (error = String(e)));
   const ready = $derived(!!parts && typed.trim() === parts.title.trim() && Object.values(pick).some(Boolean));
 
   async function run() {

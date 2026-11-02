@@ -428,13 +428,6 @@ func SetGeneralPassword(password string) error {
 	return c.Save()
 }
 
-// SetPassword sets the site's own general password of protected posts (""
-// removes it: the one for every site counts).
-func SetPassword(site *config.Site, password string) error {
-	site.Password = password
-	return saved(site)
-}
-
 // SetFeedback turns comments and reactions off, or back on for a site that
 // already has its repository (turning them on the first time needs GitHub).
 func SetFeedback(site *config.Site, on bool) error {

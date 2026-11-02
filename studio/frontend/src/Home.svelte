@@ -226,7 +226,7 @@
 {#snippet siteCard(dir: string, inFolder: boolean)}
   {@const s = sites[dir]}
   {#if s}
-    <div class="site" class:dragging={dragged === dir} draggable="true"
+    <div class="site" class:dragging={dragged === dir} draggable="true" role="group" aria-label={s.title}
       ondragstart={(e) => { dragged = dir; e.dataTransfer?.setData("text/plain", dir); }}
       ondragend={() => { dragged = ""; over = null; }}
       ondragover={(e) => { if (!dragged || dragged === dir || isVault(dragged) !== isVault(dir)) return; e.preventDefault(); over = { key: "s:" + dir, zone: zone(e, !inFolder) }; }}
@@ -262,7 +262,7 @@
 
 {#snippet folderCard(it: HomeItem)}
 {@const f = it.folder!}
-<div class="site folder"
+<div class="site folder" role="group" aria-label={f}
   ondragover={(e) => { if (!dragged || !sameKind(dragged, it)) return; e.preventDefault(); over = { key: "f:" + f, zone: zone(e, true) }; }}
   ondragleave={() => (over = null)}
   ondrop={(e) => { e.preventDefault(); dropOn(it, over?.zone ?? "into"); }}

@@ -411,7 +411,6 @@
   .r-name { display: flex; align-items: center; gap: .5rem; font-weight: 600; font-size: .9rem; }
   .r-off { padding: .05rem .45rem; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: .7rem; font-weight: 600; }
   .recent small { font-size: .75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .recent > .btn { justify-self: start; }
   .recent li.cloud { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .65rem; padding: .4rem .5rem; }
   .cloud img { width: 1.9rem; }
   .c-text { display: grid; gap: .1rem; min-width: 0; }

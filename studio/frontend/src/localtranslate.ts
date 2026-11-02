@@ -7,21 +7,25 @@
 
 import { ReadNote, SaveTranslation, LocalTranslate, TranslationTexts } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
 import { look } from "./theme.svelte";
+import { translateReply } from "./translatereply";
 
 type Item = { text: string; html: boolean };
 let worker: Worker | null = null;
 let seq = 0;
-const waiting = new Map<number, { ok: (out: string[]) => void; fail: (e: Error) => void }>();
+const waiting = new Map<number, { n: number; ok: (out: string[]) => void; fail: (e: Error) => void }>();
 
 function engine(): Worker {
   if (worker) return worker;
   worker = new Worker("/bergamot/worker.js");
-  worker.onmessage = ({ data }) => {
-    const w = waiting.get(data.id);
-    if (!w) return;
-    waiting.delete(data.id);
-    if (data.error) w.fail(new Error(data.error));
-    else w.ok(data.out);
+  worker.onmessage = (e: MessageEvent<unknown>) => {
+    const r = translateReply(e.data);
+    const w = r && waiting.get(r.id);
+    if (!r || !w) return;
+    waiting.delete(r.id);
+    if ("error" in r) w.fail(new Error(r.error));
+    // One text back for each sent: anything else would shift the lines.
+    else if (r.out.length !== w.n) w.fail(new Error("translation worker answered out of shape"));
+    else w.ok(r.out);
   };
   worker.onerror = (e) => {
     for (const w of waiting.values()) w.fail(new Error(e.message || "translation worker failed"));
@@ -32,17 +36,11 @@ function engine(): Worker {
   return worker;
 }
 
-/** Frees the engine's memory (the models take a few hundred MB while loaded). */
-export function stopLocalTranslation() {
-  worker?.terminate();
-  worker = null;
-}
-
 function run(from: string, to: string, items: Item[]): Promise<string[]> {
   if (!items.length) return Promise.resolve([]);
   const id = ++seq;
   return new Promise((ok, fail) => {
-    waiting.set(id, { ok, fail });
+    waiting.set(id, { n: items.length, ok, fail });
     engine().postMessage({ id, from, to, items });
   });
 }
@@ -60,7 +58,7 @@ const marks = (s: string) => s
 export type Kept = { orig: string; before: boolean; after: boolean; lowerAfter: boolean; lowerText: boolean };
 
 /** A line's text as HTML for the engine, and what to put back. */
-export function toHTML(text: string): { html: string; keep: Kept[] } {
+function toHTML(text: string): { html: string; keep: Kept[] } {
   const keep: Kept[] = [];
   const inner: { tag: string; text: string }[] = [];
   // A part kept aside, marked \u0000n\u0000 until the text is escaped.
@@ -94,7 +92,7 @@ export function toHTML(text: string): { html: string; keep: Kept[] } {
 }
 
 /** The engine's HTML back to Markdown. */
-export function fromHTML(html: string, keep: Kept[]): string {
+function fromHTML(html: string, keep: Kept[]): string {
   let s = html;
   const tags = (t: string) => t.replace(/<\/?b>/g, "**").replace(/<\/?i>/g, "*").replace(/<\/?s>/g, "~~").replace(/<\/?mark>/g, "==").replace(/<[^>]+>/g, "");
   s = s.replace(/<x-w n="(\d+)">([\s\S]*?)<\/x-w>/g, (_, n, t) => `\u0001${n}\u0002${tags(t).trim()}\u0003`);
@@ -136,7 +134,7 @@ const LEAD = /^(\s*(?:>\s?)*(?:#{1,6}\s+|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)?(
  * Translates a note's text (Markdown, no front matter) from one language
  * to another, keeping its structure: code blocks, tables' shape, marks.
  */
-export async function translateMarkdown(md: string, from: string, to: string, progress?: (done: number, total: number) => void): Promise<string> {
+async function translateMarkdown(md: string, from: string, to: string, progress?: (done: number, total: number) => void): Promise<string> {
   const lines = md.split("\n");
   const jobs: { line: number; cell?: number; lead: string; keep: Kept[] }[] = [];
   const items: Item[] = [];
@@ -182,7 +180,7 @@ export async function translateMarkdown(md: string, from: string, to: string, pr
 }
 
 /** A short text (a title, a description). */
-export async function translateText(text: string, from: string, to: string): Promise<string> {
+async function translateText(text: string, from: string, to: string): Promise<string> {
   if (!text.trim()) return text;
   const { html, keep } = toHTML(text.trim());
   const [out] = await run(from, to, [{ text: html, html: true }]);

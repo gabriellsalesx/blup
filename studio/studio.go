@@ -103,6 +103,9 @@ func (s *Studio) Open(dir string) (Node, error) {
 	s.mu.Lock()
 	s.site = site
 	s.mu.Unlock()
+	watchMu.Lock()
+	onFolderGone = s.sectionsChanged
+	watchMu.Unlock()
 	watchNotes(site.ContentDir())
 	s.startLive(site)
 	s.remember(dir)

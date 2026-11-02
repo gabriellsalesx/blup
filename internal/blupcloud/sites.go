@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/fs"
 	"mime"
 	"net/http"
@@ -55,18 +56,66 @@ type Site struct {
 // -1: no limit).
 func (c *Client) Sites(ctx context.Context) ([]Site, int, error) {
 	var r struct {
-		Limit int    `json:"limit"`
-		Sites []Site `json:"sites"`
+		Limit *int    `json:"limit"`
+		Sites *[]Site `json:"sites"`
 	}
-	err := c.do(ctx, http.MethodGet, "/sites", nil, "", &r)
-	return r.Sites, r.Limit, siteErr(err)
+	if err := c.do(ctx, http.MethodGet, "/sites", nil, "", &r); err != nil {
+		return nil, 0, siteErr(err)
+	}
+	// Without the list, "no sites" would read as every site gone.
+	if r.Limit == nil || *r.Limit < -1 || r.Sites == nil {
+		return nil, 0, fmt.Errorf("%w: sites", ErrBadAnswer)
+	}
+	for _, s := range *r.Sites {
+		if err := s.check(); err != nil {
+			return nil, 0, err
+		}
+	}
+	return *r.Sites, *r.Limit, nil
 }
 
 // CreateSite reserves slug.getblup.site for a new site.
 func (c *Client) CreateSite(ctx context.Context, slug, title string) (Site, error) {
 	var s Site
-	err := c.do(ctx, http.MethodPost, "/sites", map[string]string{"slug": slug, "title": title}, "", &s)
-	return s, siteErr(err)
+	if err := c.do(ctx, http.MethodPost, "/sites", map[string]string{"slug": slug, "title": title}, "", &s); err != nil {
+		return Site{}, siteErr(err)
+	}
+	if err := s.check(); err != nil {
+		return Site{}, err
+	}
+	if s.Slug != slug {
+		return Site{}, fmt.Errorf("%w: site created at another address", ErrBadAnswer)
+	}
+	return s, nil
+}
+
+// check tells whether a site from the cloud has what the Studio uses: its
+// id (it goes in addresses), its address and a web address to open.
+func (s Site) check() error {
+	if !validOpaqueID(s.ID) || !SiteSlug.MatchString(s.Slug) || !webURL(s.URL) || s.Bytes < 0 || s.Files < 0 {
+		return fmt.Errorf("%w: site", ErrBadAnswer)
+	}
+	return nil
+}
+
+// validOpaqueID is an id as the cloud makes them (opaqueId, a site's or an
+// account's): 1 to 128 letters, digits, "_" and "-".
+func validOpaqueID(id string) bool {
+	if id == "" || len(id) > 128 {
+		return false
+	}
+	for _, c := range id {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_') {
+			return false
+		}
+	}
+	return true
+}
+
+// webURL is an http(s) address with a host and no user in it.
+func webURL(s string) bool {
+	u, err := url.Parse(s)
+	return err == nil && (u.Scheme == "https" || u.Scheme == "http") && u.Host != "" && u.User == nil
 }
 
 // SlugCheck says whether a name can be a new site's address: "free",
@@ -80,9 +129,21 @@ type SlugCheck struct {
 // CheckSlug asks whether slug.getblup.site is free.
 func (c *Client) CheckSlug(ctx context.Context, slug string) (SlugCheck, error) {
 	var r SlugCheck
-	err := c.do(ctx, http.MethodGet, "/sites/check?slug="+url.QueryEscape(slug), nil, "", &r)
-	return r, siteErr(err)
+	if err := c.do(ctx, http.MethodGet, "/sites/check?slug="+url.QueryEscape(slug), nil, "", &r); err != nil {
+		return SlugCheck{}, siteErr(err)
+	}
+	if !slugStatuses[r.Status] || len(r.Suggestions) > 10 {
+		return SlugCheck{}, fmt.Errorf("%w: address check", ErrBadAnswer)
+	}
+	// Only names that can be an address are offered.
+	r.Suggestions = slices.DeleteFunc(r.Suggestions, func(s string) bool { return !SiteSlug.MatchString(s) })
+	if r.Suggestions == nil {
+		r.Suggestions = []string{}
+	}
+	return r, nil
 }
+
+var slugStatuses = map[string]bool{"free": true, "yours": true, "taken": true, "reserved": true, "invalid": true}
 
 // DeleteSite takes a site down and deletes its files.
 func (c *Client) DeleteSite(ctx context.Context, id string) error {
@@ -284,13 +345,14 @@ func (c *Client) DeploySite(ctx context.Context, siteID string, files []SiteFile
 	missingOf := func() ([]string, error) {
 		var missing []string
 		for i := 0; i < len(hashes); i += 1000 {
-			var r struct {
-				Missing []string `json:"missing"`
-			}
-			if err := c.do(ctx, http.MethodPost, base+"/missing", map[string]any{"hashes": hashes[i:min(i+1000, len(hashes))]}, "", &r); err != nil {
+			part := hashes[i:min(i+1000, len(hashes))]
+			r, err := missingAnswer(func(r any) error {
+				return c.do(ctx, http.MethodPost, base+"/missing", map[string]any{"hashes": part}, "", r)
+			}, part)
+			if err != nil {
 				return nil, siteErr(err)
 			}
-			missing = append(missing, r.Missing...)
+			missing = append(missing, r...)
 		}
 		return missing, nil
 	}
@@ -322,6 +384,9 @@ func (c *Client) DeploySite(ctx context.Context, siteID string, files []SiteFile
 		}
 		if err != nil {
 			return res, siteErr(err)
+		}
+		if !webURL(r.URL) {
+			return res, fmt.Errorf("%w: deploy", ErrBadAnswer)
 		}
 		res.URL = r.URL
 		return res, nil

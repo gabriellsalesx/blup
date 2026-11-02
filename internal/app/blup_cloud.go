@@ -42,10 +42,13 @@ const RemoteBlup = "blup"
 
 // BlupAccount is the signed in account as Blup Studio shows it.
 type BlupAccount struct {
-	SignedIn bool   `json:"signedIn"`
-	Email    string `json:"email"`
-	Plan     string `json:"plan"`  // "free", "pro", "max", "ultra"
-	Label    string `json:"label"` // "Grátis", "Pro"...
+	SignedIn bool `json:"signedIn"`
+	// ID is the account's id on Blup Cloud: not a secret, the person tells
+	// it when asking for help.
+	ID    string `json:"id"`
+	Email string `json:"email"`
+	Plan  string `json:"plan"`  // "free", "pro", "max", "ultra"
+	Label string `json:"label"` // "Grátis", "Pro"...
 	// Live: the plan syncs each note as it is saved and hears of the other
 	// computers at once; without it, sync is by button.
 	Live bool `json:"live"`
@@ -108,7 +111,7 @@ func LoadBlupAccount(ctx context.Context) (BlupAccount, error) {
 		return BlupAccount{}, errors.New(describe(err))
 	}
 	a := BlupAccount{
-		SignedIn: true, Plan: me.Plan.Name, Label: me.Plan.Label,
+		SignedIn: true, ID: me.ID, Plan: me.Plan.Name, Label: me.Plan.Label,
 		Live: me.Plan.Limits.Live, HistoryDays: me.Plan.Limits.HistoryDays, MaxFileMB: me.Plan.Limits.MaxFileMB,
 		StorageMB: me.Plan.Limits.StorageMB, StorageBytes: me.Usage.StorageBytes,
 		Sites: me.Usage.Sites, SitesMax: me.Plan.Limits.Sites,

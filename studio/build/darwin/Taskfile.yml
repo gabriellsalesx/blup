@@ -78,7 +78,7 @@ tasks:
       - docker run --rm -v "{{.ROOT_DIR}}:/app" {{.DOCKER_MOUNTS}} -e APP_NAME="{{.APP_NAME}}" -e VERSION="{{.VERSION}}" {{if .EXTRA_TAGS}}-e EXTRA_TAGS="{{.EXTRA_TAGS}}"{{end}} {{if eq .OBFUSCATED "true"}}-e OBFUSCATED=true{{end}} {{if .GARBLE_ARGS}}-e GARBLE_ARGS="{{.GARBLE_ARGS}}"{{end}} {{.CROSS_IMAGE}} darwin {{.DOCKER_ARCH}}
       - cmd: docker run --rm -v "{{.ROOT_DIR}}:/app" alpine chown -R $(id -u):$(id -g) /app/bin
         platforms: [linux, darwin]
-      - mkdir -p {{.BIN_DIR}}
+      - mkdir -p "{{.BIN_DIR}}"
       - mv "bin/{{.APP_NAME}}-darwin-{{.DOCKER_ARCH}}" "{{.OUTPUT}}"
     vars:
       DOCKER_ARCH: '{{if eq .ARCH "arm64"}}arm64{{else if eq .ARCH "amd64"}}amd64{{else}}arm64{{end}}'

@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
+  import { samePage, previewMessage } from "./previewurl";
 
   // The live preview without flashes: a rebuilt page loads in a hidden
   // frame, scrolls to where the reader was, and only then takes the place
@@ -15,7 +16,7 @@
   const withMark = (url: string, m: string) => url + (url.includes("?") ? "&" : "?") + "_blup=" + m;
 
   const first = mark();
-  let frames = $state<{ src: string; mark: string }[]>([{ src: withMark(src, first), mark: first }, { src: "", mark: "" }]);
+  let frames = $state<{ src: string; mark: string }[]>([{ src: withMark(untrack(() => src), first), mark: first }, { src: "", mark: "" }]);
   let active = $state(0);
   let els: HTMLIFrameElement[] = $state([]);
   let pending: { idx: number; y: number; timer: ReturnType<typeof setTimeout> } | null = null;
@@ -40,15 +41,17 @@
     active = idx;
   }
 
-  function onMessage(e: MessageEvent) {
-    const d = e.data;
-    // Only the preview's own pages talk to the Studio.
-    if (e.origin !== origin() || !d || typeof d.blup !== "string") return;
-    const m = new URLSearchParams(d.q || "").get("_blup");
-    let idx = frames.findIndex((f) => f.mark && f.mark === m);
-    // A page reached by a link inside has no mark: the frame it came from.
-    if (idx < 0 && !m) idx = els.findIndex((el) => el && el.contentWindow === e.source);
-    if (idx < 0) return;
+  function onMessage(e: MessageEvent<unknown>) {
+    // Only the preview's own pages talk to the Studio, and only in the
+    // shape its script sends.
+    if (e.origin !== origin()) return;
+    const d = previewMessage(e.data);
+    if (!d) return;
+    const m = new URLSearchParams(d.q).get("_blup");
+    // The frame it came from; its mark, when it has one, must be that
+    // frame's (a page reached by a link inside has none).
+    const idx = els.findIndex((el) => el && el.contentWindow === e.source);
+    if (idx < 0 || (m && frames[idx].mark !== m)) return;
     if (pending && idx === pending.idx) {
       if (d.blup === "loaded") (e.source as Window | null)?.postMessage({ blup: "scrollTo", y: pending.y }, origin());
       else if (d.blup === "ready") { path = d.path; y = d.y; swap(idx); }
@@ -64,12 +67,15 @@
   onDestroy(() => { off(); if (pending) clearTimeout(pending.timer); });
 
   // Another note was opened: its page, from the top.
-  let shown = src;
+  let shown = untrack(() => src);
   $effect(() => {
     if (src && src !== shown) {
+      const before = shown;
       shown = src;
-      // The note of the page the reader just went to: already there.
-      if (path && new URL(src, location.href).pathname === path) return;
+      // The note of the page the reader just went to: already there. A
+      // preview started again (a new address) has it on another server:
+      // that one loads.
+      if (path && samePage(src, before, path)) return;
       path = "";
       y = 0;
       load(src, 0);

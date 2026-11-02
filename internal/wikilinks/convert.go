@@ -41,15 +41,10 @@ const (
 	KindHeading       Kind = "heading"
 )
 
-// ConvertText rewrites the wikilinks of one note. notePath is the note's
+// convertText rewrites the wikilinks of one note. notePath is the note's
 // path relative to the vault root; it decides how relative destinations and
-// same-name ambiguities are resolved. See the package documentation for the
-// output conventions.
-func ConvertText(idx *Index, notePath, text string) (out string, changes []Change, problems []Problem) {
-	return convertText(idx, notePath, text, "")
-}
-
-// convertText is ConvertText with a scope: when scope is not "", links to
+// same-name ambiguities are resolved (see the package documentation for the
+// output conventions). When scope is not "", links to
 // files outside that vault folder are converted but reported as warnings,
 // since they will not be part of the generated site.
 func convertText(idx *Index, notePath, text, scope string) (string, []Change, []Problem) {

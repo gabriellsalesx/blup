@@ -143,12 +143,3 @@ func TestEnableIssuesReadsFirst(t *testing.T) {
 		t.Fatal("PATCH sent although issues were on")
 	}
 }
-
-// The device flow no longer asks for "repo" (every private repository) on
-// its own: scopes must be chosen by the caller.
-func TestDeviceFlowNeedsExplicitScopes(t *testing.T) {
-	df := &DeviceFlow{ClientID: "x", BaseURL: "http://127.0.0.1:1"}
-	if _, err := df.Start(context.Background()); err == nil || !strings.Contains(err.Error(), "scope") {
-		t.Fatalf("want a scopes error, got %v", err)
-	}
-}

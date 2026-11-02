@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { Clipboard } from "@wailsio/runtime";
   import { RestoreSection, MoveItem, CopyNote, DeleteItem, NoteLink, ShowInFolder, ReadNote, NoteImage, SaveExport } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
@@ -84,13 +85,14 @@
     toast(t.toast.linkCopied);
     setTimeout(onClose, 700);
   }
-  const parent = node.path.includes("/") ? node.path.slice(0, node.path.lastIndexOf("/")) : "";
+  // The menu is made for one item, at one place.
+  const parent = untrack(() => (node.path.includes("/") ? node.path.slice(0, node.path.lastIndexOf("/")) : ""));
   const targets = $derived(["", ...folders].filter((f) => f !== parent && f !== node.path && !(node.dir && f.startsWith(node.path + "/")) && f.toLowerCase().includes(filter.toLowerCase())));
   const focus = (el: HTMLInputElement) => { el.focus(); el.select(); };
 
   // Keep the menu inside the window.
   let menuEl = $state<HTMLDivElement>();
-  let pos = $state({ x, y });
+  let pos = $state(untrack(() => ({ x, y })));
   $effect(() => {
     if (!menuEl) return;
     const r = menuEl.getBoundingClientRect();
