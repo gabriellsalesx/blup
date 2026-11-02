@@ -596,7 +596,9 @@
         <div class="voices" role="radiogroup" aria-label={label}>
           <b>{label}</b>
           {#each [["local", lv.groupLocal], ["blup", lv.groupBlup], ["openrouter", lv.groupOpenRouter]] as [engine, group] (engine)}
-            {#if voices[l].some((v) => v.engine === engine) || engine === "openrouter"}
+            <!-- The computer's voices always; Blup Cloud's and OpenRouter's once
+                 connected (signed in on a plan with AI, or the key saved). -->
+            {#if engine === "local" ? voices[l].some((v) => v.engine === "local") : voices[l].some((v) => v.engine === engine && v.ready)}
               <small class="muted group">{group}</small>
               {#if engine === "openrouter" && models[l].length}
                 <label class="model">
@@ -626,6 +628,9 @@
               {/each}
             {/if}
           {/each}
+          {#if !voices[l].some((v) => v.engine !== "local" && v.ready)}
+            <p class="muted more">{lv.moreVoices} <button class="link" onclick={() => (tab = "ai")}>{ai.openAI}</button></p>
+          {/if}
         </div>
       {/each}
     {:else if tab === "password"}
@@ -761,6 +766,7 @@
   .listen .ring .track { stroke: var(--line); }
   .listen .ring .fill { stroke: var(--blue); stroke-linecap: round; }
   .listen.playing { color: var(--blue); }
+  .more { margin-top: .5rem; font-size: .85rem; }
   .listen.loading .ring { animation: ring-turn .9s linear infinite; }
   .listen.loading .ring .fill { stroke-dasharray: 22 78; }
   @keyframes ring-turn { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
