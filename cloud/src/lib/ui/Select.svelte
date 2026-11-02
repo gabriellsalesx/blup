@@ -4,14 +4,16 @@
 
 	// The panel's dropdown, in place of the system one: the same tall box as
 	// FloatField, with its label on the border, and a list that opens under
-	// it. Arrows move, Enter or Space picks, Escape closes.
+	// it. Arrows move, Enter or Space picks, Escape closes. `compact` is the
+	// small one of a list row, whose label is only read aloud.
 	type Option = { value: T; label: string };
-	let { label, options, value = $bindable(), surface = "bg-neutral-50 dark:bg-neutral-950", disabled = false, onchange }: {
+	let { label, options, value = $bindable(), surface = "bg-neutral-50 dark:bg-neutral-950", disabled = false, compact = false, onchange }: {
 		label: string;
 		options: readonly Option[];
 		value: T;
 		surface?: string;
 		disabled?: boolean;
+		compact?: boolean;
 		onchange?: (value: T) => void;
 	} = $props();
 	const id = $props.id();
@@ -41,8 +43,8 @@
 	}
 </script>
 
-<div class="relative">
-	<span class="pointer-events-none absolute -top-2.5 left-2 z-10 px-1 text-[13px] text-neutral-500 {surface}">{label}</span>
+<div class="relative {compact ? 'w-36' : ''}">
+	{#if !compact}<span class="pointer-events-none absolute -top-2.5 left-2 z-10 px-1 text-[13px] text-neutral-500 {surface}">{label}</span>{/if}
 	<button
 		bind:this={button}
 		type="button"
@@ -52,7 +54,7 @@
 		aria-expanded={open}
 		aria-label="{label}: {current?.label ?? ''}"
 		style:anchor-name="--select-{id}"
-		class="flex min-h-14 w-full items-center justify-between gap-3 rounded-md border px-3 text-left text-base transition-colors disabled:opacity-50 {surface} {open ? 'border-blup' : 'border-neutral-300 hover:border-neutral-400 dark:border-neutral-700'}"
+		class="flex w-full items-center justify-between gap-3 rounded-md border text-left transition-colors {compact ? 'min-h-9 px-2.5 text-sm' : 'min-h-14 px-3 text-base'} disabled:opacity-50 {surface} {open ? 'border-blup' : 'border-neutral-300 hover:border-neutral-400 dark:border-neutral-700'}"
 		onkeydown={keys}
 	>
 		<span class="truncate">{current?.label ?? ""}</span>

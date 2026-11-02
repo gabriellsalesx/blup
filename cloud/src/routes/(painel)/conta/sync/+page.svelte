@@ -4,6 +4,7 @@
 	import Lock from "@lucide/svelte/icons/lock";
 	import Monitor from "@lucide/svelte/icons/monitor";
 	import Row from "#lib/ui/Row.svelte";
+	import PageHeader from "#lib/ui/PageHeader.svelte";
 	import Button from "#lib/ui/Button.svelte";
 	import {errorMessage} from "#lib/i18n/errors.ts";
 	import { api, type Device } from "#lib/api.ts";
@@ -48,7 +49,7 @@
 	}
 </script>
 
-<h1 class="text-3xl font-extrabold tracking-tight">{t("sync")}</h1>
+<PageHeader title={t("sync")}/>
 <p class="mt-2 text-neutral-500">{t("syncLead")}</p>
 
 <div class="mt-6">

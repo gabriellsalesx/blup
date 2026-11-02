@@ -4,6 +4,7 @@
  import { goto } from "$app/navigation";
  import Globe from "@lucide/svelte/icons/globe";
  import Row from "#lib/ui/Row.svelte";
+ import PageHeader from "#lib/ui/PageHeader.svelte";
  import Button from "#lib/ui/Button.svelte";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import { api, type Site } from "#lib/api.ts";
@@ -33,7 +34,7 @@
  }
  const count=$derived(result===null?t("loading"):result.sites.length===1?t("siteCountOne",{limit}):t("siteCount",{count:result.sites.length,limit}));
 </script>
-<h1 class="text-3xl font-extrabold tracking-tight">{t("sites")}</h1>
+<PageHeader title={t("sites")}/>
 <p class="mt-2 text-neutral-500">{t("sitesLead")}</p>
 <div class="mt-6">
  <Row title={t("yourSites")}  help={count} />

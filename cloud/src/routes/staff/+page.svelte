@@ -1,5 +1,6 @@
 <script lang="ts">
 	import AccountId from "#lib/ui/AccountId.svelte";
+	import PageHeader from "#lib/ui/PageHeader.svelte";
 	import Search from "@lucide/svelte/icons/search";
 	import { staffApi, staffHref, when, type Stats } from "#lib/staff.ts";
 	import { createPager } from "#lib/pager.svelte.ts";
@@ -19,7 +20,7 @@
 	const typed = () => { clearTimeout(timer); timer = setTimeout(() => pager.reset(), 250); };
 </script>
 
-<h1 class="text-3xl font-extrabold tracking-tight">Contas</h1>
+<PageHeader title="Contas"/>
 
 {#if stats}
 	<div class="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">

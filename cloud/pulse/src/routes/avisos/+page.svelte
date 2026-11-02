@@ -9,6 +9,10 @@
  import Card from "#lib/ui/Card.svelte";
  import FloatField from "#lib/ui/FloatField.svelte";
  import Select from "#lib/ui/Select.svelte";
+ import PageHeader from "#lib/ui/PageHeader.svelte";
+ import List from "#lib/ui/List.svelte";
+ import ListItem from "#lib/ui/ListItem.svelte";
+ import Badge from "#lib/ui/Badge.svelte";
  import Send from "@lucide/svelte/icons/send";
  import Trash2 from "@lucide/svelte/icons/trash-2";
  import MessageSquare from "@lucide/svelte/icons/message-square";
@@ -42,8 +46,7 @@
  const options=(type:"discord"|"telegram")=>[{value:"",label:t("pulseNoChannel")},...channels.filter(c=>c.type===type&&c.active).map(c=>({value:c.id,label:c.label}))];
 </script>
 
-<h1 class="text-3xl font-extrabold tracking-tight">{t("pulseAlerts")}</h1>
-<p class="mt-2 text-neutral-500">{t("pulseAlertsLead")}</p>
+<PageHeader title={t("pulseAlerts")} lead={t("pulseAlertsLead")}/>
 {#if error}<p class="mt-6 text-red-600" role="alert">{errorMessage(error)}</p>{/if}
 
 {#if writable}<div class="mt-8 grid gap-4 lg:grid-cols-2">
@@ -52,14 +55,14 @@
 </div>{/if}
 
 <h2 class="mt-10 mb-4 text-xl font-bold">{t("pulseDestinations")}</h2>
-<div class="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+<List empty={t("pulseNoChannels")}>
  {#each channels as channel(channel.id)}
-  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-5 py-4 last:border-b-0 dark:border-neutral-800">
-   <div class="flex min-w-0 flex-1 basis-full items-center gap-3 sm:basis-0"><MessageSquare class="size-5 shrink-0 text-neutral-400"/><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{channel.label}</span><span class="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold capitalize text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{channel.type}</span></p><p class="text-sm {channel.lastError?'text-amber-700 dark:text-amber-300':'text-neutral-500'}">{channel.lastError?t("pulseDeliveryFailed"):channel.active?t("pulseActive"):t("pulsePaused")}</p></div></div>
-   <div class="flex gap-2">{#if writable&&channel.active}<Button small variant="secondary" onclick={()=>test(channel)} {busy}><Send class="size-4"/>{t("pulseTestChannel")}</Button>{/if}<Button small variant="secondary" onclick={()=>remove(channel)}><Trash2 class="size-4"/>{t("delete")}</Button></div>
-  </div>
- {:else}<p class="px-5 py-10 text-center text-neutral-500">{t("pulseNoChannels")}</p>{/each}
-</div>
+  <ListItem>
+   <div class="flex items-center gap-3"><MessageSquare class="size-5 shrink-0 text-neutral-400"/><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{channel.label}</span><Badge><span class="capitalize">{channel.type}</span></Badge></p><p class="text-sm {channel.lastError?'text-amber-700 dark:text-amber-300':'text-neutral-500'}">{channel.lastError?t("pulseDeliveryFailed"):channel.active?t("pulseActive"):t("pulsePaused")}</p></div></div>
+   {#snippet actions()}{#if writable&&channel.active}<Button small variant="secondary" onclick={()=>test(channel)} {busy}><Send class="size-4"/>{t("pulseTestChannel")}</Button>{/if}<Button small variant="secondary" onclick={()=>remove(channel)}><Trash2 class="size-4"/>{t("delete")}</Button>{/snippet}
+  </ListItem>
+ {/each}
+</List>
 
 {#if writable&&channels.length}<h2 class="mt-10 mb-4 text-xl font-bold">{t("pulseChannelBindings")}</h2><div class="grid gap-3">{#each projects as project(project.id)}{#if bindings[project.id]}<Card title={project.name}><div class="mt-5 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-center"><Select surface="bg-white dark:bg-neutral-900" label="Discord" options={options("discord")} bind:value={bindings[project.id].discord}/><Select surface="bg-white dark:bg-neutral-900" label="Telegram" options={options("telegram")} bind:value={bindings[project.id].telegram}/><Button class="h-14" onclick={()=>saveBindings(project)} {busy}>{t("save")}</Button></div></Card>{/if}{/each}</div>{/if}
 

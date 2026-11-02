@@ -5,6 +5,10 @@
  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
  import Trash2 from "@lucide/svelte/icons/trash-2";
  import ChevronRight from "@lucide/svelte/icons/chevron-right";
+ import PageHeader from "#lib/ui/PageHeader.svelte";
+ import List from "#lib/ui/List.svelte";
+ import ListItem from "#lib/ui/ListItem.svelte";
+ import StatusDot from "#lib/ui/StatusDot.svelte";
  import {t,intlLocale,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import Button from "#lib/ui/Button.svelte";
@@ -37,10 +41,9 @@
  onMount(()=>{void run(refresh);});
 </script>
 
-<div class="flex flex-wrap items-end justify-between gap-4">
- <div><h1 class="text-3xl font-extrabold tracking-tight">{t("pulseProjects")}</h1><p class="mt-2 text-neutral-500">{t("pulseScope")}</p></div>
- {#if usage}<div class="w-full max-w-xs"><p class="text-sm text-neutral-500">{t("pulseMonthUsage",{accepted:usage.used.toLocaleString(intlLocale()),limit:usage.limit.toLocaleString(intlLocale())})}</p><div class="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"><div class="h-full rounded-full bg-blup" style:width="{Math.min(100,usage.used/Math.max(1,usage.limit)*100)}%"></div></div></div>{/if}
-</div>
+<PageHeader title={t("pulseProjects")} lead={t("pulseScope")}>
+ {#snippet aside()}{#if usage}<div class="w-full max-w-xs"><p class="text-sm text-neutral-500">{t("pulseMonthUsage",{accepted:usage.used.toLocaleString(intlLocale()),limit:usage.limit.toLocaleString(intlLocale())})}</p><div class="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"><div class="h-full rounded-full bg-blup" style:width="{Math.min(100,usage.used/Math.max(1,usage.limit)*100)}%"></div></div></div>{/if}{/snippet}
+</PageHeader>
 
 {#if error}<p role="alert" class="mt-6 text-red-600">{errorMessage(error)}</p>{/if}
 
@@ -48,32 +51,26 @@
 
 {#if dsn}<div class="mt-4 rounded-xl border border-blup bg-white p-5 dark:bg-neutral-900"><p class="font-semibold">{t("pulseSDK")}</p><div class="mt-3 flex items-center gap-2 rounded-lg bg-neutral-100 p-3 dark:bg-neutral-800"><code class="min-w-0 flex-1 break-all text-sm">{dsn}</code><Button small variant="secondary" onclick={copy}><Copy class="size-4"/>{t("copy")}</Button></div><p class="mt-3 text-sm text-neutral-500">{t("pulseDSNOnce")}</p></div>{/if}
 
-<div class="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+<div class="mt-6"><List empty={t("pulseEmpty")}>
  {#each projects as project(project.id)}
-  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-5 py-4 last:border-b-0 dark:border-neutral-800 {selected?.id===project.id?'bg-neutral-50 dark:bg-neutral-800/50':''}">
-   <button class="flex min-w-0 flex-1 basis-full items-center gap-3 text-left sm:basis-0" onclick={()=>run(()=>select(project))}>
-    <span class="size-2.5 shrink-0 rounded-full {project.active?'bg-emerald-500':'bg-neutral-400'}"></span>
-    <span class="min-w-0"><span class="block truncate font-semibold">{project.name}</span><span class="block text-sm text-neutral-500">{platformName(project.platform)} · {project.active?t("pulseActive"):t("pulsePaused")}</span></span>
-    <ChevronRight class="ml-auto size-4 shrink-0 text-neutral-400"/>
-   </button>
-   <div class="flex gap-2">{#if project.writable}<Button small variant="secondary" onclick={()=>rotate(project)}><RefreshCw class="size-4"/>{t("pulseRotate")}</Button>{/if}<Button small variant="secondary" onclick={()=>remove(project)}><Trash2 class="size-4"/>{t("delete")}</Button></div>
-  </div>
- {:else}<p class="px-5 py-10 text-center text-neutral-500">{t("pulseEmpty")}</p>{/each}
-</div>
+  <ListItem selected={selected?.id===project.id}>
+   <button class="flex w-full items-center gap-3 text-left" onclick={()=>run(()=>select(project))}><StatusDot state={project.active?"up":"unknown"}/><span class="min-w-0"><span class="block truncate font-semibold">{project.name}</span><span class="block text-sm text-neutral-500">{platformName(project.platform)} · {project.active?t("pulseActive"):t("pulsePaused")}</span></span><ChevronRight class="ml-auto size-4 shrink-0 text-neutral-400"/></button>
+   {#snippet actions()}{#if project.writable}<Button small variant="secondary" onclick={()=>rotate(project)}><RefreshCw class="size-4"/>{t("pulseRotate")}</Button>{/if}<Button small variant="secondary" onclick={()=>remove(project)}><Trash2 class="size-4"/>{t("delete")}</Button>{/snippet}
+  </ListItem>
+ {/each}
+</List></div>
 
 {#if selected}<section class="mt-10">
  <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 class="text-xl font-bold">{t("pulseIssuesOf",{name:selected.name})}</h2><Segmented label={t("pulseIssues")} options={[{value:"open",label:t("pulseOpen")},{value:"resolved",label:t("pulseResolved")},{value:"ignored",label:t("pulseIgnored")}]} bind:value={filter} onchange={()=>{const project=selected;if(project)void run(()=>select(project));}}/></div>
- <div class="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+ <List empty={t("pulseNoIssues")}>
   {#each issues as issue(issue.id)}
-   <div class="border-b border-neutral-200 px-5 py-4 last:border-b-0 dark:border-neutral-800">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-     <button class="min-w-0 flex-1 basis-full text-left sm:basis-0" onclick={()=>toggleEvents(issue)} aria-expanded={openIssue===issue.id}><span class="line-clamp-2 font-semibold break-words">{issue.title}</span><span class="mt-1 block text-sm text-neutral-500">{t("pulseCount",{count:issue.count.toLocaleString(intlLocale())})} · {formatDate(new Date(issue.lastAt))}</span></button>
-     {#if selected.writable}<div class="flex gap-2">{#if issue.state==="open"}<Button small variant="secondary" onclick={()=>change(issue,"resolved")}>{t("pulseResolve")}</Button><Button small variant="secondary" onclick={()=>change(issue,"ignored")}>{t("pulseIgnore")}</Button>{:else}<Button small variant="secondary" onclick={()=>change(issue,"open")}>{t("pulseReopen")}</Button>{/if}</div>{/if}
-    </div>
-    {#if openIssue===issue.id}<div class="mt-4 grid gap-2"><p class="text-sm font-semibold">{t("pulseEvents")}</p>{#each events as event(event.id)}<details class="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800"><summary class="cursor-pointer text-sm">{formatDate(new Date(event.receivedAt))}</summary><pre class="mt-3 overflow-auto whitespace-pre-wrap break-words text-xs">{JSON.stringify(event.event,null,2)}</pre></details>{/each}</div>{/if}
-   </div>
-  {:else}<p class="px-5 py-10 text-center text-neutral-500">{t("pulseNoIssues")}</p>{/each}
- </div>
+   <ListItem>
+    <button class="w-full text-left" onclick={()=>toggleEvents(issue)} aria-expanded={openIssue===issue.id}><span class="line-clamp-2 font-semibold break-words">{issue.title}</span><span class="mt-1 block text-sm text-neutral-500">{t("pulseCount",{count:issue.count.toLocaleString(intlLocale())})} · {formatDate(new Date(issue.lastAt))}</span></button>
+    {#snippet actions()}{#if selected?.writable}{#if issue.state==="open"}<Button small variant="secondary" onclick={()=>change(issue,"resolved")}>{t("pulseResolve")}</Button><Button small variant="secondary" onclick={()=>change(issue,"ignored")}>{t("pulseIgnore")}</Button>{:else}<Button small variant="secondary" onclick={()=>change(issue,"open")}>{t("pulseReopen")}</Button>{/if}{/if}{/snippet}
+    {#snippet extra()}{#if openIssue===issue.id}<div class="mt-4 grid gap-2"><p class="text-sm font-semibold">{t("pulseEvents")}</p>{#each events as event(event.id)}<details class="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800"><summary class="cursor-pointer text-sm">{formatDate(new Date(event.receivedAt))}</summary><pre class="mt-3 overflow-auto whitespace-pre-wrap break-words text-xs">{JSON.stringify(event.event,null,2)}</pre></details>{/each}</div>{/if}{/snippet}
+   </ListItem>
+  {/each}
+ </List>
  {#if issues.length>=30}<div class="mt-4"><Button variant="secondary" {busy} onclick={more}>{t("next")}</Button></div>{/if}
 </section>{/if}
 

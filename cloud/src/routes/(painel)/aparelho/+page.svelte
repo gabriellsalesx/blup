@@ -7,6 +7,7 @@
 	import CircleCheck from "@lucide/svelte/icons/circle-check";
 	import { authClient } from "#lib/auth.ts";
 	import Button from "#lib/ui/Button.svelte";
+	import PageHeader from "#lib/ui/PageHeader.svelte";
 	import FloatField from "#lib/ui/FloatField.svelte";
 
 	// Blup Studio signing in through the browser: the Studio shows a code
@@ -50,7 +51,7 @@
 	});
 </script>
 
-<h1 class="text-3xl font-extrabold tracking-tight">{t("deviceTitle")}</h1>
+<PageHeader title={t("deviceTitle")}/>
 
 <div class="mt-6 max-w-lg">
 	{#if step === "type"}

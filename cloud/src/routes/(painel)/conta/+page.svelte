@@ -1,6 +1,7 @@
 <script lang="ts">
  import {t,language,intlLocale} from "#lib/i18n.svelte.ts";
 	import AccountId from "#lib/ui/AccountId.svelte";
+	import PageHeader from "#lib/ui/PageHeader.svelte";
 	import { accountIdHelp } from "#lib/account-id.ts";
 	import { goto, invalidateAll } from "$app/navigation";
 	import KeyRound from "@lucide/svelte/icons/key-round";
@@ -103,7 +104,7 @@
 	}
 </script>
 
-<h1 class="text-3xl font-extrabold tracking-tight">{t("profileTitle")}</h1>
+<PageHeader title={t("profileTitle")}/>
 
 <div class="mt-6">
  <Row title={t("accountId")}  help={accountIdHelp(language())}><div class="mt-2"><AccountId id={data.me.id} /></div></Row>

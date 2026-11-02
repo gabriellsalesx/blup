@@ -16,6 +16,11 @@
  import FloatField from "#lib/ui/FloatField.svelte";
  import Select from "#lib/ui/Select.svelte";
  import Switch from "#lib/ui/Switch.svelte";
+ import PageHeader from "#lib/ui/PageHeader.svelte";
+ import List from "#lib/ui/List.svelte";
+ import ListItem from "#lib/ui/ListItem.svelte";
+ import Badge from "#lib/ui/Badge.svelte";
+ import TextArea from "#lib/ui/TextArea.svelte";
  import {pulseApi,parseResponse} from "../../lib/api";
  import {panel} from "../../lib/panel.svelte";
  type Page=InferResponseType<typeof pulseApi.pages.$get,200>["pages"][number];
@@ -43,8 +48,7 @@
  onMount(()=>{void run(async()=>{await refresh();monitors=(await parseResponse(pulseApi.monitors.$get())).monitors;});});
 </script>
 
-<h1 class="text-3xl font-extrabold tracking-tight">{t("pulsePages")}</h1>
-<p class="mt-2 text-neutral-500">{t("pulsePublicPrivacy")}</p>
+<PageHeader title={t("pulsePages")} lead={t("pulsePublicPrivacy")}/>
 {#if error}<p class="mt-6 text-red-600" role="alert">{errorMessage(error)}</p>{/if}
 
 {#if writable&&(!editing||editing.writable)}<div class="mt-8"><Card title={editing?`${t("pulseEdit")}: ${editing.title}`:t("pulseNewPage")}><form class="mt-5 grid gap-5" onsubmit={save}>
@@ -53,24 +57,24 @@
  <div class="flex flex-wrap justify-end gap-2">{#if editing}<Button type="button" variant="secondary" onclick={clear}>{t("cancel")}</Button>{/if}<Button {busy} disabled={!validComponents}>{#if !editing}<Plus class="size-4"/>{/if}{editing?t("save"):t("pulseCreatePage")}</Button></div>
 </form></Card></div>{/if}
 
-<div class="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+<div class="mt-6"><List empty={t("pulseNoPages")}>
  {#each pages as page(page.id)}
-  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-5 py-4 last:border-b-0 dark:border-neutral-800 {editing?.id===page.id?'bg-neutral-50 dark:bg-neutral-800/50':''}">
-   <div class="min-w-0 flex-1 basis-full sm:basis-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{page.title}</span><span class="rounded-full px-2 py-0.5 text-xs font-semibold {page.published?'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300':'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'}">{page.published?t("pulsePublished"):t("pulseDraft")}</span></p><a class="mt-0.5 inline-flex items-center gap-1 text-sm text-blup hover:underline" href={`https://pulse.getblup.site/${page.slug}/`} target="_blank" rel="noopener noreferrer">pulse.getblup.site/{page.slug}/<ExternalLink class="size-3.5"/></a></div>
-   <div class="flex flex-wrap gap-2"><Button small variant="secondary" onclick={()=>run(()=>edit(page))}><Pencil class="size-4"/>{t("pulseEdit")}</Button>{#if page.writable}<Button small variant="secondary" onclick={()=>publish(page)}>{#if page.published}<EyeOff class="size-4"/>{t("pulseUnpublish")}{:else}<Eye class="size-4"/>{t("pulsePublish")}{/if}</Button>{/if}<Button small variant="secondary" onclick={()=>remove(page)}><Trash2 class="size-4"/>{t("delete")}</Button></div>
-  </div>
- {:else}<p class="px-5 py-10 text-center text-neutral-500">{t("pulseNoPages")}</p>{/each}
-</div>
+  <ListItem selected={editing?.id===page.id}>
+   <p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{page.title}</span><Badge tone={page.published?"green":"neutral"}>{page.published?t("pulsePublished"):t("pulseDraft")}</Badge></p><a class="mt-0.5 inline-flex items-center gap-1 text-sm text-blup hover:underline" href={`https://pulse.getblup.site/${page.slug}/`} target="_blank" rel="noopener noreferrer">pulse.getblup.site/{page.slug}/<ExternalLink class="size-3.5"/></a>
+   {#snippet actions()}<Button small variant="secondary" onclick={()=>run(()=>edit(page))}><Pencil class="size-4"/>{t("pulseEdit")}</Button>{#if page.writable}<Button small variant="secondary" onclick={()=>publish(page)}>{#if page.published}<EyeOff class="size-4"/>{t("pulseUnpublish")}{:else}<Eye class="size-4"/>{t("pulsePublish")}{/if}</Button>{/if}<Button small variant="secondary" onclick={()=>remove(page)}><Trash2 class="size-4"/>{t("delete")}</Button>{/snippet}
+  </ListItem>
+ {/each}
+</List></div>
 
 {#if editing}
  <Domain page={editing.id} eligible={editing.writable&&!!panel.usage?.limits?.customDomain}/>
  <section class="mt-6"><Card title={t("pulseIncidents")}>
   {#if editing.writable}<form class="mt-5 grid gap-4" onsubmit={incident}>
    {#if !incidentId}<FloatField id="incident-title" surface="bg-white dark:bg-neutral-900" label={t("pulseIncidentTitle")} required maxlength={120} bind:value={incidentTitle}/>{/if}
-   <div class="relative"><label for="incident-text" class="absolute -top-2.5 left-2 bg-white px-1 text-[13px] text-neutral-500 dark:bg-neutral-900">{t("pulseIncidentText")}</label><textarea id="incident-text" class="min-h-28 w-full rounded-md border border-neutral-300 bg-white p-3 outline-none focus:border-blup dark:border-neutral-700 dark:bg-neutral-900" required maxlength={2000} bind:value={text}></textarea></div>
+   <TextArea id="incident-text" surface="bg-white dark:bg-neutral-900" label={t("pulseIncidentText")} required maxlength={2000} bind:value={text}/>
    <div class="grid gap-4 sm:grid-cols-2"><Select surface="bg-white dark:bg-neutral-900" label={t("pulseIncidentState")} options={states} bind:value={incidentStateValue}/>{#if !incidentId}<Select surface="bg-white dark:bg-neutral-900" label={t("pulseImpact")} options={impacts} bind:value={impact}/>{/if}</div>
    <div class="flex flex-wrap justify-end gap-2">{#if incidentId}<Button type="button" variant="secondary" onclick={()=>{incidentId=null;text="";}}>{t("cancel")}</Button>{/if}<Button {busy}>{incidentId?t("pulseUpdateIncident"):t("pulseNewIncident")}</Button></div>
   </form>{/if}
-  <div class="mt-5 grid">{#each incidents as item(item.id)}<div class="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 py-3 dark:border-neutral-800"><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span>{item.title}</span><span class="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{stateLabel(item.state)}</span></p><p class="text-xs text-neutral-500">{formatDate(new Date(item.updatedAt))}</p></div>{#if editing.writable&&item.state!=="resolved"}<Button small variant="secondary" onclick={()=>{incidentId=item.id;incidentTitle=item.title;text="";}}>{t("pulseUpdateIncident")}</Button>{/if}</div>{/each}</div>
+  <div class="mt-5 grid">{#each incidents as item(item.id)}<div class="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 py-3 dark:border-neutral-800"><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span>{item.title}</span><Badge tone={item.state==="resolved"?"green":"amber"}>{stateLabel(item.state)}</Badge></p><p class="text-xs text-neutral-500">{formatDate(new Date(item.updatedAt))}</p></div>{#if editing.writable&&item.state!=="resolved"}<Button small variant="secondary" onclick={()=>{incidentId=item.id;incidentTitle=item.title;text="";}}>{t("pulseUpdateIncident")}</Button>{/if}</div>{/each}</div>
  </Card></section>
 {/if}

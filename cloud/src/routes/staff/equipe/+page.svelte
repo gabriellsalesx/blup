@@ -6,6 +6,8 @@
 	import Button from "#lib/ui/Button.svelte";
 	import Row from "#lib/ui/Row.svelte";
 	import Field from "#lib/ui/Field.svelte";
+	import Select from "#lib/ui/Select.svelte";
+	import PageHeader from "#lib/ui/PageHeader.svelte";
 
 	// Who is on the staff. Each one also needs to be allowed in Cloudflare
 	// Access (the door); this list is the role inside.
@@ -34,21 +36,16 @@
 		try { await staffApi.setMember(m, r); toast("Papel alterado"); await load(); }
 		catch { toast("Não deu certo.", { kind: "error" }); }
 	}
+	const roles = [{ value: "support", label: roleLabel("support") }, { value: "admin", label: roleLabel("admin") }] as const satisfies readonly { value: Role; label: string }[];
 </script>
 
-<h1 class="text-3xl font-extrabold tracking-tight">Equipe</h1>
-<p class="mt-1 text-sm text-neutral-500">Suporte vê as contas e ajuda (sessões, passkeys). Admin também bloqueia, exclui contas e cuida da equipe. Libere o e-mail também no Cloudflare Access.</p>
+<PageHeader title="Equipe" lead="Suporte vê as contas e ajuda (sessões, passkeys). Admin também bloqueia, exclui contas e cuida da equipe. Libere o e-mail também no Cloudflare Access." />
 
 <div class="mt-6">
 	<Row title="Adicionar" help="Quem entra pela primeira vez já fica com o papel escolhido.">
 		<form class="mt-3 flex flex-wrap items-end gap-3" onsubmit={add}>
 			<div class="min-w-64 flex-1"><Field label="E-mail" type="email" required bind:value={email} /></div>
-			<label class="grid gap-1.5 text-sm font-medium">Papel
-				<select class="rounded-lg border border-neutral-300 bg-white px-3 py-2.5 dark:border-neutral-700 dark:bg-neutral-900" bind:value={role}>
-					<option value="support">Suporte</option>
-					<option value="admin">Admin</option>
-				</select>
-			</label>
+			<Select compact surface="bg-white dark:bg-neutral-900" label="Papel" options={roles} bind:value={role} />
 			<Button {busy}>Adicionar</Button>
 		</form>
 	</Row>
@@ -60,10 +57,7 @@
 				{#each team.staff as m (m.email)}
 					<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2.5 dark:border-neutral-800">
 						<span class="flex-1"><b>{m.email}</b><br /><span class="text-xs text-neutral-500">por {m.addedBy} · {when(m.createdAt)}</span></span>
-						<select class="rounded-md border border-neutral-300 bg-white px-2 py-1 dark:border-neutral-700 dark:bg-neutral-900" value={m.role} aria-label="Papel de {m.email}" disabled={m.email === data.me?.email} onchange={(e) => {const next=e.currentTarget.value;if(next==="support"||next==="admin")change(m.email,next);}}>
-							<option value="support">{roleLabel("support")}</option>
-							<option value="admin">{roleLabel("admin")}</option>
-						</select>
+						<Select compact surface="bg-white dark:bg-neutral-900" label="Papel de {m.email}" options={roles} value={m.role} disabled={m.email === data.me?.email} onchange={(next) => change(m.email, next)} />
 						<button class="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 disabled:opacity-40 dark:hover:bg-neutral-800" aria-label="Tirar da equipe" title="Tirar da equipe" disabled={m.email === data.me?.email} onclick={() => remove(m.email)}><Trash class="size-4" /></button>
 					</li>
 				{/each}

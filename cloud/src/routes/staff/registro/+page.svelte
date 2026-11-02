@@ -3,13 +3,14 @@
 	import { createPager } from "#lib/pager.svelte.ts";
 	import { toast } from "#lib/toast.svelte.ts";
 	import Pager from "#lib/ui/Pager.svelte";
+	import PageHeader from "#lib/ui/PageHeader.svelte";
 
 	// Every staff action, newest first, a page at a time.
 	const pager = createPager((cursor) => staffApi.log(cursor));
 	pager.reset().then(() => { if (pager.failed) toast("Não deu para carregar o registro.", { kind: "error" }); });
 </script>
 
-<h1 class="text-3xl font-extrabold tracking-tight">Registro</h1>
+<PageHeader title="Registro"/>
 <p class="mt-1 text-sm text-neutral-500">Tudo o que a equipe fez: quem, o quê, em qual conta e quando.</p>
 
 {#if pager.items.length || !pager.busy}

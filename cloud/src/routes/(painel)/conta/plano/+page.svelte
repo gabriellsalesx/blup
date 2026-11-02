@@ -12,6 +12,8 @@
  import Row from "#lib/ui/Row.svelte";
  import PulseSelection from "#lib/ui/PulseSelection.svelte";
  import Switch from "#lib/ui/Switch.svelte";
+ import Segmented from "#lib/ui/Segmented.svelte";
+ import PageHeader from "#lib/ui/PageHeader.svelte";
  import Check from "@lucide/svelte/icons/check";
  let {data}=$props();
  type Preview=InferResponseType<typeof rpc.billing.preview.$post,200>;
@@ -32,13 +34,13 @@
  async function undo(){await run(async()=>{await parseResponse(rpc.billing.pending.$delete());await refresh();});}
  async function cancelCheckout(){await run(async()=>{await parseResponse(rpc.billing.checkout.$delete());await refresh();});}
 </script>
-<h1 class="text-3xl font-extrabold tracking-tight">{t("plan")}</h1><p class="mt-2 text-neutral-500">{t("planLead")}</p>
+<PageHeader title={t("plan")} lead={t("planLead")}/>
 {#if error}<p class="my-4 text-red-600" role="alert">{errorMessage(error)}</p>{/if}
 {#if result}<div class="my-5 rounded-xl border border-blup p-5" role="status"><p>{result.state==="scheduled"?t("billingScheduled",{date:when(result.effectiveAt)}):t("billingWaiting")}</p>{#if result.paymentUrl}<a class="mt-3 block text-blup underline" href={result.paymentUrl}>{t("billingPay")}</a>{/if}</div>{/if}
 {#if billing?.paymentUrl}<a class="my-4 block text-blup underline" href={billing.paymentUrl}>{t("billingPay")}</a>{/if}
 {#if billing?.checkout}<div class="my-5 grid gap-3 rounded-xl border p-5"><a class="text-blup underline" href={billing.checkout.url}>{t("billingResumeCheckout")}</a><Button variant="secondary" {busy} onclick={cancelCheckout}>{t("billingCancelCheckout")}</Button></div>{/if}
 {#if billing?.change}<div class="my-5 grid gap-3 rounded-xl border p-5"><p>{t("billingScheduled",{date:when(billing.change.effectiveAt)})} {planLabel(billing.change.plan,language())}</p>{#if Date.parse(billing.change.effectiveAt)>Date.now()}<Button variant="secondary" {busy} onclick={undo}>{t("billingCancelPending")}</Button>{/if}</div>{/if}
-<div class="mt-8 flex flex-wrap items-center gap-5"><div class="inline-flex rounded-full border border-neutral-200 p-1 text-sm font-semibold dark:border-neutral-800" role="radiogroup" aria-label={t("billing")}><button role="radio" aria-checked={!yearly} class="rounded-full px-4 py-1.5 {!yearly?'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900':''}" onclick={()=>yearly=false}>{t("monthly")}</button><button role="radio" aria-checked={yearly} class="rounded-full px-4 py-1.5 {yearly?'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900':''}" onclick={()=>yearly=true}>{t("yearly")}</button></div></div>
+<div class="mt-8"><Segmented label={t("billing")} options={[{value:"month",label:t("monthly")},{value:"year",label:t("yearly")}]} bind:value={()=>yearly?"year":"month",(v)=>yearly=v==="year"}/></div>
 <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{#each bases as base(base.name)}
  {@const pulseable=base.name==="max"||base.name==="ultra"}{@const pulse=pulseable&&!!withPulse[base.name]}
  {@const p=data.plans.find(p=>p.name===(pulse?`${base.name}_pulse`:base.name))??base}
