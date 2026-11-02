@@ -26,7 +26,7 @@ A API rejeita texto com menos de três espaços. O frontend dispara a narração
 
 ## Idioma da nota e escolha de voz
 
-`NoteOrigin`, em `internal/app/translate.go`, considera a pasta imediatamente acima da nota. Se o nome exato dessa pasta é `pt`, `en` ou `es` e difere de `site.Lang`, a nota tem esse idioma de tradução. A rotina procura a original na pasta mãe por `translationKey` e depois pelo nome; mesmo sem encontrar a original, conserva o idioma da pasta e devolve o caminho esperado da original. Fora dessa condição, usa `site.Lang`. Não detecta o idioma pelo texto nem pela linguagem da interface do Studio.
+`NoteOrigin`, em `internal/app/translate.go`, considera a pasta imediatamente acima da nota. Se seu nome exato é `pt`, `en` ou `es` e difere de `site.Lang`, a nota tem esse idioma de tradução; pastas em maiúsculas não entram nesse teste. A rotina procura a original na pasta mãe por `translationKey` e depois pelo nome; mesmo sem encontrar a original, conserva o idioma da pasta e devolve o caminho esperado da original. Fora dessa condição, usa `site.Lang`. Não detecta o idioma pelo texto nem pela linguagem da interface do Studio.
 
 Por exemplo, num site `pt`, `Posts/Texto.md` usa `Prefs.Voices["pt"]`, `Posts/en/Text.md` usa `["en"]` e `Posts/es/Texto.md` usa `["es"]`. Só uma pasta de idioma ancestral mais distante não determina o idioma: o teste é da pasta imediata. As preferências são globais à máquina, em `studio-prefs.json`. Configurações, na aba Narração, oferece Português, English e Español para escolher cada uma.
 
@@ -41,11 +41,11 @@ Por exemplo, num site `pt`, `Posts/Texto.md` usa `Prefs.Voices["pt"]`, `Posts/en
 `voiceFor(lang, chosen)`, em `internal/app/narration_api.go`, aplica esta ordem:
 
 1. Conserva `kokoro:<id>` se o ID existe e fala o idioma da nota. Essa aceitação não testa a instalação; uma escolha local válida com instalação ausente pode falhar ao gerar.
-2. Para `blup:`, normaliza a voz pelo idioma com `narrate.VoiceFor`, caindo para a voz padrão desse idioma quando necessário. A autorização e o uso do plano são verificados no fluxo remoto.
+2. Para `blup:`, preserva modelo e voz dos outros modelos para validação remota. Só no modelo recomendado normaliza a voz pelo idioma com `narrate.VoiceFor`, caindo para a voz padrão desse idioma quando necessário. A autorização e o uso do plano são verificados no fluxo remoto.
 3. Conserva uma escolha OpenRouter de outro modelo para validação posterior. No modelo recomendado, só a conserva se `narrate.VoiceFor(lang, voz)` devolver a mesma voz.
 4. Sem escolha aplicável, usa a primeira voz Kokoro compatível se o motor estiver instalado; sem ela, usa o modelo remoto recomendado com `narrate.DefaultVoice(lang)`.
 
-Assim, uma voz portuguesa salva no campo inglês não força a leitura em português: ela é descartada nessa resolução e cai no padrão inglês aplicável. Para idiomas fora de `pt`, `en` e `es`, as rotinas usam inglês como fallback. O retorno ao padrão resolve escolhas ausentes ou incompatíveis; falha de síntese de uma voz já aceita não inicia automaticamente outro motor.
+Uma voz local incompatível é descartada, e o modelo recomendado resolve o idioma conforme essas regras. Outros modelos conservam a escolha para validação posterior; não se atribui detecção universal de idioma às vozes deles. Para idiomas fora de `pt`, `en` e `es`, as rotinas usam inglês como fallback. O retorno ao padrão resolve escolhas ausentes ou incompatíveis; falha de síntese de uma voz já aceita não inicia automaticamente outro motor.
 
 `NarrationVoices(idioma, modelo, modeloBlup)` lista locais, vozes do modelo escolhido para o Blup Cloud (só modelos pagos: os gratuitos não passam pelo plano) e vozes do modelo OpenRouter solicitado. Nas Configurações, os grupos Blup Cloud e OpenRouter só aparecem depois de conectar; o do Blup Cloud tem o mesmo seletor de modelo, sem preço, com o aviso de que modelos mais caros gastam a cota mais rápido. Informa motor, nome, disponibilidade e existência de amostra. Disponibilidade OpenRouter significa haver chave salva; no Blup Cloud depende de o plano incluir IA. Isso não garante saldo ou sucesso da próxima chamada. Amostras gravadas estão em `studio/frontend/public/voices`. `Studio.NarrationEstimate` usa o mesmo idioma e preferência para decidir se deve estimar o uso de IA do Blup Cloud.
 
@@ -71,7 +71,21 @@ O frontend decide entre reproduzir a amostra gravada indicada por `sample` e cha
 
 ## Voz pelo Blup Cloud
 
-`internal/app/narration_blup.go` trata escolhas `blup:`. `EstimateNarration` conta os caracteres Unicode do texto falável e consulta o custo por caractere e o uso disponível. `speakBlup` verifica se o texto inteiro cabe no uso restante, considerando o teto semanal, e envia as partes pela API de IA do Blup Cloud usando o modelo e a voz escolhidos (a voz do modelo recomendado é resolvida no idioma da nota). O custo por caractere é o do Blup Cloud para o modelo recomendado e, para os outros, o preço do OpenRouter (`perCharMicros`), o mesmo que o servidor cobra: `cloud/worker/ai.ts` lê a lista de modelos de voz do OpenRouter (no máximo a cada 6 horas por isolate), aceita o modelo e a voz que ela traz e desconta da cota o preço real do modelo. Junta os MP3 pelo mesmo `JoinMP3`; falha de crédito ou autorização interrompe, sem troca automática para Kokoro. Os controles da conta e do uso estão em [Studio](studio.md#configurações-globais).
+`internal/app/narration_blup.go` trata escolhas `blup:<modelo>|<voz>`. `EstimateNarration` conta os caracteres Unicode do texto falável e consulta o preço e o uso disponível. `speakBlup` verifica se o texto inteiro cabe no uso restante, considerando o teto semanal, e envia partes com o modelo e a voz escolhidos. No modelo recomendado, consulta `AIUsage.perCharMicros`. Para os demais, `perCharMicros` exige encontrar preço positivo na lista OpenRouter; preço desconhecido ou falha de consulta interrompe a estimativa e a narração, sem substituir pelo preço do modelo recomendado.
+
+O servidor em [ai.ts](../../cloud/worker/ai.ts) valida modelo/voz e calcula por requisição:
+
+```text
+modelo recomendado: perCharMicros = 22
+outros modelos: perCharMicros = Number(pricing.prompt) * 1.000.000
+custoMicros = ceil(quantidade de caracteres Unicode * perCharMicros)
+```
+
+O catálogo dos outros modelos é consultado em `/models?output_modalities=speech`, com cache de até seis horas por isolate. Exclui famílias configuradas como PCM/local, exige preço positivo e aceita somente voz listada, ou vazia quando o modelo não lista vozes. Na falta de catálogo, só resta o recomendado. A requisição de voz admite até 4.000 caracteres Unicode; o cliente normalmente divide em 2.500 bytes. A confirmação do catálogo no Studio e o cache do servidor ocorrem em momentos diferentes, portanto a estimativa não é uma reserva de preço ou cota.
+
+A base mensal é 660.000 milionésimos de dólar multiplicados pelo fator do plano (Pro 1, Max 2, Ultra 5). A janela móvel dos últimos sete dias admite metade da cota mensal, que renova no primeiro dia UTC. Narração e tradução usam a mesma cota. O preço por modelo vem do catálogo e da fórmula implementada; a narração não reconcilia posteriormente `usage.cost` ou uma fatura do provedor. A tradução registra esse custo reportado quando disponível, senão uma estimativa. A verificação de saldo e a gravação posterior de uso não constituem uma reserva atômica entre chamadas concorrentes.
+
+O servidor e o OpenRouter recebem o texto em claro para síntese remota, conforme [Segurança](../seguranca.md). Os MP3 são unidos por `JoinMP3`; falha de crédito, preço ou autorização interrompe, sem troca automática para Kokoro. Controles da conta e uso estão em [Studio](studio.md#configurações-globais), e a tabela dos planos em [Blup Cloud](blup-cloud-sync.md#planos-executados).
 
 ## Kokoro local
 

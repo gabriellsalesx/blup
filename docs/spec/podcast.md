@@ -2,6 +2,8 @@
 
 O Podcast é uma seção dos blogs Mochi e Nori que só o Blup Studio oferece (em Seções). Ele junta as narrações dos posts como episódios numa página com player próprio e publica um feed para Spotify, Apple Podcasts e outros apps. A CLI não oferece a seção; um site que já a tem continua gerando a página e o feed também pela CLI.
 
+Fontes: [configuração do programa](../../internal/app/podcast.go), [serviço Studio](../../studio/podcast.go), [painel](../../studio/frontend/src/PodcastPanel.svelte), [feed](../../theme/layouts/section.podcast.xml) e [player](../../theme/assets/js/podcast.js). Conferido em 02/11/2026.
+
 ## Seção e nota
 
 - `internal/app/starter.go` define `blogKinds = ["podcast"]` e `sectionKinds(model)`: Bento usa `docsKinds` mais `studioKinds`; Mochi e Nori, só `blogKinds`. `writeSamples` nunca copia a pasta `Podcast` num blog novo; ela vem só por `AddSection`.
@@ -34,7 +36,7 @@ Propriedades da nota (todas opcionais):
 
 ## Player (`assets/js/podcast.js`)
 
-- Um único `<audio>` toca todos os episódios. Ao terminar um, o próximo entra no mesmo elemento: celulares continuam tocando com a tela apagada, e o iPhone só passa sozinho para o próximo quando o elemento é o mesmo.
+- Um único `<audio>` toca todos os episódios. Ao terminar um, o player solicita o próximo no mesmo elemento para favorecer continuidade em celulares. Reprodução com tela apagada e avanço automático dependem das políticas do navegador e sistema; o código não garante esse comportamento em todo aparelho.
 - A Media Session publica título, nome do site e capa (JPEG quadrado de 512 px, `podcast/art.html`) e trata play, pausa, anterior, próximo, avançar, voltar e posição.
 - Controles: tocar e pausar, 15 s para trás e para frente, barra de posição, tempo, velocidade (1, 1,25, 1,5, 2 e 0,75), sem som e a lista de reprodução.
 - As notas do episódio buscam a página do post e copiam o texto (`.prose`) para dentro do episódio, sem sair da página; o áudio continua.
@@ -45,8 +47,8 @@ Propriedades da nota (todas opcionais):
 `internal/scaffold` declara o formato de saída `podcast` (`application/rss+xml`, `feed.xml`). A nota da seção pede esse formato em `outputs`, e `theme/layouts/section.podcast.xml` gera um feed por idioma do site (`/podcast/feed.xml`, `/en/podcast/feed.xml`).
 
 - Programa: título, link, descrição, idioma, `atom:link`, `itunes:author`, `itunes:owner`, `itunes:image`, `itunes:category`, `itunes:explicit` e `itunes:type episodic`.
-- Episódio: título, link do post, `guid` estável (`translationKey`, senão o endereço), data, descrição, `enclosure` com o MP3 (tamanho real em bytes e `?v=` com o `audio_hash`), `itunes:duration` (`audio_seconds`) e `itunes:image`.
-- As capas do feed são JPEG quadrados de 1400 px, recortados com `Fill ... smart`: a Apple aceita JPEG ou PNG de 1400 a 3000 px, não WebP.
+- Episódio: título, link do post, `guid` por `translationKey`, senão `RelPermalink`, data, descrição, `enclosure` com o MP3 (tamanho real em bytes e `?v=` com o `audio_hash`), `itunes:duration` (`audio_seconds`) e `itunes:image`. Sem chave explícita estável, renomear a página pode mudar o GUID.
+- As capas do feed são JPEG quadrados de 1400 px, recortados com `Fill ... smart`; o player usa uma variante de 512 px. O aviso de imagem do Studio usa a faixa de 1400 a 3000 px.
 - Os endereços saem completos com o endereço do build: o domínio próprio (`blup.toml` `domain`) ou o endereço onde o site é publicado (Blup Cloud, Cloudflare Pages, GitHub Pages), que a publicação passa como `baseURL`. Só a prévia, sem endereço, gera caminhos relativos.
 
 ## Tela Podcast no Studio
@@ -58,3 +60,5 @@ Propriedades da nota (todas opcionais):
 - Quantos episódios há: posts do idioma principal com narração que o podcast lista.
 - O endereço do feed de cada idioma, com Copiar e os atalhos para Spotify for Creators e Apple Podcasts Connect: pelo domínio próprio, senão pelo endereço onde o site foi publicado (`LoadTarget`). Antes da primeira publicação, a tela explica que é preciso publicar.
 - `SavePodcast` só grava as propriedades da lista `PodcastProps` e recusa e-mail sem `@`.
+
+Os atalhos abrem serviços externos; o Blup não cadastra automaticamente o programa nem garante aprovação em diretórios. `podcast_email` fica público no feed. Cada idioma usa os posts com áudio daquele idioma: traduzir uma nota não cria uma narração, e narrar a tradução consulta sua voz em `Prefs.Voices[lang]`. O [fluxo de narração](narracao-e-voz.md) descreve como gerar e atualizar esses arquivos.

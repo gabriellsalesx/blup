@@ -6,7 +6,7 @@ Fontes: [entrada](../../cmd/blup/main.go), [dispatcher e menu](../../internal/ap
 
 `main` chama `app.Run(context.Background(), os.Args[1:])`. Erros reconhecidos como cancelamento pela UI encerram com código 130; os demais são apresentados pela UI e encerram com código 1. Sucesso encerra normalmente.
 
-`Run` carrega primeiro o estado global, inclusive para versão e ajuda. `Version` começa como `dev` e pode ser injetado com `-ldflags`. A linguagem da interface usa `en` ou `pt`; a tradução cai para inglês e depois para a própria chave quando falta uma mensagem.
+`Run` carrega primeiro o estado global, inclusive para versão e ajuda. `Version` começa como `dev` e pode ser injetado com `-ldflags`. A interface tem `pt`, `en` e `es`; a tradução cai para inglês e depois para a própria chave quando falta uma mensagem. Os aliases dos comandos continuam sendo os da tabela, sem uma terceira lista de comandos em espanhol.
 
 Para `build`/`gerar`, ou quando não há terminal interativo, o dispatcher seleciona a linguagem salva ou inglês e evita a pergunta inicial de idioma. Isso não torna todos os fluxos não interativos: criação, personalização, escolha de múltiplos sites, publicação e o próprio build ainda podem exigir perguntas. O build pode pedir a senha geral de posts protegidos, como detalhado em Gerar. `help` usa o fluxo de escolha de idioma; `version` apenas imprime a versão.
 
@@ -84,13 +84,17 @@ Se uma nota pede senha geral e não há senha resolvida para o site, `encryptLoc
 
 A URL é extraída da saída do servidor e aberta no navegador. Ctrl+C cancela o processo e volta ao menu. Notas protegidas aparecem legíveis com aviso, sem gravar sua página em `public/`. O índice da busca reflete o conteúdo no início da prévia; não é refeito a cada salvamento.
 
-Para esse índice, `previewSearch` cria uma saída temporária com `hugo --buildDrafts --baseURL http://localhost/ --destination <temporário> --quiet`, sem selecionar `hugo.preview.toml`, e move `pagefind/` para `<site>/.blup/preview/pagefind`. Falhas só geram aviso; `BLUP_NO_SEARCH` não pula essa etapa. A transferência usa `os.Rename`, sem fallback de cópia entre sistemas de arquivos: pode falhar com EXDEV se o temporário e o site estiverem em volumes diferentes. O servidor de prévia continua, mas a busca pode ficar indisponível.
+Para esse índice, `previewSearch` cria uma saída temporária com `hugo --buildDrafts --baseURL http://localhost/ --destination <temporário> --quiet`, sem selecionar `hugo.preview.toml`, e move `pagefind/` para `<site>/.blup/preview/pagefind`. `placeSearch` usa `moveDir`, com tentativa de rename e fallback de cópia quando necessário. Falhas só geram aviso; `BLUP_NO_SEARCH` não pula essa etapa. O índice é inicial, sem atualização a cada salvamento.
 
 ## Publicar e sincronizar
 
 `internal/app/publish.go` pergunta o provedor somente quando não foi definido. A ordem de opções começa por GitHub. Credenciais são solicitadas e verificadas, destino é preparado, o site é gerado com a URL correta e os arquivos são enviados. O estado é salvo após sucesso; a CLI conecta ou verifica o domínio e oferece abrir a URL. Detalhes em [publicação](publicacao.md).
 
+O seletor da CLI oferece GitHub e Cloudflare. Um site já configurado com `deploy.provider = "blup"` é encaminhado a `deployBlup`, usando a sessão Blup Cloud salva pelo Studio. Não há comando próprio da CLI para login Blup Cloud, agenda, tradução, narração ou criação de Podcast/Feedback. Seus arquivos e seções já existentes ainda podem ser processados pelo build compartilhado.
+
 `internal/app/sync.go` prepara um repositório privado, sugerindo `Slug(title)` mais `-notas` ou `-notes` conforme o idioma da interface, escreve os dados portáteis e consulta o plano. Se estiver em dia e sem conflitos, encerra sem perguntar; caso contrário pede confirmação antes de aplicar alterações. Um repositório já público exige confirmação adicional na CLI. O Studio recusa esse caso na API compartilhada. A CLI mostra conflitos, itens ignorados e lixeira; a resposta do Studio é mais restrita. Detalhes em [notas e sync](notas-e-sync.md).
+
+Esse comando ainda prepara explicitamente o transporte GitHub: não é uma interface da CLI para o sync cifrado do Blup Cloud. O Studio escolhe o adaptador de acordo com `sync.remote`; o contrato da nuvem está em [Blup Cloud](blup-cloud-sync.md).
 
 `convert` faz simulação, mostra exemplos, pede confirmação, cria ZIP das notas afetadas em `<site>/backups/notes-AAAA-MM-DD-HHMMSS.zip` e somente então reescreve as notas. Não é uma etapa automática de cada build.
 
@@ -112,3 +116,5 @@ Nome, descrição, menu, redes e imagens ficam também nas propriedades da nota 
 `internal/app/update.go` consulta atualizações ao abrir o menu, exceto em `dev`, sem terminal interativo ou com `BLUP_NO_UPDATE_CHECK` definido. A consulta tem timeout de dois segundos e cache de 24 horas. Falhas da consulta automática são silenciosas. O usuário pode atualizar, adiar ou ignorar aquela versão; se escolher atualizar e a instalação falhar, o erro é exibido por `ui.Error`.
 
 `blup update` faz a consulta explícita; `--rollback` ou `--voltar` restaura o executável anterior. Builds `dev` recusam o comando antes de analisar essas flags, portanto também recusam rollback. `internal/update/update.go` lê GitHub Releases, seleciona arquivo para o sistema e arquitetura, verifica SHA-256 com `checksums.txt`, substitui o executável e mantém backup. A nova versão roda na próxima inicialização. Isso não é um atualizador implementado para o aplicativo Studio.
+
+O cliente de atualização exige HTTPS nos downloads e no arquivo de checksums e recusa downgrade para HTTP nos redirecionamentos. A base HTTP substituível é um recurso dos testes. O checksum confere integridade contra o arquivo obtido; o código não implementa assinatura independente do mantenedor para esses assets.

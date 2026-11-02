@@ -2,6 +2,8 @@
 
 Fontes: [seções disponíveis](../../internal/app/starter.go), [configuração das seções](../../internal/app/settings.go), [quadro Hugo](../../theme/layouts/_partials/bento/feedback-board.html), [cliente do site](../../theme/assets/js/feedback.js), [API do dono](../../internal/app/feedback_board.go) e [painel do Studio](../../studio/frontend/src/FeedbackPanel.svelte). O serviço de login fica no repositório irmão [blup-api](../../../blup-api/README.md); a rota de leitura foi conferida em [src/index.ts](../../../blup-api/src/index.ts).
 
+Revisão de 02/11/2026. O serviço de comentários `blup-api` e o Blup Cloud de conta/sync são componentes distintos. Publicar em `getblup.site` não substitui o repositório, a instalação do GitHub App ou o login GitHub usados neste quadro; o contrato é o mesmo nos três provedores de publicação.
+
 ## Ativação e origem dos dados
 
 Feedback é uma seção Bento com `blup: feedback` no `_index.md` de uma pasta direta das notas. `obsidian.Sections`, em `internal/obsidian/obsidian.go`, reconhece a marca independentemente do nome da pasta; `bento/kind.html` escolhe o layout pela mesma propriedade. A home passa a ter o cartão dessa seção.
@@ -102,6 +104,8 @@ O cache em sessão do cliente dura um minuto para leituras do serviço e cinco m
 ## Idiomas e tradução
 
 Os controles do site usam `theme/i18n/{pt,en,es}.toml`, conforme o idioma da página, inclusive categorias, status, formulário, avisos, datas relativas e carregar mais. Em espanhol, os pedidos são chamados de `solicitud`, com textos como `Nueva solicitud` e `Cargar más solicitudes`; em inglês, o filtro geral é `All statuses`. O painel do Studio usa seu próprio `studio/frontend/src/i18n.ts`, no idioma da interface.
+
+No site publicado, o [idioma do visitante](temas-hugo.md#idioma-do-visitante) pode escolher uma tradução existente do quadro. No Studio, a troca de idioma atualiza a interface sem recarregar a janela. Essas escolhas mudam os controles; não mudam o texto das issues ou dos comentários.
 
 Título e descrição da seção, `linkTitle` e textos dos exemplos dependem da tradução da nota. Em [internal/app/translate.go](../../internal/app/translate.go), `exampleTexts` e `walkExamples` percorrem, em ordem, `title`, `body` e `replies[].text` não vazios. A tradução remota usa `PropTexts`; a local recebe os mesmos textos por `TranslationTexts` e grava por `SaveTranslation`. `translatedProps` só substitui a lista quando a quantidade de textos traduzidos coincide. Votos, categorias, status, autores, `days` e demais campos conservam seus valores.
 

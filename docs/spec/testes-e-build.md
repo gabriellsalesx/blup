@@ -32,6 +32,7 @@ Sem `-X ...app.Version=...`, o binário mantém `dev`, e a oferta automática de
 | `internal/obsidian` | Propriedades e preservação de notas |
 | `internal/wikilinks` | Resolução, conversão, âncoras e backups |
 | `internal/notesync` | Comparação de versões, conflitos, exclusões, falhas e servidor GitHub falso |
+| `internal/cloudcrypt`, `internal/blupcloud` | Cifra, embrulhos, limites de derivação, isolamento de blocos, histórico, sync e publicação com HTTP simulado |
 | `internal/deploy/github` | Repositórios, publicação, Pages, domínios e autenticação com HTTP simulado |
 | `internal/deploy/cfpages` | Hashes, upload, erros e domínios com API simulada |
 | `internal/lock` | Criptografia e pós-processamento |
@@ -88,13 +89,14 @@ Sem `BLUP_KOKORO_DIR` apontando para instalação reconhecida, `internal/kokoro.
 
 ## Frontend e Studio
 
-O frontend declara Svelte 5, Vite 8, TypeScript, CodeMirror 6, runtime Wails 3, xterm e Hunspell WASM, com `package-lock.json` versionado. O projeto tem scripts de build e análise Svelte, mas não declara um script de suíte automatizada de navegador.
+O frontend declara Svelte 5, Vite 8, TypeScript, CodeMirror 6, runtime Wails 3, xterm e Hunspell WASM, com `package-lock.json` versionado. Há scripts de build, análise Svelte e testes Node (`node --test tests/*.test.ts`); estes últimos não são uma suíte completa de navegador.
 
 Na pasta `studio/frontend`, este fluxo manual usa `npm ci` com o lockfile versionado:
 
 ```sh
 npm ci
 npm run check
+npm test
 npm run build
 ```
 
@@ -184,6 +186,26 @@ O checksum é SHA-256 em `checksums.txt`. `internal/update`, `install.sh` e `ins
 `.github/workflows/release.yml` dispara em tags `v*.*.*`, faz checkout completo, usa a versão Go do módulo, instala Hugo, roda testes da raiz e chama GoReleaser v2. Não compila Studio ou seus pacotes e não publica as ferramentas de voz nesse workflow.
 
 `install.sh` e `install.ps1` são instaladores da CLI. O download Hugo automático não oferece pacote extraível para macOS no código atual; um binário Hugo compatível já instalado permite usar o site ali. A CLI da release não oferece inferência local Kokoro por estar sem CGO.
+
+## Blup Cloud e checks de pré-deploy
+
+Na raiz, os checks exigidos pelo time são:
+
+```sh
+go vet ./...
+go test ./...
+(cd studio && go vet . && go test ./...)
+(cd cloud && npx tsc -p worker/tsconfig.json --noEmit && npx vitest run)
+(cd studio/frontend && npx svelte-check)
+```
+
+`cloud/package.json` também oferece `check` para SvelteKit/Svelte/TypeScript e `build` para assets de produção. Não confunda analisar apenas `worker/tsconfig.json` com construir o painel. `npm ci` usa os lockfiles; não se deve acrescentar dependência para validar documentação.
+
+Os testes Cloud usam D1/R2/auth simulados. `plans.test.ts`, `history.test.ts`, `reminders.test.ts` e `site-rules.test.ts` cobrem regras dos planos, limpeza, agenda e publicação; `security.test.ts`, `auth-security.test.ts` e `serve-site-security.test.ts` exercitam entradas forjadas e fronteiras de origem, autenticação e cache. Casos `it.fails` documentam limitações conhecidas de cotas concorrentes, contabilização de IA, limpeza de deploy e revogação de sites. Seu resultado precisa ser informado separadamente dos testes que passam. Veja [Segurança](../seguranca.md#cotas-e-retenção).
+
+No cliente, `internal/app/blup_reminders_test.go` confere payload opaco; `narration_blup_test.go` confere escolha de voz e preço desconhecido; `internal/cloudcrypt/attack_test.go` cobre parâmetros abusivos, troca de dados autenticados e recuperação. `studio/guard_test.go` e `paths_security_test.go` verificam chamadas Wails e caminhos de arquivos. `studio/frontend/tests/security.test.ts` verifica os tratamentos de HTML/link no frontend.
+
+Testes HTTP locais usam portas efêmeras próprias. Se o sandbox impedir `httptest` de abrir sockets, é preciso executar o mesmo teste com a permissão apropriada, preservando portas e processos reservados. Para temporários grandes, use pasta da sessão e `TMPDIR`/`GOTMPDIR`; remova só os arquivos da própria execução. Testes de IA, Stripe e e-mail usam simulações; não comprovam entrega, cobrança ou publicação de produção.
 
 ## Alcance de validação desta documentação
 

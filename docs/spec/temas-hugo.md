@@ -6,7 +6,15 @@ Fontes principais: [estrutura base](../../theme/layouts/baseof.html), `theme/lay
 
 Há um tema embutido chamado `blup`, com três modelos selecionados por `site.Params.model`. `theme/hugo.toml` declara Hugo mínimo `0.169.0` e modelo padrão Mochi. O scaffold passa o modelo escolhido no `blup.toml`.
 
-`baseof.html` produz o documento HTML, idioma, head de metadados, SEO, CSS, link de pular para conteúdo, ícones, cabeçalho e rodapé do modelo. Num site traduzido e publicado, `head/lang.html` (logo depois dos metadados) leva o visitante ao seu idioma: na primeira visita, ao primeiro idioma pedido pelo navegador (`navigator.languages`, só o código de duas letras) que o site tem, quando a página tem tradução nele, e, se nenhum servir, o inglês (o idioma mais lido; português e espanhol só para quem lê); depois de escolher um idioma no seletor (`data-lang-choice`, também no "ver original" do selo de IA), a escolha guardada em `localStorage` (`blup-lang`) vale nas próximas páginas. Usa `location.replace`, para o voltar não cair no idioma anterior. Robôs de busca e navegadores automatizados não são levados (cada idioma é indexado no seu endereço), e a prévia do Studio não tem o script. Os layouts `home.html`, `page.html`, `section.html`, `term.html` e `taxonomy.html` delegam ao partial do modelo correspondente. Há também `404.html`, `robots.txt`, RSS e formatos JSON auxiliares.
+`baseof.html` produz o documento HTML, idioma, head de metadados, SEO, CSS, link de pular para conteúdo, ícones, cabeçalho e rodapé do modelo. Os layouts `home.html`, `page.html`, `section.html`, `term.html` e `taxonomy.html` delegam ao partial do modelo correspondente. Há também `404.html`, `robots.txt`, RSS e formatos JSON auxiliares.
+
+### Idioma do visitante
+
+[head/lang.html](../../theme/layouts/_partials/head/lang.html) é incluído somente com mais de um site/idioma Hugo e `HUGO_BLUP_MODE=publish`. O mapa de destinos usa `.AllTranslations` da página atual. Sem preferência manual, percorre `navigator.languages` (ou `navigator.language`), toma as duas primeiras letras em minúsculas e escolhe o primeiro idioma que tenha destino nesse mapa. Se nenhum servir, tenta `en`; sem página inglesa, permanece no endereço atual. Não cria tradução nem manda obrigatoriamente para a home inglesa.
+
+Clique em `a[data-lang-choice]`, inclusive no acesso à original do selo de IA, guarda `hreflang` em `localStorage["blup-lang"]`. Essa preferência prevalece nas páginas seguintes. Se ela não existe no mapa da página seguinte, o script permanece ali, sem nova escolha automática. O seletor visível pode oferecer a home do outro idioma quando falta a tradução da página; isso é uma navegação manual diferente da regra de redirecionamento.
+
+O redirecionamento usa `location.replace`, preservando query e fragmento. É pulado para `navigator.webdriver` e para User-Agent reconhecido como bot/crawler/preview/lighthouse/headless; esse reconhecimento é uma heurística do cliente. Cada tradução conserva seu endereço e `hreflang`. A prévia não recebe esse script. O idioma do visitante não altera o idioma da interface do Studio nem traduz pedidos/comentários reais.
 
 | Conjunto | Função |
 | --- | --- |
@@ -51,6 +59,8 @@ Os três modelos têm o mesmo cabeçalho do Nori: logo e nome à esquerda (o nom
 
 Nori usa uma coluna central e componentes em `nori/`, com cabeçalho, rodapé, home, listas, datas, avatares, destaque e páginas de taxonomia próprios. Compartilha resolução de capas, perfis, conteúdo, proteção, player, busca e feedback com as peças comuns. Ao fim de cada post, antes do feedback, mostra os botões de compartilhamento do Mochi (`mochi/share.html`: copiar link, X, Facebook, LinkedIn e WhatsApp) na cor das caixas do Nori.
 
+Compartilhamento usa o permalink da página, com título nos destinos que o aceitam. Copiar link tem indicação de resultado e fallback do script comum; redes abrem links externos com `noopener`, sem SDK de rede social ou integração com a API Web Share. O mesmo bloco pode existir numa página protegida: compartilha o endereço, sem liberar a senha ou o corpo.
+
 Na home também escolhe um destaque e pagina os demais. Com feedback, o markup inclui abas de recentes, mais reagidos e mais comentados, inicialmente ocultas. `feedback.js` só as mostra quando há pelo menos uma issue carregada com reações e pelo menos uma com comentários; podem ser issues diferentes. As abas de mais reagidos/comentados têm uma busca própria de páginas seguintes para ordenar a lista, separada do carregar mais de `blup.js`. O post apresenta capa, título, descrição, autores, data, tags, áudio, corpo e comentários. Política de privacidade usa layout simples.
 
 Nori está implementado nos templates, em CSS, exemplos e telas do Studio. Sua ausência no seletor da CLI é uma diferença de interface, não ausência de tema.
@@ -91,6 +101,8 @@ Os controles são traduzidos por `theme/i18n/{pt,en,es}.toml`; título e exemplo
 
 `description.html` prefere descrição explícita; na home usa a configuração; depois extrai texto, normaliza espaços e limita a 160 caracteres. Para post protegido retorna descrição genérica traduzida. Algumas áreas visuais de página usam `.Description` diretamente, portanto descrição explícita e demais metadados não devem ser considerados criptografados.
 
+Na extração automática, o partial retira comentários Obsidian e trata um `%%` aberto no fim de um resumo truncado. Se o resumo só contém comentário, tenta o conteúdo completo antes de escolher o texto. `toc.html` retira do sumário entradas cujo heading não permaneceu no conteúdo visível, inclusive headings dentro de comentários. `mochi/cover.html` prefere `image`/`cover`; o fallback de primeira imagem ignora comentários e não é usado para tirar capa do corpo de uma nota protegida. Uma capa configurada explicitamente continua pública.
+
 `render-link.html` resolve caminhos Markdown relativos com `Page.GetPage`, preserva fragmentos normalizados e publica anexos encontrados. Link externo recebe `rel="noopener"`; não é forçado a abrir nova aba. Destino interno ausente gera aviso Hugo.
 
 `vault-resource.html` aceita links relativos, caminhos do cofre e referências de propriedade como `[[foto.png]]`. Tenta diretório da nota, raiz publicada, raiz do cofre e busca por nome. O fallback por nome significa que arquivos homônimos podem depender da primeira correspondência.
@@ -125,7 +137,7 @@ A CLI prepara índice no início da prévia; o Studio não o gera em `StartPrevi
 
 ## Posts protegidos
 
-`locked.html` considera `password` presente. `true`, `sim` e `yes`, sem distinção de caixa, viram `__global__`; outros valores não vazios são senha literal. `mochi/lock.html` tem três modos:
+`locked.html` considera `password` preenchido. `true`, `sim`, `sí`, `si` e `yes`, sem distinção de caixa, viram `__global__`; outros valores não vazios são senha literal. O booleano YAML `false` não ativa a proteção. `mochi/lock.html` tem três modos:
 
 | Modo | Corpo |
 | --- | --- |
@@ -182,6 +194,10 @@ O worker tem versão calculada por hash. A lista inicial inclui todos os `index.
 Navegação tenta a rede antes; na falha, tenta a página em cache ignorando query e depois a home em cache. Outros recursos da mesma origem/escopo tentam cache primeiro e podem ir para `blup-seen`. O worker não limpa nem revalida periodicamente esse cache, que pode manter conteúdo antigo de arquivos sem fingerprint; `blup-seen` e `blup-audio` sobrevivem à troca da versão principal. APIs de outra origem não são interceptadas.
 
 Áudio não é guardado automaticamente por streaming: o worker usa a cópia solicitada no player, inclusive respondendo a ranges com HTTP 206. A chave considera a URL com versão. `pwa.js` registra o worker e apresenta botão de instalar quando o navegador oferece `beforeinstallprompt`; a experiência de instalação depende do navegador. A prévia não registra esse worker pelo tema.
+
+## Podcast de Mochi e Nori
+
+Uma seção `blup: podcast`, acrescentada pelo Studio, usa os partials `podcast/`, `podcast.css`, `podcast.js` e `section.podcast.xml`. Lista os posts narrados do idioma atual, excluindo escondidos, rascunhos e protegidos. Oferece dez episódios por vez, player único com Media Session e feed `feed.xml`, com URLs do destino de publicação. A capa do feed é JPEG quadrado de 1400 px. O [contrato de Podcast](podcast.md) descreve propriedades, GUIDs, retomada local, idiomas, painel e limites da reprodução em celulares.
 
 ## Mapa do changelog (Bento)
 

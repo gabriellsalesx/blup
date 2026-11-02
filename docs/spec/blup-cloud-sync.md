@@ -1,78 +1,100 @@
-# Sincronização pelo Blup Cloud
+# Blup Cloud: conta, sincronização e planos
 
-Plano da sincronização das notas de um site (a pasta que o Studio edita e publica) pelo Blup Cloud, com criptografia de ponta a ponta. Convive com o sync pelo GitHub descrito em [notas-e-sync.md](notas-e-sync.md): cada site escolhe um destino.
+Implementação conferida em 02/11/2026. Este documento descreve funções existentes, substituindo o plano inicial. Fontes: [cliente Go](../../internal/blupcloud/client.go), [coordenação](../../internal/app/blup_cloud.go), [criptografia](../../internal/cloudcrypt/cloudcrypt.go), [destino de sync](../../internal/blupcloud/remote.go), [API](../../cloud/worker/index.ts), [sync](../../cloud/worker/sync.ts) e [planos](../../cloud/worker/plans.ts).
 
-## Decisões de produto
+## Conta e autorização
 
-| Tema | Grátis | Pro | Plano superior (a definir) |
-| --- | --- | --- | --- |
-| Quando sincroniza | Botão "Sincronizar" | Tempo real (ao parar de digitar ~2 s, ao fechar) | Tempo real |
-| Aviso aos outros computadores | Ao sincronizar pelo botão | Instantâneo (Durable Object por usuário, WebSocket Hibernation) | Instantâneo |
-| Histórico de versões | Não | 1 mês | 1 ano |
-| Armazenamento | 100 MB | 5 GB | A definir |
+`cloud/` contém o painel SvelteKit estático e uma API Hono em Cloudflare Workers. Better Auth usa D1 pelo adaptador Drizzle. `auth-options.ts` configura código de seis dígitos por e-mail, válido por dez minutos, cinco tentativas e armazenamento do código por hash; passkeys; Turnstile; autorização de aparelho; Bearer; e Stripe. Login com senha da conta está desativado. A senha das notas é outro mecanismo, executado no computador.
 
-As versões antigas contam no armazenamento. Restaurar uma versão cria uma versão nova, então nada se perde. Conflito guarda as duas versões, como no sync do GitHub.
+Uma conta pode nascer só com passkey. O servidor cria um endereço técnico no domínio `.invalid`; não envia mensagens a esse endereço. Vincular e-mail exige confirmar um código. Assinar exige e-mail real; trocar um e-mail já vinculado passa pelo suporte no fluxo atual.
 
-Rareamento do histórico: todas as versões do último dia; uma por hora na última semana; uma por dia depois, até o limite do plano.
+`StartBlupLogin` obtém uma autorização de aparelho para o cliente `blup-studio`; a pessoa confere o código em `/aparelho`, no navegador, e aprova. `FinishBlupLogin` aguarda e guarda a sessão em `credentials.toml`. O Studio usa `Authorization: Bearer`, com identificação da instalação no User-Agent. O painel lista e encerra sessões de aparelhos. O limite de aparelhos é verificado na aprovação; não é uma contagem de cofres.
 
-## Criptografia
+`LoadBlupAccount` retorna plano, uso e estado das notas: `new`, `locked` ou `ready`. Sair encerra a sessão quando possível e apaga `blup_token` e `notes_key` locais. Não apaga os arquivos de notas já existentes no disco.
 
-Tudo é compactado e cifrado no computador. A nuvem guarda blocos ilegíveis e não vê nomes de arquivos, pastas, tamanhos individuais de notas nem o conteúdo das versões. Bibliotecas: só a biblioteca padrão do Go e `golang.org/x/crypto`.
+## Planos executados
 
-- **Chave mestra**: 32 bytes aleatórios, uma por conta, gerada no primeiro uso.
-- **Senha das notas**: Argon2id (`x/crypto/argon2`, t=3, m=64 MiB, p=4, sal de 16 bytes) deriva a chave que embrulha a chave mestra.
-- **Chave de recuperação**: 32 bytes aleatórios mostrados uma vez em grupos base32. Embrulha outra cópia da chave mestra.
-- A nuvem guarda só as duas cópias embrulhadas (XChaCha20-Poly1305) e os parâmetros do Argon2id. Sem a senha e sem a chave de recuperação, ninguém recupera as notas, nem o Blup.
-- **Subchaves** por HKDF-SHA256 a partir da chave mestra: uma para cifrar blocos, uma para identificar blocos, uma para cifrar manifestos.
-- No computador, a chave mestra fica em `credentials.toml` (modo 0600), como os tokens.
+Valores de `cloud/worker/plans.ts`, não uma promessa de preços externos. A API entrega os preços em centavos de real e limites; Stripe encontra os preços pelos lookup keys. Quantidades de armazenamento e tamanho de arquivo são multiplicadas por `1024 * 1024` no servidor.
 
-## Formato
+| Limite | Grátis | Pro | Max | Ultra |
+| --- | --- | --- | --- | --- |
+| Preço mensal em BRL | 0 | 14,90 | 29,90 | 59,90 |
+| Preço anual em BRL | 0 | 149,00 | 299,00 | 599,00 |
+| Armazenamento em MiB | 50 | 1024 | 10240 | 51200 |
+| Arquivo em MiB | 10 | 25 | 200 | 500 |
+| Aparelhos | 1 | 2 | 3 | Sem limite (`-1`) |
+| Quantidade de cofres na tabela de planos | Sem limite | Sem limite | Sem limite | Sem limite |
+| Sync automático | Não | Sim | Sim | Sim |
+| Histórico | Só versão atual | 30 dias | 365 dias | 365 dias |
+| Sites hospedados pelo Blup | 0 | 1 | 5 | 10 |
+| Multiplicador da cota de IA | 0 | 1 | 2 | 5 |
+| E-mails de lembrete por mês | 0 | 0 | 50 | 100 |
+| Campo `customDomain` | `false` | `false` | `true` | `true` |
 
-- **Bloco**: cada arquivo é cortado em pedaços de até 4 MiB. Cada pedaço é compactado (DEFLATE da biblioteca padrão, pulado quando não reduz) e cifrado com XChaCha20-Poly1305, nonce aleatório e o id do bloco como dado associado. O id do bloco é o HMAC-SHA256 do pedaço com a subchave de identificação: pedaços iguais viram o mesmo bloco (deduplicação) sem que a nuvem consiga confirmar um conteúdo conhecido.
-- **Manifesto**: um por versão do cofre, JSON compactado e cifrado: `{path: {sha, size, mode, blocks: [ids]}}`. O `sha` é o SHA de blob do Git do conteúdo em claro, o mesmo que o motor de três versões já usa.
-- **Cofre**: um por site, com nome cifrado.
+Notas cifradas, manifestos, referências, histórico e arquivos de sites somam no armazenamento da conta. O campo `customDomain` nos planos Max e Ultra ainda não corresponde a uma API de domínio próprio dos sites da nuvem; hoje a publicação usa `nome.getblup.site`. Publicar por Cloudflare Pages ou GitHub Pages continua independente da assinatura.
 
-## Servidor (Worker)
+`account.ts` considera assinaturas `active`, `trialing` e `past_due`; sem uma delas cai no Grátis. O proprietário configurado por secret recebe Ultra de cortesia somente com o e-mail correspondente verificado. Acrescentar alguém à staff não concede esse plano.
 
-Tabelas D1:
+## Chaves e dados cifrados
 
-| Tabela | Conteúdo |
+`cloudcrypt.NewKeys` gera chave mestra aleatória de 32 bytes por conta e outra chave aleatória de 32 bytes para recuperação. A senha deriva uma chave de embrulho por Argon2id: três iterações, 64 MiB, quatro threads e salt aleatório de 16 bytes. A recuperação é mostrada uma vez, em grupos base32. Cada uma protege uma cópia da mesma chave mestra com XChaCha20-Poly1305.
+
+O servidor guarda os embrulhos e parâmetros. O cliente abre a chave no computador e guarda sua representação base64 em `credentials.toml`, modo `0600`. Base64 não cifra esse arquivo local. HKDF-SHA256 deriva subchaves distintas para conteúdo, identificadores e manifestos. Sem senha, recuperação ou uma cópia local da chave, a aplicação não oferece recuperação do conteúdo pela staff.
+
+Arquivos são divididos em blocos de até 4 MiB. DEFLATE é aplicado quando reduz o tamanho, seguido de XChaCha20-Poly1305 com nonce aleatório e dados associados. O ID é HMAC-SHA256 do bloco em claro com a subchave de identificação. Blocos iguais na mesma conta podem ser reutilizados; o servidor vê igualdade e tamanho cifrado, mas não recebe um hash público do texto original para testar dicionários de conteúdo.
+
+O manifesto cifrado contém `files`, mapa de caminho para SHA de blob Git, tamanho, modo e lista de blocos. O nome do cofre também é cifrado. O servidor recebe separadamente referências de IDs de blocos em claro para limpeza. Não recebe nomes nem os tamanhos individuais dos arquivos contidos no manifesto, mas observa quantidade de blocos, tamanhos armazenados, versões, horários, conta e tráfego. Veja o [modelo de segurança](../seguranca.md).
+
+## Persistência e protocolo
+
+| Local | Conteúdo |
 | --- | --- |
-| `sync_key` | `user_id`, parâmetros do Argon2id, chave mestra embrulhada pela senha e pela recuperação |
-| `vault` | `id`, `user_id`, nome cifrado, `head` (número da versão atual) |
-| `vault_version` | `vault_id`, `n`, tamanho do manifesto, `created_at`; uma linha por versão guardada |
-| `sync_block` | `user_id`, `id`, `size`, `created_at`; base da cobrança de armazenamento |
+| D1 `sync_account` | Embrulhos da chave, embrulho anterior, uso e datas de sync/limpeza |
+| D1 `vault` | Conta, ID, nome cifrado, versão atual e atualização |
+| D1 `vault_version` | Cofre, número, chave R2, tamanho e data |
+| D1 `sync_block` | Conta, ID HMAC, tamanho cifrado e data |
+| R2 `u/<conta>/b/<id>` | Bloco cifrado |
+| R2 `u/<conta>/v/<cofre>/<n>-<id>/m` | Manifesto cifrado |
+| Mesmo prefixo com `/r` | Referências dos blocos, sem nomes de arquivos |
 
-R2: `u/<user>/b/<bloco>`, `u/<user>/v/<cofre>/<n>` (manifesto) e `u/<user>/r/<cofre>/<n>` (lista em claro dos ids de blocos da versão, para a limpeza).
+Rotas autenticadas de `cloud/worker/sync.ts`:
 
-Rotas (autenticadas pela sessão do Studio, obtida pelo login com o navegador):
+| Rota após `/api/sync` | Operação |
+| --- | --- |
+| `GET /key`, `PUT /key` | Ler ou criar/atualizar embrulhos; não recebe a senha em claro |
+| `GET /vaults`, `POST /vaults` | Listar até 500 cofres ou criar com nome cifrado |
+| `GET /vaults/:id` | Ler versão atual de um cofre da conta |
+| `GET /vaults/:id/versions?before=N` | Histórico, até 50 versões por resposta |
+| `GET /vaults/:id/versions/:n` | Receber manifesto cifrado |
+| `POST /blocks/missing` | Consultar até 1000 IDs; consultas D1 em lotes menores |
+| `PUT /blocks/:id`, `GET /blocks/:id` | Enviar ou baixar bloco da conta |
+| `POST /vaults/:id/versions` | Gravar manifesto e referências com versão pai |
+| `GET /live` | WebSocket para planos com `live` |
 
-- `GET/PUT /api/sync/key`: buscar e criar as chaves embrulhadas; trocar a senha reescreve só o embrulho.
-- `GET/POST /api/sync/vaults`: listar e criar cofres.
-- `GET /api/sync/vaults/:id`: versão atual.
-- `GET /api/sync/vaults/:id/versions/:n`: manifesto.
-- `POST /api/sync/blocks/missing`: quais ids ainda não existem.
-- `PUT/GET /api/sync/blocks/:id`: enviar e receber bloco. O envio confere a cota do plano.
-- `POST /api/sync/vaults/:id/versions`: nova versão com `parent`. Só avança se `head = parent` (`UPDATE ... WHERE head = ?`); senão 409 e o Studio refaz o plano, como já faz com o GitHub.
-- `GET /api/sync/live` (Pro): WebSocket com o Durable Object do usuário, que avisa "cofre X foi para a versão N".
+O upload de bloco aceita até 4 MiB mais 64 bytes; manifesto até 32 MiB. O cliente limita arquivos pelo plano, corta os blocos e usa quatro operações concorrentes. Descompactar um valor cifrado tem limite local de 64 MiB. Uma resposta cifrada é autenticada antes do uso, e o arquivo remontado é comparado ao SHA esperado.
 
-Limpeza (Cron Trigger diário): aplica o rareamento e o limite do plano a `vault_version`, apaga manifestos e listas descartados e remove blocos sem referência criados há mais de um dia.
+`Remote.Commit` cifra o manifesto para `parent + 1`. O servidor exige o mesmo `head` e confirma o avanço por operação condicional no D1. Se outra máquina avançou antes, responde 409 `MOVED`; o adaptador converte para `notesync.ErrNotFastForward` e o motor compara novamente. A conciliação preserva versões conflitantes em arquivos separados, como no destino GitHub.
 
-## Studio
+O adaptador implementa `notesync.Ordered`: depois de sincronizar uma versão, o cliente recusa `head` vazio, não numérico ou inferior ao número conhecido, com `ErrRolledBack`. Isso impede aceitar uma versão antiga ainda autenticamente cifrada naquele computador; sem base local anterior, não fornece uma âncora externa para identificar todo rollback. IDs de cofre têm validação de formato antes de compor rotas/pastas, e leituras HTTP limitam o corpo a 64 MiB.
 
-1. **Motor**: `internal/notesync` passa a falar com uma interface de destino (ler a versão atual, enviar e receber conteúdo, gravar nova versão com avanço só para frente). O GitHub vira uma implementação; o Blup Cloud, outra. As regras de três versões, conflitos, lixeira e estado continuam iguais.
-2. **Entrar com Blup**: login pelo navegador (device authorization do Better Auth).
-3. **Senha das notas**: criação com a chave de recuperação; desbloqueio em outro computador; troca de senha.
-4. **Sincronizar**: botão para todos; no Pro, envio automático com espera de ~2 s e conexão ao vivo.
-5. **Versões anteriores** e **Notas apagadas** (Pro).
-6. Uso real (espaço e sites) no painel.
+## Automação, histórico e outra máquina
 
-## Ordem de entrega
+`internal/app/blup_live.go` agenda sync dois segundos após a última alteração salva; uma alteração durante sync causa outra rodada. Faz sync inicial, ouve a sala da conta no Durable Object `SyncLive` e verifica novamente a cada cinco minutos. Reconecta WebSocket com espera crescente de cinco segundos até dois minutos. O canal transporta somente ID do cofre e número da versão; arquivos passam pela API cifrada. Trocar ou fechar o site encerra a coordenação local correspondente.
 
-1. Pacote de criptografia em Go com testes.
-2. Interface de destino no `notesync`, com o GitHub migrado e os testes atuais passando.
-3. Tabelas, rotas e cotas no Worker, com testes.
-4. Login do Studio pelo navegador e senha das notas.
-5. Destino Blup Cloud no Studio, botão Sincronizar e tempo real do Pro.
-6. Histórico, notas apagadas e limpeza.
-7. Uso real no painel e textos dos planos.
+`cleanup.ts` e `history.ts` mantêm a versão atual, todas as versões do último dia, uma por hora na última semana e uma por dia depois, dentro do prazo do plano. Blocos sem referência com mais de um dia podem ser removidos. Versões antigas e blocos enviados ainda sem manifesto podem consumir espaço até a limpeza; não há armazenamento gratuito separado para histórico.
+
+`NoteHistory` consulta até 200 versões relevantes de um arquivo; `NoteVersionText` só devolve prévia textual para UTF-8 válido. `RestoreNoteVersion` baixa a versão, sincroniza o estado atual e escreve o arquivo restaurado dentro das notas, validando caminho e links simbólicos. O próximo sync guarda essa restauração como alteração nova; não reduz o número da versão remota. `DeletedNotes` permite localizar arquivos de versões anteriores que ainda não foram restaurados localmente.
+
+`BlupSites` decifra os nomes de cofres com versão publicada no sync e informa quais já estão associados localmente. `BringBlupSite` cria pastas disponíveis, baixa primeiro, aplica `.blup/site.toml` e registra o site. Isso recupera as notas sincronizadas, não os overrides do diretório técnico nem credenciais de outros provedores. A lista `translations` não consta de `sharedSite` hoje; não se deve prometer que todos os campos de `blup.toml` viajem nesse arquivo.
+
+O destino das notas é `[sync].remote = "blup"`; vazio ou `github` escolhe o destino GitHub das APIs do Studio. Trocar destino não apaga a origem anterior, e a próxima comparação não usa sua base como se pertencesse ao novo destino. O comando interativo `blup sync` ainda implementa o fluxo GitHub em `internal/app/sync.go`.
+
+## IA, lembretes, publicação e cobrança
+
+A IA da conta usa `/api/ai`, com a sessão do Studio. Narração aceita modelos e vozes validados pelo servidor; o custo do catálogo do modelo determina a redução da cota. Tradução monta o prompt no servidor e registra `usage.cost` quando disponível. A cota base é 660.000 milionésimos de dólar por mês, multiplicada pelo plano; o limite da janela móvel de sete dias é metade da cota mensal. O painel mostra percentuais. Texto enviado a esses endpoints é legível pelo servidor e pelo provedor de IA, diferentemente do sync. Detalhes em [narração](narracao-e-voz.md) e [Studio](studio.md#idiomas-e-tradução).
+
+Lembretes usam fila D1 e cron a cada cinco minutos, separados do sync cifrado. O cliente envia somente ID opaco e instante; a cota é 50 e-mails no Max e 100 no Ultra, por mês UTC. As condições de atraso, cancelamento e entrega estão em [calendário e lembretes](calendario-e-lembretes.md).
+
+Sites publicados usam bucket `SITES`, com conteúdo público, e outro Worker. Os limites de publicação, cache, manifesto e slug estão em [publicação](publicacao.md#blup-cloud). Isso não publica automaticamente um cofre sincronizado.
+
+Stripe é configurado pelo plugin Better Auth. O registro Customer é criado no primeiro checkout, sem criar clientes para todo cadastro grátis. O webhook `/api/auth/stripe/webhook` mantém assinaturas; `billing.ts` registra pagamentos, falhas, reembolsos, disputas e alertas de fraude com ID de evento único. O painel oferece checkout e portal por redirecionamento. Exclusão de conta tenta cancelar assinaturas antes de remover o usuário. Procedimentos operacionais, Access e secrets estão em [deploy](../deploy.md), e os fluxos completos em [arquitetura](../arquitetura.md).

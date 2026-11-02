@@ -10,13 +10,13 @@ Fontes: [Obsidian](../../internal/obsidian/obsidian.go), [propriedades](../../in
 
 `EnableHugoFriendlyLinks` preserva as outras opções de `.obsidian/app.json`, guarda a cópia anterior em `app.json.blup-backup` e define `useMarkdownLinks = true` e `newLinkFormat = "relative"`. A configuração é para links futuros; não converte o texto existente. O fluxo informa que é preciso reabrir o Obsidian. `strictLineBreaks` é lido para ajustar as quebras de linha do Hugo.
 
-Os templates do plugin nativo são escritos na pasta configurada em `.obsidian/templates.json`. Se não houver pasta, Blup cria e configura uma. `SetTemplatesFolder` habilita o plugin no formato de lista ou mapa de `.obsidian/core-plugins.json`. Se esse arquivo não existe, não cria a lista de plugins. A criação de templates também pode produzir `.obsidian` em uma pasta comum usada no Studio.
+No fluxo da CLI, os templates do plugin nativo são escritos na pasta configurada em `.obsidian/templates.json`. Se não houver pasta, Blup cria e configura uma. `SetTemplatesFolder` habilita o plugin no formato de lista ou mapa de `.obsidian/core-plugins.json`. Se esse arquivo não existe, não cria a lista de plugins. A criação atual pelo Studio não chama `writeTemplates` nem acrescenta a pasta Modelos/Templates/Plantillas.
 
 ## Notas e propriedades
 
 O corpo e o front matter YAML permanecem em arquivos `.md`. `SetProperties` altera os valores das chaves solicitadas usando nós YAML, preserva as demais e sua ordem, mas reserializa todo o front matter com yaml.v3 e indentação de dois espaços; a formatação das outras chaves pode mudar. Valor `nil` remove a chave, e a nota é criada quando ausente. `SetBody` troca o corpo preservando o front matter. Não há banco de dados obrigatório para escrever notas.
 
-`blup: docs`, `roadmap`, `changelog`, `help`, `blog`, `feedback` e `authors` no `_index.md` de uma pasta direta identificam sua função. O nome físico pode ser traduzido ou escolhido pelo usuário. `obsidian.Sections` lê somente `<pasta>/_index.md` das pastas diretas não ocultas e aplica o reconhecimento à área de propriedades delimitada no começo da nota, sem tratar exemplos no corpo como marca da pasta. Não exige nomes fixos como `Docs` ou `Feedback`.
+`blup: docs`, `roadmap`, `changelog`, `help`, `blog`, `feedback`, `podcast` e `authors` no `_index.md` de uma pasta direta identificam sua função. O nome físico pode ser traduzido ou escolhido pelo usuário. `obsidian.Sections` lê somente `<pasta>/_index.md` das pastas diretas não ocultas e aplica o reconhecimento à área de propriedades delimitada no começo da nota, sem tratar exemplos no corpo como marca da pasta. Não exige nomes fixos como `Docs` ou `Feedback`.
 
 No [quadro de Feedback](feedback.md), a nota da seção guarda a lista `examples`, incluindo comentários `replies`, que viaja com as notas no sync. Os pedidos e comentários reais estão nas issues GitHub, sem um arquivo de nota por pedido; não entram nessa lista nem são copiados pelo sync de notas. As traduções da nota ficam em sua pasta de idioma, como os demais índices.
 
@@ -46,9 +46,15 @@ Front matter, blocos cercados de código, código inline da linha e colchetes es
 
 O fluxo CLI simula primeiro, mostra até três exemplos, confirma e faz ZIP somente dos arquivos que mudarão. A aplicação preserva o modo do arquivo e escreve via temporário e rename. O backup fica no diretório técnico, não dentro das notas. Avisos da conversão exibidos pela CLI são limitados aos primeiros cinco, com contagem dos restantes.
 
-## Repositório de sync
+## Transportes e escopo
 
-O destino padrão é um repositório GitHub privado, com branch `main`, criado vazio e inicializado quando necessário por `.blup/README.md`. O transporte usa a API REST do GitHub: blobs, árvores, commits e referências usam Git data; criação do repositório usa `POST /user/repos`, inicialização usa `PUT /repos/{owner}/{repo}/contents/...`, e descoberta/configuração portátil usam também `/topics` e `/contents`. Não se cria checkout `.git` e não se chama o executável `git`.
+`internal/notesync` faz comparação de arquivos por um contrato `Remote`. No Studio, `sync.remote = "blup"` seleciona o adaptador de [sync cifrado Blup Cloud](blup-cloud-sync.md), com `sync.vault` identificando o cofre. Vazio mantém o transporte GitHub, cujos detalhes estão abaixo. A CLI `sync` ainda prepara explicitamente GitHub; login na nuvem e sync cifrado são fluxos do Studio.
+
+Eventos de calendário, diário, canvas, desenhos, bancos `.table` e registros podem viajar como arquivos elegíveis da pasta. O sync não calcula lembretes; isso cabe ao Studio e à API de e-mails. GitHub privado recebe o conteúdo dos arquivos sem a cifra de ponta a ponta do Blup Cloud. Publicação é outra operação e produz arquivos públicos.
+
+## Repositório GitHub de sync
+
+Nesse transporte, o destino é um repositório GitHub privado, com branch `main`, criado vazio e inicializado quando necessário por `.blup/README.md`. O transporte usa a API REST do GitHub: blobs, árvores, commits e referências usam Git data; criação do repositório usa `POST /user/repos`, inicialização usa `PUT /repos/{owner}/{repo}/contents/...`, e descoberta/configuração portátil usam também `/topics` e `/contents`. Não se cria checkout `.git` e não se chama o executável `git`.
 
 `site.Sync` guarda `owner` e `repo`. Se faltar nome, a aplicação sugere `Slug(title)` com o sufixo de notas traduzido. O estado local fica em `<site>/.blup/sync-state.json`. A lixeira de exclusões recebidas fica por padrão em `<site>/.blup/sync-trash/<AAAA-MM-DD HHMMSS>/`.
 
@@ -85,6 +91,8 @@ O commit e a atualização remota ocorrem antes das alterações locais recebida
 
 A proteção `ErrLocalFolderEmpty` é específica: quando não há arquivos locais elegíveis, existe base e o plano apagaria mais de um arquivo remoto, o sync recusa. Ela não é um limite geral de quantidade de exclusões para qualquer pasta parcialmente vazia.
 
+Se o remoto reaparece vazio depois de uma base com mais de um arquivo, `snapshot` descarta a base para refazer o envio, sem apagar as notas locais como se cada ausência remota fosse uma exclusão intencional. Para transportes `Ordered`, como Blup Cloud, um head anterior ao conhecido é recusado antes desse tratamento por `ErrRolledBack`. GitHub usa hashes de commits e não implementa essa comparação numérica de versões.
+
 `Status` calcula o plano sem aplicar o sync. Na camada `app`, consultar status pode preparar o repositório, adicionar tópico e salvar o destino local; portanto não é uma operação estritamente sem efeitos externos.
 
 ## `.blup/site.toml` e recuperação em outra máquina
@@ -93,10 +101,12 @@ A proteção `ErrLocalFolderEmpty` é específica: quando não há arquivos loca
 
 | Viaja no TOML portátil | Fica fora dele |
 | --- | --- |
-| `version`, `title`, `description`, `author`, `lang`, `model` | Caminhos `vault`, `folder` e diretório técnico |
+| `version`, `title`, `description`, `author`, `lang`, `model`, `kind` | Caminhos `vault`, `folder` e diretório técnico |
 | `domain`, `deploy` | `Site.Password` e senha global |
 | `feedback`, `cookies` | Tokens, preferências Studio e estado local |
 | Configurações de destino | `sync`, reconstruído pelo repositório escolhido |
+
+`deploy` inclui também a identidade do destino Blup Cloud. A estrutura portátil atual não tem `translations`: as notas traduzidas viajam, mas a lista de idiomas de `blup.toml` não é copiada por `sharedSite`. Portanto não se garante restaurar essa lista em uma instalação nova somente pelo arquivo portátil. Essa diferença está registrada no [guia de segurança](../seguranca.md).
 
 Overrides em `layouts/`, `assets/`, `static/`, `i18n/` e `data/` do diretório técnico não são incluídos por esse mecanismo. As notas, inclusive YAML com senhas literais, continuam sendo arquivos enviados ao repositório de notas.
 
@@ -105,3 +115,5 @@ Overrides em `layouts/`, `assets/`, `static/`, `i18n/` e `data/` do diretório t
 `BringSite`, ao encontrar um site local já associado a `owner/repo`, apenas chama `LoadSite` e retorna, sem sincronizar. Sem associação, cria diretórios livres para notas e arquivos técnicos, aplica a configuração portátil, define `Vault` para a nova pasta e `Folder` vazio, salva o destino de sync e recebe o conteúdo. Não escreve sua configuração portátil antes desse primeiro recebimento. Depois lê o arquivo recebido e registra o site. Se o recebimento falhar, os diretórios e `blup.toml` já podem existir, mas o registro na lista global ainda não ocorreu. A janela do Studio abre o workspace a partir do `SiteInfo` retornado.
 
 Ao fim de sync normal, a aplicação aplica as configurações compartilhadas quando `.blup/site.toml` consta como arquivo recebido. A cópia remota de conflito desse arquivo não é aplicada automaticamente. O estado local, os conflitos e as lixeiras não formam uma operação transacional única com todos os arquivos do site.
+
+No Blup Cloud, o mesmo TOML portátil entra no manifesto cifrado; a descoberta e a recuperação usam `BlupSites`/`BringBlupSite`, sem tópico GitHub. O ID remoto fica em `sync.vault`; nome e manifesto são abertos no computador. O sync ao vivo dos planos pagos usa notificações de versão por WebSocket e a mesma comparação de três versões, sem edição colaborativa por caracteres. Veja [histórico e sync ao vivo](blup-cloud-sync.md).

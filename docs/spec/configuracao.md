@@ -13,6 +13,8 @@ O diretório global é `filepath.Join(os.UserConfigDir(), "blup")`. Em Linux nor
 | `<config>/blup/credentials.toml` | Tokens e senha geral entre sites | TOML, `0600`, escrita atômica |
 | `<config>/blup/studio-prefs.json` | Preferências globais e navegação do Studio | JSON indentado, `0644` |
 | `<config>/blup/studio.json` | Ordem e agrupamentos de sites na tela inicial | JSON indentado, `0644` |
+| `<config>/blup/reminders-sent.json` | Registro local dos avisos já exibidos | JSON, `0600` |
+| `<config>/blup/reminder-key` | Chave aleatória local de 32 bytes para IDs HMAC de lembretes | Binário, `0600`; não é sincronizado |
 | `<notas>/_index.md` | Identidade, menu e aparência do site | Propriedades YAML e corpo Markdown |
 | `<notas>/.blup/site.toml` | Parte portátil do site para sync | TOML, `0644`; só reescrito quando o conteúdo muda |
 | `<site>/.blup/sync-state.json` | Base da última sincronização | JSON, escrita atômica |
@@ -40,6 +42,7 @@ O pacote config cria seu diretório global com `0700`. O Studio também pode cri
 | `lang` | texto | Idioma do site: `pt`, `en` ou `es`, independente da interface |
 | `translations` | lista de texto | Outros idiomas em que o site é publicado (`en`, `es`, `pt`); a tradução de cada nota fica numa pasta com o código do idioma ao lado dela. A tradução com IA acrescenta o idioma aqui |
 | `model` | texto | Tema `mochi`, `nori` ou `bento` |
+| `kind` | texto opcional | Vazio para site; `notes` para cofre de anotações, com editor e sync, sem prévia nem publicação |
 | `vault` | texto | Caminho da raiz das notas/cofre |
 | `folder` | texto | Subpasta publicada; vazio significa a raiz inteira |
 | `domain` | texto opcional | Host de domínio próprio; a URL de build usa `https://<domain>/` |
@@ -49,13 +52,16 @@ O pacote config cria seu diretório global com `0700`. O Studio também pode cri
 
 | Tabela e campo | Tipo | Uso |
 | --- | --- | --- |
-| `[deploy].provider` | texto | `github` ou `cloudflare` |
+| `[deploy].provider` | texto | `blup`, `github` ou `cloudflare` |
+| `[deploy.blup].id`, `.slug`, `.url` | texto | Identidade e endereço do site publicado em `getblup.site` |
 | `[deploy.cloudflare].account` | texto | ID da conta |
 | `[deploy.cloudflare].project` | texto | Nome do projeto Pages |
 | `[deploy.cloudflare].subdomain` | texto | Host real retornado pelo Pages, inclusive eventual sufixo |
 | `[deploy.github].owner` | texto | Dono do repositório de publicação |
 | `[deploy.github].repo` | texto | Repositório da saída estática |
 | `[sync].owner`, `[sync].repo` | texto | Repositório de notas, separado do deploy |
+| `[sync].remote` | texto | `blup` seleciona sync cifrado pelo Blup Cloud no Studio; vazio mantém GitHub |
+| `[sync].vault` | texto | ID do cofre remoto no Blup Cloud |
 | `[feedback].enabled` | booleano | Habilita apresentação de feedback |
 | `[feedback].owner`, `[feedback].repo` | texto | Repositório público de issues |
 | `[feedback].api` | texto opcional | URL alternativa do serviço de login |
@@ -106,7 +112,7 @@ lang = "pt"
 sites = ["/home/maria/Sites/meu-blog"]
 ```
 
-`credentials.toml` tem os campos opcionais `cloudflare_token`, `github_token`, `openrouter_token` e `post_password`. Os clientes usam as chaves salvas aqui. Não há leitura geral de `GITHUB_TOKEN` ou de tokens de provedor por variável de ambiente nos fluxos da aplicação.
+`credentials.toml` tem os campos opcionais `cloudflare_token`, `github_token`, `openrouter_token`, `post_password`, `blup_token` e `notes_key`. Os dois últimos guardam a sessão Bearer do Studio no Blup Cloud e a chave mestra de notas em base64, já aberta neste computador. Base64 não cifra o arquivo local. Os clientes usam as chaves salvas aqui; não há leitura geral de `GITHUB_TOKEN` ou de tokens de provedor por variável de ambiente nos fluxos da aplicação. O [modelo de segurança](../seguranca.md) distingue essa persistência local da cifra usada no transporte das notas.
 
 A senha geral é resolvida por `app.PostPassword`: primeiro `Site.Password`, depois `Credentials.PostPassword`. Uma senha literal em uma nota substitui essa escolha para aquele conteúdo. O arquivo portátil não recebe nenhuma dessas senhas gerais, nem tokens.
 
@@ -138,8 +144,10 @@ A senha geral é resolvida por `app.PostPassword`: primeiro `Site.Password`, dep
 | `cloudTip` | booleano | O convite ao Blup Cloud depois do primeiro site foi respondido |
 | `backupDir` | texto | Pasta da cópia diária das notas; vazio desliga |
 | `translateAI` | texto | Quem traduz: `local` (no computador) ou `cloud` (OpenRouter ou Blup Cloud); vazio usa o computador quando instalado |
+| `railNames` | booleano | `false`; mostra nomes junto dos ícones da faixa lateral quando ativado |
+| `notifications` | booleano | `true`; avisos locais e lista de lembretes por e-mail dos planos Max/Ultra |
 
-Voz local usa `kokoro:<id>`, voz pelo plano Blup Cloud usa `blup:<voz>` e voz OpenRouter usa `<modelo>|<voz>`, inclusive voz vazia para o padrão do modelo. Nomes antigos sem separador são tratados como voz do modelo remoto recomendado. A resolução por `voiceFor` e os fallbacks de idioma estão em [narração e voz](narracao-e-voz.md#idioma-da-nota-e-escolha-de-voz).
+Voz local usa `kokoro:<id>`, voz pelo plano Blup Cloud usa `blup:<modelo>|<voz>` e voz OpenRouter usa `<modelo>|<voz>`, inclusive voz vazia para o padrão do modelo. A forma antiga `blup:<voz>` usa o modelo recomendado. Nomes antigos sem separador são tratados como voz do modelo remoto recomendado. A resolução por `voiceFor` e os fallbacks de idioma estão em [narração e voz](narracao-e-voz.md#idioma-da-nota-e-escolha-de-voz).
 
 `studio.json` é uma lista de `HomeItem`: item simples `{ "site": "/caminho" }` ou grupo `{ "folder": "Pessoais", "sites": ["/caminho"] }`. `Layout()` remove referências indisponíveis e duplicadas e acrescenta os sites conhecidos ainda não posicionados. Agrupamentos não são pastas físicas.
 
@@ -166,9 +174,9 @@ Voz local usa `kokoro:<id>`, voz pelo plano Blup Cloud usa `blup:<voz>` e voz Op
 | `draft` | Incluído na prévia; omitido no build normal de publicação |
 | `hidden` | Retira de listas filtradas, RSS e marcação de busca; mantém URL da página |
 | `noindex` | Emite meta robots noindex; não é um controle de acesso |
-| `password` | Literal, ou `true`, `sim`, `yes` para senha geral |
+| `password` | Literal, ou `true`, `sim`, `sí`, `si`, `yes` para senha geral |
 | `audio`, `audio_hash`, `audio_seconds` | Referência, revisão do texto e duração da narração |
-| `blup` em `_index.md` de pasta direta | `docs`, `roadmap`, `changelog`, `help`, `blog`, `feedback` ou `authors`; Feedback é oferecida em Seções no Studio |
+| `blup` em `_index.md` de pasta direta | `docs`, `roadmap`, `changelog`, `help`, `blog`, `feedback`, `podcast` ou `authors`; Feedback e Podcast são oferecidas em Seções no Studio, nos modelos compatíveis |
 | `blup: privacy` | Identifica a política de privacidade |
 | `status`, `category` | Estado e categoria do roadmap |
 | `sort_by_votes: false` | Mantém a ordem do roadmap sem ordenar por votos |
@@ -183,6 +191,10 @@ No Feedback, `status` dentro de `examples` é apenas o estado do exemplo. Pedido
 
 O contrato portátil de `.blup/site.toml`, o estado do sync e os caches estão detalhados em [notas e sync](notas-e-sync.md) e [scaffold e build](scaffold-e-build.md).
 
+Os campos `podcast_*`, `outputs` e `audio*` do programa e seus episódios estão em [Podcast](podcast.md). Eventos de cofre usam `date`, `time`, `event`, `repeat` e `remind`, conforme [Calendário e lembretes](calendario-e-lembretes.md). A preferência `blup-lang` do visitante fica no `localStorage` do site publicado, sem alterar `config.toml` ou as preferências do Studio.
+
+As configurações de servidor, bindings D1/R2, planos e nomes de secrets do Blup Cloud estão em [Blup Cloud](blup-cloud-sync.md) e no [guia de deploy](../deploy.md). Elas pertencem ao operador do serviço e não a `blup.toml`.
+
 ## Variáveis de ambiente e flags de processo
 
 | Variável | Leitura ou efeito |
@@ -190,6 +202,7 @@ O contrato portátil de `.blup/site.toml`, o estado do sync e os caches estão d
 | `BLUP_NO_SEARCH` | Qualquer valor não vazio pula Pagefind no build de publicação |
 | `BLUP_NO_UPDATE_CHECK` | Qualquer valor não vazio pula a oferta automática de atualização da CLI |
 | `BLUP_VOICE_TOOLS` | Lida ao iniciar o processo; troca a origem pelo mesmo pacote de voz local, mantendo hash e tamanho fixos da tabela |
+| `BLUP_CLOUD_URL` | Substitui `https://cloud.getblup.io` no cliente Go, para desenvolvimento/testes; produção deve usar a origem correta |
 | `HUGO_BLUP_MODE` | Definida pelo Blup como `preview` ou `publish`; o tema decide exposição do corpo, manifestos e PWA |
 | `HUGO_BLUP_NO_MP3` | Definida pelo Studio para omitir player na prévia sem suporte detectado |
 | `LANG` | Fallback do idioma inicial do Studio |

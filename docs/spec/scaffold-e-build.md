@@ -87,7 +87,7 @@ A CLI usa um diretório temporário para montar o índice e move `pagefind/` par
 
 A rotina `placeSearch`, em `internal/app/preview.go`, remove o índice anterior e chama `moveDir` para levar `pagefind/` do temporário ao site. `moveDir`, em `internal/app/settings.go`, tenta rename e, se ele falhar, usa cópia e remoção da origem; assim aceita temporário e site em sistemas de arquivos diferentes. Uma falha restante emite aviso e a prévia continua.
 
-O Studio retorna uma prévia já em execução se houver processo registrado. Para iniciar, espera a URL até dois minutos. Após a URL, linhas com `Total in` geram `previewChanged`. Em Linux, ausência de plugin de áudio pode ocultar o player apenas nessa prévia.
+O Studio retorna uma prévia já em execução se houver processo registrado. Para iniciar, espera a URL até dois minutos. Após a URL, linhas com `Total in` ou `Rebuilt in` geram `previewChanged`, incluindo mudanças de configuração. Em Linux, ausência de plugin de áudio pode ocultar o player apenas nessa prévia.
 
 Ao adicionar, remover ou restaurar uma seção pelo Studio, `sectionsChanged` solicita reinício do servidor de prévia em execução. A cópia de uma pasta inteira pode terminar antes de o watcher Hugo começar a observá-la, deixando notas sem página mesmo após recarregar o iframe. `restartPreview` emite `previewChanged` se a URL permanece igual ou `previewRestarted` se mudou; o workspace volta à página da nota aberta. Para traduções, `previewFollows` compara a configuração gerada com a que iniciou o servidor e reinicia quando idiomas ou mounts mudam. Os detalhes estão em [Studio](studio.md#prévia).
 

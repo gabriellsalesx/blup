@@ -69,11 +69,11 @@ Classes globais: `.btn` (`.ghost`, `.big`), `.card`, `.field`, `.choices`, `.lin
 
 `App.svelte` escolhe boas-vindas, home, criação ou workspace. Se `welcomed` ainda é falso e não há sites conhecidos, exibe `Welcome.svelte`. Se já houver sites, marca boas-vindas como vistas. Pode reabrir `lastSite` desde que continue entre os sites válidos; o workspace tenta reabrir a última nota.
 
-`Welcome.svelte` segue as etapas `lang`, `github`, `found` somente quando encontra sites, `password`, `window` e `done`. Primeiro exige escolher português ou inglês. O botão de pular existe somente em GitHub e senha. Para continuar pela ação principal do GitHub, precisa haver conta conectada e a busca deve ter terminado; salvar a senha e continuar exige valor não vazio. A etapa de janela permite continuar sem alterar as opções. As escolhas são salvas conforme feitas; concluir grava `welcomed = true` e `shortcutTip = true` nas preferências.
+`Welcome.svelte` usa as etapas `start`, `account` e `bring`. A primeira permite começar sem conta ou entrar no Blup Cloud para trazer dados de outro computador. O idioma já acompanha a configuração ou o sistema; não há etapa obrigatória de escolha de idioma ou de criação de senha geral de posts. Ao entrar e abrir a chave das notas (`account.notes === "ready"`), consulta `BlupSites`; `BringBlupSite` recebe o cofre escolhido e abre seu workspace. Concluir grava `welcomed = true`.
 
-A etapa `found` apenas lista os sites descobertos. A recuperação acontece no bloco "No seu GitHub" de `Onboarding.svelte`: aparece com conta GitHub conectada, consulta `CloudSites`, filtra os resultados que já têm `dir` local e oferece a ação que chama `BringSite`. A descoberta e a recuperação estão detalhadas em [notas e sync](notas-e-sync.md).
+A descoberta GitHub continua no bloco "No seu GitHub" de `Onboarding.svelte`: com conta conectada, consulta `CloudSites`, filtra os resultados já locais e chama `BringSite`. São caminhos distintos da recuperação cifrada do Blup Cloud. Consulte [notas e sync](notas-e-sync.md) e [Blup Cloud](blup-cloud-sync.md).
 
-`Home.svelte` lista sites locais, permite arrastar para ordenar ou criar grupos e oferece menu com ações equivalentes. Sites e Cofres mostram duas linhas de cartões cada (o cartão de criar conta; as colunas seguem a largura da janela, medidas no grid); passando disso, "Ver todos (n)" mostra a lista inteira com uma busca pelo nome (que acha também os sites dentro de pastas) e "Mostrar menos" volta. Uma pasta conta como um cartão, mostra até três ícones e o número de itens, e não tem limite de itens. Cofres se agrupam do mesmo jeito, na própria seção: sites e cofres dividem a lista salva (`HomeItem`), mas uma pasta guarda só um dos tipos (o do primeiro item), e o arrastar e o "⋯" só oferecem pastas do mesmo tipo. Grupos e ordem ficam em `studio.json`. O "⋯" do cartão também tem Abrir a pasta (`OpenSiteFolder`, só para sites que o Blup conhece: abre o gerenciador de arquivos na pasta das notas) e Apagar o site ou Apagar o cofre, conforme o tipo. Retirar da lista permite desfazer por toast. Não apaga automaticamente os diretórios. Sem sites, inclusive ao carregar a lista vazia, encaminha diretamente ao Onboarding.
+`Home.svelte` lista sites locais, permite arrastar para ordenar ou criar grupos e oferece menu com ações equivalentes. Sites e Cofres mostram duas linhas de cartões cada (o cartão de criar conta; as colunas seguem a largura da janela, medidas no grid); passando disso, "Ver todos (n)" mostra a lista inteira com uma busca pelo nome (que acha também os sites dentro de pastas) e "Mostrar menos" volta. Uma pasta conta como um cartão, mostra até três ícones e o número de itens, e não tem limite de itens. Cofres se agrupam do mesmo jeito, na própria seção: sites e cofres dividem a lista salva (`HomeItem`), mas uma pasta guarda só um dos tipos (o do primeiro item), e o arrastar e o "⋯" só oferecem pastas do mesmo tipo. Grupos e ordem ficam em `studio.json`. O "⋯" do cartão também tem Abrir a pasta (`OpenSiteFolder`, só para sites que o Blup conhece: abre o gerenciador de arquivos na pasta das notas) e Apagar o site ou Apagar o cofre, conforme o tipo. Retirar da lista permite desfazer por toast. A home vazia oferece criar site ou cofre; não força o assistente de site.
 
 `Onboarding.svelte` apresenta categoria, tema, seções Bento, nome/dados, origem das notas e revisão. Blog oferece Nori e Mochi; produto oferece Bento. Permite usar uma nova pasta, pasta escolhida ou cofre/pasta dele. Consulta `SuggestPlaces`, `VaultFolders`, `NeedsLinkAdjust` e `CheckSiteDir`, depois chama `CreateSite` com as respostas. Também permite abrir um site encontrado, restaurar recente ou trazer site GitHub.
 
@@ -87,7 +87,7 @@ Quando existe atalho global e `shortcutTip` ainda é falso, o workspace exibe um
 
 `Studio.Open` valida o site, interrompe a prévia anterior, fecha terminais, muda o site atual, inicia watcher e retorna árvore. A árvore ordena pastas antes de notas, por nome sem distinção de caixa. Exclui itens ocultos, guias de agentes na raiz e as pastas de autores/anexos que têm painéis próprios. Só apresenta `.md` como notas.
 
-`ReadNote` separa YAML, corpo e tipo Bento da nota. `SaveNote` conserva propriedades não editadas pelo formulário e salva corpo mais alterações específicas. As operações recusam caminhos lexicalmente fora da raiz das notas. Essa verificação de caminho não é apresentada pelo código como isolamento completo contra todos os links simbólicos existentes no disco.
+`ReadNote` separa YAML, corpo e tipo Bento da nota. `SaveNote` conserva propriedades não editadas pelo formulário e salva corpo mais alterações específicas. `notePath`, `notesPath` e `app.Within` verificam o caminho dentro da raiz das notas também após resolver links simbólicos, recusando links que escapam e links quebrados que poderiam escrever fora dela. Não se apresenta essa verificação como isolamento contra um processo local malicioso que altere o disco concorrentemente.
 
 `Workspace.svelte` agenda salvamento 300 ms após mudanças e salva antes de trocar nota, sair ou executar ações relevantes. Ctrl/Cmd+S no editor também solicita salvamento. Mantém estados salvo, salvando e não salvo e apresenta falhas. Preferências lembram nota por site e larguras de painéis em `<config>/blup/studio-prefs.json`, gerido por `studio/layout.go`. A senha geral entre sites fica em `credentials.toml`. Veja os campos e a resolução de diretórios em [configuração](configuracao.md).
 
@@ -247,6 +247,10 @@ Todo modelo vem com as formas de ver Tabela e Quadro.
 
 Colunas e formas de ver são gravadas 300 ms depois da mudança (`SaveDatabaseSchema`, que preserva `records` e, se vier vazio, `tag`). Apagar uma coluna não apaga a propriedade das notas. A tela relê os registros quando algo muda na pasta de registros e oferece recarregar quando o próprio `.table` muda fora dela.
 
+### Renomear, mover e copiar bancos
+
+Renomear ou mover um `.table` leva a pasta de registros junto (com o novo nome) e corrige os links para os registros (`followDatabase` em `internal/app/database.go`); renomear só a pasta de registros grava o novo nome no `.table`. `DatabaseOf` acha o banco pelo `.table` de mesmo nome ou por qualquer `.table` ao lado que nomeie a pasta. Não há "Fazer uma cópia" para `.table` (as duas cópias dividiriam a mesma pasta). Renomear uma opção de escolha renomeia o valor nos registros; num cofre, o número 0 fica gravado (só nos formulários de site 0 significa "sem valor").
+
 ## Calendário
 
 Tela Calendário do cofre (`CalendarView.svelte`, `EventForm.svelte`, `calendar.ts`, `holidays.ts`; lado Go em `internal/app/calendar.go` e `studio/calendar.go`). Cada evento é uma nota na pasta `Agenda` (em inglês, `Calendar`; os eventos são lidos das duas pastas e os novos vão para a do idioma do Studio), com as propriedades:
@@ -261,13 +265,13 @@ Tela Calendário do cofre (`CalendarView.svelte`, `EventForm.svelte`, `calendar.
 
 O texto da nota fica livre para anotações (perguntas da entrevista, matéria da prova); o formulário de edição abre a nota. Trocar o título renomeia a nota (`RenameItem`, links seguem). Excluir manda para a lixeira, com Desfazer.
 
-A tela mostra o mês (seis semanas, domingo primeiro; segunda em espanhol), o dia escolhido com Marcar neste dia e Abrir a nota do dia (hoje sempre; outros dias quando a nota existe) e Próximos dias (30 dias). Clique escolhe o dia; duplo clique ou Enter abre o formulário nesse dia. Sem nenhum evento, o painel mostra o vazio com atalhos por tipo (aniversário, prova, entrevista). Feriados nacionais pelo idioma (Brasil, Estados Unidos, Espanha), calculados em `holidays.ts` (fixos, Páscoa e "n-ésimo dia da semana"); a caixa Mostrar feriados fica guardada no `localStorage`. Uma nota do dia (`Diário/AAAA-MM-DD.md`) mostra no topo os eventos daquele dia, e o clique leva ao calendário.
+A tela mostra o mês (seis semanas, domingo primeiro; segunda em espanhol), o dia escolhido com Marcar neste dia e Abrir a nota do dia (hoje sempre; outros dias quando a nota existe) e Próximos dias (30 dias). O nome do mês abre um seletor dos doze meses com navegação por ano; há setas e Hoje. Clique escolhe o dia; duplo clique ou Enter abre o formulário nesse dia. Cada dia exibe até três eventos e a contagem restante. Sem nenhum evento, o painel mostra o vazio com atalhos por tipo (aniversário, prova, entrevista). Feriados nacionais pelo idioma (Brasil, Estados Unidos, Espanha), calculados em `holidays.ts` (fixos, Páscoa e "n-ésimo dia da semana"); a caixa Mostrar feriados fica guardada no `localStorage`. Feriados não são eventos nem geram lembretes. Uma nota do dia mostra no topo os eventos daquele dia, e o clique leva ao calendário.
 
 Avisos: com o Studio aberto ou na bandeja, `startReminders` (no `ServiceStartup` do Studio) confere a cada 30 segundos os eventos de todos os cofres conhecidos e manda a notificação do sistema pelo serviço de notificações do Wails (iniciado à mão: sem suporte a notificações, o Studio abre igual). Um aviso perdido com o Studio fechado ainda chega em até 12 horas. Os enviados ficam em `reminders-sent.json` na pasta de configuração do Blup (esquecidos depois de um mês). Clicar no aviso traz a janela e abre o calendário no dia, se o cofre aberto for o do evento (evento `calendarOpen`). No macOS a permissão é pedida ao salvar o primeiro evento com aviso.
 
 Configurações > Geral > Notificações (`Prefs.Notifications`, ligado por padrão; `SetNotifications`): desligado, o Studio não manda nenhum aviso do sistema e envia ao Blup Cloud uma lista vazia, o que cancela os e-mails pendentes. No Linux, a notificação leva o ícone do Blup como imagem (`notifyIcon`, o `appicon.png` gravado uma vez em `~/.cache/blup/notify-icon.png`, pela dica `image-path`); macOS e Windows mostram o ícone do app sozinhos.
 
-Avisos por e-mail (Max: 50 por mês; Ultra: 100; `reminderEmails` em `cloud/worker/plans.ts`): a cada volta, o Studio monta a lista dos avisos do próximo mês de todos os cofres, só com um código opaco (os 16 primeiros bytes do SHA-256 de cofre, nota, dia e antecedência, em hex) e o horário, e manda `PUT /api/reminders` quando a lista muda ou a cada 6 horas (`pushMail`; sem conta, espera entrar; sem rede, tenta de novo em 5 minutos). Nada do evento sai do computador. No Blup Cloud, a tabela `reminder` guarda os pendentes e o cron de 5 minutos (`sendDue`, `worker/reminders.ts`) manda o e-mail genérico com o logo (`sendReminder`, `worker/email.ts`): "Você tem um lembrete na sua agenda do Blup", sem detalhes. A contagem do mês (`reminder_month`) sobe antes do envio, com limite no próprio `UPDATE`; acima do limite, ou com mais de 12 horas de atraso, o aviso é pulado. A tela mostra "{usados} de {limite} usados este mês" (`ReminderEmails`). Num plano sem e-mails (resposta com limite 0), o Studio só manda de novo depois de 6 horas. A limpeza diária do Blup Cloud (`forgetOld`) apaga avisos com mais de 36 horas e contagens de meses antigos.
+Avisos por e-mail permitem 50 tentativas por mês UTC no Max e 100 no Ultra. `pushMail` envia até 300 IDs opacos e horários, quando a lista muda ou a cada seis horas; falhas esperam cinco minutos. O ID usa HMAC-SHA-256 de cofre, nota, dia e antecedência com segredo local, truncado em 16 bytes hexadecimais (`internal/app/blup_reminders.go`). A API não recebe título ou anotações; a nota pode ser enviada separadamente pelo sync cifrado. O cron de cinco minutos reivindica o item e reserva cota antes de chamar `email.ts`, que envia mensagem genérica. Falha de entrega não tem reenvio garantido e pode consumir a tentativa. Listas substituem pendentes da conta, sem deduplicação universal entre computadores. A tela mostra uso mensal; limite zero é consultado novamente após seis horas. O contrato completo, incluindo cancelamento sem rede, armazenamento local e limpeza, está em [Calendário e lembretes](calendario-e-lembretes.md).
 
 ## Prévia
 
@@ -291,25 +295,26 @@ Em Linux, `canPlayMP3` procura `libgstaudioparsers.so` nos diretórios GStreamer
 | --- | --- |
 | Site, `LookPanel.svelte` | Nome, descrição, autor padrão, logo, favicon, "Mostrar o nome ao lado do logo" (`SetShowName`, propriedade `header_name`), menu com submenus (`ui/MenuEditor.svelte`), botão e redes |
 | Autores, `AuthorsPanel.svelte` | Lista, perfil, foto/avatar, cargo, redes, bio, criação, renomeação e remoção |
+| Anexos, `AttachmentsPanel.svelte` | Lista por tipo, tamanho e usos, adição, renomeação, exclusão e acesso às notas que usam |
+| Seções, `SectionsPanel.svelte` | Bento: seções de produto e Feedback; Mochi/Nori: Podcast. Adiciona modelos, remove para a lixeira e restaura |
+| Comentários, `CommentsPanel.svelte` | Ativa/desativa feedback, prepara repositório e orienta instalação do App |
+| Feedback, `FeedbackPanel.svelte` | Só no Bento com a seção Feedback: lista issues de pedidos via `FeedbackPosts`, filtra por categoria, abre no GitHub e muda o status via `SetFeedbackStatus` |
+| Cookies, `CookiesPanel.svelte` | Ferramentas, IDs, URLs próprias, banner e política |
+| Publicação, `PublishPanel.svelte` | Conectar contas, destino, publicar, acompanhar log, domínio e sync |
+| Podcast, `PodcastPanel.svelte` | Nos blogs com a seção: identidade, capa, episódios e links do feed por idioma |
+| Lixeira, `TrashPanel.svelte` | Restaurar, excluir item e esvaziar |
 
 `ui/MenuEditor.svelte` guarda o menu como grupos (a entrada e o seu submenu) e grava com `toMenu`, uma lista de `MenuItem` com `sub`. Arrastar pela alça: no meio de uma entrada de cima, vai para o submenu dela; na borda de cima ou de baixo, fica antes ou depois. Um nível só: uma entrada com submenu não entra noutro, e num item de submenu só se solta antes ou depois. Os botões fazem o mesmo sem mouse: subir, descer, pôr no submenu de cima, tirar do submenu e remover (remover um grupo devolve o submenu ao menu). "Novo submenu" cria uma entrada sem destino, que só vai ao arquivo com itens dentro. `SaveMenu` (`menuLines`) grava o grupo como `Nome |` e os itens como `+ Nome | destino`.
 
 Na nota de uma coleção da Central de Ajuda do Bento (`<pasta de ajuda>/<Coleção>/_index.md`), Propriedades mostra Ícone da coleção (`ui/IconPicker.svelte`): uma grade com os ícones do Lucide do próprio tema (`LucideIcons`, lido de `theme/data/lucide.json` embutido), com busca pelo nome em inglês ou por palavras comuns em português e espanhol (foguete, livro, ajuda...), até 240 por vez, e Automático, que tira a propriedade `icon` e deixa o tema alternar.
 
 As redes do site e as de cada autor usam o mesmo componente, `ui/SocialLinks.svelte`: cada endereço com o ícone da rede, e um botão por rede (`NETWORKS` em `social.ts`: Instagram, X, LinkedIn, YouTube, Discord, GitHub, Facebook, WhatsApp, e-mail) que acrescenta uma linha com o começo do endereço e põe o cursor no fim. Ao salvar as redes do site, linhas só com o começo são descartadas.
-| Anexos, `AttachmentsPanel.svelte` | Lista por tipo, tamanho e usos, adição, renomeação, exclusão e acesso às notas que usam |
-| Seções, `SectionsPanel.svelte` | Somente Bento; acrescenta exemplos, inclusive Feedback, remove para a lixeira e oferece restaurar a seção removida |
-| Comentários, `CommentsPanel.svelte` | Ativa/desativa feedback, prepara repositório e orienta instalação do App |
-| Feedback, `FeedbackPanel.svelte` | Só no Bento com a seção Feedback: lista issues de pedidos via `FeedbackPosts`, filtra por categoria, abre no GitHub e muda o status via `SetFeedbackStatus` |
-| Cookies, `CookiesPanel.svelte` | Ferramentas, IDs, URLs próprias, banner e política |
-| Publicação, `PublishPanel.svelte` | Conectar contas, destino, publicar, acompanhar log, domínio e sync |
-| Lixeira, `TrashPanel.svelte` | Restaurar, excluir item e esvaziar |
 
 Perfis usam `internal/app/authors_api.go`, com avatares SVG embutidos em `internal/app/avatars`. Renomear autor ajusta as propriedades de posts conforme as rotinas implementadas. A pasta de perfis é identificada por `blup: authors`.
 
 ### Seções e painel Feedback
 
-`internal/app/starter.go` separa `docsKinds` (`docs`, `roadmap`, `changelog`, `help`, `blog`) de `studioKinds` (`feedback`). `LoadSettings` oferece as duas listas no painel Seções. A criação continua usando as cinco seções de `docsKinds`; para ter o quadro, o dono acrescenta Feedback depois. A pasta modelo nos três idiomas tem `blup: feedback` e `examples`, reconhecida pela propriedade em `obsidian.Sections`, sem depender do nome `Feedback`.
+`internal/app/starter.go` separa `docsKinds` (`docs`, `roadmap`, `changelog`, `help`, `blog`), `studioKinds` (`feedback`) e `blogKinds` (`podcast`). `sectionKinds` oferece as duas primeiras listas ao Bento e a terceira a Mochi/Nori. A criação Bento continua usando as cinco seções de `docsKinds`; o dono acrescenta Feedback depois. A pasta modelo nos três idiomas tem `blup: feedback` e `examples`, reconhecida pela propriedade em `obsidian.Sections`, sem depender do nome `Feedback`. Podcast também entra depois da criação; veja [Podcast](podcast.md).
 
 `Workspace.svelte` só oferece o painel Feedback quando `site.model` é `bento` e `settings.sections` contém `feedback` presente. Essa condição não exige comentários ligados; o serviço informa erro se faltam o repositório habilitado ou a credencial GitHub do dono. Os controles de ativação dos comentários e instalação do App permanecem no painel Comentários.
 
@@ -411,15 +416,13 @@ Autostart usa a API Wails com identificador `blup-studio` e argumento `--hidden`
 
 A detecção de Omarchy procura a palavra `omarchy` em `~/.config/hypr/hyprland.lua` ou `.conf`. Se existir a configuração Lua, usa `bindings.lua`; senão `bindings.conf`. No Omarchy escreve linha marcada `Blup Studio`, substitui a linha anterior e executa `hyprctl reload`. A sintaxe Lua usa `o.bind`; a configuração tradicional usa `bindd`.
 
+`validAccel` limita a entrada a 64 caracteres, com partes de tecla separadas por `+`, recusando aspas, barras invertidas, vírgulas e quebras de linha. `hyprLine` protege o caminho do executável antes de incluí-lo no comando. Assim, o campo de atalho não aceita texto arbitrário de configuração ou shell.
+
 Fora do Omarchy, salva a preferência e mostra linha em sintaxe Hyprland para o usuário colar. Não escreve automaticamente uma configuração arbitrária de outro ambiente. No início, `fixBinding` pode reparar a linha marcada no Omarchy se estiver ausente ou apontar para executável antigo, limitado ao executável Studio reconhecido.
 
 Essas descrições registram efeitos do produto. A criação desta spec não executa essas rotinas nem altera configurações do desktop.
 
 Os comandos de compilação, dependências nativas e pacotes AppImage, nfpm, DMG, NSIS e MSIX estão em [testes e build](testes-e-build.md).
-
-### Renomear, mover e copiar bancos
-
-Renomear ou mover um `.table` leva a pasta de registros junto (com o novo nome) e corrige os links para os registros (`followDatabase` em `internal/app/database.go`); renomear só a pasta de registros grava o novo nome no `.table`. `DatabaseOf` acha o banco pelo `.table` de mesmo nome ou por qualquer `.table` ao lado que nomeie a pasta. Não há "Fazer uma cópia" para `.table` (as duas cópias dividiriam a mesma pasta). Renomear uma opção de escolha renomeia o valor nos registros; num cofre, o número 0 fica gravado (só nos formulários de site 0 significa "sem valor").
 
 ## Segurança do conteúdo
 
@@ -428,3 +431,5 @@ Renomear ou mover um `.table` leva a pasta de registros junto (com o novo nome) 
 - `OpenURL` só abre `http`, `https`, `mailto` e `tel`; outro endereço (`file:///…`, um esquema que abre um programa) é ignorado.
 - Caminhos: `notesPath`, `notePath` e `ImageData` exigem que o caminho, seguido pelos links simbólicos (`app.Within`), fique dentro da pasta das notas. Um link para nada também é recusado, porque escreveria onde ele aponta.
 - A prévia roda num iframe com `sandbox` (scripts e a própria origem, sem navegar a janela do Studio), e as mensagens dela só valem vindas da origem da prévia.
+
+`guardRuntime`, em [studio/guard.go](../../studio/guard.go), envolve o servidor de assets antes da rota de tradução local. `/wails/runtime` exige POST e header `x-wails-client-id`; rotas `/wails/` recusam `Sec-Fetch-Site` diferente de vazio, `same-origin` ou `none`. Assim, uma imagem ou navegação GET vinda do conteúdo não pode chamar os bindings. Os testes `guard_test.go`, `paths_security_test.go` e `frontend/tests/security.test.ts` cobrem esses limites e esquemas de link, sem substituir revisão da distribuição e do ambiente real. O [guia de segurança](../seguranca.md) reúne a fronteira local, cloud e site publicado.

@@ -1,6 +1,8 @@
 # Especificação técnica do Blup
 
-Esta especificação descreve a implementação encontrada no repositório `github.com/gabriellsalesx/blup`, com referência inicial no commit `975554b`, em 30/10/2026. A revisão de 01/11/2026 cobre os 14 commits de `c0514f3` a `dc6345c`, conferidos com `git show` e leitura do código, e as rotinas relacionadas de narração e idiomas. Os caminhos citados são relativos à raiz do repositório. Os exemplos usam dados fictícios. Comportamentos de serviços externos são descritos conforme as chamadas e condições implementadas, sem presumir que uma conta remota esteja configurada.
+Esta especificação descreve a implementação do repositório `github.com/gabriellsalesx/blup`, conferida em 02/11/2026, incluindo `a75800f`, a auditoria `2c95df5` e as alterações locais da auditoria cloud de pré-deploy. A leitura do código prevalece sobre mensagens de commit e comentários antigos. Os caminhos citados são relativos à raiz. Os exemplos são fictícios; a existência de integração não comprova provisionamento de conta ou infraestrutura de produção.
+
+Para a visão entre componentes, consulte [Arquitetura](../arquitetura.md). A operação está em [Deploy de produção](../deploy.md), e as fronteiras de confiança, em [Segurança](../seguranca.md).
 
 ## Índice
 
@@ -13,7 +15,9 @@ Esta especificação descreve a implementação encontrada no repositório `gith
 | [Podcast dos blogs](podcast.md) | Seção do Studio nos blogs, episódios das narrações, player, tela de bloqueio, feed para Spotify e Apple |
 | [Scaffold e build](scaffold-e-build.md) | Arquivos gerados, mounts, ferramentas, pipeline e mapa da prévia |
 | [Notas e sync](notas-e-sync.md) | Obsidian, wikilinks, sincronização, conflitos e recuperação em outra máquina |
-| [Publicação](publicacao.md) | Cloudflare Pages, GitHub Pages, autenticação e domínio próprio |
+| [Blup Cloud e sync cifrado](blup-cloud-sync.md) | Conta, planos, dispositivos, cifra de ponta a ponta, histórico, IA e cobrança |
+| [Calendário e lembretes](calendario-e-lembretes.md) | Eventos Markdown, recorrência, notificações locais e e-mails Max 50 / Ultra 100 |
+| [Publicação](publicacao.md) | Sites em `getblup.site`, Cloudflare Pages, GitHub Pages e domínio próprio |
 | [Narração e voz](narracao-e-voz.md) | Idioma pela pasta da nota, voz por idioma, OpenRouter, Blup Cloud, MP3 e Kokoro |
 | [Studio](studio.md) | Wails, Svelte, editor, Feedback, tradução, reinício da prévia, painéis, terminal e integração desktop |
 | [Testes e build](testes-e-build.md) | Validação, compilação dos dois módulos, empacotamento e release |
@@ -40,16 +44,22 @@ O site publicado é um conjunto de arquivos estáticos. Busca usa Pagefind no na
 | `internal/lock` | Substitui regiões protegidas por conteúdo criptografado após Hugo |
 | `internal/pagefind`, `internal/pwa` | Índice estático, ícones e service worker depois do build |
 | `internal/deploy/github`, `internal/deploy/cfpages` | Publicação por HTTP, sem `git` nem `wrangler` |
-| `internal/notesync` | Sync bidirecional por blobs, árvores, commits e referências do GitHub |
+| `internal/notesync` | Comparação de base, disco e remoto; transporte GitHub ou adaptador cifrado Blup Cloud |
+| `internal/blupcloud`, `internal/cloudcrypt` | Cliente Blup Cloud, blocos e manifestos cifrados, histórico e publicação |
 | `internal/narrate`, `internal/kokoro` | Texto falável, geração de voz remota ou local e MP3 |
 | `internal/update` | Atualização e rollback do executável da CLI |
 | `studio/`, `studio/frontend/` | Aplicativo desktop, bindings, editor, prévia e painéis |
+| `cloud/` | Conta, painel SvelteKit, API Hono/Better Auth, D1/R2, Stripe e Worker dos sites |
 
 O fluxo de publicação é: notas e configurações alimentam o scaffold; Hugo gera `public/`; o Blup atualiza os dados de feedback e pode repetir Hugo; criptografa regiões protegidas; cria busca e PWA; envia `public/` ao provedor. O sync das notas é uma operação separada da publicação.
 
 O [quadro de Feedback](feedback.md) é acrescentado em Seções pelo Studio. A nota marcada `blup: feedback` guarda exemplos; os pedidos reais são issues criadas pelos visitantes e lidas no navegador. O dono altera seus status no painel Feedback, sem republicar. Interface, exemplos e conversas têm contratos de idioma diferentes: o i18n traduz os controles, a tradução da nota cobre os exemplos e as conversas reais mantêm o texto de origem, compartilhado entre as versões do site.
 
-As demais mudanças dos 14 commits estão descritas em [Studio](studio.md#idiomas-e-tradução) e [Temas Hugo](temas-hugo.md): tradução de `linkTitle` e perfis de autores, comentários com indicação de idioma, selo de IA no quadro, calendário do changelog e disposição adaptável dos controles de idiomas e de Quem traduz. O reinício após mudanças de seções é do servidor local de prévia; não reinicia o aplicativo desktop.
+O Studio também abre cofres `kind = "notes"`, com diário, mapa de notas, canvas, desenhos, tabelas e calendário. Eventos são notas; avisos locais dependem do aplicativo aberto, e e-mails dependem de uma lista de horários enviada à nuvem. O calendário do changelog do Bento é outro recurso, gerado estaticamente.
+
+A troca de idioma do Studio atualiza os textos sem recarregar a janela. Nos sites traduzidos, a publicação escolhe uma tradução disponível conforme o navegador e usa inglês como fallback quando essa página existe. Nori compartilha posts com os controles comuns do Mochi. Narração escolhe idioma pela pasta da nota e permite modelo/voz Blup Cloud com custo de catálogo descontado da cota. Veja [Studio](studio.md), [Temas Hugo](temas-hugo.md) e [Narração](narracao-e-voz.md).
+
+O Podcast organiza narrações públicas em episódios e feed. O reinício após mudanças de seções trata o servidor local de prévia, sem reiniciar o desktop. Notas podem sincronizar pelo GitHub ou pelo Blup Cloud; só o segundo transporte cifra blocos, nomes e manifestos no cliente. Conteúdo enviado à IA e saída de sites públicos têm outras fronteiras de privacidade, descritas em [Segurança](../seguranca.md).
 
 ## Diretórios que não devem ser confundidos
 
