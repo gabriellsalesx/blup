@@ -1,3 +1,4 @@
+import {languageOf} from "../shared/language";
 import { hasEmail } from "./auth-options";
 import { user } from "./db/schema";
 import { accountAllowed } from "./lifecycle";
@@ -72,7 +73,7 @@ export async function sendDue(env:Cloudflare.Env,now=Date.now()) {
   env.DB.prepare("UPDATE reminder SET claim=NULL,claim_until=0 WHERE user_id=? AND id=? AND claim=?").bind(r.userId,r.id,r.claim),
   env.DB.prepare("UPDATE reminder_month SET reserved=max(0,reserved-1) WHERE user_id=? AND month=? AND changes()>0").bind(r.userId,r.claim.slice(0,7)),
  ]);
- const due=await env.DB.prepare("SELECT r.user_id AS userId,r.id,r.send_at AS sendAt,r.attempts,u.email FROM reminder r JOIN user u ON u.id=r.user_id LEFT JOIN resource_quota q ON q.user_id=u.id WHERE r.sent_at IS NULL AND r.send_at<=? AND r.next_attempt_at<=? AND r.claim IS NULL AND u.banned=0 AND q.deleted_at IS NULL ORDER BY r.send_at LIMIT 100").bind(now,now).all<{userId:string;id:string;sendAt:number;attempts:number;email:string}>();
+ const due=await env.DB.prepare("SELECT r.user_id AS userId,r.id,r.send_at AS sendAt,r.attempts,u.email,u.language FROM reminder r JOIN user u ON u.id=r.user_id LEFT JOIN resource_quota q ON q.user_id=u.id WHERE r.sent_at IS NULL AND r.send_at<=? AND r.next_attempt_at<=? AND r.claim IS NULL AND u.banned=0 AND q.deleted_at IS NULL ORDER BY r.send_at LIMIT 100").bind(now,now).all<{userId:string;id:string;sendAt:number;attempts:number;email:string;language:string}>();
  const plans=new Map<string,number>();
  for(const r of due.results){
   let limit=plans.get(r.userId);
@@ -86,7 +87,7 @@ export async function sendDue(env:Cloudflare.Env,now=Date.now()) {
   ]);
   if(!claimed[0]?.results.length)continue;
   let sent=false;
-  try{sent=await sendReminder(env,r.email);}catch{sent=false;}
+  try{sent=await sendReminder(env,r.email,languageOf(r.language)??"en");}catch{sent=false;}
   await env.DB.batch([
    env.DB.prepare("UPDATE reminder SET sent_at=?,claim=NULL,claim_until=0,next_attempt_at=? WHERE user_id=? AND id=? AND claim=?").bind(sent?now:r.attempts+1>=3?0:null,now+300_000,r.userId,r.id,claim),
    env.DB.prepare("UPDATE reminder_month SET reserved=max(0,reserved-1),sent=sent+? WHERE user_id=? AND month=? AND changes()>0").bind(sent?1:0,r.userId,month),

@@ -1,3 +1,4 @@
+import {planPerks} from "../shared/plan-i18n.ts";
 // Blup Cloud's plans. Prices live in Stripe and are found by lookup key
 // (scripts/stripe-setup.ts checks them), so no Stripe ID is kept here.
 // A limit of -1 means no limit.
@@ -35,43 +36,41 @@ export type Plan = {
 	perks: string[];
 };
 
-const FREE: Plan = {
+function definePlan(plan:Omit<Plan,"perks">):Plan{return {...plan,perks:planPerks("pt",plan.name,plan.limits)};}
+
+const FREE = definePlan({
 	name: "free",
 	label: "Grátis",
 
 	limits: { storageMB: 50, maxFileMB: 10, sites: 0, customDomain: false, devices: 1, live: false, historyDays: 0, aiUsage: 0, reminderEmails: 0 },
-	perks: ["50 MB de notas, sincronizadas pelo botão", "1 computador conectado", "Arquivos de até 10 MB", "Criptografia de ponta a ponta"],
-};
+});
 
 export const PLANS: Plan[] = [
 	FREE,
-	{
+	definePlan({
 		name: "pro",
 		label: "Pro",
 
 		lookupKey: "blup_pro_mensal",
 		yearlyLookupKey: "blup_pro_anual",
 		limits: { storageMB: 1024, maxFileMB: 25, sites: 1, customDomain: false, devices: 2, live: true, historyDays: 30, aiUsage: 1, reminderEmails: 0 },
-		perks: ["1 GB de notas, sincronizadas em tempo real", "2 computadores conectados", "Arquivos de até 25 MB", "Histórico de versões de 1 mês", "1 site no ar pelo Blup, no endereço seusite.getblup.site"],
-	},
-	{
+	}),
+	definePlan({
 		name: "max",
 		label: "Max",
 
 		lookupKey: "blup_max_mensal",
 		yearlyLookupKey: "blup_max_anual",
 		limits: { storageMB: 5120, maxFileMB: 50, sites: 3, customDomain: true, devices: 3, live: true, historyDays: 365, aiUsage: 2, reminderEmails: 50 },
-		perks: ["5 GB de notas, sincronizadas em tempo real", "3 computadores conectados", "Arquivos de até 50 MB", "Histórico de versões de 12 meses", "3 sites no ar pelo Blup, com domínio próprio", "50 avisos da agenda por e-mail por mês"],
-	},
-	{
+	}),
+	definePlan({
 		name: "ultra",
 		label: "Ultra",
 
 		lookupKey: "blup_ultra_mensal",
 		yearlyLookupKey: "blup_ultra_anual",
 		limits: { storageMB: 10240, maxFileMB: 100, sites: 10, customDomain: true, devices: -1, live: true, historyDays: 365, aiUsage: 5, reminderEmails: 100 },
-		perks: ["10 GB de notas, sincronizadas em tempo real", "Computadores sem limite", "Arquivos de até 100 MB", "Histórico de versões de 12 meses", "10 sites no ar pelo Blup, com domínio próprio", "100 avisos da agenda por e-mail por mês", "Suporte prioritário e novidades antes"],
-	},
+	}),
 ];
 
 // The plan the panel suggests (the middle one).

@@ -1,11 +1,11 @@
 // Short notices at the bottom of the page, the same as Blup Studio's:
 // every screen tells what just happened through toast().
-type Toast = { id: number; text: string; kind: "ok" | "error" | "info"; action?: { label: string; run: () => void } };
+type Toast = { id: number; text: string|(()=>string); kind: "ok" | "error" | "info"; action?: { label: string; run: () => void } };
 
 export const toasts = $state<Toast[]>([]);
 let next = 0;
 
-export function toast(text: string, opts: { kind?: Toast["kind"]; action?: Toast["action"]; ms?: number } = {}) {
+export function toast(text: string|(()=>string), opts: { kind?: Toast["kind"]; action?: Toast["action"]; ms?: number } = {}) {
 	const id = ++next;
 	toasts.push({ id, text, kind: opts.kind ?? "ok", action: opts.action });
 	if (toasts.length > 4) toasts.shift();

@@ -1,3 +1,5 @@
+import {languageSchema,languageOf,requestLanguage} from "../shared/language";
+import {planLabel} from "../shared/plan-i18n";
 import { stripeWebhook,cleanWebhookReceipts } from "./billing";
 import { publicPlans,purchaseAvailable } from "./pricing";
 import { flushSitePurges } from "./site-cache-purge";
@@ -24,7 +26,7 @@ import { forgetOld, remindersApi, sendDue } from "./reminders";
 import { cleanUp } from "./cleanup";
 import { aiApi, aiUsageOf } from "./ai";
 import { isStudio, usageOf } from "./usage";
-import { session as sessionTable } from "./db/schema";
+import {user as userTable, session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
 import { mutationOriginAllowed } from "./security";
@@ -33,7 +35,7 @@ type App = { Bindings: Cloudflare.Env; Variables: { session: Session } };
 
 const app = new Hono<App>().basePath("/api");
 
-const headersSchema=z.object({authorization:z.string().max(8192).optional(),cookie:z.string().max(16384).optional(),origin:z.url().max(2048).optional(),"cf-connecting-ip":z.union([z.ipv4(),z.ipv6()]).optional(),"user-agent":z.string().max(1024).optional(),"cf-access-jwt-assertion":z.string().max(16384).optional(),"x-captcha-response":z.string().max(4096).optional(),"x-blup-upload-ticket":opaqueId.optional(),"content-length":safeInt.optional(),"sec-fetch-site":z.enum(["same-origin","same-site","cross-site","none"]).optional(),upgrade:z.enum(["websocket"]).optional()});
+const headersSchema=z.object({"x-blup-language":languageSchema.optional(),"accept-language":z.string().max(1024).optional(),authorization:z.string().max(8192).optional(),cookie:z.string().max(16384).optional(),origin:z.url().max(2048).optional(),"cf-connecting-ip":z.union([z.ipv4(),z.ipv6()]).optional(),"user-agent":z.string().max(1024).optional(),"cf-access-jwt-assertion":z.string().max(16384).optional(),"x-captcha-response":z.string().max(4096).optional(),"x-blup-upload-ticket":opaqueId.optional(),"content-length":safeInt.optional(),"sec-fetch-site":z.enum(["same-origin","same-site","cross-site","none"]).optional(),upgrade:z.enum(["websocket"]).optional()});
 app.use("*",async(c,next)=>{
  const checked=headersSchema.safeParse(Object.fromEntries(c.req.raw.headers));
  if(!checked.success)return c.json(requestError(c.req.path,"INVALID"),400);
@@ -153,7 +155,10 @@ const routes = app
 	// What the panel needs before signing in (public keys only).
 	.get("/config", (c) => c.json({ turnstileSiteKey: c.env.TURNSTILE_SITE_KEY }))
 	// The plans, for the panel and the Studio (no Stripe IDs).
-	.get("/plans", async c=>c.json(await publicPlans(c.env)))
+	.get("/plans", async c=>c.json(await publicPlans(c.env,requestLanguage(c.req.raw.headers))))
+	.put("/me/language",session,validate("json",z.object({language:languageSchema}).strict()),async c=>{
+	 const {language}=c.req.valid("json");await db.update(userTable).set({language}).where(eq(userTable.id,c.get("session").user.id));return c.json({language});
+	})
 	.get("/me", session, async (c) => {
 		const { user } = c.get("session");
 		// The portal cancels by setting cancel_at, not cancel_at_period_end.
@@ -165,10 +170,11 @@ const routes = app
 			usage,
 			ai: { percent: ai.percent, resetsAt: ai.resetsAt, included: plan.limits.aiUsage > 0 },
 			id: user.id,
+			language:languageOf(user.language)??"pt",
 			email: hasEmail(user.email) ? user.email : null,
 			name: user.name,
 			createdAt: user.createdAt,
-			plan: { name: plan.name, label: plan.label, limits: plan.limits, gift, status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
+			plan: { name: plan.name, label: planLabel(plan.name,requestLanguage(c.req.raw.headers)), limits: plan.limits, gift, status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
 		});
 	})
 	// The Blup Studio installs signed in (each is a session), to see and

@@ -1,17 +1,18 @@
 <script lang="ts">
+ import {t} from "#lib/i18n.svelte.ts";
 	import Sun from "@lucide/svelte/icons/sun";
 	import Moon from "@lucide/svelte/icons/moon";
 	import Monitor from "@lucide/svelte/icons/monitor";
 	import { theme, setTheme, type Theme } from "#lib/theme.svelte.ts";
 
-	const options: { key: Theme; label: string; Icon: typeof Sun }[] = [
-		{ key: "light", label: "Claro", Icon: Sun },
-		{ key: "dark", label: "Escuro", Icon: Moon },
-		{ key: "system", label: "Do sistema", Icon: Monitor },
-	];
+	const options: { key: Theme; label: string; Icon: typeof Sun }[] = $derived([
+		{ key: "light", label: t("light"), Icon: Sun },
+		{ key: "dark", label: t("dark"), Icon: Moon },
+		{ key: "system", label: t("system"), Icon: Monitor },
+	]);
 </script>
 
-<div class="inline-flex gap-0.5 rounded-lg border border-neutral-200 bg-white p-0.5 dark:border-neutral-800 dark:bg-neutral-900" role="radiogroup" aria-label="Tema">
+<div class="inline-flex gap-0.5 rounded-lg border border-neutral-200 bg-white p-0.5 dark:border-neutral-800 dark:bg-neutral-900" role="radiogroup" aria-label={t("theme")} >
 	{#each options as { key, label, Icon } (key)}
 		<button
 			role="radio"

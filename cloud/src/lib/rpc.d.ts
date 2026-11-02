@@ -47,6 +47,48 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 } & {
+    "/api/me/language": {
+        $put: {
+            input: {
+                json: {
+                    language: "pt" | "en" | "es";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    language: "pt" | "en" | "es";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    language: "pt" | "en" | "es";
+                };
+            };
+            output: {
+                language: "pt" | "en" | "es";
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
     "/api/me": {
         $get: {
             input: {};
@@ -68,6 +110,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     included: boolean;
                 };
                 id: string;
+                language: "pt" | "en" | "es";
                 email: string | null;
                 name: string;
                 createdAt: string;
@@ -2910,8 +2953,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     text: string;
-                    from: "en" | "es" | "pt";
-                    to: "en" | "es" | "pt";
+                    from: "pt" | "en" | "es";
+                    to: "pt" | "en" | "es";
                 };
             };
             output: {
@@ -2927,8 +2970,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     text: string;
-                    from: "en" | "es" | "pt";
-                    to: "en" | "es" | "pt";
+                    from: "pt" | "en" | "es";
+                    to: "pt" | "en" | "es";
                 };
             };
             output: {
@@ -2944,8 +2987,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     text: string;
-                    from: "en" | "es" | "pt";
-                    to: "en" | "es" | "pt";
+                    from: "pt" | "en" | "es";
+                    to: "pt" | "en" | "es";
                 };
             };
             output: {
@@ -2961,8 +3004,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     text: string;
-                    from: "en" | "es" | "pt";
-                    to: "en" | "es" | "pt";
+                    from: "pt" | "en" | "es";
+                    to: "pt" | "en" | "es";
                 };
             };
             output: {
@@ -2978,8 +3021,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     text: string;
-                    from: "en" | "es" | "pt";
-                    to: "en" | "es" | "pt";
+                    from: "pt" | "en" | "es";
+                    to: "pt" | "en" | "es";
                 };
             };
             output: {
@@ -2992,8 +3035,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     text: string;
-                    from: "en" | "es" | "pt";
-                    to: "en" | "es" | "pt";
+                    from: "pt" | "en" | "es";
+                    to: "pt" | "en" | "es";
                 };
             };
             output: {

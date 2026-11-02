@@ -22,7 +22,7 @@ export const auth = betterAuth(
 		deviceMark:(id,body)=>deviceMark(env.DB,id,body),
 		finishDevice:(id,body)=>finishDevice(env.DB,id,body),
 		// The e-mail goes out after the answer.
-		sendCode: (email, code, kind) => waitUntil(sendCode(env, email, code, kind)),
+		sendCode: (email, code, kind,language) => waitUntil(sendCode(env, email, code, kind,language)),
 	}),
 );
 

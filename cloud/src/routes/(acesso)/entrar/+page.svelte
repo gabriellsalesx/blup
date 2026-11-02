@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {t,language} from "#lib/i18n.svelte.ts";
 	import { api } from "#lib/api.ts";
 	import { goto } from "$app/navigation";
 	import Mail from "@lucide/svelte/icons/mail";
@@ -14,12 +15,14 @@
 	let email = $state("");
 	let code = $state("");
 	let busy = $state(false);
-	let error = $state("");
+	let error = $state<(()=>string)|null>(null);
 	let captcha = $state("");
 	let widgetId = "";
 
 	// The Turnstile widget, rendered into its box once the script loads.
 	function turnstile(el: HTMLDivElement) {
+        const selectedLanguage=language();
+        captcha="";
 		let gone = false;
 		let ts: Awaited<ReturnType<typeof loadTurnstile>> | undefined;
 		Promise.all([api.config(), loadTurnstile()])
@@ -27,13 +30,14 @@
 				if (gone) return;
 				ts = t;
 				widgetId = t.render(el, {
+                    language: selectedLanguage,
 					sitekey: cfg.turnstileSiteKey,
 					appearance: "interaction-only",
 					callback: (token: string) => (captcha = token),
 					"expired-callback": () => (captcha = ""),
 				});
 			})
-			.catch(() => (error = "Não deu para carregar a verificação. Recarregue a página."));
+			.catch(() => (error = ()=>t("captchaLoad")));
 		return () => {
 			gone = true;
 			if (ts && widgetId) ts.remove(widgetId);
@@ -42,7 +46,7 @@
 
 	async function sendCode(e?: SubmitEvent) {
 		e?.preventDefault();
-		error = "";
+		error = null;
 		busy = true;
 		const { error: err } = await authClient.emailOtp.sendVerificationOtp({
 			email: email.trim(),
@@ -53,23 +57,23 @@
 		// A token works once: the next send needs a new one.
 		captcha = "";
 		if (widgetId) window.turnstile?.reset(widgetId);
-		if (err) return (error = message(err));
+		if (err) return (error = ()=>message(err));
 		step = "code";
 	}
 
 	async function signIn(e: SubmitEvent) {
 		e.preventDefault();
-		error = "";
+		error = null;
 		busy = true;
 		const { error: err } = await authClient.signIn.emailOtp({ email: email.trim(), otp: code.trim() });
 		busy = false;
-		if (err) return (error = message(err));
+		if (err) return (error = ()=>message(err));
 		goto(afterSignIn(), { replaceState: true });
 	}
 
 	// A new account with a passkey only (the e-mail can be linked later).
 	async function createWithPasskey() {
-		error = "";
+		error = null;
 		const { error: err } = await authClient.passkey.addPasskey({
 			name: "Blup Cloud",
 			createSession: true,
@@ -77,59 +81,59 @@
 		});
 		captcha = "";
 		if (widgetId) window.turnstile?.reset(widgetId);
-		if (err) return (error = cancelled(err) ? "" : message(err));
+		if (err) return (error = cancelled(err) ? null : ()=>message(err));
 		goto(afterSignIn(), { replaceState: true });
 	}
 
 	async function passkey() {
-		error = "";
+		error = null;
 		const { error: err } = await authClient.signIn.passkey();
-		if (err) return (error = cancelled(err) ? "" : message(err));
+		if (err) return (error = cancelled(err) ? null : ()=>message(err));
 		goto(afterSignIn(), { replaceState: true });
 	}
 </script>
 
 <section class="w-full">
 	{#if step === "email"}
-		<h1 class="text-3xl font-extrabold tracking-tight">Bem-vindo ao Blup</h1>
-		<p class="mt-2 mb-8 text-neutral-500">Entre ou crie sua conta para continuar.</p>
+		<h1 class="text-3xl font-extrabold tracking-tight">{t("welcome")}</h1>
+		<p class="mt-2 mb-8 text-neutral-500">{t("welcomeLead")}</p>
 		<div class="grid gap-3">
 			<Button pill class="w-full" type="button" onclick={passkey}>
 				<Fingerprint class="size-5" />
-				Entrar com passkey
+				{t("signInPasskey")}
 			</Button>
 			<Button pill variant="secondary" class="w-full" type="button" disabled={!captcha} onclick={createWithPasskey}>
 				<Fingerprint class="size-5" />
-				Criar conta com passkey
+				{t("createPasskey")}
 			</Button>
 		</div>
 
 		<div class="relative my-6 flex items-center justify-center">
 			<span class="absolute inset-x-0 border-t border-neutral-200 dark:border-neutral-800"></span>
-			<span class="relative bg-white px-4 text-[13px] text-neutral-500 lowercase dark:bg-neutral-900">ou</span>
+			<span class="relative bg-white px-4 text-[13px] text-neutral-500 lowercase dark:bg-neutral-900">{t("or")}</span>
 		</div>
 
 		<form class="grid gap-4" onsubmit={sendCode}>
-			<FloatField id="email" label="E-mail" surface="bg-white dark:bg-neutral-900" type="email" autocomplete="email webauthn" required bind:value={email} />
-			<Button pill class="w-full" {busy} disabled={!captcha || !email.trim()}>Entrar com e-mail</Button>
+			<FloatField id="email" label={t("email")}  surface="bg-white dark:bg-neutral-900" type="email" autocomplete="email webauthn" required bind:value={email} />
+			<Button pill class="w-full" {busy} disabled={!captcha || !email.trim()}>{t("signInEmail")}</Button>
 		</form>
 	{:else}
 		<div class="text-center">
 			<div class="mb-4 flex justify-center">
 				<span class="grid size-12 place-items-center rounded-full bg-neutral-100 dark:bg-neutral-800"><Mail class="size-6" /></span>
 			</div>
-			<h1 class="mb-2 text-lg font-semibold">Verifique seu e-mail</h1>
-			<p class="mb-5 text-sm text-neutral-500">Enviamos um código para <span class="text-neutral-900 dark:text-white">{email}</span>. Ele vale por 10 minutos. Primeira vez? A conta é criada ao entrar.</p>
+			<h1 class="mb-2 text-lg font-semibold">{t("checkEmail")}</h1>
+			<p class="mb-5 text-sm text-neutral-500">{t("sentCode",{email})} {t("codeExpiry")}</p>
 			<form class="grid gap-3" onsubmit={signIn}>
-				<FloatField id="code" label="Código" surface="bg-white dark:bg-neutral-900" class="text-center text-2xl font-bold tracking-[0.5em]" inputmode="numeric" autocomplete="one-time-code" maxlength={6} required bind:value={code} />
-				<Button pill class="w-full" {busy} disabled={code.trim().length < 6}>Entrar</Button>
+				<FloatField id="code" label={t("code")}  surface="bg-white dark:bg-neutral-900" class="text-center text-2xl font-bold tracking-[0.5em]" inputmode="numeric" autocomplete="one-time-code" maxlength={6} required bind:value={code} />
+				<Button pill class="w-full" {busy} disabled={code.trim().length < 6}>{t("signIn")}</Button>
 			</form>
-			<button class="mt-4 text-sm text-neutral-500 underline hover:text-neutral-900 dark:hover:text-white" onclick={() => { step = "email"; code = ""; error = ""; }}>Usar um e-mail diferente</button>
+			<button class="mt-4 text-sm text-neutral-500 underline hover:text-neutral-900 dark:hover:text-white" onclick={() => { step = "email"; code = ""; error = null; }}>{t("differentEmail")}</button>
 		</div>
 	{/if}
 
 	<!-- Turnstile: outside the steps, so it survives going back. -->
 	<div class="mt-3" class:hidden={step !== "email"} {@attach turnstile}></div>
 
-	{#if error}<p class="mt-4 text-center text-sm text-red-600" role="alert">{error}</p>{/if}
+	{#if error}<p class="mt-4 text-center text-sm text-red-600" role="alert">{error()}</p>{/if}
 </section>

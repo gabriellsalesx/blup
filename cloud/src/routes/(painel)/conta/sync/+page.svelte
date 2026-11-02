@@ -1,8 +1,11 @@
 <script lang="ts">
+ import {planLabel} from "../../../../../shared/plan-i18n";
+ import {t,formatDate,language} from "#lib/i18n.svelte.ts";
 	import Lock from "@lucide/svelte/icons/lock";
 	import Monitor from "@lucide/svelte/icons/monitor";
 	import Row from "#lib/ui/Row.svelte";
 	import Button from "#lib/ui/Button.svelte";
+	import {errorMessage} from "#lib/i18n/errors.ts";
 	import { api, type Device } from "#lib/api.ts";
 	import { confirm } from "#lib/confirm.svelte.ts";
 	import { toast } from "#lib/toast.svelte.ts";
@@ -18,56 +21,57 @@
 	let devices = $state<Device[] | null>(null);
 	let busy = $state("");
 
-	const when = (d: string) => new Date(d).toLocaleString("pt-BR", { dateStyle: "medium", timeStyle: "short" });
+	const when = (d: string) => formatDate(d);
 	async function load() {
 		try {
 			devices = (await api.devices()).devices;
-		} catch {
+		} catch(error) {
+			toast(()=>errorMessage(error),{kind:"error"});
 			devices = [];
 		}
 	}
 	load();
 
 	async function disconnect(d: Device) {
-		const ok = await confirm({ title: "Desconectar este computador?", message: `O Blup Studio em ${d.name} sai da sua conta e para de sincronizar. As notas continuam nele. Para voltar, é só entrar de novo.`, confirmLabel: "Desconectar", danger: true });
+		const ok = await confirm({ title: t("disconnectTitle"), message: t("disconnectBody",{name:d.name}), confirmLabel: t("disconnect"), danger: true });
 		if (!ok) return;
 		busy = d.id;
 		try {
 			await api.disconnect(d.id);
-			toast("Computador desconectado");
+			toast(()=>t("disconnected"));
 			await load();
-		} catch {
-			toast("Não deu para desconectar agora. Tente de novo.", { kind: "error" });
+		} catch(error) {
+			toast(()=>errorMessage(error), { kind: "error" });
 		} finally {
 			busy = "";
 		}
 	}
 </script>
 
-<h1 class="text-3xl font-extrabold tracking-tight">Sync</h1>
-<p class="mt-2 text-neutral-500">Suas notas em todos os seus computadores, sempre offline no seu e guardadas na nuvem criptografadas: nem o Blup consegue ler.</p>
+<h1 class="text-3xl font-extrabold tracking-tight">{t("sync")}</h1>
+<p class="mt-2 text-neutral-500">{t("syncLead")}</p>
 
 <div class="mt-6">
-	<Row title="Espaço usado" help={`${bytes(used)} de ${megabytes(limit)} do plano ${data.me.plan.label}`}>
+	<Row title={t("spaceUsed")}  help={t("spacePlan",{used:bytes(used),limit:megabytes(limit),plan:planLabel(data.me.plan.name,language())})}>
 		<div class="mt-3 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
 			<div class="h-full rounded-full bg-blup" style:width="{Math.min(100, (used / (limit * 1024 * 1024)) * 100)}%"></div>
 		</div>
 	</Row>
 	<Row
-		title="Computadores conectados"
-		help={devices === null ? "Carregando…" : `${devices.length}${maxDevices >= 0 ? ` de ${maxDevices}` : ""} no plano ${data.me.plan.label}${devices.length ? "" : ". No Blup Studio, toque em Entrar com Blup."}`}
+		title={t("connectedDevices")}
+		help={devices === null ? t("loading") : t("deviceCount",{used:maxDevices>=0?t("ofLimit",{used:devices.length,limit:maxDevices}):devices.length,plan:planLabel(data.me.plan.name,language())})+(devices.length?"":". "+t("signInStudio"))}
 	/>
 	{#each devices ?? [] as d (d.id)}
-		<Row title={d.name} help={`Conectado em ${when(d.createdAt)} · último uso ${when(d.lastSeen)}`}>
+		<Row title={d.name} help={t("deviceDates",{created:when(d.createdAt),seen:when(d.lastSeen)})}>
 			{#snippet action()}
 				<div class="flex items-center gap-3">
 					<Monitor class="size-5 text-neutral-400" />
-					<Button variant="secondary" busy={busy === d.id} onclick={() => disconnect(d)}>Desconectar</Button>
+					<Button variant="secondary" busy={busy === d.id} onclick={() => disconnect(d)}>{t("disconnect")}</Button>
 				</div>
 			{/snippet}
 		</Row>
 	{/each}
-	<Row title="Criptografia de ponta a ponta" help="As notas saem do seu computador já embaralhadas, com uma chave que só você tem.">
+	<Row title={t("encryption")}  help={t("encryptionHelp")} >
 		{#snippet action()}<Lock class="size-5 text-green-600" />{/snippet}
 	</Row>
 </div>

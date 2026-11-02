@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {t} from "#lib/i18n.svelte.ts";
 	import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
 	import { confirmState, answer } from "#lib/confirm.svelte.ts";
 	import Button from "./Button.svelte";
@@ -19,11 +20,11 @@
 		</div>
 		<form class="mt-5 grid gap-3" onsubmit={(e) => { e.preventDefault(); if (ready) answer(true); }}>
 			{#if opts.typeToConfirm}
-				<Field label={`Digite ${opts.typeToConfirm} para confirmar`} autocomplete="off" bind:value={confirmState.typed} />
+				<Field label={t("typeConfirm",{word:opts.typeToConfirm})} autocomplete="off" bind:value={confirmState.typed} />
 			{/if}
 			<div class="flex justify-end gap-2">
-				<Button variant="secondary" type="button" onclick={() => answer(false)}>Cancelar</Button>
-				<Button class={opts.danger ? "bg-red-700! text-white!" : ""} disabled={!ready}>{opts.confirmLabel ?? "Confirmar"}</Button>
+				<Button variant="secondary" type="button" onclick={() => answer(false)}>{t("cancel")}</Button>
+				<Button class={opts.danger ? "bg-red-700! text-white!" : ""} disabled={!ready}>{opts.confirmLabel ?? t("confirm")}</Button>
 			</div>
 		</form>
 	</Modal>

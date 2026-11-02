@@ -1,3 +1,5 @@
+import {planLabel,planPerks} from "../shared/plan-i18n";
+import type {Language} from "../shared/language";
 import { validateStripePrices,type Price } from "./price-schema";
 import { PLANS,SUGGESTED,type Plan } from "./plans";
 import { createStripe } from "./stripe-client";
@@ -49,9 +51,9 @@ function catalog(env:Pick<Cloudflare.Env,"STRIPE_SECRET_KEY">){
 function pricesOf(plan:Plan,values:ReadonlyMap<string,Price|null>):Prices{
 	return {monthly:plan.lookupKey?values.get(plan.lookupKey)??null:null,yearly:plan.yearlyLookupKey?values.get(plan.yearlyLookupKey)??null:null};
 }
-export async function publicPlans(env:Pick<Cloudflare.Env,"STRIPE_SECRET_KEY">){
+export async function publicPlans(env:Pick<Cloudflare.Env,"STRIPE_SECRET_KEY">,language:Language="pt"){
 	const values=await catalog(env).prices();
-	return PLANS.map(({name,label,limits,perks,lookupKey,yearlyLookupKey})=>({name,label,limits,perks,suggested:name===SUGGESTED,prices:pricesOf({name,label,limits,perks,lookupKey,yearlyLookupKey},values)}));
+	return PLANS.map(({name,label,limits,perks,lookupKey,yearlyLookupKey})=>({name,label:planLabel(name,language),limits,perks:planPerks(language,name,limits),suggested:name===SUGGESTED,prices:pricesOf({name,label,limits,perks,lookupKey,yearlyLookupKey},values)}));
 }
 export async function purchaseAvailable(env:Pick<Cloudflare.Env,"STRIPE_SECRET_KEY">,name:string,annual:boolean){
 	const plan=PLANS.find(p=>p.name===name);

@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {t,language,intlLocale} from "#lib/i18n.svelte.ts";
 	import AccountId from "#lib/ui/AccountId.svelte";
 	import { accountIdHelp } from "#lib/account-id.ts";
 	import { goto, invalidateAll } from "$app/navigation";
@@ -25,16 +26,16 @@
 	let newEmail = $state("");
 	let linkCode = $state("");
 	// What to type to confirm deleting: the e-mail, or a word when there is none.
-	const confirmWord = $derived(data.me.email ?? "EXCLUIR");
+	const confirmWord = $derived(data.me.email ?? t("deleteWord"));
 
-	const date = (d: Date | string) => new Date(d).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" });
+	const date = (d: Date | string) => new Date(d).toLocaleDateString(intlLocale(), { day: "numeric", month: "short", year: "numeric" });
 
 	async function saveName(e: SubmitEvent) {
 		e.preventDefault();
 		const { error } = await authClient.updateUser({ name: name.trim() });
-		if (error) return toast(message(error), { kind: "error" });
+		if (error) return toast(()=>message(error), { kind: "error" });
 		nameOpen = false;
-		toast("Nome salvo");
+		toast(()=>t("nameSaved"));
 		await invalidateAll();
 	}
 
@@ -43,7 +44,7 @@
 		busy = true;
 		const { error } = await authClient.emailOtp.requestEmailChange({ newEmail: newEmail.trim() });
 		busy = false;
-		if (error) return toast(message(error), { kind: "error" });
+		if (error) return toast(()=>message(error), { kind: "error" });
 		linkStep = "code";
 	}
 
@@ -52,9 +53,9 @@
 		busy = true;
 		const { error } = await authClient.emailOtp.changeEmail({ newEmail: newEmail.trim(), otp: linkCode.trim() });
 		busy = false;
-		if (error) return toast(message(error), { kind: "error" });
+		if (error) return toast(()=>message(error), { kind: "error" });
 		linkOpen = false;
-		toast("E-mail vinculado");
+		toast(()=>t("emailLinked"));
 		await invalidateAll();
 	}
 
@@ -62,19 +63,19 @@
 		busy = true;
 		const { error } = await authClient.passkey.addPasskey();
 		busy = false;
-		if (error && !cancelled(error)) toast(message(error), { kind: "error" });
-		else if (!error) toast("Passkey adicionada");
+		if (error && !cancelled(error)) toast(()=>message(error), { kind: "error" });
+		else if (!error) toast(()=>t("passkeyAdded"));
 	}
 
 	async function removePasskey(id: string, name: string) {
-		if (!(await confirm({ title: "Remover a passkey?", message: `"${name}" deixa de entrar na sua conta. Você pode adicionar outra depois.`, confirmLabel: "Remover", danger: true }))) return;
+		if (!(await confirm({ title: t("removePasskeyTitle"), message: t("removePasskeyBody",{name}), confirmLabel: t("remove"), danger: true }))) return;
 		const { error } = await authClient.passkey.deletePasskey({ id });
-		if (error) toast(message(error), { kind: "error" });
-		else toast("Passkey removida");
+		if (error) toast(()=>message(error), { kind: "error" });
+		else toast(()=>t("passkeyRemoved"));
 	}
 
 	async function leaveEverywhere() {
-		if (!(await confirm({ title: "Sair de todos os lugares?", message: "Todos os aparelhos e o Blup Studio saem da sua conta, inclusive este. Você entra de novo em cada um.", confirmLabel: "Sair de todos" }))) return;
+		if (!(await confirm({ title: t("leaveAllTitle"), message: t("leaveAllBody"), confirmLabel: t("leaveAllConfirm") }))) return;
 		busy = true;
 		await authClient.revokeSessions();
 		await authClient.signOut();
@@ -83,9 +84,9 @@
 
 	async function deleteAccount() {
 		const ok = await confirm({
-			title: "Excluir a conta?",
-			message: "Suas sessões são encerradas, os sites saem do ar e o cancelamento da assinatura é solicitado. O suporte pode recuperar os dados por 30 dias. Depois, a limpeza apaga os dados da nuvem de vez. As notas do computador continuam lá.",
-			confirmLabel: "Excluir",
+			title: t("deleteAccountTitle"),
+			message: t("deleteAccountBody"),
+			confirmLabel: t("delete"),
 			danger: true,
 			typeToConfirm: confirmWord,
 		});
@@ -95,81 +96,81 @@
 		busy = false;
 		if (error) {
 			// Better Auth asks for a recent sign in before deleting.
-			return toast(error.code === "SESSION_EXPIRED" ? "Por segurança, saia e entre de novo antes de excluir a conta." : message(error), { kind: "error" });
+			return toast(()=>error?.code === "SESSION_EXPIRED" ? t("freshDelete") : message(error), { kind: "error" });
 		}
 		goto("/entrar", { replaceState: true });
-		toast("Conta excluída. Até logo!");
+		toast(()=>t("accountDeleted"));
 	}
 </script>
 
-<h1 class="text-3xl font-extrabold tracking-tight">Seu perfil</h1>
+<h1 class="text-3xl font-extrabold tracking-tight">{t("profileTitle")}</h1>
 
 <div class="mt-6">
- <Row title="ID da conta" help={accountIdHelp()}><div class="mt-2"><AccountId id={data.me.id} /></div></Row>
-	<Row title="Nome" value={data.me.name || "Sem nome"}>
-		{#snippet action()}<Button variant="secondary" onclick={() => { name = data.me.name; nameOpen = true; }}>Alterar</Button>{/snippet}
+ <Row title={t("accountId")}  help={accountIdHelp(language())}><div class="mt-2"><AccountId id={data.me.id} /></div></Row>
+	<Row title={t("name")}  value={data.me.name || t("noName")}>
+		{#snippet action()}<Button variant="secondary" onclick={() => { name = data.me.name; nameOpen = true; }}>{t("change")}</Button>{/snippet}
 	</Row>
 
 	{#if data.me.email}
-		<Row title="E-mail" value={data.me.email} help="É para ele que mandamos o código de entrar." />
+		<Row title={t("email")}  value={data.me.email} help={t("emailHelp")}  />
 	{:else}
-		<p class="py-3 text-sm text-neutral-500">Ligue um e-mail para receber recibos e recuperar a conta. <button type="button" class="font-semibold text-blup hover:underline" onclick={()=>{newEmail="";linkCode="";linkStep="email";linkOpen=true;}}>Ligar e-mail</button></p>
-		<Row title="E-mail" value="Nenhum e-mail" help="Vincule um e-mail para entrar por código, assinar um plano e recuperar a conta se perder o aparelho da passkey.">
-			{#snippet action()}<Button onclick={() => { newEmail = ""; linkCode = ""; linkStep = "email"; linkOpen = true; }}>Vincular</Button>{/snippet}
+		<p class="py-3 text-sm text-neutral-500">{t("emailNudge")} <button type="button" class="font-semibold text-blup hover:underline" onclick={()=>{newEmail="";linkCode="";linkStep="email";linkOpen=true;}}>{t("linkEmail")}</button></p>
+		<Row title={t("email")}  value={t("noEmail")}  help={t("emailLinkHelp")} >
+			{#snippet action()}<Button onclick={() => { newEmail = ""; linkCode = ""; linkStep = "email"; linkOpen = true; }}>{t("link")}</Button>{/snippet}
 		</Row>
 	{/if}
 
-	<Row title="Passkeys" help="Entre com a digital, o rosto ou o PIN do aparelho, sem esperar o código por e-mail.">
-		{#snippet action()}<Button variant="secondary" {busy} onclick={addPasskey}>Adicionar</Button>{/snippet}
+	<Row title={t("passkeys")}  help={t("passkeyHelp")} >
+		{#snippet action()}<Button variant="secondary" {busy} onclick={addPasskey}>{t("add")}</Button>{/snippet}
 		{#if $passkeys.data?.length}
 			<ul class="mt-3 grid gap-2">
 				{#each $passkeys.data as p (p.id)}
 					<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800">
 						<KeyRound class="size-4 text-neutral-500" />
-						<span class="min-w-0 flex-1 text-sm"><b>{p.name || "Passkey"}</b> <span class="text-neutral-500">· adicionada em {date(p.createdAt)}</span></span>
-						<button class="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800" title="Remover" aria-label="Remover passkey" onclick={() => removePasskey(p.id, p.name || "Passkey")}><Trash class="size-4" /></button>
+						<span class="min-w-0 flex-1 text-sm"><b>{p.name || t("passkey")}</b> <span class="text-neutral-500">· {t("passkeyAddedAt",{date:date(p.createdAt)})}</span></span>
+						<button class="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800" title={t("remove")}  aria-label={t("removePasskey")}  onclick={() => removePasskey(p.id, p.name || t("passkey"))}><Trash class="size-4" /></button>
 					</li>
 				{/each}
 			</ul>
 		{/if}
 	</Row>
 
-	<Row title="Sair de todos os lugares" help="Desconecta todos os aparelhos e o Blup Studio. Você entra de novo em cada um.">
-		{#snippet action()}<Button variant="secondary" {busy} onclick={leaveEverywhere}>Sair</Button>{/snippet}
+	<Row title={t("leaveAll")}  help={t("leaveAllHelp")} >
+		{#snippet action()}<Button variant="secondary" {busy} onclick={leaveEverywhere}>{t("signOut")}</Button>{/snippet}
 	</Row>
 
-	<Row title="Excluir conta" help="Encerra o acesso agora e solicita o cancelamento da assinatura. O suporte pode recuperar os dados por 30 dias; depois ocorre a exclusão definitiva.">
-		{#snippet action()}<Button class="bg-red-700! text-white!" onclick={deleteAccount}>Excluir</Button>{/snippet}
+	<Row title={t("deleteAccount")}  help={t("deleteAccountHelp")} >
+		{#snippet action()}<Button class="bg-red-700! text-white!" onclick={deleteAccount}>{t("delete")}</Button>{/snippet}
 	</Row>
 </div>
 
-<Modal bind:open={nameOpen} title="Seu nome">
+<Modal bind:open={nameOpen} title={t("yourName")} >
 	<form class="grid gap-3" onsubmit={saveName}>
-		<Field label="Nome" maxlength={80} bind:value={name} />
+		<Field label={t("name")}  maxlength={80} bind:value={name} />
 		<div class="flex justify-end gap-2">
-			<Button variant="secondary" type="button" onclick={() => (nameOpen = false)}>Cancelar</Button>
-			<Button>Salvar</Button>
+			<Button variant="secondary" type="button" onclick={() => (nameOpen = false)}>{t("cancel")}</Button>
+			<Button>{t("save")}</Button>
 		</div>
 	</form>
 </Modal>
 
-<Modal bind:open={linkOpen} title="Vincular e-mail">
+<Modal bind:open={linkOpen} title={t("linkBeforeSubscribeAction")} >
 	{#if linkStep === "email"}
 		<form class="grid gap-3" onsubmit={sendLinkCode}>
-			<p class="text-sm text-neutral-500">Mandamos um código para confirmar que o e-mail é seu.</p>
-			<Field label="E-mail" type="email" autocomplete="email" required bind:value={newEmail} />
+			<p class="text-sm text-neutral-500">{t("linkEmailCode")}</p>
+			<Field label={t("email")}  type="email" autocomplete="email" required bind:value={newEmail} />
 			<div class="flex justify-end gap-2">
-				<Button variant="secondary" type="button" onclick={() => (linkOpen = false)}>Cancelar</Button>
-				<Button {busy} disabled={!newEmail.trim()}>Receber código</Button>
+				<Button variant="secondary" type="button" onclick={() => (linkOpen = false)}>{t("cancel")}</Button>
+				<Button {busy} disabled={!newEmail.trim()}>{t("getCode")}</Button>
 			</div>
 		</form>
 	{:else}
 		<form class="grid gap-3" onsubmit={linkEmail}>
-			<p class="text-sm text-neutral-500">Digite o código que mandamos para <b>{newEmail}</b>.</p>
-			<Field class="text-center text-2xl font-bold tracking-[0.5em]" inputmode="numeric" autocomplete="one-time-code" maxlength={6} aria-label="Código" required bind:value={linkCode} />
+			<p class="text-sm text-neutral-500">{t("enterSentCode",{email:newEmail})}</p>
+			<Field class="text-center text-2xl font-bold tracking-[0.5em]" inputmode="numeric" autocomplete="one-time-code" maxlength={6} aria-label={t("code")}  required bind:value={linkCode} />
 			<div class="flex justify-end gap-2">
-				<Button variant="secondary" type="button" onclick={() => (linkStep = "email")}>Voltar</Button>
-				<Button {busy} disabled={linkCode.trim().length < 6}>Vincular</Button>
+				<Button variant="secondary" type="button" onclick={() => (linkStep = "email")}>{t("back")}</Button>
+				<Button {busy} disabled={linkCode.trim().length < 6}>{t("link")}</Button>
 			</div>
 		</form>
 	{/if}

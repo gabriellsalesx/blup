@@ -1,4 +1,6 @@
 <script lang="ts">
+ import {planLabel} from "../../../../shared/plan-i18n";
+ import {t,language} from "#lib/i18n.svelte.ts";
 	import { onMount } from "svelte";
 	import { page } from "$app/state";
 	import MonitorSmartphone from "@lucide/svelte/icons/monitor-smartphone";
@@ -16,7 +18,7 @@
 	type Step = "type" | "confirm" | "approved" | "denied";
 	let step = $state<Step>("type");
 	let code = $state(page.url.searchParams.get("user_code") ?? "");
-	let error = $state("");
+	let error = $state<(()=>string)|null>(null);
 	let busy = $state(false);
 
 	const clean = (c: string) => c.replace(/[^0-9a-z]/gi, "").toUpperCase();
@@ -24,21 +26,21 @@
 
 	async function check(e?: SubmitEvent) {
 		e?.preventDefault();
-		error = "";
+		error = null;
 		busy = true;
 		const { error: err } = await authClient.device({ query: { user_code: clean(code) } });
 		busy = false;
-		if (err) return (error = "Esse código não vale mais. Peça um novo no Blup Studio.");
+		if (err) return (error = ()=>t("deviceInvalid"));
 		step = "confirm";
 	}
 
 	async function decide(approve: boolean) {
-		error = "";
+		error = null;
 		busy = true;
 		const { error: err } = approve ? await authClient.device.approve({ userCode: clean(code) }) : await authClient.device.deny({ userCode: clean(code) });
 		busy = false;
-		if (err && "code" in err && err.code === "DEVICES_LIMIT") return (error = `Seu plano ${data.me.plan.label} permite ${data.me.plan.limits.devices} ${data.me.plan.limits.devices === 1 ? "computador conectado" : "computadores conectados"}. Desconecte um em Sync ou mude de plano.`);
-		if (err) return (error = "Esse código não vale mais. Peça um novo no Blup Studio.");
+		if (err && "code" in err && err.code === "DEVICES_LIMIT") return (error = ()=>data.me.plan.limits.devices===1?t("deviceLimitOne",{plan:planLabel(data.me.plan.name,language())}):t("deviceLimit",{plan:planLabel(data.me.plan.name,language()),count:data.me.plan.limits.devices}));
+		if (err) return (error = ()=>t("deviceInvalid"));
 		step = approve ? "approved" : "denied";
 	}
 
@@ -48,35 +50,35 @@
 	});
 </script>
 
-<h1 class="text-3xl font-extrabold tracking-tight">Entrar no Blup Studio</h1>
+<h1 class="text-3xl font-extrabold tracking-tight">{t("deviceTitle")}</h1>
 
 <div class="mt-6 max-w-lg">
 	{#if step === "type"}
-		<p class="text-neutral-500">Digite o código que aparece no Blup Studio.</p>
+		<p class="text-neutral-500">{t("deviceEnter")}</p>
 		<form class="mt-6 grid gap-4" onsubmit={check}>
-			<FloatField id="code" label="Código" class="font-mono tracking-[0.2em] uppercase" autocomplete="off" required bind:value={code} />
-			{#if error}<p role="alert" class="text-sm text-red-600">{error}</p>{/if}
-			<Button {busy} disabled={clean(code).length < 8}>Continuar</Button>
+			<FloatField id="code" label={t("code")}  class="font-mono tracking-[0.2em] uppercase" autocomplete="off" required bind:value={code} />
+			{#if error}<p role="alert" class="text-sm text-red-600">{error()}</p>{/if}
+			<Button {busy} disabled={clean(code).length < 8}>{t("continue")}</Button>
 		</form>
 	{:else if step === "confirm"}
 		<div class="flex items-start gap-4">
 			<MonitorSmartphone class="mt-1 size-6 shrink-0 text-blup" />
-			<p>Um Blup Studio quer entrar na sua conta <span class="font-semibold">{data.me.email ?? "Blup Cloud"}</span> e sincronizar as suas notas.</p>
+			<p>{t("deviceWants",{account:data.me.email??"Blup Cloud"})}</p>
 		</div>
-		<p class="mt-6 text-sm text-neutral-500">Confira se este é o mesmo código que aparece no Studio:</p>
+		<p class="mt-6 text-sm text-neutral-500">{t("deviceCheck")}</p>
 		<p class="mt-2 font-mono text-4xl font-bold tracking-[0.2em]">{shown}</p>
-		<p class="mt-6 text-sm text-neutral-500">Só aprove se foi você que pediu agora, num computador seu. Se alguém mandou este link por mensagem, recuse.</p>
-		{#if error}<p role="alert" class="mt-4 text-sm text-red-600">{error}</p>{/if}
+		<p class="mt-6 text-sm text-neutral-500">{t("deviceSafety")}</p>
+		{#if error}<p role="alert" class="mt-4 text-sm text-red-600">{error()}</p>{/if}
 		<div class="mt-6 flex gap-3">
-			<Button {busy} onclick={() => decide(true)}>Aprovar</Button>
-			<Button variant="secondary" disabled={busy} onclick={() => decide(false)}>Recusar</Button>
+			<Button {busy} onclick={() => decide(true)}>{t("approve")}</Button>
+			<Button variant="secondary" disabled={busy} onclick={() => decide(false)}>{t("deny")}</Button>
 		</div>
 	{:else if step === "approved"}
 		<div class="flex items-start gap-4">
 			<CircleCheck class="mt-1 size-6 shrink-0 text-green-600" />
-			<p>Pronto. Pode voltar para o Blup Studio: ele já entrou na sua conta.</p>
+			<p>{t("deviceApprovedHelp")}</p>
 		</div>
 	{:else}
-		<p>Pedido recusado. O Blup Studio não entrou na sua conta.</p>
+		<p>{t("deviceDeniedHelp")}</p>
 	{/if}
 </div>

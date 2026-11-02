@@ -20,12 +20,13 @@ const moduleURL = (import.meta as unknown as {url:string}).url;
 export class TestD1 {
 	readonly sqlite = new DatabaseSync(":memory:");
 	readonly statements: { sql: string; bindings: number }[] = [];
-	constructor() {
+	constructor(through?:string) {
 		this.sqlite.exec("PRAGMA foreign_keys=ON");
-		for (const name of readdirSync(new URL("../migrations/", moduleURL)).filter(n => n.endsWith(".sql")).sort()) {
-			this.sqlite.exec(readFileSync(new URL(`../migrations/${name}`, moduleURL), "utf8"));
+		for (const name of readdirSync(new URL("../migrations/", moduleURL)).filter(n => n.endsWith(".sql")&&(!through||n<=through)).sort()) {
+			this.applyMigration(name);
 		}
 	}
+	applyMigration(name:string){this.sqlite.exec(readFileSync(new URL(`../migrations/${name}`,moduleURL),"utf8"));}
 	prepare(sql: string) { return new TestStatement(this, sql); }
 	async batch(statements: TestStatement[]) {
 		this.sqlite.exec("BEGIN");

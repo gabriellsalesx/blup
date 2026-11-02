@@ -1,3 +1,4 @@
+import {languageOf} from "../shared/language";
 import { queueAccountPurge,queueSitePurge } from "./site-cache-purge";
 import { planNamed, ownerMatches } from "./plans";
 import { ensureQuota } from "./quota";
@@ -122,7 +123,7 @@ export async function cancelDeletedBilling(env:Cloudflare.Env){
 }
 
 export async function downgradeNotices(env:Cloudflare.Env){
- const rows=await env.DB.prepare("SELECT q.user_id AS id,u.email FROM resource_quota q JOIN user u ON u.id=q.user_id WHERE q.grace_until IS NOT NULL AND q.downgrade_notified IS NULL AND q.deleted_at IS NULL UNION SELECT q.user_id AS id,u.email FROM resource_quota q JOIN user u ON u.id=q.user_id WHERE q.domain_grace_until IS NOT NULL AND q.domain_downgrade_notified IS NULL AND q.deleted_at IS NULL LIMIT 25").all<{id:string;email:string}>();
+ const rows=await env.DB.prepare("SELECT q.user_id AS id,u.email,u.language FROM resource_quota q JOIN user u ON u.id=q.user_id WHERE q.grace_until IS NOT NULL AND q.downgrade_notified IS NULL AND q.deleted_at IS NULL UNION SELECT q.user_id AS id,u.email,u.language FROM resource_quota q JOIN user u ON u.id=q.user_id WHERE q.domain_grace_until IS NOT NULL AND q.domain_downgrade_notified IS NULL AND q.deleted_at IS NULL LIMIT 25").all<{id:string;email:string;language:string}>();
  for(const row of rows.results){
   const plan=await accountPlan(env,row.id);if(!plan)continue;
   const state=await observePlan(env.DB,row.id,plan.name);if(!state)continue;
@@ -138,7 +139,7 @@ export async function downgradeNotices(env:Cloudflare.Env){
    ...(general&&state.graceUntil&&use&&use.sites>plan.limits.sites?{sites:{limit:plan.limits.sites,deadline:state.graceUntil}}:{}),
    ...(general&&state.graceUntil&&use&&use.bytes>limit?{storage:{usedBytes:use.bytes,limitBytes:limit,deadline:state.graceUntil}}:{}),
    ...(domain&&state.domainGraceUntil?{domainDisableAt:state.domainGraceUntil}:{}),
-  });
+  },languageOf(row.language)??"en");
   if(!sent)await env.DB.prepare("UPDATE resource_quota SET downgrade_notified=CASE WHEN downgrade_notified=? THEN NULL ELSE downgrade_notified END,domain_downgrade_notified=CASE WHEN domain_downgrade_notified=? THEN NULL ELSE domain_downgrade_notified END WHERE user_id=?").bind(claim,claim,row.id).run();
  }
 }

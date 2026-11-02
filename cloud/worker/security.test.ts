@@ -48,6 +48,15 @@ async function request(path:string, method="GET", body?:unknown, user="alice", h
 }
 
 describe("local attacks on actual Cloud routes", () => {
+ it("saves only the authenticated account's validated language",async()=>{
+  expect((await request("/me/language","PUT",{language:"es"})).status).toBe(200);
+  expect(d1.sqlite.prepare("SELECT language FROM user WHERE id='alice'").get()?.language).toBe("es");
+  expect(d1.sqlite.prepare("SELECT language FROM user WHERE id='bob'").get()?.language).toBe("pt");
+  expect((await request("/me/language","PUT",{language:"en",id:"bob"})).status).toBe(400);
+  expect((await request("/me/language","PUT",{language:"de"})).status).toBe(400);
+  expect((await request("/me/language","PUT",{language:"es"},"")).status).toBe(401);
+ });
+
 	it.each([{plan:"max",storageMB:5120},{plan:"ultra",storageMB:10240}])("enforces the revised $plan storage boundary on block uploads",async({plan,storageMB})=>{
 		d1.sqlite.prepare("UPDATE subscription SET plan=? WHERE reference_id='alice'").run(plan);
 		const cap=storageMB*1024*1024;

@@ -49,8 +49,8 @@ const b64=(b:Uint8Array)=>btoa(String.fromCharCode(...b)).replace(/\+/g,"-").rep
 const join=(...parts:Uint8Array[])=>{const out=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let at=0;for(const p of parts){out.set(p,at);at+=p.length;}return out;};
 const cookieOf=(r:Response)=>r.headers.getSetCookie().map(c=>c.split(";")[0]).join("; ");
 
-async function registerPasskey(){
-	const optionsResponse=await call("/passkey/generate-register-options");
+async function registerPasskey(language="en"){
+	const optionsResponse=await call("/passkey/generate-register-options",undefined,"",ORIGIN,{"x-blup-language":language});
 	expect(optionsResponse.status).toBe(200);
 	const options=await optionsResponse.json() as {challenge:string};
 	expect(tables.user).toHaveLength(0);
@@ -62,12 +62,33 @@ async function registerPasskey(){
 	const authData=join(rp,new Uint8Array([0x45,0,0,0,0]),new Uint8Array(16),new Uint8Array([0,id.length]),id,cose);
 	const att=isoCBOR.encode(new Map<string,unknown>([["fmt","none"],["attStmt",new Map()],["authData",authData]]) as never);
 	const response={id:b64(id),rawId:b64(id),type:"public-key",response:{clientDataJSON:b64(new TextEncoder().encode(JSON.stringify({type:"webauthn.create",challenge:options.challenge,origin:ORIGIN}))),attestationObject:b64(att)},clientExtensionResults:{},authenticatorAttachment:"platform"};
-	const res=await call("/passkey/verify-registration",{response,name:"local audit",createSession:true},cookieOf(optionsResponse));
+	const res=await call("/passkey/verify-registration",{response,name:"local audit",createSession:true},cookieOf(optionsResponse),ORIGIN,{"x-blup-language":language});
 	expect(res.status).toBe(200);
 	return {key,id,rp,res};
 }
 
 describe("Better Auth 1.7.14, actual plugins and endpoints",()=>{
+ it("reads a saved account language again instead of using an old session snapshot",async()=>{
+  const {cookie}=await login();
+  if(!tables.user[0])throw new Error("Missing fixture account");tables.user[0].language="es";
+  const response=await call("/get-session",undefined,cookie);
+  expect(response.status).toBe(200);expect(await response.json()).toMatchObject({user:{language:"es"}});
+ });
+
+ it("stores the selected language for a new passkey-only account",async()=>{
+  await registerPasskey("es");expect(tables.user[0]?.language).toBe("es");
+ });
+
+ it.each(["pt","en","es"] as const)("stores negotiated %s when creating an email account",async language=>{
+  const email="localized@audit.invalid";
+  const send=await service.handler(new Request(ORIGIN+"/api/auth/email-otp/send-verification-otp",{method:"POST",headers:{origin:ORIGIN,"content-type":"application/json","x-captcha-response":"audit-only","x-blup-language":language},body:JSON.stringify({email,type:"sign-in"})}));
+  expect(send.status).toBe(200);
+  const response=await service.handler(new Request(ORIGIN+"/api/auth/sign-in/email-otp",{method:"POST",headers:{origin:ORIGIN,"content-type":"application/json","x-blup-language":language},body:JSON.stringify({email,otp:codes.get(email)})}));
+  expect(response.status).toBe(200);expect(tables.user[0]?.language).toBe(language);
+  const changed=await call("/update-user",{language:language==="pt"?"es":"pt",name:"Localized"},cookieOf(response));
+  expect([200,400]).toContain(changed.status);expect(tables.user[0]?.language).toBe(language);
+ });
+
 	it("creates a passkey-only account and verifies a cryptographically signed assertion",async()=>{
 		const {key,id,rp,res}=await registerPasskey();
 		expect(tables.user).toHaveLength(1);expect(tables.passkey).toHaveLength(1);

@@ -1,4 +1,6 @@
 <script lang="ts">
+ import LanguagePicker from "#lib/ui/LanguagePicker.svelte";
+ import {t} from "#lib/i18n.svelte.ts";
 	import Check from "@lucide/svelte/icons/check";
 	import BlupLogo from "#lib/ui/BlupLogo.svelte";
 	import Scene from "#lib/ui/Scene.svelte";
@@ -9,7 +11,7 @@
 	// screens on: a card split in two, the pitch on the left.
 	let { children } = $props();
 
-	const perks = ["50 MB grátis para sempre", "Ninguém lê suas notas, nem o Blup", "Seus sites no ar sem esforço"];
+	const perks = $derived([t("accessFree"), t("accessPrivate"), t("accessSites")]);
 </script>
 
 <div class="relative min-h-dvh bg-blup md:grid md:place-items-center md:overflow-hidden md:bg-neutral-100 md:p-8 md:dark:bg-neutral-950">
@@ -25,7 +27,7 @@
 		<header class="panel relative flex items-end gap-2 overflow-hidden px-6 pt-6 pb-12 text-white md:hidden">
 			<div class="min-w-0 flex-1 self-start">
 				<BlupLogo class="h-8 w-auto text-white" />
-				<h2 class="mt-6 text-[1.7rem] leading-[1.15] font-extrabold tracking-tight">Um lar seguro para as suas notas</h2>
+				<h2 class="mt-6 text-[1.7rem] leading-[1.15] font-extrabold tracking-tight">{t("accessTitle")}</h2>
 			</div>
 			<div class="-mr-4 -mb-6 w-[56%] shrink-0"><Scene /></div>
 		</header>
@@ -33,8 +35,8 @@
 		<!-- Large screens: the blue panel. -->
 		<aside class="panel relative hidden flex-col bg-blup px-10 pt-10 text-white md:flex">
 			<BlupLogo class="h-9 w-auto self-start text-white" />
-			<h2 class="mt-8 text-[2.1rem] leading-[1.15] font-extrabold tracking-tight">Um lar seguro para as suas notas</h2>
-			<p class="mt-4 text-lg text-white/85">Criptografadas de ponta a ponta. Sempre com você, mesmo sem internet.</p>
+			<h2 class="mt-8 text-[2.1rem] leading-[1.15] font-extrabold tracking-tight">{t("accessTitle")}</h2>
+			<p class="mt-4 text-lg text-white/85">{t("accessEncrypted")}</p>
 			<ul class="mt-6 grid gap-3">
 				{#each perks as perk (perk)}
 					<li class="flex items-center gap-3 font-medium"><span class="grid size-6 place-items-center rounded-full bg-white/20"><Check class="size-3.5" /></span>{perk}</li>
@@ -49,7 +51,7 @@
 		</div>
 	</div>
 
-	<div class="absolute top-4 right-4 z-10"><ThemePicker /></div>
+	<div class="absolute top-4 right-4 z-10 flex items-center gap-2"><LanguagePicker /><ThemePicker /></div>
 </div>
 
 <style>

@@ -1,5 +1,6 @@
-const help={pt:"Em caso de ajuda, informe seu ID.",en:"If you need help, share your ID.",es:"Si necesitas ayuda, comparte tu ID."};
-export const accountIdHelp=(locale:"pt"|"en"|"es"="pt")=>help[locale];
+import {translate} from "./i18n/catalog";
+import type {Language} from "../../shared/language";
+export const accountIdHelp=(locale:Language="pt")=>translate(locale,"accountIdHelp");
 export const shortAccountId=(id:string)=>id.length>12?`${id.slice(0,8)}…${id.slice(-4)}`:id;
 export async function copyAccountId(id:string,clipboard:Pick<Clipboard,"writeText">|undefined=globalThis.navigator?.clipboard):Promise<boolean>{
 	if(!clipboard||!id)return false;

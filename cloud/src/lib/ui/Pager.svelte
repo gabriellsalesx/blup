@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {t} from "#lib/i18n.svelte.ts";
 	import ChevronLeft from "@lucide/svelte/icons/chevron-left";
 	import ChevronRight from "@lucide/svelte/icons/chevron-right";
 
@@ -10,9 +11,9 @@
 </script>
 
 {#if pager.hasPrev || pager.hasNext}
-	<nav class="mt-4 flex items-center justify-between gap-3" aria-label="Paginação">
-		<button class={btn} disabled={!pager.hasPrev || pager.busy} onclick={() => pager.prev()}><ChevronLeft class="size-4" />Anterior</button>
-		<span class="text-sm text-neutral-500">Página {pager.page}</span>
-		<button class={btn} disabled={!pager.hasNext || pager.busy} onclick={() => pager.next()}>Próxima<ChevronRight class="size-4" /></button>
+	<nav class="mt-4 flex items-center justify-between gap-3" aria-label={t("pagination")}>
+		<button class={btn} disabled={!pager.hasPrev || pager.busy} onclick={() => pager.prev()}><ChevronLeft class="size-4" />{t("previous")}</button>
+		<span class="text-sm text-neutral-500">{t("pageNumber",{number:pager.page})}</span>
+		<button class={btn} disabled={!pager.hasNext || pager.busy} onclick={() => pager.next()}>{t("next")}<ChevronRight class="size-4" /></button>
 	</nav>
 {/if}

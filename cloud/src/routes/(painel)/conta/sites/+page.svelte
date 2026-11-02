@@ -1,9 +1,11 @@
 <script lang="ts">
+ import {t,formatDate} from "#lib/i18n.svelte.ts";
  import { onMount } from "svelte";
  import { goto } from "$app/navigation";
  import Globe from "@lucide/svelte/icons/globe";
  import Row from "#lib/ui/Row.svelte";
  import Button from "#lib/ui/Button.svelte";
+ import {errorMessage} from "#lib/i18n/errors.ts";
  import { api, type Site } from "#lib/api.ts";
  import { confirm } from "#lib/confirm.svelte.ts";
  import { toast } from "#lib/toast.svelte.ts";
@@ -13,51 +15,51 @@
  let busy=$state("");
  const limit=$derived(result?.limit??data.me.plan.limits.sites);
  const downgrade=$derived(result?.downgrade??null);
- const when=(date:string)=>new Date(date).toLocaleString("pt-BR",{dateStyle:"medium",timeStyle:"short"});
- async function load(){try{result=await api.sites();}catch{toast("Não deu para carregar seus sites. Tente novamente.",{kind:"error"});}}
+ const when=(date:string)=>formatDate(date);
+ async function load(){try{result=await api.sites();}catch(error){toast(()=>errorMessage(error),{kind:"error"});}}
  onMount(()=>{void load();});
  async function choose(site:Site){
   busy=site.id;
-  try{await api.selectRetained(site.id);await load();toast("Escolha salva. Você pode mudar até o fim do prazo.");}
-  catch{await load();toast("Não deu para salvar. Confira se o prazo ainda está aberto.",{kind:"error"});}
+  try{await api.selectRetained(site.id);await load();toast(()=>t("siteChoiceSaved"));}
+  catch(error){await load();toast(()=>errorMessage(error),{kind:"error"});}
   finally{busy="";}
  }
  async function takeDown(site:Site){
-  if(!await confirm({title:`Tirar ${site.slug}.getblup.site do ar?`,message:"O endereço para de abrir e os arquivos publicados são apagados da nuvem. As notas continuam no seu computador.",confirmLabel:"Tirar do ar",danger:true,typeToConfirm:site.slug}))return;
+  if(!await confirm({title:t("takeDownTitle",{site:`${site.slug}.getblup.site`}),message:t("takeDownBody"),confirmLabel:t("takeDown"),danger:true,typeToConfirm:site.slug}))return;
   busy=site.id;
-  try{await api.takeDown(site.id);await load();toast("Site tirado do ar");}
-  catch{toast("Não deu para tirar o site do ar agora. Tente de novo.",{kind:"error"});}
+  try{await api.takeDown(site.id);await load();toast(()=>t("siteDown"));}
+  catch(error){toast(()=>errorMessage(error),{kind:"error"});}
   finally{busy="";}
  }
- const count=$derived(result===null?"Carregando…":`${result.sites.length} sites guardados; limite do plano: ${limit}.`);
+ const count=$derived(result===null?t("loading"):result.sites.length===1?t("siteCountOne",{limit}):t("siteCount",{count:result.sites.length,limit}));
 </script>
-<h1 class="text-3xl font-extrabold tracking-tight">Sites</h1>
-<p class="mt-2 text-neutral-500">Seus sites publicados pelo Blup Studio. Os arquivos ficam preservados quando um site sai do ar por mudança de plano.</p>
+<h1 class="text-3xl font-extrabold tracking-tight">{t("sites")}</h1>
+<p class="mt-2 text-neutral-500">{t("sitesLead")}</p>
 <div class="mt-6">
- <Row title="Seus sites" help={count} />
+ <Row title={t("yourSites")}  help={count} />
  {#if downgrade}
-  <Row title={downgrade.selectionOpen?"Escolha qual site continua no ar":"Mudança de plano"} help={downgrade.selectionOpen?`Escolha até ${when(downgrade.deadline)}. Você pode mudar de ideia até o prazo. Sem escolha, fica o site mais antigo; empate é resolvido pelo ID.`:limit===0?`O Grátis não inclui sites no ar. A carência termina em ${when(downgrade.deadline)}.`:`Após ${when(downgrade.deadline)}, ficam no ar os sites que cabem no plano.`}>
+  <Row title={downgrade.selectionOpen?t("chooseSite"):t("planChange")} help={downgrade.selectionOpen?t("chooseSiteUntil",{date:when(downgrade.deadline)}):limit===0?t("freeSitesUntil",{date:when(downgrade.deadline)}):t("sitesUntil",{date:when(downgrade.deadline)})}>
    {#if downgrade.selectionOpen && downgrade.selectedSiteId===null}
-    <p class="mt-2 text-sm text-neutral-500">Sem escolha salva. O site padrão é {result?.sites.find(s=>downgrade.retainedSiteIds.includes(s.id))?.title??"o mais antigo"}.</p>
+    <p class="mt-2 text-sm text-neutral-500">{t("defaultSite",{site:result?.sites.find(s=>downgrade.retainedSiteIds.includes(s.id))?.title??t("oldestSite")})}</p>
    {/if}
   </Row>
  {/if}
  {#if limit===0}
-  <Row title="Hospedagem no seu plano" help="O plano Grátis não inclui hospedagem depois da carência. Os arquivos guardados não são apagados por essa mudança.">
-   {#snippet action()}<Button onclick={()=>goto("/conta/plano")}>Ver os planos</Button>{/snippet}
+  <Row title={t("hosting")}  help={t("hostingHelp")} >
+   {#snippet action()}<Button onclick={()=>goto("/conta/plano")}>{t("viewPlans")}</Button>{/snippet}
   </Row>
  {/if}
  {#each result?.sites??[] as site (site.id)}
-  <Row title={site.title} help={`${site.live?`${site.files} arquivos, ${bytes(site.bytes)}`:site.published?"Fora do ar pelo limite do plano; arquivos preservados":"Ainda não publicado"} · atualizado em ${when(site.updatedAt)}`}>
+  <Row title={site.title} help={t("updatedAt",{state:site.live?(site.files===1?t("siteFilesOne",{size:bytes(site.bytes)}):t("siteFiles",{count:site.files,size:bytes(site.bytes)})):site.published?t("siteOffline"):t("siteUnpublished"),date:when(site.updatedAt)})}>
    {#if site.live}<a class="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-blup hover:underline" href={site.url} target="_blank" rel="noopener"><Globe class="size-4" />{site.url.replace(/^https?:\/\//,"").replace(/\/$/,"")}</a>{/if}
-   {#if downgrade?.selectedSiteId===site.id}<p class="mt-2 text-sm font-semibold">Escolhido para continuar no ar</p>{/if}
+   {#if downgrade?.selectedSiteId===site.id}<p class="mt-2 text-sm font-semibold">{t("siteSelected")}</p>{/if}
    {#snippet action()}
     <div class="flex flex-wrap gap-2">
-     {#if downgrade?.selectionOpen}<Button variant="secondary" disabled={busy!==""||downgrade.selectedSiteId===site.id} busy={busy===site.id} onclick={()=>choose(site)}>{downgrade.selectedSiteId===site.id?"Escolhido":"Manter este site"}</Button>{/if}
-     <Button variant="secondary" disabled={busy!==""} onclick={()=>takeDown(site)}>Tirar do ar</Button>
+     {#if downgrade?.selectionOpen}<Button variant="secondary" disabled={busy!==""||downgrade.selectedSiteId===site.id} busy={busy===site.id} onclick={()=>choose(site)}>{downgrade.selectedSiteId===site.id?t("selected"):t("keepSite")}</Button>{/if}
+     <Button variant="secondary" disabled={busy!==""} onclick={()=>takeDown(site)}>{t("takeDown")}</Button>
     </div>
    {/snippet}
   </Row>
  {/each}
- <Row title="Como publicar" help="No Blup Studio, abra o site, vá em Publicar e escolha Blup Cloud. Cada publicação manda só o que mudou." />
+ <Row title={t("howPublish")}  help={t("howPublishHelp")}  />
 </div>

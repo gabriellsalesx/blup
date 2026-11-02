@@ -1,3 +1,4 @@
+import {requestLanguage,stripeLocale,type Language} from "../shared/language";
 import type { BetterAuthOptions } from "better-auth";
 import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -28,7 +29,7 @@ type AuthConfig = {
 	isBanned: (userId: string) => Promise<boolean>;
 	deviceMark?: (userId:string,body:unknown)=>Promise<boolean>;
 	finishDevice?: (userId:string,body:unknown)=>Promise<void>;
-	sendCode: (email: string, code: string, kind: string) => void;
+	sendCode: (email: string, code: string, kind: string,language:Language) => void;
 };
 
 // The OTP send route Turnstile guards (without the /api/auth base path).
@@ -70,10 +71,12 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 			additionalFields: {
 				banned: { type: "boolean", defaultValue: false, input: false },
 				banReason: { type: "string", required: false, input: false },
+				language:{type:"string",defaultValue:"pt",input:false},
 			},
 		},
 		session: {additionalFields:{studioDevice:{type:"boolean",defaultValue:false,input:false}}},
 		databaseHooks: {
+			user:{create:{before:async(user,ctx)=>({data:{...user,language:requestLanguage(ctx?.headers)}})}},
 			session: {
 				create: {
 					before: async (session,ctx) => {
@@ -95,7 +98,7 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 				// Linking (or changing) the e-mail: a code goes to the new address.
 				changeEmail: { enabled: true },
 				// Not awaited: waiting would tell whether the e-mail exists.
-				sendVerificationOTP: async ({ email, otp, type }) => cfg.sendCode(email, otp, type),
+				sendVerificationOTP: async ({ email, otp, type },ctx) => cfg.sendCode(email, otp, type,requestLanguage(ctx?.headers)),
 			}),
 			passkey({
 				rpID: cfg.rpID,
@@ -134,9 +137,9 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 					plans: PLANS.filter((p) => p.lookupKey).map((p) => ({ name: p.name, lookupKey: p.lookupKey, annualDiscountLookupKey: p.yearlyLookupKey, limits: p.limits })),
 					// Stripe's recommendations: flexible billing mode, and a label to
 					// follow this checkout flow in the Dashboard (8 random letters).
-					getCheckoutSessionParams: async () => ({
+					getCheckoutSessionParams: async (_data,request) => ({
 						params: {
-							locale: "pt-BR",
+							locale: stripeLocale[requestLanguage(request?.headers)],
 							subscription_data: { billing_mode: { type: "flexible" } },
 							integration_identifier: "blup_cloud_plans_qmzrtxwa",
 						},

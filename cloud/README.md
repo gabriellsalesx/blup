@@ -140,7 +140,7 @@ O painel usa `hc<AppType>` e `InferResponseType`. `worker/export-rpc.mjs` emite 
 
 ## Antes de publicar
 
-- Em instalação nova, aplicar de 0000 até `0013_webhook_stripe_atual.sql` antes do novo Worker. As migrações 0012 e 0013 foram geradas com drizzle-kit, sem alterar as anteriores. A 0012 remove os campos sem uso `previous_key` e `disabled_at`; a 0013 cria recibos de webhook e índice da assinatura Stripe. Em instalação já usada, preparar primeiro as migrações aditivas e publicar o código que não usa os campos removidos antes de aplicar a 0012: o Worker antigo ainda os escrevia. Planejar essa atualização com janela de manutenção se a ordem padrão das migrações impedir separar as etapas. Em atualização de instalação já usada, revogar as sessões antigas do Studio que ainda não receberam marca de aparelho e pedir novo login.
+- Em instalação nova, aplicar de 0000 até `0014_idioma_da_conta.sql` antes do novo Worker. As migrações 0012, 0013 e 0014 foram geradas com drizzle-kit, sem alterar as anteriores. A 0012 remove os campos sem uso `previous_key` e `disabled_at`; a 0013 cria recibos de webhook e índice da assinatura Stripe. A 0014 adiciona o idioma da conta e deve ser aplicada antes do Worker que lê essa coluna; é compatível com o Worker anterior. Em instalação já usada, preparar primeiro as migrações aditivas e publicar o código que não usa os campos removidos antes de aplicar a 0012: o Worker antigo ainda os escrevia. Planejar essa atualização com janela de manutenção se a ordem padrão das migrações impedir separar as etapas. Em atualização de instalação já usada, revogar as sessões antigas do Studio que ainda não receberam marca de aparelho e pedir novo login.
 - Substituir o ID de D1 fictício nas duas configurações, preparar R2, Durable Object e crons e conferir todos os segredos do [guia de deploy](../docs/deploy.md). Configurar os bindings `OTP_LIMIT`, `ABUSE_LIMIT` e `BULK_LIMIT` no ambiente de produção.
 - Configurar Access no host inteiro da staff, Turnstile real, Email Service com Email Sending habilitado, domínio remetente verificado e conta Workers Paid para enviar a destinatários arbitrários, Stripe/webhook de produção e chaves de IA. `EMAIL_MODE` de produção deve ser send. Não copiar `.dev.vars` local para produção.
 - Para domínio próprio, habilitar Cloudflare for SaaS na zona dos sites. Cadastrar o secret `CF_API_TOKEN` com permissão SSL and Certificates Write apenas nessa zona e a var `CF_ZONE_ID`. Informar `SITES_CNAME_TARGET` com o CNAME público do serviço. Sem isso, a API retorna `DOMAIN_UNAVAILABLE`.
@@ -213,3 +213,32 @@ Valores reais ficam fora do repositório. O mesmo nome pode ter valores diferent
 Bindings: `DB` é D1 compartilhado pelos Workers; `NOTES` e `SITES` são R2 separados; `EMAIL` é Email Sending; `OTP_LIMIT` limita OTP/cadastro; `ABUSE_LIMIT` e `BULK_LIMIT` limitam controle e transferência; `SYNC_LIVE` é o Durable Object de sync; `SITE_CACHE` alcança o entrypoint de cache dos sites; `ASSETS` serve o painel compilado. Não foi acrescentado KV nem outro binding para preços.
 
 Enviar e-mails a destinatários arbitrários exige Email Sending habilitado, domínio autorizado e Workers Paid, conforme a [documentação do Email Service](https://developers.cloudflare.com/email-service/). Não confundir isso com encaminhamento do Email Routing para um destinatário verificado. Confirme cotas, aprovação do serviço e DNS antes de habilitar OTP ou lembretes em produção.
+
+
+## Idiomas do painel e dos e-mails
+
+O painel do usuário e o acesso têm português, inglês e espanhol. A staff permanece em português. O seletor segue o padrão do site: globo, código e menu com os nomes nativos Português, English e Español, usando Lucide instalado e popover nativo. As rotas não mudam quando o idioma muda.
+
+A escolha manual tem prioridade: primeiro `localStorage`, depois cookie, ambos com a chave `blup-lang`. Sem escolha válida, o painel usa o primeiro idioma suportado de `navigator.languages`; idiomas regionais como pt-BR e es-MX são reconhecidos. Sem idioma suportado, usa inglês. A troca é imediata e não recarrega a página. O cookie é da própria origem, com Path=/, SameSite=Lax, prazo de um ano e Secure em HTTPS. Se o armazenamento local for bloqueado, a escolha ainda funciona na sessão e tenta o cookie.
+
+O catálogo `src/lib/i18n/catalog.ts` verifica as chaves e os campos interpolados no TypeScript. Os três textos ficam juntos por chave; testes conferem campos equivalentes, ausência de markup/travessões e cobertura dos três idiomas. Datas, datas relativas, números e moedas usam Intl no idioma ativo. Valores monetários mantêm as unidades menores específicas do Stripe. Benefícios e nomes dos planos são compartilhados com o Worker por `shared/plan-i18n.ts`, derivados dos limites atuais, sem duplicar cotas. Checkout e Customer Portal recebem o idioma escolhido.
+
+O código que escolhe e formata o idioma no Worker é puro, por pedido. Ele não importa o estado reativo do navegador nem guarda o idioma de uma pessoa em variável global do servidor. O painel é CSR, conforme `src/routes/+layout.ts`; seu estado reativo é local ao navegador.
+
+### Preferência da conta e API
+
+A migração `0014_idioma_da_conta.sql`, gerada com drizzle-kit, acrescenta `user.language`. Contas existentes começam em português para preservar o idioma dos e-mails anteriores. Na criação de conta por OTP ou passkey, o hook do Better Auth salva o idioma validado do pedido, com inglês como fallback. O campo não pode ser alterado pelo body genérico de update-user do SDK.
+
+`GET /api/me` inclui `language: 'pt' | 'en' | 'es'`. `PUT /api/me/language` recebe somente `{language: 'pt' | 'en' | 'es'}` e devolve o mesmo objeto. A sessão determina a conta; não há ID de outra pessoa no corpo. Sem sessão retorna 401, dado ou campo extra inválido retorna 400. A rota mantém as proteções de origem/CSRF da API. O contrato está no AppType/RPC gerado.
+
+Após autenticar e quando a seleção muda, o painel salva o idioma atual na conta. Essa preferência é usada nos próximos e-mails. Gravações são serializadas para uma resposta lenta não substituir a última escolha; trabalho de uma página encerrada não é aplicado à conta que entrar depois. Se não for possível salvar na conta, a escolha local continua funcionando e o painel avisa no idioma escolhido. Selecionar de novo permite repetir a gravação.
+
+Os clientes enviam `x-blup-language` com pt, en ou es. Sem esse header, o Worker negocia `Accept-Language`, respeitando prioridades q e excluindo q=0; sem idioma suportado, usa inglês. `GET /api/plans` localiza nomes e benefícios pelo idioma do pedido, mantendo o mesmo contrato de preços e o cache somente dos valores Stripe. Os códigos da API permanecem estáveis; o painel os mapeia para textos próprios, sem exibir mensagens brutas de SDK/provedor. Código desconhecido recebe um erro genérico no idioma ativo.
+
+### E-mails
+
+Códigos de entrada/verificação/ligação de e-mail, lembretes e avisos de plano têm assunto, texto e HTML nos três idiomas. Eles usam o idioma salvo da conta. Antes de existir uma conta para aquele e-mail, o código usa o idioma do pedido. Um pedido anônimo não muda a preferência de uma conta existente; por isso um código de entrada pode ainda vir no idioma salvo anteriormente até a pessoa entrar e atualizar sua preferência.
+
+Os crons já leem o idioma junto da conta e o passam ao envio, sem uma consulta adicional por lembrete/aviso. Datas nos avisos continuam em UTC, agora formatadas no idioma da pessoa. Lembretes continuam genéricos e não incluem o conteúdo da agenda. Os dados interpolados são escapados no HTML. A alteração não inclui envio real durante testes e não controla mensagens enviadas pelo próprio Stripe.
+
+Referências consultadas: [estado no SvelteKit](https://svelte.dev/docs/kit/state-management), [navegação](https://svelte.dev/docs/kit/$app-navigation), [efeitos do Svelte](https://svelte.dev/docs/svelte/$effect), [campos e hooks do Better Auth](https://better-auth.com/docs/concepts/database), [OTP por e-mail](https://better-auth.com/docs/plugins/email-otp) e [idiomas do Turnstile](https://developers.cloudflare.com/turnstile/reference/supported-languages/). Os hooks foram conferidos também na versão 1.7.14 instalada.

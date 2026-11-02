@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {t} from "#lib/i18n.svelte.ts";
 	import Check from "@lucide/svelte/icons/circle-check";
 	import Alert from "@lucide/svelte/icons/circle-alert";
 	import Info from "@lucide/svelte/icons/info";
@@ -15,11 +16,11 @@
 			<span class="grid shrink-0 {n.kind === 'ok' ? 'text-green-600' : n.kind === 'error' ? 'text-red-600' : 'text-blup'}">
 				{#if n.kind === "ok"}<Check class="size-[17px]" />{:else if n.kind === "error"}<Alert class="size-[17px]" />{:else}<Info class="size-[17px]" />{/if}
 			</span>
-			<span class="flex-1">{n.text}</span>
+			<span class="flex-1">{typeof n.text==="function"?n.text():n.text}</span>
 			{#if n.action}
 				<button class="shrink-0 rounded-md px-2.5 py-1 font-bold text-blup hover:bg-neutral-100 dark:hover:bg-neutral-800" onclick={() => { n.action!.run(); dismiss(n.id); }}>{n.action.label}</button>
 			{/if}
-			<button class="grid shrink-0 place-items-center rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" title="Fechar" aria-label="Fechar" onclick={() => dismiss(n.id)}>
+			<button class="grid shrink-0 place-items-center rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" title={t("close")} aria-label={t("close")} onclick={() => dismiss(n.id)}>
 				<X class="size-3.5" />
 			</button>
 		</div>

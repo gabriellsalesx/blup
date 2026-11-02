@@ -2,13 +2,14 @@
 	import type { Component, Snippet } from "svelte";
 	import { page } from "$app/state";
 	import BlupLogo from "./BlupLogo.svelte";
+	import LanguagePicker from "./LanguagePicker.svelte";
 	import ThemePicker from "./ThemePicker.svelte";
 
 	// The panels' frame (the account's and the staff's): the Blup logo and
 	// the menu on the left, the page on the right. `tag` names the area under
 	// the logo; `foot` goes under the menu (signing out, who is signed in).
 	type Link = { href: string; label: string; Icon: Component; match?: (path: string) => boolean };
-	let { links, home, tag, foot, wide = false, children }: { links: Link[]; home: string; tag?: string; foot?: Snippet; wide?: boolean; children: Snippet } = $props();
+	let { links, home, tag, foot, wide = false, languages=false, children }: { links: Link[]; home: string; tag?: string; foot?: Snippet; wide?: boolean; languages?:boolean; children: Snippet } = $props();
 
 	const here = (l: Link) => (l.match ? l.match(page.url.pathname) : page.url.pathname === l.href);
 </script>
@@ -28,7 +29,7 @@
 		</nav>
 		<div class="mt-4 border-t border-neutral-200 pt-4 md:mt-6 md:pt-6 dark:border-neutral-800">
 			{@render foot?.()}
-			<div class="mt-4 px-2.5"><ThemePicker /></div>
+			<div class="mt-4 flex items-center gap-2 px-2.5">{#if languages}<LanguagePicker />{/if}<ThemePicker /></div>
 		</div>
 	</aside>
 	<main class="px-6 py-8 md:px-16 md:py-12 {wide ? 'max-w-6xl' : 'max-w-3xl'}">{@render children()}</main>

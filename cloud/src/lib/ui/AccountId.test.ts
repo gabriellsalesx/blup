@@ -1,5 +1,7 @@
-import {describe,expect,it} from "vitest";
+import {beforeEach,describe,expect,it} from "vitest";
 import {render} from "svelte/server";
+import {i18n} from "../i18n.svelte";
+beforeEach(()=>{i18n.locale="pt";i18n.staff=false;});
 import AccountId from "./AccountId.svelte";
 describe("account ID display",()=>{
 	it("renders a short public ID and an accessible copy action",()=>{

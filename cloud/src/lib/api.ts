@@ -1,8 +1,9 @@
 // The wire types come from the complete Hono route chain. Dates here are
 // JSON strings, rather than the database's internal Date objects.
 import {hc,parseResponse,type InferResponseType} from "hono/client";
+import {language} from "./i18n.svelte";
 import type {AppType} from "./rpc";
-export const rpc=hc<AppType>("/",{init:{credentials:"same-origin"}}).api;
+export const rpc=hc<AppType>("/",{init:{credentials:"same-origin"},headers:()=>({"x-blup-language":language()})}).api;
 export type Me=InferResponseType<typeof rpc.me.$get,200>;
 export type Limits=Me["plan"]["limits"];
 export type AIShare=Me["ai"];
@@ -11,6 +12,7 @@ export type Site=InferResponseType<typeof rpc.sites.$get,200>["sites"][number];
 export const api={
  config:()=>parseResponse(rpc.config.$get()),
  me:()=>parseResponse(rpc.me.$get()),
+ setLanguage:(language:Me["language"])=>parseResponse(rpc.me.language.$put({json:{language}})),
  plans:()=>parseResponse(rpc.plans.$get()),
  devices:()=>parseResponse(rpc.devices.$get()),
  sites:()=>parseResponse(rpc.sites.$get()),

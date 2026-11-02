@@ -99,6 +99,13 @@
       "when": 1793634186708,
       "tag": "0013_webhook_stripe_atual",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1793647846448,
+      "tag": "0014_idioma_da_conta",
+      "breakpoints": true
     }
   ]
 }
