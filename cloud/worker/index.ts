@@ -7,7 +7,7 @@ import { PLANS, SUGGESTED, planNamed } from "./plans";
 import { staffApi } from "./staff";
 import { syncApi } from "./sync";
 import { sitesApi } from "./sites";
-import { remindersApi, sendDue } from "./reminders";
+import { forgetOld, remindersApi, sendDue } from "./reminders";
 import { cleanUp } from "./cleanup";
 import { aiApi, aiUsageOf } from "./ai";
 import { devicesOf, isStudio, usageOf } from "./usage";
@@ -182,7 +182,7 @@ export default {
 	// Every 5 minutes, the calendar's reminders by e-mail; once a day, the
 	// clean-up of old versions and unused blocks.
 	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
-		if (controller.cron === DAILY) ctx.waitUntil(cleanUp(env));
+		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([cleanUp(env), forgetOld(env)]));
 		else ctx.waitUntil(sendDue(env));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>;

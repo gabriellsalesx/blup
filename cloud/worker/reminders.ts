@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { and, asc, eq, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, lte } from "drizzle-orm";
 import { zValidator } from "@hono/zod-validator";
 import { auth, db } from "./auth";
 import { reminder, reminderMonth, user } from "./db/schema";
 import { planOf } from "./account";
 import { sendReminder } from "./email";
-import { AHEAD, DAY, LATE, keep, listSchema, monthOf } from "./reminder-rules";
+import { DAY, LATE, keep, listSchema, monthOf } from "./reminder-rules";
 
 // The calendar's reminders by e-mail (Max: 50 a month, Ultra: 100). The
 // Studio sends only when each reminder is due, under an opaque id; the
@@ -43,12 +43,18 @@ export const remindersApi = new Hono<App>()
 		const userId = c.get("userId");
 		const now = Date.now();
 		const plan = await planOf(userId);
-		const list = plan.limits.reminderEmails > 0 ? keep(c.req.valid("json").reminders, now) : [];
+		const limit = plan.limits.reminderEmails;
+		// A plan without e-mails keeps nothing (a downgrade clears what waited).
+		if (limit === 0) {
+			await c.env.DB.prepare("DELETE FROM reminder WHERE user_id = ? AND sent_at IS NULL").bind(userId).run();
+			return c.json({ limit, used: 0, saved: 0 });
+		}
+		const list = keep(c.req.valid("json").reminders, now);
 		const stmts = [c.env.DB.prepare("DELETE FROM reminder WHERE user_id = ? AND sent_at IS NULL").bind(userId)];
 		// Already sent (or skipped) stays so: the same id isn't sent twice.
 		for (const r of list) stmts.push(c.env.DB.prepare("INSERT OR IGNORE INTO reminder (user_id, id, send_at) VALUES (?, ?, ?)").bind(userId, r.id, r.at));
 		await c.env.DB.batch(stmts);
-		return c.json({ limit: plan.limits.reminderEmails, used: await usedThisMonth(userId, now), saved: list.length });
+		return c.json({ limit, used: await usedThisMonth(userId, now), saved: list.length });
 	});
 
 // sendDue sends the reminders whose time came (every 5 minutes, from the
@@ -62,6 +68,7 @@ export async function sendDue(env: Cloudflare.Env, now = Date.now()) {
 		.where(and(isNull(reminder.sentAt), lte(reminder.sendAt, new Date(now))))
 		.orderBy(asc(reminder.sendAt))
 		.limit(200);
+	if (!due.length) return; // most runs: one index lookup, nothing else
 	const plans = new Map<string, number>();
 	for (const r of due) {
 		if (!plans.has(r.userId)) plans.set(r.userId, (await planOf(r.userId)).limits.reminderEmails);
@@ -84,6 +91,15 @@ export async function sendDue(env: Cloudflare.Env, now = Date.now()) {
 			.where(and(eq(reminder.userId, r.userId), eq(reminder.id, r.id)));
 		if (send) await sendReminder(env, r.email);
 	}
-	// Sent and skipped ones are forgotten after the window they could repeat in.
-	await db.delete(reminder).where(and(sql`${reminder.sentAt} IS NOT NULL`, lte(reminder.sendAt, new Date(now - AHEAD - DAY))));
+}
+
+// forgetOld runs with the daily clean-up: a reminder past the window the
+// Studio could send it again in (12 hours late, plus a day) goes, sent or
+// not, and so do the counts of months before the last one. Nothing piles up.
+export async function forgetOld(env: Cloudflare.Env, now = Date.now()) {
+	const lastMonth = monthOf(new Date(now).setUTCDate(0));
+	await env.DB.batch([
+		env.DB.prepare("DELETE FROM reminder WHERE send_at < ?").bind(now - LATE - DAY),
+		env.DB.prepare("DELETE FROM reminder_month WHERE month < ?").bind(lastMonth),
+	]);
 }

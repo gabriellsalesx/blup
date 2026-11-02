@@ -60,6 +60,7 @@ var reminders struct {
 	pushed   string
 	pushedAt time.Time
 	failedAt time.Time
+	limit    int // the plan's reminder e-mails, from the last answer
 }
 
 // startReminders checks the events every half minute. A reminder missed
@@ -171,14 +172,17 @@ func pushMail(list []blupcloud.Reminder, now time.Time) {
 		fmt.Fprintf(h, "%s %d\n", r.ID, r.At)
 	}
 	sum := hex.EncodeToString(h.Sum(nil))
-	if sum == reminders.pushed && now.Sub(reminders.pushedAt) < 6*time.Hour || now.Sub(reminders.failedAt) < 5*time.Minute {
+	// Unchanged, or a plan without e-mails (Free, Pro): asked again only
+	// every 6 hours, so nothing goes up for nothing.
+	recent := now.Sub(reminders.pushedAt) < 6*time.Hour
+	if recent && (sum == reminders.pushed || reminders.limit == 0) || now.Sub(reminders.failedAt) < 5*time.Minute {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	switch _, err := app.PushReminders(ctx, list); {
+	switch u, err := app.PushReminders(ctx, list); {
 	case err == nil:
-		reminders.pushed, reminders.pushedAt = sum, now
+		reminders.pushed, reminders.pushedAt, reminders.limit = sum, now, u.Limit
 	case errors.Is(err, blupcloud.ErrSignedOut):
 		reminders.pushed = "" // goes as soon as the person signs in
 	default:
@@ -204,7 +208,7 @@ func (s *Studio) SetNotifications(on bool) error {
 		return err
 	}
 	reminders.pushMu.Lock()
-	reminders.pushed, reminders.failedAt = "", time.Time{}
+	reminders.pushed, reminders.failedAt, reminders.pushedAt = "", time.Time{}, time.Time{}
 	reminders.pushMu.Unlock()
 	if reminders.ok {
 		go s.remind(time.Now())
