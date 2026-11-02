@@ -13,7 +13,7 @@
   import { Prec } from "@codemirror/state";
   import { undo, redo, undoDepth, redoDepth } from "@codemirror/commands";
   import { undoHandlers } from "./undo";
-  import { tables } from "./table";
+  import { tableFrom, tables } from "./table";
   import { toast } from "./toast.svelte";
   import ContextMenu, { type MenuEntry } from "./ContextMenu.svelte";
   import NotePicker from "./NotePicker.svelte";
@@ -414,7 +414,7 @@
     const at = view.state.selection.main.head;
     setTimeout(() => {
       let best: HTMLElement | null = null;
-      for (const el of host.querySelectorAll<HTMLElement>(".cm-md-table")) if ((el as any).cmWidget?.from <= at) best = el;
+      for (const el of host.querySelectorAll<HTMLElement>(".cm-md-table")) { const from = tableFrom(el); if (from !== undefined && from <= at) best = el; }
       best?.querySelector<HTMLElement>('[data-r="1"][data-c="0"]')?.focus();
     }, 30);
   }

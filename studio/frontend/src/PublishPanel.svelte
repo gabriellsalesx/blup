@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
-  import { CurrentDomain, SetDomain, CheckDomain, RemoveDomain, Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, CheckSiteSlug, SyncStatus, Sync, SyncRemote, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { CurrentDomain, SetDomain, CheckDomain, RemoveDomain, Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, CheckSiteSlug, SyncStatus, Sync, SyncRemote, SetSyncRemote, OpenNewGitHubRepo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, Target as Dest, SyncInfo, DomainStatus, BlupAccount } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Account } from "../bindings/github.com/gabriellsalesx/blup/internal/deploy/cfpages/models";
   import type { SlugCheck } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
@@ -15,6 +15,7 @@
   import { t } from "./i18n";
   import { toast } from "./toast.svelte";
   import CloudAccount from "./CloudAccount.svelte";
+  import BlupDomain from "./BlupDomain.svelte";
   import Choice from "./ui/Choice.svelte";
 
   // Two screens in one: publishing the site (where it goes, then its own
@@ -84,7 +85,7 @@
   const removeDomain = () => domainRun(async () => { await RemoveDomain(); domainInput = ""; toast(t.toast.domainRemoved); }, true);
   async function copyRec(i: number, v: string) { await Clipboard.SetText(v); copiedRec = i; setTimeout(() => (copiedRec = -1), 1500); }
 
-  const off = Events.On("progress", (ev: any) => { log.push(ev.data as Line); });
+  const off = Events.On("progress", (ev) => { log.push(ev.data); });
   onDestroy(() => off());
 
   async function load() {
@@ -165,6 +166,13 @@
       live = await Publish();
       toast(t.toast.published);
     } catch (e) { error = msg(e); toast(t.toast.publishFailed, { kind: "error" }); } finally { publishing = false; }
+  }
+
+  // Blup's GitHub key reaches only the repositories picked for it and
+  // cannot create them: GitHub's form opens filled in.
+  const gr = t.ghrepo;
+  async function newRepo(kind: "site" | "notes") {
+    try { await OpenNewGitHubRepo(kind, target?.repo ?? ""); } catch (e) { error = msg(e); }
   }
 
   let ghKey = $state("");
@@ -254,12 +262,14 @@
             <label class="field"><span>{p.project}</span><input type="text" bind:value={target.project} /><small>{p.projectHelp}</small></label>
           {:else}
             <label class="field"><span>{p.repo}</span><input type="text" bind:value={target.repo} /><small>{p.repoHelp}</small></label>
+            <small class="muted">{gr.siteHelp} <button class="link" onclick={() => newRepo("site")}>{gr.create}</button></small>
           {/if}
         {:else if !howTo}
           <p class="muted">{target.provider === "cloudflare" ? p.cfNeeds : p.ghNeeds}</p>
           <div class="actions"><button class="btn" onclick={() => (howTo = true)}>{p.connectAccount}</button></div>
         {:else}
           <ol class="steps">
+            {#if target.provider === "github"}<li>{gr.siteHelp} <button class="add" disabled={!target.repo} onclick={() => newRepo("site")}>{gr.create} <External size={14} /></button></li>{/if}
             <li>{p.step1} <button class="add" onclick={() => OpenKeyPage(target!.provider)}>{p.openForm} <External size={14} /></button></li>
             <li>{target.provider === "cloudflare" ? p.step2cf : p.step2gh}</li>
             <li>{p.step3}</li>
@@ -292,7 +302,12 @@
       </section>
     {/if}
 
-    <!-- The own domain comes once the site is online (on Blup Cloud, later). -->
+    <!-- The own domain on Blup Cloud (Max and Ultra), once the site is there. -->
+    {#if target.provider === "blup" && cloud?.signedIn && cloud.sitesMax !== 0 && (live || target.slugFixed)}
+      <BlupDomain slug={target.slug} />
+    {/if}
+
+    <!-- The own domain on GitHub or Cloudflare comes once the site is online. -->
     {#if target.provider && target.provider !== "blup" && (live || domain)}
     <section class="card">
       <h2>{dm.title}</h2>
@@ -363,6 +378,7 @@
       {:else if remote === "github" && !conn.github}
         <p class="muted">{p.syncNeedsGitHub}</p>
         <ol class="steps">
+          <li>{gr.notesHelp} <button class="add" onclick={() => newRepo("notes")}>{gr.create} <External size={14} /></button></li>
           <li>{p.step1} <button class="add" onclick={() => OpenKeyPage("github")}>{p.openForm} <External size={14} /></button></li>
           <li>{p.step2gh}</li>
           <li>{p.step3}</li>
@@ -373,6 +389,7 @@
         </div>
       {:else if remote === "github"}
         <p>{p.syncHelp}</p>
+        <small class="muted">{gr.notesHelp} <button class="link" onclick={() => newRepo("notes")}>{gr.create}</button></small>
       {/if}
       {#if canSync}
         {#if sync}

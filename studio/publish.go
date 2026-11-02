@@ -202,3 +202,54 @@ func (s *Studio) RemoveDomain() error {
 	defer cancel()
 	return app.RemoveDomain(ctx, site)
 }
+
+// OpenNewGitHubRepo opens GitHub's "new repository" form filled in for the
+// site ("site", named name) or its notes ("notes"): Blup's key is limited
+// to chosen repositories and cannot create them.
+func (s *Studio) OpenNewGitHubRepo(kind, name string) error {
+	site, err := s.current()
+	if err != nil {
+		return err
+	}
+	link := app.GitHubNewRepoLink(site, kind, name)
+	if link == "" {
+		return errors.New("invalid repository name")
+	}
+	s.OpenURL(link)
+	return nil
+}
+
+// BlupDomain is the own domain of the open site on Blup Cloud (the cloud
+// checks the DNS again) and whether the plan includes it.
+func (s *Studio) BlupDomain() (app.BlupDomain, error) {
+	site, err := s.current()
+	if err != nil {
+		return app.BlupDomain{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	return app.LoadBlupDomain(ctx, site)
+}
+
+// SetBlupDomain links a domain to the open site on Blup Cloud, or checks
+// the one linked again.
+func (s *Studio) SetBlupDomain(hostname string) (app.BlupDomain, error) {
+	site, err := s.current()
+	if err != nil {
+		return app.BlupDomain{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	return app.SetBlupDomain(ctx, site, hostname)
+}
+
+// RemoveBlupDomain unlinks the open site's own domain on Blup Cloud.
+func (s *Studio) RemoveBlupDomain() (app.BlupDomain, error) {
+	site, err := s.current()
+	if err != nil {
+		return app.BlupDomain{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	return app.RemoveBlupDomain(ctx, site)
+}

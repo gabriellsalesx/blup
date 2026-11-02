@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -27,31 +28,53 @@ import (
 // SiteTopic marks the private notes repositories of Blup sites.
 const SiteTopic = "blup-site"
 
-// sharedSite is what of blup.toml travels with the notes.
+// sharedSite is what of blup.toml travels with the notes. Where the site is
+// published (Deploy: provider, accounts, project) and its feedback
+// repository are not in it: they stay in this computer's blup.toml, so
+// whoever can write to the notes cannot redirect another computer's
+// publishing. Files written by older versions carry them; they are
+// ignored.
 type sharedSite struct {
-	Version     int             `toml:"version"`
-	Title       string          `toml:"title"`
-	Description string          `toml:"description"`
-	Author      string          `toml:"author"`
-	Lang        string          `toml:"lang"`
-	Model       string          `toml:"model"`
-	Kind        string          `toml:"kind,omitempty"` // "notes" for a vault of notes
-	Domain      string          `toml:"domain,omitempty"`
-	Deploy      config.Deploy   `toml:"deploy"`
-	Feedback    config.Feedback `toml:"feedback,omitempty"`
-	Cookies     config.Cookies  `toml:"cookies,omitempty"`
+	Version     int    `toml:"version"`
+	Title       string `toml:"title"`
+	Description string `toml:"description"`
+	Author      string `toml:"author"`
+	Lang        string `toml:"lang"`
+	Model       string `toml:"model"`
+	Kind        string `toml:"kind,omitempty"` // "notes" for a vault of notes
+	Domain      string `toml:"domain,omitempty"`
+	// Translations: the site's other languages. nil (a file from an older
+	// version, without the key) keeps this computer's.
+	Translations *[]string      `toml:"translations"`
+	Cookies      config.Cookies `toml:"cookies,omitempty"`
 }
 
 func shareOf(s *config.Site) sharedSite {
+	langs := s.OtherLangs()
+	if langs == nil {
+		langs = []string{}
+	}
 	return sharedSite{
 		Version: config.SiteVersion, Title: s.Title, Description: s.Description, Author: s.Author, Lang: s.Lang,
-		Model: s.Model, Kind: s.Kind, Domain: s.Domain, Deploy: s.Deploy, Feedback: s.Feedback, Cookies: s.Cookies,
+		Model: s.Model, Kind: s.Kind, Domain: s.Domain, Translations: &langs, Cookies: s.Cookies,
 	}
 }
 
+// apply puts settings from another computer on s. Deploy and Feedback
+// are never taken from there.
 func (sh sharedSite) apply(s *config.Site) {
 	s.Title, s.Description, s.Author, s.Lang, s.Model, s.Kind = sh.Title, sh.Description, sh.Author, sh.Lang, sh.Model, sh.Kind
-	s.Domain, s.Deploy, s.Feedback, s.Cookies = sh.Domain, sh.Deploy, sh.Feedback, sh.Cookies
+	s.Domain, s.Cookies = sh.Domain, sh.Cookies
+	if sh.Translations != nil {
+		// Only known languages (they name folders and mount patterns).
+		var langs []string
+		for _, l := range *sh.Translations {
+			if slices.Contains(config.SiteLangs, l) && l != s.Lang && !slices.Contains(langs, l) {
+				langs = append(langs, l)
+			}
+		}
+		s.Translations = langs
+	}
 }
 
 func parseShared(b []byte) (sharedSite, error) {
@@ -133,7 +156,10 @@ func FindCloudSites(ctx context.Context) ([]CloudSite, error) {
 	)
 	sem := make(chan struct{}, 6)
 	for _, r := range repos {
-		if !r.Private || !hasTopic(r.Topics, SiteTopic) {
+		// The topic needs Administration, which keys limited to chosen
+		// repositories don't have: a private "-notas" repository is
+		// looked at too (only its .blup/site.toml decides).
+		if !r.Private || !(hasTopic(r.Topics, SiteTopic) || notesRepoName(r.Name)) {
 			continue
 		}
 		wg.Add(1)

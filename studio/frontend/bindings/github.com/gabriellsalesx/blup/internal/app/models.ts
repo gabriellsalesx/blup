@@ -3,7 +3,19 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as blupcloud$0 from "../blupcloud/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as config$0 from "../config/models.js";
+
+/**
+ * AIConsent is what the person accepted: their notes' text may go to
+ * OpenRouter, to Blup Cloud.
+ */
+export interface AIConsent {
+    "openrouter": boolean;
+    "blup": boolean;
+}
 
 /**
  * AIQuota is how much of the month's AI allowance was used (Percent, 0 to
@@ -41,6 +53,12 @@ export interface Attachment {
      * notes that point to it
      */
     "uses": string[] | null;
+
+    /**
+     * Risky: a program or a script (see RiskyAttachment), which opens only
+     * after the Studio asks.
+     */
+    "risky": boolean;
 }
 
 /**
@@ -127,6 +145,34 @@ export interface BlupAccount {
      * computer, not typed here) or "ready".
      */
     "notes": string;
+}
+
+/**
+ * BlupDomain is the own domain of a site on Blup Cloud.
+ */
+export interface BlupDomain {
+    /**
+     * Available: the account's plan includes own domains (it comes from
+     * the cloud, never from the window).
+     */
+    "available": boolean;
+
+    /**
+     * Published: the site is on Blup Cloud (a domain is linked to a site
+     * that exists there).
+     */
+    "published": boolean;
+
+    /**
+     * Domain is nil when the site has none.
+     */
+    "domain": blupcloud$0.DomainInfo | null;
+
+    /**
+     * Apex: Domain is a root domain (meusite.com.br): its DNS must accept
+     * a CNAME at the root (CNAME flattening or ALIAS).
+     */
+    "apex": boolean;
 }
 
 /**
@@ -281,6 +327,7 @@ export interface DeleteChoice {
     "site": boolean;
     "notes": boolean;
     "published": boolean;
+    "blupSite": boolean;
     "syncRepo": boolean;
     "feedback": boolean;
 }
@@ -772,8 +819,23 @@ export interface SiteParts {
      * "Cloudflare Pages: projeto" or "GitHub Pages: dono/repo"
      */
     "published": string;
+
+    /**
+     * its address on Blup Cloud, when it is published there
+     */
+    "blupSite": string;
     "syncRepo": string;
     "feedback": string;
+}
+
+/**
+ * SiteTranslation is what the translation of the whole site did: notes
+ * translated, and password protected ones left out (they don't go to an AI
+ * in the cloud).
+ */
+export interface SiteTranslation {
+    "done": number;
+    "skipped": number;
 }
 
 /**

@@ -17,6 +17,7 @@ import (
 
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
+	"github.com/gabriellsalesx/blup/internal/i18n"
 	"github.com/gabriellsalesx/blup/internal/narrate"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
 	"github.com/gabriellsalesx/blup/internal/scaffold"
@@ -200,28 +201,65 @@ func noteTitle(n obsidian.Note, rel string) string {
 	return strings.TrimSuffix(path.Base(rel), path.Ext(rel))
 }
 
-// translator is the AI that translates: Blup Cloud when the plan includes
-// AI, else the OpenRouter key saved.
-func translator(ctx context.Context) (*translate.Client, error) {
+// translator is the AI in the cloud the person chose to translate
+// (provider "openrouter" or "blup"): never picked by itself, and only once
+// the person accepted sending the notes there (needConsent).
+func translator(ctx context.Context, provider string) (*translate.Client, error) {
 	creds, err := config.LoadCredentials()
 	if err != nil {
 		return nil, err
 	}
-	if creds.BlupToken != "" && blupAIIncluded(ctx) {
+	switch provider {
+	case AIBlup:
+		if creds.BlupToken == "" {
+			return nil, errors.New(describe(blupcloud.ErrSignedOut))
+		}
+		if !blupAIIncluded(ctx) {
+			return nil, errors.New(byLangCode(string(i18n.Current()),
+				"O seu plano do Blup Cloud não inclui IA. Escolha outro jeito de traduzir nas configurações de IA.",
+				"Your Blup Cloud plan has no AI. Pick another way to translate in the AI settings.",
+				"Tu plan de Blup Cloud no incluye IA. Elige otra forma de traducir en la configuración de IA."))
+		}
+		if err := needConsent(AIBlup); err != nil {
+			return nil, err
+		}
 		return &translate.Client{Key: creds.BlupToken, BaseURL: blupcloud.AIBaseURL(), Blup: true}, nil
-	}
-	if creds.OpenRouterToken != "" {
+	case AIOpenRouter:
+		if creds.OpenRouterToken == "" {
+			return nil, ErrNoAIKey
+		}
+		if err := needConsent(AIOpenRouter); err != nil {
+			return nil, err
+		}
 		return &translate.Client{Key: creds.OpenRouterToken, BaseURL: cmp.Or(openRouterURL, narrate.DefaultBaseURL)}, nil
 	}
-	return nil, ErrNoAIKey
+	return nil, ErrNoProvider
+}
+
+// errLockedCloud: a password protected post does not go to an AI in the
+// cloud (the translation on the computer still works).
+func errLockedCloud(site *config.Site) error {
+	return errors.New(byLang(site,
+		"Posts com senha não vão para a IA na nuvem. Use a tradução no computador.",
+		"Password protected posts don't go to the AI in the cloud. Use the translation on the computer.",
+		"Los posts con contraseña no van a la IA en la nube. Usa la traducción en la computadora."))
 }
 
 // TranslateNote writes (or writes again) the translation of the note at
-// rel into lang, and returns its path. The site then publishes lang too.
-func TranslateNote(ctx context.Context, site *config.Site, rel, lang string, progress func(done, total int)) (string, error) {
+// rel into lang with the AI in the cloud chosen (provider), and returns
+// its path. The site then publishes lang too.
+func TranslateNote(ctx context.Context, site *config.Site, rel, lang, provider string, progress func(done, total int)) (string, error) {
 	if lang == site.Lang || !slices.Contains(config.SiteLangs, lang) {
 		return "", errors.New("translate: unknown language " + lang)
 	}
+	c, err := translator(ctx, provider)
+	if err != nil {
+		return "", err
+	}
+	return translateNoteWith(ctx, c, site, rel, lang, progress)
+}
+
+func translateNoteWith(ctx context.Context, c *translate.Client, site *config.Site, rel, lang string, progress func(done, total int)) (string, error) {
 	original, _ := NoteOrigin(site, rel)
 	op, err := notesPath(site, original)
 	if err != nil {
@@ -231,9 +269,8 @@ func TranslateNote(ctx context.Context, site *config.Site, rel, lang string, pro
 	if err != nil {
 		return "", err
 	}
-	c, err := translator(ctx)
-	if err != nil {
-		return "", err
+	if noteLocked(n) {
+		return "", errLockedCloud(site)
 	}
 	title, err := c.Text(ctx, noteTitle(n, original), site.Lang, lang, nil)
 	if err != nil {
@@ -629,33 +666,59 @@ func translationName(site *config.Site, dir, name, original string) (string, err
 	}
 }
 
+// SiteTranslation is what the translation of the whole site did: notes
+// translated, and password protected ones left out (they don't go to an AI
+// in the cloud).
+type SiteTranslation struct {
+	Done    int `json:"done"`
+	Skipped int `json:"skipped"`
+}
+
 // TranslateSite translates every note of the site into lang that has no
-// translation yet, or an out of date one. progress gets the notes done of
-// total and the note being translated. It stops at the first error (the
-// notes done stay).
-func TranslateSite(ctx context.Context, site *config.Site, lang string, progress func(done, total int, note string)) (int, error) {
+// translation yet, or an out of date one, with the AI in the cloud chosen
+// (provider). Password protected posts are left out and counted.
+// progress gets the notes done of total and the note being translated. It
+// stops at the first error (the notes done stay).
+func TranslateSite(ctx context.Context, site *config.Site, lang, provider string, progress func(done, total int, note string)) (SiteTranslation, error) {
+	var res SiteTranslation
+	if lang == site.Lang || !slices.Contains(config.SiteLangs, lang) {
+		return res, errors.New("translate: unknown language " + lang)
+	}
 	notes, err := siteOriginals(site)
 	if err != nil {
-		return 0, err
+		return res, err
 	}
 	var todo []string
 	for _, rel := range notes {
-		if translationOf(site, rel, lang) != "done" {
-			todo = append(todo, rel)
+		if translationOf(site, rel, lang) == "done" {
+			continue
 		}
+		if n, err := ReadSiteNote(site, rel); err == nil && noteLocked(n) {
+			res.Skipped++
+			continue
+		}
+		todo = append(todo, rel)
+	}
+	if len(todo) == 0 {
+		return res, addSiteLang(site, lang)
+	}
+	c, err := translator(ctx, provider)
+	if err != nil {
+		return res, err
 	}
 	for i, rel := range todo {
 		if progress != nil {
 			progress(i, len(todo), rel)
 		}
-		if _, err := TranslateNote(ctx, site, rel, lang, nil); err != nil {
-			return i, err
+		if _, err := translateNoteWith(ctx, c, site, rel, lang, nil); err != nil {
+			return res, err
 		}
+		res.Done++
 	}
 	if progress != nil {
 		progress(len(todo), len(todo), "")
 	}
-	return len(todo), addSiteLang(site, lang)
+	return res, addSiteLang(site, lang)
 }
 
 // TranslationTodo lists the site's notes without an up to date

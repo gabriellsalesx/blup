@@ -18,7 +18,16 @@ type Issue struct {
 }
 
 // EnableIssues turns issues on in a repository (a no-op when they are on).
+// Changing it needs Administration, which Blup's key does not ask for, so
+// the repository is read first: a repository created on GitHub has issues
+// on already.
 func (c *Client) EnableIssues(ctx context.Context, owner, repo string) error {
+	var r struct {
+		HasIssues bool `json:"has_issues"`
+	}
+	if _, err := c.do(ctx, http.MethodGet, repoPath(owner, repo), nil, &r); err == nil && r.HasIssues {
+		return nil
+	}
 	_, err := c.do(ctx, http.MethodPatch, repoPath(owner, repo), map[string]any{"has_issues": true}, nil)
 	return err
 }

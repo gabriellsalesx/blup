@@ -32,10 +32,82 @@ export type El = {
 };
 export type Doc = { elements: El[]; rest: Record<string, unknown> };
 
+// A drawing may come from anywhere (another computer, through sync):
+// nothing in it is trusted. Each element is checked from scratch: what can
+// be mended is (a color, a stroke width, a number that isn't one), what
+// can't is left out (an unknown kind, a line without its points, an image
+// without its file, a repeated id). The keys this file doesn't know stay
+// as they are, so writing it back keeps them.
+export const LIMITS = { elements: 20000, points: 20000, coord: 1e7, size: 1e6 } as const;
+const KINDS: readonly Kind[] = ["rect", "ellipse", "diamond", "arrow", "line", "pen", "text", "image"];
+const DASHES: readonly Dash[] = ["solid", "dashed", "dotted"];
+const FILL_STYLES: readonly string[] = ["tint", "solid"];
+
+type Obj = Record<string, unknown>;
+const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
+const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T => typeof v === "string" && (list as readonly string[]).includes(v);
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const clamp = (v: number, lim: number) => Math.min(Math.max(v, -lim), lim);
+// A position or a (signed) size: finite and within the limits, else 0.
+const num = (v: unknown, lim: number) => (finite(v) ? clamp(v, lim) : 0);
+
+// A line's points: pairs of finite numbers; others are dropped.
+function toPoints(v: unknown): [number, number][] {
+  if (!Array.isArray(v)) return [];
+  const out: [number, number][] = [];
+  for (const p of v) {
+    if (out.length >= LIMITS.points) break;
+    if (Array.isArray(p) && p.length >= 2 && finite(p[0]) && finite(p[1])) out.push([clamp(p[0], LIMITS.coord), clamp(p[1], LIMITS.coord)]);
+  }
+  return out;
+}
+
+function toEl(v: unknown): El | null {
+  if (!isObj(v) || typeof v.id !== "string" || !v.id || !oneOf(KINDS, v.type)) return null;
+  const type = v.type;
+  if (type === "image" && (typeof v.file !== "string" || !v.file)) return null;
+  const e: El = {
+    ...v,
+    id: v.id,
+    type,
+    x: num(v.x, LIMITS.coord),
+    y: num(v.y, LIMITS.coord),
+    w: num(v.w, LIMITS.size),
+    h: num(v.h, LIMITS.size),
+    stroke: typeof v.stroke === "string" ? v.stroke : "ink",
+    fill: typeof v.fill === "string" ? v.fill : "none",
+    width: finite(v.width) && v.width >= 0 ? Math.min(v.width, 100) : 2,
+    dash: oneOf(DASHES, v.dash) ? v.dash : "solid",
+  };
+  if (type === "arrow" || type === "line" || type === "pen") {
+    const pts = toPoints(v.points);
+    // A line or an arrow goes from a point to another; a stroke may be a dot.
+    if (pts.length < (type === "pen" ? 1 : 2)) return null;
+    e.points = pts;
+  } else delete e.points;
+  if ("fillStyle" in e && !oneOf(FILL_STYLES, e.fillStyle)) delete e.fillStyle;
+  if ("text" in e && typeof e.text !== "string") delete e.text;
+  if (type === "text" && e.text === undefined) e.text = "";
+  if ("size" in e && !(finite(e.size) && e.size > 0)) delete e.size;
+  else if (e.size !== undefined) e.size = Math.min(e.size, 10000);
+  if ("file" in e && typeof e.file !== "string") delete e.file;
+  return e;
+}
+
 export function parseDraw(text: string): Doc {
-  const j = text.trim() ? JSON.parse(text) : {};
-  const { elements, version: _v, ...rest } = j ?? {};
-  return { elements: (Array.isArray(elements) ? elements : []).filter((e: any) => e && typeof e.id === "string" && typeof e.type === "string"), rest };
+  const j: unknown = text.trim() ? JSON.parse(text) : {};
+  if (!isObj(j)) return { elements: [], rest: {} };
+  const { elements, version: _v, ...rest } = j;
+  const seen = new Set<string>();
+  const out: El[] = [];
+  for (const raw of Array.isArray(elements) ? elements : []) {
+    const e = toEl(raw);
+    if (!e || seen.has(e.id)) continue;
+    if (out.length >= LIMITS.elements) break;
+    seen.add(e.id);
+    out.push(e);
+  }
+  return { elements: out, rest };
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;

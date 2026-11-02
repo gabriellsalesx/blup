@@ -2,8 +2,15 @@
 // running executable with it, keeping the previous one for rollback.
 //
 // Releases are made by GoReleaser (.goreleaser.yaml): one archive per
-// OS/arch named blup_<version>_<os>_<arch>.tar.gz (.zip on Windows) and a
-// checksums.txt with their SHA-256.
+// OS/arch named blup_<version>_<os>_<arch>.tar.gz (.zip on Windows), a
+// checksums.txt with their SHA-256 and checksums.txt.sig, an Ed25519
+// signature over the exact bytes of checksums.txt made with the owner's
+// release key (scripts/sign-release). An update needs all three: the
+// signature must match a key built into this binary (keys.go), and only
+// then is the archive checked against the signed checksums. The archive
+// names carry the version, so an old signed release cannot be passed off
+// as a new one, and a version that is not newer than the running one is
+// refused.
 package update
 
 import (
@@ -13,7 +20,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -40,6 +49,20 @@ var (
 	ErrNotWritable = errors.New("cannot replace the blup executable here")
 	// ErrNoBackup means there is no previous version to go back to.
 	ErrNoBackup = errors.New("no previous version to restore")
+	// ErrSignature means checksums.txt.sig is missing or was not made with
+	// a release key built into this binary.
+	ErrSignature = errors.New("the release signature is missing or invalid")
+	// ErrNotNewer means the release is not newer than the running version
+	// (an attempt to go back to an older, possibly vulnerable, build).
+	ErrNotNewer = errors.New("the release is not newer than this version")
+)
+
+const (
+	sumsName = "checksums.txt"
+	sigName  = "checksums.txt.sig"
+	// maxDownload caps any file read from the network.
+	maxDownload = 512 << 20
+	maxSmall    = 1 << 20
 )
 
 // Release is a published version.
@@ -50,10 +73,21 @@ type Release struct {
 	assets  map[string]string
 }
 
-// Client talks to the GitHub API. Zero value works.
+// Client talks to the GitHub API. Apply needs Current set.
 type Client struct {
 	HTTP    *http.Client
 	BaseURL string // API base, default https://api.github.com (tests override)
+	// Current is the running version; Apply refuses anything not newer.
+	Current string
+	// Keys overrides the built-in release keys (tests only).
+	Keys []ed25519.PublicKey
+}
+
+func (c *Client) keys() []ed25519.PublicKey {
+	if c.Keys != nil {
+		return c.Keys
+	}
+	return PublicKeys()
 }
 
 func (c *Client) http() *http.Client {
@@ -169,37 +203,49 @@ func AssetName(version string) string {
 
 // Apply downloads rel for this system, verifies it and replaces the
 // executable at exe (usually os.Executable()). The old one stays next to it
-// as <exe>.old for Rollback.
+// as <exe>.old for Rollback. Order: version check, signature on
+// checksums.txt, then the archive's SHA-256 against the signed list.
 func (c *Client) Apply(ctx context.Context, rel Release, exe string) error {
+	if !Newer(rel.Version, c.Current) {
+		return fmt.Errorf("%w: %s (running %s)", ErrNotNewer, rel.Version, c.Current)
+	}
 	name := AssetName(rel.Version)
 	url, ok := rel.assets[name]
 	if !ok {
 		return ErrNoAsset
 	}
-	sumsURL, ok := rel.assets["checksums.txt"]
+	sumsURL, ok := rel.assets[sumsName]
 	if !ok {
-		return fmt.Errorf("%w: checksums.txt missing", ErrChecksum)
+		return fmt.Errorf("%w: %s missing", ErrChecksum, sumsName)
 	}
-	if !c.secure(url) || !c.secure(sumsURL) {
+	sigURL, ok := rel.assets[sigName]
+	if !ok {
+		return fmt.Errorf("%w: %s missing", ErrSignature, sigName)
+	}
+	if !c.secure(url) || !c.secure(sumsURL) || !c.secure(sigURL) {
 		return fmt.Errorf("%w: download not over HTTPS", ErrChecksum)
 	}
-	sums, err := c.get(ctx, sumsURL)
+	sums, err := c.get(ctx, sumsURL, maxSmall)
 	if err != nil {
 		return err
 	}
-	want := ""
-	sc := bufio.NewScanner(bytes.NewReader(sums))
-	for sc.Scan() {
-		if f := strings.Fields(sc.Text()); len(f) == 2 && f[1] == name {
-			want = f[0]
-		}
+	sig, err := c.get(ctx, sigURL, maxSmall)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrSignature, err)
 	}
-	archive, err := c.get(ctx, url)
+	if err := VerifyChecksums(sums, sig, c.keys()); err != nil {
+		return err
+	}
+	want, err := checksumFor(sums, name)
+	if err != nil {
+		return err
+	}
+	archive, err := c.get(ctx, url, maxDownload)
 	if err != nil {
 		return err
 	}
 	got := sha256.Sum256(archive)
-	if want == "" || hex.EncodeToString(got[:]) != want {
+	if hex.EncodeToString(got[:]) != want {
 		return ErrChecksum
 	}
 	bin, err := extract(name, archive)
@@ -207,6 +253,46 @@ func (c *Client) Apply(ctx context.Context, rel Release, exe string) error {
 		return err
 	}
 	return replace(exe, bin)
+}
+
+// VerifyChecksums checks that sig (base64 of an Ed25519 signature, as
+// written by scripts/sign-release) signs the exact bytes of sums with one
+// of keys.
+func VerifyChecksums(sums, sig []byte, keys []ed25519.PublicKey) error {
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(sig)))
+	if err != nil || len(raw) != ed25519.SignatureSize {
+		return fmt.Errorf("%w: malformed", ErrSignature)
+	}
+	for _, k := range keys {
+		if len(k) == ed25519.PublicKeySize && ed25519.Verify(k, sums, raw) {
+			return nil
+		}
+	}
+	return ErrSignature
+}
+
+// checksumFor finds name's SHA-256 in a GoReleaser checksums file. A name
+// listed twice, or a malformed hash, is refused.
+func checksumFor(sums []byte, name string) (string, error) {
+	want := ""
+	sc := bufio.NewScanner(bytes.NewReader(sums))
+	for sc.Scan() {
+		f := strings.Fields(sc.Text())
+		if len(f) != 2 || f[1] != name {
+			continue
+		}
+		if want != "" {
+			return "", fmt.Errorf("%w: %s listed twice", ErrChecksum, name)
+		}
+		if b, err := hex.DecodeString(f[0]); err != nil || len(b) != sha256.Size {
+			return "", ErrChecksum
+		}
+		want = strings.ToLower(f[0])
+	}
+	if want == "" {
+		return "", fmt.Errorf("%w: %s not listed", ErrChecksum, name)
+	}
+	return want, nil
 }
 
 // Rollback restores the executable saved by the last Apply.
@@ -296,7 +382,7 @@ func extract(name string, data []byte) ([]byte, error) {
 	}
 }
 
-func (c *Client) get(ctx context.Context, url string) ([]byte, error) {
+func (c *Client) get(ctx context.Context, url string, limit int64) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -309,7 +395,14 @@ func (c *Client) get(ctx context.Context, url string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GET %s: %s", url, resp.Status)
 	}
-	return io.ReadAll(resp.Body)
+	b, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(b)) > limit {
+		return nil, fmt.Errorf("GET %s: file too large", url)
+	}
+	return b, nil
 }
 
 // Cache remembers the last check so the network is asked at most once a day.

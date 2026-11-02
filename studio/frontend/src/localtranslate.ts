@@ -108,12 +108,12 @@ export function fromHTML(html: string, keep: Kept[]): string {
   s = s.replace(/\u0001(\d+)\u0002([^\u0003]*)\u0003([^]*)$/, function fix(_m: string, n: string, t: string, rest: string): string {
     const k = keep[+n];
     const tail = after(rest, k.lowerAfter);
-    return `${k.orig}${lower(t, k.lowerText)}]]` + tail.replace(/\u0001(\d+)\u0002([^\u0003]*)\u0003([^]*)$/, fix as any);
+    return `${k.orig}${lower(t, k.lowerText)}]]` + tail.replace(/\u0001(\d+)\u0002([^\u0003]*)\u0003([^]*)$/, fix);
   });
   s = s.replace(/\u0004(\d+)\u0002([^\u0003]*)\u0003([^]*)$/, function fix(_m: string, n: string, t: string, rest: string): string {
     const k = keep[+n];
     const tail = after(rest, k.lowerAfter);
-    return `[${lower(t, k.lowerText)}${k.orig}` + tail.replace(/\u0004(\d+)\u0002([^\u0003]*)\u0003([^]*)$/, fix as any);
+    return `[${lower(t, k.lowerText)}${k.orig}` + tail.replace(/\u0004(\d+)\u0002([^\u0003]*)\u0003([^]*)$/, fix);
   });
   // Kept parts exactly as they were, with the spaces they had around (the
   // engine sometimes moves a space to the other side).
@@ -123,7 +123,7 @@ export function fromHTML(html: string, keep: Kept[]): string {
     return `${k.before && !start ? " " : ""}${k.orig}${k.after && !end ? " " : ""}\u0006${n}\u0006`;
   });
   s = s.replace(/\u0006(\d+)\u0006([^]*)$/, function fix(_m: string, n: string, rest: string): string {
-    return after(rest, keep[+n].lowerAfter).replace(/\u0006(\d+)\u0006([^]*)$/, fix as any);
+    return after(rest, keep[+n].lowerAfter).replace(/\u0006(\d+)\u0006([^]*)$/, fix);
   });
   return s.replace(/ {2,}/g, " ");
 }
@@ -190,9 +190,14 @@ export async function translateText(text: string, from: string, to: string): Pro
 }
 
 
-/** Whether notes are translated on the computer (installed, and chosen). */
+/**
+ * Whether notes are translated on the computer: installed, and chosen (or
+ * nothing chosen yet). Otherwise the AI in the cloud the person picked
+ * ("openrouter" or "blup"); the older "cloud" let the Studio pick, so it
+ * goes to Go, which asks the person to choose.
+ */
 export async function useLocal(): Promise<boolean> {
-  if (look.translateAI === "cloud") return false;
+  if (look.translateAI !== "local" && look.translateAI !== "") return false;
   return (await LocalTranslate().catch(() => null))?.installed ?? false;
 }
 

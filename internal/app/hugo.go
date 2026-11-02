@@ -95,6 +95,12 @@ func build(ctx context.Context, site *config.Site, baseURL string) (string, erro
 		os.RemoveAll(out)
 		return "", err
 	}
+	// Attachments used only by protected posts (now inside their
+	// ciphertext) or only inside comments are not published.
+	if _, err := lock.Prune(out); err != nil {
+		os.RemoveAll(out)
+		return "", err
+	}
 	ui.OK(i18n.T("build.done"))
 	searchIndex(ctx, out)
 	// Last: the offline copy lists every file of the finished site.
@@ -112,8 +118,13 @@ func encryptLocked(ctx context.Context, site *config.Site, dir string) error {
 		return err
 	}
 	if posts == 0 {
-		// The (empty) manifest is internal: never publish it.
-		return lock.Discard(dir)
+		// The (empty) manifest is internal: never publish it. No manifest
+		// entry must also mean no protected text: fail closed if a marker
+		// is there anyway.
+		if err := lock.Discard(dir); err != nil {
+			return err
+		}
+		return lock.Check(dir)
 	}
 	pw := PostPassword(site)
 	if needsGlobal && pw == "" {
@@ -133,6 +144,9 @@ func encryptLocked(ctx context.Context, site *config.Site, dir string) error {
 		return err
 	})
 	if err != nil {
+		return err
+	}
+	if err := lock.Check(dir); err != nil {
 		return err
 	}
 	ui.OK(i18n.T("lock.done", n))

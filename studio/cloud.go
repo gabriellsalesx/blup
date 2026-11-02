@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
+	"sync/atomic"
+	"time"
 
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
@@ -103,11 +106,82 @@ func (s *Studio) BlupLoginCancel() {
 	s.login, s.cancel = nil, nil
 }
 
-// BlupSignOut leaves Blup Cloud on this computer.
-func (s *Studio) BlupSignOut() error {
+// BlupSignOut leaves Blup Cloud on this computer. The reminders waiting
+// there are cancelled first; offline, that is done at the next start or
+// sign in, and pending is true (the window says so).
+func (s *Studio) BlupSignOut() (pending bool, err error) {
 	s.startLive(nil)
-	return app.BlupSignOut(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	pending, err = app.BlupSignOut(ctx)
+	// The list went empty in the cloud: the next session sends it again.
+	reminders.pushMu.Lock()
+	reminders.pushed, reminders.pushedAt = "", time.Time{}
+	reminders.pushMu.Unlock()
+	return pending, err
 }
+
+// cloudStartup runs as the Studio starts: a sign out left half done offline
+// is finished, and with notifications off and no notifications on this
+// computer (so no reminder loop), the cancelling of the e-mails is tried
+// until it reaches Blup Cloud.
+func (s *Studio) cloudStartup() {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	if app.RetrySignOut(ctx) {
+		// Signed in again meanwhile: the empty list may have landed after
+		// this session's reminders, which go again.
+		reminders.pushMu.Lock()
+		reminders.pushed, reminders.pushedAt = "", time.Time{}
+		reminders.pushMu.Unlock()
+	}
+	cancel()
+	s.startReminders() // waits for the one already starting
+	if !reminders.ok && !s.Prefs().Notifications {
+		s.cancelMailUntilDone()
+	}
+}
+
+// cancelling is true while cancelMailUntilDone runs (one at a time).
+var cancelling atomic.Bool
+
+// cancelMailUntilDone cancels the reminder e-mails waiting in Blup Cloud
+// (notifications off) and, offline, tries again every few minutes while
+// they stay off. With the reminder loop running it is not needed: the loop
+// sends the empty list itself and tries again.
+func (s *Studio) cancelMailUntilDone() {
+	if !cancelling.CompareAndSwap(false, true) {
+		return
+	}
+	defer cancelling.Store(false)
+	retryCancel(func() bool { return !s.Prefs().Notifications }, func(ctx context.Context) error {
+		_, err := app.PushReminders(ctx, nil)
+		return err
+	}, cancelRetry, time.Sleep)
+}
+
+// cancelRetry is the wait between tries of cancelling offline.
+const cancelRetry = 5 * time.Minute
+
+// retryCancel calls push until it reaches Blup Cloud (or there is no
+// session: nothing to cancel), waiting between tries, while stillOff.
+func retryCancel(stillOff func() bool, push func(context.Context) error, wait time.Duration, sleep func(time.Duration)) {
+	for stillOff() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		err := push(ctx)
+		cancel()
+		if err == nil || errors.Is(err, blupcloud.ErrSignedOut) {
+			return
+		}
+		sleep(wait)
+	}
+}
+
+// AIConsent is what the person accepted sending to an AI in the cloud.
+func (s *Studio) AIConsent() app.AIConsent { return app.LoadAIConsent() }
+
+// SetAIConsent keeps the person's answer to "your note's text goes to
+// dest" ("openrouter" or "blup").
+func (s *Studio) SetAIConsent(dest string, ok bool) error { return app.SetAIConsent(dest, ok) }
 
 // OpenBlupCloud opens the account panel in the browser.
 func (s *Studio) OpenBlupCloud(page string) { s.OpenURL(blupcloud.BaseURL() + page) }

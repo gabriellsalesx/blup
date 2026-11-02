@@ -50,3 +50,34 @@ export function step(nodes: GNode[], edges: GEdge[], alpha: number, f: Forces = 
 
 // A node's size: bigger when more links reach it.
 export const radius = (n: GNode, scale = 1) => (4 + Math.min(14, Math.sqrt(n.degree) * 2.4)) * scale;
+
+// The graph's choices kept on this computer (localStorage), read back:
+// each one only when it has the kind of its default (a finite number, a
+// yes/no, a text), the groups only when each is a pair of texts, the open
+// sections only as yes/no. Anything else (an older version, a hand edit,
+// broken JSON) falls back to the default.
+export function readPrefs<T extends Record<string, unknown>>(defaults: T, raw: string | null): T {
+  let saved: unknown;
+  try { saved = JSON.parse(raw ?? "{}"); } catch { return structuredClone(defaults); }
+  const out = structuredClone(defaults);
+  if (typeof saved !== "object" || saved === null || Array.isArray(saved)) return out;
+  const s = saved as Record<string, unknown>;
+  const put = out as Record<string, unknown>;
+  for (const k of Object.keys(defaults)) {
+    if (!Object.hasOwn(s, k)) continue;
+    const d = defaults[k], v = s[k];
+    if (typeof d === "number") { if (typeof v === "number" && Number.isFinite(v)) put[k] = v; }
+    else if (typeof d === "string" || typeof d === "boolean") { if (typeof v === typeof d) put[k] = v; }
+    else if (Array.isArray(d)) {
+      // The only list: the color groups.
+      if (Array.isArray(v)) put[k] = v.flatMap((g: unknown) => {
+        if (typeof g !== "object" || g === null) return [];
+        const { match, color } = g as Record<string, unknown>;
+        return typeof match === "string" && typeof color === "string" ? [{ match, color }] : [];
+      });
+    } else if (typeof d === "object" && d !== null) {
+      if (typeof v === "object" && v !== null && !Array.isArray(v)) put[k] = Object.fromEntries(Object.entries(v).filter(([, b]) => typeof b === "boolean"));
+    }
+  }
+  return out;
+}

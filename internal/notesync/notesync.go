@@ -17,9 +17,10 @@
 //
 // Token permissions (fine-grained personal access token): Contents read and
 // write (blobs, trees, commits, refs, initializing an empty repository),
-// Metadata read (always granted), and Administration read and write only to
-// create the repository ([EnsureRepo]). With the OAuth Device Flow the
-// "repo" scope covers private repositories. Private repositories are free.
+// Metadata read (always granted), on the notes repository only. The key
+// has no Administration: the person creates the private repository on
+// GitHub (github.NewRepoURL) and gives it to the key; [EnsureRepo] still
+// creates it with an older key that can. Private repositories are free.
 package notesync
 
 import (

@@ -6,6 +6,7 @@
   import X from "@lucide/svelte/icons/x";
   import type { DBSchema } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import FieldInput from "./FieldInput.svelte";
+  import { isJson, type Json, type JsonProps } from "./db";
   import { t } from "./i18n";
 
   // A vault note's properties, like Obsidian's, and only these: when it was
@@ -15,16 +16,16 @@
   // A record of a database (database): its fields come after, each by its
   // column's kind.
   let { props, database, notes = [], onEdit, onNewOption, onOpenNote }: {
-    props: Record<string, any>; database?: DBSchema;
+    props: JsonProps; database?: DBSchema;
     notes?: { name: string; path: string }[];
-    onEdit: (key: string, value: any) => void;
+    onEdit: (key: string, value: Json) => void;
     onNewOption?: (key: string, value: string, color: string) => void;
     onOpenNote?: (path: string) => void;
   } = $props();
   const p = t.noteProps;
 
   const day = (v: unknown) => String(v ?? "").slice(0, 10);
-  const list = (v: any): string[] => (Array.isArray(v) ? v.map(String) : typeof v === "string" && v ? v.split(",").map((x) => x.trim()) : []).map((x) => x.replace(/^#/, "")).filter(Boolean);
+  const list = (v: Json | undefined): string[] => (Array.isArray(v) ? v.map(String) : typeof v === "string" && v ? v.split(",").map((x) => x.trim()) : []).map((x) => x.replace(/^#/, "")).filter(Boolean);
   const tags = $derived(list(props.tags));
 
   // Every tag of the vault, for the suggestions (read once).
@@ -79,7 +80,7 @@
   {#each database?.columns ?? [] as c (c.key)}
     <div class="prow">
       <span class="k">{c.name}</span>
-      <div class="v"><FieldInput column={c} value={props[c.key]} {notes} {onOpenNote} onChange={(v) => onEdit(c.key, v)} onNewOption={onNewOption ? (v, color) => onNewOption(c.key, v, color) : undefined} /></div>
+      <div class="v"><FieldInput column={c} value={props[c.key]} {notes} {onOpenNote} onChange={(v) => { if (isJson(v)) onEdit(c.key, v); }} onNewOption={onNewOption ? (v, color) => onNewOption(c.key, v, color) : undefined} /></div>
     </div>
   {/each}
 </section>

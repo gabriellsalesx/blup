@@ -1,10 +1,14 @@
 {{- /* Removes Obsidian comments (%% text %%, inline or over several lines)
 from rendered HTML: they are notes to the writer, hidden in Obsidian's
 reading view too. Code is kept as written: the first alternative consumes
-<pre>/<code> blocks whole, so a %% inside them never starts a comment. */ -}}
+<pre>/<code> blocks whole, so a %% inside them never starts or ends a
+comment. A "%%" left open hides the rest of the note, as in Obsidian. */ -}}
 {{- $h := string . -}}
 {{- if strings.Contains $h "%%" -}}
-  {{- $h = replaceRE `(?s)(<(?:pre|code)\b.*?</(?:pre|code)>)|%%.*?%%` "$1" $h -}}
+  {{- $h = replaceRE `(?s)(<(?:pre|code)\b.*?</(?:pre|code)>)|%%(?:<pre\b.*?</pre>|<code\b.*?</code>|.)*?(?:%%|\z)` "$1" $h -}}
+  {{- /* A comment opened inside a tag (an image's alt text) leaves it
+  cut: drop the piece so it does not swallow the page after it. */ -}}
+  {{- $h = replaceRE `<[^>]*\z` "" $h -}}
   {{- $h = replaceRE `<p>(?:\s|<br\s*/?>)*</p>` "" $h -}}
 {{- end -}}
 {{- return $h -}}

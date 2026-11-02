@@ -19,6 +19,8 @@ func init() {
 		knownError{update.ErrNoAsset, "update.err_asset"},
 		knownError{update.ErrNotWritable, "update.err_writable"},
 		knownError{update.ErrNoBackup, "update.err_backup"},
+		knownError{update.ErrSignature, "update.err_signature"},
+		knownError{update.ErrNotNewer, "update.err_not_newer"},
 	)
 }
 
@@ -82,7 +84,7 @@ func runUpdate(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	c := &update.Client{}
+	c := &update.Client{Current: Version}
 	var rel update.Release
 	if err := ui.Spin(ctx, i18n.T("update.checking"), func(ctx context.Context) error {
 		rel, err = c.Latest(ctx)

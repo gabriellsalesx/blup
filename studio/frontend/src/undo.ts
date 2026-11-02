@@ -8,7 +8,7 @@ export const undoHandlers = new Set<Handler>();
 
 export function installUndo() {
   const native = document.execCommand.bind(document);
-  document.execCommand = (cmd: string, ...rest: any[]) => {
+  document.execCommand = (cmd: string, ...rest: [showUI?: boolean, value?: string]) => {
     if (cmd === "undo" || cmd === "redo") {
       for (const h of undoHandlers) if (h(cmd)) return true;
     }

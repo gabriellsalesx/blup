@@ -133,6 +133,9 @@ func FinishBlupLogin(ctx context.Context, l *blupcloud.Login) (BlupAccount, erro
 	if err != nil {
 		return BlupAccount{}, errors.New(describe(err))
 	}
+	// A sign out left half done offline goes first: its empty list must
+	// not land after the reminders of this new session.
+	RetrySignOut(ctx)
 	creds, err := config.LoadCredentials()
 	if err != nil {
 		return BlupAccount{}, err
@@ -145,18 +148,40 @@ func FinishBlupLogin(ctx context.Context, l *blupcloud.Login) (BlupAccount, erro
 }
 
 // BlupSignOut ends this computer's session and forgets the notes key here
-// (the notes password opens it again).
-func BlupSignOut(ctx context.Context) error {
+// (the notes password opens it again). Before that, the reminders waiting
+// in the cloud are cancelled (an empty list), so no e-mail comes after
+// leaving. Offline, the session is forgotten here all the same and what
+// is left (cancelling, ending the session) is kept to try again at the
+// next start or sign in (RetrySignOut); pending is then true.
+func BlupSignOut(ctx context.Context) (pending bool, err error) {
 	c, creds, err := blupClient()
 	if errors.Is(err, blupcloud.ErrSignedOut) {
-		return nil
+		return false, nil
 	}
 	if err != nil {
+		return false, err
+	}
+	if err := finishSignOut(ctx, c); err != nil {
+		if perr := saveSignOutPending(creds.BlupToken); perr != nil {
+			return false, perr
+		}
+		pending = true
+	}
+	creds.BlupToken, creds.NotesKey = "", ""
+	return pending, creds.Save()
+}
+
+// finishSignOut cancels the session's reminders, then ends the session. A
+// session already ended (elsewhere, or expired) is done; any other error
+// (offline) means trying again later.
+func finishSignOut(ctx context.Context, c *blupcloud.Client) error {
+	if _, err := c.SetReminders(ctx, nil); err != nil && !errors.Is(err, blupcloud.ErrSignedOut) {
 		return err
 	}
-	_ = c.SignOut(ctx) // a session ended elsewhere is fine
-	creds.BlupToken, creds.NotesKey = "", ""
-	return creds.Save()
+	if err := c.SignOut(ctx); err != nil && !errors.Is(err, blupcloud.ErrSignedOut) {
+		return err
+	}
+	return nil
 }
 
 // CreateNotesPassword turns sync on for the account: it creates the key

@@ -9,6 +9,11 @@ import type {} from "../github.com/wailsapp/wails/v3/internal/eventdata.js";
 import "../github.com/wailsapp/wails/v3/internal/eventcreate.js";
 
 /**
+ * Name of the custom event "calendarOpen".
+ */
+export const CalendarOpen = "calendarOpen";
+
+/**
  * Name of the custom event "cloudSync".
  */
 export const CloudSync = "cloudSync";
@@ -22,6 +27,11 @@ export const Narrate = "narrate";
  * Name of the custom event "notesChanged".
  */
 export const NotesChanged = "notesChanged";
+
+/**
+ * Name of the custom event "previewChanged".
+ */
+export const PreviewChanged = "previewChanged";
 
 /**
  * Name of the custom event "previewRestarted".

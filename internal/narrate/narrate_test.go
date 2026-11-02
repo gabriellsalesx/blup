@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -193,5 +194,49 @@ func TestVoiceLang(t *testing.T) {
 	}
 	if got := VoicesFor(ModelInfo{ID: "f/s", Multilingual: true}, "pt"); len(got) != 1 || got[0] != "" {
 		t.Errorf("no named voices: %v", got)
+	}
+}
+
+// A lista de modelos vem de fora: preço que não é número finito e não
+// negativo, ou id fora do formato, deixa o modelo fora (a estimativa então
+// recusa, como para preço desconhecido); resposta enorme é recusada.
+func TestModelsRefusesBadPricesAndHugeLists(t *testing.T) {
+	huge := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if huge {
+			w.Write([]byte(`{"data":[{"id":"a/b","name":"` + strings.Repeat("x", maxModelsList) + `"}]}`))
+			return
+		}
+		w.Write([]byte(`{"data":[
+			{"id":"ok/model","name":"OK","pricing":{"prompt":"0.00002"}},
+			{"id":"per/second","name":"S","pricing":{"prompt":""}},
+			{"id":"nan/model","name":"N","pricing":{"prompt":"NaN"}},
+			{"id":"inf/model","name":"I","pricing":{"prompt":"+Inf"}},
+			{"id":"neg/model","name":"M","pricing":{"prompt":"-0.01"}},
+			{"id":"bad/price","name":"B","pricing":{"prompt":"barato"}},
+			{"id":"","name":"Empty","pricing":{"prompt":"0.01"}},
+			{"id":"no-slash","name":"X","pricing":{"prompt":"0.01"}},
+			{"id":"evil/<script>","name":"E","pricing":{"prompt":"0.01"}}
+		]}`))
+	}))
+	defer srv.Close()
+	c := &Client{Key: "k", BaseURL: srv.URL}
+	models, err := c.Models(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, m := range models {
+		ids = append(ids, m.ID)
+		if math.IsNaN(m.PerThousand) || math.IsInf(m.PerThousand, 0) || m.PerThousand < 0 {
+			t.Fatalf("%s priced %v", m.ID, m.PerThousand)
+		}
+	}
+	if strings.Join(ids, ",") != "ok/model,per/second" {
+		t.Fatalf("models = %v", ids)
+	}
+	huge = true
+	if _, err := c.Models(context.Background()); err == nil {
+		t.Fatal("a huge list was read")
 	}
 }

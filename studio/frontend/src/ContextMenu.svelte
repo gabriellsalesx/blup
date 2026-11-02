@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { Component } from "svelte";
   // An item of the menu: an action, a submenu (sub) or a line ("sep").
-  export type MenuEntry = { label: string; Icon?: Component<any>; run?: () => void; sub?: MenuEntry[]; disabled?: boolean; hint?: string } | "sep";
+  export type MenuEntry = { label: string; Icon?: Component<{ size?: number | string }>; run?: () => void; sub?: MenuEntry[]; disabled?: boolean; hint?: string } | "sep";
 </script>
 
 <script lang="ts">

@@ -29,6 +29,17 @@ export interface BlupLoginCode {
 }
 
 /**
+ * CalendarOpen is the reminder the person clicked, heard by the window as
+ * "calendarOpen": the site's folder, the event's note and the day
+ * (YYYY-MM-DD).
+ */
+export interface CalendarOpen {
+    "dir": string;
+    "path": string;
+    "date": string;
+}
+
+/**
  * Found is what OpenExisting found in the folder the user picked.
  */
 export interface Found {
@@ -272,7 +283,7 @@ export interface Prefs {
     "backupDir": string;
 
     /**
-     * who translates: "local" (on the computer) or "cloud" (OpenRouter or Blup Cloud); "" = local when installed
+     * who translates: "local" (on the computer), "openrouter" or "blup", chosen by the person; "" (or the old "cloud") = local when installed, else ask
      */
     "translateAI": string;
 

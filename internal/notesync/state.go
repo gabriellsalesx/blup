@@ -6,7 +6,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // stateVersion is the format version of the state file.
@@ -73,7 +75,42 @@ func (s *Syncer) loadState() (*state, error) {
 	if st.Files == nil {
 		st.Files = map[string]fileState{}
 	}
+	// One entry that cannot be (a path out of the folder, a hash that is
+	// not one) makes the whole file untrusted: exclusions are never
+	// deduced from it, the sync compares without a previous state.
+	for p, f := range st.Files {
+		if !validStatePath(p) || !validStateSHA(f.SHA) || f.Size < 0 || f.MTime < 0 {
+			return nil, nil
+		}
+	}
 	return &st, nil
+}
+
+// validStatePath is a path relative to Dir as the state keeps it:
+// forward slashes, no "." or ".." part, no NUL or backslash, valid UTF-8.
+func validStatePath(p string) bool {
+	if p == "" || len(p) > 4096 || !utf8.ValidString(p) || strings.ContainsAny(p, "\\\x00") || p[0] == '/' {
+		return false
+	}
+	for _, part := range strings.Split(p, "/") {
+		if part == "" || part == "." || part == ".." {
+			return false
+		}
+	}
+	return true
+}
+
+// validStateSHA is a git blob sha: 40 lower case hex digits.
+func validStateSHA(s string) bool {
+	if len(s) != 40 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Syncer) saveState(st *state) error {

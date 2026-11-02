@@ -9,6 +9,7 @@ export {
 export type {
     Agent,
     BlupLoginCode,
+    CalendarOpen,
     Found,
     HomeItem,
     Hyprland,

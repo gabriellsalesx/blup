@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -179,7 +180,22 @@ func (c *Client) do(ctx context.Context, method, path string, body any, contentT
 		}
 		return err
 	default:
-		return json.NewDecoder(limited).Decode(out)
+		data, err := io.ReadAll(limited)
+		if err != nil {
+			return err
+		}
+		if len(data) > maxBody {
+			return errors.New("blupcloud: answer too large")
+		}
+		// "null" (or nothing) leaves a struct empty without an error:
+		// only an answer read into a pointer (GET .../domain) may be null.
+		if t := bytes.TrimSpace(data); len(t) == 0 || bytes.Equal(t, []byte("null")) {
+			if v := reflect.ValueOf(out); v.Kind() == reflect.Pointer && v.Elem().Kind() == reflect.Pointer {
+				return nil
+			}
+			return fmt.Errorf("%w: empty answer", ErrBadAnswer)
+		}
+		return json.Unmarshal(data, out)
 	}
 }
 
@@ -272,6 +288,9 @@ type Account struct {
 			Live        bool `json:"live"`
 			HistoryDays int  `json:"historyDays"`
 			AIUsage     int  `json:"aiUsage"` // AI through Blup Cloud, as a multiple of Pro's (0: none)
+			// CustomDomain: the plan's sites can have their own domain
+			// (Max and Ultra).
+			CustomDomain bool `json:"customDomain"`
 		} `json:"limits"`
 	} `json:"plan"`
 	Usage struct {
@@ -285,7 +304,10 @@ type Account struct {
 // Me returns the signed in account.
 func (c *Client) Me(ctx context.Context) (Account, error) {
 	var a Account
-	return a, c.do(ctx, http.MethodGet, "/me", nil, "", &a)
+	if err := c.do(ctx, http.MethodGet, "/me", nil, "", &a); err != nil {
+		return Account{}, err
+	}
+	return a, a.check()
 }
 
 // SignOut ends this computer's session.
@@ -345,9 +367,16 @@ func (c *Client) CreateVault(ctx context.Context, name []byte) (Vault, error) {
 
 // VaultHead returns a vault's current version number (0 = empty).
 func (c *Client) VaultHead(ctx context.Context, id string) (int64, error) {
-	var v Vault
-	err := c.do(ctx, http.MethodGet, "/sync/vaults/"+url.PathEscape(id), nil, "", &v)
-	return v.Head, err
+	var v struct {
+		Head *int64 `json:"head"`
+	}
+	if err := c.do(ctx, http.MethodGet, "/sync/vaults/"+url.PathEscape(id), nil, "", &v); err != nil {
+		return 0, err
+	}
+	if v.Head == nil || *v.Head < 0 {
+		return 0, fmt.Errorf("%w: vault head", ErrBadAnswer)
+	}
+	return *v.Head, nil
 }
 
 // Manifest returns the sealed manifest of version n.
@@ -421,8 +450,13 @@ func (c *Client) Commit(ctx context.Context, vault string, parent int64, blocks 
 	var r struct {
 		N int64 `json:"n"`
 	}
-	err = c.do(ctx, http.MethodPost, "/sync/vaults/"+url.PathEscape(vault)+"/versions", &buf, w.FormDataContentType(), &r)
-	return r.N, err
+	if err := c.do(ctx, http.MethodPost, "/sync/vaults/"+url.PathEscape(vault)+"/versions", &buf, w.FormDataContentType(), &r); err != nil {
+		return 0, err
+	}
+	if r.N != parent+1 {
+		return 0, fmt.Errorf("%w: saved as version %d after %d", ErrBadAnswer, r.N, parent)
+	}
+	return r.N, nil
 }
 
 // VersionInfo is a version of a vault still kept.
@@ -440,9 +474,18 @@ func (c *Client) Versions(ctx context.Context, vault string, before int64) ([]Ve
 		q = "?before=" + strconv.FormatInt(before, 10)
 	}
 	var r struct {
-		Versions []VersionInfo `json:"versions"`
+		Versions *[]VersionInfo `json:"versions"`
 	}
-	return r.Versions, c.do(ctx, http.MethodGet, "/sync/vaults/"+url.PathEscape(vault)+"/versions"+q, nil, "", &r)
+	if err := c.do(ctx, http.MethodGet, "/sync/vaults/"+url.PathEscape(vault)+"/versions"+q, nil, "", &r); err != nil {
+		return nil, err
+	}
+	if r.Versions == nil {
+		return nil, fmt.Errorf("%w: no versions", ErrBadAnswer)
+	}
+	if err := checkVersions(*r.Versions, before); err != nil {
+		return nil, err
+	}
+	return *r.Versions, nil
 }
 
 // AIUsage is the plan's AI allowance this month and what was used, in
@@ -466,7 +509,10 @@ func (u AIUsage) Left() int64 {
 // AIUsage reads the account's AI allowance.
 func (c *Client) AIUsage(ctx context.Context) (AIUsage, error) {
 	var u AIUsage
-	return u, c.do(ctx, http.MethodGet, "/ai/usage", nil, "", &u)
+	if err := c.do(ctx, http.MethodGet, "/ai/usage", nil, "", &u); err != nil {
+		return AIUsage{}, err
+	}
+	return u, u.check()
 }
 
 // AIBaseURL is Blup Cloud's AI API, which speaks OpenRouter's: a narration

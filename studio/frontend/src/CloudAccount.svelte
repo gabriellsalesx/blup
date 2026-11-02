@@ -6,6 +6,7 @@
   import Copy from "@lucide/svelte/icons/copy";
   import Check from "@lucide/svelte/icons/check";
   import { t } from "./i18n";
+  import { toast } from "./toast.svelte";
   import TextField from "./ui/TextField.svelte";
 
   // Blup Cloud on this computer, step by step: signing in through the
@@ -49,7 +50,11 @@
     } finally { login = null; }
   }
   function cancel() { BlupLoginCancel(); login = null; }
-  async function signOut() { await BlupSignOut(); account = await BlupAccount(); }
+  // Offline, the reminder e-mails are cancelled when the Studio connects again.
+  async function signOut() {
+    if (await BlupSignOut()) toast(t.aip.signOutPending);
+    account = await BlupAccount();
+  }
 
   async function create(e: SubmitEvent) {
     e.preventDefault();

@@ -75,7 +75,7 @@ func (s *Studio) SaveNote(rel, body string, edits []PropEdit) error {
 		if err := obsidian.SetBody(p, body); err != nil {
 			return err
 		}
-	} else if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+	} else if err := app.WriteInside(s.notesRoot(), p, []byte(body)); err != nil {
 		return err
 	}
 	props := make([]obsidian.Prop, 0, len(edits))
@@ -293,10 +293,11 @@ func (s *Studio) createFile(folder, name, ext, text string) (string, error) {
 		if _, err := os.Stat(p); err == nil {
 			continue
 		}
+		root := s.notesRoot()
 		if ext == "" {
-			return rel, os.MkdirAll(p, 0o755)
+			return rel, app.MkdirInside(root, p)
 		}
-		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		if err := app.MkdirInside(root, filepath.Dir(p)); err != nil {
 			return "", err
 		}
 		if ext == ".md" {
@@ -309,14 +310,14 @@ func (s *Studio) createFile(folder, name, ext, text string) (string, error) {
 				// It takes the tags its folder's notes have (or its
 				// database's).
 				if tags := app.FolderTags(site, folder); len(tags) > 0 {
-					if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+					if err := app.WriteInside(root, p, []byte(text)); err != nil {
 						return "", err
 					}
 					return rel, obsidian.SetProperties(p, obsidian.Prop{Key: "tags", Value: tags})
 				}
 			}
 		}
-		return rel, os.WriteFile(p, []byte(text), 0o644)
+		return rel, app.WriteInside(root, p, []byte(text))
 	}
 }
 

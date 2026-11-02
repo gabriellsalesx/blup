@@ -2,9 +2,7 @@ package blupcloud
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -60,13 +58,17 @@ func (r *Remote) manifestAt(ctx context.Context, n int64) (manifest, error) {
 		}
 		return manifest{}, err
 	}
-	// Kept only once it opened: the cache never holds what the cloud made up.
+	m, err := parseManifest(plain)
+	if err != nil {
+		if !fresh {
+			_ = os.Remove(cached)
+		}
+		return manifest{}, err
+	}
+	// Kept only once it opened and made sense: the cache never holds what
+	// the cloud made up.
 	if fresh && cached != "" && os.MkdirAll(r.Cache, 0o700) == nil {
 		_ = os.WriteFile(cached, sealed, 0o600)
-	}
-	var m manifest
-	if err := json.Unmarshal(plain, &m); err != nil {
-		return manifest{}, fmt.Errorf("blupcloud: unreadable manifest: %w", err)
 	}
 	return m, nil
 }
@@ -90,7 +92,9 @@ func (r *Remote) eachVersion(ctx context.Context, fn func(VersionInfo, manifest)
 			}
 			before = v.N
 		}
-		if len(page) < 50 {
+		// The cloud checks every page (Versions): numbers only go down,
+		// so the loop ends; a full page that did not move is an error.
+		if len(page) < versionsPage || before <= 1 {
 			return nil
 		}
 	}

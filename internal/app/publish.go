@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"net/url"
 	"time"
 
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -64,18 +63,11 @@ func publish(ctx context.Context, g *config.Global, site *config.Site) error {
 	return nil
 }
 
-// githubTokenURL opens GitHub's token form already filled in with the
-// permissions we need; only "All repositories" must be picked by hand.
+// githubTokenURL opens GitHub's form for a fine-grained key with only the
+// repository permissions Blup uses (github.TokenPermissions, no
+// Administration); the person picks the repositories by hand.
 func githubTokenURL() string {
-	q := url.Values{}
-	q.Set("name", "blup")
-	q.Set("description", i18n.T("gh.token_description"))
-	q.Set("expires_in", "366")
-	q.Set("contents", "write")
-	q.Set("pages", "write")
-	q.Set("administration", "write")
-	q.Set("issues", "write")
-	return "https://github.com/settings/personal-access-tokens/new?" + q.Encode()
+	return github.TokenURL("blup", i18n.T("gh.token_description"))
 }
 
 func githubClient(ctx context.Context) (*github.Client, string, error) {

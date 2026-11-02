@@ -2,8 +2,12 @@ package app
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -44,5 +48,100 @@ func TestDeleteSite(t *testing.T) {
 	}
 	if g, _ := config.LoadGlobal(); len(g.Sites) != 0 {
 		t.Fatalf("still listed: %v", g.Sites)
+	}
+}
+
+// Apagar o site também o tira do Blup Cloud quando ele está publicado lá
+// (DELETE /api/sites/<id>). Um site que já não existe lá não é problema;
+// uma falha de verdade volta com o link do painel.
+func TestDeleteSiteFromBlupCloud(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	var mu sync.Mutex
+	var calls []string
+	fail, listed := false, true
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		calls = append(calls, r.Method+" "+r.URL.Path+" "+r.Header.Get("Authorization"))
+		switch {
+		case r.Method == http.MethodDelete && fail:
+			w.WriteHeader(500)
+		case r.Method == http.MethodDelete && !listed:
+			w.WriteHeader(404)
+			w.Write([]byte(`{"code":"NOT_FOUND"}`))
+		case r.Method == http.MethodDelete:
+			w.Write([]byte(`{"ok":true}`))
+		case r.URL.Path == "/api/sites" && listed:
+			w.Write([]byte(`{"limit":1,"sites":[{"id":"s1","slug":"meu-blog"}]}`))
+		case r.URL.Path == "/api/sites":
+			w.Write([]byte(`{"limit":1,"sites":[]}`))
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("BLUP_CLOUD_URL", srv.URL)
+	if err := (config.Credentials{BlupToken: "tok"}).Save(); err != nil {
+		t.Fatal(err)
+	}
+	newSite := func() string {
+		base := t.TempDir()
+		os.MkdirAll(filepath.Join(base, "vault"), 0o755)
+		dir := filepath.Join(base, "site")
+		s := config.NewSite(dir)
+		os.MkdirAll(dir, 0o755)
+		s.Title, s.Model, s.Vault = "Meu blog", "mochi", filepath.Join(base, "vault")
+		s.Deploy.Provider = "blup"
+		s.Deploy.Blup = config.BlupSite{ID: "s1", Slug: "meu-blog", URL: "https://meu-blog.getblup.site"}
+		if err := s.Save(); err != nil {
+			t.Fatal(err)
+		}
+		RememberSite(dir)
+		return dir
+	}
+	ctx := context.Background()
+
+	dir := newSite()
+	if p, err := PartsOf(dir); err != nil || p.BlupSite != "meu-blog.getblup.site" {
+		t.Fatalf("parts = %+v %v", p, err)
+	}
+	// Only the Blup Cloud site: the folder stays and forgets the address.
+	if problems, err := DeleteSite(ctx, dir, DeleteChoice{BlupSite: true}); err != nil || len(problems) != 0 {
+		t.Fatalf("delete: %v %v", problems, err)
+	}
+	if strings.Join(calls, ",") != "DELETE /api/sites/s1 Bearer tok" {
+		t.Fatalf("calls = %v", calls)
+	}
+	if s, _ := config.LoadSite(dir); s.Deploy.Blup.ID != "" || s.Deploy.Provider != "" {
+		t.Fatalf("still points at Blup Cloud: %+v", s.Deploy)
+	}
+	if p, _ := PartsOf(dir); p.BlupSite != "" {
+		t.Fatalf("parts after = %+v", p)
+	}
+
+	// Not asked: nothing is sent.
+	calls = nil
+	dir = newSite()
+	if _, err := DeleteSite(ctx, dir, DeleteChoice{Site: true}); err != nil || len(calls) != 0 {
+		t.Fatalf("not asked: %v %v", calls, err)
+	}
+
+	// Already gone (deleted in the panel): fine.
+	dir = newSite()
+	listed = false
+	if problems, err := DeleteSite(ctx, dir, DeleteChoice{BlupSite: true, Site: true}); err != nil || len(problems) != 0 {
+		t.Fatalf("already gone: %v %v", problems, err)
+	}
+
+	// A real failure comes back with the panel's link.
+	dir = newSite()
+	listed, fail = true, true
+	problems, err := DeleteSite(ctx, dir, DeleteChoice{BlupSite: true})
+	if err != nil || len(problems) != 1 || problems[0].Part != "blupSite" || !strings.HasPrefix(problems[0].Link, srv.URL) {
+		t.Fatalf("failure: %+v %v", problems, err)
+	}
+	if s, _ := config.LoadSite(dir); s.Deploy.Blup.ID != "s1" {
+		t.Fatal("forgot an address still online")
 	}
 }

@@ -25,14 +25,84 @@ export type CEdge = {
 };
 export type Canvas = { nodes: CNode[]; edges: CEdge[]; rest: Record<string, unknown> };
 
-export function parseCanvas(text: string): Canvas {
-  const j = text.trim() ? JSON.parse(text) : {};
-  const { nodes, edges, ...rest } = j ?? {};
-  return {
-    nodes: (Array.isArray(nodes) ? nodes : []).filter((n: any) => n && typeof n.id === "string"),
-    edges: (Array.isArray(edges) ? edges : []).filter((e: any) => e && typeof e.id === "string"),
-    rest,
+// A canvas file may come from anywhere (another computer, through sync;
+// another app): nothing in it is trusted. Each card and arrow is checked
+// from scratch: what can be mended is (a size or position that isn't a
+// number), what can't is left out (an unknown kind, a repeated id, an
+// arrow to a card that isn't there). The keys this file doesn't know stay
+// as they are, so writing it back keeps them (Obsidian's or a plugin's).
+export const LIMITS = { nodes: 20000, edges: 40000, coord: 1e7, size: 1e6 } as const;
+const NODE_TYPES: readonly CNode["type"][] = ["text", "file", "link", "group"];
+const SIDES: readonly Side[] = ["top", "right", "bottom", "left"];
+const ENDS: readonly string[] = ["none", "arrow"];
+
+type Obj = Record<string, unknown>;
+const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
+const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T => typeof v === "string" && (list as readonly string[]).includes(v);
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+// A position: a finite number within the board's limits (else 0).
+const coord = (v: unknown) => (finite(v) ? Math.min(Math.max(v, -LIMITS.coord), LIMITS.coord) : 0);
+// A size: a finite number, at least 1 (else the default).
+const size = (v: unknown, def: number) => (finite(v) && v >= 1 ? Math.min(v, LIMITS.size) : def);
+
+// The optional keys of a card or arrow that must be text: dropped when
+// they aren't.
+function textKeys(o: Obj, keys: string[]) {
+  for (const k of keys) if (k in o && typeof o[k] !== "string") delete o[k];
+}
+
+function toNode(v: unknown): CNode | null {
+  if (!isObj(v) || typeof v.id !== "string" || !v.id || !oneOf(NODE_TYPES, v.type)) return null;
+  const type = v.type;
+  // A card of a file without its file is nothing to show.
+  if (type === "file" && typeof v.file !== "string") return null;
+  const n: CNode = {
+    ...v,
+    id: v.id,
+    type,
+    x: coord(v.x),
+    y: coord(v.y),
+    width: size(v.width, 250),
+    height: size(v.height, 60),
   };
+  textKeys(n, ["color", "text", "file", "subpath", "url", "label"]);
+  if (type === "text" && n.text === undefined) n.text = "";
+  if (type === "link" && n.url === undefined) n.url = "";
+  return n;
+}
+
+function toEdge(v: unknown, ids: Set<string>): CEdge | null {
+  if (!isObj(v) || typeof v.id !== "string" || !v.id) return null;
+  const { fromNode, toNode } = v;
+  if (typeof fromNode !== "string" || typeof toNode !== "string" || !ids.has(fromNode) || !ids.has(toNode)) return null;
+  const e: CEdge = { ...v, id: v.id, fromNode, toNode };
+  for (const k of ["fromSide", "toSide"]) if (k in e && !oneOf(SIDES, e[k])) delete e[k];
+  for (const k of ["fromEnd", "toEnd"]) if (k in e && !oneOf(ENDS, e[k])) delete e[k];
+  textKeys(e, ["color", "label"]);
+  return e;
+}
+
+// Keeps the first item of each id (and no more than max of them).
+function unique<T extends { id: string }>(items: (T | null)[], max: number): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const it of items) {
+    if (!it || seen.has(it.id)) continue;
+    if (out.length >= max) break;
+    seen.add(it.id);
+    out.push(it);
+  }
+  return out;
+}
+
+export function parseCanvas(text: string): Canvas {
+  const j: unknown = text.trim() ? JSON.parse(text) : {};
+  if (!isObj(j)) return { nodes: [], edges: [], rest: {} };
+  const { nodes, edges, ...rest } = j;
+  const ns = unique((Array.isArray(nodes) ? nodes : []).map(toNode), LIMITS.nodes);
+  const ids = new Set(ns.map((n) => n.id));
+  const es = unique((Array.isArray(edges) ? edges : []).map((e) => toEdge(e, ids)), LIMITS.edges);
+  return { nodes: ns, edges: es, rest };
 }
 
 // As Obsidian writes it: tabs, and a line per card and per arrow.

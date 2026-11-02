@@ -66,7 +66,9 @@ func (c *Client) Listen(ctx context.Context, moved func(Moved)) error {
 			return err
 		}
 		var m Moved
-		if json.Unmarshal(data, &m) == nil && m.Vault != "" {
+		// Only what a vault's change looks like: an id the cloud makes
+		// and a version number.
+		if json.Unmarshal(data, &m) == nil && ValidVaultID(m.Vault) && m.N > 0 {
 			moved(m)
 		}
 	}

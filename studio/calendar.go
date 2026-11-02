@@ -77,7 +77,7 @@ func (s *Studio) startReminders() {
 				return
 			}
 			showWindow()
-			application.Get().Event.Emit("calendarOpen", r.Response.UserInfo)
+			application.Get().Event.Emit("calendarOpen", calendarOpenData(r.Response.UserInfo))
 		})
 		reminders.svc, reminders.ok = svc, true
 		loadSent()
@@ -214,7 +214,7 @@ func (s *Studio) SetNotifications(on bool) error {
 	if reminders.ok {
 		go s.remind(time.Now())
 	} else if !on {
-		go pushMail(nil, time.Now())
+		go s.cancelMailUntilDone() // offline: tried again later (cloud.go)
 	}
 	return nil
 }
@@ -282,12 +282,31 @@ func sentFile() string {
 }
 
 func loadSent() {
-	reminders.sent = map[string]int64{}
-	if f := sentFile(); f != "" {
-		if b, err := os.ReadFile(f); err == nil {
-			json.Unmarshal(b, &reminders.sent)
+	reminders.sent = readSent(sentFile())
+}
+
+// readSent reads the file of reminders sent. A damaged one (null, not an
+// object, a time that is no time) counts as empty or loses just that entry:
+// the map is never nil, which would panic when a reminder is written to it.
+func readSent(f string) map[string]int64 {
+	sent := map[string]int64{}
+	if f == "" {
+		return sent
+	}
+	b, err := os.ReadFile(f)
+	if err != nil {
+		return sent
+	}
+	var read map[string]int64
+	if json.Unmarshal(b, &read) != nil {
+		return sent
+	}
+	for k, at := range read {
+		if k != "" && at > 0 {
+			sent[k] = at
 		}
 	}
+	return sent
 }
 
 // saveSent writes them, forgetting the ones over a month old.
@@ -313,5 +332,6 @@ func saveSent(now time.Time) {
 // ServiceStartup runs as the Studio starts: the reminders begin.
 func (s *Studio) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	go s.startReminders()
+	go s.cloudStartup()
 	return nil
 }

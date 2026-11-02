@@ -16,6 +16,7 @@ import { EditorView, Decoration, ViewPlugin, WidgetType, type DecorationSet, typ
 import { type EditorState, type Range } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { CALLOUTS, CALLOUT_ALIASES, calloutIcon, calloutName } from "./callouts";
+import type { SyntaxNode } from "@lezer/common";
 
 export type LiveText = { copy: string; copied: string; code: string; lang: string; remote: string };
 export type LiveOptions = {
@@ -275,7 +276,7 @@ function build(view: EditorView, opts: LiveOptions): DecorationSet {
 }
 
 function inCode(state: EditorState, pos: number) {
-  for (let n: any = syntaxTree(state).resolveInner(pos, 1); n; n = n.parent) {
+  for (let n: SyntaxNode | null = syntaxTree(state).resolveInner(pos, 1); n; n = n.parent) {
     if (/^(InlineCode|FencedCode|CodeBlock|CodeText)$/.test(n.name)) return true;
   }
   return false;

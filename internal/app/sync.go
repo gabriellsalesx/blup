@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -18,6 +19,10 @@ func init() {
 	registerErrors(
 		knownError{notesync.ErrRemoteMoved, "sync.err_moved"},
 		knownError{notesync.ErrLocalFolderEmpty, "sync.err_empty"},
+		// The key is limited to chosen repositories and the repository
+		// is not one of them (or does not exist yet).
+		knownError{github.ErrRepoMissing, "gh.repo_missing"},
+		knownError{github.ErrBadName, "gh.bad_repo"},
 	)
 }
 
@@ -50,6 +55,13 @@ func syncNotes(ctx context.Context, _ *config.Global, site *config.Site) error {
 		repo, err = notesync.EnsureRepo(ctx, c, s.Owner, s.Repo)
 		return err
 	}); err != nil {
+		// A key without Administration: open GitHub's form to create
+		// the private repository.
+		var rm *github.RepoMissingError
+		if errors.As(err, &rm) {
+			ui.OpenBrowser(rm.CreateURL)
+			ui.Hint(i18n.T("browser_fallback", rm.CreateURL))
+		}
 		return err
 	}
 	if !repo.Private {
@@ -62,7 +74,8 @@ func syncNotes(ctx context.Context, _ *config.Global, site *config.Site) error {
 		return err
 	}
 	// The site's settings travel with the notes, and the topic lets Blup
-	// Studio on another computer find the site.
+	// Studio on another computer find the site (a key without
+	// Administration cannot add it: the "-notas" name is found too).
 	_ = c.AddTopic(ctx, s.Owner, s.Repo, SiteTopic)
 	if err := writeShared(site); err != nil {
 		return err

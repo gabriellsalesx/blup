@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -44,4 +45,21 @@ func crossSite(r *http.Request) bool {
 // the local translation's files.
 func assetMiddleware(next http.Handler) http.Handler {
 	return guardRuntime(serveLocalTranslate(next))
+}
+
+// windowOrigin tells whether origin is the Studio's window: wails://localhost
+// on Linux and macOS, http://wails.localhost on Windows (with the dev
+// server's port under wails3 dev). The preview's guard lets it through.
+func windowOrigin(origin string) bool {
+	u, err := url.Parse(origin)
+	if err != nil || u.Path != "" || u.User != nil {
+		return false
+	}
+	switch u.Scheme {
+	case "wails":
+		return u.Hostname() == "localhost" || u.Hostname() == "wails.localhost" || u.Hostname() == "wails"
+	case "http", "https":
+		return u.Hostname() == "wails.localhost"
+	}
+	return false
 }

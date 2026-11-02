@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
@@ -35,6 +36,62 @@ func PushReminders(ctx context.Context, list []blupcloud.Reminder) (blupcloud.Re
 		return blupcloud.ReminderUse{}, err
 	}
 	return c.SetReminders(ctx, list)
+}
+
+// A sign out that could not reach Blup Cloud (offline) leaves its session
+// here, in a file only this user reads, to cancel its reminders and end it
+// later: at the next start or sign in.
+func signOutPendingFile() (string, error) {
+	dir, err := config.Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "signout-pending"), nil
+}
+
+func saveSignOutPending(token string) error {
+	f, err := signOutPendingFile()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(f), 0o700); err != nil {
+		return err
+	}
+	tmp := f + ".tmp"
+	if err := os.WriteFile(tmp, []byte(token), 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, f)
+}
+
+// SignOutPending tells whether a sign out still has to reach Blup Cloud.
+func SignOutPending() bool {
+	f, err := signOutPendingFile()
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(f)
+	return err == nil
+}
+
+// RetrySignOut finishes a sign out left half done offline: it cancels that
+// session's reminders and ends it. done is true when it did now (nothing
+// pending, or still offline: false).
+func RetrySignOut(ctx context.Context) (done bool) {
+	f, err := signOutPendingFile()
+	if err != nil {
+		return false
+	}
+	b, err := os.ReadFile(f)
+	if err != nil {
+		return false
+	}
+	if token := strings.TrimSpace(string(b)); token != "" {
+		if finishSignOut(ctx, blupcloud.New(token)) != nil {
+			return false
+		}
+	}
+	return os.Remove(f) == nil
 }
 
 // reminderKey is a secret of this computer that makes reminder ids opaque.

@@ -4,6 +4,7 @@ import { Prefs, SavePrefs } from "../bindings/github.com/gabriellsalesx/blup/stu
 import type { Prefs as P } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
 import { setupSpell, enableSpell } from "./spell";
 import { t } from "./i18n";
+import { wordCount, wordRemoved } from "./prefwords";
 
 export const look = $state<P>({ theme: "system", editorFont: 16, editorWidth: "narrow", spellcheck: true, previewOff: false, termFont: 13, spellLang: "", words: [], sideWidth: 0, previewWidth: 0, tray: false, toggleKey: "Alt+Space", keys: {}, shortcutTip: false, lastSite: "", lastNotes: {}, recent: [], voices: {}, welcomed: false, cloudTip: false, backupDir: "", translateAI: "", railNames: false, notifications: true });
 
@@ -36,10 +37,11 @@ export async function loadTheme() {
 export function setPref<K extends keyof P>(key: K, value: P[K]) {
   look[key] = value;
   apply();
-  // A word taken out of the list needs a fresh dictionary; one added is
-  // already in it (spell.ts addWord).
-  if (key === "spellLang" || key === "spellcheck" || (key === "words" && (value as string[]).length < (spellWords ?? 0))) spell();
-  if (key === "words") spellWords = (value as string[]).length;
+  if (key === "words") {
+    const words = value as P["words"];
+    if (wordRemoved(words, spellWords)) spell();
+    spellWords = wordCount(words);
+  } else if (key === "spellLang" || key === "spellcheck") spell();
   SavePrefs({ ...look }).catch(() => {});
 }
 

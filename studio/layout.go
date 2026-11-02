@@ -114,7 +114,7 @@ type Prefs struct {
 	Welcomed      bool              `json:"welcomed"`      // the welcome screen (start, or bring the sites of an account) was seen
 	CloudTip      bool              `json:"cloudTip"`      // the invitation to Blup Cloud, after the first site, was answered
 	BackupDir     string            `json:"backupDir"`     // a daily copy of the open site's notes goes here ("" = off)
-	TranslateAI   string            `json:"translateAI"`   // who translates: "local" (on the computer) or "cloud" (OpenRouter or Blup Cloud); "" = local when installed
+	TranslateAI   string            `json:"translateAI"`   // who translates: "local" (on the computer), "openrouter" or "blup", chosen by the person; "" (or the old "cloud") = local when installed, else ask
 	RailNames     bool              `json:"railNames"`     // the side menu shows each screen's name next to its icon
 	Notifications bool              `json:"notifications"` // the calendar's reminders (on the computer and, in Max and Ultra, by e-mail); on by default
 }
@@ -127,22 +127,59 @@ func prefsFile() (string, error) {
 	return filepath.Join(dir, "studio-prefs.json"), nil
 }
 
-// Prefs reads the Studio's choices.
+func defaultPrefs() Prefs {
+	return Prefs{Theme: "system", EditorFont: 16, EditorWidth: "narrow", Spellcheck: true, TermFont: 13, ToggleKey: "Alt+Space", Notifications: true}
+}
+
+// Prefs reads the Studio's choices. A damaged file (not JSON, null, a
+// field of the wrong type) gives the defaults, never half of it.
 func (s *Studio) Prefs() Prefs {
-	p := Prefs{Theme: "system", EditorFont: 16, EditorWidth: "narrow", Spellcheck: true, TermFont: 13, ToggleKey: "Alt+Space", Notifications: true}
+	p := defaultPrefs()
 	if f, err := prefsFile(); err == nil {
 		if b, err := os.ReadFile(f); err == nil {
-			_ = json.Unmarshal(b, &p)
+			read := defaultPrefs()
+			if err := json.Unmarshal(b, &read); err == nil {
+				p = read
+			}
 		}
 	}
-	return p
+	return p.normalized()
 }
 
 // SavePrefs saves the Studio's choices. The recent sites are the Studio's
 // own (remember): the page's copy may be old, so the saved list is kept.
 func (s *Studio) SavePrefs(p Prefs) error {
 	p.Recent = s.Prefs().Recent
-	return savePrefs(p)
+	return savePrefs(p.normalized())
+}
+
+// normalized puts each choice back in its range: a value out of it (an
+// unknown theme, a text size of -5 or 9999) becomes the default.
+func (p Prefs) normalized() Prefs {
+	d := defaultPrefs()
+	if p.Theme != "system" && p.Theme != "light" && p.Theme != "dark" {
+		p.Theme = d.Theme
+	}
+	if p.EditorWidth != "narrow" && p.EditorWidth != "wide" {
+		p.EditorWidth = d.EditorWidth
+	}
+	if p.EditorFont < 13 || p.EditorFont > 22 {
+		p.EditorFont = d.EditorFont
+	}
+	if p.TermFont < 11 || p.TermFont > 20 {
+		p.TermFont = d.TermFont
+	}
+	if p.SpellLang != "" && p.SpellLang != "pt" && p.SpellLang != "en" && p.SpellLang != "es" {
+		p.SpellLang = ""
+	}
+	// 0 is "the default"; a panel wider than any screen is a damaged value.
+	if p.SideWidth < 0 || p.SideWidth > 4000 {
+		p.SideWidth = 0
+	}
+	if p.PreviewWidth < 0 || p.PreviewWidth > 8000 {
+		p.PreviewWidth = 0
+	}
+	return p
 }
 
 func savePrefs(p Prefs) error {

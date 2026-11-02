@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -94,6 +95,9 @@ func Process(dir, global string) (int, error) {
 			return err
 		}
 		if !strings.Contains(string(b), "<blup-begin") {
+			if strings.Contains(string(b), "<blup-end") {
+				return fmt.Errorf("%w: %s", ErrLeftover, p)
+			}
 			return nil
 		}
 		var failure error
@@ -112,6 +116,8 @@ func Process(dir, global string) (int, error) {
 				}
 				pw = global
 			}
+			// Its attachments go inside it; Prune deletes the files.
+			plain = inlineAttachments(dir, plain)
 			sealed, err := Encrypt(pw, []byte(plain))
 			if err != nil {
 				failure = err
@@ -193,9 +199,40 @@ func readManifest(dir string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := map[string]string{}
 	if len(strings.TrimSpace(string(b))) == 0 {
-		return m, nil
+		return map[string]string{}, nil
 	}
-	return m, json.Unmarshal(b, &m)
+	// Fail closed: only an object of ID → password is a manifest ("null",
+	// a list or other values are errors, not "nothing to encrypt").
+	var m map[string]string
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, fmt.Errorf("%s: %w", Manifest, err)
+	}
+	if m == nil {
+		return nil, fmt.Errorf("%s: not an object", Manifest)
+	}
+	return m, nil
+}
+
+// markerFiles are the published files Check reads.
+var markerFiles = []string{".html", ".htm", ".xml", ".json", ".txt"}
+
+// Check fails when any published file under dir still holds a protected
+// region's marker (<blup-begin> or <blup-end>): whatever the manifest said,
+// that text was not encrypted. Run it on every build, also when there was
+// nothing to encrypt.
+func Check(dir string) error {
+	return filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !slices.Contains(markerFiles, strings.ToLower(filepath.Ext(p))) {
+			return err
+		}
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		if strings.Contains(string(b), "<blup-begin") || strings.Contains(string(b), "<blup-end") {
+			return fmt.Errorf("%w: %s", ErrLeftover, p)
+		}
+		return nil
+	})
 }

@@ -10,7 +10,7 @@
   import Scan from "@lucide/svelte/icons/scan";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import Play from "@lucide/svelte/icons/play";
-  import { place, radius, step, type GEdge, type GNode } from "./graph";
+  import { place, radius, readPrefs, step, type GEdge, type GNode } from "./graph";
   import { t } from "./i18n";
 
   // The map of notes, the whole screen: every note a dot, every link a
@@ -44,9 +44,9 @@
     open: { filters: true }, panel: true,
   };
   const KEY = "blup.graph";
-  let saved: Partial<Prefs> = {};
-  try { saved = JSON.parse(localStorage.getItem(KEY) ?? "{}"); } catch {}
-  let p = $state<Prefs>({ ...structuredClone(DEFAULTS), ...saved });
+  let stored: string | null = null;
+  try { stored = localStorage.getItem(KEY); } catch {}
+  let p = $state<Prefs>(readPrefs(DEFAULTS, stored));
   $effect(() => { const snap = JSON.stringify(p); try { localStorage.setItem(KEY, snap); } catch {} });
   function reset() {
     const keep = p.open;

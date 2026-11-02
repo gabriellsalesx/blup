@@ -229,6 +229,9 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) (int,
 // send performs a request with retries and returns the body of the final
 // 2xx response, read up to limit bytes (a longer body is an error).
 func (c *Client) send(ctx context.Context, method, path string, body []byte, accept string, limit int64) (int, []byte, error) {
+	if err := checkRepoPath(path); err != nil {
+		return 0, nil, err
+	}
 	write := method != http.MethodGet && method != http.MethodHead
 	for attempt := 0; ; attempt++ {
 		if write {

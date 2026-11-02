@@ -149,7 +149,7 @@
   const focusSelect = (el: HTMLInputElement) => { el.focus(); el.select(); };
 
   const decode = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  const off = Events.On("term", (ev: any) => {
+  const off = Events.On("term", (ev) => {
     const d = ev.data as { id: string; data: string; exit: boolean };
     const tab = tabs.find((x) => x.id === d.id);
     if (!tab) return;

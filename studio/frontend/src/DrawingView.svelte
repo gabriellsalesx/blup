@@ -398,8 +398,8 @@
     remember();
     for (const el of chosen) {
       if (k === "size") { if (el.type === "text" || el.text) { el.size = v as number; if (el.type === "text") Object.assign(el, measure(el.text ?? "", el.size)); } }
-      else if (k === "fill" || k === "fillStyle") { if (isShape(el)) (el as any)[k] = v; }
-      else (el as any)[k] = v;
+      else if (k === "fill" || k === "fillStyle") { if (isShape(el)) Object.assign(el, { [k]: v }); }
+      else Object.assign(el, { [k]: v });
     }
     changed();
   }
@@ -554,7 +554,7 @@
 
   // Changed on disk by something else (an AI in the terminal, sync):
   // opened again, unless there are changes of its own.
-  const off = Events.On("notesChanged", async (ev: any) => {
+  const off = Events.On("notesChanged", async (ev) => {
     const list = String(ev.data ?? "").split("\n").map((p) => p.toLowerCase());
     if (!list.includes(path.toLowerCase())) return;
     const now = await ReadBoard(path).catch(() => written);

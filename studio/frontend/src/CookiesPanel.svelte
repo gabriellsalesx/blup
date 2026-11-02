@@ -1,6 +1,7 @@
 <script lang="ts">
   import { SaveCookies, CheckCookieTool } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import type { Cookies } from "../bindings/github.com/gabriellsalesx/blup/internal/config/models";
   import Switch from "./Switch.svelte";
   import Saved from "./Saved.svelte";
   import { saver } from "./saving.svelte";
@@ -18,7 +19,7 @@
     { key: "plausible", field: "Plausible", label: t.ck.plausible, ph: t.ck.plausiblePh, script: "PlausibleScript" },
   ] as const);
 
-  const c = $state({ ...settings.cookies }) as Record<string, any>;
+  const c = $state<Cookies>({ ...settings.cookies });
   // Tools shown: the ones set, plus the ones being added.
   // svelte-ignore state_referenced_locally
   let shown = $state<string[]>(tools.filter((x) => c[x.field]).map((x) => x.key));
@@ -42,7 +43,7 @@
   async function save() {
     await s.run(async () => {
       for (const x of tools) if (errors[x.key]) throw new Error(`${x.label}: ${t.ck.badId}`);
-      await SaveCookies(c as any, page, contact);
+      await SaveCookies(c, page, contact);
       reload();
     });
   }

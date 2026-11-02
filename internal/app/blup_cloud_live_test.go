@@ -75,7 +75,7 @@ func TestBlupCloudStudio(t *testing.T) {
 	if err != nil || !st.UpToDate {
 		t.Fatalf("status after sync = %+v, %v", st, err)
 	}
-	if err := BlupSignOut(ctx); err != nil {
+	if _, err := BlupSignOut(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if a, _ = LoadBlupAccount(ctx); a.SignedIn {

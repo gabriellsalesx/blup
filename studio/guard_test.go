@@ -51,3 +51,26 @@ func TestGuardRuntime(t *testing.T) {
 		}
 	}
 }
+
+// The preview's guard lets the window's origins through, on every system,
+// and nothing that only looks like them.
+func TestWindowOrigin(t *testing.T) {
+	for origin, want := range map[string]bool{
+		"wails://localhost":               true,
+		"http://wails.localhost":          true,
+		"http://wails.localhost:5173":     true,
+		"wails://localhost:5173":          true,
+		"https://wails.localhost":         true,
+		"http://wails.localhost.evil.com": false,
+		"http://evil.com":                 false,
+		"http://localhost:1313":           false,
+		"null":                            false,
+		"":                                false,
+		"http://user@wails.localhost":     false,
+		"http://wails.localhost/path":     false,
+	} {
+		if windowOrigin(origin) != want {
+			t.Errorf("windowOrigin(%q) = %v", origin, !want)
+		}
+	}
+}

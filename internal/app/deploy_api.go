@@ -47,8 +47,34 @@ func LoadConnections(ctx context.Context) (Connections, error) {
 }
 
 // GitHubKeyLink opens GitHub's form for a new key, with the permissions
-// Blup needs already ticked.
+// Blup needs already ticked (and no Administration).
 func GitHubKeyLink() string { return githubTokenURL() }
+
+// GitHubNewRepoLink opens GitHub's "new repository" form filled in for the
+// site ("site", public, named name) or for its notes ("notes", private,
+// the name sync uses). A key limited to chosen repositories cannot create
+// them, so the person creates them there and gives them to the key. ""
+// when the name is not one GitHub accepts.
+func GitHubNewRepoLink(site *config.Site, kind, name string) string {
+	switch kind {
+	case "notes":
+		name = site.Sync.Repo
+		if name == "" {
+			name = Slug(site.Title) + i18n.T("sync.repo_suffix")
+		}
+		if !github.ValidRepoName(name) {
+			return ""
+		}
+		return github.NewRepoURL(site.Sync.Owner, name, true, "Notes synced with blup")
+	case "site":
+		name = strings.TrimSpace(name)
+		if !github.ValidRepoName(name) {
+			return ""
+		}
+		return github.NewRepoURL("", name, false, "Site published with blup")
+	}
+	return ""
+}
 
 // CloudflareKeyLink opens Cloudflare's form for a new key (Pages: Edit).
 func CloudflareKeyLink() string { return cfpages.TokenTemplateURL }
@@ -210,6 +236,9 @@ func SetTarget(site *config.Site, t Target) error {
 		if strings.TrimSpace(t.Repo) == "" {
 			return errors.New(i18n.T("required"))
 		}
+		if !github.ValidRepoName(strings.TrimSpace(t.Repo)) {
+			return errors.New(i18n.T("gh.bad_repo"))
+		}
 		site.Deploy.GitHub.Repo = strings.TrimSpace(t.Repo)
 	default:
 		return errors.New("unknown provider " + t.Provider)
@@ -360,4 +389,16 @@ func syncSite(ctx context.Context, site *config.Site, share bool) (SyncInfo, err
 		Repo: repo, Send: len(rep.Uploaded) + len(rep.Deleted), Receive: len(rep.Downloaded) + len(rep.DeletedLocal),
 		Conflicts: rep.ConflictCopies, UpToDate: true, TrashCount: len(rep.DeletedLocal), Trash: rep.Trash, TooLarge: tooLarge(rep),
 	}, nil
+}
+
+// notesRepoName tells whether name ends like the notes repositories Blup
+// names in any of its languages ("site-notas", "site-notes").
+func notesRepoName(name string) bool {
+	name = strings.ToLower(name)
+	for _, suffix := range []string{"-notas", "-notes"} {
+		if strings.HasSuffix(name, suffix) {
+			return true
+		}
+	}
+	return false
 }

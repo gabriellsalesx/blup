@@ -50,6 +50,27 @@ func TestNarrate(t *testing.T) {
 	if err := (config.Credentials{OpenRouterToken: "k"}).Save(); err != nil {
 		t.Fatal(err)
 	}
+	// Nothing goes to OpenRouter before the person accepts, and no choice
+	// is the local voice (not installed here), never the cloud.
+	var ce *ConsentError
+	if _, err := Narrate(context.Background(), site, "Post.md", "nova", nil); !errors.As(err, &ce) || ce.Dest != AIOpenRouter {
+		t.Fatalf("without consent: %v", err)
+	}
+	if _, err := Narrate(context.Background(), site, "Post.md", "", nil); err == nil || errors.As(err, &ce) {
+		t.Fatalf("no voice chosen: %v", err)
+	}
+	if _, err := Narrate(context.Background(), site, "Post.md", "blup:pt-BR-Caio:MAI-Voice-2.1", nil); !errors.As(err, &ce) || ce.Dest != AIBlup {
+		t.Fatalf("Blup Cloud without consent: %v", err)
+	}
+	if len(inputs) != 0 {
+		t.Fatalf("text sent before consent: %q", inputs)
+	}
+	if err := SetAIConsent(AIOpenRouter, true); err != nil {
+		t.Fatal(err)
+	}
+	if c := LoadAIConsent(); !c.OpenRouter || c.Blup {
+		t.Fatalf("consent = %+v", c)
+	}
 	var steps []int
 	n, err := Narrate(context.Background(), site, "Post.md", "nova", func(done, total int) { steps = append(steps, done) })
 	if err != nil {
@@ -110,12 +131,14 @@ func TestNarrate(t *testing.T) {
 func TestVoiceFor(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir()) // no local voice installed
 	cases := []struct{ lang, chosen, want string }{
-		{"pt", "", "microsoft/mai-voice-2.1|pt-BR-Luana:MAI-Voice-2.1"},
+		{"pt", "", "kokoro:pf_dora"}, // no choice: the local voice, never the cloud
+		{"es", "", "kokoro:ef_dora"},
 		{"pt", "pt-BR-Caio:MAI-Voice-2.1", "microsoft/mai-voice-2.1|pt-BR-Caio:MAI-Voice-2.1"},
 		{"en", "pt-BR-Caio:MAI-Voice-2.1", "microsoft/mai-voice-2.1|en-US-Harper:MAI-Voice-2.1"},
 		{"pt", "elevenlabs/eleven|sarah", "elevenlabs/eleven|sarah"},
 		{"pt", "kokoro:pf_dora", "kokoro:pf_dora"},
-		{"en", "kokoro:pf_dora", "microsoft/mai-voice-2.1|en-US-Harper:MAI-Voice-2.1"},
+		{"en", "kokoro:pf_dora", "kokoro:af_heart"},                         // another language: still local
+		{"pt", "nova", "microsoft/mai-voice-2.1|pt-BR-Luana:MAI-Voice-2.1"}, // an older OpenRouter choice stays there
 		{"en", "kokoro:bm_george", "kokoro:bm_george"},
 	}
 	for _, c := range cases {

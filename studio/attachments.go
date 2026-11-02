@@ -10,6 +10,7 @@ import (
 	_ "image/png"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -63,13 +64,34 @@ func (s *Studio) AddAttachments() ([]string, error) {
 	return app.AddAttachments(site, files)
 }
 
-// OpenAttachment opens a file in the computer's own app for it.
-func (s *Studio) OpenAttachment(name string) error {
+// errRiskyAttachment refuses to open a program or a script without asking.
+var errRiskyAttachment = errors.New("this file is a program or a script: confirm to open it")
+
+// OpenAttachment opens a file in the computer's own app for it. A program,
+// a script or a shortcut (app.RiskyAttachment, or a file allowed to run on
+// Linux and macOS) would run instead: it opens only with confirmed, which
+// the window sends after asking.
+func (s *Studio) OpenAttachment(name string, confirmed bool) error {
 	p, err := s.attachmentPath(name)
 	if err != nil {
 		return err
 	}
+	info, err := os.Lstat(p)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return errors.New("not an attachment")
+	}
+	if !confirmed && riskyFile(name, info) {
+		return errRiskyAttachment
+	}
 	return openExternal(p)
+}
+
+// riskyFile tells whether opening the file would run it.
+func riskyFile(name string, info os.FileInfo) bool {
+	return app.RiskyAttachment(name) || (runtime.GOOS != "windows" && info.Mode().Perm()&0o111 != 0)
 }
 
 func (s *Studio) attachmentPath(name string) (string, error) {

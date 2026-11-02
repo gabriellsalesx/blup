@@ -44,7 +44,7 @@ func (s *Studio) TranslateNote(rel, lang string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	out, err := app.TranslateNote(context.Background(), site, rel, lang, func(done, total int) {
+	out, err := app.TranslateNote(context.Background(), site, rel, lang, translateProvider(s.Prefs()), func(done, total int) {
 		application.Get().Event.Emit("translate", TranslateProgress{rel, lang, done, total})
 	})
 	if err == nil {
@@ -136,15 +136,29 @@ func (s *Studio) SiteLangs() ([]app.SiteLangState, error) {
 }
 
 // TranslateSite translates the open site's notes that miss a translation
-// into lang (or have an out of date one) and returns how many it did.
-func (s *Studio) TranslateSite(lang string) (int, error) {
+// into lang (or have an out of date one) with the AI in the cloud chosen,
+// and tells how many it did and how many password protected posts it left
+// out.
+func (s *Studio) TranslateSite(lang string) (app.SiteTranslation, error) {
 	site, err := s.current()
 	if err != nil {
-		return 0, err
+		return app.SiteTranslation{}, err
 	}
-	n, err := app.TranslateSite(context.Background(), site, lang, func(done, total int, note string) {
+	n, err := app.TranslateSite(context.Background(), site, lang, translateProvider(s.Prefs()), func(done, total int, note string) {
 		application.Get().Event.Emit("translateSite", TranslateSiteProgress{lang, done, total, note})
 	})
 	s.previewFollows(site)
 	return n, err
+}
+
+// translateProvider is the AI in the cloud the person chose to translate
+// ("openrouter" or "blup"); "" when none was (the translation on the
+// computer, or no choice yet). The older "cloud" let the Studio pick by
+// itself, so it counts as no choice: the person picks again.
+func translateProvider(p Prefs) string {
+	switch p.TranslateAI {
+	case app.AIOpenRouter, app.AIBlup:
+		return p.TranslateAI
+	}
+	return ""
 }

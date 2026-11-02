@@ -35,7 +35,7 @@ func WriteAgentGuides(site *config.Site) error {
 		if _, err := os.Lstat(p); err == nil {
 			continue
 		}
-		if err := writeNew(p, []byte(body)); err != nil && !errors.Is(err, os.ErrExist) {
+		if err := writeNew(site.ContentDir(), p, []byte(body)); err != nil && !errors.Is(err, os.ErrExist) {
 			return err
 		}
 	}

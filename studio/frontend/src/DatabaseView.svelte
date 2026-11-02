@@ -174,7 +174,7 @@
   const cardFields = $derived((schema?.columns ?? []).filter((c) => c.key !== groupCol?.key).slice(0, 3));
 
   // Changed on disk (another window, an AI, sync): read again.
-  const off = Events.On("notesChanged", (ev: any) => {
+  const off = Events.On("notesChanged", (ev) => {
     const dir = path.replace(/[^/]*$/, "") + (schema?.records ?? "") + "/";
     const list = String(ev.data ?? "").split("\n");
     // Read again in place (the view, the search and the menus stay),

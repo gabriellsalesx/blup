@@ -151,7 +151,20 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 			skip = append(skip, "! "+strings.TrimPrefix(t, folder+"/")+"/**")
 		}
 	}
-	files := append(skip, "*.md", "**/*.md")
+	// Notes with "publish: false" or "private: true" stay out of the
+	// published site like drafts: Hugo never reads them, so they are in no
+	// page, list, feed, sitemap, search or tag. The preview shows them, as
+	// it shows drafts.
+	hidden := map[string]bool{}
+	var quiet []string
+	if !preview {
+		hidden, quiet = unpublished(s)
+	}
+	var hide []string
+	for _, rel := range sortedKeys(hidden) {
+		hide = append(hide, "! "+literalGlob(rel))
+	}
+	files := append(append(hide, skip...), "*.md", "**/*.md")
 	// A translated site: the folders named after its other languages hold
 	// the translations, out of the site's own language.
 	others := s.OtherLangs()
@@ -173,7 +186,7 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 	mounts := []mount{{Source: s.ContentDir(), Target: "content", Files: files}}
 	if len(others) > 0 {
 		mounts[0].Sites = inLangs(s.Lang)
-		mounts = append(mounts, translationMounts(s, others, skip, authors)...)
+		mounts = append(mounts, translationMounts(s, others, skip, authors, hidden)...)
 	}
 	mounts = append(mounts,
 		mount{Source: s.Vault, Target: "assets/vault", Files: assetFiles},
@@ -223,7 +236,7 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 			},
 			"tableOfContents": map[string]any{"startLevel": 2, "endLevel": 3},
 		},
-		"params": params(s, folder, authors),
+		"params": params(s, folder, authors, quiet),
 		"module": map[string]any{
 			"mounts": mounts,
 		},
@@ -292,7 +305,7 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 // translationMounts put each folder named after a translation language
 // (Posts/en) in place of its parent (Posts) in that language's site: the
 // note Posts/en/Note.md is the English Posts/Note.md, a translation of it.
-func translationMounts(s *config.Site, langs, skip []string, authors string) []mount {
+func translationMounts(s *config.Site, langs, skip []string, authors string, hidden map[string]bool) []mount {
 	root := s.ContentDir()
 	var out []mount
 	_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
@@ -311,7 +324,15 @@ func translationMounts(s *config.Site, langs, skip []string, authors string) []m
 		}
 		parent, _ := filepath.Rel(root, filepath.Dir(p))
 		target := path.Join("content", filepath.ToSlash(parent))
-		files := append(append([]string{}, skip...), "*.md", "**/*.md")
+		var files []string
+		rel, _ := filepath.Rel(root, p)
+		prefix := filepath.ToSlash(rel) + "/"
+		for _, h := range sortedKeys(hidden) {
+			if strings.HasPrefix(h, prefix) {
+				files = append(files, "! "+literalGlob(strings.TrimPrefix(h, prefix)))
+			}
+		}
+		files = append(append(files, skip...), "*.md", "**/*.md")
 		out = append(out, mount{Source: p, Target: target, Files: files, Sites: inLangs(d.Name())})
 		// A language folder holds that language's notes, not more languages.
 		return filepath.SkipDir
@@ -329,19 +350,26 @@ func globs(exts []string) []string {
 	return out
 }
 
-func params(s *config.Site, folder, authors string) map[string]any {
+func params(s *config.Site, folder, authors string, unpublished []string) map[string]any {
 	// Name, description, logo, favicon, menu and social links are properties
 	// of the site folder's _index note, read by the theme (site/settings.html).
 	return map[string]any{
 		"model":       s.Model,
 		"description": s.Description,
 		"author":      s.Author,
-		"blup":        blupParams(s, folder, authors),
+		"blup":        blupParams(s, folder, authors, unpublished),
 	}
 }
 
-func blupParams(s *config.Site, folder, authors string) map[string]any {
-	p := map[string]any{"folder": folder, "authors": authorsPath(folder, authors)}
+func blupParams(s *config.Site, folder, authors string, unpublished []string) map[string]any {
+	// attachments: the kinds of vault files a note may show or link to
+	// (vault-resource.html); any other file is never published.
+	p := map[string]any{"folder": folder, "authors": authorsPath(folder, authors), "attachments": Attachments}
+	if len(unpublished) > 0 {
+		// Links to these notes become plain text without a warning
+		// (render-link.html). hugo.toml stays on this computer.
+		p["unpublished"] = unpublished
+	}
 	if feedbackOn(s) {
 		p["feedback"] = s.Feedback.Owner + "/" + s.Feedback.Repo
 	}

@@ -5,6 +5,7 @@
   import { toast, toastError } from "./toast.svelte";
   import { t } from "./i18n";
   import { useLocal, translateNoteLocal } from "./localtranslate";
+  import { withAIConsent, ConsentCancelled, needsProvider } from "./aiconsentui";
 
   // The site in other languages: how much of it is translated into each,
   // and translating what is missing (or out of date) with AI.
@@ -18,7 +19,7 @@
   const load = () => SiteLangs().then((l) => (langs = l ?? [])).catch(toastError);
   load();
 
-  const off = Events.On("translateSite", (ev: any) => { if (busy && ev.data?.lang === busy) progress = ev.data; });
+  const off = Events.On("translateSite", (ev) => { if (busy && ev.data?.lang === busy) progress = ev.data; });
   $effect(() => () => off());
 
   async function translate(lang: string) {
@@ -26,6 +27,7 @@
     progress = null;
     try {
       let n: number;
+      let skipped = 0;
       if (await useLocal()) {
         // On the computer: note by note in the window.
         const todo = (await TranslationTodo(lang)) ?? [];
@@ -35,10 +37,20 @@
         }
         n = todo.length;
         await FollowTranslations();
-      } else n = await TranslateSite(lang);
+      } else {
+        // In the cloud: password protected posts stay out (Go skips them).
+        const r = await withAIConsent(() => TranslateSite(lang), "translate");
+        n = r.done;
+        skipped = r.skipped;
+      }
       toast(sl.finished.replace("{n}", String(n)).replace("{lang}", NAMES[lang]));
+      if (skipped) toast(t.aip.skipped.replace("{n}", String(skipped)));
       onTree();
-    } catch (e) { toastError(e); }
+    } catch (e) {
+      if (e instanceof ConsentCancelled) { /* nothing was sent */ }
+      else if (needsProvider(e)) toast(t.aip.chooseWho, { kind: "error" });
+      else toastError(e);
+    }
     busy = "";
     progress = null;
     load();

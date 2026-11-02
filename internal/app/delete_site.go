@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/deploy/github"
 )
@@ -29,6 +31,7 @@ type SiteParts struct {
 	NotesDir   string `json:"notesDir"`
 	NotesOwned bool   `json:"notesOwned"` // a folder Blup made for this site (else a vault the user already had)
 	Published  string `json:"published"`  // "Cloudflare Pages: projeto" or "GitHub Pages: dono/repo"
+	BlupSite   string `json:"blupSite"`   // its address on Blup Cloud, when it is published there
 	SyncRepo   string `json:"syncRepo"`
 	Feedback   string `json:"feedback"`
 }
@@ -38,6 +41,7 @@ type DeleteChoice struct {
 	Site      bool `json:"site"`
 	Notes     bool `json:"notes"`
 	Published bool `json:"published"`
+	BlupSite  bool `json:"blupSite"`
 	SyncRepo  bool `json:"syncRepo"`
 	Feedback  bool `json:"feedback"`
 }
@@ -60,6 +64,11 @@ func PartsOf(dir string) (SiteParts, error) {
 		if site.Deploy.GitHub.Repo != "" {
 			p.Published = "GitHub Pages: " + site.Deploy.GitHub.Owner + "/" + site.Deploy.GitHub.Repo
 		}
+	}
+	// On Blup Cloud whatever it publishes to now: a site moved to Cloudflare
+	// or GitHub keeps its getblup.site address until it is taken down.
+	if b := site.Deploy.Blup; b.ID != "" {
+		p.BlupSite = cmp.Or(strings.TrimPrefix(b.URL, "https://"), b.Slug+".getblup.site")
 	}
 	if site.Sync.Repo != "" {
 		p.SyncRepo = site.Sync.Owner + "/" + site.Sync.Repo
@@ -108,6 +117,16 @@ func DeleteSite(ctx context.Context, dir string, c DeleteChoice) ([]DeleteProble
 			}
 		}
 	}
+	if c.BlupSite && site.Deploy.Blup.ID != "" && deleteBlupSite(ctx, site.Deploy.Blup.ID, fail) && !c.Site {
+		// The folder stays: it no longer points at the address taken down.
+		site.Deploy.Blup = config.BlupSite{}
+		if site.Deploy.Provider == "blup" {
+			site.Deploy.Provider = ""
+		}
+		if err := site.Save(); err != nil {
+			return problems, err
+		}
+	}
 	if c.SyncRepo && site.Sync.Repo != "" {
 		deleteRepo(ctx, site.Sync.Owner, site.Sync.Repo, "syncRepo", fail)
 	}
@@ -140,6 +159,27 @@ func deleteRepo(ctx context.Context, owner, repo, part string, fail func(string,
 		}
 		fail(part, err, link)
 	}
+}
+
+// deleteBlupSite takes the site down from Blup Cloud. One already gone
+// (deleted in the panel) is fine.
+func deleteBlupSite(ctx context.Context, id string, fail func(string, error, string)) bool {
+	link := blupcloud.BaseURL() + "/conta"
+	c, _, err := blupClient()
+	if err != nil {
+		fail("blupSite", errors.New(describe(err)), link)
+		return false
+	}
+	err = c.DeleteSite(ctx, id)
+	if err == nil {
+		return true
+	}
+	// Not found: already gone when the account no longer lists it.
+	if sites, _, lerr := c.Sites(ctx); lerr == nil && !slices.ContainsFunc(sites, func(s blupcloud.Site) bool { return s.ID == id }) {
+		return true
+	}
+	fail("blupSite", errors.New(describe(err)), link)
+	return false
 }
 
 // ForgetSite takes a site out of Blup's list (nothing is deleted).

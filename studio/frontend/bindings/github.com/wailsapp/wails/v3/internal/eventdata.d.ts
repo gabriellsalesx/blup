@@ -15,9 +15,11 @@ import type * as main$0 from "../../../../gabriellsalesx/blup/studio/models.js";
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
+            "calendarOpen": main$0.CalendarOpen;
             "cloudSync": app$0.LiveState;
             "narrate": main$0.NarrateProgress;
             "notesChanged": string;
+            "previewChanged": string;
             "previewRestarted": string;
             "progress": main$0.Progress;
             "term": main$0.TermData;

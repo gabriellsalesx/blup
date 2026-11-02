@@ -12,7 +12,21 @@ export const TYPES: ColumnType[] = ["text", "number", "select", "multi", "date",
 export const OPTION_COLORS = ["gray", "red", "orange", "yellow", "green", "blue", "pink"] as const;
 const HEX: Record<string, string> = { gray: "#94a3b8", red: "#ef4444", orange: "#f59e0b", yellow: "#eab308", green: "#22c55e", blue: "#3b82f6", pink: "#ec4899" };
 export const optionColor = (c?: string) => HEX[c ?? "gray"] ?? HEX.gray;
-export const nextColor = (c?: string) => OPTION_COLORS[(OPTION_COLORS.indexOf((c ?? "gray") as any) + 1) % OPTION_COLORS.length];
+export const nextColor = (c?: string) => OPTION_COLORS[((OPTION_COLORS as readonly string[]).indexOf(c ?? "gray") + 1) % OPTION_COLORS.length];
+
+// A property's value, as a note's front matter (YAML) comes from the
+// Studio: JSON. The bindings leave the Go side's value untyped; the window
+// keeps it as this.
+export type Json = string | number | boolean | null | Json[] | { [k: string]: Json };
+export type JsonProps = Record<string, Json>;
+// Whether a value (from a field, say) is JSON all the way down.
+export function isJson(v: unknown): v is Json {
+  if (v === null || typeof v === "string" || typeof v === "boolean") return true;
+  if (typeof v === "number") return Number.isFinite(v);
+  if (Array.isArray(v)) return v.every(isJson);
+  if (typeof v === "object") return Object.getPrototypeOf(v) === Object.prototype && Object.values(v).every(isJson);
+  return false;
+}
 
 // A property name from a column name: lower case, no accents, dashes.
 export function keyOf(name: string, taken: string[]) {

@@ -87,8 +87,11 @@ func (r *Remote) Head(ctx context.Context, _ bool) (notesync.Head, error) {
 		if err != nil {
 			return notesync.Head{}, err
 		}
-		if err := json.Unmarshal(plain, &h.m); err != nil {
-			return notesync.Head{}, fmt.Errorf("blupcloud: unreadable manifest: %w", err)
+		// Checked before anything here changes: a manifest that makes
+		// no sense is an error, never an empty vault (which would delete
+		// the notes on this computer).
+		if h.m, err = parseManifest(plain); err != nil {
+			return notesync.Head{}, err
 		}
 	}
 	out := notesync.Head{Extra: h}
@@ -165,7 +168,11 @@ func (r *Remote) Download(ctx context.Context, f notesync.RemoteFile) ([]byte, e
 }
 
 func (r *Remote) download(ctx context.Context, mf manifestFile) ([]byte, error) {
+	if err := mf.check(); err != nil {
+		return nil, cloudcrypt.ErrCorrupt
+	}
 	var buf bytes.Buffer
+	buf.Grow(int(min(mf.Size, 64<<20)))
 	for _, id := range mf.Blocks {
 		sealed, err := r.Client.Block(ctx, id)
 		if err != nil {
@@ -175,9 +182,14 @@ func (r *Remote) download(ctx context.Context, mf manifestFile) ([]byte, error) 
 		if err != nil {
 			return nil, err
 		}
+		// Never more than the manifest said: blocks larger than
+		// announced stop here instead of filling the memory.
+		if len(piece) > cloudcrypt.BlockSize || int64(buf.Len())+int64(len(piece)) > min(mf.Size, maxManifestFile) {
+			return nil, cloudcrypt.ErrCorrupt
+		}
 		buf.Write(piece)
 	}
-	if github.BlobSHA(buf.Bytes()) != mf.SHA {
+	if int64(buf.Len()) != mf.Size || github.BlobSHA(buf.Bytes()) != mf.SHA {
 		return nil, cloudcrypt.ErrCorrupt
 	}
 	return buf.Bytes(), nil

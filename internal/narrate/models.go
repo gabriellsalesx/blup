@@ -3,6 +3,9 @@ package narrate
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
+	"math"
 	"net/http"
 	"regexp"
 	"sort"
@@ -54,7 +57,16 @@ func (c *Client) Models(ctx context.Context) ([]ModelInfo, error) {
 			} `json:"pricing"`
 		} `json:"data"`
 	}
-	if err := json.NewDecoder(res.Body).Decode(&list); err != nil {
+	// The list comes from outside: read at most maxModelsList (it is some
+	// tens of KB), a larger answer is refused rather than cut.
+	body, err := io.ReadAll(io.LimitReader(res.Body, maxModelsList+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > maxModelsList {
+		return nil, errors.New("narrate: the list of models is too large")
+	}
+	if err := json.Unmarshal(body, &list); err != nil {
 		return nil, err
 	}
 	var out []ModelInfo
@@ -66,7 +78,10 @@ func (c *Client) Models(ctx context.Context) ([]ModelInfo, error) {
 		if skip {
 			continue
 		}
-		price, _ := strconv.ParseFloat(m.Pricing.Prompt, 64)
+		price, ok := parsePrice(m.Pricing.Prompt)
+		if !ok || !validModelID.MatchString(m.ID) {
+			continue // a price or name that can't be trusted: not offered
+		}
 		d := strings.ToLower(m.Description)
 		out = append(out, ModelInfo{
 			ID: m.ID, Name: m.Name, PerThousand: price * 1000, Voices: m.Voices,
@@ -80,6 +95,27 @@ func (c *Client) Models(ctx context.Context) ([]ModelInfo, error) {
 		return out[i].Name < out[j].Name
 	})
 	return out, nil
+}
+
+// maxModelsList is the most of OpenRouter's list of models read.
+const maxModelsList = 2 << 20
+
+// validModelID is an OpenRouter model id: "maker/model".
+var validModelID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}/[A-Za-z0-9][A-Za-z0-9._:+-]{0,127}$`)
+
+// parsePrice reads a price per character in US$: "" is 0 (priced otherwise,
+// or free); a number that is not finite, is negative or not a number is
+// refused, so no estimate is made on it.
+func parsePrice(s string) (float64, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, true
+	}
+	p, err := strconv.ParseFloat(s, 64)
+	if err != nil || math.IsNaN(p) || math.IsInf(p, 0) || p < 0 || p > 1 {
+		return 0, false
+	}
+	return p, true
 }
 
 var (

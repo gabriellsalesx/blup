@@ -3,8 +3,8 @@
 </script>
 
 <script lang="ts">
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
-  import type { Connections as Conn, BlupAccount as Account, AIQuota } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails, AIConsent, SetAIConsent } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import type { Connections as Conn, BlupAccount as Account, AIQuota, AIConsent as Consent } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import { untrack } from "svelte";
   import Settings from "@lucide/svelte/icons/settings";
@@ -229,7 +229,8 @@
   const chosen = (l: string) => {
     const list = voices[l];
     const pick = list.find((v) => v.id === norm(look.voices?.[l]));
-    return pick?.ready ? pick.id : (list.find((v) => v.ready) ?? pick ?? list.find((v) => v.engine === "openrouter"))?.id ?? "";
+    // Without a choice, the local voice: never one in the cloud by itself.
+    return pick?.ready ? pick.id : list.find((v) => v.engine === "local" && v.ready)?.id ?? "";
   };
   const setVoice = (lang: string, id: string) => { setPref("voices", { ...(look.voices ?? {}), [lang]: id }); toast(ai.voiceSet); };
 
@@ -239,7 +240,7 @@
   let ltBusy = $state<{ done: number; total: number } | null>(null);
   let ltError = $state("");
   LocalTranslate().then((v) => (ltState = v)).catch(() => {});
-  const offLt = Events.On("translateInstall", (ev: any) => { if (ltBusy) ltBusy = ev.data; });
+  const offLt = Events.On("translateInstall", (ev) => { if (ltBusy) ltBusy = ev.data; });
   $effect(() => () => offLt());
   async function installLt() {
     ltError = "";
@@ -253,8 +254,17 @@
     ltState = await LocalTranslate();
     toast(lt.removed);
   }
-  // Who translates: on the computer when installed, unless the cloud was chosen.
-  const ltWho = $derived(ltState?.installed && look.translateAI !== "cloud" ? "local" : "cloud");
+  // Who translates: the person's choice (on the computer, OpenRouter or
+  // Blup Cloud); nothing chosen is the computer when installed, else
+  // nobody (the Studio never picks the cloud by itself).
+  const ltWho = $derived(["local", "openrouter", "blup"].includes(look.translateAI) ? look.translateAI : ltState?.installed && look.translateAI === "" ? "local" : "");
+  // What the person accepted sending to each AI in the cloud.
+  const aip = t.aip;
+  let consent = $state<Consent | null>(null);
+  AIConsent().then((c) => (consent = c)).catch(() => {});
+  async function revoke(dest: "openrouter" | "blup") {
+    try { await SetAIConsent(dest, false); consent = await AIConsent(); toast(aip.revoked); } catch (e) { toastError(e); }
+  }
 
   // The local voice: downloaded on demand, then ready to use.
   const lv = t.localVoice;
@@ -262,7 +272,7 @@
   let installing = $state<{ done: number; total: number; step: string } | null>(null);
   let localError = $state("");
   LocalVoice().then((v) => (local = v));
-  const offInstall = Events.On("voiceInstall", (ev: any) => { if (installing) installing = ev.data; });
+  const offInstall = Events.On("voiceInstall", (ev) => { if (installing) installing = ev.data; });
   $effect(() => () => offInstall());
   const mb = (b: number) => Math.round(b / 1e6);
   async function installLocal() {
@@ -583,15 +593,22 @@
         {/if}
         {#if ltError}<p class="bad">{ltError}</p>{/if}
       </div>
-      {#if ltState?.installed}
-        <div class="item who">
-          <div class="text"><b>{lt.who}</b><small>{lt.whoHelp}</small></div>
-          <div class="seg">
-            <button class:on={ltWho === "local"} onclick={() => setPref("translateAI", "local")}>{lt.whoLocal}</button>
-            <button class:on={ltWho === "cloud"} onclick={() => setPref("translateAI", "cloud")}>{lt.whoCloud}</button>
-          </div>
+      <div class="item who">
+        <div class="text"><b>{lt.who}</b><small>{ltWho ? lt.whoHelp : aip.whoNone}</small></div>
+        <div class="seg">
+          <button class:on={ltWho === "local"} disabled={!ltState?.installed} onclick={() => setPref("translateAI", "local")}>{lt.whoLocal}</button>
+          <button class:on={ltWho === "openrouter"} disabled={!aiOn} onclick={() => setPref("translateAI", "openrouter")}>{aip.whoOpenRouter}</button>
+          <button class:on={ltWho === "blup"} disabled={!account?.ai} onclick={() => setPref("translateAI", "blup")}>{aip.whoBlup}</button>
         </div>
-      {/if}
+      </div>
+      <h3>{aip.consentTitle}</h3>
+      <p class="muted lead">{aip.consentHelp}</p>
+      {#each [["openrouter", aip.whoOpenRouter], ["blup", aip.whoBlup]] as const as [dest, name] (dest)}
+        <div class="item">
+          <div class="text"><b>{name}</b><small>{consent?.[dest] ? aip.accepted : aip.notAsked}</small></div>
+          {#if consent?.[dest]}<button class="btn ghost" onclick={() => revoke(dest)}>{aip.revoke}</button>{/if}
+        </div>
+      {/each}
     {:else if tab === "narration"}
       <p class="muted lead">{ai.narrationHelp}</p>
       {#if local && !local.installed && aiOn === false}

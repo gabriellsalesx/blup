@@ -76,14 +76,14 @@ func DailyNote(site *config.Site, folder, tag string, now time.Time) (string, er
 	if err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+	if err := MkdirInside(site.ContentDir(), filepath.Dir(p)); err != nil {
 		return "", err
 	}
 	b, err := os.ReadFile(p)
 	if errors.Is(err, os.ErrNotExist) {
 		day := now.Format("2006-01-02")
 		b = []byte("---\ncreated: " + day + "\nupdated: " + day + "\n---\n")
-		if err := os.WriteFile(p, b, 0o644); err != nil {
+		if err := writeNew(site.ContentDir(), p, b); err != nil {
 			return "", err
 		}
 		tags := FolderTags(site, folder)
@@ -106,7 +106,7 @@ func DailyNote(site *config.Site, folder, tag string, now time.Time) (string, er
 	if strings.HasSuffix(text, "\n"+heading) {
 		return rel, nil // opened again the same minute: that time is there already
 	}
-	return rel, os.WriteFile(p, []byte(text+"\n\n"+heading+"\n\n"), 0o644)
+	return rel, WriteInside(site.ContentDir(), p, []byte(text+"\n\n"+heading+"\n\n"))
 }
 
 // VaultTags are the tags used in the notes' properties, the most used

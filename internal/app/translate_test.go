@@ -21,6 +21,7 @@ func TestTranslateNote(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	creds, _ := config.LoadCredentials()
 	creds.OpenRouterToken = "k"
+	_ = SetAIConsent(AIOpenRouter, true)
 	if err := creds.Save(); err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +40,7 @@ func TestTranslateNote(t *testing.T) {
 	root := site.ContentDir()
 	write(t, root, "Posts/Bolo.md", "---\ndescription: Um bolo\naudio: \"[[bolo.mp3]]\"\ntags: [doce]\n---\nTexto do bolo.\n")
 
-	got, err := TranslateNote(context.Background(), site, "Posts/Bolo.md", "en", nil)
+	got, err := TranslateNote(context.Background(), site, "Posts/Bolo.md", "en", AIOpenRouter, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +73,7 @@ func TestTranslateNote(t *testing.T) {
 		t.Fatalf("after a change = %+v", langs)
 	}
 	// Translated again: the same file, not a new one.
-	if again, err := TranslateNote(context.Background(), site, "Posts/Bolo.md", "en", nil); err != nil || again != got {
+	if again, err := TranslateNote(context.Background(), site, "Posts/Bolo.md", "en", AIOpenRouter, nil); err != nil || again != got {
 		t.Fatalf("again = %s %v", again, err)
 	}
 	if _, err := os.Stat(filepath.Join(site.Dir(), "hugo.toml")); err != nil {
@@ -84,6 +85,7 @@ func TestTranslateSite(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	creds, _ := config.LoadCredentials()
 	creds.OpenRouterToken = "k"
+	_ = SetAIConsent(AIOpenRouter, true)
 	_ = creds.Save()
 	calls := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -102,8 +104,8 @@ func TestTranslateSite(t *testing.T) {
 	write(t, root, "AGENTS.md", "guia")
 	write(t, root, "en/A.md", "---\ntitle: A\n---\nOne.")
 
-	n, err := TranslateSite(context.Background(), site, "es", nil)
-	if err != nil || n != 4 { // A, Pasta/B and the test site's _index and Posts/Um
+	n, err := TranslateSite(context.Background(), site, "es", AIOpenRouter, nil)
+	if err != nil || n.Done != 4 || n.Skipped != 0 { // A, Pasta/B and the test site's _index and Posts/Um
 		t.Fatalf("translated %d, %v", n, err)
 	}
 	if es, _ := filepath.Glob(filepath.Join(root, "Pasta", "es", "*.md")); len(es) != 1 {
@@ -116,7 +118,7 @@ func TestTranslateSite(t *testing.T) {
 		}
 	}
 	before := calls
-	if n, _ := TranslateSite(context.Background(), site, "es", nil); n != 0 || calls != before {
+	if n, _ := TranslateSite(context.Background(), site, "es", AIOpenRouter, nil); n.Done != 0 || calls != before {
 		t.Fatal("up to date notes should not be translated again")
 	}
 }
@@ -127,6 +129,7 @@ func TestTranslateHomeAndSection(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	creds, _ := config.LoadCredentials()
 	creds.OpenRouterToken = "k"
+	_ = SetAIConsent(AIOpenRouter, true)
 	_ = creds.Save()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct{ Messages []struct{ Content string } }
@@ -141,20 +144,20 @@ func TestTranslateHomeAndSection(t *testing.T) {
 	root := site.ContentDir()
 	write(t, root, "_index.md", "---\ntitle: Início\nsite_description: Notas sobre bolos\nbutton_text: Assine\nmenu:\n  - Posts\n  - Loja | https://x.dev\n---\nOi\n")
 	write(t, root, "Posts/_index.md", "---\ntitle: Receitas\nlinkTitle: Doces\n---\n")
-	if p, err := TranslateNote(context.Background(), site, "_index.md", "es", nil); err != nil || p != "es/_index.md" {
+	if p, err := TranslateNote(context.Background(), site, "_index.md", "es", AIOpenRouter, nil); err != nil || p != "es/_index.md" {
 		t.Fatalf("home = %s %v", p, err)
 	}
 	h, _ := obsidian.ReadNote(filepath.Join(root, "es", "_index.md"))
 	if m := h.List("menu"); len(m) != 2 || m[0] != "Posts" || m[1] != "ES(Loja) | https://x.dev" || h.String("site_description") != "ES(Notas sobre bolos)" || h.String("button_text") != "ES(Assine)" {
 		t.Fatalf("home props = %+v", h.Props)
 	}
-	if p, err := TranslateNote(context.Background(), site, "Posts/_index.md", "es", nil); err != nil || p != "Posts/es/_index.md" {
+	if p, err := TranslateNote(context.Background(), site, "Posts/_index.md", "es", AIOpenRouter, nil); err != nil || p != "Posts/es/_index.md" {
 		t.Fatalf("section = %s %v", p, err)
 	}
 	// An author's profile keeps the author's name, its role translated.
 	write(t, root, "Autores/_index.md", "---\ntitle: Autores\nblup: authors\n---\n")
 	write(t, root, "Autores/Ana.md", "---\nrole: Confeiteira\n---\nFaz bolos.\n")
-	if p, err := TranslateNote(context.Background(), site, "Autores/Ana.md", "es", nil); err != nil || p != "Autores/es/Ana.md" {
+	if p, err := TranslateNote(context.Background(), site, "Autores/Ana.md", "es", AIOpenRouter, nil); err != nil || p != "Autores/es/Ana.md" {
 		t.Fatalf("author = %s %v", p, err)
 	}
 	if a, _ := obsidian.ReadNote(filepath.Join(root, "Autores", "es", "Ana.md")); a.String("role") != "ES(Confeiteira)" {
@@ -181,6 +184,7 @@ func TestTranslateFeedbackExamples(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	creds, _ := config.LoadCredentials()
 	creds.OpenRouterToken = "k"
+	_ = SetAIConsent(AIOpenRouter, true)
 	if err := creds.Save(); err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +204,7 @@ func TestTranslateFeedbackExamples(t *testing.T) {
 	write(t, root, "Feedback/_index.md", "---\ntitle: Feedback\nblup: feedback\nexamples:\n  - title: Modo escuro\n    kind: feature\n    status: planned\n    votes: 42\n    days: 2\n    body: Seguir o sistema.\n    replies:\n      - author: marina\n        days: 1\n        text: Seria ótimo.\n---\n")
 
 	before, _ := NoteLangs(site, "Feedback/_index.md")
-	got, err := TranslateNote(context.Background(), site, "Feedback/_index.md", "en", nil)
+	got, err := TranslateNote(context.Background(), site, "Feedback/_index.md", "en", AIOpenRouter, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

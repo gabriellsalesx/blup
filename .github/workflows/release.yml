@@ -29,3 +29,6 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Ed25519 key that signs checksums.txt (scripts/sign-release).
+          # Without it the release stops before publishing anything.
+          BLUP_RELEASE_KEY: ${{ secrets.BLUP_RELEASE_KEY }}

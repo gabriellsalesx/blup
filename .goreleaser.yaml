@@ -1,6 +1,11 @@
 # Release of the Blup CLI. A tag vX.Y.Z triggers .github/workflows/release.yml.
 # Archive names and checksums.txt are read by `blup update` (internal/update)
 # and by install.sh / install.ps1: keep them in sync.
+# checksums.txt.sig is the owner's Ed25519 signature over checksums.txt
+# (scripts/sign-release). `blup update` refuses a release without it. The
+# private key comes from the BLUP_RELEASE_KEY secret in CI, or from
+# ~/.config/blup-release/release.key on the owner's machine. It is never in
+# this repository.
 version: 2
 project_name: blup
 
@@ -10,7 +15,7 @@ builds:
     env: [CGO_ENABLED=0]
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
-    flags: [-trimpath]
+    flags: [-trimpath, -tags=production] # production: refuses Version "dev"
     ldflags:
       - -s -w -X github.com/gabriellsalesx/blup/internal/app.Version={{ .Version }}
 
@@ -25,6 +30,16 @@ archives:
 checksum:
   name_template: checksums.txt
   algorithm: sha256
+
+signs:
+  - id: release-key
+    artifacts: checksum
+    cmd: go
+    args: ["run", "./scripts/sign-release", "-in", "${artifact}", "-out", "${signature}"]
+    signature: "${artifact}.sig"
+    env:
+      - BLUP_RELEASE_KEY={{ envOrDefault "BLUP_RELEASE_KEY" "" }}
+    output: true
 
 changelog:
   disable: true # release notes are written by hand on GitHub (PT and EN)

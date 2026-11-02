@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -108,5 +109,76 @@ func TestDatabaseFollowsMoves(t *testing.T) {
 	}
 	if table, _ := DatabaseOf(site, "Pessoas/Ana.md"); table != "Contatos.table" {
 		t.Fatalf("record's database = %q", table)
+	}
+}
+
+// A .table from elsewhere (a sync, a hand edit, another tool) is fixed on
+// reading into one the Studio can show; fields the Studio doesn't know are
+// kept when it saves.
+func TestReadSchemaFixesBadFiles(t *testing.T) {
+	site := settingsSite(t)
+	root := site.ContentDir()
+	cases := map[string]string{
+		"null":     `null`,
+		"garbage":  `{"version": -3, "records": "../../x", "columns": null, "views": null}`,
+		"columns":  `{"version": 1, "records": "Clientes", "columns": [{"key": "a", "name": "", "type": "virus"}, {"key": "a", "type": "text"}, {"key": " ", "type": "text"}, {"key": "b", "type": "select", "options": [{"value": "x"}, {"value": "x"}, {"value": ""}]}], "views": []}`,
+		"views":    `{"version": 1, "records": "Clientes", "columns": [{"key": "a", "type": "select"}], "views": [{"id": "v", "type": "board", "groupBy": "nada", "sort": "-nada", "filter": "nada", "match": "m"}, {"id": "v", "type": "pizza", "groupBy": "a", "sort": "-a", "filter": "a", "match": "m"}, {"type": "table"}]}`,
+		"huge num": `{"version": 1e400}`,
+	}
+	for name, body := range cases {
+		write(t, root, "Bancos/T.table", body)
+		s, err := readSchema(filepath.Join(root, "Bancos", "T.table"))
+		if name == "huge num" {
+			if err == nil {
+				t.Errorf("%s: read without error", name)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("%s: %v", name, err)
+			continue
+		}
+		if s.Version < 1 || !recordsName(s.Records) || s.Columns == nil || s.Views == nil {
+			t.Errorf("%s: %+v", name, s)
+		}
+		keys := map[string]bool{}
+		for _, c := range s.Columns {
+			if c.Key == "" || keys[c.Key] || !slices.Contains(columnTypes, c.Type) || c.Name == "" {
+				t.Errorf("%s: bad column %+v", name, c)
+			}
+			keys[c.Key] = true
+			seen := map[string]bool{}
+			for _, o := range c.Options {
+				if o.Value == "" || seen[o.Value] {
+					t.Errorf("%s: bad option %+v", name, o)
+				}
+				seen[o.Value] = true
+			}
+		}
+		ids := map[string]bool{}
+		for _, v := range s.Views {
+			if v.ID == "" || ids[v.ID] || (v.Type != "table" && v.Type != "board") {
+				t.Errorf("%s: bad view %+v", name, v)
+			}
+			ids[v.ID] = true
+			if v.GroupBy != "" && !keys[v.GroupBy] || v.Filter != "" && !keys[v.Filter] || strings.TrimPrefix(v.Sort, "-") != "" && !keys[strings.TrimPrefix(v.Sort, "-")] {
+				t.Errorf("%s: view on a missing column %+v", name, v)
+			}
+		}
+		if name == "views" && (len(s.Views) != 3 || s.Views[1].GroupBy != "a" || s.Views[1].Sort != "-a" || s.Views[1].Match != "m") {
+			t.Errorf("good references were dropped: %+v", s.Views)
+		}
+		if name == "columns" && (len(s.Columns) != 2 || s.Columns[0].Type != "text" || len(s.Columns[1].Options) != 1) {
+			t.Errorf("columns: %+v", s.Columns)
+		}
+	}
+
+	write(t, root, "Bancos/T.table", `{"version": 1, "records": "T", "futuro": {"x": 1}, "columns": [], "views": []}`)
+	if err := SaveDatabaseSchema(site, "Bancos/T.table", DBSchema{Columns: []DBColumn{{Key: "a", Type: "nope"}}}); err != nil {
+		t.Fatal(err)
+	}
+	b := read(t, root, "Bancos/T.table")
+	if !strings.Contains(b, `"futuro"`) || !strings.Contains(b, `"type": "text"`) {
+		t.Errorf("saved: %s", b)
 	}
 }

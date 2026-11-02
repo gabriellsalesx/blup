@@ -25,7 +25,9 @@
   let query = $state("");
   let open = $state<Attachment | null>(null);
   let newName = $state("");
-  let asking = $state(false);
+  // The question in the window's actions: delete it, or open a program
+  // (or a script) that would run on the computer.
+  let asking = $state<"" | "delete" | "run">("");
   let copied = $state(false);
   let loaded = $state(false);
   const s = saver();
@@ -45,7 +47,7 @@
   const ext = (n: string) => n.match(/\.[^.]+$/)?.[0] ?? "";
   const icons = { pdf: FileText, audio: Music, video: Video, other: FileIcon } as const;
 
-  function show(a: Attachment) { open = a; newName = stem(a.name); asking = false; copied = false; }
+  function show(a: Attachment) { open = a; newName = stem(a.name); asking = ""; copied = false; }
   let added = 0;
   const add = () => s.run(async () => { added = ((await AddAttachments()) ?? []).length; await load(); }, () => (added ? t.toast.filesAdded.replace("{n}", String(added)) : false));
   const rename = () => s.run(async () => {
@@ -65,6 +67,15 @@
     await load();
     toast(t.toast.fileDeleted.replace("{name}", name), { action: { label: t.toast.undo, run: () => RestoreSection(where).then(load).catch(toastError) } });
   }, false);
+  // A program or a script opens only after the question (the Studio
+  // refuses it otherwise).
+  function openApp() {
+    if (!open) return;
+    if (open.risky && asking !== "run") { asking = "run"; return; }
+    const confirmed = asking === "run";
+    asking = "";
+    OpenAttachment(open.name, confirmed).catch(toastError);
+  }
   async function copy() {
     if (!open) return;
     await Clipboard.SetText(open.kind === "image" ? `![[${open.name}]]` : `[[${open.name}]]`);
@@ -125,15 +136,21 @@
     </div>
     <div class="actions">
       {#if !asking}
-        <button class="btn ghost danger-text" onclick={() => (asking = true)}>{an.delete}</button>
+        <button class="btn ghost danger-text" onclick={() => (asking = "delete")}>{an.delete}</button>
         <span class="grow"></span>
-        <button class="btn ghost" onclick={() => open && OpenAttachment(open.name)}>{an.openApp}</button>
+        <button class="btn ghost" onclick={openApp}>{an.openApp}</button>
         <button class="btn" onclick={copy}>{copied ? an.copied : an.copy}</button>
+      {:else if asking === "run"}
+        <!-- A program or a script: it may run on the computer. -->
+        <span class="q warn" role="alert">{an.runQ}</span>
+        <span class="grow"></span>
+        <button class="btn ghost" onclick={() => (asking = "")}>{t.sec.cancel}</button>
+        <button class="btn danger" onclick={openApp}>{an.runYes}</button>
       {:else}
         <!-- Asking to delete: only the question and its answers. -->
         <span class="q">{open.uses?.length ? an.deleteUsedQ.replace("{n}", String(open.uses.length)) : an.deleteQ}</span>
         <span class="grow"></span>
-        <button class="btn ghost" onclick={() => (asking = false)}>{t.sec.cancel}</button>
+        <button class="btn ghost" onclick={() => (asking = "")}>{t.sec.cancel}</button>
         <button class="btn danger" onclick={remove}>{an.delete}</button>
       {/if}
     </div>
@@ -171,6 +188,7 @@
   .actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
   .grow { flex: 1; }
   .q { font-size: .85rem; color: var(--muted); }
+  .q.warn { flex-basis: 100%; color: var(--red); }
   .danger-text { color: var(--red); }
   .btn.danger { background: var(--red); color: #fff; }
 </style>

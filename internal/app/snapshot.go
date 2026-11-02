@@ -167,11 +167,13 @@ func UndoSnapshot(site *config.Site, dir string) error {
 		if err != nil {
 			return err
 		}
+		// Through os.Root: a folder of the notes made a link meanwhile
+		// is not followed out of them.
 		dst := filepath.Join(root, filepath.FromSlash(c.Path))
-		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		if err := MkdirInside(root, filepath.Dir(dst)); err != nil {
 			return err
 		}
-		if err := os.WriteFile(dst, b, 0o644); err != nil {
+		if err := WriteInside(root, dst, b); err != nil {
 			return err
 		}
 	}

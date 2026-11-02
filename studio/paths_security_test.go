@@ -3,9 +3,11 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/config"
 )
 
@@ -95,6 +97,35 @@ func TestOpenSiteFolderRefusesUnknown(t *testing.T) {
 	for _, dir := range []string{"/", "/etc", "--help", "file:///etc/passwd"} {
 		if err := s.OpenSiteFolder(dir); err == nil {
 			t.Errorf("OpenSiteFolder(%q) worked", dir)
+		}
+	}
+}
+
+// A program or a script among the attachments opens only after the window
+// asked (confirmed); a link is never opened.
+func TestOpenAttachmentAsks(t *testing.T) {
+	s, root, out := openSite(t)
+	dir := filepath.Join(root, app.AttachmentsFolder(s.site))
+	os.MkdirAll(dir, 0o755)
+	for _, n := range []string{"setup.exe", "run.bat", "x.ps1", "atalho.lnk", "x.sh", "Foo.command", "setup.exe."} {
+		os.WriteFile(filepath.Join(dir, n), []byte("MZ"), 0o644)
+		if err := s.OpenAttachment(n, false); err != errRiskyAttachment {
+			t.Errorf("OpenAttachment(%q) without asking: %v", n, err)
+		}
+	}
+	if runtime.GOOS != "windows" {
+		os.WriteFile(filepath.Join(dir, "programa"), []byte("\x7fELF"), 0o755)
+		if err := s.OpenAttachment("programa", false); err != errRiskyAttachment {
+			t.Errorf("a file allowed to run opened without asking: %v", err)
+		}
+		os.Symlink(filepath.Join(out, "secret.png"), filepath.Join(dir, "link.png"))
+		if err := s.OpenAttachment("link.png", true); err == nil || err == errRiskyAttachment {
+			t.Errorf("a link opened: %v", err)
+		}
+	}
+	for _, n := range []string{"../setup.exe", ".hidden", ""} {
+		if err := s.OpenAttachment(n, true); err == nil {
+			t.Errorf("OpenAttachment(%q) worked", n)
 		}
 	}
 }

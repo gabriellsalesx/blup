@@ -44,12 +44,20 @@ function correct(h: Speller, word: string) {
   return parts.length > 1 && parts.every((p) => h.testSpelling(p));
 }
 
-type Msg =
+// What the editor asks (spell.ts); the ones with an id get a reply with
+// the same id and type, or an error.
+export type SpellRequest =
   | { type: "setup"; lang: string; words: string[] }
   | { type: "check"; id: number; words: string[] }
   | { type: "suggest"; id: number; word: string }
   | { type: "add"; word: string }
   | { type: "complete"; id: number; word: string };
+export type SpellReply =
+  | { type: "check"; id: number; wrong: string[] }
+  | { type: "suggest"; id: number; suggestions: string[] }
+  | { type: "complete"; id: number; fixes: string[]; words: string[] }
+  | { type: "error"; id: number; error: string };
+const reply = (r: SpellReply) => postMessage(r);
 
 // The first words of the sorted list that start with prefix (any case).
 function starting(list: string[], prefix: string, max: number) {
@@ -71,7 +79,7 @@ function starting(list: string[], prefix: string, max: number) {
     .map((w) => (/^\p{Lu}/u.test(prefix) && /^\p{Ll}/u.test(w) ? w[0].toUpperCase() + w.slice(1) : w));
 }
 
-self.onmessage = async (e: MessageEvent<Msg>) => {
+self.onmessage = async (e: MessageEvent<SpellRequest>) => {
   const m = e.data;
   if (m.type === "setup") {
     lang = files[m.lang] ? m.lang : "pt";
@@ -90,12 +98,12 @@ self.onmessage = async (e: MessageEvent<Msg>) => {
       // "fácil mente").
       const all = correct(h, m.word) ? [] : h.getSpellingSuggestions(m.word);
       const fixes = [...all.filter((w) => !w.includes(" ")), ...all.filter((w) => w.includes(" "))].slice(0, 3);
-      postMessage({ id: m.id, fixes, words: starting(stems[lang] ?? [], m.word, 8) });
+      reply({ type: "complete", id: m.id, fixes, words: starting(stems[lang] ?? [], m.word, 8) });
       return;
     }
-    if (m.type === "check") postMessage({ id: m.id, wrong: m.words.filter((w) => !correct(h, w)) });
-    else postMessage({ id: m.id, suggestions: h.getSpellingSuggestions(m.word).slice(0, 6) });
+    if (m.type === "check") reply({ type: "check", id: m.id, wrong: m.words.filter((w) => !correct(h, w)) });
+    else reply({ type: "suggest", id: m.id, suggestions: h.getSpellingSuggestions(m.word).slice(0, 6) });
   } catch (err) {
-    postMessage({ id: m.id, error: String(err) });
+    reply({ type: "error", id: m.id, error: String(err) });
   }
 };

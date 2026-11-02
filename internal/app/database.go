@@ -120,14 +120,14 @@ func CreateDatabase(site *config.Site, folder, title string, schema DBSchema) (s
 		if _, err := os.Stat(records); err == nil {
 			continue
 		}
-		if err := os.MkdirAll(records, 0o755); err != nil {
+		if err := MkdirInside(site.ContentDir(), records); err != nil {
 			return "", err
 		}
 		schema.Version, schema.Records = 1, name
 		if schema.Tag == "" {
 			schema.Tag = tagName(name)
 		}
-		return rel, writeSchema(p, schema)
+		return rel, writeSchema(site, p, schema)
 	}
 }
 
@@ -136,18 +136,34 @@ func tagName(s string) string {
 	return strings.Join(strings.Fields(strings.ToLower(s)), "-")
 }
 
-func writeSchema(p string, s DBSchema) error {
-	if s.Columns == nil {
-		s.Columns = []DBColumn{}
-	}
-	if s.Views == nil {
-		s.Views = []DBView{}
-	}
-	b, err := json.MarshalIndent(s, "", "\t")
+// writeSchema saves a .table (fixed as readSchema fixes it), through
+// os.Root. Fields of the file the Studio doesn't know (from a newer Blup
+// or another tool) are kept.
+func writeSchema(site *config.Site, p string, s DBSchema) error {
+	s = cleanSchema(s, strings.TrimSuffix(filepath.Base(p), filepath.Ext(p)))
+	known, err := json.Marshal(s)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(p, append(b, '\n'), 0o644)
+	out := map[string]json.RawMessage{}
+	if old, err := os.ReadFile(p); err == nil {
+		_ = json.Unmarshal(old, &out) // not an object: nothing to keep
+		if out == nil {
+			out = map[string]json.RawMessage{}
+		}
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(known, &fields); err != nil {
+		return err
+	}
+	for k, v := range fields {
+		out[k] = v
+	}
+	b, err := json.MarshalIndent(out, "", "\t")
+	if err != nil {
+		return err
+	}
+	return WriteInside(site.ContentDir(), p, append(b, '\n'))
 }
 
 func readSchema(p string) (DBSchema, error) {
@@ -159,13 +175,77 @@ func readSchema(p string) (DBSchema, error) {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return s, fmt.Errorf("the database file can't be read: %w", err)
 	}
+	return cleanSchema(s, strings.TrimSuffix(filepath.Base(p), filepath.Ext(p))), nil
+}
+
+// columnTypes are the column types the Studio knows (db.ts TYPES).
+var columnTypes = []string{"text", "number", "select", "multi", "date", "phone", "email", "url", "check", "link"}
+
+// cleanSchema fixes a .table that came from elsewhere (a sync, another
+// tool, a hand edit) into one the Studio can show: a version from 1, the
+// records' folder a name next to the .table (named name), columns with a
+// key of their own and a known type (else text), options without repeats,
+// views of a known type with ids of their own, and their grouping, sorting
+// and filter on columns that exist.
+func cleanSchema(s DBSchema, name string) DBSchema {
+	if s.Version < 1 {
+		s.Version = 1
+	}
 	// The records' folder is a name next to the .table: a path in a file
 	// that came from elsewhere ("../../.config/autostart") would read and
 	// write notes outside the vault.
 	if !recordsName(s.Records) {
-		s.Records = strings.TrimSuffix(filepath.Base(p), filepath.Ext(p))
+		s.Records = name
 	}
-	return s, nil
+	cols := []DBColumn{}
+	keys := map[string]bool{}
+	for _, c := range s.Columns {
+		if c.Key = strings.TrimSpace(c.Key); c.Key == "" || keys[c.Key] {
+			continue
+		}
+		keys[c.Key] = true
+		if !slices.Contains(columnTypes, c.Type) {
+			c.Type = "text"
+		}
+		if strings.TrimSpace(c.Name) == "" {
+			c.Name = c.Key
+		}
+		var opts []DBOption
+		seen := map[string]bool{}
+		for _, o := range c.Options {
+			if o.Value != "" && !seen[o.Value] {
+				seen[o.Value] = true
+				opts = append(opts, o)
+			}
+		}
+		c.Options = opts
+		cols = append(cols, c)
+	}
+	s.Columns = cols
+	views := []DBView{}
+	ids := map[string]bool{}
+	for i, v := range s.Views {
+		if v.Type != "table" && v.Type != "board" {
+			v.Type = "table"
+		}
+		for v.ID == "" || ids[v.ID] {
+			v.ID = fmt.Sprintf("%s-%d", v.Type, i+1)
+			i += len(s.Views)
+		}
+		ids[v.ID] = true
+		if v.GroupBy != "" && !keys[v.GroupBy] {
+			v.GroupBy = ""
+		}
+		if k := strings.TrimPrefix(v.Sort, "-"); k != "" && !keys[k] {
+			v.Sort = ""
+		}
+		if v.Filter != "" && !keys[v.Filter] {
+			v.Filter, v.Match = "", ""
+		}
+		views = append(views, v)
+	}
+	s.Views = views
+	return s
 }
 
 // recordsName tells whether name is a folder's name, not a path.
@@ -253,7 +333,7 @@ func SaveDatabaseSchema(site *config.Site, rel string, s DBSchema) error {
 	if s.Tag == "" {
 		s.Tag = old.Tag
 	}
-	return writeSchema(p, s)
+	return writeSchema(site, p, s)
 }
 
 // AddRecord makes a record (a note named name in the records' folder,
@@ -275,7 +355,7 @@ func AddRecord(site *config.Site, rel, name string, props map[string]any) (strin
 	if err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := MkdirInside(site.ContentDir(), dir); err != nil {
 		return "", err
 	}
 	file := name + ".md"
@@ -287,7 +367,7 @@ func AddRecord(site *config.Site, rel, name string, props map[string]any) (strin
 	}
 	today := time.Now().Format("2006-01-02")
 	full := filepath.Join(dir, file)
-	if err := writeNew(full, []byte("---\ncreated: "+today+"\nupdated: "+today+"\n---\n\n")); err != nil {
+	if err := writeNew(site.ContentDir(), full, []byte("---\ncreated: "+today+"\nupdated: "+today+"\n---\n\n")); err != nil {
 		return "", err
 	}
 	list := []obsidian.Prop{}
@@ -340,7 +420,7 @@ func followDatabase(site *config.Site, from, to string, dir bool) error {
 			if _, err := os.Stat(newDir); err == nil {
 				return errors.New(name + " already exists there")
 			}
-			if err := os.Rename(oldDir, newDir); err != nil {
+			if err := renameInside(site.ContentDir(), oldDir, newDir); err != nil {
 				return err
 			}
 			if err := fixLinks(site, path.Join(path.Dir(from), s.Records), newRel, true); err != nil {
@@ -348,7 +428,7 @@ func followDatabase(site *config.Site, from, to string, dir bool) error {
 			}
 		}
 		s.Records = name
-		return writeSchema(p, s)
+		return writeSchema(site, p, s)
 	}
 	if dir && path.Dir(from) == path.Dir(to) {
 		// The records' folder renamed by itself: its .table follows the name.
@@ -358,7 +438,7 @@ func followDatabase(site *config.Site, from, to string, dir bool) error {
 		}
 		if s, err := readSchema(p); err == nil && s.Records == path.Base(from) {
 			s.Records = path.Base(to)
-			return writeSchema(p, s)
+			return writeSchema(site, p, s)
 		}
 	}
 	return nil

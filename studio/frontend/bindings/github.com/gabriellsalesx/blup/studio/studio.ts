@@ -44,6 +44,13 @@ export function AIConnected(): $CancellablePromise<boolean> {
 }
 
 /**
+ * AIConsent is what the person accepted sending to an AI in the cloud.
+ */
+export function AIConsent(): $CancellablePromise<app$0.AIConsent> {
+    return $Call.ByID(3550569170);
+}
+
+/**
  * AddAttachments asks for files on the computer and copies them in.
  */
 export function AddAttachments(): $CancellablePromise<string[] | null> {
@@ -125,6 +132,14 @@ export function BlupAccount(): $CancellablePromise<app$0.BlupAccount> {
 }
 
 /**
+ * BlupDomain is the own domain of the open site on Blup Cloud (the cloud
+ * checks the DNS again) and whether the plan includes it.
+ */
+export function BlupDomain(): $CancellablePromise<app$0.BlupDomain> {
+    return $Call.ByID(649138109);
+}
+
+/**
  * BlupLogin starts signing in: it opens Blup Cloud in the browser, where
  * the person checks the code and approves. Then call BlupLoginWait.
  */
@@ -148,9 +163,11 @@ export function BlupLoginWait(): $CancellablePromise<app$0.BlupAccount> {
 }
 
 /**
- * BlupSignOut leaves Blup Cloud on this computer.
+ * BlupSignOut leaves Blup Cloud on this computer. The reminders waiting
+ * there are cancelled first; offline, that is done at the next start or
+ * sign in, and pending is true (the window says so).
  */
-export function BlupSignOut(): $CancellablePromise<void> {
+export function BlupSignOut(): $CancellablePromise<boolean> {
     return $Call.ByID(130332116);
 }
 
@@ -690,10 +707,13 @@ export function OpenAIKeyPage(): $CancellablePromise<void> {
 }
 
 /**
- * OpenAttachment opens a file in the computer's own app for it.
+ * OpenAttachment opens a file in the computer's own app for it. A program,
+ * a script or a shortcut (app.RiskyAttachment, or a file allowed to run on
+ * Linux and macOS) would run instead: it opens only with confirmed, which
+ * the window sends after asking.
  */
-export function OpenAttachment(name: string): $CancellablePromise<void> {
-    return $Call.ByID(1254002543, name);
+export function OpenAttachment(name: string, confirmed: boolean): $CancellablePromise<void> {
+    return $Call.ByID(1254002543, name, confirmed);
 }
 
 /**
@@ -718,6 +738,15 @@ export function OpenExisting(): $CancellablePromise<$models.Found | null> {
  */
 export function OpenKeyPage(account: string): $CancellablePromise<void> {
     return $Call.ByID(2833939930, account);
+}
+
+/**
+ * OpenNewGitHubRepo opens GitHub's "new repository" form filled in for the
+ * site ("site", named name) or its notes ("notes"): Blup's key is limited
+ * to chosen repositories and cannot create them.
+ */
+export function OpenNewGitHubRepo(kind: string, name: string): $CancellablePromise<void> {
+    return $Call.ByID(2698007419, kind, name);
 }
 
 /**
@@ -811,7 +840,8 @@ export function Podcast(): $CancellablePromise<app$0.PodcastInfo> {
 }
 
 /**
- * Prefs reads the Studio's choices.
+ * Prefs reads the Studio's choices. A damaged file (not JSON, null, a
+ * field of the wrong type) gives the defaults, never half of it.
  */
 export function Prefs(): $CancellablePromise<$models.Prefs> {
     return $Call.ByID(3884801796);
@@ -876,6 +906,13 @@ export function RecentSites(): $CancellablePromise<$models.RecentSite[] | null> 
  */
 export function ReminderEmails(): $CancellablePromise<blupcloud$0.ReminderUse> {
     return $Call.ByID(4190780829);
+}
+
+/**
+ * RemoveBlupDomain unlinks the open site's own domain on Blup Cloud.
+ */
+export function RemoveBlupDomain(): $CancellablePromise<app$0.BlupDomain> {
+    return $Call.ByID(4087722481);
 }
 
 /**
@@ -1085,10 +1122,26 @@ export function SearchNotes(query: string): $CancellablePromise<app$0.SearchHit[
 }
 
 /**
+ * SetAIConsent keeps the person's answer to "your note's text goes to
+ * dest" ("openrouter" or "blup").
+ */
+export function SetAIConsent(dest: string, ok: boolean): $CancellablePromise<void> {
+    return $Call.ByID(870472178, dest, ok);
+}
+
+/**
  * SetAutostart makes the Studio open (in the tray) when the computer starts.
  */
 export function SetAutostart(on: boolean): $CancellablePromise<void> {
     return $Call.ByID(972087711, on);
+}
+
+/**
+ * SetBlupDomain links a domain to the open site on Blup Cloud, or checks
+ * the one linked again.
+ */
+export function SetBlupDomain(hostname: string): $CancellablePromise<app$0.BlupDomain> {
+    return $Call.ByID(2948180253, hostname);
 }
 
 /**
@@ -1306,9 +1359,11 @@ export function TranslateNote(rel: string, lang: string): $CancellablePromise<st
 
 /**
  * TranslateSite translates the open site's notes that miss a translation
- * into lang (or have an out of date one) and returns how many it did.
+ * into lang (or have an out of date one) with the AI in the cloud chosen,
+ * and tells how many it did and how many password protected posts it left
+ * out.
  */
-export function TranslateSite(lang: string): $CancellablePromise<number> {
+export function TranslateSite(lang: string): $CancellablePromise<app$0.SiteTranslation> {
     return $Call.ByID(1712606371, lang);
 }
 

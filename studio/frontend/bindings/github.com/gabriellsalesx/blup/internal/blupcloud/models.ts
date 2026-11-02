@@ -19,6 +19,30 @@ export interface DeletedFile {
 }
 
 /**
+ * DomainInfo is a site's own domain and where it stands. Status:
+ * "pending_ownership" (the TXT record is missing), "pending" (being set up),
+ * "active" or "error". SSL: "pending", "active" or "error".
+ */
+export interface DomainInfo {
+    "hostname": string;
+    "status": string;
+    "ssl": string;
+    "records": DomainRecord[] | null;
+}
+
+/**
+ * DomainRecord is a DNS record to create where the domain was bought.
+ */
+export interface DomainRecord {
+    /**
+     * "TXT" or "CNAME"
+     */
+    "type": string;
+    "name": string;
+    "value": string;
+}
+
+/**
  * NoteVersion is one content a file had: the version where it was saved.
  */
 export interface NoteVersion {

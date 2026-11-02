@@ -15,12 +15,15 @@ import (
 // DefaultOAuthBaseURL hosts the device-flow endpoints.
 const DefaultOAuthBaseURL = "https://github.com"
 
-// DefaultDeviceScopes are the OAuth scopes requested by the device flow.
-// "repo" is what the Pages REST docs require for OAuth app tokens
-// (https://docs.github.com/en/rest/pages/pages); it also covers creating the
-// repository and writing git data. "public_repo" alone is not documented as
-// sufficient for the Pages endpoints.
-var DefaultDeviceScopes = []string{"repo"}
+// The device flow is not used by Blup: an OAuth App only has the classic
+// scopes, and the one the Pages and private-repository endpoints need
+// ("repo") opens every private repository of the person, with no way to
+// limit it to one. Blup asks for a fine-grained key limited to the chosen
+// repositories instead (see TokenURL). A GitHub App would allow a device
+// flow limited to the repositories where the app is installed; that needs
+// an app registered on GitHub by Blup's owner.
+// https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
+// https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app
 
 // Device-flow errors.
 var (
@@ -34,7 +37,7 @@ var (
 // No client secret is needed.
 type DeviceFlow struct {
 	ClientID   string
-	Scopes     []string // nil means DefaultDeviceScopes
+	Scopes     []string // required: there is no default, so nobody gets "repo" by accident
 	BaseURL    string   // default https://github.com
 	HTTPClient *http.Client
 
@@ -106,8 +109,8 @@ func (f *DeviceFlow) Start(ctx context.Context) (*DeviceCode, error) {
 		return nil, errors.New("github: device flow: ClientID is empty")
 	}
 	scopes := f.Scopes
-	if scopes == nil {
-		scopes = DefaultDeviceScopes
+	if len(scopes) == 0 {
+		return nil, errors.New("github: device flow: no scope chosen")
 	}
 	r, err := f.post(ctx, "/login/device/code", url.Values{
 		"client_id": {f.ClientID},

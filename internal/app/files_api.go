@@ -62,20 +62,68 @@ func Within(root, p string) bool {
 	return real == realRoot || strings.HasPrefix(real, realRoot+string(filepath.Separator))
 }
 
-// writeNew creates the file p with data, failing when anything is there
-// already, a link included: a link to nothing (planted in a synced or
-// downloaded folder) would otherwise make the file wherever it points.
-func writeNew(p string, data []byte) error {
-	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+// Writes in the notes go through os.Root: the folder is opened once and
+// every step of the path is resolved inside it, so a folder or a file
+// swapped for a link (to ~/.ssh, say) between a check and the write
+// fails instead of writing elsewhere. Links that stay inside still work;
+// links that leave or are absolute are refused (os.Root's rules, also on
+// Windows, where reserved names as NUL and COM1 are refused too).
+
+// inRoot runs fn on root opened as an os.Root, with p's path inside it.
+func inRoot(root, p string, fn func(r *os.Root, rel string) error) error {
+	root = filepath.Clean(root)
+	rel, err := filepath.Rel(root, filepath.Clean(p))
+	if err != nil || filepath.IsAbs(rel) || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return errors.New("outside the notes folder")
+	}
+	r, err := os.OpenRoot(root)
 	if err != nil {
 		return err
 	}
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		os.Remove(p)
-		return err
-	}
-	return f.Close()
+	defer r.Close()
+	return fn(r, rel)
+}
+
+// WriteInside writes the file p (made or replaced) without leaving root.
+func WriteInside(root, p string, data []byte) error {
+	return inRoot(root, p, func(r *os.Root, rel string) error { return r.WriteFile(rel, data, 0o644) })
+}
+
+// MkdirInside makes the folder p and its parents without leaving root.
+func MkdirInside(root, p string) error {
+	return inRoot(root, p, func(r *os.Root, rel string) error { return r.MkdirAll(rel, 0o755) })
+}
+
+// renameInside moves src to dst, both in root, making dst's folder.
+func renameInside(root, src, dst string) error {
+	return inRoot(root, src, func(r *os.Root, from string) error {
+		return inRoot(root, dst, func(_ *os.Root, to string) error {
+			if d := filepath.Dir(to); d != "." {
+				if err := r.MkdirAll(d, 0o755); err != nil {
+					return err
+				}
+			}
+			return r.Rename(from, to)
+		})
+	})
+}
+
+// writeNew creates the file p in root with data, failing when anything is
+// there already, a link included: a link to nothing (planted in a synced
+// or downloaded folder) would otherwise make the file wherever it points.
+func writeNew(root, p string, data []byte) error {
+	return inRoot(root, p, func(r *os.Root, rel string) error {
+		f, err := r.OpenFile(rel, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if err != nil {
+			return err
+		}
+		if _, err := f.Write(data); err != nil {
+			f.Close()
+			r.Remove(rel)
+			return err
+		}
+		return f.Close()
+	})
 }
 
 // isLink tells whether a walked entry is a symbolic link: the walks that
@@ -172,10 +220,7 @@ func moveItem(site *config.Site, from, to string, dir bool) error {
 	if _, err := os.Stat(dst); err == nil && !strings.EqualFold(from, to) {
 		return errors.New(path.Base(to) + " already exists there")
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return err
-	}
-	if err := os.Rename(src, dst); err != nil {
+	if err := renameInside(site.ContentDir(), src, dst); err != nil {
 		return err
 	}
 	if err := followDatabase(site, from, to, dir); err != nil {
@@ -209,7 +254,7 @@ func CopyNote(site *config.Site, rel string) (string, error) {
 		if _, err := os.Stat(p); err == nil {
 			continue
 		}
-		return newRel, writeNew(p, b)
+		return newRel, writeNew(site.ContentDir(), p, b)
 	}
 }
 
@@ -263,7 +308,7 @@ var canvasFile = regexp.MustCompile(`("file"\s*:\s*)("(?:[^"\\]|\\.)*")`)
 
 // fixCanvas points a canvas's file cards to where their files went (the
 // rest of the file stays as written).
-func fixCanvas(p string, moved func(string) (string, bool)) error {
+func fixCanvas(root, p string, moved func(string) (string, bool)) error {
 	b, err := os.ReadFile(p)
 	if err != nil {
 		return err
@@ -285,7 +330,7 @@ func fixCanvas(p string, moved func(string) (string, bool)) error {
 	if out == text {
 		return nil
 	}
-	return os.WriteFile(p, []byte(out), 0o644)
+	return WriteInside(root, p, []byte(out))
 }
 
 // fixLinks rewrites, in every note, the links to what moved from "from" to
@@ -330,7 +375,7 @@ func fixLinks(site *config.Site, from, to string, dir bool) error {
 			return nil
 		}
 		if strings.EqualFold(filepath.Ext(p), ".canvas") {
-			return fixCanvas(p, moved)
+			return fixCanvas(root, p, moved)
 		}
 		if !strings.EqualFold(filepath.Ext(p), ".md") {
 			return nil
@@ -386,6 +431,6 @@ func fixLinks(site *config.Site, from, to string, dir bool) error {
 		if out == text {
 			return nil
 		}
-		return os.WriteFile(p, []byte(out), 0o644)
+		return WriteInside(root, p, []byte(out))
 	})
 }

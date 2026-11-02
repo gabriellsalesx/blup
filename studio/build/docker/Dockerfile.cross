@@ -203,6 +203,8 @@ if [ "$GOOS" = "windows" ]; then
     EXT=".exe"
     LDFLAGS="-s -w -H windowsgui"
 fi
+# Blup version (internal/app.Version); the Taskfiles pass VERSION.
+LDFLAGS="$LDFLAGS -X github.com/gabriellsalesx/blup/internal/app.Version=${VERSION:-1.0.0}"
 
 TAGS="production"
 if [ -n "$EXTRA_TAGS" ]; then

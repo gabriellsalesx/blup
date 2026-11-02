@@ -109,7 +109,8 @@ func TestEnsureRepo(t *testing.T) {
 	if _, err := c.EnsureRepo(ctx, "", "notes"); !errors.Is(err, ErrRepoConflict) {
 		t.Fatalf("want ErrRepoConflict on 422, got %v", err)
 	}
-	// Missing Administration permission.
+	// Missing Administration permission: a key limited to chosen
+	// repositories; the person creates the repository on GitHub.
 	f.hook = func(w http.ResponseWriter, r *http.Request) bool {
 		if r.Method == http.MethodPost && r.URL.Path == "/user/repos" {
 			msg(w, 403, "Resource not accessible by personal access token")
@@ -117,8 +118,8 @@ func TestEnsureRepo(t *testing.T) {
 		}
 		return false
 	}
-	if _, err := c.EnsureRepo(ctx, "", "brand-new"); !errors.Is(err, ErrPermission) {
-		t.Fatalf("want ErrPermission, got %v", err)
+	if _, err := c.EnsureRepo(ctx, "", "brand-new"); !errors.Is(err, ErrRepoMissing) {
+		t.Fatalf("want ErrRepoMissing, got %v", err)
 	}
 }
 
@@ -451,7 +452,7 @@ func TestDeviceFlow(t *testing.T) {
 		r.ParseForm()
 		switch r.URL.Path {
 		case "/login/device/code":
-			if r.Form.Get("client_id") != "Iv1.abc" || r.Form.Get("scope") != "repo" {
+			if r.Form.Get("client_id") != "Iv1.abc" || r.Form.Get("scope") != "public_repo" {
 				writeJSON(w, 200, map[string]any{"error": "incorrect_client_credentials"})
 				return
 			}
@@ -480,7 +481,7 @@ func TestDeviceFlow(t *testing.T) {
 	defer srv.Close()
 
 	var waits []time.Duration
-	df := &DeviceFlow{ClientID: "Iv1.abc", BaseURL: srv.URL, sleep: func(ctx context.Context, d time.Duration) error {
+	df := &DeviceFlow{ClientID: "Iv1.abc", Scopes: []string{"public_repo"}, BaseURL: srv.URL, sleep: func(ctx context.Context, d time.Duration) error {
 		waits = append(waits, d)
 		return nil
 	}}

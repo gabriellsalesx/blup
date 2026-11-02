@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -23,6 +24,42 @@ type Attachment struct {
 	Size int64    `json:"size"`
 	Kind string   `json:"kind"` // "image", "pdf", "audio", "video" or "other"
 	Uses []string `json:"uses"` // notes that point to it
+	// Risky: a program or a script (see RiskyAttachment), which opens only
+	// after the Studio asks.
+	Risky bool `json:"risky"`
+}
+
+// riskyExts are the extensions a system runs instead of showing: programs,
+// installers, scripts, shortcuts and documents with macros, on Windows,
+// macOS and Linux.
+var riskyExts = map[string]bool{}
+
+func init() {
+	for _, e := range strings.Fields(`
+		.exe .msi .msp .mst .msix .msixbundle .appx .appxbundle .appinstaller .application .appref-ms
+		.bat .cmd .com .scr .pif .cpl .dll .ocx .sys .drv .msc .gadget .inf .ins .isp .job
+		.ps1 .ps1xml .ps2 .psc1 .psc2 .psd1 .psm1 .vb .vbs .vbe .js .jse .mjs .ws .wsf .wsc .wsh
+		.hta .lnk .url .scf .shs .shb .reg .chm .hlp .xbap .xll .xlam .xla .ppam .docm .dotm .xlsm .xltm .pptm .potm .ppsm .sldm
+		.settingcontent-ms .library-ms .search-ms .searchconnector-ms .diagcab .iso .img .vhd .vhdx .udl .rdp
+		.jar .jnlp .py .pyw .pyz .pyc .pl .rb .php .tcl .lua
+		.app .command .pkg .mpkg .dmg .terminal .workflow .action .scpt .scptd .applescript .tool .osx .prefpane .kext
+		.sh .bash .zsh .ksh .csh .fish .run .bin .out .elf .appimage .deb .rpm .snap .flatpak .flatpakref .desktop .AppImage`) {
+		riskyExts[strings.ToLower(e)] = true
+	}
+}
+
+// RiskyAttachment tells whether opening the file name with the system
+// would run it rather than show it (a program, a script, a shortcut). A
+// vault downloaded or synced from someone else may bring one: the Studio
+// opens it only after asking. Windows ignores dots and spaces at the end
+// of a name ("x.exe." runs as x.exe), and a ":" picks a hidden stream of
+// a file: both count as risky.
+func RiskyAttachment(name string) bool {
+	if strings.Contains(name, ":") {
+		return true
+	}
+	n := strings.ToLower(strings.TrimRight(name, ". "))
+	return riskyExts[filepath.Ext(n)]
 }
 
 func attachmentKind(name string) string {
@@ -37,6 +74,12 @@ func attachmentKind(name string) string {
 		return "video"
 	}
 	return "other"
+}
+
+// runnable tells whether a file has the permission to run (Linux and
+// macOS: a program without an extension is still a program).
+func runnable(info fs.FileInfo) bool {
+	return runtime.GOOS != "windows" && info.Mode().IsRegular() && info.Mode().Perm()&0o111 != 0
 }
 
 func attachmentsPath(site *config.Site) string {
@@ -69,7 +112,7 @@ func ListAttachments(site *config.Site) ([]Attachment, error) {
 		if err != nil {
 			continue
 		}
-		list = append(list, withTime{Attachment{Name: e.Name(), File: filepath.Join(dir, e.Name()), Size: info.Size(), Kind: attachmentKind(e.Name()), Uses: []string{}}, info.ModTime().UnixNano()})
+		list = append(list, withTime{Attachment{Name: e.Name(), File: filepath.Join(dir, e.Name()), Size: info.Size(), Kind: attachmentKind(e.Name()), Uses: []string{}, Risky: RiskyAttachment(e.Name()) || runnable(info)}, info.ModTime().UnixNano()})
 	}
 	sort.Slice(list, func(i, j int) bool { return list[i].t > list[j].t })
 	out := make([]Attachment, len(list))
@@ -145,7 +188,7 @@ func RenameAttachment(site *config.Site, old, name string) (string, error) {
 	if _, err := os.Lstat(filepath.Join(dir, name)); err == nil {
 		return "", errors.New(name + " already exists")
 	}
-	if err := os.Rename(filepath.Join(dir, old), filepath.Join(dir, name)); err != nil {
+	if err := renameInside(site.ContentDir(), filepath.Join(dir, old), filepath.Join(dir, name)); err != nil {
 		return "", err
 	}
 	pairs := []string{}
@@ -158,7 +201,7 @@ func RenameAttachment(site *config.Site, old, name string) (string, error) {
 	r := strings.NewReplacer(pairs...)
 	eachNoteText(site, func(p, text string) {
 		if out := r.Replace(text); out != text {
-			os.WriteFile(p, []byte(out), 0o644)
+			WriteInside(site.ContentDir(), p, []byte(out))
 		}
 	})
 	return name, nil
@@ -183,7 +226,7 @@ func attachmentName(name string) bool {
 // gets a number) and returns their names.
 func AddAttachments(site *config.Site, files []string) ([]string, error) {
 	dir := attachmentsPath(site)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := MkdirInside(site.ContentDir(), dir); err != nil {
 		return nil, err
 	}
 	if !Within(site.ContentDir(), dir) {
@@ -207,7 +250,7 @@ func AddAttachments(site *config.Site, files []string) ([]string, error) {
 			}
 			name = fmt.Sprintf("%s %d%s", base, i, ext)
 		}
-		if err := writeNew(filepath.Join(dir, name), b); err != nil {
+		if err := writeNew(site.ContentDir(), filepath.Join(dir, name), b); err != nil {
 			return out, err
 		}
 		out = append(out, name)

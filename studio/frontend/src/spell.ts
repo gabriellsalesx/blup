@@ -5,15 +5,24 @@
 import { ViewPlugin, Decoration, type DecorationSet, type EditorView, type ViewUpdate } from "@codemirror/view";
 import { RangeSetBuilder } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
+import type { SyntaxNode } from "@lezer/common";
 import SpellWorker from "./spell.worker.ts?worker";
+import type { SpellReply, SpellRequest } from "./spell.worker.ts";
 
 const worker = new SpellWorker();
 let nextId = 0;
-const waiting = new Map<number, (v: any) => void>();
-worker.onmessage = (e) => { waiting.get(e.data.id)?.(e.data); waiting.delete(e.data.id); };
-function ask(msg: object): Promise<any> {
+const waiting = new Map<number, (r: SpellReply) => void>();
+worker.onmessage = (e: MessageEvent<SpellReply>) => { waiting.get(e.data.id)?.(e.data); waiting.delete(e.data.id); };
+const send = (msg: SpellRequest) => worker.postMessage(msg);
+// A request that waits for its reply: the id is added here.
+type Question = SpellRequest extends infer R ? (R extends { id: number } ? Omit<R, "id"> : never) : never;
+type Answer<T extends Question["type"]> = Extract<SpellReply, { type: T | "error" }>;
+function ask<Q extends Question>(msg: Q): Promise<Answer<Q["type"]>> {
   const id = ++nextId;
-  return new Promise((resolve) => { waiting.set(id, resolve); worker.postMessage({ ...msg, id }); });
+  return new Promise((resolve) => {
+    waiting.set(id, (r) => { if (r.type === msg.type || r.type === "error") resolve(r as Answer<Q["type"]>); });
+    send({ ...msg, id } as SpellRequest);
+  });
 }
 
 // What the worker said about each word, for the current dictionary.
@@ -22,19 +31,20 @@ let generation = 0; // grows when the dictionary changes: the editors redraw
 const listeners = new Set<() => void>();
 
 export function setupSpell(lang: string, words: string[]) {
-  worker.postMessage({ type: "setup", lang, words: [...words] });
+  send({ type: "setup", lang, words: [...words] });
   known = new Map();
   generation++;
   listeners.forEach((f) => f());
 }
 export function addWord(word: string) {
-  worker.postMessage({ type: "add", word });
+  send({ type: "add", word });
   known.set(word, true);
   generation++;
   listeners.forEach((f) => f());
 }
 export async function suggest(word: string): Promise<string[]> {
-  return (await ask({ type: "suggest", word })).suggestions ?? [];
+  const r = await ask({ type: "suggest", word });
+  return r.type === "suggest" ? r.suggestions : [];
 }
 
 const WORD = /\p{L}[\p{L}\p{M}'’-]*\p{L}|\p{L}/gu;
@@ -93,7 +103,7 @@ export const spellcheck = ViewPlugin.fromClass(
       if (unknown.length) {
         const gen = generation;
         const res = await ask({ type: "check", words: unknown });
-        if (gen !== generation || res.error) return;
+        if (gen !== generation || res.type === "error") return;
         const wrong = new Set<string>(res.wrong);
         for (const w of unknown) known.set(w, !wrong.has(w));
       }
@@ -134,13 +144,13 @@ export function wordAt(view: EditorView, pos: number): { from: number; to: numbe
 export async function complete(word: string): Promise<{ fixes: string[]; words: string[] }> {
   if (!enabled) return { fixes: [], words: [] };
   const r = await ask({ type: "complete", word });
-  return { fixes: r.fixes ?? [], words: r.words ?? [] };
+  return r.type === "complete" ? { fixes: r.fixes, words: r.words } : { fixes: [], words: [] };
 }
 
 // Inside code, a link's address or a wikilink nothing is suggested.
 export function skipAt(view: EditorView, pos: number) {
   let skip = false;
-  for (let n: any = syntaxTree(view.state).resolveInner(pos, -1); n; n = n.parent) if (SKIP.has(n.name)) skip = true;
+  for (let n: SyntaxNode | null = syntaxTree(view.state).resolveInner(pos, -1); n; n = n.parent) if (SKIP.has(n.name)) skip = true;
   const line = view.state.doc.lineAt(pos);
   const before = line.text.slice(0, pos - line.from);
   const ticks = (before.match(/`/g) ?? []).length;

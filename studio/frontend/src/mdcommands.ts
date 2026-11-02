@@ -141,16 +141,18 @@ export function align(view: EditorView, cls: string | null) {
 }
 
 // The alignment and heading level where the cursor is, for the toolbar.
-export function alignAt(state: EditorState, pos: number): "left" | "center" | "right" | "justify" {
+type Align = "left" | "center" | "right" | "justify";
+const isAlign = (v: string | undefined): v is Align => v === "left" || v === "center" || v === "right" || v === "justify";
+export function alignAt(state: EditorState, pos: number): Align {
   const doc = state.doc;
   let line = doc.lineAt(pos);
   if (ALIGN_LINE.test(line.text) && line.number > 1) line = doc.line(line.number - 1);
-  if (/^#{1,6} /.test(line.text)) return (line.text.match(/\{\.text-(center|right|justify)\}\s*$/)?.[1] as any) ?? "left";
+  if (/^#{1,6} /.test(line.text)) { const a = line.text.match(/\{\.text-(center|right|justify)\}\s*$/)?.[1]; return isAlign(a) ? a : "left"; }
   if (!line.text.trim()) return "left";
   let end = line;
   while (end.number < doc.lines) {
     const next = doc.line(end.number + 1);
-    if (ALIGN_LINE.test(next.text)) return next.text.match(ALIGN_LINE)![1] as any;
+    if (ALIGN_LINE.test(next.text)) { const a = next.text.match(ALIGN_LINE)?.[1]; return isAlign(a) ? a : "left"; }
     if (!next.text.trim() || /^#{1,6} /.test(next.text)) break;
     end = next;
   }

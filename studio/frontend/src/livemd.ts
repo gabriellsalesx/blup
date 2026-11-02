@@ -12,6 +12,7 @@
 import { EditorView, Decoration, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { RangeSetBuilder, type EditorState } from "@codemirror/state";
 import { foldable, foldedRanges, foldEffect, unfoldEffect, syntaxTree } from "@codemirror/language";
+import type { SyntaxNode } from "@lezer/common";
 
 const hide = Decoration.replace({});
 const linkText = Decoration.mark({ class: "cm-link-text" });
@@ -21,7 +22,7 @@ const MD = /(?<![!\\])\[((?:[^\]\\\n]|\\.)+)\]\(([^)\s]+)(\s+"[^"]*")?\)/g;
 
 // Inside code (inline or a block): left as it is.
 function inCode(state: EditorState, pos: number) {
-  for (let n: any = syntaxTree(state).resolveInner(pos, 1); n; n = n.parent) {
+  for (let n: SyntaxNode | null = syntaxTree(state).resolveInner(pos, 1); n; n = n.parent) {
     if (/^(InlineCode|FencedCode|CodeBlock|CodeText)$/.test(n.name)) return true;
   }
   return false;

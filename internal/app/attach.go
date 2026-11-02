@@ -35,7 +35,7 @@ func PasteImage(site *config.Site, note, name string, data []byte) (string, erro
 	}
 	folder := attachmentsFolder(site)
 	dir := filepath.Join(site.ContentDir(), folder)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := MkdirInside(site.ContentDir(), dir); err != nil {
 		return "", err
 	}
 	if !Within(site.ContentDir(), dir) {
@@ -48,7 +48,7 @@ func PasteImage(site *config.Site, note, name string, data []byte) (string, erro
 		}
 		file = fmt.Sprintf("%s %d%s", base, i, ext)
 	}
-	if err := writeNew(filepath.Join(dir, file), data); err != nil {
+	if err := writeNew(site.ContentDir(), filepath.Join(dir, file), data); err != nil {
 		return "", err
 	}
 	rel, err := filepath.Rel(filepath.FromSlash(path.Dir("/"+note)), filepath.FromSlash("/"+folder+"/"+file))

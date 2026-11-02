@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { withAIConsent, ConsentCancelled } from "./aiconsentui";
   import { AuthorNames, PickCover, LinkedImage, AIConnected, LocalVoice, Narrate, NarrationHash, NarrationEstimate } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { Events } from "@wailsio/runtime";
   import { toast } from "./toast.svelte";
@@ -8,16 +9,17 @@
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import IconPicker from "./ui/IconPicker.svelte";
   import { t } from "./i18n";
+  import type { Json, JsonProps } from "./db";
   import NoteLangs from "./NoteLangs.svelte";
 
   // The note's properties as fields. onEdit(key, value) reports a change;
   // note is the note's path; onSettings opens the Studio's settings (tab).
-  let { props, kind, isIndex, note, onEdit, onSettings, onOpenNote }: { props: Record<string, any>; kind: string; isIndex: boolean; note: string; onEdit: (key: string, value: any) => void; onSettings: (tab: string) => void; onOpenNote?: (path: string) => void } = $props();
+  let { props, kind, isIndex, note, onEdit, onSettings, onOpenNote }: { props: JsonProps; kind: string; isIndex: boolean; note: string; onEdit: (key: string, value: Json) => void; onSettings: (tab: string) => void; onOpenNote?: (path: string) => void } = $props();
 
   const p = t.props;
   let open = $state(false);
   let more = $state(false);
-  const list = (v: any): string[] => (Array.isArray(v) ? v.map(String) : v ? [String(v)] : []);
+  const list = (v: Json | undefined): string[] => (Array.isArray(v) ? v.map(String) : v ? [String(v)] : []);
 
   let title = $state(String(props.title ?? ""));
   let description = $state(String(props.description ?? ""));
@@ -84,12 +86,12 @@
   const stage = $derived(!narrating ? "" : narrating.total === 0 ? n.stagePrep : narrating.done >= narrating.total ? n.stageSave
     : narrating.total > 1 ? n.progress.replace("{done}", String(narrating.done + 1)).replace("{total}", String(narrating.total)) : n.stageVoice);
   const fill = $derived(narrating && narrating.total > 1 ? Math.max(4, (narrating.done / narrating.total) * 100) : 0);
-  const offNarrate = Events.On("narrate", (ev: any) => { if (narrating && ev.data?.note === note) narrating = { done: ev.data.done, total: ev.data.total }; });
+  const offNarrate = Events.On("narrate", (ev) => { if (narrating && ev.data?.note === note) narrating = { done: ev.data.done, total: ev.data.total }; });
   $effect(() => () => offNarrate());
   async function narrate() {
     narrating = { done: 0, total: 0 };
     try {
-      const r = await Narrate(note);
+      const r = await withAIConsent(() => Narrate(note), "narrate"); // asks before the text first goes to the cloud
       audio = r.link; audioHash = r.hash; nowHash = r.hash; seconds = Math.round(r.seconds);
       cost = await NarrationEstimate(note).catch(() => null);
       onEdit("audio", r.link);
@@ -98,6 +100,7 @@
       toast(n.done.replace("{min}", String(Math.max(1, Math.round(r.seconds / 60)))).replace("{mb}", (r.bytes / 1048576).toFixed(1)));
       if (r.used) toast(n.usedOther.replace("{voice}", r.used), { kind: "info", ms: 9000 });
     } catch (e) {
+      if (e instanceof ConsentCancelled) { narrating = null; return; }
       toast(String(e).includes("no OpenRouter key") ? n.needKey : String(e).replace(/^(Runtime)?Error: /, ""), { kind: "error" });
       aiOn = (await AIConnected().catch(() => false)) || (await LocalVoice().catch(() => null))?.installed === true;
     }

@@ -19,5 +19,11 @@ the resource or false. */ -}}
   {{- if not $r -}}{{- $r = resources.Get (path.Join "vault" $p) -}}{{- end -}}
   {{- if not $r -}}{{- $r = index (resources.Match (printf "vault/**/%s" (path.Base $p))) 0 -}}{{- end -}}
 {{- end -}}
+{{- /* Only attachments: Hugo finds any file of the vault by its exact
+path, also the ones its mount leaves out (a note, a draft), and would
+publish it. */ -}}
+{{- with $r -}}
+  {{- if not (in (site.Params.blup.attachments | default slice) (lower (strings.TrimPrefix "." (path.Ext .Name)))) }}{{ $r = false }}{{ end -}}
+{{- end -}}
 {{- if not $r }}{{ $r = false }}{{ end -}}
 {{- return $r -}}

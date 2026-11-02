@@ -6,31 +6,27 @@
 //
 // # Authentication
 //
-// Two options:
+// A fine-grained personal access token limited to the repositories Blup
+// uses. [TokenURL] opens https://github.com/settings/personal-access-tokens/new
+// filled in with these repository permissions ([TokenPermissions]):
 //
-//   - A fine-grained personal access token (recommended for advanced users).
-//     Create it at https://github.com/settings/personal-access-tokens/new with
-//     "Repository access: All repositories" (needed so the token can create
-//     and then reach the new repository; "Only select repositories" works when
-//     the repository already exists) and these repository permissions:
+//	Contents: Read and write   git blobs/trees/commits/refs, contents PUT
+//	Pages:    Read and write   GET/POST/PUT /repos/{o}/{r}/pages, builds
+//	Issues:   Read and write   comments and reactions (feedback repository)
+//	Metadata: Read-only        GET /repos/{o}/{r} (always granted)
 //
-//     Administration: Read and write   POST /user/repos (create the repository)
-//     Contents:       Read and write   git blobs/trees/commits/refs, contents PUT
-//     Pages:          Read and write   GET/POST/PUT /repos/{o}/{r}/pages, builds
-//     Metadata:       Read-only        GET /repos/{o}/{r} (always granted)
+// No Administration: the person picks "Only select repositories" and the
+// repositories of the site, of the notes and of the comments. A link
+// cannot choose them, and a key limited this way cannot create a
+// repository, so the person creates it first through [NewRepoURL]
+// (github.com/new filled in). [Client.EnsureRepoWith] still creates it
+// when the key can (an older key), and otherwise returns a
+// [RepoMissingError] with that link. Adding the "blup-site" topic needs
+// Administration, so with these keys it is skipped.
+// Source: https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens
 //
-//     Source: https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens
-//     GET /user needs no extra permission.
-//
-//   - The OAuth Device Flow (friendliest for laypeople): the CLI shows a short
-//     code, the person opens https://github.com/login/device, types it and
-//     clicks Authorize. See [DeviceFlow]. The OAuth App must have "Enable
-//     Device Flow" ticked in its settings. Scope requested: "repo" (see
-//     [DefaultDeviceScopes]); the Pages REST docs state OAuth app tokens need
-//     the "repo" scope for the Pages endpoints.
-//     Sources: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow
-//     https://docs.github.com/en/rest/pages/pages
-//     https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
+// [DeviceFlow] (OAuth App) is kept but unused: OAuth Apps only have
+// classic scopes and "repo" reaches every private repository.
 //
 // # Limits handled
 //
@@ -54,9 +50,7 @@
 // [Client.ReadTree], [Client.CreateBlob], [Client.GetBlob],
 // [Client.CreateTree], [Client.CreateCommit] and [Client.UpdateBranch]
 // (never forced; a moved branch yields [ErrNotFastForward]). It needs only
-// Contents read/write (plus Administration read/write to create the
-// repository); Pages is not used. OAuth tokens need the "repo" scope for
-// private repositories.
+// Contents read/write on that repository; Pages is not used.
 //
 // All requests send X-GitHub-Api-Version: 2026-03-10 (current version, see
 // https://docs.github.com/en/rest/about-the-rest-api/api-versions).

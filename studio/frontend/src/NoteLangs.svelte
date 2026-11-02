@@ -5,6 +5,7 @@
   import { toast, toastError } from "./toast.svelte";
   import { t } from "./i18n";
   import { useLocal, translateNoteLocal } from "./localtranslate";
+  import { withAIConsent, ConsentCancelled, needsProvider } from "./aiconsentui";
 
   // The note's languages: the original and each translation (a folder en,
   // es or pt next to the note), to open, translate with AI, or translate
@@ -17,29 +18,33 @@
   let busy = $state("");
   let part = $state<{ done: number; total: number } | null>(null);
   let needKey = $state(false);
+  let needWho = $state(false);
 
   const load = (rel: string) => NoteLangs(rel).then((l) => { if (rel === note) langs = l ?? []; }).catch(() => { if (rel === note) langs = []; });
   $effect(() => { load(note); });
 
-  const off = Events.On("translate", (ev: any) => { if (busy && ev.data?.lang === busy) part = { done: ev.data.done, total: ev.data.total }; });
+  const off = Events.On("translate", (ev) => { if (busy && ev.data?.lang === busy) part = { done: ev.data.done, total: ev.data.total }; });
   $effect(() => () => off());
 
   async function translate(lang: string) {
     busy = lang;
     part = null;
     needKey = false;
+    needWho = false;
     try {
       // On the computer when it is installed (and chosen), else by the AI
       // in the cloud.
       const original = langs.find((l) => l.original);
       if (original && (await useLocal())) {
         await translateNoteLocal(original.path, original.lang, lang, (done, total) => (part = { done, total }));
-      } else await TranslateNote(note, lang);
+      } else await withAIConsent(() => TranslateNote(note, lang), "translate");
       toast(tr.done.replace("{lang}", NAMES[lang]));
       await load(note);
     } catch (e) {
       const msg = String(e).replace(/^(Runtime)?Error: /, "");
-      if (msg.includes("no OpenRouter key")) needKey = true;
+      if (e instanceof ConsentCancelled) { /* nothing was sent */ }
+      else if (needsProvider(e)) needWho = true;
+      else if (msg.includes("no OpenRouter key")) needKey = true;
       else toast(msg, { kind: "error" });
     }
     busy = "";
@@ -70,8 +75,8 @@
           </span>
         </div>
       {/each}
-      {#if needKey}
-        <p class="muted">{tr.needKey}</p>
+      {#if needKey || needWho}
+        <p class="muted">{needWho ? t.aip.chooseWho : tr.needKey}</p>
         <button class="btn ghost" onclick={() => onSettings("ai")}>{tr.openSettings}</button>
       {:else}
         <small class="muted">{tr.help.replace("{folder}", langs.filter((l) => !l.original).map((l) => l.lang).join(", "))}</small>

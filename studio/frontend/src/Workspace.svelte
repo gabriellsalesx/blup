@@ -9,7 +9,7 @@
   import NotebookPen from "@lucide/svelte/icons/notebook-pen";
   import CalendarDays from "@lucide/svelte/icons/calendar-days";
   import type { DBSchema } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
-  import type { Template } from "./db";
+  import type { Json, JsonProps, Template } from "./db";
   import { boardKind, fileTitle, type NewKind } from "./boards";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import PenTool from "@lucide/svelte/icons/pen-tool";
@@ -316,9 +316,9 @@
   // leave); only while one is open.
   let full = $state(false);
   let text = $state("");
-  let noteProps = $state<Record<string, any>>({});
+  let noteProps = $state<JsonProps>({});
   let kind = $state("");
-  let edits: Record<string, any> = {}; // properties changed since the last save
+  let edits: JsonProps = {}; // properties changed since the last save
   let status = $state<"saved" | "saving" | "unsaved">("saved");
   let error = $state("");
   let previewURL = $state("");
@@ -499,7 +499,7 @@
   // tree follows; the open note too, unless it has changes of its own.
   let reloadN = $state(0);
   let outside = $state(false);
-  const offNotes = Events.On("notesChanged", async (ev: any) => {
+  const offNotes = Events.On("notesChanged", async (ev) => {
     const list = String(ev.data ?? "").split("\n");
     try { tree = (await LoadTree()).children ?? []; } catch {}
     // A canvas or a drawing looks after itself.
@@ -511,7 +511,7 @@
     if (status === "saved") applyOutside(note);
     else outside = true;
   });
-  function applyOutside(note: { body: string; props: Record<string, any> | null; kind: string }) {
+  function applyOutside(note: { body: string; props: JsonProps | null; kind: string }) {
     text = note.body;
     pending = note.body;
     written = note.body;
@@ -529,10 +529,10 @@
 
   // Live sync through Blup Cloud (paid plans): its state on the Sync button.
   let cloud = $state<{ state: string; error?: string } | null>(null);
-  const offCloud = Events.On("cloudSync", (ev: any) => (cloud = ev.data));
+  const offCloud = Events.On("cloudSync", (ev) => (cloud = ev.data));
   // The preview started again (a translation brought a new language): its
   // new address, on the open note's page.
-  const offPreview = Events.On("previewRestarted", (ev: any) => {
+  const offPreview = Events.On("previewRestarted", (ev) => {
     if (!previewURL || typeof ev.data !== "string") return;
     previewURL = previewSrc = ev.data;
     follow(current);
@@ -543,11 +543,11 @@
   // A reminder was clicked: its day on the calendar, when its vault is the
   // open one.
   let calStart = $state("");
-  const offCal = Events.On("calendarOpen", async (ev: any) => {
-    const d = ev.data ?? {};
-    if (!notesVault || d.dir !== site.dir) return;
+  const offCal = Events.On("calendarOpen", async (ev) => {
+    const d = ev.data;
+    if (!notesVault || !d || d.dir !== site.dir) return;
     await save();
-    calStart = String(d.date ?? "");
+    calStart = d.date ?? "";
     screen = "calendar";
   });
   onDestroy(() => { offCloud(); offPreview(); offRebuilt(); offCal(); });
@@ -632,7 +632,7 @@
     later();
   }
 
-  function editProp(key: string, value: any) {
+  function editProp(key: string, value: Json) {
     edits[key] = value;
     later();
   }

@@ -33,7 +33,9 @@ type Studio struct {
 	mu      sync.Mutex
 	site    *config.Site
 	preview *exec.Cmd
-	url     string
+	// guard stands between the window and hugo (see app.PreviewGuard).
+	guard *app.PreviewGuard
+	url   string
 	// previewCfg is the config the running preview started with: a newer
 	// one (a new language, a new language folder) needs a fresh start.
 	previewCfg []byte
@@ -178,6 +180,16 @@ func (s *Studio) Tree() (Node, error) {
 	return Node{Name: site.Title, Dir: true, Children: kids}, err
 }
 
+// notesRoot is the open site's notes folder ("" with none open: the
+// writes through it fail).
+func (s *Studio) notesRoot() string {
+	site, err := s.current()
+	if err != nil {
+		return ""
+	}
+	return site.ContentDir()
+}
+
 // notePath turns a path from the window into a file of the notes folder,
 // refusing anything outside it.
 func (s *Studio) notePath(rel string) (string, error) {
@@ -228,8 +240,15 @@ func (s *Studio) startPreview(site *config.Site) (url string, err error) {
 		return "", err
 	}
 	cfg := s.previewConfig(site)
-	cmd := bin.Command(ctx, site.Dir(), "server", "--config", scaffold.PreviewConfig, "--renderToMemory", "--buildDrafts",
-		"--disableLiveReload", "--bind", "127.0.0.1", "--baseURL", "http://localhost/", "--logLevel", "info")
+	// The window reaches hugo through the guard, on a random port, which
+	// answers only the window and the preview's own pages.
+	guard, err := app.NewPreviewGuard(windowOrigin)
+	if err != nil {
+		return "", err
+	}
+	args := append([]string{"server", "--config", scaffold.PreviewConfig, "--renderToMemory", "--buildDrafts", "--disableLiveReload"},
+		guard.HugoArgs()...)
+	cmd := bin.Command(ctx, site.Dir(), append(args, "--logLevel", "info")...)
 	cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=preview")
 	if !canPlayMP3() {
 		// No player the window can't play (see media.go).
@@ -238,6 +257,7 @@ func (s *Studio) startPreview(site *config.Site) (url string, err error) {
 	pr, pw := io.Pipe()
 	cmd.Stdout, cmd.Stderr = pw, pw
 	if err := cmd.Start(); err != nil {
+		guard.Close()
 		return "", err
 	}
 	go func() { cmd.Wait(); pw.Close() }()
@@ -265,13 +285,15 @@ func (s *Studio) startPreview(site *config.Site) (url string, err error) {
 		}
 	}()
 	select {
-	case url, ok := <-found:
+	case _, ok := <-found:
 		if !ok {
+			guard.Close()
 			return "", errors.New("the preview stopped: " + strings.TrimSpace(log.String()))
 		}
-		return s.adopt(site, cmd, url, cfg)
+		return s.adopt(site, cmd, guard, cfg)
 	case <-time.After(2 * time.Minute):
 		cmd.Process.Kill()
+		guard.Close()
 		return "", errors.New("the preview took too long to start")
 	}
 }
@@ -280,19 +302,21 @@ func (s *Studio) startPreview(site *config.Site) (url string, err error) {
 // restart after sections changed while the window asks for the preview, or
 // another site opened meanwhile): the one that comes second is stopped, so
 // no hugo runs on unseen.
-func (s *Studio) adopt(site *config.Site, cmd *exec.Cmd, url string, cfg []byte) (string, error) {
+func (s *Studio) adopt(site *config.Site, cmd *exec.Cmd, guard *app.PreviewGuard, cfg []byte) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.site != site {
 		cmd.Process.Kill()
+		guard.Close()
 		return "", errors.New("another site was opened")
 	}
 	if s.preview != nil {
 		cmd.Process.Kill()
+		guard.Close()
 		return s.url, nil
 	}
-	s.preview, s.url, s.previewCfg = cmd, url, cfg
-	return url, nil
+	s.preview, s.guard, s.url, s.previewCfg = cmd, guard, guard.URL, cfg
+	return guard.URL, nil
 }
 
 // StopPreview stops the preview, if running.
@@ -302,7 +326,8 @@ func (s *Studio) StopPreview() {
 	if s.preview != nil && s.preview.Process != nil {
 		s.preview.Process.Kill()
 	}
-	s.preview, s.url = nil, ""
+	s.guard.Close()
+	s.preview, s.guard, s.url = nil, nil, ""
 }
 
 func (s *Studio) shutdown() {
@@ -381,11 +406,66 @@ func (s *Studio) previewMap() (string, []mapPage, error) {
 		return "", nil, err
 	}
 	defer res.Body.Close()
-	var pages []mapPage
-	if err := json.NewDecoder(res.Body).Decode(&pages); err != nil {
+	if res.StatusCode != http.StatusOK {
+		return base, nil, nil
+	}
+	pages, err := readPreviewMap(res.Body, s.notesRoot())
+	if err != nil {
 		return base, nil, nil
 	}
 	return base, pages, nil
+}
+
+// maxPreviewMap bounds blup-map.json (a site of many thousands of notes
+// stays far below it).
+const maxPreviewMap = 16 << 20
+
+// readPreviewMap reads blup-map.json, keeping only the pages that make
+// sense: an address that is a path of the preview ("/notes/a/": no scheme,
+// no host, no "//", nothing to run) and a note inside the notes folder
+// root. The theme writes it from the notes, so a note's name or a
+// property could otherwise steer the window to another address or file.
+func readPreviewMap(r io.Reader, root string) ([]mapPage, error) {
+	var raw []mapPage
+	b, err := io.ReadAll(io.LimitReader(r, maxPreviewMap+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(b) > maxPreviewMap {
+		return nil, errors.New("blup-map.json is too big")
+	}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return nil, err
+	}
+	pages := make([]mapPage, 0, len(raw))
+	for _, p := range raw {
+		if previewPath(p.URL) && noteFile(root, p.File) {
+			pages = append(pages, p)
+		}
+	}
+	return pages, nil
+}
+
+// previewPath tells whether u is a path of the preview itself.
+func previewPath(u string) bool {
+	if !strings.HasPrefix(u, "/") || strings.HasPrefix(u, "//") || strings.ContainsAny(u, "\\\x00\r\n\t") {
+		return false
+	}
+	p, err := url.Parse(u)
+	return err == nil && p.Scheme == "" && p.Host == "" && p.User == nil && strings.HasPrefix(p.Path, "/")
+}
+
+// noteFile tells whether rel (with "/") is a file inside the notes folder
+// (no drive or stream: Obsidian never puts ":" in a name).
+func noteFile(root, rel string) bool {
+	if root == "" || rel == "" || strings.HasPrefix(rel, "/") || strings.ContainsAny(rel, "\\\x00:") || filepath.IsAbs(filepath.FromSlash(rel)) || filepath.VolumeName(filepath.FromSlash(rel)) != "" {
+		return false
+	}
+	clean := path.Clean(rel)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
+		return false
+	}
+	return app.Within(root, filepath.Join(root, filepath.FromSlash(clean)))
 }
 
 // Language is the Studio's language: "pt", "en" or "es".

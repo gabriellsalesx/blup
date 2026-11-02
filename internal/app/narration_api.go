@@ -238,32 +238,54 @@ func byLangCode(lang, pt, en, es string) string {
 
 // voiceFor is the voice that narrates a site in lang: the chosen one (a
 // local voice that speaks lang, or an OpenRouter one, checked when it
-// narrates), else the local default when installed, else OpenRouter's
-// recommended one.
+// narrates), else the same engine's voice for lang. Without a choice it is
+// the local voice: the Studio never sends a note to an AI in the cloud the
+// person did not pick.
 func voiceFor(lang, chosen string) string {
-	if id, ok := strings.CutPrefix(chosen, localPrefix); ok {
-		for _, v := range kokoro.Voices {
-			if v.ID == id && localSpeaks(v, lang) {
-				return chosen
-			}
-		}
-	} else if rest, ok := strings.CutPrefix(chosen, blupPrefix); ok {
+	if rest, ok := strings.CutPrefix(chosen, blupPrefix); ok {
 		if model, v := blupChoice(rest); model != narrate.DefaultModel {
 			return blupPrefix + joinChoice(model, v)
 		} else {
 			return blupPrefix + joinChoice(model, narrate.VoiceFor(lang, v))
 		}
-	} else if model, voice := splitChoice(chosen); model != "" && (model != narrate.DefaultModel || narrate.VoiceFor(lang, voice) == voice) {
+	} else if model, voice := splitChoice(chosen); model != "" && !strings.HasPrefix(chosen, localPrefix) {
+		if model == narrate.DefaultModel {
+			voice = narrate.VoiceFor(lang, voice)
+		}
 		return joinChoice(model, voice)
 	}
-	if LocalVoiceState().Installed {
-		for _, v := range kokoro.Voices {
-			if localSpeaks(v, lang) {
-				return localPrefix + v.ID
-			}
+	id := strings.TrimPrefix(chosen, localPrefix)
+	for _, v := range kokoro.Voices {
+		if v.ID == id && localSpeaks(v, lang) {
+			return localPrefix + id
 		}
 	}
-	return joinChoice(narrate.DefaultModel, narrate.DefaultVoice(lang))
+	for _, v := range kokoro.Voices {
+		if localSpeaks(v, lang) {
+			return localPrefix + v.ID
+		}
+	}
+	return ""
+}
+
+// cloudOf is the AI in the cloud a voice sends the text to ("" for the
+// local voice).
+func cloudOf(voice string) string {
+	switch {
+	case voice == "" || strings.HasPrefix(voice, localPrefix):
+		return ""
+	case strings.HasPrefix(voice, blupPrefix):
+		return AIBlup
+	}
+	return AIOpenRouter
+}
+
+// errNoLocalVoice: no voice was chosen and the local one is not installed.
+func errNoLocalVoice(lang string) error {
+	return errors.New(byLangCode(lang,
+		"Escolha uma voz nas configurações de narração, ou baixe a voz no computador (grátis).",
+		"Pick a voice in the narration settings, or download the voice on the computer (free).",
+		"Elige una voz en la configuración de narración, o descarga la voz en la computadora (gratis)."))
 }
 
 // resolveOpenRouter checks a choice against OpenRouter's current list, so
@@ -415,7 +437,7 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 	if err != nil {
 		return Narration{}, err
 	}
-	if note.String("password") != "" && note.String("password") != "false" {
+	if noteLocked(note) {
 		return Narration{}, errors.New(byLang(site, "Posts com senha não ganham narração: o áudio entregaria o texto.", "Password protected posts are not narrated: the audio would give the text away.", "Los posts con contraseña no tienen narración: el audio revelaría el texto."))
 	}
 	if strings.Count(text, " ") < 3 {
@@ -423,6 +445,20 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 	}
 	_, lang := NoteOrigin(site, rel)
 	voice = voiceFor(lang, voice)
+	switch cloud := cloudOf(voice); {
+	case cloud == "" && !LocalVoiceState().Installed:
+		return Narration{}, errNoLocalVoice(site.Lang)
+	case cloud == AIOpenRouter:
+		// The key first: without it there is nothing to accept yet.
+		if creds, _ := config.LoadCredentials(); creds.OpenRouterToken == "" {
+			return Narration{}, ErrNoAIKey
+		}
+		fallthrough
+	case cloud != "":
+		if err := needConsent(cloud); err != nil {
+			return Narration{}, err
+		}
+	}
 	var mp3 []byte
 	var seconds float64
 	var used string

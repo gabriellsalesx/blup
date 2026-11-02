@@ -103,6 +103,9 @@ func (c *Client) EnsureRepoWith(ctx context.Context, owner, name string, opts En
 	if name == "" {
 		return Repo{}, errors.New("github: repository name is empty")
 	}
+	if !ValidRepoName(name) || (owner != "" && !ValidOwner(owner)) {
+		return Repo{}, fmt.Errorf("%w: %q/%q", ErrBadName, owner, name)
+	}
 	login, err := c.Viewer(ctx)
 	if err != nil {
 		return Repo{}, err
@@ -141,6 +144,12 @@ func (c *Client) EnsureRepoWith(ctx context.Context, owner, name string, opts En
 		body["homepage"] = ExpectedURL(login, name)
 	}
 	_, err = c.do(ctx, http.MethodPost, "/user/repos", body, &r)
+	if errors.Is(err, ErrPermission) || errors.Is(err, ErrNotFound) {
+		// A key limited to chosen repositories cannot create one (and
+		// cannot see one it was not given): the person creates it on
+		// GitHub, or adds it to the key.
+		return Repo{}, &RepoMissingError{Owner: login, Name: name, Private: opts.Private, CreateURL: NewRepoURL(login, name, opts.Private, desc), cause: err}
+	}
 	if err != nil {
 		var ae *APIError
 		if errors.As(err, &ae) && ae.StatusCode == http.StatusUnprocessableEntity {

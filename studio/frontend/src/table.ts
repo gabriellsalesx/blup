@@ -42,6 +42,19 @@ function format(t: Table): string {
 // the cursor leaves it.
 const asText = StateEffect.define<number | null>();
 
+// What a table on screen keeps between redraws: the latest widget (so its
+// place in the note), the text it shows, and whether a cell was typed in
+// since the last write (with the timer of that typing).
+type TableState = { widget: TableWidget; text: string; dirty: boolean; timer?: ReturnType<typeof setTimeout>; save?: () => void };
+const states = new WeakMap<HTMLElement, TableState>();
+function stateOf(wrap: HTMLElement, widget: TableWidget): TableState {
+  let st = states.get(wrap);
+  if (!st) { st = { widget, text: widget.text, dirty: false }; states.set(wrap, st); }
+  return st;
+}
+// Where the table on screen starts in the note (undefined: not a table).
+export const tableFrom = (el: HTMLElement) => states.get(el)?.widget.from;
+
 class TableWidget extends WidgetType {
   // from is where the table starts in the note; the widget on screen always
   // holds the latest one (cmWidget), as text before it changes.
@@ -52,7 +65,7 @@ class TableWidget extends WidgetType {
   toDOM(view: EditorView) {
     const wrap = document.createElement("div");
     wrap.className = "cm-md-table";
-    (wrap as any).cmWidget = this;
+    stateOf(wrap, this).widget = this;
     this.draw(wrap, view);
     return wrap;
   }
@@ -62,31 +75,33 @@ class TableWidget extends WidgetType {
   // A change from elsewhere (undo, for instance) redraws it, keeping the
   // cell that had the cursor.
   updateDOM(dom: HTMLElement, view: EditorView) {
-    (dom as any).cmWidget = this;
+    const st = stateOf(dom, this);
+    st.widget = this;
     const active = document.activeElement as HTMLElement | null;
     const inside = !!active && dom.contains(active);
-    if (inside && (dom as any).cmText === this.text) return true;
+    if (inside && st.text === this.text) return true;
     this.draw(dom, view);
     if (inside) (dom.querySelector(`[data-r="${active!.dataset.r}"][data-c="${active!.dataset.c}"]`) as HTMLElement | null)?.focus();
     return true;
   }
 
   draw(wrap: HTMLElement, view: EditorView) {
-    (wrap as any).cmText = this.text;
+    const st = stateOf(wrap, this);
+    st.text = this.text;
     const t = parse(this.text);
     const L = this.labels;
     wrap.replaceChildren();
     const table = document.createElement("table");
     const write = (next: Table, focus?: [number, number]) => {
-      const from = (wrap as any).cmWidget.from;
-      const old = (wrap as any).cmText as string;
+      const from = st.widget.from;
+      const old = st.text;
       const text = format(next);
-      (wrap as any).cmText = text;
-      (wrap as any).cmDirty = false;
+      st.text = text;
+      st.dirty = false;
       view.dispatch({ changes: { from, to: from + old.length, insert: text } });
       if (focus) {
         // Drawn from the table just written (the latest widget).
-        (wrap as any).cmWidget.draw(wrap, view);
+        st.widget.draw(wrap, view);
         (wrap.querySelector(`[data-r="${focus[0]}"][data-c="${focus[1]}"]`) as HTMLElement | null)?.focus();
       }
     };
@@ -109,16 +124,16 @@ class TableWidget extends WidgetType {
         // Typing stays in the cell; the note gets it half a second after the
         // typing stops, or when the cursor leaves the table.
         td.addEventListener("input", () => {
-          (wrap as any).cmDirty = true;
-          clearTimeout((wrap as any).cmTimer);
-          (wrap as any).cmTimer = setTimeout(() => (wrap as any).cmDirty && (wrap as any).cmSave?.(), 500);
+          st.dirty = true;
+          clearTimeout(st.timer);
+          st.timer = setTimeout(() => st.dirty && st.save?.(), 500);
         });
         td.addEventListener("keydown", (e) => {
           const rows = t.rows.length, cols = row.length;
           const go = (r: number, c: number) => {
             const n = read();
             if (r >= rows) n.rows.push(Array(cols).fill(""));
-            if (r >= rows || (wrap as any).cmDirty) write(n, [r, c]);
+            if (r >= rows || st.dirty) write(n, [r, c]);
             else (wrap.querySelector(`[data-r="${r}"][data-c="${c}"]`) as HTMLElement)?.focus();
           };
           if (e.key === "Tab") {
@@ -147,8 +162,8 @@ class TableWidget extends WidgetType {
             [L.delRow, ri > 0 ? () => { const n = read(); n.rows.splice(ri, 1); write(n, [Math.min(ri, n.rows.length - 1), ci]); } : null],
             [L.delCol, row.length > 1 ? () => { const n = read(); n.rows.forEach((r) => r.splice(ci, 1)); n.aligns.splice(ci, 1); write(n, [ri, Math.max(0, ci - 1)]); } : null],
             null,
-            [L.asText, () => { const from = (wrap as any).cmWidget.from; view.dispatch({ effects: asText.of(from), selection: { anchor: from } }); view.focus(); }],
-            [L.delTable, () => { const from = (wrap as any).cmWidget.from; view.dispatch({ changes: { from, to: from + ((wrap as any).cmText as string).length, insert: "" } }); view.focus(); }, true],
+            [L.asText, () => { const from = st.widget.from; view.dispatch({ effects: asText.of(from), selection: { anchor: from } }); view.focus(); }],
+            [L.delTable, () => { const from = st.widget.from; view.dispatch({ changes: { from, to: from + st.text.length, insert: "" } }); view.focus(); }, true],
           ]);
         });
         tr.append(td);
@@ -159,13 +174,13 @@ class TableWidget extends WidgetType {
     // add a column and a row; − on the left and at the top take the last
     // column and the last row away.
     const cols = t.aligns.length, rows = t.rows.length;
-    const redraw = () => (wrap as any).cmWidget.draw(wrap, view);
+    const redraw = () => st.widget.draw(wrap, view);
     const addCol = bar("right", "+", L.addCol, () => { const n = read(); n.rows.forEach((r) => r.push("")); n.aligns.push("---"); write(n, [0, n.aligns.length - 1]); });
     const addRow = bar("bottom", "+", L.addRow, () => { const n = read(); n.rows.push(Array(n.aligns.length).fill("")); write(n, [n.rows.length - 1, 0]); });
     const delCol = bar("left", "−", L.delLastCol, cols > 1 ? () => { const n = read(); n.rows.forEach((r) => r.pop()); n.aligns.pop(); write(n); redraw(); } : null);
     // In the corner between the two −: the bin deletes the whole table
     // (Ctrl+Z brings it back).
-    const bin = bar("corner", "bin", L.delTable, () => { const from = (wrap as any).cmWidget.from; view.dispatch({ changes: { from, to: from + ((wrap as any).cmText as string).length, insert: "" } }); view.focus(); });
+    const bin = bar("corner", "bin", L.delTable, () => { const from = st.widget.from; view.dispatch({ changes: { from, to: from + st.text.length, insert: "" } }); view.focus(); });
     const delRow = bar("top", "−", L.delLastRow, rows > 2 ? () => { const n = read(); n.rows.pop(); write(n); redraw(); } : null);
     const inner = document.createElement("div");
     inner.className = "cm-md-table-inner";

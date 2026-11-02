@@ -86,7 +86,7 @@ func copyAttachment(site *config.Site, src, name string) (string, error) {
 	}
 	file := name + strings.ToLower(filepath.Ext(src))
 	dest := filepath.Join(site.ContentDir(), attachmentsFolder(site), file)
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+	if err := MkdirInside(site.ContentDir(), filepath.Dir(dest)); err != nil {
 		return "", err
 	}
 	// Not through a link (the attachments folder, or a file of the same
@@ -94,7 +94,7 @@ func copyAttachment(site *config.Site, src, name string) (string, error) {
 	if !Within(site.ContentDir(), dest) {
 		return "", errors.New("outside the notes folder")
 	}
-	if err := os.WriteFile(dest, b, 0o644); err != nil {
+	if err := WriteInside(site.ContentDir(), dest, b); err != nil {
 		return "", err
 	}
 	return "[[" + file + "]]", nil

@@ -3,6 +3,8 @@
 
 export type {
     DeletedFile,
+    DomainInfo,
+    DomainRecord,
     NoteVersion,
     ReminderUse,
     SlugCheck
