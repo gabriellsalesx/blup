@@ -105,7 +105,7 @@ if (bar) {
   const schedule = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
   addEventListener("scroll", schedule, { passive: true });
   addEventListener("resize", schedule);
-  update();
+  schedule(); // the first measure on the next frame, not mid-load
 }
 
 // "On this page" of the docs: highlight the heading being read.
@@ -267,8 +267,10 @@ async function saveButton(btn, src) {
 const clMap = document.querySelector(".cl-map");
 if (clMap) {
   // On a narrow screen the map scrolls: it starts at the newest months.
+  // Measured on the next frame, when the page is laid out anyway: reading
+  // its width now would force a layout while the page still loads.
   const scroller = clMap.querySelector(".cl-scroll");
-  if (scroller) scroller.scrollLeft = scroller.scrollWidth;
+  if (scroller) requestAnimationFrame(() => { scroller.scrollLeft = scroller.scrollWidth; });
   let tip = null;
   const show = (e) => {
     const day = e.target.closest?.(".cl-day[data-tip]");

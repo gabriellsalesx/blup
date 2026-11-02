@@ -1,4 +1,6 @@
 {{- /* Rendered content without the leading H1 (the layout prints the title)
-and without Obsidian comments. */ -}}
+and without comments (%% text %%). A task list's boxes get a name, so a
+screen reader says what they are (checked or not, as drawn). */ -}}
 {{- $c := replaceRE `(?s)^\s*<h1[^>]*>.*?</h1>` "" .Content 1 -}}
+{{- $c = replaceRE `<input( checked="")? disabled="" type="checkbox">` (printf `<input$1 disabled="" type="checkbox" aria-label="%s">` (T "task")) $c -}}
 {{- return (safeHTML (partial "uncomment.html" $c)) -}}

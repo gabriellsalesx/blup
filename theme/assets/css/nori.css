@@ -13,7 +13,7 @@ neutral palette and layout. Bundled into one file by css.Build. */
     --main-200: light-dark(#e5e5e5, #262626);
     --main-300: light-dark(#d4d4d4, #404040);
     --main-400: light-dark(#a3a3a3, #525252);
-    --main-500: #737373;
+    --main-500: light-dark(#6b6b6b, #8a8a8a); /* secondary text, 4.5:1 on the page (WCAG AA) */
     --main-600: light-dark(#525252, #a3a3a3);
     --main-700: light-dark(#404040, #d4d4d4);
     --main-800: light-dark(#262626, #e5e5e5);
@@ -57,7 +57,7 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-head { margin-block-end: 2rem; }
   .nori-title { font-size: 1.875rem; font-weight: 600; line-height: 2.25rem; letter-spacing: -.01em; color: var(--main-900); text-wrap: balance; }
   .nori-lede-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-block-start: .25rem; }
-  .nori-lede { font-size: 1.875rem; font-weight: 600; line-height: 2.25rem; letter-spacing: -.01em; color: var(--main-400); }
+  .nori-lede { font-size: 1.875rem; font-weight: 600; line-height: 2.25rem; letter-spacing: -.01em; color: light-dark(#8b8b8b, #656565); } /* large text, 3:1 on the page in both schemes */
   .nori-meta { font-size: .8125rem; line-height: 1.25rem; color: var(--main-600); font-variant-numeric: tabular-nums; }
 
   .nori-feed { position: relative; display: flex; align-items: center; height: 2.25rem; flex-shrink: 0; }

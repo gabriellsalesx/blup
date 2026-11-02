@@ -1,6 +1,16 @@
 {{- /* Images from the vault are resized to WebP in a few widths with srcset.
 Obsidian's width syntax in the alt text sets the display size:
-![foto|300](img.png) or ![foto|300x200](img.png). */ -}}
+![foto|300](img.png) or ![foto|300x200](img.png). The first image of a
+note loads at once and first (it is often the largest thing on screen),
+unless the page shows a cover above the text (posts): then the cover is,
+and the text's images all wait until they come near (lazy). */ -}}
+{{- $hero := false -}}
+{{- if not $.Ordinal -}}
+  {{- with partial "mochi/cover.html" $.Page -}}
+    {{- if or (ne site.Params.model "bento") (eq (partial "bento/kind.html" $.Page) "blog") }}{{ $hero = true }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+{{- $eager := and (not $.Ordinal) (not $hero) -}}
 {{- $alt := .PlainText -}}
 {{- $width := 0 -}}
 {{- $title := .Title -}}
@@ -37,7 +47,7 @@ a button loads it until the visitor accepts videos (consent.js). */ -}}
 <a href="{{ .RelPermalink }}">{{ $alt | default (path.Base .Name) }}</a>
     {{- end -}}
   {{- else if or (in (slice "image/svg+xml" "image/gif") .MediaType.Type) (not (reflect.IsImageResourceProcessable .)) -}}
-<img src="{{ .RelPermalink }}" alt="{{ $alt }}" loading="lazy"{{ with $width }} width="{{ . }}"{{ end }}>
+<img src="{{ .RelPermalink }}" alt="{{ $alt }}"{{ if $eager }} fetchpriority="high"{{ else }} loading="lazy"{{ end }}{{ with $width }} width="{{ . }}"{{ end }}>
   {{- else -}}
     {{- $img := . -}}
     {{- $srcset := slice -}}
@@ -51,9 +61,9 @@ a button loads it until the visitor accepts videos (consent.js). */ -}}
     {{- end -}}
     {{- if not $fallback -}}{{- $fallback = $img.Process "webp q80" -}}{{- $srcset = slice (printf "%s %dw" $fallback.RelPermalink $img.Width) -}}{{- end -}}
     {{- $h := cond (gt $width 0) (div (mul $img.Height $width) $img.Width) $img.Height -}}
-<img src="{{ $fallback.RelPermalink }}" srcset="{{ delimit $srcset ", " }}" sizes="(max-width: 48rem) 100vw, 48rem" width="{{ $width | default $img.Width }}" height="{{ $h }}" alt="{{ $alt }}"{{ with $title }} title="{{ . }}"{{ end }} loading="lazy" decoding="async">
+<img src="{{ $fallback.RelPermalink }}" srcset="{{ delimit $srcset ", " }}" sizes="(max-width: 48rem) 100vw, 48rem" width="{{ $width | default $img.Width }}" height="{{ $h }}" alt="{{ $alt }}"{{ with $title }} title="{{ . }}"{{ end }}{{ if $eager }} fetchpriority="high"{{ else }} loading="lazy"{{ end }} decoding="async">
   {{- end -}}
 {{- else -}}
-<img src="{{ .Destination | safeURL }}" alt="{{ $alt }}"{{ with $width }} width="{{ . }}"{{ end }} loading="lazy">
+<img src="{{ .Destination | safeURL }}" alt="{{ $alt }}"{{ with $width }} width="{{ . }}"{{ end }}{{ if $eager }} fetchpriority="high"{{ else }} loading="lazy"{{ end }}>
 {{- end -}}
 {{- end -}}

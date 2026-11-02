@@ -1,10 +1,11 @@
 {{- /* The language switcher of a translated site: each language goes to
 this page's translation, or to that language's home when the page has
-none. Nothing on a site in one language. */ -}}
+none. Nothing on a site in one language. The button's name holds the code
+it shows ("Idioma: pt"), so what is read matches what is seen. */ -}}
 {{- if gt (len hugo.Sites) 1 -}}
 {{- $page := . -}}
 <div class="theme-picker lang-picker">
-  <button class="icon-button" type="button" popovertarget="lang-menu" aria-label="{{ T "language" }}" style="anchor-name: --lang">
+  <button class="icon-button" type="button" popovertarget="lang-menu" aria-label="{{ T "language" }}: {{ site.Language.Lang }}" style="anchor-name: --lang">
     <svg class="icon"><use href="#i-globe"/></svg><span class="lang-code">{{ site.Language.Lang }}</span>
   </button>
   <div id="lang-menu" class="dropdown" popover style="position-anchor: --lang" role="menu">

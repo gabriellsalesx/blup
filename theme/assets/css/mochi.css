@@ -41,7 +41,8 @@ through light-dark(): the theme switcher only changes color-scheme. */
     --main-200: light-dark(#e4e4e7, #27272a);
     --main-300: light-dark(#d4d4d8, #3f3f46);
     --main-400: light-dark(#a1a1aa, #52525b);
-    --main-500: #71717a;
+    /* Secondary text: 4.5:1 on the soft backgrounds of both schemes (WCAG AA). */
+    --main-500: light-dark(#6e6e76, #8f8f96);
     --main-600: light-dark(#52525b, #a1a1aa);
     --main-700: light-dark(#3f3f46, #d4d4d8);
     --main-800: light-dark(#27272a, #e4e4e7);
@@ -412,7 +413,7 @@ through light-dark(): the theme switcher only changes color-scheme. */
   }
   .post-aside > * + * { margin-block-start: 2.5rem; }
   .toc-title { text-transform: uppercase; font-size: 1rem; font-weight: 400; color: var(--main-700); padding-block: .5rem; }
-  .toc { font-size: .875rem; color: color-mix(in srgb, var(--main-700) 70%, transparent); max-height: 18rem; overflow-y: auto; }
+  .toc { font-size: .875rem; color: color-mix(in srgb, var(--main-700) 76%, transparent); /* 4.5:1 on the page */ max-height: 18rem; overflow-y: auto; }
   .toc ul ul { padding-inline-start: 1.5rem; }
   .toc a { display: block; padding-block: .25rem; transition: color .1s; }
   .toc a:hover { color: var(--link-hover); }
@@ -544,6 +545,10 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .prose code { font-family: var(--mono); font-size: .85em; padding: .2em .4em; border-radius: .25rem; background: color-mix(in srgb, var(--main-500) 12%, transparent); color: light-dark(#be185d, #f472b6); }
   .prose pre { font-family: var(--mono); font-size: .85em; line-height: 1.6; padding: 1em; border-radius: .375rem; overflow-x: auto; background: var(--main-100); border: 1px solid var(--main-200); }
   .prose pre code { padding: 0; background: none; color: inherit; font-size: inherit; }
+  /* Hugo's highlighting (Monokai, colors written inline): its keyword pink
+     and comment gray, a little lighter to read at 4.5:1 on its dark box. */
+  .prose .highlight span[style*="#f92672"] { color: #fa4d8b !important; }
+  .prose .highlight span[style*="#75715e"] { color: #939081 !important; }
   .prose table { width: 100%; border-collapse: collapse; font-size: .95em; display: block; overflow-x: auto; }
   .prose th, .prose td { padding: .5em .75em; border: 1px solid var(--main-200); text-align: start; }
   .prose th { background: var(--main-100); color: var(--main-900); font-weight: 600; }
@@ -552,22 +557,26 @@ through light-dark(): the theme switcher only changes color-scheme. */
 
   /* Obsidian callouts, with Obsidian's colors and icons (as Digital Garden
      shows them): tinted box, colored title with icon, no side border. */
-  .prose .callout { --c: 8 109 221; padding: 1rem 1.5rem; border-radius: .375rem; background: rgb(var(--c) / .1); font-size: .95em; }
-  .prose .callout-title { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: rgb(var(--c)); }
+  .prose .callout { --c: 8 109 221; --t: light-dark(#0763c9, #3c8ce4); padding: 1rem 1.5rem; border-radius: .375rem; background: rgb(var(--c) / .1); font-size: .95em; }
+  /* The title in the callout's color, made just dark enough (light) or
+     light enough (dark) to read at 4.5:1 on its tinted box (WCAG AA). */
+  .prose .callout-title { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: var(--t, rgb(var(--c))); }
   .prose .callout-title .icon { width: 1.25em; height: 1.25em; stroke-width: 2; }
   .prose details.callout > summary { cursor: pointer; list-style: none; }
   .prose details.callout > summary::-webkit-details-marker { display: none; }
   .prose details.callout > summary::after { content: ""; margin-inline-start: auto; width: .5em; height: .5em; border: solid currentColor; border-width: 0 2px 2px 0; rotate: -45deg; transition: rotate .2s; }
   .prose details.callout[open] > summary::after { rotate: 45deg; }
   .prose .callout-body { margin-block-start: .5rem; color: var(--main-700); }
+  /* Inline code on the tinted box: a lighter chip, so its text keeps 4.5:1. */
+  .prose .callout code { background: color-mix(in srgb, var(--main-500) 4%, transparent); }
   .prose .callout-body > * + * { margin-block-start: .75em; }
-  .prose [data-callout="abstract"], .prose [data-callout="tip"] { --c: 0 191 188; }
-  .prose [data-callout="info"], .prose [data-callout="todo"], .prose [data-callout="note"] { --c: 8 109 221; }
-  .prose [data-callout="success"] { --c: 8 185 78; }
-  .prose [data-callout="question"], .prose [data-callout="warning"] { --c: 236 117 0; }
-  .prose [data-callout="failure"], .prose [data-callout="danger"], .prose [data-callout="bug"] { --c: 233 49 71; }
-  .prose [data-callout="example"] { --c: 120 82 238; }
-  .prose [data-callout="quote"] { --c: 158 158 158; }
+  .prose [data-callout="abstract"], .prose [data-callout="tip"] { --c: 0 191 188; --t: light-dark(#007573, #00bfbc); }
+  .prose [data-callout="info"], .prose [data-callout="todo"], .prose [data-callout="note"] { --c: 8 109 221; --t: light-dark(#0763c9, #3c8ce4); }
+  .prose [data-callout="success"] { --c: 8 185 78; --t: light-dark(#057833, #08b94e); }
+  .prose [data-callout="question"], .prose [data-callout="warning"] { --c: 236 117 0; --t: light-dark(#a35100, #ec7500); }
+  .prose [data-callout="failure"], .prose [data-callout="danger"], .prose [data-callout="bug"] { --c: 233 49 71; --t: light-dark(#bf283a, #ed5466); }
+  .prose [data-callout="example"] { --c: 120 82 238; --t: light-dark(#6d4bd9, #9476f2); }
+  .prose [data-callout="quote"] { --c: 158 158 158; --t: light-dark(#6a6a6a, #9e9e9e); }
 }
 
 @layer components {

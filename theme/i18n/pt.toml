@@ -1,3 +1,9 @@
+# Description of tag and author pages without their own text (Google, links).
+taxonomyDescription = "{{ .Name }} em {{ .Site }}."
+termDescription = "Posts sobre {{ .Name }} em {{ .Site }}."
+task = "Tarefa"
+authorDescription = "Posts de {{ .Name }} em {{ .Site }}."
+
 skip = "Pular para o conteúdo"
 menu = "Menu"
 close = "Fechar"

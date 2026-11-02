@@ -18,5 +18,13 @@ home falls back to site_description and then to its own text. */ -}}
     {{- end -}}
   {{- end -}}
 {{- end -}}
+{{- /* The 404 page, a list of tags or authors, or one of them, with no
+text of its own. */ -}}
+{{- if not $d -}}
+  {{- $site := (partialCached "site/settings.html" . "site").name -}}
+  {{- if eq .Kind "404" }}{{ $d = T "notFoundText" }}
+  {{- else if eq .Kind "taxonomy" }}{{ $d = T "taxonomyDescription" (dict "Name" .Title "Site" $site) }}
+  {{- else if eq .Kind "term" }}{{ $d = T (cond (eq .Data.Plural "authors") "authorDescription" "termDescription") (dict "Name" .Title "Site" $site) }}{{ end -}}
+{{- end -}}
 {{- $d = replaceRE `\s+` " " $d | truncate 160 -}}
 {{- return $d -}}

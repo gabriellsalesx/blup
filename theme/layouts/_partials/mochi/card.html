@@ -1,8 +1,14 @@
+{{- /* A post's card. Takes the page, or (dict "page" "eager"): the first
+card of a list is often the largest image on screen, so it loads at once. */ -}}
+{{- $eager := false -}}
+{{- $p := . -}}
+{{- if reflect.IsMap . }}{{ $eager = .eager }}{{ $p = .page }}{{ end -}}
+{{- with $p -}}
 {{- $title := partial "title.html" . -}}
 <article class="card">
   <a class="card-media" href="{{ .RelPermalink }}" tabindex="-1" aria-hidden="true">
     {{- with partial "mochi/cover.html" . }}
-    {{ partial "mochi/picture.html" (dict "img" . "w" 600 "ratio" "3:1" "alt" "") }}
+    {{ partial "mochi/picture.html" (dict "img" . "w" 600 "ratio" "3:1" "alt" "" "eager" $eager) }}
     {{- else }}
     <span class="card-fallback">{{ $title }}</span>
     {{- end }}
@@ -12,3 +18,4 @@
   {{- with partial "description.html" . }}<p>{{ . }}</p>{{ end }}
   {{ partial "mochi/byline.html" (dict "page" . "size" "sm" "long" true) }}
 </article>
+{{- end -}}
