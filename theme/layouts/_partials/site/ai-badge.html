@@ -12,7 +12,7 @@ note naming the original's language, with a link to it. Param: the page. */ -}}
   <button type="button" class="ai-badge" popovertarget="{{ $id }}" style="anchor-name: --{{ $id }}"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-info"/></svg>{{ T "aiTranslated" }}</button>
   <div id="{{ $id }}" class="ai-pop" popover style="position-anchor: --{{ $id }}">
     <p>{{ T "aiTranslatedText" (dict "lang" $lang) }}</p>
-    <a href="{{ .RelPermalink }}" hreflang="{{ .Language.Lang }}">{{ T "aiSeeOriginal" (dict "lang" $lang) }}</a>
+    <a href="{{ .RelPermalink }}" hreflang="{{ .Language.Lang }}" data-lang-choice>{{ T "aiSeeOriginal" (dict "lang" $lang) }}</a>
   </div>
 </div>
 {{- end -}}

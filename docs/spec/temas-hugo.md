@@ -6,7 +6,7 @@ Fontes principais: [estrutura base](../../theme/layouts/baseof.html), `theme/lay
 
 Há um tema embutido chamado `blup`, com três modelos selecionados por `site.Params.model`. `theme/hugo.toml` declara Hugo mínimo `0.169.0` e modelo padrão Mochi. O scaffold passa o modelo escolhido no `blup.toml`.
 
-`baseof.html` produz o documento HTML, idioma, head de metadados, SEO, CSS, link de pular para conteúdo, ícones, cabeçalho e rodapé do modelo. Os layouts `home.html`, `page.html`, `section.html`, `term.html` e `taxonomy.html` delegam ao partial do modelo correspondente. Há também `404.html`, `robots.txt`, RSS e formatos JSON auxiliares.
+`baseof.html` produz o documento HTML, idioma, head de metadados, SEO, CSS, link de pular para conteúdo, ícones, cabeçalho e rodapé do modelo. Num site traduzido e publicado, `head/lang.html` (logo depois dos metadados) leva o visitante ao seu idioma: na primeira visita, ao primeiro idioma pedido pelo navegador (`navigator.languages`, só o código de duas letras) que o site tem, quando a página tem tradução nele; depois de escolher um idioma no seletor (`data-lang-choice`, também no "ver original" do selo de IA), a escolha guardada em `localStorage` (`blup-lang`) vale nas próximas páginas. Usa `location.replace`, para o voltar não cair no idioma anterior. Robôs de busca e navegadores automatizados não são levados (cada idioma é indexado no seu endereço), e a prévia do Studio não tem o script. Os layouts `home.html`, `page.html`, `section.html`, `term.html` e `taxonomy.html` delegam ao partial do modelo correspondente. Há também `404.html`, `robots.txt`, RSS e formatos JSON auxiliares.
 
 | Conjunto | Função |
 | --- | --- |

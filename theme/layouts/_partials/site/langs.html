@@ -12,7 +12,7 @@ none. Nothing on a site in one language. */ -}}
     {{- $s := . -}}
     {{- $url := .Home.RelPermalink -}}
     {{- range $page.AllTranslations }}{{ if eq .Language.Lang $s.Language.Lang }}{{ $url = .RelPermalink }}{{ end }}{{ end }}
-    <a role="menuitemradio" href="{{ $url }}" hreflang="{{ .Language.Lang }}" lang="{{ .Language.Lang }}" aria-checked="{{ eq .Language.Lang site.Language.Lang }}">{{ .Language.Label | default .Language.Lang }}</a>
+    <a role="menuitemradio" href="{{ $url }}" hreflang="{{ .Language.Lang }}" data-lang-choice lang="{{ .Language.Lang }}" aria-checked="{{ eq .Language.Lang site.Language.Lang }}">{{ .Language.Label | default .Language.Lang }}</a>
     {{- end }}
   </div>
 </div>

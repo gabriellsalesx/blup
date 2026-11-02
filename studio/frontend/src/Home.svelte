@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { RestoreSite, ForgetSite, Sites, Layout, SaveLayout, HomeDir } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { RestoreSite, ForgetSite, Sites, Layout, SaveLayout, HomeDir, OpenSiteFolder } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteInfo, HomeItem } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Ellipsis from "@lucide/svelte/icons/ellipsis";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
@@ -9,6 +9,7 @@
   import { toast, toastError } from "./toast.svelte";
   import BlupLogo from "./ui/BlupLogo.svelte";
   import Trash from "@lucide/svelte/icons/trash-2";
+  import FolderOpen from "@lucide/svelte/icons/folder-open";
   import Search from "@lucide/svelte/icons/search";
   import { blupOf, homeView } from "./blups.svelte";
 
@@ -250,8 +251,9 @@
             <button onclick={() => newFolderWith(dir)}>{isVault(dir) ? h.newFolderWithVault : h.newFolderWith}</button>
           {/if}
           <hr />
+          <button onclick={() => { menu = ""; OpenSiteFolder(dir).catch(toastError); }}><FolderOpen size={15} />{h.openFolder}</button>
           <button onclick={() => { menu = ""; forget(dir); }}>{t.del.forget}</button>
-          <button class="danger" onclick={() => { menu = ""; deleting = dir; }}><Trash size={15} />{t.del.deleteMenu}</button>
+          <button class="danger" onclick={() => { menu = ""; deleting = dir; }}><Trash size={15} />{isVault(dir) ? t.del.deleteMenuVault : t.del.deleteMenu}</button>
         </div>
       {/if}
     </div>

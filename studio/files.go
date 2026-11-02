@@ -1,11 +1,13 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/gabriellsalesx/blup/internal/app"
@@ -84,4 +86,21 @@ func openExternal(target string) error {
 		c = exec.Command("xdg-open", target)
 	}
 	return c.Start()
+}
+
+// OpenSiteFolder opens the system's file manager in the notes folder of a
+// site or vault Blup knows (Home's card menu).
+func (s *Studio) OpenSiteFolder(dir string) error {
+	g, err := config.LoadGlobal()
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(g.ExistingSites(), dir) {
+		return errors.New("unknown site")
+	}
+	site, err := config.LoadSite(dir)
+	if err != nil {
+		return err
+	}
+	return openExternal(site.ContentDir())
 }

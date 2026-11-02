@@ -721,6 +721,14 @@ export function OpenKeyPage(account: string): $CancellablePromise<void> {
 }
 
 /**
+ * OpenSiteFolder opens the system's file manager in the notes folder of a
+ * site or vault Blup knows (Home's card menu).
+ */
+export function OpenSiteFolder(dir: string): $CancellablePromise<void> {
+    return $Call.ByID(1474326513, dir);
+}
+
+/**
  * OpenTerminal starts a shell in the notes folder; with agent ("claude",
  * "codex"...), the agent starts in it. It writes the guide for agents
  * (AGENTS.md) the first time. It returns the terminal's id.
