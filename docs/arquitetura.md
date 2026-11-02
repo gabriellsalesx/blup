@@ -57,6 +57,8 @@ Raiz e `studio/` são módulos Go separados, unidos por `replace` local. O Studi
 
 O arquivo local de notas é legível no disco. A cifra de ponta a ponta é a fronteira do sync Blup Cloud. Sites públicos, chamadas de IA e e-mails não usam essa mesma fronteira. [Segurança](seguranca.md) detalha os dados visíveis em cada fluxo.
 
+O painel Cloud tem idioma próprio, reativo, em `pt/en/es`: `cloud/shared/language.ts` reúne o enum e a negociação por headers; os catálogos compartilhados localizam planos e e-mails. `blup-lang` escolhe o idioma no navegador; ao autenticar ou trocar, uma fila grava `user.language` pela API. Esse campo, acrescentado pela migração `0014`, orienta os e-mails da conta. Staff permanece em português. O idioma do Studio e dos sites segue seus próprios estados; detalhes na [spec Cloud](spec/blup-cloud-sync.md#idioma-da-conta-e-do-painel).
+
 ## Criar e escrever
 
 `Onboarding.svelte` reúne tema, seções, nome e origem das notas e chama `CreateSite`; `VaultOnboarding.svelte` cria ou associa um cofre `kind = "notes"`, sem publicação. A CLI tem seu próprio assistente. O serviço Go valida o diretório técnico, cria a configuração e escreve exemplos quando aplicável. O Studio cria suas notas e exemplos diretamente na pasta escolhida. Feedback Bento e Podcast de Mochi/Nori são acrescentados depois, por Seções.

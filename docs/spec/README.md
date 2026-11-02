@@ -16,6 +16,7 @@ Para a visão entre componentes, consulte [Arquitetura](../arquitetura.md). A op
 | [Scaffold e build](scaffold-e-build.md) | Arquivos gerados, mounts, ferramentas, pipeline e mapa da prévia |
 | [Notas e sync](notas-e-sync.md) | Notas Markdown, wikilinks, sincronização, conflitos e recuperação em outra máquina |
 | [Blup Cloud e sync cifrado](blup-cloud-sync.md) | Conta, planos, dispositivos, cifra de ponta a ponta, histórico, IA e cobrança |
+| [Blup Status, produto em especificação](blup-status.md) | Proposta de erros via SDK Sentry, monitores, páginas de status, avisos Discord/Telegram e variantes Max/Ultra; ainda não implementado |
 | [Calendário e lembretes](calendario-e-lembretes.md) | Eventos Markdown, recorrência, notificações locais e e-mails Max 50 / Ultra 100 |
 | [Publicação](publicacao.md) | Sites em `getblup.site`, Cloudflare Pages, GitHub Pages e domínio próprio |
 | [Narração e voz](narracao-e-voz.md) | Idioma pela pasta da nota, voz por idioma, OpenRouter, Blup Cloud, MP3 e Kokoro |
@@ -63,6 +64,8 @@ A troca de idioma do Studio atualiza os textos sem recarregar a janela. Nos site
 O Podcast organiza narrações públicas em episódios e feed. O reinício após mudanças de seções trata o servidor local de prévia, sem reiniciar o desktop. Notas podem sincronizar pelo GitHub ou pelo Blup Cloud; só o segundo transporte cifra blocos, nomes e manifestos no cliente. Conteúdo enviado à IA e saída de sites públicos têm outras fronteiras de privacidade, descritas em [Segurança](../seguranca.md).
 
 ## Contratos atuais após a rodada 4
+
+A [tradução do painel Cloud](blup-cloud-sync.md#idioma-da-conta-e-do-painel) oferece interface e e-mails em `pt/en/es`, com preferência na conta e migração `0014` antes do Worker novo. A Lupa confirmou os gates finais, o ensaio D1 local e o teste de navegador; o [registro da rodada](../auditoria/rodada4-documentacao.md#fechamento-posterior-da-tradução-cloud) distingue essa validação da aplicação em produção.
 
 - Blup Cloud: Max permite 5 GiB de armazenamento e 3 sites; Ultra, 10 GiB e 10 sites. Arquivo máximo de 10/25/50/100 MiB para Grátis/Pro/Max/Ultra; reservas D1 e leases protegem admissão/publicação. Excesso após redução abre 14 dias com teto de storage anterior, contando histórico; depois volta ao novo limite sem apagar dados só por excesso.
 - Sites: depois da carência Pro retém um site escolhido até o prazo, ou o mais antigo por data/ID; Grátis retém zero. Arquivos dos demais permanecem guardados. Domínio próprio Max/Ultra tem carência própria de 14 dias e `disableAt`/`disabled`.

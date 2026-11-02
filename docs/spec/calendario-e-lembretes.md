@@ -47,6 +47,8 @@ Ocorrências vencidas há até 12 horas ainda podem avisar quando o Studio volta
 
 ## Avisos por e-mail
 
+O idioma do e-mail segue `user.language` da conta Cloud (`pt/en/es`), lido junto da fila. Não depende do idioma do Studio ou da nota do evento. A escolha e a persistência estão em [idioma da conta](blup-cloud-sync.md#idioma-da-conta-e-do-painel).
+
 Max permite 50 e Ultra 100 envios aceitos pelo provedor por mês UTC; Grátis e Pro não têm esse recurso. O e-mail genérico diz que existe um lembrete e orienta abrir o Studio. Não contém título, tipo, corpo, links de notas ou data detalhada do compromisso. O logo vem de `static/email/blup.png`. As notas da agenda podem viajar pelo sync cifrado, mas seu texto não é enviado em claro por `/api/reminders`.
 
 `pushMail` prepara até 300 instantes dos cofres conhecidos para aproximadamente os próximos 31 dias, com tolerância de 12 horas passadas. `app.ReminderID` usa HMAC-SHA-256 de diretório local, nota, dia e antecedência, truncado nos primeiros 16 bytes e codificado em hexadecimal. A chave aleatória de 32 bytes fica em `<config>/blup/reminder-key`, modo `0600`; não viaja para o servidor. Se não puder persistir a chave, usa uma só da execução, podendo mudar IDs depois de reiniciar. Não é um ID global do evento entre computadores. O cliente ordena a lista e envia quando muda ou a cada seis horas. Planos com limite zero são consultados novamente somente após seis horas; falhas têm espera de cinco minutos. A chamada tem timeout de 20 segundos.

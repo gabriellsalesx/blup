@@ -31,6 +31,10 @@ O diretório global é `filepath.Join(os.UserConfigDir(), "blup")`. Em Linux nor
 
 O pacote config cria seu diretório global com `0700`. O Studio também pode criá-lo por seus próprios métodos com `0755`. O modo de `blup.toml` não se torna privado por conter `password`; a proteção `0600` pertence especificamente ao arquivo de credenciais.
 
+## Idioma do painel Blup Cloud
+
+O navegador guarda `blup-lang` no `localStorage` e em cookie com `Path=/`, validade de um ano e `SameSite=Lax`; em HTTPS, também `Secure`. O valor é validado como `pt`, `en` ou `es`. A conta guarda `user.language` no D1, atualizado por `PUT /api/me/language`. São preferências separadas de `config.toml`, `studio-prefs.json` e `blup.toml`. A ordem de seleção e a gravação em fila estão em [idioma da conta e do painel](blup-cloud-sync.md#idioma-da-conta-e-do-painel).
+
 ## `blup.toml`
 
 `SiteVersion` é 1. `Save` define a versão como 1. `LoadSite` rejeita versão maior e modelo fora de `mochi`, `nori`, `bento`. O comentário do tipo prevê migrações futuras, mas a leitura atual não implementa rotina de migração ou backup de versões antigas. Também não valida todos os campos, como existência do cofre ou idioma.

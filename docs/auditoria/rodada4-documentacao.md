@@ -88,6 +88,14 @@ O fechamento da Lupa confirmou os mesmos 235 testes, check/build e ausência de 
 
 Os avisos restantes observados são de ferramentas: configuração npm `minimum-release-age`, API experimental no ambiente Node e tamanho de chunk do build Studio. Não houve erro de check/build. As validações locais usam serviços simulados; não comprovam provisionamento nem comportamento remoto de produção.
 
+## Fechamento posterior da tradução Cloud
+
+Em 02/11/2026, a Lupa confirmou o fechamento da tradução do acesso, painel, planos e e-mails em `pt/en/es`, com `user.language` e migração aditiva `0014_idioma_da_conta`. O contrato foi relido em `cloud/shared/language.ts`, `cloud/src/lib/i18n.svelte.ts`, `cloud/src/lib/language-save.ts`, `cloud/worker/index.ts`, `cloud/worker/auth-options.ts` e no README Cloud.
+
+Gates finais informados pela Lupa: tsc passou; Vitest 280/280 em 27 arquivos; check sem erros/avisos; build passou. A sequência D1 local `0000..0014` passou em `integrity_check`, incluindo teste de migração de conta antiga que conserva `pt`. Go vet/test da raiz e do Studio e svelte-check do Studio também passaram. O smoke de navegador isolado na porta 18861, com API simulada, cobriu troca rápida de idioma e recarga; servidor, aba e temporários foram encerrados/removidos pela área responsável.
+
+Pergaminho não repetiu esses comandos pesados neste fechamento. Conferiu o código e retirou as marcações de validação pendente dos guias e da spec. A aplicação remota de `0014` continua obrigatória antes do Worker novo. Esses resultados complementam os checks históricos acima, sem substituir o procedimento de produção.
+
 ## Pendências e limites
 
 1. Publicar e conferir o institucional e seu canal de atendimento; inserir URL da política e declarar IA no Partner Center. Configurar identidade MSIX e testar no Windows antes da Store.

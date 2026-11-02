@@ -16,6 +16,16 @@ O `id` de `/me` identifica a conta para suporte e pode ser copiado nas Configura
 
 No painel Cloud, Perfil mostra ID da conta, copiar e retorno Copiado. A staff vê o ID em destaque no detalhe; na lista, uma conta só com passkey aparece como Sem e-mail (só passkey), com ID curto copiável. `AccountId.svelte` usa o ícone Lucide de copiar e copia o ID inteiro, mesmo quando o texto é abreviado. A ajuda é Em caso de ajuda, informe seu ID. O perfil sem e-mail oferece vinculação com um aviso discreto sobre recibos e recuperação, sem obrigar o vínculo para o trabalho local ou alterar a recuperação cifrada das notas.
 
+## Idioma da conta e do painel
+
+[language.ts](../../cloud/shared/language.ts) define `pt`, `en` e `es`. A migração aditiva [0014_idioma_da_conta.sql](../../cloud/migrations/0014_idioma_da_conta.sql) acrescenta `user.language`, obrigatório com padrão `pt`, preservando português nas contas existentes. Deve ser aplicada antes do Worker que consulta o campo. Novas contas por OTP ou passkey recebem o idioma de `x-blup-language`, opcional e limitado aos códigos base `pt/en/es`; sem essa escolha, usam `Accept-Language`, que aceita variantes regionais, ordena por `q` e ignora `q=0`, com fallback `en`.
+
+`GET /api/me` inclui `language`. `PUT /api/me/language` exige sessão do dono e JSON estrito `{language: "pt" | "en" | "es"}`, validado por Zod; devolve `{language}`. Esse estado pertence à conta Cloud e não altera o idioma do Studio, das notas ou do site publicado.
+
+O painel escolhe primeiro `blup-lang` no `localStorage`, depois o cookie de mesmo nome, depois `navigator.languages`, com fallback `en`. O seletor atualiza a interface sem recarregar, o atributo `lang` do documento e as duas formas de persistência local. Ao entrar ou trocar o idioma, [language-save.ts](../../cloud/src/lib/language-save.ts) enfileira a gravação na conta: a preferência local prevalece sobre o idioma salvo. A fila serializa pedidos e confere a conta atual antes de gravar; falha mostra aviso, mantendo a escolha no navegador. A área staff permanece em português, sem seletor.
+
+E-mails de códigos de acesso para contas existentes, lembretes e avisos de mudança de plano usam o idioma salvo. Para um OTP de cadastro cujo endereço ainda não tem conta, usa-se o idioma do pedido. Um pedido anônimo não altera a preferência de uma conta existente; o próximo login pode continuar chegando no idioma salvo até a pessoa entrar e mudar a seleção. Catálogos compartilhados ficam em `cloud/shared/email-i18n.ts` e `cloud/shared/plan-i18n.ts`; textos da interface e erros ficam em `cloud/src/lib/i18n/`.
+
 ## Planos executados
 
 Os limites vêm de `cloud/worker/plans.ts`. Os preços vêm do Stripe, pelos lookup keys mensais e anuais de Pro, Max e Ultra. `plans.ts` não contém valores ou moeda fixos. Quantidades de armazenamento e tamanho de arquivo são multiplicadas por `1024 * 1024` no servidor.
@@ -33,11 +43,11 @@ Os limites vêm de `cloud/worker/plans.ts`. Os preços vêm do Stripe, pelos loo
 | E-mails de lembrete por mês | 0 | 0 | 50 | 100 |
 | Campo `customDomain` | `false` | `false` | `true` | `true` |
 
-`GET /api/plans` retorna objetos `{name, label, limits, perks, suggested, prices}`. `prices.monthly` e `prices.yearly` são `{unitAmount, currency}` ou `null`. `unitAmount` usa a unidade menor da moeda do Stripe, que não é sempre centavos. No Grátis os dois preços são `null`, e a interface mostra Grátis. Nos pagos, `null` indica período indisponível e desabilita a compra. Não existem os antigos campos `priceCents`, `yearlyCents` e `currency` no objeto do plano.
+`GET /api/plans` retorna objetos `{name, label, limits, perks, suggested, prices}`. `label` e `perks` seguem o idioma do pedido, com a mesma prioridade de headers descrita acima; valores e cache Stripe continuam independentes do idioma. `prices.monthly` e `prices.yearly` são `{unitAmount, currency}` ou `null`. `unitAmount` usa a unidade menor da moeda do Stripe, que não é sempre centavos. No Grátis os dois preços são `null`, e a interface mostra o nome traduzido do plano. Nos pagos, `null` indica período indisponível e desabilita a compra. Não existem os antigos campos `priceCents`, `yearlyCents` e `currency` no objeto do plano.
 
 [pricing.ts](../../cloud/worker/pricing.ts) mantém catálogo por isolate por dez minutos, agrupa refreshes concorrentes e espera trinta segundos para repetir uma falha. Falha de transporte/lista mantém o último catálogo válido; sem catálogo anterior, não inventa valor. Uma resposta válida com preço ausente, produto arquivado ou formato não aceito torna aquele período indisponível. [price-schema.ts](../../cloud/worker/price-schema.ts) exige preço recorrente por unidade, intervalo mensal/anual correspondente e produto ativo. O painel formata a moeda com [money.ts](../../cloud/src/lib/money.ts).
 
-O servidor também recusa upgrade de período indisponível com `503 PRICING_UNAVAILABLE`; referência de outra conta retorna 403. `GET /me` permanece com o mesmo contrato de plano/uso e seu `id`; Studio e CLI não consultam `/plans`. A cota de IA definida em código não é recalculada automaticamente quando o preço Stripe muda. O script `npm run stripe:setup` apenas confere o catálogo, sem criar produtos ou preços. Publicação e troca de preços estão no [checklist](../deploy-checklist.md).
+O servidor também recusa upgrade de período indisponível com `503 PRICING_UNAVAILABLE`; referência de outra conta retorna 403. `GET /me` conserva plano/uso e `id`, acrescenta `language` e localiza `plan.label` pelo idioma do pedido; Studio e CLI não consultam `/plans`. A cota de IA definida em código não é recalculada automaticamente quando o preço Stripe muda. O script `npm run stripe:setup` apenas confere o catálogo, sem criar produtos ou preços. Publicação e troca de preços estão no [checklist](../deploy-checklist.md).
 
 `unitAmount` usa unidades menores da moeda Stripe. O painel e os valores financeiros da staff usam [money.ts](../../cloud/src/lib/money.ts), que respeita moedas sem decimais e as exceções ISK/UGX da API; não divide todo valor por 100 nem inventa moeda ausente.
 

@@ -13,6 +13,7 @@ Auditoria das rodadas 2, 3 e 4, conferida no código em 02/11/2026. Tipos de com
 | Fronteira | Comportamento |
 | --- | --- |
 | JSON de IA | Schema Zod para texto, idioma, modelo, voz e formato antes do provedor |
+| Idioma da conta | Enum Zod `pt/en/es` compartilhado; `PUT /api/me/language` aceita só `{language}`, com sessão; `GET /api/me` inclui o campo pelo contrato RPC |
 | Sites/domínios | Params validados; hostname estrito, normalizado e verificado; listas de hashes e manifestos limitadas |
 | Sync | Parâmetros, cursores, multipart, referências e tamanhos validados antes de persistir |
 | Staff/aparelhos | IDs e queries validados inclusive no unban; autorização e papel são verificações separadas |

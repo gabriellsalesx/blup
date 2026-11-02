@@ -51,7 +51,7 @@ Não existe fluxo de troca da senha das notas na CLI ou no Studio. A API de embr
 
 | Operação | Dados que o serviço pode ler |
 | --- | --- |
-| Login e conta | E-mail quando vinculado, passkeys públicas, sessões, User-Agent e dados de uso |
+| Login e conta | E-mail quando vinculado, idioma salvo em `user.language`, passkeys públicas, sessões, User-Agent e dados de uso |
 | Sync cifrado | Metadados e bytes cifrados descritos acima |
 | Publicação | HTML, CSS, JS, imagens, MP3 e manifesto públicos; nome/slug/título do site |
 | Narração cloud | Texto falável e voz/modelo, lidos pelo Worker e OpenRouter |

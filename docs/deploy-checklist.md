@@ -48,7 +48,7 @@ npx wrangler r2 bucket create blup-cloud-sites
 
 ## 4. Planejar a migração e aplicar o SQL
 
-- [ ] **BLOQUEANTE:** conferir backup e revisar a sequência [migrations/](../cloud/migrations). Nesta rodada ela vai de `0000` até `0013_webhook_stripe_atual.sql`.
+- [ ] **BLOQUEANTE:** conferir backup e revisar a sequência [migrations/](../cloud/migrations). A sequência versionada vai de `0000` até `0014_idioma_da_conta.sql`.
 - [ ] Em instalação nova, aplicar toda a sequência antes dos Workers. Em instalação existente, **não aplicar `0012` com o código antigo atendendo tráfego ou cron**: ele ainda escrevia os campos removidos. Preparar e ensaiar uma atualização em etapas compatíveis ou uma janela de manutenção, suspendendo tráfego/gravações e crons antigos, aplicando SQL e publicando os dois Workers novos antes de reabrir. A sequência abaixo pressupõe essa condição; rollback de código antigo pode ser incompatível com o schema novo.
 
 ```sh
@@ -57,7 +57,8 @@ npx wrangler d1 migrations apply DB --remote --env production
 npx wrangler d1 migrations list DB --remote --env production
 ```
 
-- [ ] Confirmar que não ficaram migrações pendentes. `0011` prepara carências e sync transacional; `0012` remove `sync_account.previous_key` e `site_domain.disabled_at`, sem consumidor; `0013` cria recibos de webhook e índices. As migrações anteriores permanecem intactas.
+- [ ] Confirmar que não ficaram migrações pendentes. `0011` prepara carências e sync transacional; `0012` remove `sync_account.previous_key` e `site_domain.disabled_at`, sem consumidor; `0013` cria recibos de webhook e índices; `0014` acrescenta `user.language`, com `pt` nas contas existentes, e precisa vir antes do Worker novo. As migrações anteriores permanecem intactas.
+- [x] Validação local da tradução fechada pela Lupa: gates, sequência D1 `0000..0014`, integridade e migração de conta antiga preservando `pt`. A aplicação de `0014` no banco de produção continua obrigatória antes do Worker novo.
 - [ ] Em atualização de instalação anterior à marca de aparelho, planejar revogar sessões Studio antigas e solicitar novo login, conforme [cloud/README.md](../cloud/README.md).
 
 Aplicar SQL versionado é o fluxo de lançamento. Não gerar outro schema Better Auth ou Drizzle durante esse passo. [Migrações D1](https://developers.cloudflare.com/d1/reference/migrations/).
@@ -183,6 +184,7 @@ Se os secrets dos sites não forem necessários ou já estiverem cadastrados, om
 - [ ] Publicar um site de teste em `getblup.site`; conferir HTML, arquivos, busca e isolamento entre dois sites no mesmo caminho. Conferir retirada da entrega após excluir o site de teste.
 - [ ] Se oferecer domínio próprio, conferir prova, SSL, baseURL após publicação e canonical/feed/sitemap. O Studio republica em segundo plano ao observar mudança de domínio, com intervalo mínimo de dez minutos por site; não há troca instantânea de URLs absolutas sem build.
 - [ ] Abrir o Checkout de uma conta interna que não use a cortesia do proprietário e conferir plano, período, valor e moeda; cancelar antes de pagar neste teste de abertura. Ciclos completos de cobrança continuam homologados no sandbox.
+- [ ] Conferir entrada, painel, planos e e-mails em `pt/en/es`: escolha local antes do idioma do navegador, persistência na conta e staff em português. Contas antigas começam em `pt`; novas usam o idioma do pedido ou `en` quando não houver idioma compatível. Conferir que a tradução não muda valores/moedas Stripe.
 - [ ] Conferir os limites anunciados e executados: Max com 5 GiB, arquivos de até 50 MiB e 3 sites; Ultra com 10 GiB, arquivos de até 100 MiB e 10 sites. Grátis e Pro seguem a [tabela dos planos](spec/blup-cloud-sync.md#planos-executados).
 - [ ] Conferir as execuções de lembretes e limpeza. Max permite 50 e Ultra 100 e-mails/mês; carências de 14 dias e retenção de conta por 30 dias precisam corresponder ao produto anunciado.
 - [ ] Em ambiente isolado, conferir `historyBytes:null`, purga por cofre, prepare/ticket/commit e a folga de manifesto de 4096 bytes sobre o head. Não simular expiração forçada em produção.
