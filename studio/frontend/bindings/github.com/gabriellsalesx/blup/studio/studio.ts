@@ -1115,7 +1115,7 @@ export function SetGeneralPassword(password: string): $CancellablePromise<void> 
 
 /**
  * SetLanguage changes the language of Blup and the Studio ("pt", "en" or "es").
- * The window reloads to show it.
+ * The window changes its texts in place (i18n.ts); here, the tray's menu.
  */
 export function SetLanguage(lang: string): $CancellablePromise<void> {
     return $Call.ByID(1491808472, lang);
