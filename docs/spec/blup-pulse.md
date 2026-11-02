@@ -1,10 +1,10 @@
 # Blup Pulse
 
-Especificação de produto e proposta técnica, pesquisada e atualizada em 02/11/2026. Nome, preços e decisões comerciais refletem a atualização aprovada pelo dono. O produto ainda está em implementação por fases; este documento não afirma que os contratos já estejam disponíveis em produção. O estado das Fases 1 e 2 abaixo descreve o código local conferido; os recursos restantes continuam como proposta e oferta-alvo. Exemplos usam marcadores, sem credenciais reais.
+Especificação de produto e proposta técnica, pesquisada e atualizada em 02/11/2026. Nome, preços e decisões comerciais refletem a atualização aprovada pelo dono. O produto ainda está em implementação por fases; este documento não afirma que os contratos já estejam disponíveis em produção. O estado das Fases 1 a 3 abaixo descreve o código local conferido; os recursos restantes continuam como proposta e oferta-alvo. Exemplos usam marcadores, sem credenciais reais.
 
 ## Estado da entrega por fases
 
-**Fases 1 e 2 entregues localmente, sem publicação.** Os contratos desta seção foram conferidos no código e nos handoffs da Lupa. As demais seções distinguem comportamento atual de oferta-alvo; recursos das próximas fases não devem ser apresentados como entregues ou compráveis.
+**Fases 1 a 3 entregues localmente, sem publicação.** Os contratos desta seção foram conferidos no código e nos handoffs da Lupa. As demais seções distinguem comportamento atual de oferta-alvo; recursos das próximas fases não devem ser apresentados como entregues ou compráveis.
 
 ### Núcleo da Fase 1
 
@@ -93,7 +93,33 @@ O DO acrescenta `monitor_state`, `monitor_check` e `monitor_day`. Duas falhas co
 
 A Lupa informou para esta fase: 303/303 testes, check Cloud/Pulse com zero erros e avisos e builds aprovados, incluindo a regressão de preservação do alarme. Esta documentação conferiu os contratos no código e não repetiu esses gates. O handoff confirma `0016`/`0017` geradas; isso não comprova aplicação remota.
 
-As Fases 3 e 4 ainda precisam fechar avisos Discord/Telegram, compra/troca dos planos, domínio próprio Ultra e integração de aceite no Studio. Os preços são aprovados comercialmente, mas ainda não representam produtos compráveis ou serviço pronto. A saída pública dos monitores depende da premissa de plataforma descrita na seção 7 e de ensaio em homologação; os testes locais não demonstram proteção universal contra DNS rebinding.
+### Fase 3: canais e avisos
+
+Fontes: [canais e vínculos de projeto](../../cloud/worker/pulse/channels.ts), [Telegram](../../cloud/worker/pulse/telegram.ts), [proteção dos destinos](../../cloud/worker/pulse/channel-crypto.ts), [fila/despachante](../../cloud/worker/pulse/outbox.ts), [transportes](../../cloud/worker/pulse/transports.ts), [testes simulados](../../cloud/worker/pulse/alerts.test.ts) e [tela Avisos](../../cloud/pulse/src/routes/avisos/+page.svelte).
+
+As rotas privadas exigem sessão/dono; criar, vincular, confirmar e testar exigem direito gravável. Remover canal continua disponível ao dono. O DSN só autoriza ingestão de eventos, sem acesso administrativo a canais ou projetos.
+
+| Método e caminho relativo a `/api/pulse` | Contrato local da Fase 3 |
+| --- | --- |
+| `GET /channels` | `{channels, bindings}`; até 20 canais com `id, type, label, active, lastError`, sem devolver destino; vínculos `{projectId, channelId}`; listas vazias sem direito de leitura |
+| `POST /channels` | JSON estrito `{type:"discord", webhook}`; webhook é string HTTPS validada; `201 {id, label}`; cota por tipo equivale ao número de projetos do plano |
+| `DELETE /channels/:channel` | Remove canal, vínculos, cooldowns e entregas na fila; `{ok:true}` ou 404 |
+| `POST /channels/:channel/test` | JSON estrito `{}`; `202 {queued:true}`; no máximo um teste por minuto por canal, com 429 e `Retry-After: 60` no excesso |
+| `PUT /projects/:project/channels` | JSON estrito `{channelIds}`; lista distinta de até dois IDs ativos do mesmo dono, no máximo um de cada tipo; substitui todos os vínculos; `[]` retira todos; `{ok:true}` |
+| `POST /telegram/link` | JSON estrito `{}`; `201 {id, url, expiresAt}`; cria código de 48 caracteres hexadecimais com dez minutos de validade e substitui o registro de vínculo anterior da conta |
+| `GET /telegram/link/:link` | `{id, state, expiresAt, candidate, channelId}`; `candidate` é `{id, label}` ou `null`, `channelId` é string ou `null`; `expiresAt` em ISO UTC |
+| `POST /telegram/link/:link/confirm` | JSON estrito `{}`; cria canal a partir do chat candidato: `201 {id}`; repetição confirmada retorna `200 {id}`; inválido/expirado retorna `409 LINK_EXPIRED` |
+| `POST /telegram/webhook` | Registrado antes do middleware de sessão; autentica por `X-Telegram-Bot-Api-Secret-Token`, valida update, deduplica `update_id` e aceita `/start` apenas de pessoa em seu próprio chat privado; `{ok:true}` nos updates ignorados/aceitos |
+
+Vínculos Telegram passam por `pending`, `candidate` e `confirmed`; a consulta apresenta `expired` após o prazo. O código só fica como hash no D1. O painel consulta o vínculo a cada cinco segundos, interrompe ao sair de `pending` ou ao deixar a tela e exige confirmação autenticada do chat candidato. Conhecer o código não ativa o canal sozinho. Discord usa apenas os hosts/caminhos de webhook aceitos; destino inválido é recusado, sem executar fetch arbitrário.
+
+A migração [0018_pulse_avisos.sql](../../cloud/migrations/0018_pulse_avisos.sql), gerada pelo Drizzle, acrescenta `pulse_channel`, `pulse_project_channel`, `pulse_outbox`, `pulse_cooldown`, `pulse_delivery_budget`, `pulse_telegram_link`, `pulse_telegram_update` e índices de reconciliação/expiração. Deve vir antes do Worker desta fase. Os secrets necessários são `PULSE_CHANNEL_KEY`, com 32 bytes em base64, `PULSE_TELEGRAM_TOKEN` e `PULSE_TELEGRAM_WEBHOOK_SECRET`, somente no Worker Cloud. A cifra e a entrega estão detalhadas na seção 8.
+
+A tela Avisos cadastra Discord, abre o vínculo Telegram, mostra o candidato para confirmação, lista rótulos/estado/erro genérico, enfileira testes, exclui canais e escolhe Discord/Telegram por projeto. Não recupera URLs de webhook. Os testes e toasts informam enfileiramento, sem prometer entrega já concluída.
+
+A Lupa informou 309/309 testes em 31 arquivos, `tsc`, check Cloud/Pulse com zero erros/avisos e builds aprovados para a Fase 3. Os provedores externos foram somente simulados; não há confirmação de bot configurado ou de mensagem entregue por Discord/Telegram reais. Estes gates são da área Cloud e não foram repetidos nesta documentação. Registrar o bot e configurar seu webhook são tarefas operacionais antes de liberar os avisos.
+
+A Fase 4 ainda precisa fechar compra/troca dos planos e domínio próprio Ultra; o aceite/filtro do Studio permanece pendente. Os preços são aprovados comercialmente, mas ainda não representam produtos compráveis ou serviço pronto. A saída pública dos monitores depende da premissa de plataforma descrita na seção 7 e de ensaio em homologação; os testes locais não demonstram proteção universal contra DNS rebinding.
 
 ## 1. Produto e MVP
 
@@ -269,7 +295,7 @@ As últimas 100 ocorrências completas são o evento permitido pela política de
 
 ## 6. Modelo de dados proposto
 
-As Fases 1 e 2 têm schema D1/SQLite e migrações `0015..0017`, listados no estado da entrega. As tabelas abaixo preservam o desenho-alvo dos demais recursos e podem ter nomes diferentes dos atuais. Migrações posteriores precisam ser geradas e revisadas sem alterar o histórico existente.
+As Fases 1 a 3 têm schema D1/SQLite e migrações `0015..0018`, listados no estado da entrega. As tabelas abaixo preservam o desenho-alvo dos demais recursos e podem ter nomes diferentes dos atuais. Migrações posteriores precisam ser geradas e revisadas sem alterar o histórico existente.
 
 | D1 geral | Campos e índices principais |
 | --- | --- |
@@ -280,11 +306,12 @@ As Fases 1 e 2 têm schema D1/SQLite e migrações `0015..0017`, listados no est
 | `pulse_page`, `pulse_page_component` | Dono, slug único, título, componentes, projetos/monitores autorizados, visibilidade e domínio |
 | `pulse_incident`, `pulse_incident_update` | Página, texto público, estado, impacto e datas; índice por página/data |
 | `pulse_channel` | Dono, tipo, dados de destino protegidos, configuração, estado e último erro sanitizado |
-| `pulse_channel_project`, `pulse_alert_outbox` | Vínculos e IDs de problema/monitor; deduplicação, próximo envio, tentativas e estado; índice da fila |
+| `pulse_project_channel`, `pulse_outbox` | Vínculos e IDs de problema/monitor; deduplicação, próximo envio, tentativas e estado; índice da fila |
+| `pulse_cooldown`, `pulse_delivery_budget` | Supressão temporária por referência e orçamento compartilhado de envio |
 | `pulse_telegram_link` | Hash do código, dono, expiração, chat candidato, consumido; sem token do bot |
 | `pulse_page_domain` | Página, hostname, prova de posse, estado/SSL e identificador do provedor; unicidade de hostname verificado |
 
-Credenciais Discord não ficam em texto puro: cifrar com AES-GCM usando chave de serviço em Worker secret, nonce único, identificação de versão da chave e dados associados ao dono/canal. O servidor pode decifrar para enviar; isso não é cifra de ponta a ponta. Token do bot Telegram e segredo de verificação do webhook são secrets globais. DSNs são públicos para envio; guardar hash da chave e mostrar o valor completo na criação/rotação, com recuperação por rotação.
+Destinos Discord/Telegram usam AES-GCM com chave de serviço em Worker secret, nonce aleatório e dados associados ao dono/canal/tipo. O envelope tem versão de formato, sem seletor de versão da chave; os detalhes e limites de rotação estão na seção 8. O servidor pode decifrar para enviar; isso não é cifra de ponta a ponta. Token do bot Telegram e segredo do webhook são secrets globais. DSNs são públicos para envio; D1 guarda hash/prefixo e mostra o valor completo apenas na criação/rotação.
 
 | SQLite de cada DO de projeto | Conteúdo |
 | --- | --- |
@@ -296,7 +323,7 @@ Credenciais Discord não ficam em texto puro: cifrar com AES-GCM usando chave de
 | `issue_day` | Contadores diários, sem corpo do evento |
 | `monitor_check` | Monitor, horário previsto/real, resultado e duração; índice por monitor/data |
 | `monitor_day` | Sucessos, falhas, desconhecidos e resumo de latência por dia |
-| `alert_pending` | Transições a entregar ao índice de avisos, com ID idempotente |
+| `pending_alert` | Transições a entregar ao índice de avisos, com ID idempotente |
 
 Contador, deduplicação, grupo e amostra entram na mesma transação SQLite. Não há transação distribuída entre D1 e DO: criação/exclusão usam estados intermediários recuperáveis e concessões idempotentes. Só habilitar ingestão depois do vínculo completo. Exclusão revoga primeiro no D1, depois apaga o objeto e os vínculos com retomada após falha.
 
@@ -320,7 +347,7 @@ Contas comuns não podem monitorar `getblup.io`, `getblup.site`, `workers.dev` n
 
 O cron `* * * * *` seleciona até 100 monitores vencidos, em grupos de cinco e por até 45 segundos; Max fica elegível a cada cinco minutos e Ultra a cada dois. Os horários são UTC. Uma lease global e claims por monitor de 55 segundos evitam duplicação; revisão do monitor invalida resultados da configuração anterior. A nova execução é marcada após a checagem, sem recuperar toda a fila de horários perdidos nem prometer execução no segundo exato. Monitores sem direito gravável não são consultados. [Agendador](../../cloud/worker/pulse/scheduler.ts), [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
 
-O estado começa `unknown`, passa a `down` após duas falhas consecutivas e a `up` após dois sucessos. Resultado bloqueado ou execução atrasada por mais de duas vezes o intervalo fica `unknown`; lacunas interrompem a sequência de confirmações. A publicação também apresenta como `unknown` uma última observação que ficou antiga. As transições confirmadas geram metadados em `pending_alert`, mas o envio externo depende da próxima fase. Não há promessa de múltiplas regiões ou SLA. Os resumos contam observações `up/down/unknown`; não preenchem todos os minutos sem execução nem equivalem a uma medição contínua de disponibilidade.
+O estado começa `unknown`, passa a `down` após duas falhas consecutivas e a `up` após dois sucessos. Resultado bloqueado ou execução atrasada por mais de duas vezes o intervalo fica `unknown`; lacunas interrompem a sequência de confirmações. A publicação também apresenta como `unknown` uma última observação que ficou antiga. As transições confirmadas geram metadados em `pending_alert`, consumidos pela fila de avisos da Fase 3. Não há promessa de múltiplas regiões ou SLA. Os resumos contam observações `up/down/unknown`; não preenchem todos os minutos sem execução nem equivalem a uma medição contínua de disponibilidade.
 
 A página pública mostra componentes escolhidos, estado atual, resumos diários e incidentes escritos manualmente. Estados do incidente: `investigating`, `identified`, `monitoring`, `resolved`; impacto público: operacional, degradado, interrupção parcial ou indisponível. Erros privados nunca viram incidentes públicos automaticamente. URL monitorada, DSN, stack trace, nomes privados e credenciais não entram no HTML/JSON público.
 
@@ -328,29 +355,35 @@ O endereço implementado localmente é `https://pulse.getblup.site/<nome>/`, com
 
 ## 8. Avisos Discord e Telegram
 
-Disparos iniciais: novo problema, regressão e mudança confirmada de monitor. Incidente manual pode ser anunciado por ação explícita. Repetições do mesmo problema são contadas, com cooldown proposto de 15 minutos por destino; não enviar uma mensagem por ocorrência. Proposta MVP: um Discord e um chat Telegram por projeto, sem automações arbitrárias.
+Entregues localmente na Fase 3. Os disparos automáticos são novo problema, regressão e transição confirmada de monitor para `up/down`. Cada projeto pode ter um Discord e um chat Telegram. Incidentes manuais não disparam avisos nesta fase. O cooldown é de 15 minutos por canal, tipo de sinal e referência de problema/monitor, sem enviar uma mensagem por ocorrência.
 
-`pulse_alert_outbox` registra apenas referência e estado de entrega. O despachante carrega um resumo já tratado, tenta no máximo cinco vezes com espera crescente e jitter, obedece à espera do provedor e expira avisos antigos. Proposta de validade: 24 horas. Se a mensagem foi aceita e a confirmação local se perdeu, pode haver duplicata; a interface não deve prometer entrega exatamente uma vez ou leitura pelo destinatário.
+O DO mantém sinais em `pending_alert`; `flushAlerts` passa referências idempotentes para `pulse_outbox` no D1. A fila guarda conta, projeto, canal, referência, tipo, prazos, tentativa e claim, sem copiar o evento bruto ou o destino decifrado. O cron de minuto executa checagens, reconciliação dos sinais e despacho. O despachante seleciona até 50 entradas por rodada, usa lease global de 55 segundos e claim por entrega, e trabalha por até 45 segundos. Antes de enviar, revalida direito da conta, canal ativo, vínculo do projeto e estado atual do recurso. Desvincular ou perder direito impede novas tentativas válidas.
+
+Cada aviso tem até cinco tentativas de envio e validade de 24 horas desde o sinal. Falhas transitórias usam espera exponencial com jitter e respeitam a espera maior do provedor; entradas vencidas, sem direito ou desatualizadas são descartadas. Excluir o canal remove sua fila. A mensagem leva identificação Blup Pulse, tipo traduzido no idioma salvo da conta, título tratado do problema ou nome tratado do monitor e link fixo do painel. Não inclui URL monitorada, stack trace ou evento cru. Uma aceitação remota seguida de perda da confirmação local pode produzir duplicata; não há garantia de entrega exatamente uma vez ou de leitura.
+
+### Proteção do destino
+
+URL de webhook Discord e ID do chat Telegram ficam em `pulse_channel.target` com AES-GCM, IV aleatório de 12 bytes e envelope versão 1. O AAD associa produto/versão, dono, ID do canal e tipo; copiar a cifra para outro vínculo falha na autenticação. `PULSE_CHANNEL_KEY` é um secret de 32 bytes codificados em base64. O servidor pode decifrar para enviar; isso não é cifra de ponta a ponta. A API de listagem retorna rótulo e estado, sem recuperar a URL de webhook ou o destino cifrado.
+
+Rótulos e vínculos ficam legíveis no D1. Durante o vínculo Telegram, o ID/rótulo do chat candidato também ficam legíveis até a limpeza do vínculo expirado. O código de início fica somente como hash. Token do bot e secret do webhook são secrets globais separados. O envelope atual não tem seletor de múltiplas chaves: trocar `PULSE_CHANNEL_KEY` sem recifrar os destinos impede sua leitura, portanto preservar a chave entre publicações e planejar qualquer rotação.
 
 ### Discord
 
-Aceitar só webhook HTTPS de entrada em host/caminho oficial permitido; não fazer fetch em URL arbitrária colada como canal. Enviar com `wait=true`, `content` limitado a 2.000 caracteres e `allowed_mentions: {parse: []}`. Desativar menções e não anexar eventos crus. A URL contém uma credencial e aparece mascarada depois de salva.
+O cadastro aceita HTTPS em `discord.com` ou `discordapp.com`, com caminho oficial de webhook e sem query, fragmento, porta alternativa ou credenciais na URL. Normaliza o envio para `discord.com`. A resposta de cadastro só traz ID e rótulo, formado pelo sufixo do ID do webhook. A tela não mostra a URL novamente.
 
-Não fixar uma regra universal como cinco mensagens a cada dois segundos. Respeitar `X-RateLimit-Bucket`, `Remaining` e `Reset-After`; no 429, respeitar `Retry-After`/`retry_after`, inclusive valores fracionários e limites globais. Em 401/403/404 persistente, desativar o destino e pedir correção, evitando loops. [Execute Webhook](https://docs.discord.com/developers/resources/webhook#execute-webhook), [rate limits Discord](https://docs.discord.com/developers/topics/rate-limits).
+O envio usa `wait=true`, texto de até 2.000 caracteres e `allowed_mentions: {parse: []}`, sem anexos. O cliente valida o ID de mensagem da resposta. No 429, usa `retry_after` ou `Retry-After`, inclusive valores fracionários, e propaga a espera global quando informada. Em sucesso com `X-RateLimit-Remaining: 0`, espera `X-RateLimit-Reset-After` no canal. O cliente atual não agrupa canais por `X-RateLimit-Bucket`; mantém orçamento global e espera por canal. Respostas 401/403/404 desativam o canal. Os limites do provedor podem variar; não prometer uma taxa fixa universal. [Execute Webhook](https://docs.discord.com/developers/resources/webhook#execute-webhook), [rate limits Discord](https://docs.discord.com/developers/topics/rate-limits).
 
 ### Telegram
 
-O usuário precisa abrir/iniciar a conversa com o bot. A tela cria código aleatório base64url, de uso único, ligado à conta e com validade proposta de dez minutos; persiste apenas seu hash. O link `https://t.me/BlupPulseBot?start=<CODIGO>` faz chegar `/start <CODIGO>`. O parâmetro aceita até 64 caracteres. O nome definido para o bot é `@BlupPulseBot`; a criação, disponibilidade do nome e configuração no BotFather são tarefas operacionais, não confirmação de um bot já ativo. Vincular primeiro um chat privado; grupos/canais exigem comprovação de permissão e ficam para uma fase posterior. [Deep linking oficial](https://core.telegram.org/bots/features#deep-linking).
+A pessoa inicia a conversa por `https://t.me/BlupPulseBot?start=<CODIGO>`. O código atual tem 48 caracteres hexadecimais e dez minutos de validade. O nome adotado é `@BlupPulseBot`, mas a entrega local não confirma sua criação ou configuração no BotFather. O webhook exige `X-Telegram-Bot-Api-Secret-Token`, valida o update e deduplica `update_id`. Aceita `/start` somente em chat privado, de pessoa real com `from.id` igual a `chat.id`; grupos, canais e bots são ignorados. O candidato precisa ser confirmado com a sessão do dono no painel. IDs de chat usados nesta fase são strings decimais positivas e inteiros seguros; não há suporte a IDs negativos de grupos. [Deep linking](https://core.telegram.org/bots/features#deep-linking), [webhook oficial](https://core.telegram.org/bots/api#setwebhook).
 
-O webhook do bot exige `X-Telegram-Bot-Api-Secret-Token` e validação do update. Deduplicar `update_id`; conferir expiração, uso único e remetente/chat; apresentar o chat candidato no painel e exigir confirmação autenticada antes de ativar. IDs de chat são inteiros seguros no protocolo, mas ficam como string decimal no banco/DTO de destino, preservando sinal e evitando conversões descuidadas.
+O envio usa `sendMessage`, texto simples de até 4.096 caracteres, sem `parse_mode`, sem broadcast pago e com prévia de links desativada. Valida `ok`, `message_id` e parâmetros de erro. No 429, respeita `parameters.retry_after`; erros 400/403/404 do protocolo desativam o canal. O orçamento D1 é compartilhado entre contas: espaçamento mínimo interno de 40 ms no bot e 1.100 ms por chat, com espera adicional conforme resposta. Esses espaçamentos são controles do cliente, não promessa de capacidade do provedor. [Bot API](https://core.telegram.org/bots/api#sendmessage), [limites oficiais](https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this).
 
-Enviar por `sendMessage`, texto simples de até 4.096 caracteres, sem `parse_mode` para interpretar conteúdo do erro. Validar `ok`, resultado e parâmetros de erro. No 429, usar `parameters.retry_after`; não habilitar broadcasts pagos. Planejar menos de uma mensagem por segundo por chat e cerca de 30 por segundo por bot; grupos têm referência de 20 por minuto. Manter folga e seguir as respostas, pois os limites podem mudar. O token do bot fica em secret e nunca aparece em logs de URL. [Bot API](https://core.telegram.org/bots/api#sendmessage), [webhook](https://core.telegram.org/bots/api#setwebhook), [limites oficiais](https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this).
-
-O limite global do bot precisa de coordenação entre contas. Proposta MVP: um despachante Telegram serializado por lease no D1, com contador global e envio conservador, separado dos DOs dos projetos. Se o volume exigir outro mecanismo, evoluir a fila antes de aumentar os limites comerciais.
+Os transportes usam timeout de dez segundos, não seguem redirects e limitam a resposta do provedor a 64 KiB. O banco recebe códigos de falha, sem persistir a resposta textual privada do provedor. Os testes locais simulam os dois serviços. Homologar registro/webhook do bot e recebimento em destinos controlados antes de anunciar avisos operacionais; nenhum desses envios externos foi executado por esta documentação.
 
 ## 9. API Hono tipada
 
-As subseções das Fases 1 e 2 listam as rotas já entregues e seus formatos reais. A tabela abaixo descreve a API-alvo completa sob `/api/pulse`, incluindo recursos das próximas fases. Todas exigem sessão, dono e direito do plano, exceto leitura pública e webhooks com sua autenticação própria. IDs, query, body e cursores passam por Zod, com JSON de configuração estrito. O parser binário Sentry é separado do middleware JSON geral de 96 KiB do Cloud; precisa dos limites próprios desta spec. Metadados extras de SDK desconhecidos podem ser descartados com segurança, sem exigir que SDKs só emitam campos que o painel conhece.
+As subseções das Fases 1 a 3 listam as rotas já entregues e seus formatos reais. A tabela abaixo descreve a API-alvo completa sob `/api/pulse`, incluindo recursos das próximas fases. Todas exigem sessão, dono e direito do plano, exceto leitura pública e webhooks com sua autenticação própria. IDs, query, body e cursores passam por Zod, com JSON de configuração estrito. O parser binário Sentry é separado do middleware JSON geral de 96 KiB do Cloud; precisa dos limites próprios desta spec. Metadados extras de SDK desconhecidos podem ser descartados com segurança, sem exigir que SDKs só emitam campos que o painel conhece.
 
 Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com respostas inferidas no painel. Reaproveitar a geração RPC existente, sem repetir DTOs manualmente. Exceções do transporte Sentry têm o formato compatível da seção 4; a API do painel mantém erro JSON com `code` estável e mensagem traduzida no cliente. [RPC Hono](https://hono.dev/docs/guides/rpc), [contratos do projeto](tipagem-e-contratos.md).
 
@@ -372,13 +405,13 @@ Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com
 | `GET/POST /api/pulse/pages/:page/incidents` | Histórico limitado e criação de incidente manual |
 | `POST /api/pulse/pages/:page/incidents/:incident/updates` | Atualização pública de texto e estado |
 | `GET/POST/DELETE /api/pulse/pages/:page/domain` | Contrato de domínio no plano elegível; DELETE não tem body |
-| `GET/POST /api/pulse/channels` | Lista mascarada; cadastro Discord com destino validado |
+| `GET/POST /api/pulse/channels` | Lista rótulos/estado sem destino; cadastro estrito `{type:"discord", webhook}` |
 | `DELETE /api/pulse/channels/:channel` | Desliga canal e cancela pendências ainda não enviadas |
-| `POST /api/pulse/channels/:channel/test` | Teste explícito, limitado, sem conteúdo privado |
-| `PUT /api/pulse/projects/:project/channels` | Substitui lista estrita de IDs do mesmo dono |
-| `POST /api/pulse/telegram/link` | Emite código/link temporário |
-| `GET /api/pulse/telegram/link/:link` | Consulta estado do vínculo, sem expor código de novo |
-| `POST /api/pulse/telegram/link/:link/confirm` | Confirma o chat proposto e cria o canal |
+| `POST /api/pulse/channels/:channel/test` | JSON estrito `{}`; `202 {queued:true}`, limitado a um teste/minuto/canal |
+| `PUT /api/pulse/projects/:project/channels` | Substitui `{channelIds}` com até dois canais ativos do mesmo dono, um por tipo |
+| `POST /api/pulse/telegram/link` | JSON estrito `{}`; emite `{id, url, expiresAt}` com dez minutos de validade |
+| `GET /api/pulse/telegram/link/:link` | `{id, state, expiresAt, candidate, channelId}`, sem expor código novamente |
+| `POST /api/pulse/telegram/link/:link/confirm` | JSON estrito `{}`; confirma candidato e retorna `{id}` do canal |
 | `POST /api/pulse/telegram/webhook` | Update do Telegram autenticado por secret, sem sessão do painel |
 | `GET /api/pulse/public/:slug` | Só DTO público, usado em `pulse.getblup.site/:slug` |
 
@@ -391,7 +424,7 @@ Na API-alvo, padronizar datas em ISO UTC; as Fases 1 e 2 ainda têm os timestamp
 | Projetos | Uso/cota, criar projeto, copiar DSN, rotacionar/revogar chave e exemplos de SDK homologado; lista de problemas, filtros, amostras tratadas e resolver/ignorar |
 | Monitores | URL privada, intervalo, estado, última checagem, lacunas e histórico; criar, pausar e apagar |
 | Página de status | Título, endereço, componentes públicos e incidentes manuais na Fase 2; domínio próprio Ultra permanece na Fase 4 |
-| Avisos, fase futura | Discord mascarado, vínculo Telegram por código, projetos associados, teste explícito e resultado das entregas |
+| Avisos, Fase 3 local | Cadastro Discord sem recuperar URL, vínculo/confirmar Telegram, canais por projeto, teste enfileirado e estado/erro genérico |
 
 Sem Pulse na assinatura, mostrar explicação e link para a página de planos Cloud; não criar uma segunda área de cobrança. Reaproveitar idioma da conta/navegador, temas claro/escuro e componentes acessíveis do Cloud. Nenhum erro privado aparece na página pública sem ação explícita. O teste de canal nunca é disparado ao apenas abrir a tela.
 
@@ -527,7 +560,9 @@ Fase 1 entregue localmente: núcleo de ingestão, projetos/chaves, problemas/amo
 
 Fase 2 entregue localmente: monitores/checagens, páginas públicas, incidentes/atualizações, DTO fechado, cache curto e purga integrada. Migrações `0016`/`0017` geradas; 303/303 testes e check/build Cloud/Pulse aprovados conforme handoff da Lupa.
 
-Fases 3 e 4 pendentes: avisos, domínio próprio Ultra na Fase 4, contratação e integração do Studio, com contratos atualizados a cada handoff. Browser e demais versões de SDK precisam de homologação; React Native/Flutter continuam como em teste. O domínio próprio faz parte da oferta Ultra e deve ter disponibilidade real informada antes de cobrar por ele.
+Fase 3 entregue localmente: canais Discord/Telegram, vínculo por código com confirmação, fila de referências, cooldown e retentativas. Migração `0018` gerada; 309/309 testes em 31 arquivos, `tsc`, check Cloud/Pulse zero erros/avisos e builds aprovados conforme handoff da Lupa. Provedores externos somente simulados.
+
+Fase 4 pendente: domínio próprio Ultra e contratação, com contratos atualizados a cada handoff; integração de aceite/filtro no Studio ainda pendente. Browser e demais versões de SDK precisam de homologação; React Native/Flutter continuam como em teste. O domínio próprio faz parte da oferta Ultra e deve ter disponibilidade real informada antes de cobrar por ele.
 
 Performance, tracing, replay e source maps não entram automaticamente numa fase posterior: exigem nova decisão de produto, orçamento e spec.
 

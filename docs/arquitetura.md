@@ -38,7 +38,7 @@ flowchart LR
 | Identidade e cobrança | [auth-options.ts](../cloud/worker/auth-options.ts): Better Auth, passkeys, OTP, aparelho, Bearer e plugin Stripe |
 | Persistência cloud | [schema](../cloud/worker/db/schema.ts): Drizzle sobre D1; R2 guarda objetos; não há servidor Node persistente |
 | Painel cloud | [cloud/vite.config.ts](../cloud/vite.config.ts): SvelteKit com adapter-static e fallback SPA, assets do Worker, Tailwind e Lucide |
-| Pulse, Fases 1 e 2 locais | [API](../cloud/worker/pulse/api.ts), [DO por projeto](../cloud/worker/pulse/project.ts) e [painel próprio](../cloud/pulse/src/routes/+page.svelte): projetos/chaves, ingestão, problemas/amostras, uso, monitores e páginas/incidentes; avisos, domínio Ultra, contratação e aceite Studio ainda pendentes |
+| Pulse, Fases 1 a 3 locais | [API](../cloud/worker/pulse/api.ts), [DO por projeto](../cloud/worker/pulse/project.ts) e [painel próprio](../cloud/pulse/src/routes/+page.svelte): projetos/chaves, ingestão, problemas/amostras, uso, monitores, páginas/incidentes e avisos Discord/Telegram; domínio Ultra, contratação e aceite Studio ainda pendentes |
 | Sites públicos | [sites-entry.ts](../cloud/worker/sites-entry.ts), [serve-site.ts](../cloud/worker/serve-site.ts): outro Worker, sem o login ou os assets do painel |
 | Feedback público | [feedback.js](../theme/assets/js/feedback.js) e repositório irmão `blup-api`: issues do GitHub, login e leituras com cache |
 
