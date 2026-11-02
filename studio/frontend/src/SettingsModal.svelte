@@ -726,6 +726,9 @@
   .item { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding-block: .85rem; border-block-end: 1px solid var(--line); }
   .note { padding-block: .6rem 0; font-size: .8rem; }
   .item > :global(.switch) { flex: 1; }
+  /* The buttons keep their text on one line; the text beside them wraps. */
+  .item > :global(.btn), .item > .keyrow, .keyrow > :global(.btn) { flex-shrink: 0; white-space: nowrap; }
+  .item > .text { flex: 1; min-width: 0; }
   .text { display: grid; gap: .15rem; font-size: .9rem; }
   .text small { color: var(--muted); font-size: .8rem; }
   select { width: auto; }
