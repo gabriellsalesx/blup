@@ -5,6 +5,8 @@ async function purgeProject(env:Cloudflare.Env,id:string,objectName:string){
  await env.DB.batch([
   env.DB.prepare("DELETE FROM pulse_component WHERE monitor_id IN(SELECT id FROM pulse_monitor WHERE project_id=?)").bind(id),
   env.DB.prepare("DELETE FROM pulse_monitor WHERE project_id=?").bind(id),
+  env.DB.prepare("DELETE FROM pulse_outbox WHERE project_id=?").bind(id),
+  env.DB.prepare("DELETE FROM pulse_project_channel WHERE project_id=?").bind(id),
   env.DB.prepare("DELETE FROM pulse_key WHERE project_id=?").bind(id),
   env.DB.prepare("DELETE FROM pulse_project WHERE id=?").bind(id),
  ]);
@@ -19,7 +21,8 @@ export async function purgePulseAccount(env:Cloudflare.Env,userId:string){
   env.DB.prepare("DELETE FROM pulse_incident WHERE page_id IN(SELECT id FROM pulse_page WHERE user_id=?)").bind(userId),
   env.DB.prepare("DELETE FROM pulse_component WHERE page_id IN(SELECT id FROM pulse_page WHERE user_id=?)").bind(userId),
   env.DB.prepare("DELETE FROM pulse_page_domain WHERE page_id IN(SELECT id FROM pulse_page WHERE user_id=?)").bind(userId),
-  ...["pulse_page","pulse_month","pulse_grant","pulse_account"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(userId)),
+  env.DB.prepare("DELETE FROM pulse_cooldown WHERE key IN(SELECT cd.key FROM pulse_cooldown cd JOIN pulse_channel ch ON cd.key LIKE ch.id||':%' WHERE ch.user_id=?)").bind(userId),
+  ...["pulse_channel","pulse_telegram_link","pulse_outbox","pulse_page","pulse_month","pulse_grant","pulse_account"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(userId)),
  ]);
 }
 export async function pulseMaintenance(env:Cloudflare.Env,daily=false,now=Date.now()){
@@ -33,6 +36,10 @@ export async function pulseMaintenance(env:Cloudflare.Env,daily=false,now=Date.n
   const cutoff=new Date(now-95*86_400_000).toISOString().slice(0,7);
   // Bound old configuration/admission receipts too. Never refund a grant.
   await env.DB.batch([
+   env.DB.prepare("DELETE FROM pulse_outbox WHERE id IN(SELECT id FROM pulse_outbox WHERE expires_at<=? LIMIT 500)").bind(now),
+   env.DB.prepare("DELETE FROM pulse_telegram_link WHERE id IN(SELECT id FROM pulse_telegram_link WHERE expires_at<=? LIMIT 500)").bind(now),
+   env.DB.prepare("DELETE FROM pulse_telegram_update WHERE id IN(SELECT id FROM pulse_telegram_update WHERE received_at<=? LIMIT 500)").bind(now-86_400_000),
+   env.DB.prepare("DELETE FROM pulse_cooldown WHERE key IN(SELECT key FROM pulse_cooldown WHERE until<=? LIMIT 500)").bind(now),
    env.DB.prepare("DELETE FROM pulse_grant WHERE id IN(SELECT id FROM pulse_grant WHERE month<? LIMIT 500)").bind(cutoff),
    env.DB.prepare("DELETE FROM pulse_incident_update WHERE id IN(SELECT id FROM pulse_incident_update WHERE expires_at<=? LIMIT 500)").bind(now),
    env.DB.prepare("DELETE FROM pulse_incident WHERE id IN(SELECT id FROM pulse_incident WHERE expires_at<=? LIMIT 500)").bind(now),

@@ -99,13 +99,13 @@ describe("Pulse actual routes and DO",()=>{
  it("keeps the earlier cleanup alarm under continuous ingestion",async()=>{
   const created=await (await request("/projects","POST",{name:"Alarm",platform:"go"})).json() as {id:string;key:{dsn:string}},key=new URL(created.key.dsn).username;
   const e=engine(local);let alarm:number|null=null;const set=vi.fn(async(n:number)=>{alarm=n;});
-  const ctx={storage:{sql:e.sql,transactionSync:e.transaction,getAlarm:async()=>alarm,setAlarm:set}} as unknown as DurableObjectState;
+  const ctx={waitUntil:(p:Promise<unknown>)=>p.catch(()=>{}),storage:{sql:e.sql,transactionSync:e.transaction,getAlarm:async()=>alarm,setAlarm:set}} as unknown as DurableObjectState;
   const object=new PulseProject(ctx,state.env),now=Date.now(),clock=vi.spyOn(Date,"now").mockReturnValue(now);
   try{await object.ingest(created.id,await sha256(key),await safeEvent(raw(),"a".repeat(32)));clock.mockReturnValue(now+30*60_000);await object.ingest(created.id,await sha256(key),await safeEvent(raw(),"b".repeat(32)));expect(alarm).toBe(now+60*60_000);expect(set).toHaveBeenCalledTimes(1);}finally{clock.mockRestore();}
  });
  it("persists before success, returns compatible 429/CORS, and rejects a revoked DSN",async()=>{
   const made=await (await request("/projects","POST",{name:"App",platform:"go"})).json() as {id:string;key:{dsn:string}};const key=new URL(made.key.dsn).username;
-  const e=engine(local),ctx={storage:{sql:e.sql,transactionSync:e.transaction,getAlarm:async()=>null,setAlarm:async()=>{}}} as unknown as DurableObjectState;const object=new PulseProject(ctx,state.env);Object.assign(state.env,{PULSE_PROJECT:{getByName:()=>object}});
+  const e=engine(local),ctx={waitUntil:(p:Promise<unknown>)=>p.catch(()=>{}),storage:{sql:e.sql,transactionSync:e.transaction,getAlarm:async()=>null,setAlarm:async()=>{}}} as unknown as DurableObjectState;const object=new PulseProject(ctx,state.env);Object.assign(state.env,{PULSE_PROJECT:{getByName:()=>object}});
   const send=()=>pulseIngest(new Request(`https://ingest.audit.invalid/api/${made.id}/envelope/?sentry_key=${key}&sentry_version=7`,{method:"POST",body:envelope(raw()),headers:{"content-type":"text/plain"}}),state.env);
   expect((await send()).status).toBe(200);expect((await send()).status).toBe(200);expect(store.usage(new Date().toISOString().slice(0,7)).accepted).toBe(1);
   Object.assign(state.env,{PULSE_INGEST_LIMIT:{limit:async()=>({success:false})}});const limited=await send();expect(limited.status).toBe(429);expect(limited.headers.get("retry-after")).toBe("10");expect(limited.headers.get("x-sentry-rate-limits")).toContain("error;default");expect(limited.headers.get("access-control-allow-origin")).toBe("*");

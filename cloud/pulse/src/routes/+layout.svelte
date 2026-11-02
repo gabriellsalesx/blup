@@ -2,6 +2,7 @@
  import "../app.css";
  import {onMount,onDestroy} from "svelte";
  import {toast} from "#lib/toast.svelte.ts";
+ import Bell from "@lucide/svelte/icons/bell";
  import Activity from "@lucide/svelte/icons/activity";
  import Globe from "@lucide/svelte/icons/globe";
  import Folder from "@lucide/svelte/icons/folder";
@@ -15,7 +16,7 @@
  import {cloudURL,rpc,pulseApi,parseResponse} from "../lib/api";
  import {panel} from "../lib/panel.svelte";
  let {children}=$props();
- const links=$derived([{href:"/",label:t("pulseProjects"),Icon:Folder},{href:"/monitores",label:t("pulseMonitors"),Icon:Activity},{href:"/paginas",label:t("pulsePages"),Icon:Globe}]);
+ const links=$derived([{href:"/",label:t("pulseProjects"),Icon:Folder},{href:"/monitores",label:t("pulseMonitors"),Icon:Activity},{href:"/paginas",label:t("pulsePages"),Icon:Globe},{href:"/avisos",label:t("pulseAlerts"),Icon:Bell}]);
  let alive=true;onDestroy(()=>{alive=false;});
  const saver=createLanguageSaver((language)=>parseResponse(rpc.me.language.$put({json:{language}})),id=>alive&&panel.me?.id===id,()=>toast(()=>t("errorGeneric"),{kind:"error"}));
  onMount(()=>{void Promise.all([parseResponse(rpc.me.$get()),parseResponse(pulseApi.usage.$get())]).then(([me,usage])=>{panel.me=me;panel.usage=usage;}).catch(()=>{panel.error=true;}).finally(()=>{panel.ready=true;});});

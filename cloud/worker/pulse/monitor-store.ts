@@ -2,12 +2,14 @@ import type {ProjectSQL} from "./project-store";
 import type {CheckResult} from "./monitor-http";
 export type MonitorObservation={id:string;monitor:string;revision:number;scheduledAt:number;checkedAt:number;intervalMinutes:number;result:CheckResult};
 export class MonitorStore{
- constructor(readonly sql:ProjectSQL,readonly transaction:<T>(fn:()=>T)=>T){sql.exec(`CREATE TABLE IF NOT EXISTS monitor_state(id TEXT PRIMARY KEY,state TEXT NOT NULL,failures INTEGER NOT NULL,successes INTEGER NOT NULL,last_at INTEGER NOT NULL);
+ constructor(readonly sql:ProjectSQL,readonly transaction:<T>(fn:()=>T)=>T){sql.exec(`CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS monitor_state(id TEXT PRIMARY KEY,state TEXT NOT NULL,failures INTEGER NOT NULL,successes INTEGER NOT NULL,last_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS monitor_check(id TEXT PRIMARY KEY,monitor_id TEXT NOT NULL,scheduled_at INTEGER NOT NULL,checked_at INTEGER NOT NULL,outcome TEXT NOT NULL,state TEXT NOT NULL,status INTEGER,duration_ms INTEGER NOT NULL,reason TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS monitor_check_lookup ON monitor_check(monitor_id,checked_at,id);
 CREATE INDEX IF NOT EXISTS monitor_check_expiry ON monitor_check(checked_at);
 CREATE TABLE IF NOT EXISTS monitor_day(monitor_id TEXT NOT NULL,day INTEGER NOT NULL,up INTEGER NOT NULL DEFAULT 0,down INTEGER NOT NULL DEFAULT 0,unknown INTEGER NOT NULL DEFAULT 0,duration_ms INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(monitor_id,day));
-CREATE INDEX IF NOT EXISTS monitor_day_expiry ON monitor_day(day);`);}
+CREATE INDEX IF NOT EXISTS monitor_day_expiry ON monitor_day(day);
+INSERT INTO meta VALUES('schema','2') ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(meta.value AS INTEGER)<2;`);}
  record(observation:MonitorObservation){return this.transaction(()=>{
   const {id,monitor,scheduledAt,checkedAt,intervalMinutes}=observation,stateId=`${monitor}:${observation.revision}`,existing=this.sql.exec<{state:"up"|"down"|"unknown"}>("SELECT state FROM monitor_check WHERE id=?",id).toArray()[0];if(existing)return {state:existing.state,duplicate:true};
   const previous=this.sql.exec<{state:"up"|"down"|"unknown";failures:number;successes:number;last_at:number}>("SELECT * FROM monitor_state WHERE id=?",stateId).toArray()[0];

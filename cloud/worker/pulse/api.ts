@@ -1,5 +1,7 @@
 import {Hono} from "hono";
 import {pulseSession,pulseWrite,ownedProject,type PulseApp} from "./access";
+import {channelsApi,projectChannelsApi} from "./channels";
+import {telegramApi,telegramWebhookApi} from "./telegram";
 import {pagesApi} from "./pages";
 import {publicPage} from "./public";
 import {pageSlug} from "./page-rules";
@@ -12,7 +14,7 @@ const projectBody=z.object({name:z.string().trim().min(1).max(80),platform:z.enu
 const filters=z.object({state:issueState.optional(),environment:z.string().max(80).optional(),release:z.string().max(128).optional(),q:z.string().max(128).optional(),before:z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),limit:z.coerce.number().int().min(1).max(50).default(30)});
 const issuesParam=z.object({project:projectId,issue:hashId});
 async function newKey(env:Cloudflare.Env,project:string){const key=publicKey(),id=crypto.randomUUID();await env.DB.prepare("INSERT INTO pulse_key(id,project_id,hash,prefix,created_at) VALUES(?,?,?,?,?)").bind(id,project,await sha256(key),key.slice(0,8),Date.now()).run();return {id,prefix:key.slice(0,8),dsn:`https://${key}@ingest.getblup.io/${project}`};}
-export const pulseApi=new Hono<PulseApp>().get("/public/:slug",validate("param",z.object({slug:pageSlug})),async c=>{if(!(await c.env.PULSE_PUBLIC_LIMIT.limit({key:`public:${c.req.header("cf-connecting-ip")??"local"}`})).success){c.header("Retry-After","60");return c.json({code:"TOO_MANY_REQUESTS"},429);}const page=await publicPage(c.env,c.req.valid("param").slug);return page?c.json(page):c.json({code:"NOT_FOUND"},404);}).use("*",pulseSession)
+export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi).get("/public/:slug",validate("param",z.object({slug:pageSlug})),async c=>{if(!(await c.env.PULSE_PUBLIC_LIMIT.limit({key:`public:${c.req.header("cf-connecting-ip")??"local"}`})).success){c.header("Retry-After","60");return c.json({code:"TOO_MANY_REQUESTS"},429);}const page=await publicPage(c.env,c.req.valid("param").slug);return page?c.json(page):c.json({code:"NOT_FOUND"},404);}).use("*",pulseSession)
  .get("/usage",async c=>{
   const owner=c.get("session").user.id,access=c.get("access"),month=monthOf();
   const projects=await c.env.DB.prepare("SELECT id,object_name AS objectName FROM pulse_project WHERE user_id=? AND deleted_at IS NULL ORDER BY id LIMIT 10").bind(owner).all<{id:string;objectName:string}>();
@@ -61,4 +63,7 @@ export const pulseApi=new Hono<PulseApp>().get("/public/:slug",validate("param",
   const changed=await c.env.PULSE_PROJECT.getByName(p.objectName).setState(c.req.valid("param").issue,c.req.valid("json").state,Date.now()-(c.get("access").limits?.retentionDays??30)*86_400_000);return changed?c.json({ok:true},200):c.json({code:"NOT_FOUND"},404);
  })
  .route("/monitors",monitorsApi)
- .route("/pages",pagesApi);
+ .route("/pages",pagesApi)
+ .route("/channels",channelsApi)
+ .route("/telegram",telegramApi)
+ .route("/projects",projectChannelsApi);

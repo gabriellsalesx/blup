@@ -3046,7 +3046,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-}, "/api/ai"> | import("hono/types").MergeSchemaPath<({
+}, "/api/ai"> | import("hono/types").MergeSchemaPath<(((((((((((({
     "/public/:slug": {
         $get: {
             input: {
@@ -3138,7 +3138,204 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: 404;
         };
     };
-} & {
+} | (import("hono/types").MergeSchemaPath<{
+    "/webhook": {
+        $post: {
+            input: {
+                json: {
+                    update_id: number;
+                    message?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        text?: string | undefined;
+                        from?: {
+                            id: number;
+                            is_bot: boolean;
+                        } | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 401;
+        } | {
+            input: {
+                json: {
+                    update_id: number;
+                    message?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        text?: string | undefined;
+                        from?: {
+                            id: number;
+                            is_bot: boolean;
+                        } | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    update_id: number;
+                    message?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        text?: string | undefined;
+                        from?: {
+                            id: number;
+                            is_bot: boolean;
+                        } | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    update_id: number;
+                    message?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        text?: string | undefined;
+                        from?: {
+                            id: number;
+                            is_bot: boolean;
+                        } | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/telegram"> & {
+    "/public/:slug": {
+        $get: {
+            input: {
+                param: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 429;
+        } | {
+            input: {
+                param: {
+                    slug: string;
+                };
+            };
+            output: {
+                unavailable: false;
+                title: string;
+                slug: string;
+                language: "pt" | "en" | "es";
+                components: {
+                    name: string;
+                    state: "unknown" | "up" | "down";
+                    lastCheckedAt: string | null;
+                    days: {
+                        date: string;
+                        up: number;
+                        down: number;
+                        unknown: number;
+                    }[];
+                }[];
+                incidents: {
+                    title: string;
+                    state: string;
+                    impact: string;
+                    createdAt: string;
+                    updatedAt: string;
+                    updates: {
+                        body: string;
+                        state: string;
+                        createdAt: string;
+                    }[];
+                }[];
+            } | {
+                unavailable: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                param: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        };
+    };
+})) & {
     "/usage": {
         $get: {
             input: {};
@@ -3176,7 +3373,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-} & {
+}) & {
     "/projects": {
         $get: {
             input: {};
@@ -3193,7 +3390,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-} & {
+}) & {
     "/projects": {
         $post: {
             input: {
@@ -3257,7 +3454,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: 201;
         };
     };
-} & {
+}) & {
     "/projects/:project": {
         $patch: {
             input: {
@@ -3367,7 +3564,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-} & {
+}) & {
     "/projects/:project": {
         $delete: {
             input: {
@@ -3420,7 +3617,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-} & {
+}) & {
     "/projects/:project/keys": {
         $get: {
             input: {
@@ -3477,7 +3674,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-} & {
+}) & {
     "/projects/:project/keys": {
         $post: {
             input: {
@@ -3532,7 +3729,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: 201;
         };
     };
-} & {
+}) & {
     "/projects/:project/keys/:key": {
         $delete: {
             input: {
@@ -3589,7 +3786,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-} & {
+}) & {
     "/projects/:project/issues": {
         $get: {
             input: {
@@ -3733,7 +3930,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-} & {
+}) & {
     "/projects/:project/issues/:issue/events": {
         $get: {
             input: {
@@ -3815,7 +4012,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-} & {
+}) & {
     "/projects/:project/issues/:issue": {
         $patch: {
             input: {
@@ -4985,4 +5182,597 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: 409;
         };
     };
-}, "/pages">, "/api/pulse">, "/api", "/api/devices/:id">;
+}, "/pages"> | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                channels: {
+                    type: "discord" | "telegram";
+                    active: boolean;
+                    id: string;
+                    label: string;
+                    lastError: string | null;
+                }[];
+                bindings: {
+                    projectId: string;
+                    channelId: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    type: "discord";
+                    webhook: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    type: "discord";
+                    webhook: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    type: "discord";
+                    webhook: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                json: {
+                    type: "discord";
+                    webhook: string;
+                };
+            };
+            output: {
+                id: string;
+                label: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        } | {
+            input: {
+                json: {
+                    type: "discord";
+                    webhook: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        };
+    };
+} & {
+    "/:channel": {
+        $delete: {
+            input: {
+                param: {
+                    channel: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:channel/test": {
+        $post: {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 429;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                queued: true;
+            };
+            outputFormat: "json";
+            status: 202;
+        };
+    };
+}, "/channels"> | import("hono/types").MergeSchemaPath<{
+    "/link": {
+        $post: {
+            input: {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                json: Record<string, never>;
+            };
+            output: {
+                id: string;
+                url: string;
+                expiresAt: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+} & {
+    "/link/:link": {
+        $get: {
+            input: {
+                param: {
+                    link: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            };
+            output: {
+                id: string;
+                state: string;
+                expiresAt: string;
+                candidate: {
+                    id: string;
+                    label: string;
+                } | null;
+                channelId: string | null;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/link/:link/confirm": {
+        $post: {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                id: string;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        };
+    };
+}, "/telegram"> | import("hono/types").MergeSchemaPath<{
+    "/:project/channels": {
+        $put: {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    channelIds: string[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    channelIds: string[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    channelIds: string[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    channelIds: string[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    channelIds: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    channelIds: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    channelIds: string[];
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/projects">, "/api/pulse">, "/api", "/api/devices/:id">;

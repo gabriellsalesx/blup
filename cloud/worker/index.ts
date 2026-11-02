@@ -30,6 +30,7 @@ import {user as userTable, session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
 import { mutationOriginAllowed } from "./security";
+import {reconcileAlerts,dispatchAlerts} from "./pulse/outbox";
 import {checkDue} from "./pulse/scheduler";
 import {pulseMaintenance} from "./pulse/cleanup";
 import {servePulsePage} from "./pulse/public";
@@ -284,7 +285,7 @@ export default {
 	// Every 5 minutes, the calendar's reminders by e-mail; once a day, the
 	// clean-up of old versions and unused blocks.
 	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
-		if(controller.cron==="* * * * *"){ctx.waitUntil(checkDue(env));return;}
+		if(controller.cron==="* * * * *"){ctx.waitUntil(checkDue(env).then(()=>reconcileAlerts(env)).then(()=>dispatchAlerts(env)));return;}
 		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([pulseMaintenance(env,true),cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))]));
 		else ctx.waitUntil(Promise.all([pulseMaintenance(env),sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)]).then(()=>flushSitePurges(env)));
 	},

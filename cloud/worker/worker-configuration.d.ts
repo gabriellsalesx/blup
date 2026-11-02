@@ -10,6 +10,9 @@ interface __BaseEnv_CloudflareBindings {
 	PULSE_PROJECT: DurableObjectNamespace<import("./pulse/project").PulseProject>;
 	PULSE_INGEST_LIMIT: RateLimit;
 	PULSE_PUBLIC_LIMIT: RateLimit;
+	PULSE_CHANNEL_KEY: string;
+	PULSE_TELEGRAM_TOKEN: string;
+	PULSE_TELEGRAM_WEBHOOK_SECRET: string;
 	PULSE_APP_URL: string;
 	PULSE_INGEST_HOST: string;
 	PULSE_PUBLIC_HOST: string;
@@ -53,6 +56,9 @@ declare namespace Cloudflare {
 		PULSE_PROJECT: DurableObjectNamespace<import("./pulse/project").PulseProject>;
 	PULSE_INGEST_LIMIT: RateLimit;
 	PULSE_PUBLIC_LIMIT: RateLimit;
+	PULSE_CHANNEL_KEY: string;
+	PULSE_TELEGRAM_TOKEN: string;
+	PULSE_TELEGRAM_WEBHOOK_SECRET: string;
 	PULSE_APP_URL: string;
 	PULSE_INGEST_HOST: string;
 	PULSE_PUBLIC_HOST: string;
