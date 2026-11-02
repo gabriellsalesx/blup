@@ -796,14 +796,6 @@ export function PickNoteImage(note: string): $CancellablePromise<string> {
 }
 
 /**
- * PlaySound plays an MP3 through the system, stopping the one playing; the
- * "soundEnded" event says when it ends.
- */
-export function PlaySound(mp3: string | null): $CancellablePromise<void> {
-    return $Call.ByID(1605633643, mp3);
-}
-
-/**
  * Podcast is the open blog's podcast (the Podcast screen).
  */
 export function Podcast(): $CancellablePromise<app$0.PodcastInfo> {
@@ -1246,13 +1238,6 @@ export function StopPreview(): $CancellablePromise<void> {
 }
 
 /**
- * StopSound stops the sample playing, if any.
- */
-export function StopSound(): $CancellablePromise<void> {
-    return $Call.ByID(546269081);
-}
-
-/**
  * SuggestPlaces suggests where a site named title keeps its notes and files.
  */
 export function SuggestPlaces(title: string): $CancellablePromise<$models.Places> {
@@ -1278,14 +1263,6 @@ export function SyncRemote(): $CancellablePromise<string> {
  */
 export function SyncStatus(): $CancellablePromise<app$0.SyncInfo> {
     return $Call.ByID(2157542883);
-}
-
-/**
- * SystemSound tells whether samples play through the system (Linux with a
- * player); otherwise the window plays them.
- */
-export function SystemSound(): $CancellablePromise<boolean> {
-    return $Call.ByID(1604731730);
 }
 
 /**
