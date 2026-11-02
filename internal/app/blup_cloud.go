@@ -61,8 +61,9 @@ type BlupAccount struct {
 	// Empty and 0 otherwise.
 	GraceUntil string `json:"graceUntil"`
 	GraceLimit int64  `json:"graceLimit"`
-	// HistoryBytes is what the old versions of all the vaults take.
-	HistoryBytes int64 `json:"historyBytes"`
+	// HistoryBytes is what the old versions of all the vaults take; nil
+	// when the cloud can't tell right now (shown as unavailable).
+	HistoryBytes *int64 `json:"historyBytes"`
 	// Sites and computers used, and how many the plan allows.
 	Sites      int `json:"sites"`
 	SitesMax   int `json:"sitesMax"`

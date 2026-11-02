@@ -399,11 +399,13 @@ type Account struct {
 		// StorageGraceLimitBytes still counts. Nil otherwise.
 		StorageGraceUntil      *string `json:"storageGraceUntil"`
 		StorageGraceLimitBytes *int64  `json:"storageGraceLimitBytes"`
-		// HistoryBytes is what the old versions of all the vaults take.
-		HistoryBytes int64 `json:"historyBytes"`
-		Vaults       int   `json:"vaults"`
-		Sites        int   `json:"sites"`
-		Devices      int   `json:"devices"`
+		// HistoryBytes is what the old versions of all the vaults take;
+		// nil when the cloud can't tell safely right now (a sync under
+		// way, older records): unknown, never 0.
+		HistoryBytes *int64 `json:"historyBytes"`
+		Vaults       int    `json:"vaults"`
+		Sites        int    `json:"sites"`
+		Devices      int    `json:"devices"`
 	} `json:"usage"`
 }
 

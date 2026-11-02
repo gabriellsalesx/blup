@@ -140,9 +140,10 @@ export interface BlupAccount {
     "graceLimit": number;
 
     /**
-     * HistoryBytes is what the old versions of all the vaults take.
+     * HistoryBytes is what the old versions of all the vaults take; nil
+     * when the cloud can't tell right now (shown as unavailable).
      */
-    "historyBytes": number;
+    "historyBytes": number | null;
 
     /**
      * Sites and computers used, and how many the plan allows.

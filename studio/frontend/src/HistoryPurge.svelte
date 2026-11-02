@@ -4,6 +4,7 @@
   import History from "@lucide/svelte/icons/history";
   import X from "@lucide/svelte/icons/x";
   import Loader from "@lucide/svelte/icons/loader-circle";
+  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import { t } from "./i18n";
   import { toast } from "./toast.svelte";
   import { bytes, afterPurge } from "./cloudhistory";
@@ -21,6 +22,14 @@
   let busy = $state(false);
   let error = $state("");
   SyncRemote().then((r) => (synced = r === "blup")).catch(() => {});
+
+  // The size may be unknown for a moment (a sync under way): asked again
+  // on demand.
+  let refreshing = $state(false);
+  async function refresh() {
+    refreshing = true;
+    try { account = await BlupAccount(); } catch { /* still unknown */ } finally { refreshing = false; }
+  }
 
   async function purge() {
     busy = true; error = "";
@@ -40,7 +49,13 @@
   <button class="btn danger" onclick={() => { error = ""; asking = true; }}><History size={15} />{h.purge}</button>
 {:else if synced && account}
   <div class="hist">
-    <div class="row"><b>{h.title}</b><small class="muted">{account.historyBytes > 0 ? h.used.replace("{size}", bytes(account.historyBytes)) : h.none}</small></div>
+    <div class="row"><b>{h.title}</b>
+      {#if account.historyBytes == null}
+        <span class="unknown"><small class="muted">{h.unknown}</small><button class="icon-btn" title={h.refresh} aria-label={h.refresh} disabled={refreshing} onclick={refresh}><span class={{ spin: refreshing }}><RefreshCw size={14} /></span></button></span>
+      {:else}
+        <small class="muted">{account.historyBytes > 0 ? h.used.replace("{size}", bytes(account.historyBytes)) : h.none}</small>
+      {/if}
+    </div>
     <div class="row">
       <small class="muted">{h.help}</small>
       <button class="btn danger" onclick={() => { error = ""; asking = true; }}><History size={15} />{h.purge}</button>
@@ -76,6 +91,7 @@
   .close { display: grid; place-items: center; padding: .3rem; border-radius: .4rem; color: var(--muted); }
   .close:hover { background: var(--soft); color: var(--text); }
   p { font-size: .9rem; }
+  .unknown { display: inline-flex; align-items: center; gap: .35rem; }
   .actions { display: flex; justify-content: flex-end; gap: .5rem; }
   .spin { display: inline-grid; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }

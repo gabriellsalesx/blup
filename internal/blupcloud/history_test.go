@@ -63,7 +63,7 @@ func TestMeStorageGrace(t *testing.T) {
 		return a
 	}
 	a := me(`{"storageBytes":9,"storageLimitBytes":1073741824,"historyBytes":3,"storageGraceUntil":"2026-11-16T00:00:00Z","storageGraceLimitBytes":10737418240}`)
-	if a.Usage.StorageGraceUntil == nil || *a.Usage.StorageGraceLimitBytes != 10737418240 || a.Usage.HistoryBytes != 3 {
+	if a.Usage.StorageGraceUntil == nil || *a.Usage.StorageGraceLimitBytes != 10737418240 || a.Usage.HistoryBytes == nil || *a.Usage.HistoryBytes != 3 {
 		t.Fatalf("%+v", a.Usage)
 	}
 	for _, u := range []string{
@@ -74,6 +74,10 @@ func TestMeStorageGrace(t *testing.T) {
 		if a := me(u); a.Usage.StorageGraceUntil != nil || a.Usage.StorageGraceLimitBytes != nil {
 			t.Errorf("%s kept a grace: %+v", u, a.Usage)
 		}
+	}
+	// Unknown (null) stays unknown, not 0.
+	if a := me(`{"historyBytes":null}`); a.Usage.HistoryBytes != nil {
+		t.Fatal("an unknown history became a number")
 	}
 	body = `{"id":"u","plan":{"name":"pro","limits":{}},"usage":{"historyBytes":-1}}`
 	if _, err := c.Me(context.Background()); !errors.Is(err, ErrBadAnswer) {

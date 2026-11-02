@@ -17,6 +17,8 @@ test("the use after a purge comes from the cloud's answer", () => {
   assert.deepEqual(afterPurge(a, { freedBytes: 0, storageBytes: 900 }), a);
   // Freed more than the history known here (other vaults): not below 0.
   assert.equal(afterPurge(a, { freedBytes: 999, storageBytes: 1 }).historyBytes, 0);
+  // Unknown before: still unknown, never a made up 0.
+  assert.equal(afterPurge({ ...a, historyBytes: null }, { freedBytes: 300, storageBytes: 600 }).historyBytes, null);
 });
 
 test("the banner shows only above the limit, with the grace while it runs", async () => {
