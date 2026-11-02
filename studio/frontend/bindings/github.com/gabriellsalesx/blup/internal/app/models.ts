@@ -323,6 +323,46 @@ export interface DomainStatus {
 }
 
 /**
+ * Event is one event of the calendar.
+ */
+export interface Event {
+    /**
+     * the note, relative to the notes folder
+     */
+    "path": string;
+
+    /**
+     * the note's name
+     */
+    "title": string;
+
+    /**
+     * 2006-01-02
+     */
+    "date": string;
+
+    /**
+     * 15:04; "" for the whole day
+     */
+    "time": string;
+
+    /**
+     * see EventKinds
+     */
+    "kind": string;
+
+    /**
+     * "", weekly, monthly or yearly
+     */
+    "repeat": string;
+
+    /**
+     * "", 0, 15m, 1h, 1d or 1w
+     */
+    "remind": string;
+}
+
+/**
  * FeedbackPost is a request of the board.
  */
 export interface FeedbackPost {
@@ -602,7 +642,7 @@ export interface PodcastInfo {
 
     /**
      * The feeds (one per language of the site), full addresses when the
-     * site has a domain, else paths from the site's root.
+     * site has a domain or was published, else paths from the site's root.
      */
     "feeds": PodcastFeed[] | null;
     "hasURL": boolean;

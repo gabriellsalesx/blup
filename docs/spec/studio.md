@@ -36,6 +36,7 @@ Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsal
 | `layout.go` | Organização da home e preferências |
 | `boards.go`, `graph.go` | Canvas, desenho e `.table` como texto, imagens dos quadros e mapa de notas (cofres) |
 | `database.go`, `tags.go` | Bancos de dados, células (`SetProps`), nota do dia e tags conhecidas (cofres) |
+| `calendar.go` | Calendário dos cofres: eventos (`CalendarEvents`, `SaveEvent`) e avisos no computador |
 | `desktop.go`, `hyprland.go`, `about.go` | Bandeja, autostart, atalhos, alteração de idioma por `SetLanguage` e versão |
 
 | Evento | Payload e finalidade |
@@ -110,7 +111,7 @@ Um cofre de anotações é um site com `kind = "notes"` (`site.IsNotes()` no Go,
 
 ### Faixa lateral e árvore
 
-A faixa da esquerda (`.ribbon`) mostra ícones, com o nome numa dica rápida ao passar o mouse ou focar (`data-tip`); em Configurações > Aparência, "Mostrar nomes no menu lateral" (`railNames`) alarga a faixa e põe o nome ao lado de cada ícone. As telas vêm em grupos separados por uma linha (`group` em `screens`). Num site: Conteúdo (Escrever, Anexos, Autores), Site (Site, Seções, Idiomas), Público (Comentários, Feedback no Bento e Podcast no blog, quando a seção existe) e Privacidade (Cookies e estatísticas); embaixo, Publicar, Lixeira e o terminal. No cofre: Escrever, Mapa de notas e Anexos; depois um separador com Novo canvas, Novo desenho, Novo banco de dados e Nota do dia; embaixo, Sincronizar, Lixeira e o terminal. Sem botão de Prévia nem de Publicar na barra superior.
+A faixa da esquerda (`.ribbon`) mostra ícones, com o nome numa dica rápida ao passar o mouse ou focar (`data-tip`); em Configurações > Aparência, "Mostrar nomes no menu lateral" (`railNames`) alarga a faixa e põe o nome ao lado de cada ícone. As telas vêm em grupos separados por uma linha (`group` em `screens`). Num site: Conteúdo (Escrever, Anexos, Autores), Site (Site, Seções, Idiomas), Público (Comentários, Feedback no Bento e Podcast no blog, quando a seção existe) e Privacidade (Cookies e estatísticas); embaixo, Publicar, Lixeira e o terminal. No cofre: Escrever, Mapa de notas, Calendário e Anexos; depois um separador com Novo canvas, Novo desenho, Novo banco de dados e Nota do dia; embaixo, Sincronizar, Lixeira e o terminal. Sem botão de Prévia nem de Publicar na barra superior.
 
 A árvore (`Tree.svelte`) lista notas, pastas, canvases (`.canvas`), desenhos (`.draw`) e bancos de dados (`.table`), cada um com ícone próprio; `Studio.Open` só inclui essas três extensões quando o site é um cofre. Clicar numa pasta abre ou fecha e a torna o lugar das notas novas.
 
@@ -245,6 +246,24 @@ Todo modelo vem com as formas de ver Tabela e Quadro.
 - Campos (`FieldInput.svelte`): escolha única e várias escolhas abrem uma lista com "Buscar ou criar…" e Limpar; Telefone tem Ligar (`tel:`) e Abrir no WhatsApp (`wa.me`); E-mail tem Escrever e-mail; Link tem Abrir o link (prefixa `https://` se faltar); Data usa o seletor de data; Sim/Não é uma caixa; Ligação com nota abre o seletor de notas e grava `[[Nome]]`, que aparece no mapa e no "Mencionada em" da nota ligada.
 
 Colunas e formas de ver são gravadas 300 ms depois da mudança (`SaveDatabaseSchema`, que preserva `records` e, se vier vazio, `tag`). Apagar uma coluna não apaga a propriedade das notas. A tela relê os registros quando algo muda na pasta de registros e oferece recarregar quando o próprio `.table` muda fora dela.
+
+## Calendário
+
+Tela Calendário do cofre (`CalendarView.svelte`, `EventForm.svelte`, `calendar.ts`, `holidays.ts`; lado Go em `internal/app/calendar.go` e `studio/calendar.go`). Cada evento é uma nota na pasta `Agenda` (em inglês, `Calendar`; os eventos são lidos das duas pastas e os novos vão para a do idioma do Studio), com as propriedades:
+
+| Propriedade | Valores |
+| --- | --- |
+| `date` | `AAAA-MM-DD` (obrigatória; sem ela a nota não é evento) |
+| `time` | `HH:MM`; ausente: o dia todo |
+| `event` | `appointment`, `birthday`, `exam`, `interview`, `deadline`, `reminder` (cada um com cor e ícone do Lucide) |
+| `repeat` | `weekly`, `monthly`, `yearly`; ausente: não repete. 29/02 cai em 28/02 nos anos comuns; dia 31 cai no último dia do mês |
+| `remind` | `0`, `15m`, `1h`, `1d`, `1w`; ausente: sem aviso. No dia todo, a referência é 9h |
+
+O texto da nota fica livre para anotações (perguntas da entrevista, matéria da prova); o formulário de edição abre a nota. Trocar o título renomeia a nota (`RenameItem`, links seguem). Excluir manda para a lixeira, com Desfazer.
+
+A tela mostra o mês (seis semanas, domingo primeiro; segunda em espanhol), o dia escolhido com Marcar neste dia e Abrir a nota do dia (hoje sempre; outros dias quando a nota existe) e Próximos dias (30 dias). Clique escolhe o dia; duplo clique ou Enter abre o formulário nesse dia. Sem nenhum evento, o painel mostra o vazio com atalhos por tipo (aniversário, prova, entrevista). Feriados nacionais pelo idioma (Brasil, Estados Unidos, Espanha), calculados em `holidays.ts` (fixos, Páscoa e "n-ésimo dia da semana"); a caixa Mostrar feriados fica guardada no `localStorage`. Uma nota do dia (`Diário/AAAA-MM-DD.md`) mostra no topo os eventos daquele dia, e o clique leva ao calendário.
+
+Avisos: com o Studio aberto ou na bandeja, `startReminders` (no `ServiceStartup` do Studio) confere a cada 30 segundos os eventos de todos os cofres conhecidos e manda a notificação do sistema pelo serviço de notificações do Wails (iniciado à mão: sem suporte a notificações, o Studio abre igual). Um aviso perdido com o Studio fechado ainda chega em até 12 horas. Os enviados ficam em `reminders-sent.json` na pasta de configuração do Blup (esquecidos depois de um mês). Clicar no aviso traz a janela e abre o calendário no dia, se o cofre aberto for o do evento (evento `calendarOpen`). No macOS a permissão é pedida ao salvar o primeiro evento com aviso.
 
 ## Prévia
 

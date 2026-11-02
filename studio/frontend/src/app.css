@@ -53,7 +53,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .field > span { font-weight: 600; }
 .field small { color: var(--muted); font-size: .8rem; }
 .field small.bad { color: var(--red); }
-input[type="text"], input[type="url"], input[type="email"], input[type="password"], textarea, select {
+input[type="text"], input[type="url"], input[type="email"], input[type="password"], input[type="date"], input[type="time"], textarea, select {
   width: 100%; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--bg); color: var(--text); font: inherit; font-size: .9rem;
 }
 input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 0; border-color: transparent; }

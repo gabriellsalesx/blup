@@ -183,6 +183,13 @@ export function BringSite(owner: string, repo: string): $CancellablePromise<$mod
 }
 
 /**
+ * CalendarEvents lists the open vault's events.
+ */
+export function CalendarEvents(): $CancellablePromise<app$0.Event[] | null> {
+    return $Call.ByID(3267065173);
+}
+
+/**
  * CheckCookieTool tells whether an ID fits a tool ("" when it does).
  */
 export function CheckCookieTool(key: string, value: string): $CancellablePromise<string> {
@@ -979,6 +986,13 @@ export function SaveCookies(c: config$0.Cookies, privacyPage: boolean, contact: 
  */
 export function SaveDatabaseSchema(rel: string, schema: app$0.DBSchema): $CancellablePromise<void> {
     return $Call.ByID(3114128333, rel, schema);
+}
+
+/**
+ * SaveEvent makes or changes an event and returns its note's path.
+ */
+export function SaveEvent(ev: app$0.Event): $CancellablePromise<string> {
+    return $Call.ByID(1862652885, ev);
 }
 
 /**

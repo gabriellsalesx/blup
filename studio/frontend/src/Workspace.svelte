@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
-  import { HyprlandSetup, OpenURL, Sites, RecentSites, SearchNotes, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, CreateDatabase, SaveDatabaseSchema, DailyNote, RenameItem, MoveItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { CalendarEvents, HyprlandSetup, OpenURL, Sites, RecentSites, SearchNotes, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, CreateDatabase, SaveDatabaseSchema, DailyNote, RenameItem, MoveItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings, SearchHit } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
   import Editor from "./Editor.svelte";
   import Database from "@lucide/svelte/icons/database";
   import NotebookPen from "@lucide/svelte/icons/notebook-pen";
+  import CalendarDays from "@lucide/svelte/icons/calendar-days";
   import type { DBSchema } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Template } from "./db";
   import { boardKind, fileTitle, type NewKind } from "./boards";
@@ -53,6 +54,7 @@
   import Upload from "@lucide/svelte/icons/upload";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import { t } from "./i18n";
+  import { byDay, iso, parse, type Event as CalEvent } from "./calendar";
   import { lazy } from "./lazy";
   // The views and panels opened now and then load when first opened: a
   // lighter start, on any computer.
@@ -61,6 +63,7 @@
   const DatabaseView = lazy(() => import("./DatabaseView.svelte"));
   const DatabaseNew = lazy(() => import("./DatabaseNew.svelte"));
   const GraphView = lazy(() => import("./GraphView.svelte"));
+  const CalendarView = lazy(() => import("./CalendarView.svelte"));
   const TerminalPanel = lazy(() => import("./TerminalPanel.svelte"));
   const HistoryModal = lazy(() => import("./HistoryModal.svelte"));
   const LookPanel = lazy(() => import("./LookPanel.svelte"));
@@ -422,6 +425,15 @@
   const reload = () => LoadSettings().then((s) => (settings = s)).catch((e) => (error = String(e)));
   // A vault of notes: the editor, attachments, sync and trash; no site.
   const notesVault = $derived(site.kind === "notes");
+  // A note of the day (Diário/2026-11-01.md): what the calendar has on
+  // its day, shown at its top.
+  const dailyDay = $derived(notesVault && current.startsWith(t.daily.folder + "/") ? (current.slice(t.daily.folder.length + 1).match(/^(\d{4}-\d{2}-\d{2})\.md$/)?.[1] ?? "") : "");
+  let dayEvents = $state<CalEvent[]>([]);
+  $effect(() => {
+    const d = dailyDay;
+    dayEvents = [];
+    if (d) CalendarEvents().then((list) => { if (d === dailyDay) dayEvents = byDay(list ?? [], parse(d), parse(d)).get(d) ?? []; }).catch(() => {});
+  });
   // The terminal button's hint, with its shortcut when there is one.
   const termTip = $derived(t.term.button + (keysOf(look.keys, "terminal") ? ` (${keysOf(look.keys, "terminal")})` : ""));
   // The screens, in groups split by a line: what one writes, the site,
@@ -430,6 +442,7 @@
   const screens = $derived(notesVault ? [
     { key: "write", label: t.nav.write, Icon: PenLine, group: "content" },
     { key: "graph", label: t.graph.title, Icon: Waypoints, group: "content" },
+    { key: "calendar", label: t.cal.title, Icon: CalendarDays, group: "content" },
     { key: "attach", label: t.nav.attach, Icon: Paperclip, group: "content" },
     { key: "publish", label: t.sync, Icon: RefreshCw, group: "end" },
     { key: "trash", label: t.nav.trash, Icon: Trash2, group: "end" },
@@ -527,7 +540,17 @@
   // A rebuild may bring the open note's page (a translation just made):
   // the preview goes there.
   const offRebuilt = Events.On("previewChanged", () => { if (current) follow(current); });
-  onDestroy(() => { offCloud(); offPreview(); offRebuilt(); });
+  // A reminder was clicked: its day on the calendar, when its vault is the
+  // open one.
+  let calStart = $state("");
+  const offCal = Events.On("calendarOpen", async (ev: any) => {
+    const d = ev.data ?? {};
+    if (!notesVault || d.dir !== site.dir) return;
+    await save();
+    calStart = String(d.date ?? "");
+    screen = "calendar";
+  });
+  onDestroy(() => { offCloud(); offPreview(); offRebuilt(); offCal(); });
   // Earlier versions on Blup Cloud: checked when the site opens and after
   // each live sync (signing in or changing plan turns it on).
   let cloudHistory = $state(false);
@@ -696,6 +719,12 @@
 <!-- A vault note's top, scrolling with its text: its name (typing a new
      one renames the file) and its properties. -->
 {#snippet noteHead()}
+  {#if dayEvents.length}
+    <button type="button" class="day-events" onclick={() => { calStart = dailyDay; screen = "calendar"; }}>
+      <CalendarDays size={15} /><b>{dailyDay === iso(new Date()) ? t.cal.todayHere : t.cal.title}:</b>
+      <span>{dayEvents.map((e) => (e.time ? e.time + " " : "") + e.title).join(" · ")}</span>
+    </button>
+  {/if}
   <input class="inline-title" value={fileTitle(current)} aria-label={t.menu.rename} spellcheck="false"
     onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } else if (e.key === "Escape") { e.currentTarget.value = fileTitle(current); e.currentTarget.blur(); } }}
     onblur={(e) => rename({ path: current, name: fileTitle(current), dir: false } as Node, e.currentTarget.value)} />
@@ -837,6 +866,10 @@
       {/if}
     {:else if screen === "graph"}
       {#await GraphView() then { default: C }}<C {current} onOpenNote={openNote} />{/await}
+    {:else if screen === "calendar"}
+      {#key calStart}
+        {#await CalendarView() then { default: C }}<C start={calStart} hasNote={(rel) => flat(tree).some((n) => n.path === rel)} onOpenNote={(rel) => { screen = "write"; openNote(rel); }} onDailyNote={dailyNote} onChanged={async () => (tree = (await LoadTree()).children ?? [])} />{/await}
+      {/key}
     {:else if settings}
       {#key screen}
         {#if screen === "look"}{#await LookPanel() then { default: C }}<C {settings} {reload} />{/await}
@@ -1018,6 +1051,10 @@
   .outside span { flex: 1; }
   .note { height: 100%; display: flex; flex-direction: column; }
   .inline-title { width: 100%; margin-block-end: 1rem; padding: 0; border: 0; outline: none; background: transparent; color: var(--text); font: inherit; font-size: 2.1rem; font-weight: 800; line-height: 1.2; }
+  .day-events { display: flex; align-items: center; gap: .45rem; width: 100%; margin-block-end: 1rem; padding: .5rem .75rem; border: 1px solid color-mix(in srgb, var(--blue) 30%, var(--line)); border-radius: .6rem; background: color-mix(in srgb, var(--blue) 7%, transparent); color: var(--blue); font-size: .85rem; text-align: start; }
+  .day-events b { flex-shrink: 0; }
+  .day-events span { overflow: hidden; color: var(--text); white-space: nowrap; text-overflow: ellipsis; }
+  .day-events:hover { background: color-mix(in srgb, var(--blue) 12%, transparent); }
   .body { flex: 1; min-height: 0; }
   .hint { padding: 3rem 2rem; text-align: center; }
   .error { position: absolute; inset-inline: 1rem; inset-block-start: .75rem; z-index: 2; padding: .6rem .9rem; border-radius: .5rem; background: var(--soft); color: var(--red); font-size: .85rem; }

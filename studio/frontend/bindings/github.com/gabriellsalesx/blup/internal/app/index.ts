@@ -20,6 +20,7 @@ export type {
     DeleteChoice,
     DeleteProblem,
     DomainStatus,
+    Event,
     FeedbackPost,
     FeedbackSetup,
     Graph,
