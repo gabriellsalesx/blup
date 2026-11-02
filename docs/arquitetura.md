@@ -38,6 +38,7 @@ flowchart LR
 | Identidade e cobrança | [auth-options.ts](../cloud/worker/auth-options.ts): Better Auth, passkeys, OTP, aparelho, Bearer e plugin Stripe |
 | Persistência cloud | [schema](../cloud/worker/db/schema.ts): Drizzle sobre D1; R2 guarda objetos; não há servidor Node persistente |
 | Painel cloud | [cloud/vite.config.ts](../cloud/vite.config.ts): SvelteKit com adapter-static e fallback SPA, assets do Worker, Tailwind e Lucide |
+| Pulse, Fase 1 local | [API](../cloud/worker/pulse/api.ts), [DO por projeto](../cloud/worker/pulse/project.ts) e [painel próprio](../cloud/pulse/src/routes/+page.svelte): projetos/chaves, ingestão, problemas/amostras e uso; demais fases e contratação ainda pendentes |
 | Sites públicos | [sites-entry.ts](../cloud/worker/sites-entry.ts), [serve-site.ts](../cloud/worker/serve-site.ts): outro Worker, sem o login ou os assets do painel |
 | Feedback público | [feedback.js](../theme/assets/js/feedback.js) e repositório irmão `blup-api`: issues do GitHub, login e leituras com cache |
 
@@ -54,6 +55,7 @@ Raiz e `studio/` são módulos Go separados, unidos por `replace` local. O Studi
 | D1 | Conta, sessões, assinatura, staff, IDs/uso de sync, sites, cota de IA e horários de lembretes |
 | R2 `NOTES` | Blocos e manifestos cifrados, referências de blocos para limpeza |
 | R2 `SITES` | Arquivos públicos, staging e manifestos; anteriores protegidos temporariamente para limpeza segura |
+| DO SQLite `PulseProject` | Eventos tratados, grupos, deduplicação, amostras e consumo; índice/admissão ficam no D1; não são dados de sync cifrado |
 
 O arquivo local de notas é legível no disco. A cifra de ponta a ponta é a fronteira do sync Blup Cloud. Sites públicos, chamadas de IA e e-mails não usam essa mesma fronteira. [Segurança](seguranca.md) detalha os dados visíveis em cada fluxo.
 

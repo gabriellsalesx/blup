@@ -2,6 +2,55 @@
 
 Especificação de produto e proposta técnica, pesquisada e atualizada em 02/11/2026. Nome, preços e decisões comerciais refletem a atualização aprovada pelo dono. O produto ainda está em implementação por fases; este documento não afirma que os contratos já estejam disponíveis em produção. As definições técnicas permanecem como propostas para implementar e validar. Exemplos usam marcadores, sem credenciais reais.
 
+## Estado da entrega por fases
+
+**Fase 1 entregue localmente, sem publicação.** Os contratos desta subseção foram conferidos no código e no handoff da Lupa. As demais seções mantêm a arquitetura e a oferta-alvo; recursos ainda não cobertos pela Fase 1 não devem ser apresentados como entregues ou compráveis.
+
+Fontes atuais: [API](../../cloud/worker/pulse/api.ts), [ingestão](../../cloud/worker/pulse/ingest.ts), [protocolo](../../cloud/worker/pulse/protocol.ts), [dados tratados](../../cloud/worker/pulse/event.ts), [SQLite](../../cloud/worker/pulse/project-store.ts), [DO](../../cloud/worker/pulse/project.ts), [admissão](../../cloud/worker/pulse/quota.ts), [limites](../../cloud/worker/pulse/limits.ts), [schema D1](../../cloud/worker/db/pulse-schema.ts) e [painel](../../cloud/pulse/src/routes/+page.svelte).
+
+| Núcleo entregue | Comportamento local atual |
+| --- | --- |
+| Conta e acesso | Usa sessão Cloud, autorização por dono e direito Pulse; cortesia do dono equivale a Ultra + Pulse; perda de direito entra em leitura por 14 dias |
+| Projetos | Criar, listar, renomear/pausar e excluir; plataformas aceitas `javascript`, `node`, `go`, `other`; nome de 1 a 80 caracteres |
+| DSN | `https://<chave48hex>@ingest.getblup.io/<iddecimal>`; 24 bytes aleatórios viram 48 hexadecimais; D1 guarda hash/prefixo; valor completo só na emissão; rotação revoga as chaves anteriores |
+| Ingestão | Envelope/store, chave por header/query/envelope, gzip/deflate e cotas; aceita `application/x-sentry-envelope`, `application/json`, `text/plain` ou Content-Type ausente, com 415 nos demais |
+| DO por projeto | Persistência SQLite, deduplicação, fingerprint próprio, estados de problemas, até 100 amostras e contadores diários; retenção de 30/90 dias |
+| Cota conjunta | D1 usa `pulse_month` e `pulse_grant`; concessões de até 32 unidades são consumidas no DO, sem transformar a cota da conta em uma cota independente por projeto |
+| Tratamento de dados | Projeção fechada do evento: descarta pedido HTTP, usuário, contextos, extra, breadcrumbs, variáveis locais, tags e anexos; trata mensagens e frames antes de persistir |
+| Interface | Projetos, copiar/rotacionar DSN, listar problemas, resolver/ignorar/reabrir, amostras e uso; painel estático separado em `cloud/pulse`, com tipos inferidos do RPC Cloud |
+
+O tratamento de texto não comprova ausência de todo dado pessoal possível em mensagem livre. O aceite e o filtro específico do Studio ainda precisam ser implementados antes de enviar erros do aplicativo automaticamente. As consultas já filtram a retenção; a limpeza física usa alarmes e lotes. Após o handoff, a Lupa corrigiu o agendamento para preservar um alarme anterior em vez de adiá-lo a cada evento. A regressão de dois ingests separados por 30 minutos foi acrescentada; o gate dessa correção fica para a Fase 2 e não está incluído nos 292 testes informados da Fase 1.
+
+### Rotas atuais da Fase 1
+
+Todas as rotas abaixo estão no Worker Cloud, sob `/api/pulse`, com sessão e dono. Escritas de configuração/estado exigem direito gravável; exclusão de projeto e revogação de chave continuam disponíveis ao dono como operações de retirada.
+
+| Método e caminho relativo | Contrato atual |
+| --- | --- |
+| `GET /usage` | `{plan, limits, readOnly, readOnlyUntil, month, accepted, reserved, bytes}`; plano/limites/prazo podem ser `null` |
+| `GET /projects` | `{projects}` com até 10 projetos; sem cursor nesta fase |
+| `POST /projects` | JSON estrito `{name, platform}`; `201 {id, name, platform, key}`; limite de projetos retorna `409 {code: "QUOTA"}` |
+| `PATCH /projects/:project` | JSON estrito com `name` e/ou `active`; retorna `{ok:true}` |
+| `DELETE /projects/:project` | Desativa no D1 e pede purga do DO; retorna `{ok:true}` |
+| `GET /projects/:project/keys` | `{keys}` com até 20 entradas `{id, prefix, revokedAt}`; sem devolver DSN completo |
+| `POST /projects/:project/keys` | Rotação; `201 {id, prefix, dsn}` |
+| `DELETE /projects/:project/keys/:key` | Revogação; `{ok:true}` |
+| `GET /projects/:project/issues` | Filtros `state`, `environment`, `release`, `q`, `before` e `limit`; `limit` de 1 a 50, padrão 30; retorna `{issues}` |
+| `PATCH /projects/:project/issues/:issue` | JSON estrito `{state}`, em `open/resolved/ignored`; `{ok:true}` ou 404 |
+| `GET /projects/:project/issues/:issue/events` | `{events}` com até 50 amostras recentes; ainda sem cursor ou parâmetro de paginação |
+
+`project` é string decimal positiva segura como inteiro JavaScript; `issue` é o hash hexadecimal do grupo. `createdAt` de projeto e `readOnlyUntil` saem em ISO UTC. `firstAt`, `lastAt`, `receivedAt` e `revokedAt` usam números em milissegundos na Fase 1, com `null` quando previsto. A tabela de API da seção 9 descreve a evolução-alvo; por exemplo, ainda não existe uma rota GET separada de detalhe do problema.
+
+### Login, banco e validação local
+
+Sem sessão, o painel leva a `https://cloud.getblup.io/entrar?volta=/conta/pulse`. Após o login comum, a página Cloud `/conta/pulse` redireciona para o endereço fixo `https://pulse.getblup.io/`, sem aceitar uma URL externa fornecida na query. O cookie permanece restrito ao host Cloud; o cliente Pulse chama a API com credenciais e CORS exato. Fontes: [cliente Pulse](../../cloud/pulse/src/lib/api.ts), [retorno fixo](../../cloud/src/routes/%28painel%29/conta/pulse/+page.svelte) e [roteamento/CORS](../../cloud/worker/index.ts).
+
+A migração [0015_pulse_nucleo.sql](../../cloud/migrations/0015_pulse_nucleo.sql), gerada pelo Drizzle, cria `pulse_account`, `pulse_project`, `pulse_key`, `pulse_month` e `pulse_grant`. O DO usa `meta`, `grant_slot`, `issue`, `seen`, `sample`, `issue_day`, `burst` e `pending_alert`. O binding é `PULSE_PROJECT`, classe `PulseProject`, com migração Workers `v2-pulse`, separada do SQL D1. Aplique `0015` antes do Worker que consulta essas tabelas.
+
+A Lupa informou: 292/292 testes, check/build Cloud e Pulse aprovados e D1 local do zero com `0000..0015`. SDKs oficiais Node `11.10.0` e Go `0.50.0` foram testados localmente; quatro eventos, entre exceções e mensagens, foram persistidos sem as sentinelas pessoais inseridas no ensaio. Os [scripts de SDK](../../cloud/scripts/pulse-sdk/check.mjs) e a [fixture Go](../../cloud/scripts/pulse-sdk/main.go.fixture) documentam o recorte. O ensaio Node desativa integrações padrão, client reports, logs e tracing; isso não homologa todos os defaults, plataformas ou recursos dos SDKs. Esses testes foram executados pela área Cloud, não repetidos por esta documentação.
+
+As Fases 2 a 4 ainda precisam entregar e homologar monitores, páginas públicas/incidentes/domínio, avisos Discord/Telegram, compra/troca dos planos e integração de aceite no Studio. Os preços são aprovados comercialmente, mas ainda não representam produtos compráveis ou serviço pronto. A premissa de saída pública/anti-SSRF dos futuros monitores é registrada na seção 7, sem prova local da rede de produção.
+
 ## 1. Produto e MVP
 
 O Blup Pulse reúne erros de aplicações, monitores HTTP, páginas públicas de status e avisos por Discord e Telegram. Serve também para acompanhar Studio, Cloud, sites e futuros aplicativos móveis do próprio Blup.
@@ -88,10 +137,10 @@ Não habilitar `crossSubDomainCookies` para esta integração nem criar um segun
 
 ### DSN e autenticação
 
-Formato de apresentação, com marcadores:
+Formato da Fase 1, com marcadores: (a chave é formada por 48 caracteres hexadecimais)
 
 ```text
-https://<CHAVE_PUBLICA>@ingest.getblup.io/<ID_NUMERICO_DO_PROJETO>
+https://<chave48hex>@ingest.getblup.io/<iddecimal>
 ```
 
 O identificador público é uma string decimal positiva, única, limitada a um intervalo compatível com os SDKs homologados. Não usar UUID na posição que SDKs possam exigir como ID numérico. A chave aleatória identifica a permissão de ingestão de um projeto, pode ser revogada/rotacionada e não autoriza ler problemas ou administrar a conta. Não incluir parte secreta no DSN.
@@ -176,7 +225,7 @@ As últimas 100 ocorrências completas são o evento permitido pela política de
 
 ## 6. Modelo de dados proposto
 
-As tabelas abaixo são desenho de schema, não migrações existentes. A próxima numeração D1 deve ser escolhida quando a implementação for feita, preservando a migração de idioma e o histórico atual.
+A Fase 1 já tem schema D1/SQLite e migração `0015`, listados na subseção de entrega. As tabelas abaixo preservam o desenho-alvo dos demais recursos e podem ter nomes diferentes do núcleo atual. Migrações posteriores precisam ser geradas e revisadas sem alterar o histórico existente.
 
 | D1 geral | Campos e índices principais |
 | --- | --- |
@@ -219,7 +268,9 @@ Expirados deixam de aparecer nas consultas imediatamente. Atraso na remoção f�
 
 Proposta de monitor MVP: `GET` HTTPS em porta 443, nome, projeto, URL, intervalo do plano e ativo/pausado. Resposta 2xx é sucesso. Erro DNS/TLS, timeout e demais status são falha. Não seguir redirects no MVP; a pessoa informa a URL final. Não aceitar cookies, Authorization, headers arbitrários ou corpo de pedido nesta fase. Não armazenar corpo de resposta.
 
-Aplicar timeout de 10 segundos, cancelar leitura e limitar bytes processados. Bloquear usuário/senha na URL, IP literal, localhost, redes privadas, link-local e destinos de metadados. A proteção deve valer na resolução e na conexão efetiva, incluindo DNS rebinding; só uma expressão regular de hostname não resolve SSRF. Homologar a estratégia de saída no runtime real antes de abrir monitores arbitrários, sem invocar produção durante os testes. [Fetch no Workers](https://developers.cloudflare.com/workers/runtime-apis/fetch/).
+Aplicar timeout de 10 segundos, cancelar leitura e limitar bytes processados. Bloquear usuário/senha na URL, IP literal, localhost, redes privadas, link-local e destinos de metadados. Só uma expressão regular de hostname não comprova a proteção da conexão efetiva. [Fetch no Workers](https://developers.cloudflare.com/workers/runtime-apis/fetch/).
+
+Estratégia prevista para as próximas fases, conforme o alinhamento do Maestro: usar o `fetch()` público do Workers com `global_fetch_strictly_public`, além da validação de URL e dos limites acima. A documentação da flag descreve o roteamento como pedido vindo da Internet, inclusive na própria zona; os erros 1000/1002 documentam restrições do proxy/DNS para domínios. Essas referências não são prova local de todos os bloqueios de rede do `fetch()` em produção nem uma homologação contra DNS rebinding. Registrar essa dependência da plataforma como premissa e validar o comportamento no ambiente apropriado, sem anunciar uma garantia de rede que o ensaio local não demonstrou. [Flag de fetch público](https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public), [erro 1000](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1000/), [erro 1002](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1002/).
 
 Um cron `* * * * *` seleciona monitores vencidos; Max fica elegível a cada cinco minutos e Ultra a cada dois. Os horários são UTC. Índice por vencimento e claim com lease impedem execução concorrente do mesmo monitor/horário. Processar em lotes e com concorrência limitada, sem criar uma promessa de checagem no segundo exato. Não repetir milhares de checagens atrasadas para recuperar cron perdido: registrar lacuna e retomar o próximo horário. [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
 
@@ -253,7 +304,7 @@ O limite global do bot precisa de coordenação entre contas. Proposta MVP: um d
 
 ## 9. API Hono tipada
 
-Rotas propostas sob `/api/pulse`. Todas exigem sessão, dono e direito do plano, exceto leitura pública e webhooks com sua autenticação própria. IDs, query, body e cursores passam por Zod, com JSON de configuração estrito. O parser binário Sentry é separado do middleware JSON geral de 96 KiB do Cloud; precisa dos limites próprios desta spec. Metadados extras de SDK desconhecidos podem ser descartados com segurança, sem exigir que SDKs só emitam campos que o painel conhece.
+A subseção da Fase 1 lista as rotas já entregues. A tabela abaixo descreve a API-alvo completa sob `/api/pulse`, incluindo recursos das próximas fases. Todas exigem sessão, dono e direito do plano, exceto leitura pública e webhooks com sua autenticação própria. IDs, query, body e cursores passam por Zod, com JSON de configuração estrito. O parser binário Sentry é separado do middleware JSON geral de 96 KiB do Cloud; precisa dos limites próprios desta spec. Metadados extras de SDK desconhecidos podem ser descartados com segurança, sem exigir que SDKs só emitam campos que o painel conhece.
 
 Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com respostas inferidas no painel. Reaproveitar a geração RPC existente, sem repetir DTOs manualmente. Exceções do transporte Sentry têm o formato compatível da seção 4; a API do painel mantém erro JSON com `code` estável e mensagem traduzida no cliente. [RPC Hono](https://hono.dev/docs/guides/rpc), [contratos do projeto](tipagem-e-contratos.md).
 
@@ -285,7 +336,7 @@ Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com
 | `POST /api/pulse/telegram/webhook` | Update do Telegram autenticado por secret, sem sessão do painel |
 | `GET /api/pulse/public/:slug` | Só DTO público, usado em `pulse.getblup.site/:slug` |
 
-Datas saem em ISO UTC; ausência explícita usa `null`, listas vazias usam `[]`. Um recurso de outra conta responde como não encontrado. Reservar slugs, limitar nomes/textos, validar cada vínculo de componentes/canais e usar idempotência nas operações que podem ser repetidas. Não aceitar owner, plano, limite ou nome de DO fornecidos pelo cliente como autoridade.
+Na API-alvo, padronizar datas em ISO UTC; a Fase 1 ainda tem os timestamps numéricos descritos na subseção de entrega. Ausência explícita usa `null`, listas vazias usam `[]`. Um recurso de outra conta responde como não encontrado. Reservar slugs, limitar nomes/textos, validar cada vínculo de componentes/canais e usar idempotência nas operações que podem ser repetidas. Não aceitar owner, plano, limite ou nome de DO fornecidos pelo cliente como autoridade.
 
 ## 10. Telas do painel
 
@@ -335,7 +386,7 @@ Não registrar bodies de ingestão, URLs de webhook ou token do bot nos logs do 
 
 ## 13. SDKs e critérios de compatibilidade
 
-No lançamento, a promessa comercial cobre sites, servidores e aplicativo de computador. Integração com celular aparece como **em teste**, sem promessa de suporte móvel homologado. Nenhum SDK está homologado só pela pesquisa desta spec. Na implementação, fixar versões e publicar a matriz real, com versão atual estável e pelo menos uma versão anterior que se pretenda suportar.
+No lançamento, a promessa comercial cobre sites, servidores e aplicativo de computador. Integração com celular aparece como **em teste**, sem promessa de suporte móvel homologado. A Fase 1 tem ensaio local confirmado de Node `11.10.0` e Go `0.50.0`, no recorte descrito na subseção de entrega. Browser, defaults completos, versões anteriores e mobile continuam sujeitos à matriz abaixo; não extrapolar quatro eventos locais para compatibilidade geral.
 
 | SDK oficial | Primeiro teste | Limite da promessa |
 | --- | --- | --- |
@@ -426,9 +477,9 @@ Com os tetos de banco mantidos na proposta, o total máximo é 768 MiB no Max e 
 
 Fase 0: preparar o catálogo e os hosts aprovados, fechar apenas os detalhes operacionais pendentes e produzir fixtures dos SDKs; ensaiar custo/SSRF sem dados reais.
 
-Fase 1, MVP para piloto: ingestão de erros browser/Node/Go, DO/D1 e quotas, Projetos com resolver/ignorar, monitores HTTP, uma implementação simples das páginas e incidentes manuais, Discord/Telegram, aceite Studio e switch com uma assinatura. Os limites de cada variante continuam sendo os da tabela; o piloto pode limitar o número de contas para medir capacidade.
+Fase 1 entregue localmente: núcleo de ingestão, projetos/chaves, problemas/amostras/uso, DO/D1 e quotas, painel Projetos separado e login central. Migração `0015` e ensaios Node/Go foram conferidos localmente. Não inclui a entrega comercial completa do MVP.
 
-Fase 2: homologar os caminhos JSON de React Native/Flutter, que no lançamento ficam como em teste. O domínio próprio faz parte da oferta Ultra; pode ser validado em etapa própria do piloto, com sua disponibilidade real claramente informada antes de cobrar por ele.
+Fases 2 a 4 pendentes: monitores, páginas públicas/incidentes/domínio Ultra, avisos, contratação e integração do Studio, com contratos atualizados a cada handoff. Browser e demais versões de SDK precisam de homologação; React Native/Flutter continuam como em teste. O domínio próprio faz parte da oferta Ultra e deve ter disponibilidade real informada antes de cobrar por ele.
 
 Performance, tracing, replay e source maps não entram automaticamente numa fase posterior: exigem nova decisão de produto, orçamento e spec.
 

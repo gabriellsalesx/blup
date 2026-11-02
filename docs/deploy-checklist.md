@@ -48,7 +48,7 @@ npx wrangler r2 bucket create blup-cloud-sites
 
 ## 4. Planejar a migração e aplicar o SQL
 
-- [ ] **BLOQUEANTE:** conferir backup e revisar a sequência [migrations/](../cloud/migrations). A sequência versionada vai de `0000` até `0014_idioma_da_conta.sql`.
+- [ ] **BLOQUEANTE:** conferir backup e revisar a sequência [migrations/](../cloud/migrations). A sequência do núcleo Pulse validada no handoff local vai de `0000` até `0015_pulse_nucleo.sql`; conferir novas migrações das fases seguintes antes da release.
 - [ ] Em instalação nova, aplicar toda a sequência antes dos Workers. Em instalação existente, **não aplicar `0012` com o código antigo atendendo tráfego ou cron**: ele ainda escrevia os campos removidos. Preparar e ensaiar uma atualização em etapas compatíveis ou uma janela de manutenção, suspendendo tráfego/gravações e crons antigos, aplicando SQL e publicando os dois Workers novos antes de reabrir. A sequência abaixo pressupõe essa condição; rollback de código antigo pode ser incompatível com o schema novo.
 
 ```sh
@@ -58,6 +58,7 @@ npx wrangler d1 migrations list DB --remote --env production
 ```
 
 - [ ] Confirmar que não ficaram migrações pendentes. `0011` prepara carências e sync transacional; `0012` remove `sync_account.previous_key` e `site_domain.disabled_at`, sem consumidor; `0013` cria recibos de webhook e índices; `0014` acrescenta `user.language`, com `pt` nas contas existentes, e precisa vir antes do Worker novo. As migrações anteriores permanecem intactas.
+- [ ] Para um Worker que inclua o núcleo Pulse, aplicar também `0015_pulse_nucleo.sql` antes do código e conferir `PULSE_PROJECT`/`PulseProject` e a migração Workers SQLite `v2-pulse`. A Fase 1 local não libera venda nem declara o produto pronto; acompanhar os [contratos por fase](spec/blup-pulse.md#estado-da-entrega-por-fases).
 - [x] Validação local da tradução fechada pela Lupa: gates, sequência D1 `0000..0014`, integridade e migração de conta antiga preservando `pt`. A aplicação de `0014` no banco de produção continua obrigatória antes do Worker novo.
 - [ ] Em atualização de instalação anterior à marca de aparelho, planejar revogar sessões Studio antigas e solicitar novo login, conforme [cloud/README.md](../cloud/README.md).
 
