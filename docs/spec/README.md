@@ -64,7 +64,7 @@ O Podcast organiza narrações públicas em episódios e feed. O reinício após
 
 ## Contratos atuais após a rodada 4
 
-- Blup Cloud: arquivo máximo de 10/25/100/100 MiB para Grátis/Pro/Max/Ultra; reservas D1 e leases protegem admissão/publicação. Excesso após redução abre 14 dias com teto de storage anterior, contando histórico; depois volta ao novo limite sem apagar dados só por excesso.
+- Blup Cloud: Max permite 5 GiB de armazenamento e 3 sites; Ultra, 10 GiB e 10 sites. Arquivo máximo de 10/25/50/100 MiB para Grátis/Pro/Max/Ultra; reservas D1 e leases protegem admissão/publicação. Excesso após redução abre 14 dias com teto de storage anterior, contando histórico; depois volta ao novo limite sem apagar dados só por excesso.
 - Sites: depois da carência Pro retém um site escolhido até o prazo, ou o mais antigo por data/ID; Grátis retém zero. Arquivos dos demais permanecem guardados. Domínio próprio Max/Ultra tem carência própria de 14 dias e `disableAt`/`disabled`.
 - URL oficial: domínio e SSL ativos, com plano ou carência válida, podem ser baseURL. O Studio detecta mudança e republica em segundo plano, uma vez a cada dez minutos por site, para ajustar canonical/feed/sitemap; ambos os hosts servem o deploy sem redirects entre eles.
 - Sync: após 413, o cliente pode preparar uma versão, guardar blocos novos em memória e confirmar por ticket/reserva líquida. Purga manual de histórico é por cofre; o tamanho mostrado é da conta e pode ser `null`, sem virar zero. Versão atual e blocos compartilhados necessários são preservados.

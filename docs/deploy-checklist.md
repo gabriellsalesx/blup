@@ -183,7 +183,8 @@ Se os secrets dos sites não forem necessários ou já estiverem cadastrados, om
 - [ ] Publicar um site de teste em `getblup.site`; conferir HTML, arquivos, busca e isolamento entre dois sites no mesmo caminho. Conferir retirada da entrega após excluir o site de teste.
 - [ ] Se oferecer domínio próprio, conferir prova, SSL, baseURL após publicação e canonical/feed/sitemap. O Studio republica em segundo plano ao observar mudança de domínio, com intervalo mínimo de dez minutos por site; não há troca instantânea de URLs absolutas sem build.
 - [ ] Abrir o Checkout de uma conta interna que não use a cortesia do proprietário e conferir plano, período, valor e moeda; cancelar antes de pagar neste teste de abertura. Ciclos completos de cobrança continuam homologados no sandbox.
-- [ ] Conferir as execuções de lembretes e limpeza. Max permite 50 e Ultra 100 e-mails/mês; carências de 14 dias, retenção de conta por 30 dias e arquivos de até 100 MiB precisam corresponder ao produto anunciado.
+- [ ] Conferir os limites anunciados e executados: Max com 5 GiB, arquivos de até 50 MiB e 3 sites; Ultra com 10 GiB, arquivos de até 100 MiB e 10 sites. Grátis e Pro seguem a [tabela dos planos](spec/blup-cloud-sync.md#planos-executados).
+- [ ] Conferir as execuções de lembretes e limpeza. Max permite 50 e Ultra 100 e-mails/mês; carências de 14 dias e retenção de conta por 30 dias precisam corresponder ao produto anunciado.
 - [ ] Em ambiente isolado, conferir `historyBytes:null`, purga por cofre, prepare/ticket/commit e a folga de manifesto de 4096 bytes sobre o head. Não simular expiração forçada em produção.
 
 ## 11. Preparar release da CLI e do Studio

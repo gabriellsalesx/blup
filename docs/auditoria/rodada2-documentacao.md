@@ -27,7 +27,7 @@ Foram enviados nove grupos de Cloud e dez grupos iniciais de Studio/Go, seguidos
 - Specs de Studio, temas, scaffold, publicação, sync, Blup Cloud, calendário, configuração, CLI, narração, Podcast, Feedback e testes/build.
 - Nova [spec de tipagem e contratos](../spec/tipagem-e-contratos.md), cobrindo Hono RPC/Zod, bindings/eventos Wails, null/opcionais/números e validação de arquivos/dados externos.
 
-Domínio próprio é Max/Ultra, um hostname por site, com prova TXT antes de provisionar/servir. Canonical, feed e sitemap continuam em `getblup.site`, pois vincular não muda baseURL nem republica, limite confirmado pelo Prumo. Exclusão lógica é imediata, purga após 30 dias em lotes; prazo de 14 dias só em pago para Grátis. Max/Ultra para Pro mantém sites e retira domínio próprio. Arquivo máximo é 10/25/100/100 MiB; o texto comercial usa MB.
+Domínio próprio é Max/Ultra, um hostname por site, com prova TXT antes de provisionar/servir. Canonical, feed e sitemap continuam em `getblup.site`, pois vincular não muda baseURL nem republica, limite confirmado pelo Prumo. Exclusão lógica é imediata, purga após 30 dias em lotes; prazo de 14 dias só em pago para Grátis. Max/Ultra para Pro mantém sites e retira domínio próprio. Atualização de planos posterior a esta rodada: arquivo máximo atual de 10/25/50/100 MiB para Grátis/Pro/Max/Ultra; o texto comercial usa MB. Os demais comportamentos históricos deste parágrafo têm os contratos atuais na [spec](../spec/blup-cloud-sync.md).
 
 ## Checks executados nesta entrega
 

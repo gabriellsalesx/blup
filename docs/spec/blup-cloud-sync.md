@@ -22,13 +22,13 @@ Os limites vêm de `cloud/worker/plans.ts`. Os preços vêm do Stripe, pelos loo
 
 | Limite | Grátis | Pro | Max | Ultra |
 | --- | --- | --- | --- | --- |
-| Armazenamento em MiB | 50 | 1024 | 10240 | 51200 |
-| Arquivo em MiB | 10 | 25 | 100 | 100 |
+| Armazenamento em MiB | 50 | 1024 | 5120 | 10240 |
+| Arquivo em MiB | 10 | 25 | 50 | 100 |
 | Aparelhos | 1 | 2 | 3 | Sem limite (`-1`) |
 | Cofres por conta, teto da API | 50 | 50 | 50 | 50 |
 | Sync automático | Não | Sim | Sim | Sim |
 | Histórico | Só versão atual | 30 dias | 365 dias | 365 dias |
-| Sites hospedados pelo Blup | 0 | 1 | 5 | 10 |
+| Sites hospedados pelo Blup | 0 | 1 | 3 | 10 |
 | Multiplicador da cota de IA | 0 | 1 | 2 | 5 |
 | E-mails de lembrete por mês | 0 | 0 | 50 | 100 |
 | Campo `customDomain` | `false` | `false` | `true` | `true` |

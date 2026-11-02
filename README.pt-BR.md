@@ -31,6 +31,7 @@ A documentação foi revisada em 02/11/2026 contra o código. Recursos disponív
 - Tradução local com Firefox Translations ou remota com IA, gravada em notas por idioma. Sites traduzidos escolhem uma versão existente conforme o visitante e lembram a escolha manual.
 - Publicação em Cloudflare Pages, GitHub Pages ou `nome.getblup.site` pelo Blup Cloud. Domínio próprio também no Blup Cloud Max/Ultra, com prova TXT/SSL e republicação para usar o endereço oficial nas URLs absolutas.
 - Sync por repositório privado GitHub, ou pelo Blup Cloud com cifra de ponta a ponta. Conta e senha das notas são mecanismos separados.
+- Blup Cloud Max com 5 GB de notas, arquivos de até 50 MB e 3 sites; Ultra com 10 GB, arquivos de até 100 MB e 10 sites. A [tabela dos planos](docs/spec/blup-cloud-sync.md#planos-executados) detalha as cotas.
 - Lembretes genéricos por e-mail no Max, até 50 por mês, e Ultra, até 100, separados das notificações gratuitas do computador.
 
 ## Modelos de site
