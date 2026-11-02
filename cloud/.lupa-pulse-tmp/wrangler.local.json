@@ -1,0 +1,62 @@
+{
+  "name": "blup-pulse-local-audit",
+  "main": "../worker/index.ts",
+  "compatibility_date": "2026-10-28",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pulse-local-audit",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../migrations"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PULSE_PROJECT",
+        "class_name": "PulseProject"
+      },
+      {
+        "name": "SYNC_LIVE",
+        "class_name": "SyncLive"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "SyncLive",
+        "PulseProject"
+      ]
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "PULSE_INGEST_LIMIT",
+      "namespace_id": "9001",
+      "simple": {
+        "limit": 500,
+        "period": 10
+      }
+    }
+  ],
+  "vars": {
+    "APP_URL": "http://localhost:18864",
+    "PASSKEY_RP_ID": "localhost",
+    "PULSE_APP_URL": "http://localhost:18865",
+    "PULSE_INGEST_HOST": "localhost",
+    "PULSE_PUBLIC_HOST": "pulse.localhost",
+    "STAFF_HOST": "",
+    "STAFF_OWNER_EMAIL": "",
+    "BETTER_AUTH_SECRET": "local-test-placeholder-not-production",
+    "STRIPE_SECRET_KEY": "sk_test_local_placeholder",
+    "STRIPE_WEBHOOK_SECRET": "whsec_local_placeholder",
+    "TURNSTILE_SECRET_KEY": "local-placeholder",
+    "EMAIL_MODE": "log",
+    "MAIL_FROM": "Blup <login@example.com>"
+  }
+}

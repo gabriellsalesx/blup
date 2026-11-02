@@ -1,3 +1,4 @@
+import {purgePulseAccount} from "./pulse/cleanup";
 import {languageOf} from "../shared/language";
 import { queueAccountPurge,queueSitePurge } from "./site-cache-purge";
 import { planNamed, ownerMatches } from "./plans";
@@ -77,6 +78,7 @@ export async function purgeAccounts(env:Cloudflare.Env,now=Date.now()) {
 	for(const {id} of due.results){
 		const claimed=await env.DB.prepare("UPDATE resource_quota SET purge_started=? WHERE user_id=? AND deleted_at IS NOT NULL AND purge_after<=? RETURNING user_id").bind(now,id,now).first();
 		if(!claimed)continue;
+		await purgePulseAccount(env,id);
 		await deletePrefix(env.NOTES,`u/${id}/`);
 		const sites=await env.DB.prepare("SELECT id FROM site WHERE user_id=?").bind(id).all<{id:string}>();
 		for(const s of sites.results){

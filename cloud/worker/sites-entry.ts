@@ -1,3 +1,4 @@
+import {servePulsePage} from "./pulse/public";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { cachedSiteProps,serveDeploy } from "./serve-site";
 import { drainSitePurges } from "./site-cache-purge";
@@ -26,6 +27,7 @@ async function resolveDomain(env:Cloudflare.Env,host:string,canonical:string){
 export default {
 	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
 		const url = new URL(req.url);
+		if(url.hostname===env.PULSE_PUBLIC_HOST)return await servePulsePage(req,env)??new Response("Not found",{status:404});
 		const local = env.SITES_DOMAIN === "localhost";
 		// Always HTTPS, and www.name.getblup.site is the same site as
 		// name.getblup.site (one address, so search engines see one).

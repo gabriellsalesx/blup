@@ -7,6 +7,12 @@ interface __BaseEnv_CloudflareBindings {
 	SITES: R2Bucket;
 	DB: D1Database;
 	EMAIL: SendEmail;
+	PULSE_PROJECT: DurableObjectNamespace<import("./pulse/project").PulseProject>;
+	PULSE_INGEST_LIMIT: RateLimit;
+	PULSE_PUBLIC_LIMIT: RateLimit;
+	PULSE_APP_URL: string;
+	PULSE_INGEST_HOST: string;
+	PULSE_PUBLIC_HOST: string;
 	OTP_LIMIT: RateLimit;
 	ABUSE_LIMIT: RateLimit;
 	BULK_LIMIT: RateLimit;
@@ -36,7 +42,7 @@ interface __BaseEnv_CloudflareBindings {
 declare namespace Cloudflare {
 	interface GlobalProps {
 		mainModule: typeof import("./index") & typeof import("./sites-entry");
-		durableNamespaces: "SyncLive";
+		durableNamespaces: "SyncLive" | "PulseProject";
 	}
 	interface ProductionEnv {
 		SITE_CACHE: Service<import("./sites-entry").CachedSite>;
@@ -44,7 +50,13 @@ declare namespace Cloudflare {
 		SITES: R2Bucket;
 		DB: D1Database;
 		EMAIL: SendEmail;
-		OTP_LIMIT: RateLimit;
+		PULSE_PROJECT: DurableObjectNamespace<import("./pulse/project").PulseProject>;
+	PULSE_INGEST_LIMIT: RateLimit;
+	PULSE_PUBLIC_LIMIT: RateLimit;
+	PULSE_APP_URL: string;
+	PULSE_INGEST_HOST: string;
+	PULSE_PUBLIC_HOST: string;
+	OTP_LIMIT: RateLimit;
 	ABUSE_LIMIT: RateLimit;
 	BULK_LIMIT: RateLimit;
 	CF_API_TOKEN: string;

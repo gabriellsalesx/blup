@@ -1,0 +1,10 @@
+# Security headers on every page and file (Workers static assets). The CSP
+# itself is a <meta> written by SvelteKit (vite.config.ts); here only what a
+# <meta> can't carry. The Worker adds the same to the responses it makes.
+/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains

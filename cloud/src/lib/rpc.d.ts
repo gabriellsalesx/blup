@@ -3046,4 +3046,1943 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-}, "/api/ai">, "/api", "/api/devices/:id">;
+}, "/api/ai"> | import("hono/types").MergeSchemaPath<({
+    "/public/:slug": {
+        $get: {
+            input: {
+                param: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 429;
+        } | {
+            input: {
+                param: {
+                    slug: string;
+                };
+            };
+            output: {
+                unavailable: false;
+                title: string;
+                slug: string;
+                language: "pt" | "en" | "es";
+                components: {
+                    name: string;
+                    state: "unknown" | "up" | "down";
+                    lastCheckedAt: string | null;
+                    days: {
+                        date: string;
+                        up: number;
+                        down: number;
+                        unknown: number;
+                    }[];
+                }[];
+                incidents: {
+                    title: string;
+                    state: string;
+                    impact: string;
+                    createdAt: string;
+                    updatedAt: string;
+                    updates: {
+                        body: string;
+                        state: string;
+                        createdAt: string;
+                    }[];
+                }[];
+            } | {
+                unavailable: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                param: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        };
+    };
+} & {
+    "/usage": {
+        $get: {
+            input: {};
+            output: {
+                plan: "max_pulse" | "ultra_pulse" | null;
+                limits: {
+                    readonly projects: 3;
+                    readonly events: 50000;
+                    readonly retentionDays: 30;
+                    readonly monitors: 10;
+                    readonly intervalMinutes: 5;
+                    readonly pages: 1;
+                    readonly customDomain: false;
+                    readonly projectBytes: number;
+                    readonly burst: 60;
+                } | {
+                    readonly projects: 10;
+                    readonly events: 250000;
+                    readonly retentionDays: 90;
+                    readonly monitors: 50;
+                    readonly intervalMinutes: 2;
+                    readonly pages: 3;
+                    readonly customDomain: true;
+                    readonly projectBytes: number;
+                    readonly burst: 300;
+                } | null;
+                readOnly: boolean;
+                readOnlyUntil: string | null;
+                month: string;
+                accepted: number;
+                reserved: number;
+                bytes: number;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/projects": {
+        $get: {
+            input: {};
+            output: {
+                projects: {
+                    active: boolean;
+                    createdAt: string;
+                    id: string;
+                    name: string;
+                    platform: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/projects": {
+        $post: {
+            input: {
+                json: {
+                    name: string;
+                    platform: "other" | "javascript" | "node" | "go";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    name: string;
+                    platform: "other" | "javascript" | "node" | "go";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    name: string;
+                    platform: "other" | "javascript" | "node" | "go";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                json: {
+                    name: string;
+                    platform: "other" | "javascript" | "node" | "go";
+                };
+            };
+            output: {
+                id: string;
+                name: string;
+                platform: "other" | "javascript" | "node" | "go";
+                key: {
+                    id: string;
+                    prefix: string;
+                    dsn: string;
+                };
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+} & {
+    "/projects/:project": {
+        $patch: {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/projects/:project": {
+        $delete: {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/projects/:project/keys": {
+        $get: {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                keys: {
+                    id: string;
+                    prefix: string;
+                    revokedAt: number | null;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/projects/:project/keys": {
+        $post: {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                id: string;
+                prefix: string;
+                dsn: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+} & {
+    "/projects/:project/keys/:key": {
+        $delete: {
+            input: {
+                param: {
+                    project: string;
+                    key: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    key: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    key: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    key: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/projects/:project/issues": {
+        $get: {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    state?: "open" | "resolved" | "ignored" | undefined;
+                    environment?: string | undefined;
+                    release?: string | undefined;
+                    q?: string | undefined;
+                    before?: string | string[] | undefined;
+                    limit?: string | string[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    state?: "open" | "resolved" | "ignored" | undefined;
+                    environment?: string | undefined;
+                    release?: string | undefined;
+                    q?: string | undefined;
+                    before?: string | string[] | undefined;
+                    limit?: string | string[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    state?: "open" | "resolved" | "ignored" | undefined;
+                    environment?: string | undefined;
+                    release?: string | undefined;
+                    q?: string | undefined;
+                    before?: string | string[] | undefined;
+                    limit?: string | string[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    state?: "open" | "resolved" | "ignored" | undefined;
+                    environment?: string | undefined;
+                    release?: string | undefined;
+                    q?: string | undefined;
+                    before?: string | string[] | undefined;
+                    limit?: string | string[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    state?: "open" | "resolved" | "ignored" | undefined;
+                    environment?: string | undefined;
+                    release?: string | undefined;
+                    q?: string | undefined;
+                    before?: string | string[] | undefined;
+                    limit?: string | string[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    state?: "open" | "resolved" | "ignored" | undefined;
+                    environment?: string | undefined;
+                    release?: string | undefined;
+                    q?: string | undefined;
+                    before?: string | string[] | undefined;
+                    limit?: string | string[] | undefined;
+                };
+            };
+            output: {
+                issues: {
+                    id: string;
+                    state: "open" | "resolved" | "ignored";
+                    title: string;
+                    level: string;
+                    firstAt: number;
+                    lastAt: number;
+                    count: number;
+                    environment: string;
+                    release: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/projects/:project/issues/:issue/events": {
+        $get: {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            };
+            output: {
+                events: {
+                    event: {
+                        id: string;
+                        group: string;
+                        title: string;
+                        level: "error" | "debug" | "info" | "fatal" | "warning";
+                        platform: string;
+                        environment: string;
+                        release: string;
+                        message: string;
+                        exceptions: {
+                            type: string;
+                            value: string;
+                            frames: {
+                                filename: string;
+                                function: string;
+                                module: string;
+                                line: number | null;
+                                column: number | null;
+                                inApp: boolean;
+                            }[];
+                        }[];
+                    };
+                    id: string;
+                    receivedAt: number;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/projects/:project/issues/:issue": {
+        $patch: {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            } & {
+                json: {
+                    state: "open" | "resolved" | "ignored";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            } & {
+                json: {
+                    state: "open" | "resolved" | "ignored";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            } & {
+                json: {
+                    state: "open" | "resolved" | "ignored";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            } & {
+                json: {
+                    state: "open" | "resolved" | "ignored";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            } & {
+                json: {
+                    state: "open" | "resolved" | "ignored";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            } & {
+                json: {
+                    state: "open" | "resolved" | "ignored";
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}) | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                monitors: {
+                    active: boolean;
+                    lastAt: string | null;
+                    id: string;
+                    projectId: string;
+                    name: string;
+                    url: string;
+                    intervalMinutes: number;
+                    state: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    projectId: string;
+                    name: string;
+                    url: string;
+                    intervalMinutes: number;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    projectId: string;
+                    name: string;
+                    url: string;
+                    intervalMinutes: number;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    projectId: string;
+                    name: string;
+                    url: string;
+                    intervalMinutes: number;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
+            input: {
+                json: {
+                    projectId: string;
+                    name: string;
+                    url: string;
+                    intervalMinutes: number;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                json: {
+                    projectId: string;
+                    name: string;
+                    url: string;
+                    intervalMinutes: number;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    projectId: string;
+                    name: string;
+                    url: string;
+                    intervalMinutes: number;
+                };
+            };
+            output: {
+                id: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        } | {
+            input: {
+                json: {
+                    projectId: string;
+                    name: string;
+                    url: string;
+                    intervalMinutes: number;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        };
+    };
+} & {
+    "/:monitor": {
+        $patch: {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    url?: string | undefined;
+                    intervalMinutes?: number | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    url?: string | undefined;
+                    intervalMinutes?: number | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    url?: string | undefined;
+                    intervalMinutes?: number | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    url?: string | undefined;
+                    intervalMinutes?: number | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    url?: string | undefined;
+                    intervalMinutes?: number | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    url?: string | undefined;
+                    intervalMinutes?: number | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    url?: string | undefined;
+                    intervalMinutes?: number | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    url?: string | undefined;
+                    intervalMinutes?: number | undefined;
+                    active?: boolean | undefined;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:monitor": {
+        $delete: {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: 200;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        };
+    };
+} & {
+    "/:monitor/checks": {
+        $get: {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            };
+            output: {
+                checks: {
+                    id: string;
+                    scheduledAt: number;
+                    checkedAt: number;
+                    outcome: string;
+                    state: string;
+                    status: number | null;
+                    durationMs: number;
+                    reason: string;
+                }[];
+                days: {
+                    day: number;
+                    up: number;
+                    down: number;
+                    unknown: number;
+                    durationMs: number;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/monitors"> | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                pages: {
+                    published: boolean;
+                    components: {
+                        monitorId: string;
+                        name: string;
+                    }[];
+                    id: string;
+                    title: string;
+                    slug: string;
+                    language: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    components: {
+                        monitorId: string;
+                        name: string;
+                    }[];
+                    language: "pt" | "en" | "es";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    components: {
+                        monitorId: string;
+                        name: string;
+                    }[];
+                    language: "pt" | "en" | "es";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    components: {
+                        monitorId: string;
+                        name: string;
+                    }[];
+                    language: "pt" | "en" | "es";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    components: {
+                        monitorId: string;
+                        name: string;
+                    }[];
+                    language: "pt" | "en" | "es";
+                };
+            };
+            output: {
+                id: string;
+                slug: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    components: {
+                        monitorId: string;
+                        name: string;
+                    }[];
+                    language: "pt" | "en" | "es";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        };
+    };
+} & {
+    "/:page": {
+        $patch: {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title?: string | undefined;
+                    components?: {
+                        monitorId: string;
+                        name: string;
+                    }[] | undefined;
+                    published?: boolean | undefined;
+                    language?: "pt" | "en" | "es" | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title?: string | undefined;
+                    components?: {
+                        monitorId: string;
+                        name: string;
+                    }[] | undefined;
+                    published?: boolean | undefined;
+                    language?: "pt" | "en" | "es" | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title?: string | undefined;
+                    components?: {
+                        monitorId: string;
+                        name: string;
+                    }[] | undefined;
+                    published?: boolean | undefined;
+                    language?: "pt" | "en" | "es" | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title?: string | undefined;
+                    components?: {
+                        monitorId: string;
+                        name: string;
+                    }[] | undefined;
+                    published?: boolean | undefined;
+                    language?: "pt" | "en" | "es" | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title?: string | undefined;
+                    components?: {
+                        monitorId: string;
+                        name: string;
+                    }[] | undefined;
+                    published?: boolean | undefined;
+                    language?: "pt" | "en" | "es" | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title?: string | undefined;
+                    components?: {
+                        monitorId: string;
+                        name: string;
+                    }[] | undefined;
+                    published?: boolean | undefined;
+                    language?: "pt" | "en" | "es" | undefined;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:page": {
+        $delete: {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:page/incidents": {
+        $get: {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                incidents: {
+                    id: string;
+                    title: string;
+                    state: string;
+                    impact: string;
+                    createdAt: number;
+                    updatedAt: number;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:page/incidents": {
+        $post: {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                };
+            };
+            output: {
+                id: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        };
+    };
+} & {
+    "/:page/incidents/:incident/updates": {
+        $post: {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            } & {
+                json: {
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            } & {
+                json: {
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            } & {
+                json: {
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            } & {
+                json: {
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            } & {
+                json: {
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            } & {
+                json: {
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: 201;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            } & {
+                json: {
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        };
+    };
+}, "/pages">, "/api/pulse">, "/api", "/api/devices/:id">;

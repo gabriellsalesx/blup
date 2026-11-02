@@ -30,6 +30,11 @@ import {user as userTable, session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
 import { mutationOriginAllowed } from "./security";
+import {checkDue} from "./pulse/scheduler";
+import {pulseMaintenance} from "./pulse/cleanup";
+import {servePulsePage} from "./pulse/public";
+import {pulseApi} from "./pulse/api";
+import {pulseIngest} from "./pulse/ingest";
 
 type App = { Bindings: Cloudflare.Env; Variables: { session: Session } };
 
@@ -48,7 +53,7 @@ app.use("*",async(c,next)=>{
 });
 
 app.use("*", async (c, next) => {
-	if (!mutationOriginAllowed(c.req.raw)) return c.json(requestError(c.req.path,"ORIGIN_NOT_ALLOWED","Origem não permitida."),403);
+	if (!mutationOriginAllowed(c.req.raw,[c.env.PULSE_APP_URL].filter(Boolean))) return c.json(requestError(c.req.path,"ORIGIN_NOT_ALLOWED","Origem não permitida."),403);
 	await next();
 	// A WebSocket (101) goes as it is: copying the response would drop the socket.
 	if (c.res.status !== 101 && !c.res.headers.has("cache-control")) c.header("cache-control", "no-store");
@@ -120,8 +125,8 @@ app.post("/auth/delete-user",validate("json",z.object({}).strict()),async c=>{
 // transfer has storage quotas and a separate 500/10s per-account fuse.
 app.use("*",async(c,next)=>{
  const path=c.req.path,method=c.req.method;
- const costly=(method==="POST"&&/^\/api\/(?:ai\/(?:audio\/speech|translate)|sites\/?|sync\/vaults)$/.test(path)) || /\/api\/sites\/[^/]+\/domain$/.test(path) || method==="GET"&&path==="/api/sites/check" || method==="PUT"&&/^\/api\/reminders\/?$/.test(path) || /\/api\/sync\/vaults\/[^/]+\/(?:prepare|history)$/.test(path) || method==="PUT"&&path==="/api/sites/retained" || method==="DELETE"&&/^\/api\/sites\/[^/]+$/.test(path);
- const bulk=!costly&&(/^\/api\/sync\//.test(path)||/^\/api\/sites\/[^/]+\/(?:files|missing|deploys)(?:\/|$)/.test(path));
+ const costly=(c.req.path.startsWith("/api/pulse/")&&!["GET","HEAD"].includes(method))||(method==="POST"&&/^\/api\/(?:ai\/(?:audio\/speech|translate)|sites\/?|sync\/vaults)$/.test(path)) || /\/api\/sites\/[^/]+\/domain$/.test(path) || method==="GET"&&path==="/api/sites/check" || method==="PUT"&&/^\/api\/reminders\/?$/.test(path) || /\/api\/sync\/vaults\/[^/]+\/(?:prepare|history)$/.test(path) || method==="PUT"&&path==="/api/sites/retained" || method==="DELETE"&&/^\/api\/sites\/[^/]+$/.test(path);
+ const bulk=!costly&&(path.startsWith("/api/pulse/")||/^\/api\/sync\//.test(path)||/^\/api\/sites\/[^/]+\/(?:files|missing|deploys)(?:\/|$)/.test(path));
  if(!costly&&!bulk)return next();
  const s=await auth.api.getSession({headers:c.req.raw.headers});if(!s)return next();
  const binding=costly?c.env.ABUSE_LIMIT:c.env.BULK_LIMIT;
@@ -202,7 +207,8 @@ const routes = app
 	.route("/sync",syncApi)
 	.route("/sites",sitesApi)
 	.route("/reminders",remindersApi)
-	.route("/ai",aiApi);
+	.route("/ai",aiApi)
+	.route("/pulse",pulseApi);
 
 app.notFound((c) => c.json({ code: "NOT_FOUND" }, 404));
 app.onError(async (err, c) => {
@@ -226,6 +232,7 @@ app.onError(async (err, c) => {
 export type AppType = typeof routes;
 
 export { SyncLive } from "./live";
+export {PulseProject} from "./pulse/project";
 
 // The security headers of static/_headers, on what the Worker itself
 // serves (Cloudflare applies _headers only to assets it serves directly).
@@ -255,6 +262,11 @@ const DAILY = "0 4 * * *";
 export default {
 	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
 		const url = new URL(req.url);
+		if(url.hostname===env.PULSE_INGEST_HOST)return secure(await pulseIngest(req,env));
+		if(url.hostname===env.PULSE_PUBLIC_HOST)return secure(await servePulsePage(req,env)??new Response("Not found",{status:404}));
+		const origin=req.headers.get("origin"),pulseOrigin=env.PULSE_APP_URL;
+		const pulseCors=origin===pulseOrigin&&!!pulseOrigin&&/^\/api\/(?:pulse(?:\/|$)|me(?:\/language)?$|auth\/(?:get-session|sign-out)$)/.test(url.pathname);
+		if(pulseCors&&req.method==="OPTIONS")return secure(new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":pulseOrigin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Methods":"GET, POST, PUT, PATCH, DELETE, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-Blup-Language","Access-Control-Max-Age":"600",Vary:"Origin"}}));
 		const staffApi = url.pathname.startsWith("/api/staff");
 		const staffPage = url.pathname === "/staff" || url.pathname.startsWith("/staff/");
 		if (env.STAFF_HOST) {
@@ -262,13 +274,18 @@ export default {
 			const api = url.pathname.startsWith("/api/");
 			if (onStaff ? api && !staffApi : staffApi || staffPage) return secure(Response.json({ code: "NOT_FOUND" }, { status: 404 }));
 		}
-		if (url.pathname.startsWith("/api/")) return secure(await app.fetch(req, env, ctx));
+		if (url.pathname.startsWith("/api/")){
+		 const response=secure(await app.fetch(req, env, ctx));
+		 if(pulseCors){response.headers.set("Access-Control-Allow-Origin",pulseOrigin);response.headers.set("Access-Control-Allow-Credentials","true");response.headers.append("Vary","Origin");}
+		 return response;
+		}
 		return secure(await env.ASSETS.fetch(req));
 	},
 	// Every 5 minutes, the calendar's reminders by e-mail; once a day, the
 	// clean-up of old versions and unused blocks.
 	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
-		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))]));
-		else ctx.waitUntil(Promise.all([sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)]).then(()=>flushSitePurges(env)));
+		if(controller.cron==="* * * * *"){ctx.waitUntil(checkDue(env));return;}
+		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([pulseMaintenance(env,true),cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))]));
+		else ctx.waitUntil(Promise.all([pulseMaintenance(env),sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)]).then(()=>flushSitePurges(env)));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>;

@@ -9,7 +9,7 @@
 	// the menu on the left, the page on the right. `tag` names the area under
 	// the logo; `foot` goes under the menu (signing out, who is signed in).
 	type Link = { href: string; label: string; Icon: Component; match?: (path: string) => boolean };
-	let { links, home, tag, foot, wide = false, languages=false, children }: { links: Link[]; home: string; tag?: string; foot?: Snippet; wide?: boolean; languages?:boolean; children: Snippet } = $props();
+	let { links, home, tag, foot, wide = false, languages=false, mint=false, children }: { links: Link[]; home: string; tag?: string; foot?: Snippet; wide?: boolean; languages?:boolean;mint?:boolean; children: Snippet } = $props();
 
 	const here = (l: Link) => (l.match ? l.match(page.url.pathname) : page.url.pathname === l.href);
 </script>
@@ -17,7 +17,7 @@
 <div class="min-h-dvh md:grid md:grid-cols-[17rem_1fr]">
 	<aside class="border-neutral-200 px-6 py-6 md:border-r md:py-10 md:pl-10 dark:border-neutral-800">
 		<a href={home} class="inline-flex flex-col items-start gap-1" aria-label="Blup">
-			<BlupLogo class="h-8 w-auto text-[#0e1b45] dark:text-white" />
+			<BlupLogo {mint} class="h-8 w-auto text-[#0e1b45] dark:text-white" />
 			{#if tag}<span class="text-xs font-bold tracking-wider text-blup uppercase">{tag}</span>{/if}
 		</a>
 		<nav class="mt-6 flex flex-wrap gap-1 md:mt-8 md:grid">

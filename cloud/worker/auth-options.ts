@@ -21,6 +21,7 @@ const STUDIO_CLIENT_ID = "blup-studio";
 
 type AuthConfig = {
 	appUrl: string;
+	pulseUrl?:string;
 	rpID: string;
 	secret: string;
 	turnstileSecret: string;
@@ -54,7 +55,7 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 		// handler must never write an older event after that reconciliation.
 		disabledPaths: ["/stripe/webhook","/subscription/success"],
 		secret: cfg.secret,
-		trustedOrigins: [cfg.appUrl],
+		trustedOrigins: [cfg.appUrl,...(cfg.pulseUrl?[cfg.pulseUrl]:[])],
 		database: drizzleAdapter(db, { provider: "sqlite", schema }),
 		// UUIDv7 (RFC 9562): time-ordered, so new rows land at the end of the
 		// D1 index, and not guessable. The uuid package keeps a counter within
