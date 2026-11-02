@@ -76,7 +76,7 @@ Hit do cache evita executar o serving interno e reduz leituras R2 esperadas, mas
 
 `githubClient` usa `credentials.toml`, verifica `GET /user` e orienta a criação de token pessoal quando necessário. O link abre o formulário fine-grained com Contents, Pages e Issues em escrita, com Metadata em leitura, sem Administration, e duração sugerida de 366 dias. A interface orienta o escopo de repositórios. O cliente usa a API versionada em `2026-03-10` e cabeçalhos de autenticação implementados em `internal/deploy/github/client.go`.
 
-O pacote tem implementação de OAuth Device Flow em `internal/deploy/github/auth.go`, com início, polling, expiração, `authorization_pending` e `slow_down`. Os fluxos atuais da CLI e do Studio conectam por token colado e não acionam esse fluxo como login padrão. `StartAuth` exige escopos explícitos; não acrescenta permissões amplas quando a lista está vazia.
+A conexão GitHub da CLI e do Studio usa token pessoal informado pela pessoa. O Device Flow sem consumidor e o arquivo `internal/deploy/github/auth.go` foram removidos na rodada 4. Isso não remove a autorização de aparelho do Blup Cloud, que é outro fluxo, em `internal/blupcloud` e Better Auth.
 
 O cliente HTTP classifica erros de token, permissão, conflitos, rate limit, arquivo grande e Pages. Possui repetição, controle de intervalos entre escritas e leitura do atraso de rate limit. Os testes substituem endpoints HTTP por servidores falsos.
 

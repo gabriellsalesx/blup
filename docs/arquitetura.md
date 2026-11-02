@@ -1,6 +1,6 @@
 # Arquitetura do Blup
 
-Retrato do código em 02/11/2026, incluindo os contratos finais da rodada 3. Consulte o [índice da spec](spec/README.md), o [guia de produção](deploy.md) e o [modelo de segurança](seguranca.md). Código e configuração versionados prevalecem sobre mensagens de commit e textos de exemplo.
+Retrato do código em 02/11/2026, incluindo os contratos da rodada 4. Consulte o [índice da spec](spec/README.md), o [guia de produção](deploy.md), o [checklist operacional](deploy-checklist.md) e o [modelo de segurança](seguranca.md). Código e configuração versionados prevalecem sobre mensagens de commit e textos de exemplo.
 
 ## Componentes e fronteiras
 
@@ -59,9 +59,9 @@ O arquivo local de notas é legível no disco. A cifra de ponta a ponta é a fro
 
 ## Criar e escrever
 
-`Onboarding.svelte` reúne tema, seções, nome e origem das notas e chama `CreateSite`; `VaultOnboarding.svelte` cria ou associa um cofre `kind = "notes"`, sem publicação. A CLI tem seu próprio assistente. O serviço Go valida o diretório técnico, cria a configuração e escreve exemplos quando aplicável. No Studio, criação não instala mais uma pasta de modelos do Obsidian. Feedback Bento e Podcast de Mochi/Nori são acrescentados depois, por Seções.
+`Onboarding.svelte` reúne tema, seções, nome e origem das notas e chama `CreateSite`; `VaultOnboarding.svelte` cria ou associa um cofre `kind = "notes"`, sem publicação. A CLI tem seu próprio assistente. O serviço Go valida o diretório técnico, cria a configuração e escreve exemplos quando aplicável. O Studio cria suas notas e exemplos diretamente na pasta escolhida. Feedback Bento e Podcast de Mochi/Nori são acrescentados depois, por Seções.
 
-O workspace lê corpo e propriedades separadamente, agenda salvamento e observa alterações externas. O editor grava na mesma pasta usada pelo Obsidian ou por agentes no terminal. Renomear e mover corrigem os formatos de links reconhecidos pelo código; conflito de edição não é um merge semântico automático. A lixeira e snapshots ficam fora da pasta publicada. Cofres acrescentam nota do dia, agenda, mapa, backlinks, `.canvas`, `.draw` e `.table`.
+O workspace lê corpo e propriedades separadamente, agenda salvamento e observa alterações externas. O editor grava arquivos Markdown na pasta escolhida, também acessível aos agentes no terminal. Renomear e mover corrigem os formatos de links reconhecidos pelo código; conflito de edição não é um merge semântico automático. A lixeira e snapshots ficam fora da pasta publicada. Cofres acrescentam nota do dia, agenda, mapa, backlinks, `.canvas`, `.draw` e `.table`.
 
 A home Bento pode renderizar uma seção em `/`, com paginação em `/page/2/`, mantendo título/descrição do site e canonical unificado. `home` guarda o nome da pasta; `logo_link` controla o destino do logo em todos os modelos. Guias de agentes ficam em `ContentDir()`: `INSTRUCTIONS.md` contém o texto por modelo/cofre, e três arquivos de entrada apontam para ele; texto editado pela pessoa é preservado.
 
@@ -156,21 +156,29 @@ Eventos são notas em Agenda/Calendar, com repetição e antecedência. Avisos l
 ```mermaid
 sequenceDiagram
   participant U as Painel da conta
-  participant A as Better Auth e plugin Stripe
+  participant A as API Hono e Better Auth
+  participant W as Reconciliador do Worker
   participant T as Stripe
   participant D as D1
+  U->>A: Consultar planos e precos disponiveis
+  A->>T: Ler precos ativos por lookup key
+  A-->>U: Valor e moeda ou periodo indisponivel
   U->>A: Pedir assinatura com e-mail vinculado
   A->>T: Criar cliente e Checkout por lookup key
   T-->>U: Pagina de pagamento
-  T->>A: Webhook assinado
-  A->>D: Estado da assinatura
-  A->>D: Evento financeiro com ID unico
+  T->>W: Webhook assinado com ID do evento
+  W->>D: Lease por evento e assinatura
+  W->>T: Consultar estado atual da assinatura
+  W->>D: Batch de estado, evento financeiro e recibo
+  W-->>T: Confirmar ou pedir repeticao com 503
   U->>A: Consultar plano e uso
 ```
 
-O plano resulta da assinatura reconhecida, ou cortesia específica do proprietário, e é conferido nas APIs. Stripe cuida do checkout e portal em suas próprias páginas. O código não armazena números de cartão. A staff usa Cloudflare Access, valida JWT novamente e aplica papéis `support`/`admin`; ações ficam no registro de auditoria. Não há impersonação do usuário ou interface de leitura de notas.
+O plano resulta da assinatura reconhecida, ou cortesia específica do proprietário, e é conferido nas APIs. Stripe cuida do checkout e portal em suas próprias páginas. O código não armazena números de cartão. `/api/plans` lê valor/moeda do catálogo Stripe, com cache por isolate de dez minutos e último catálogo válido em falha. Período indisponível é `null` e bloqueia upgrade também no servidor; não há valor comercial fixo no plano Go/TypeScript. O script `stripe:setup` apenas confere preços. A cota de IA continua definida separadamente em código. A staff usa Cloudflare Access, valida JWT novamente e aplica papéis `support`/`admin`; ações ficam no registro de auditoria. Não há impersonação do usuário ou interface de leitura de notas.
 
-O Worker da conta executa limpeza diária às 04:00 UTC, incluindo purga de contas elegíveis após 30 dias. A cada cinco minutos processa lembretes, reservas/tickets expirados, limpeza de sites, descarte de sync, cancelamentos financeiros, avisos de downgrade, desligamento de domínios e a fila de purgas do cache. Publicação de código, migração D1, objetos R2, configuração de e-mail e lançamento do Studio são operações diferentes. As tarefas e os limites de rollback estão em [deploy](deploy.md).
+O webhook é atendido antes do handler Better Auth. Os caminhos webhook/success do plugin estão desativados; o success próprio só redireciona para uma URL local validada. A leitura atual da subscription ocorre sob lease, evitando aplicar um snapshot antigo entregue depois de um evento novo. Outra lease, por conta, serializa a adoção de referência pendente entre assinaturas distintas, sem sobrescrever uma com a outra. O batch D1 exige leases válidas e grava recibo único por `event.id`; falha permite repetição. A migração `0013` cria recibos e índices. A política dos preços antigos usa lookup key ou `metadata.blup_plan` no Price/Product; transferir lookup key não migra uma assinatura existente.
+
+O Worker da conta executa limpeza diária às 04:00 UTC, incluindo purga de contas elegíveis após 30 dias e até 500 recibos de webhook com mais de 90 dias. Esse limite permite atraso na remoção quando há acúmulo. A cada cinco minutos processa lembretes, reservas/tickets expirados, limpeza de sites, descarte de sync, cancelamentos financeiros, avisos de downgrade, desligamento de domínios e a fila de purgas do cache. Publicação de código, migração D1, objetos R2, configuração de e-mail e lançamento do Studio são operações diferentes. As tarefas e os limites de rollback estão em [deploy](deploy.md).
 
 ## Domínio, retenção e mudanças de direitos
 

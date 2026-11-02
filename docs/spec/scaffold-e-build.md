@@ -16,7 +16,7 @@ Os diretórios de overrides são preservados. O tema pode ser substituído parci
 - Remoção de acentos em caminhos, aliases desativados, robots habilitado, taxonomias `tags` e `authors`, paginação de 10 itens.
 - Datas na ordem `date`, `publishDate`, `created`, nome do arquivo e mtime para blogs. Bento usa somente as três propriedades, evitando reordenar documentação por mtime.
 - `lastmod` por `lastmod`, `updated`, `modified`, mtime.
-- Goldmark com quebra de linha compatível com a configuração `strictLineBreaks` do Obsidian, atributos de bloco e título, `==marca==` e passthrough de `$...$`/`$$...$$`.
+- Goldmark com quebra de linha compatível com a configuração de origem `strictLineBreaks`, atributos de bloco e título, `==marca==` e passthrough de `$...$`/`$$...$$`.
 - Sumário com níveis H2 a H3. Autor padrão em cascade para páginas, quando configurado.
 - Parâmetros do modelo, descrição, autor, pasta publicada, pasta de perfis, feedback e cookies. Bento recebe `home`; os três modelos recebem `logoLink` somente quando validado. Esses valores vêm de `blup.toml`, não de uma nota de conteúdo. Senhas e tokens não são parâmetros Hugo do scaffold.
 

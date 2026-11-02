@@ -23,7 +23,7 @@ Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsal
 | `studio.go` | Sites, abrir, árvore, leitura/escrita simples, prévia, mapa nota/página e consulta `Language` |
 | `create.go` | Descoberta de cofre/pastas, sugestões, validação, criação, abrir existente, recentes, retirada e exclusão de site |
 | `notes.go` | Corpo/propriedades, criar nota/pasta, capa, imagens coladas e autores disponíveis |
-| `files.go` | Renomear, mover, copiar, lixeira, link Markdown, abrir no Obsidian e gerenciador de arquivos |
+| `files.go` | Renomear, mover, copiar, lixeira, link Markdown, abrir notas externamente e gerenciador de arquivos |
 | `settings.go` | Identidade, menu, redes, imagens, seções, cookies, senhas, feedback e lixeira |
 | `feedback_board.go` | `FeedbackPosts` e `SetFeedbackStatus`, para os pedidos reais do quadro Bento |
 | `translate.go`, `localtr.go` | Idiomas de notas e site, tradução remota/local, revisão, textos de propriedades e atualização da prévia |
@@ -75,6 +75,8 @@ Classes globais: `.btn` (`.ghost`, `.big`), `.card`, `.field`, `.choices`, `.lin
 
 `Welcome.svelte` usa as etapas `start`, `account` e `bring`. A primeira permite começar sem conta ou entrar no Blup Cloud para trazer dados de outro computador. O idioma já acompanha a configuração ou o sistema; não há etapa obrigatória de escolha de idioma ou de criação de senha geral de posts. Ao entrar e abrir a chave das notas (`account.notes === "ready"`), consulta `BlupSites`; `BringBlupSite` recebe o cofre escolhido e abre seu workspace. Concluir grava `welcomed = true`.
 
+A primeira imagem é `frontend/public/scenes/blog-pessoal.svg`; as etapas da conta usam a cena `boas-vindas-encontrados.svg`. As cenas antigas de idioma, GitHub, senha e janela foram removidas por falta de uso, sem remover a tela de boas-vindas.
+
 A descoberta GitHub continua no bloco "No seu GitHub" de `Onboarding.svelte`: com conta conectada, consulta `CloudSites`, filtra os resultados já locais e chama `BringSite`. São caminhos distintos da recuperação cifrada do Blup Cloud. Consulte [notas e sync](notas-e-sync.md) e [Blup Cloud](blup-cloud-sync.md).
 
 `Home.svelte` lista sites locais, permite arrastar para ordenar ou criar grupos e oferece menu com ações equivalentes. Sites e Cofres mostram duas linhas de cartões cada (o cartão de criar conta; as colunas seguem a largura da janela, medidas no grid); passando disso, "Ver todos (n)" mostra a lista inteira com uma busca pelo nome (que acha também os sites dentro de pastas) e "Mostrar menos" volta. Uma pasta conta como um cartão, mostra até três ícones e o número de itens, e não tem limite de itens. Cofres se agrupam do mesmo jeito, na própria seção: sites e cofres dividem a lista salva (`HomeItem`), mas uma pasta guarda só um dos tipos (o do primeiro item), e o arrastar e o "⋯" só oferecem pastas do mesmo tipo. Grupos e ordem ficam em `studio.json`. O "⋯" do cartão também tem Abrir a pasta (`OpenSiteFolder`, só para sites que o Blup conhece: abre o gerenciador de arquivos na pasta das notas) e Apagar o site ou Apagar o cofre, conforme o tipo. Retirar da lista permite desfazer por toast. A home vazia oferece criar site ou cofre; não força o assistente de site.
@@ -101,7 +103,7 @@ O explorador tem criação de nota/pasta, expansão, recolhimento e menu de cont
 
 ## Editor e propriedades
 
-`Editor.svelte` usa CodeMirror 6 com Markdown, cores, undo/redo, sugestões, tabelas e comandos de formatação. Fornece negrito, itálico, tachado, destaque, código, headings, listas, tarefas, citações, callouts, imagens, links, tabelas, regra e comentários Obsidian. O botão de alinhamento oferece esquerda, centro, direita e justificado, usando atributos como `{.text-center}` nos casos aplicáveis. Menu de contexto inclui copiar, recortar, colar e colar como texto sem formatação.
+`Editor.svelte` usa CodeMirror 6 com Markdown, cores, undo/redo, sugestões, tabelas e comandos de formatação. Fornece negrito, itálico, tachado, destaque, código, headings, listas, tarefas, citações, callouts, imagens, links, tabelas, regra e comentários `%%...%%`. O botão de alinhamento oferece esquerda, centro, direita e justificado, usando atributos como `{.text-center}` nos casos aplicáveis. Menu de contexto inclui copiar, recortar, colar e colar como texto sem formatação.
 
 Digitar `[[` oferece notas, mas a seleção insere um link Markdown relativo compatível com o site. Há seletor de nota. O botão de link e Ctrl/Cmd+K chamam `mdcommands.link`, que insere `[texto](https://)` e seleciona o endereço para edição no próprio documento, sem diálogo de URL. Colar ou arrastar imagens grava anexo e insere referência. `mdcommands.ts`, `table.ts`, `callouts.ts` e `mdextras.ts` concentram comportamentos de edição.
 
@@ -154,7 +156,7 @@ O botão Nota do dia (`Ctrl+Alt+D`) chama `DailyNote(pasta, tag)` com os valores
   - `---` vira uma linha (o front matter do topo fica como escrito);
   - item de lista com `-`, `*` ou `+` mostra um ponto; tarefa (`- [ ]`) mostra uma caixa que marca com um clique, e a feita fica riscada;
   - imagem (`![](caminho)` relativo à nota, ou `![[foto.png]]`) aparece no lugar, lida por `NoteImage` como `data:` URL. Imagem da web (`https://…`) espera um clique em "Mostrar imagem de …", porque carregar avisa o servidor dela que a nota foi aberta.
-- Títulos recolhem como no Obsidian: uma seta à esquerda de cada `#` a `######` que tenha conteúdo recolhível, visível no hover ou sempre quando recolhido, esconde tudo até o próximo título do mesmo nível ou maior. Os atalhos de dobra vêm do `basicSetup` do CodeMirror: `Ctrl+Shift+[` recolhe, `Ctrl+Shift+]` mostra, `Ctrl+Alt+[` recolhe todos e `Ctrl+Alt+]` mostra todos.
+- Títulos têm recolhimento por nível: uma seta à esquerda de cada `#` a `######` que tenha conteúdo recolhível, visível no hover ou sempre quando recolhido, esconde tudo até o próximo título do mesmo nível ou maior. Os atalhos de dobra vêm do `basicSetup` do CodeMirror: `Ctrl+Shift+[` recolhe, `Ctrl+Shift+]` mostra, `Ctrl+Alt+[` recolhe todos e `Ctrl+Alt+]` mostra todos.
 
 `Editor.svelte` tem dois menus de digitação, ativados só no começo da linha ou depois de um espaço (assim um e-mail não abre o `@`) e fora de código; Enter ou Tab escolhem.
 
@@ -185,7 +187,7 @@ O painel do canto (Ajustes do mapa) tem quatro partes que abrem e fecham, botão
 
 ## Canvas e desenhos
 
-Canvases (`.canvas`) e desenhos (`.draw`) são do próprio Studio, feitos em Svelte, sem biblioteca de terceiros; não precisam do Obsidian. A faixa lateral (`Ctrl+Alt+C` e `Ctrl+Alt+W`), o menu de pasta e o menu `/` os criam na hora, sem pedir nome (`CreateCanvas`, `CreateDrawing`): "Desenho 2026-11-01 14.05.33" na pasta `Desenhos` ou "Canvas …" na pasta `Canvas`, ou na pasta cujo menu foi usado, e já abre. Arquivo vazio: `{"nodes":[],"edges":[]}` e `{"version":1,"elements":[]}`.
+Canvases (`.canvas`) e desenhos (`.draw`) são do próprio Studio, feitos em Svelte, sem biblioteca de terceiros. A faixa lateral (`Ctrl+Alt+C` e `Ctrl+Alt+W`), o menu de pasta e o menu `/` os criam na hora, sem pedir nome (`CreateCanvas`, `CreateDrawing`): "Desenho 2026-11-01 14.05.33" na pasta `Desenhos` ou "Canvas …" na pasta `Canvas`, ou na pasta cujo menu foi usado, e já abre. Arquivo vazio: `{"nodes":[],"edges":[]}` e `{"version":1,"elements":[]}`.
 
 `studio/boards.go` lê e grava o texto (`ReadBoard`, `SaveBoard`, só `.canvas`, `.draw` e `.table`), guarda imagens coladas e PNGs exportados na pasta de anexos (`SaveBoardImage`, via `app.PasteImage`, devolvendo o caminho no cofre) e entrega imagens do cofre como `data:` (`BoardFile`, só `image/*`). Renomear e copiar mantêm a extensão (`fileExt`). Sincronização e lixeira tratam esses arquivos como qualquer outro.
 
@@ -275,7 +277,7 @@ Avisos: com o Studio aberto ou na bandeja, `startReminders` (no `ServiceStartup`
 
 Configurações > Geral > Notificações (`Prefs.Notifications`, ligado por padrão; `SetNotifications`): desligado, o Studio não manda nenhum aviso do sistema e envia ao Blup Cloud uma lista vazia, o que cancela os e-mails pendentes. No Linux, a notificação leva o ícone do Blup como imagem (`notifyIcon`, o `appicon.png` gravado uma vez em `~/.cache/blup/notify-icon.png`, pela dica `image-path`); macOS e Windows mostram o ícone do app sozinhos.
 
-Avisos por e-mail permitem 50 tentativas por mês UTC no Max e 100 no Ultra. `pushMail` envia até 300 IDs opacos e horários, quando a lista muda ou a cada seis horas; falhas esperam cinco minutos. O ID usa HMAC-SHA-256 de cofre, nota, dia e antecedência com segredo local, truncado em 16 bytes hexadecimais (`internal/app/blup_reminders.go`). A API não recebe título ou anotações; a nota pode ser enviada separadamente pelo sync cifrado. O cron de cinco minutos reivindica o item e reserva cota antes de chamar `email.ts`, que envia mensagem genérica. Falha de entrega não tem reenvio garantido e pode consumir a tentativa. Listas substituem pendentes da conta, sem deduplicação universal entre computadores. A tela mostra uso mensal; limite zero é consultado novamente após seis horas. O contrato completo, incluindo cancelamento sem rede, armazenamento local e limpeza, está em [Calendário e lembretes](calendario-e-lembretes.md).
+Avisos por e-mail permitem 50 envios aceitos pelo provedor por mês UTC no Max e 100 no Ultra. `pushMail` envia até 300 IDs opacos e horários, quando a lista muda ou a cada seis horas; falhas esperam cinco minutos. O ID usa HMAC-SHA-256 de cofre, nota, dia e antecedência com segredo local, truncado em 16 bytes hexadecimais (`internal/app/blup_reminders.go`). A API não recebe título ou anotações; a nota pode ser enviada separadamente pelo sync cifrado. O cron de cinco minutos reivindica o item, reserva cota e conta a tentativa antes de chamar `email.ts`. Uma falha libera a reserva mensal e permite nova tentativa, até três por lembrete; aceitação não comprova entrega à caixa de entrada, e uma queda após enviar pode causar repetição. Listas substituem pendentes da conta, sem deduplicação universal entre computadores. A tela mostra uso mensal; limite zero é consultado novamente após seis horas. O contrato completo está em [Calendário e lembretes](calendario-e-lembretes.md).
 
 ## Prévia
 
@@ -283,11 +285,15 @@ Avisos por e-mail permitem 50 tentativas por mês UTC no Max e 100 no Ultra. `pu
 
 `AddSection`, `RemoveSection` e `RestoreSection`, em [studio/settings.go](../../studio/settings.go), chamam `sectionsChanged` depois de uma operação bem-sucedida. Em [studio/translate.go](../../studio/translate.go), essa rotina solicita o reinício de uma prévia em execução. O motivo é a descoberta de pastas pelo watcher do Hugo: uma seção pode ser copiada com todas as notas antes de o watcher passar a observar a pasta, deixando páginas ausentes até outra alteração. Não basta recarregar o iframe para Hugo descobrir essas notas.
 
+Apagar permanentemente por fora do Studio uma pasta do topo das notas também solicita esse reinício: `watchNotes`, em `studio/terminal.go`, chama `onFolderGone`, registrado por `Studio.Open`. O componente confere a origem completa da URL ao decidir se já está na mesma página; depois de reiniciar em outra porta, carrega novamente mesmo com caminho igual. Isso corrige a prévia da home Bento ao mudar a quantidade de seções.
+
 `restartPreview` interrompe o servidor de prévia e inicia outro; se a URL continua igual, emite `previewChanged`, e se mudou, emite `previewRestarted` com o novo endereço. O workspace recebe o endereço e segue a página da nota aberta. A operação trata o servidor local da prévia, sem reiniciar o aplicativo desktop. O caminho de tradução também pode solicitar reinício por `previewFollows` quando mudam os mounts ou os idiomas da configuração gerada.
 
 Os reinícios são serializados pelo mutex `restarting`; a rotina retorna se a prévia já estiver parada. Ao aceitar um processo recém-iniciado, `adopt`, em `studio/studio.go`, confere o site atual e a existência de outro processo já adotado. Descarta o processo que pertence a um site anterior ou que perdeu a disputa, mantendo só uma prévia registrada.
 
 `Preview.svelte` usa dois iframes. O próximo carrega oculto, recebe a posição de scroll e assume o lugar quando sinaliza pronto; há fallback de quatro segundos. A comunicação usa `postMessage` e scripts que o tema injeta somente em prévia. O parâmetro `_blup` identifica os frames. Não é scroll sincronizado por linha de Markdown: conserva a posição da página e segue relações nota/URL.
+
+A mensagem chega como `unknown` e passa por `previewMessage`, em `frontend/src/previewurl.ts`, antes de mudar estado. O guard verifica tipo de mensagem, caminho local, query e scroll finito; também são conferidos origem, `contentWindow` e marca daquele frame. `frontend/src/translatereply.ts` confere as respostas do worker de tradução local e a quantidade de textos precisa ser a mesma enviada. Campos numéricos do banco usam `typedValue`, em `frontend/src/fieldvalue.ts`, preservando número finito e ignorando entrada inválida ou sem mudança. Veja [tipagem e cobertura](tipagem-e-contratos.md#contratos-conferidos-na-rodada-4).
 
 `PreviewPage` e `NoteAt` leem `blup-map.json` no servidor local. Editar outra nota leva à sua página; navegar em link de página com nota abre essa nota no editor. Taxonomias sem arquivo podem continuar sem correspondente.
 
@@ -336,6 +342,12 @@ A lixeira do Blup fica em `<site>/.blup/trash`, fora das notas, com diretório d
 
 ## Configurações globais
 
+A aba Nuvem mostra o **ID da conta**, vindo de `/me` por `app.BlupAccount` e pelos bindings Wails. O botão de copiar dá retorno Copiado; a ajuda é Em caso de ajuda, informe seu ID. O ID identifica a conta e não é uma credencial. Ausência ou formato inválido é `ErrBadAnswer` no cliente Go, em vez de mostrar identidade vazia.
+
+Em Geral, com notificações ligadas e plano com e-mails, `ReminderEmails` informa `emailMissing`; uma conta só com passkey vê orientação para adicionar e-mail, em vez do contador como se pudesse receber mensagens. O aviso não desliga os lembretes locais. O servidor pula envios sem destinatário real antes de reservar a cota.
+
+`internal/app/channel.go` informa o canal de atualização. `Channel` injetado no build tem prioridade; no Linux também reconhece `FLATPAK_ID`/`/.flatpak-info`, AppImage por `APPIMAGE` e pacote instalado em `/usr/` fora de `/usr/local/`. No Windows reconhece executável em `WindowsApps` como Store. `UpdateInfo.updatesBy` passa pelos bindings; nos canais Store, Flatpak e pacote, Sobre orienta usar esse canal e não consulta GitHub. Instalação direta e AppImage mantêm a consulta, sem troca automática do executável.
+
 `SettingsModal.svelte` organiza as abas em grupos na lateral:
 
 - no topo, o cartão da conta do Blup Cloud (e-mail e plano, ou "Entrar no Blup Cloud"), que abre a aba Blup Cloud. Ela vale para todos os cofres e sites: entrar e sair (`CloudAccount.svelte` com `brief`), senha das notas e o uso do plano em barras: armazenamento, IA do mês (`BlupAIUsage`: percentual usado, data em que renova e quanto dá para usar agora pelo teto semanal), sites publicados e computadores, com Ver planos e Gerenciar conta;
@@ -371,7 +383,7 @@ O usuário pode alterar ou desativar cada um. Ao escolher uma combinação já u
 
 A aba Atalhos também mostra a lista fixa de comandos do editor, `k.editorKeys`: `Ctrl+S` salvar, `Ctrl+Z` e `Ctrl+Shift+Z` desfazer e refazer, `Ctrl+B` negrito, `Ctrl+I` itálico, `Ctrl+K` link, Tab aceita a sugestão, `@` menciona nota ou data, `/` abre as ações e os quatro atalhos de recolher títulos. Em Hyprland sem configuração automática, apresenta as instruções do binding e um botão para copiar a linha.
 
-Também em Configurações: a aba Narração tem uma voz padrão para cada idioma (Português, English, Español), para todos os sites; Geral tem a cópia diária das notas (`BackupDir` nas preferências: um `.zip` por dia em `internal/app/backup.go`, feito um minuto depois de abrir o site, guardando 7 cópias, nunca dentro das notas); Sobre procura versão nova (`CheckUpdate`, uma vez por dia ou no botão) e o rodapé mostra um ponto azul quando há.
+Também em Configurações: a aba Narração tem uma voz padrão para cada idioma (Português, English, Español), para todos os sites; Geral tem a cópia diária das notas (`BackupDir` nas preferências: um `.zip` por dia em `internal/app/backup.go`, feito um minuto depois de abrir o site, guardando 7 cópias, nunca dentro das notas); Sobre procura versão nova nas instalações diretas/AppImage (`CheckUpdate`, uma vez por dia ou no botão); nos canais gerenciados informa por onde atualizar e o rodapé mostra um ponto azul quando há.
 
 ## Idiomas e tradução
 

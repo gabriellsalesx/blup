@@ -151,8 +151,8 @@ Os nomes de dependências declarados pelo nfpm são:
 
 | Formato | GTK e WebKit | MP3 |
 | --- | --- | --- |
-| DEB | `libgtk-4-1`, `libwebkitgtk-6.0-4` | `gstreamer1.0-plugins-good` |
-| RPM | `gtk4`, `webkitgtk6.0` | `gstreamer1-plugins-good` |
+| DEB | `libgtk-4-1 (>= 4.10)`, `libwebkitgtk-6.0-4` | `gstreamer1.0-plugins-good` |
+| RPM | `gtk4 >= 4.10`, `webkitgtk6.0` | `gstreamer1-plugins-good` |
 | Arch | `gtk4`, `webkitgtk-6.0` | `gst-plugins-good` |
 
 Esses são nomes de runtime dos arquivos de pacote, não uma lista universal de pacotes de desenvolvimento. `studio/media.go` procura o plugin de parsers de áudio e pode desativar o player na prévia quando ausente. Isso não substitui instalar os componentes de mídia da distribuição.
@@ -167,13 +167,13 @@ Esses são nomes de runtime dos arquivos de pacote, não uma lista universal de 
 | macOS | `studio/build/darwin/Taskfile.yml`, `.app`, build universal, DMG, assinatura e notarização |
 | Windows | `studio/build/windows/Taskfile.yml`, recursos `.syso`, NSIS, MSIX e assinatura |
 
-O pacote nfpm em `studio/build/linux/nfpm/nfpm.yaml` identifica `blup-studio` com versão fixa `1.0.0`, sem derivação automática da tag Git, e usa `GIT_COMMITTER_NAME` e `GIT_COMMITTER_EMAIL` no campo `maintainer`. Instala o executável em `/usr/local/bin/blup-studio`, ícone em `/usr/share/icons/hicolor/128x128/apps/` e desktop entry em `/usr/share/applications/`. Seu hook ativo é `postinstall`; hooks adicionais existem como arquivos ou exemplos comentados e não devem ser presumidos ativos.
+O [nfpm.yaml](../../studio/build/linux/nfpm/nfpm.yaml) recebe `VERSION`, `GOARCH` e `DEB_MAINTAINER`. O workflow usa como padrão o contato corporativo `Blup <no-reply@getblup.io>`; o responsável deve conferir que o contato operacional escolhido funciona. O binário vai a `/usr/bin/blup-studio`; desktop entry, MetaInfo, ícones de 128/256/512 e licença/avisos vão a locais sob `/usr/share`. Não há scripts de instalação. O `.deb` exige GTK 4.10 e WebKitGTK 6.0, com GStreamer Good recomendado; os alvos são Ubuntu 24.04+ e Debian 13+.
 
-A tarefa Linux `package` chama AppImage, DEB, RPM e Arch. A criação de AppImage usada pelo Taskfile chama `wails3 generate appimage`. Existe também `studio/build/linux/appimage/build.sh`, script auxiliar com linuxdeploy, mas sua existência não significa que todas as tarefas usem esse script diretamente.
+A tarefa Linux `package` chama AppImage, DEB, RPM e Arch. AppImage usa `wails3 generate appimage` com `LDAI_OUTPUT` absoluto para funcionar também com caminhos contendo espaços. Existe um script auxiliar `studio/build/linux/appimage/build.sh`; ele não é o comando chamado por essa tarefa. RPM e pacote Arch via nfpm são capacidades locais; a receita AUR publicada é outra, em [aur/PKGBUILD](../../studio/build/linux/aur/PKGBUILD), com [update.sh](../../studio/build/linux/aur/update.sh) e [.SRCINFO](../../studio/build/linux/aur/.SRCINFO).
 
 As tarefas Linux `sign:deb`, `sign:rpm` e `sign:packages` chamam `wails3 tool sign`; podem usar a configuração de assinatura Wails ou `PGP_KEY`, e a tarefa DEB também passa `SIGN_ROLE` quando definido. A tarefa conjunta assina DEB e RPM, não todos os formatos Linux.
 
-As tarefas macOS e Windows incluem arquivos e opções de assinatura específicos. Ter esses templates não demonstra que certificados, chaves ou ferramentas de assinatura estejam instalados. `build/config.yml` informa produto, identificador e versão `1.0.0`. `Studio.Version()` retorna `app.Version`, agora injetada por ldflags nas Taskfiles Linux/macOS/Windows e nos builds cruzados, com `VERSION` padrão `1.0.0`. Para outra release, ajuste a versão passada e confira metadados fixos de pacote/recursos; não são todos derivados automaticamente da tag.
+As tarefas macOS e Windows incluem arquivos e opções de assinatura específicos. Ter esses templates não demonstra que certificados, chaves ou ferramentas de assinatura estejam instalados. A decisão atual é distribuir Windows/macOS sem assinatura de desenvolvedor e usar AppImage, AUR, `.flatpak` no GitHub e `.deb` no Linux. Flathub está fora deste lançamento. As tarefas de assinatura nativa continuam disponíveis para uma etapa futura. O [guia de instalação](../instalacao.md) explica SmartScreen e Gatekeeper; o [checklist](../deploy-checklist.md) separa geração de pacote de envio às lojas. `build/config.yml` informa produto, identificador e versão `1.0.0`. `Studio.Version()` retorna `app.Version`, injetada por ldflags nas Taskfiles Linux/macOS/Windows e nos builds cruzados, com `VERSION` padrão `1.0.0`. Para outra release, passe a versão real e confira os metadados de plataforma. O workflow já deriva da tag a versão do binário Linux, nfpm, MetaInfo e nomes dos arquivos.
 
 Há tarefas adicionais `build:server`, `run:server`, `build:docker`, `run:docker` e `setup:docker`. O modo server usa tags `server` e `production` e pode construir sem GUI nativa. Isso é uma capacidade de build Wails presente no projeto, sem substituir as integrações desktop ou comprovar um serviço hospedado de Studio em produção. Também há assets/tarefas iOS de origem Wails; não há fluxo de release móvel do Blup no workflow atual.
 
@@ -183,7 +183,30 @@ Há tarefas adicionais `build:server`, `run:server`, `build:docker`, `run:docker
 
 O checksum é SHA-256 em `checksums.txt`, acompanhado de `checksums.txt.sig`, assinatura Ed25519 dos bytes exatos dos checksums. `internal/update`, `install.sh` e `install.ps1` dependem desses nomes. GoReleaser executa `go run ./scripts/sign-release` com a chave privada fornecida por `BLUP_RELEASE_KEY` no CI ou arquivo fora do repositório. O atualizador exige assinatura válida com a lista pública de `internal/update/keys.go` antes de conferir SHA-256 e substituir o executável; recusa versão igual/anterior e `dev`. Os instaladores iniciais continuam só com SHA-256. Rotação e preparação de chave estão em [deploy](../deploy.md#assinatura-da-autoatualização-cli). As notas de release são manuais; o changelog automático do GoReleaser está desativado.
 
-`.github/workflows/release.yml` dispara em tags `v*.*.*`, faz checkout completo, usa a versão Go do módulo, instala Hugo, roda testes da raiz e chama GoReleaser v2. Não compila Studio ou seus pacotes e não publica as ferramentas de voz nesse workflow.
+`.github/workflows/release.yml` dispara em tags `v*.*.*`. O job `release` faz checkout completo, usa Go do módulo, instala Hugo, testa a raiz e chama GoReleaser v2. O workflow também inclui os jobs Studio descritos abaixo; não publica as ferramentas de voz.
+
+### Pacotes e jobs do Studio
+
+O app ID atual é `io.github.gabriellsalesx.blupstudio`, licença `AGPL-3.0-only`. Antes do primeiro release, o dono precisa decidir se mantém esse identificador ou adota `io.getblup.Studio`; não mudar só um manifest, deixando outros formatos com identidade diferente.
+
+`studio-linux`, após a CLI, usa Ubuntu 24.04, Go do módulo Studio, Node 24 e Wails 3.1.0. Constrói AppImage, tarball, `.deb` e bundle Flatpak; valida MetaInfo/desktop entry e prevê lintian, instalação do `.deb` no Ubuntu 24.04/Debian 13 e resolução de bibliotecas no Arch e Flatpak. Esses checks do CI estão configurados, sem execução dos jobs comprovada nesta revisão.
+
+`studio-publish` baixa os artefatos Linux e publica na release os arquivos abaixo, com `studio-checksums.txt` e assinatura Ed25519 `studio-checksums.txt.sig`, usando `BLUP_RELEASE_KEY`:
+
+- `blup-studio_X.Y.Z_linux_amd64.tar.gz`, usado pela receita `blup-studio-bin` do AUR.
+- `blup-studio_X.Y.Z_x86_64.AppImage`.
+- `blup-studio_X.Y.Z_amd64.deb`.
+- `blup-studio_X.Y.Z_x86_64.flatpak`.
+
+O [bundle.sh](../../studio/build/linux/flatpak/bundle.sh) usa `org.gnome.Platform//51` e exporta o app com permissões explícitas de rede, áudio, renderização, notificações, bandeja, Documentos e `~/Blup`, sem home inteira. O runtime pode vir do Flathub; não há submissão do aplicativo lá. O bundle não é um repositório de atualização próprio.
+
+A receita AUR usa binário pré-compilado e dependências `gtk4`, `webkitgtk-6.0`, `libsoup3`, `glib2`, `glibc`, `pango`, `harfbuzz`, `cairo`, `gdk-pixbuf2`, `graphene`, `libx11` e `vulkan-icd-loader`; áudio e Hugo são opcionais. Antes do envio, `update.sh` recebe a versão publicada, lê o SHA-256 do tarball e regenera `.SRCINFO`. O script não verifica a assinatura Ed25519 da lista; o mantenedor deve conferir a procedência antes de usar o checksum. A receita com checksum placeholder não está pronta para submissão.
+
+`studio-msix` usa as variáveis `MSIX_IDENTITY_NAME`, `MSIX_PUBLISHER` e `MSIX_PUBLISHER_DISPLAY_NAME` do Partner Center. O [gerador](../../scripts/msix-manifest/main.go) preenche o [template Store](../../studio/build/windows/msix/AppxManifest.store.xml) e a tarefa empacota x64/arm64 com `CHANNEL=msstore`. Sem Publisher, o job é pulado com aviso. Os MSIX sem assinatura ficam apenas como artefatos da execução, sem upload à Store ou à release. Falta execução em Windows/MakeAppx e teste do pacote; os testes Go do gerador não substituem essa etapa.
+
+No handoff do Prumo, foram conferidos AppImage em caminho com espaços, MetaInfo também em modo pedantic, desktop entry, inspeção do `.deb`, receita AUR com makepkg/pacman e bundle instalado isoladamente com bibliotecas resolvidas. Lintian/instalação Debian e jobs GitHub ficaram para o CI; isso não comprova abertura gráfica em todos os sistemas. Preparação, requisitos da Store e publicação de receitas estão no [checklist](../deploy-checklist.md).
+
+A atualização via GitHub é consultada no Studio direto/AppImage/macOS; o executável não é substituído automaticamente. `internal/app/channel.go` e `internal/app/studio_update.go` deixam Store/MSIX, Flatpak e pacotes sob `/usr` com seu próprio canal, e a tela Sobre explica por onde atualizar.
 
 `install.sh` e `install.ps1` são instaladores da CLI. O download Hugo automático não oferece pacote extraível para macOS no código atual; um binário Hugo compatível já instalado permite usar o site ali. A CLI da release não oferece inferência local Kokoro por estar sem CGO.
 
@@ -219,6 +242,22 @@ Testes HTTP locais usam portas efêmeras próprias. Se o sandbox impedir `httpte
 | `internal/app/bento_home_test.go`, `logo_link_test.go` | Home como seção, URLs/pager/canonical/sitemap, nomes de pasta e links do logo nos três temas |
 | `internal/app/agents_test.go`, `agents_legacy_test.go` | Guias por modelo/cofre, preservação de edições e migração do texto antigo intacto |
 | `studio/frontend/tests/boards.test.ts`, `cloudhistory.test.ts`, `logolink.test.ts` | Canvas desconhecido preservado, total de conta/nullable e validação do link do logo |
+
+## Regressões da rodada 4
+
+| Arquivo | Cobertura |
+| --- | --- |
+| `internal/blupcloud/sites_answer_test.go` | Presença, nulos, invariantes de sites, deploy, listas missing, cofres, embrulhos, lembretes, purga e ID da conta |
+| `internal/app/notes_key_race_test.go` | Perder criação inicial da chave não conserva chave/recuperação local incorreta |
+| `studio/watch_test.go` | Exclusão externa de pasta do topo solicita reinício da prévia |
+| `studio/frontend/tests/previewurl.test.ts` | URL depois de reinício e parser de mensagens da prévia |
+| `studio/frontend/tests/translatereply.test.ts`, `fieldvalue.test.ts` | Resposta tipada da tradução e valor numérico finito, vazio e ausência de mudança |
+| `cloud/worker/pricing.test.ts`, `cloud/src/lib/api.test.ts` | Catálogo Stripe, cache/falha/indisponibilidade, configuração por RPC e formatação monetária |
+| `cloud/scripts/stripe-setup.test.ts` | Conferência de catálogo faz somente leitura e não cria preços |
+| `cloud/worker/security.test.ts`, `auth-tooling.test.ts` | Erros IA, embrulho atual, corrida da chave e integração de auth com serviços simulados |
+| `studio/frontend/tests/accountid.test.ts`, `cloud/src/lib/account-id.test.ts`, `ui/AccountId.test.ts` | Textos aprovados, copiar ID e feedback, nos limites de cada teste |
+
+Os testes frontend dessa rodada cobrem parsers/funções puras e contratos. Não constituem teste do `Preview.svelte` montado, do worker Bergamot completo ou da instalação do pacote em todos os sistemas.
 
 As corridas reportadas pela documentação têm testes normais com barreiras: PUT duplicado suspenso antes da lease e retomado depois do commit deve conservar bytes; upgrade que limpa `disable_at` antes do claim deve impedir DELETE externo. Há proteção de confirmação D1 perdida e regressão dos uploads normais paralelos, preservando exclusividade de preparo/purga. Verificar somente o status HTTP não comprova essas propriedades de integridade.
 

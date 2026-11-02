@@ -1,6 +1,6 @@
 # Tipagem e contratos de dados
 
-Auditoria das rodadas 2 e 3, conferida no código em 02/11/2026. Tipos de compilação descrevem valores esperados; dados vindos de HTTP, arquivos, armazenamento do navegador e sistema operacional exigem verificação em execução. Esta spec registra o estado implementado, incluindo limites residuais.
+Auditoria das rodadas 2, 3 e 4, conferida no código em 02/11/2026. Tipos de compilação descrevem valores esperados; dados vindos de HTTP, arquivos, armazenamento do navegador e sistema operacional exigem verificação em execução. Esta spec registra o estado implementado, incluindo limites residuais.
 
 ## Hono, Zod e painel da conta
 
@@ -19,7 +19,7 @@ Auditoria das rodadas 2 e 3, conferida no código em 02/11/2026. Tipos de compil
 | Catálogo e uso externos | Schemas/ranges para respostas consumidas; preços e custos finitos e não negativos |
 | D1 tipado por Drizzle | Tipos ajudam no código; parâmetros genéricos e enums TypeScript não validam por si só valores persistidos |
 
-A validação retorna 400 com `code: INVALID`, podendo incluir `fields`. APIs de produto usam `code`; os erros específicos de IA também mantêm `error: {code, message}`. O tratamento global preserva uma `HTTPException` só se sua resposta for JSON. Resposta textual vira JSON com `INVALID` no 400, `TOO_LARGE` no 413 ou `REQUEST_FAILED` nos demais, mantendo o status; no caminho de IA a exceção textual usa `INVALID` com o envelope próprio, conservando o status HTTP. Erros internos registram o nome da falha, sem corpo privado do provedor. Better Auth continua com seu contrato próprio de erros. Não há promessa de um único DTO para respostas binárias, WebSocket, autenticação e APIs de produto.
+A validação retorna 400 com `code: INVALID`, podendo incluir `fields`. APIs de produto usam `code`; os handlers IA e as rejeições comuns de origem, headers, limite de tráfego e corpo também mantêm `error: {code, message}` no caminho de IA. Fora dele, o tratamento global preserva `HTTPException` com resposta JSON; texto vira JSON com `INVALID` no 400, `TOO_LARGE` no 413 ou `REQUEST_FAILED` nos demais. No caminho IA, resposta JSON com `code` recebe o envelope próprio e exceção textual usa `INVALID`, conservando o status HTTP. Erros internos registram o nome da falha, sem corpo privado do provedor. Better Auth continua com seu contrato próprio de erros. Não há promessa de um único DTO para respostas binárias, WebSocket, autenticação e APIs de produto.
 
 `security.test.ts` verifica JSON/multipart malformados por status, Content-Type e `code`, além de caso específico de `/ai/translate`. As regressões resolvidas são testes normais, sem `it.fails`.
 
@@ -78,6 +78,18 @@ O manifesto aceita arquivos até `notesync.MaxFileSize`, 100 MiB, e quantidade d
 O cliente guarda `expiresAt` como texto, sem validar a data para controlar expiração local. O servidor controla a lease e os erros 409/410. Os tipos RPC continuam gerados da cadeia Hono. Veja [protocolo e limites](blup-cloud-sync.md#armazenamento-e-preparação-transacional).
 
 As duas corridas reportadas na revisão foram fechadas: domínio depende do claim retornado pelo D1, e PUT preparado usa estado lido após lease, chave física única por tentativa e CAS de adoção. Confirmação D1 perdida não deve apagar chave possivelmente adotada. Testes com barreiras verificam os cenários, sem afirmar que tipagem estática sozinha resolve concorrência.
+
+## Contratos conferidos na rodada 4
+
+O cliente Go verifica presença separadamente de valor zero. Em `internal/blupcloud/sites.go`, listar sites exige `limit >= -1` e a lista `sites`; cada site precisa de ID opaco, slug válido, URL HTTP(S) com host e sem usuário e contagens não negativas. Criar exige também o slug solicitado. A verificação de nome aceita somente `free`, `yours`, `taken`, `reserved` ou `invalid`; descarta sugestões inválidas e normaliza ausência para lista vazia. A confirmação de deploy exige URL válida.
+
+Em `client.go`, `missing` precisa existir, conter somente IDs do lote e não repeti-los, tanto para sync quanto para publicação. `vaults` ausente é erro, evitando interpretar uma resposta incompleta como ausência de cofres. O embrulho da chave precisa de `by_password`, `by_recovery` e `params.salt` não vazios. Purga exige `freedBytes` e `storageBytes` presentes e não negativos. `reminders.go` exige `limit` e `used` presentes e não negativos; `used` pode superar o limite após downgrade. Resposta inválida não confirma `pushMail`, que tenta novamente após cinco minutos. O ID de `/me` também precisa corresponder ao formato opaco de 1 a 128 letras, dígitos, `_` ou `-`. Zero e listas vazias legítimos continuam aceitos; essas verificações não são um schema obrigatório para todos os campos futuros ou ignorados de cada DTO.
+
+`Preview.svelte` recebe `MessageEvent<unknown>` e usa [previewurl.ts](../../studio/frontend/src/previewurl.ts): aceita `loaded`, `scroll` ou `ready`, caminho local até 2048 caracteres, query vazia ou iniciada em `?` até 4096 e posição finita, com negativo normalizado para zero. Confere origem, `contentWindow` e a marca `_blup` daquele frame antes de alterar estado. Reinício em outra porta recarrega mesmo se o caminho for igual.
+
+`localtranslate.ts` usa [translatereply.ts](../../studio/frontend/src/translatereply.ts): ID inteiro positivo, erro textual ou lista de textos. Exige um texto de resposta para cada item enviado. [fieldvalue.ts](../../studio/frontend/src/fieldvalue.ts) mantém campos numéricos como número finito, ignora entrada inválida e não grava sem mudança. Os testes desses três arquivos cobrem parsers e funções puras; não montam os componentes Svelte nem executam o worker Bergamot completo em Node.
+
+O endpoint público `/config` passou pelo cliente RPC e trata erro HTTP. `/plans` deriva de `AppType` com preços mensais/anuais anuláveis, conforme [Blup Cloud](blup-cloud-sync.md#planos-executados). O catálogo Stripe externo é conferido com Zod. O webhook próprio confere assinatura pelo SDK Stripe e valida por Zod os campos externos usados ao consultar o estado atual; webhook/success do plugin estão desativados. Better Auth mantém os contratos das demais rotas que implementa. `GET /reminders` também retorna `emailMissing: boolean`; o cliente Go aceita ausência como `false` para compatibilidade, sem relaxar presença/ranges de `limit` e `used`. O `check` de cloud inclui o script Node de conferência de preços, além do painel e Worker.
 
 ## Limites residuais conhecidos
 

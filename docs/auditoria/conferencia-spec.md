@@ -61,9 +61,9 @@ No fim há uma seção à parte com problemas no próprio código, achados duran
 - **Código**: `BLUP_NO_SEARCH` pula o Pagefind (`internal/app/hugo.go:145-147`). Falhas do Pagefind e do PWA só geram aviso (`hugo.go:156-158`, `:99-101`). A variável não aparece em nenhuma parte da spec.
 - **Correção**: citar `BLUP_NO_SEARCH` (também na tabela de variáveis de `configuracao.md`) e dizer que busca e PWA não interrompem o build.
 
-### M3. Arquivos do Obsidian alterados pelo Blup faltam na tabela de locais
+### M3. Arquivos de configuração ajustados pela CLI faltam na tabela de locais
 - **Spec**: `configuracao.md:9-19`, tabela "Locais e responsabilidades".
-- **Código**: o Blup altera a configuração do Obsidian do usuário: `.obsidian/app.json`, com backup `app.json.blup-backup` (`internal/obsidian/obsidian.go:184-197`), e também `.obsidian/templates.json` e `core-plugins.json` (`obsidian.go:213-240`). Também faltam na tabela:
+- **Código**: a CLI ajusta os arquivos de configuração da origem: `.obsidian/app.json`, com backup `app.json.blup-backup` (`internal/obsidian/obsidian.go:184-197`), e também `.obsidian/templates.json` e `core-plugins.json` (`obsidian.go:213-240`). Também faltam na tabela:
   - `<site>/hugo.toml` e `hugo.preview.toml` (`internal/scaffold/scaffold.go:43`, `:49`, `:59`);
   - `<cache>/blup/update.json` (`internal/update/update.go:303-308`);
   - `~/.config/hypr/bindings.lua` ou `.conf` (`studio/hyprland.go:49-55`, `:136`), que é montado a partir de `UserHomeDir` e ignora `XDG_CONFIG_HOME`;

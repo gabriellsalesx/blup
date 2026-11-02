@@ -1,161 +1,99 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-dark.svg">
-    <img src=".github/assets/logo.svg" alt="blup" width="220">
-  </picture>
-</p>
+# Blup
 
-<p align="center"><b>Suas notas do Obsidian viram um site.</b><br>Grátis, rápido e funciona offline. Um comando para publicar.</p>
+O Blup é um editor de notas e publicador de sites. O Studio permite escrever no computador, organizar cofres e criar um blog ou site de produto; a CLI transforma notas Markdown em páginas Hugo. As notas continuam sendo arquivos Markdown no disco. O Blup Cloud acrescenta conta, sincronização cifrada, histórico, IA e hospedagem conforme o plano.
 
-<p align="center"><a href="README.md">Read in English</a></p>
+<p align="center"><img src=".github/assets/blup.jpg" alt="Blup ao lado de um caderno cujas páginas viram um site" width="720"></p>
 
-<p align="center"><img src=".github/assets/blup.jpg" alt="O Blup, uma bolha azul, ao lado de um caderno aberto cujas páginas voam até um site" width="720"></p>
+## Documentação
 
-O Blup é um programa de terminal que transforma uma pasta do seu cofre do Obsidian num site: um blog pessoal ou um site de produto, com documentação, roadmap, changelog e central de ajuda. Você continua escrevendo no Obsidian. O Blup gera as páginas, a busca, as imagens e o SEO, e publica de graça no Cloudflare Pages ou no GitHub Pages.
-
-Não precisa saber programar. O Blup faz uma pergunta de cada vez, cada uma com a resposta sugerida, em português ou inglês.
-
-## O que vem pronto
-
-- **Dois temas**, cada um com um site de exemplo completo que ensina a usar o Blup:
-  - **Mochi**: blog pessoal com post em destaque, tags, autores, posts relacionados e barra de leitura.
-  - **Bento**: site de produto com documentação, roadmap, changelog, central de ajuda e blog. Cada parte é opcional.
-- **Do jeito do Obsidian**: propriedades, imagens, links entre notas, callouts, fórmulas, notas de rodapé, tarefas e `%%comentários%%` que não vão para o site.
-- **Embutido**: busca no site, tema claro e escuro, imagens em WebP, imagem de compartilhamento para cada página, RSS e mapa do site.
-- **Posts com senha**, criptografados quando o site é gerado. Sem servidor.
-- **Comentários e reações** nos dois temas: reações e comentários nos posts e, no Bento, também votos no roadmap e reações no changelog, guardados em issues de um repositório público `<site>-feedback` que o Blup cria. Quem visita entra com o GitHub e participa sem sair do site (pelo [blup-api](https://github.com/gabriellsalesx/blup-api)). Liga e desliga em `blup personalizar`.
-- **Cookies e estatísticas**: Google Analytics, Google Tag Manager, Meta Pixel, Umami e Plausible pelo `blup personalizar`, com banner de cookies opcional que só carrega o que a pessoa aceitar (vídeos do YouTube nas notas também esperam o aceite) e uma página de política de privacidade de modelo, escrita a partir das ferramentas, para editar no Obsidian.
-- **Instala como app** no celular e no computador e **abre sem internet**: o Blup faz os ícones de cada aparelho (inclusive o `favicon.ico`) a partir do favicon do site.
-- **Autores**: uma nota por pessoa, com foto, cargo, redes e bio.
-- **Offline primeiro**: as notas ficam no seu computador. Sincronize com um repositório privado no GitHub quando tiver internet e continue em outro computador. Sem git.
-- **Hospedagem grátis** no Cloudflare Pages (`seusite.pages.dev`) ou no GitHub Pages, e domínio próprio se você quiser.
-- **Tudo se configura pelo Obsidian ou pela CLI**: nome, menu, logo, favicon, redes e domínio são propriedades de uma nota ou respostas a perguntas.
-
-| Mochi | Bento |
+| Guia | Conteúdo |
 | --- | --- |
-| <img src=".github/assets/mochi.webp" alt="Tema Mochi: página inicial do blog"> | <img src=".github/assets/bento.webp" alt="Tema Bento: documentação com menu lateral"> |
+| [Especificação técnica](docs/spec/README.md) | Contratos atuais da CLI, Studio, temas, configuração e serviços |
+| [Arquitetura](docs/arquitetura.md) | Componentes, persistência e fluxos com diagramas |
+| [Deploy de produção](docs/deploy.md) | Cloudflare, banco, storage, e-mail, Stripe, DNS e distribuição desktop |
+| [Checklist de deploy](docs/deploy-checklist.md) | Ordem de lançamento, bloqueios e publicação dos canais |
+| [Instalar o Studio](docs/instalacao.md) | Windows/macOS sem assinatura e pacotes Linux |
+| [Segurança](docs/seguranca.md) | Cifra, dados visíveis, ameaças, limites e cotas |
+| [Blup Cloud](cloud/README.md) | Desenvolvimento do painel e dos Workers |
+| [Testes e build](docs/spec/testes-e-build.md) | Dois módulos Go, frontend, integração e pacotes |
 
-## Instalar
+A documentação foi revisada em 02/11/2026 contra o código. Recursos disponíveis no código e configuração de uma conta de produção são coisas distintas; o guia de deploy identifica os passos operacionais.
 
-macOS e Linux:
+## O que o projeto oferece
+
+- Studio desktop em Wails v3 e Svelte 5, com editor Markdown, propriedades, busca, anexos, autores, terminal de agentes, lixeira e prévia.
+- Cofres sem publicação, com nota do dia, calendário, lembretes no computador, mapa de notas, canvas, desenhos e bancos de dados baseados em arquivos.
+- Interface em português, inglês e espanhol, com troca de idioma sem recarregar o Studio.
+- Sites estáticos com busca Pagefind, imagens WebP, SEO, RSS, modo claro/escuro, app instalável e leitura offline.
+- Posts com corpo protegido por senha no build. Título, URL e capa continuam públicos; anexos exclusivos do corpo podem ser incorporados na cifra, com limites descritos na spec; `hidden` não é controle de acesso.
+- Comentários, reações e votos em issues do GitHub, com login pelo serviço [blup-api](https://github.com/gabriellsalesx/blup-api). O Bento tem quadro de pedidos Feedback acrescentado pelo Studio.
+- Narração local com Kokoro ou remota com OpenRouter/Blup Cloud, com voz por idioma. Blogs podem agrupar as narrações num Podcast com página e feed.
+- Tradução local com Firefox Translations ou remota com IA, gravada em notas por idioma. Sites traduzidos escolhem uma versão existente conforme o visitante e lembram a escolha manual.
+- Publicação em Cloudflare Pages, GitHub Pages ou `nome.getblup.site` pelo Blup Cloud. Domínio próprio também no Blup Cloud Max/Ultra, com prova TXT/SSL e republicação para usar o endereço oficial nas URLs absolutas.
+- Sync por repositório privado GitHub, ou pelo Blup Cloud com cifra de ponta a ponta. Conta e senha das notas são mecanismos separados.
+- Lembretes genéricos por e-mail no Max, até 50 por mês, e Ultra, até 100, separados das notificações gratuitas do computador.
+
+## Modelos de site
+
+| Modelo | Uso |
+| --- | --- |
+| Mochi | Blog com destaque, cartões, tags, autores e leitura |
+| Nori | Blog em coluna, listas compactas e compartilhamento ao fim dos posts |
+| Bento | Documentação, roadmap, changelog com calendário, ajuda, blog e Feedback |
+
+O Studio oferece os três modelos. O assistente de criação da CLI oferece Mochi e Bento. Feedback e Podcast são seções acrescentadas pelo Studio; a CLI continua gerando sites que já tenham essas notas. Os exemplos existem em português, inglês e espanhol.
+
+## Instalar e começar
+
+CLI em macOS/Linux:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.sh | sh
 ```
 
-Windows (PowerShell):
+CLI em PowerShell:
 
 ```powershell
 irm https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.ps1 | iex
 ```
 
-Os scripts baixam a última versão publicada, conferem o SHA-256 e instalam sem pedir senha de administrador.
+Os scripts de instalação inicial buscam a release e conferem somente SHA-256. A autoatualização CLI exige também assinatura Ed25519 dos checksums. Para o aplicativo desktop, consulte [Instalar o Blup Studio](docs/instalacao.md), com instruções de abertura sem assinatura no Windows/macOS e os canais Linux AppImage, AUR, bundle `.flatpak` no GitHub e `.deb`. A disponibilidade de cada pacote depende da release publicada. O responsável pelo lançamento segue o [checklist de deploy](docs/deploy-checklist.md).
 
-Com o Go 1.27 ou mais novo, também dá para usar:
+Para a CLI, execute `blup`, escolha o cofre/pasta, tema e dados do site, abra a prévia e depois publique. Uma pasta vazia recebe o tutorial do tema como notas editáveis. O Studio também aceita pastas comuns e oferece criação de cofre sem site.
 
-```sh
-go install github.com/gabriellsalesx/blup/cmd/blup@latest
-```
-
-## Seu primeiro site em cinco minutos
-
-1. Rode `blup`. Na primeira vez ele pergunta o idioma e abre o assistente de site novo.
-2. Escolha o cofre do Obsidian e a pasta que vira site (ou o cofre inteiro).
-3. Escolha o tema, dê um nome ao site e aperte Enter nas sugestões.
-4. Deixe o Blup ajustar o Obsidian para os links funcionarem na web (ele guarda uma cópia das suas configurações).
-5. Abra a prévia: o site aparece no navegador e atualiza a cada nota salva.
-6. Quando estiver bom, rode `blup publicar` e escolha Cloudflare Pages ou GitHub Pages.
-
-Se a pasta estiver vazia, o Blup a preenche com o site de exemplo do tema escolhido: um tutorial completo escrito como notas comuns. Leia, abra as notas no Obsidian para ver como cada página foi feita, depois edite e troque pelo seu conteúdo.
-
-Errou alguma resposta? Aperte **Esc** para voltar uma pergunta. **Ctrl+C** sai.
-
-## Comandos
-
-Rodar só `blup` abre um menu com tudo. Cada ação também tem um comando, em português ou inglês:
-
-| Português | Inglês | O que faz |
+| Inglês | Português | Operação |
 | --- | --- | --- |
-| `blup novo` | `blup new` | Cria um site novo |
-| `blup ver` | `blup preview` | Prévia no navegador, que atualiza sozinha |
-| `blup publicar` | `blup publish` | Coloca o site no ar |
-| `blup personalizar` | `blup customize` | Menu, seções, redes, logo, favicon, autor, domínio próprio, senha, comentários |
-| `blup sincronizar` | `blup sync` | Guarda as notas num repositório privado no GitHub |
-| `blup converter` | `blup convert` | Troca `[[wikilinks]]` por links padrão |
-| `blup gerar` | `blup build` | Gera o site em `public/`, sem perguntas; `--url https://site.pages.dev/bento/ --saida ../landing/bento` gera para uma subpasta e copia para outra pasta |
-| `blup idioma` | `blup language` | Troca o idioma do Blup |
-| `blup atualizar` | `blup update` | Atualiza o Blup (`--rollback` volta uma versão) |
+| `blup new` | `blup novo` | Criar site |
+| `blup preview` | `blup ver` | Abrir prévia |
+| `blup build` | `blup gerar` | Gerar `public/` |
+| `blup publish` | `blup publicar` | Publicar |
+| `blup sync` | `blup sincronizar` | Fluxo interativo de sync GitHub |
+| `blup customize` | `blup personalizar` | Personalizar site |
+| `blup convert` | `blup converter` | Converter wikilinks com backup |
+| `blup language` | `blup idioma` | Trocar idioma da CLI |
+| `blup update` | `blup atualizar` | Atualizar CLI; há opção de rollback |
 
-## Escrevendo
+Contas, sync Blup Cloud, calendário, voz e tradução têm suas telas no Studio. A [spec da CLI](docs/spec/cli.md) distingue os comandos dos serviços expostos pelo desktop.
 
-Cada nota da pasta do site vira uma página; cada subpasta vira uma seção. Propriedades opcionais no topo da nota controlam o resto:
+## Dados e privacidade
 
-| Propriedade | O que faz |
-| --- | --- |
-| `title`, `description` | Título e o resumo que aparece nas listas, no Google e nas redes |
-| `date`, `tags`, `image` | Data do post, assuntos, capa (`"[[minha-capa.jpg]]"`) |
-| `authors` | Quem escreveu, como `[Ana, Bruno]` |
-| `draft: true` | Só na prévia, nunca publicado |
-| `hidden: true` | Publicado, mas fora das listas e do Google |
-| `password` | Tranca o post; `password: sim` usa a senha geral |
-| `weight` | Ordem nos menus e na documentação |
+Notas e configurações técnicas ficam em diretórios separados. Publicar envia a saída estática, não o diretório do cofre inteiro. Sincronizar não publica o conteúdo. No Blup Cloud, notas, nomes de cofres e manifestos são cifrados antes de sair do computador; o servidor ainda vê metadados de uso. IA remota recebe o texto em claro para processar. Não existe recuperação da cifra sem senha, recuperação ou chave local. Consulte [segurança](docs/seguranca.md).
 
-As configurações do site ficam nas propriedades da nota `_index` da pasta do site: `site_name`, `site_description`, `logo`, `favicon`, `menu`, `social`, `button_text` e `button_link`. O site de exemplo explica cada uma.
+## Desenvolvimento
 
-## Suas notas e seu site
-
-Ficam separados de propósito:
-
-```
-você escreve no Obsidian
-        │
-        ├── blup sincronizar ──► repositório PRIVADO (só as notas)
-        │                          └─ outro computador baixa e continua escrevendo
-        │
-        └── blup publicar ─────► site PÚBLICO (só as páginas geradas)
-```
-
-Rascunhos, notas particulares e o texto aberto dos posts com senha ficam nas notas. O site público recebe só o que deve mostrar.
-
-## Atualizações
-
-Uma vez por dia, ao abrir o menu, o Blup confere se há versão nova e sempre pergunta antes de atualizar. Os temas vêm dentro do Blup, então os sites recebem o tema novo na próxima prévia ou publicação. `blup atualizar --rollback` volta para a versão anterior.
-
----
-
-## Desenvolver
+O módulo Go principal é `github.com/gabriellsalesx/blup`. `studio/` tem seu próprio `go.mod` com `replace` para a raiz. `cloud/` contém Hono, Better Auth, Drizzle/D1, R2, Stripe e painel SvelteKit estático. O tema Hugo fica embutido no executável; não é o painel do Blup Cloud.
 
 ```sh
 go build -o bin/blup ./cmd/blup
-./bin/blup        # abre o menu
+go vet ./...
 go test ./...
+(cd studio && go vet . && go test ./...)
+(cd studio/frontend && npx svelte-check)
+(cd cloud && npx tsc -p worker/tsconfig.json --noEmit && npx vitest run)
 ```
 
-O Blup baixa o Hugo e o Pagefind sozinho na primeira vez que precisa (versões fixas, conferidas por SHA-256).
+O build desktop requer frontend compilado e dependências nativas. Os testes de Hugo precisam de binário compatível para executar as integrações em vez de pulá-las. Os [comandos de build e empacotamento](docs/spec/testes-e-build.md) detalham isso. Não use configuração de produção ou serviços pagos reais para testes automatizados.
 
-| Pasta | O quê |
-| --- | --- |
-| `cmd/blup` | ponto de entrada |
-| `internal/app` | menu, assistente, prévia, publicação, personalizar, sincronização; `starter/` tem os sites de exemplo |
-| `internal/i18n` | todos os textos da CLI (EN/PT) |
-| `internal/obsidian` | cofres, configurações do Obsidian, propriedades das notas |
-| `internal/scaffold` | gera o `hugo.toml` e copia o tema |
-| `internal/deploy/github`, `internal/deploy/cfpages` | GitHub Pages e Cloudflare Pages pelas APIs, sem git nem wrangler |
-| `internal/notesync` | sincronização das notas com um repositório privado |
-| `internal/lock` | criptografia dos posts com senha |
-| `internal/pwa` | ícones do app, `favicon.ico` e a cópia offline (service worker) |
-| `theme/` | o tema Hugo, embutido no executável |
+## Licença e contribuição
 
-### Publicar uma versão
-
-1. Escreva as notas da versão (PT e EN).
-2. `git tag v1.2.3 && git push origin v1.2.3`
-3. O GitHub Actions roda os testes e o GoReleaser publica os executáveis e o `checksums.txt`.
-
-## Licença
-
-[GNU AGPL-3.0](LICENSE): você pode usar, estudar, modificar e compartilhar o Blup; se compartilhar uma versão modificada, ou oferecê-la como serviço pela internet, compartilha o código dela sob a mesma licença. As versões até a v0.6.x saíram sob a licença MIT e continuam assim.
-
-Para contribuir, veja o [CONTRIBUTING.md](CONTRIBUTING.md): os pull requests pedem o [CLA](CLA.md), assinado uma vez com um clique.
-
-As partes de terceiros mantêm as próprias licenças: veja [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Os ícones são da [Lucide](https://lucide.dev) (ISC, veja `theme/licenses`).
+[GNU AGPL-3.0](LICENSE). Dependências mantêm suas licenças em [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Ícones de interface usam Lucide. Contribuições seguem [CONTRIBUTING.md](CONTRIBUTING.md) e o [CLA](CLA.md).

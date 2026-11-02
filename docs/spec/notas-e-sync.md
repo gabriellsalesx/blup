@@ -1,8 +1,8 @@
-# Notas, Obsidian e sincronização
+# Notas e sincronização
 
-Fontes: [Obsidian](../../internal/obsidian/obsidian.go), [propriedades](../../internal/obsidian/props.go), [wikilinks](../../internal/wikilinks/index.go), [sync](../../internal/notesync/notesync.go), [configuração portátil](../../internal/app/cloud_sites.go), `internal/app/sync.go` e `internal/app/deploy_api.go`.
+Fontes: [leitura de notas](../../internal/obsidian/obsidian.go), [propriedades](../../internal/obsidian/props.go), [wikilinks](../../internal/wikilinks/index.go), [sync](../../internal/notesync/notesync.go), [configuração portátil](../../internal/app/cloud_sites.go), `internal/app/sync.go` e `internal/app/deploy_api.go`.
 
-## Descoberta e ajustes do Obsidian
+## Compatibilidade da CLI com Obsidian
 
 `obsidian.Vaults` lê `obsidian/obsidian.json` sob `os.UserConfigDir()`. Em Linux também procura os registros do Flatpak e Snap, em `~/.var/app/md.obsidian.Obsidian/config/obsidian/obsidian.json` e `~/snap/obsidian/current/.config/obsidian/obsidian.json`. Deduplica caminhos e inclui somente pastas reconhecidas por uma subpasta `.obsidian`. Dentro de cada registro prioriza os timestamps mais recentes.
 
@@ -10,7 +10,7 @@ Fontes: [Obsidian](../../internal/obsidian/obsidian.go), [propriedades](../../in
 
 `EnableHugoFriendlyLinks` preserva as outras opções de `.obsidian/app.json`, guarda a cópia anterior em `app.json.blup-backup` e define `useMarkdownLinks = true` e `newLinkFormat = "relative"`. A configuração é para links futuros; não converte o texto existente. O fluxo informa que é preciso reabrir o Obsidian. `strictLineBreaks` é lido para ajustar as quebras de linha do Hugo.
 
-No fluxo da CLI, os templates do plugin nativo são escritos na pasta configurada em `.obsidian/templates.json`. Se não houver pasta, Blup cria e configura uma. `SetTemplatesFolder` habilita o plugin no formato de lista ou mapa de `.obsidian/core-plugins.json`. Se esse arquivo não existe, não cria a lista de plugins. A criação atual pelo Studio não chama `writeTemplates` nem acrescenta a pasta Modelos/Templates/Plantillas.
+No fluxo da CLI, os templates do plugin nativo são escritos na pasta configurada em `.obsidian/templates.json`. Se não houver pasta, Blup cria e configura uma. `SetTemplatesFolder` habilita o plugin no formato de lista ou mapa de `.obsidian/core-plugins.json`. Se esse arquivo não existe, não cria a lista de plugins.
 
 ## Notas e propriedades
 

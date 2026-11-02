@@ -1,6 +1,6 @@
 # Blup Cloud: conta, sincronização e planos
 
-Implementação conferida em 02/11/2026, após a rodada 3. Este documento descreve funções existentes, substituindo o plano inicial. Fontes: [cliente Go](../../internal/blupcloud/client.go), [coordenação](../../internal/app/blup_cloud.go), [criptografia](../../internal/cloudcrypt/cloudcrypt.go), [destino de sync](../../internal/blupcloud/remote.go), [API](../../cloud/worker/index.ts), [sync](../../cloud/worker/sync.ts) e [planos](../../cloud/worker/plans.ts).
+Implementação conferida em 02/11/2026, após os handoffs de contrato da rodada 4. Este documento descreve funções existentes, substituindo o plano inicial. Fontes: [cliente Go](../../internal/blupcloud/client.go), [coordenação](../../internal/app/blup_cloud.go), [criptografia](../../internal/cloudcrypt/cloudcrypt.go), [destino de sync](../../internal/blupcloud/remote.go), [API](../../cloud/worker/index.ts), [sync](../../cloud/worker/sync.ts) e [planos](../../cloud/worker/plans.ts).
 
 ## Conta e autorização
 
@@ -12,14 +12,16 @@ Uma conta pode nascer só com passkey. O servidor cria um endereço técnico no 
 
 `LoadBlupAccount` retorna plano, uso e estado das notas: `new`, `locked` ou `ready`. Sair tenta enviar uma lista vazia de lembretes antes de encerrar a sessão e remove `blup_token` e `notes_key` das credenciais. Se o cancelamento não alcançar o servidor, conserva temporariamente a sessão em `signout-pending`, modo `0600`, para repetir o cancelamento no início ou no próximo login. Não apaga as notas no disco. A retenção desse token de trabalho é distinta da sessão usada normalmente pela interface.
 
+O `id` de `/me` identifica a conta para suporte e pode ser copiado nas Configurações do Studio; não é token de acesso. O cliente valida seu formato opaco antes de expor a conta pelos bindings.
+
+No painel Cloud, Perfil mostra ID da conta, copiar e retorno Copiado. A staff vê o ID em destaque no detalhe; na lista, uma conta só com passkey aparece como Sem e-mail (só passkey), com ID curto copiável. `AccountId.svelte` usa o ícone Lucide de copiar e copia o ID inteiro, mesmo quando o texto é abreviado. A ajuda é Em caso de ajuda, informe seu ID. O perfil sem e-mail oferece vinculação com um aviso discreto sobre recibos e recuperação, sem obrigar o vínculo para o trabalho local ou alterar a recuperação cifrada das notas.
+
 ## Planos executados
 
-Valores de `cloud/worker/plans.ts`, não uma promessa de preços externos. A API entrega os preços em centavos de real e limites; Stripe encontra os preços pelos lookup keys. Quantidades de armazenamento e tamanho de arquivo são multiplicadas por `1024 * 1024` no servidor.
+Os limites vêm de `cloud/worker/plans.ts`. Os preços vêm do Stripe, pelos lookup keys mensais e anuais de Pro, Max e Ultra. `plans.ts` não contém valores ou moeda fixos. Quantidades de armazenamento e tamanho de arquivo são multiplicadas por `1024 * 1024` no servidor.
 
 | Limite | Grátis | Pro | Max | Ultra |
 | --- | --- | --- | --- | --- |
-| Preço mensal em BRL | 0 | 14,90 | 29,90 | 59,90 |
-| Preço anual em BRL | 0 | 149,00 | 299,00 | 599,00 |
 | Armazenamento em MiB | 50 | 1024 | 10240 | 51200 |
 | Arquivo em MiB | 10 | 25 | 100 | 100 |
 | Aparelhos | 1 | 2 | 3 | Sem limite (`-1`) |
@@ -31,6 +33,14 @@ Valores de `cloud/worker/plans.ts`, não uma promessa de preços externos. A API
 | E-mails de lembrete por mês | 0 | 0 | 50 | 100 |
 | Campo `customDomain` | `false` | `false` | `true` | `true` |
 
+`GET /api/plans` retorna objetos `{name, label, limits, perks, suggested, prices}`. `prices.monthly` e `prices.yearly` são `{unitAmount, currency}` ou `null`. `unitAmount` usa a unidade menor da moeda do Stripe, que não é sempre centavos. No Grátis os dois preços são `null`, e a interface mostra Grátis. Nos pagos, `null` indica período indisponível e desabilita a compra. Não existem os antigos campos `priceCents`, `yearlyCents` e `currency` no objeto do plano.
+
+[pricing.ts](../../cloud/worker/pricing.ts) mantém catálogo por isolate por dez minutos, agrupa refreshes concorrentes e espera trinta segundos para repetir uma falha. Falha de transporte/lista mantém o último catálogo válido; sem catálogo anterior, não inventa valor. Uma resposta válida com preço ausente, produto arquivado ou formato não aceito torna aquele período indisponível. [price-schema.ts](../../cloud/worker/price-schema.ts) exige preço recorrente por unidade, intervalo mensal/anual correspondente e produto ativo. O painel formata a moeda com [money.ts](../../cloud/src/lib/money.ts).
+
+O servidor também recusa upgrade de período indisponível com `503 PRICING_UNAVAILABLE`; referência de outra conta retorna 403. `GET /me` permanece com o mesmo contrato de plano/uso e seu `id`; Studio e CLI não consultam `/plans`. A cota de IA definida em código não é recalculada automaticamente quando o preço Stripe muda. O script `npm run stripe:setup` apenas confere o catálogo, sem criar produtos ou preços. Publicação e troca de preços estão no [checklist](../deploy-checklist.md).
+
+`unitAmount` usa unidades menores da moeda Stripe. O painel e os valores financeiros da staff usam [money.ts](../../cloud/src/lib/money.ts), que respeita moedas sem decimais e as exceções ISK/UGX da API; não divide todo valor por 100 nem inventa moeda ausente.
+
 Notas cifradas, manifestos, referências, histórico e arquivos de sites somam no armazenamento da conta. Max e Ultra permitem um domínio próprio por site, com prova TXT de propriedade e validação Cloudflare/SSL antes de servir. O endereço `nome.getblup.site` continua disponível. Os dois hosts servem os mesmos arquivos. Quando domínio e SSL estão ativos e há direito ou carência válida, o cliente o escolhe como baseURL e o Studio republica para ajustar URLs absolutas; não há redirecionamento entre os dois hosts. Veja [domínio Blup Cloud](publicacao.md#domínio-próprio-no-blup-cloud). Publicar por Cloudflare Pages ou GitHub Pages continua independente da assinatura.
 
 `account.ts` considera assinaturas `active`, `trialing` e `past_due`; sem uma delas cai no Grátis. O proprietário configurado por secret recebe Ultra de cortesia somente com o e-mail correspondente verificado. Acrescentar alguém à staff não concede esse plano.
@@ -38,6 +48,8 @@ Notas cifradas, manifestos, referências, histórico e arquivos de sites somam n
 ## Chaves e dados cifrados
 
 `cloudcrypt.NewKeys` gera chave mestra aleatória de 32 bytes por conta e outra chave aleatória de 32 bytes para recuperação. A senha deriva uma chave de embrulho por Argon2id: três iterações, 64 MiB, quatro threads e salt aleatório de 16 bytes. A recuperação é mostrada uma vez, em grupos base32. Cada uma protege uma cópia da mesma chave mestra com XChaCha20-Poly1305.
+
+Na criação inicial de `/sync/key`, somente quem inseriu a linha recebe 201; quem perde a corrida recebe `409 KEY_EXISTS`. Atualização do embrulho existente exige preservar `by_recovery`. A migração `0012` remove o backup `previous_key` que não tinha leitor; o servidor conserva o embrulho atual. Não existe fluxo de troca da senha das notas na CLI ou no Studio; a função sem consumidor `cloudcrypt.ChangePassword` foi removida.
 
 O servidor guarda os embrulhos e parâmetros. O cliente abre a chave no computador e guarda sua representação base64 em `credentials.toml`, modo `0600`. Base64 não cifra esse arquivo local. HKDF-SHA256 deriva subchaves distintas para conteúdo, identificadores e manifestos. Sem senha, recuperação ou uma cópia local da chave, a aplicação não oferece recuperação do conteúdo pela staff.
 
@@ -100,7 +112,7 @@ O uso soma blocos cifrados, manifestos/referências, histórico e arquivos dos s
 
 O Go mantém `historyBytes` como `*int64`; bindings levam `number | null` ao Studio. Não transforma ausência em zero. A interface mostra tamanho indisponível e oferece atualizar. O total é da conta, sem estimativa por cofre.
 
-O cliente continua o fluxo normal de envio. Só depois de `413 QUOTA` guarda blocos cifrados novos em memória e passa pelo preparo no commit. Acima do teto, a nuvem pode aceitar substituição que não aumenta o uso líquido. O crédito considera apenas versões removíveis pela política de histórico e blocos que nenhuma versão retida/cofre usa. Uma versão que aumenta o saldo líquido continua recusada. Há uma exceção explícita: versão sem blocos novos pode passar mesmo que o novo manifesto aumente o uso; esses bytes continuam contabilizados. Não se deve prometer teto físico estrito para esse caso.
+O cliente continua o fluxo normal de envio. Só depois de `413 QUOTA` guarda blocos cifrados novos em memória e passa pelo preparo no commit. Acima do teto, a nuvem pode aceitar substituição que não aumenta o uso líquido. O crédito considera apenas versões removíveis pela política de histórico e blocos que nenhuma versão retida/cofre usa. Uma versão que aumenta o saldo líquido continua recusada, salvo a exceção limitada seguinte: sem blocos novos e já acima da cota, o manifesto cifrado pode ter até o tamanho real do manifesto do head no R2 mais 4096 bytes. Isso permite pequenas renomeações e remoções; ultrapassar essa folga retorna `413 QUOTA`. Head existente sem metadados recuperáveis retorna `503 SYNC_METADATA_UNAVAILABLE`. Os bytes efetivos continuam contabilizados. Fora dessa exceção, crescimento de manifesto também reserva armazenamento, mesmo sem blocos novos.
 
 1. `POST /api/sync/vaults/:id/prepare` recebe multipart: `parent` inteiro em texto, `blocks` com JSON `[{id,size}]` de todos os blocos distintos da versão e `manifest` cifrado. Retorna `{ticket, expiresAt, missing}`. Usa o tamanho D1 de blocos existentes; `size: 0` só é válido se o bloco já existe. Um bloco ausente de tamanho zero é inválido.
 2. `PUT /api/sync/blocks/:id` recebe o bloco cifrado com `x-blup-upload-ticket`. Exige tamanho igual ao declarado. O corpo permanece limitado a 4 MiB mais 64 bytes.
@@ -137,7 +149,7 @@ Lembretes usam fila D1 e cron a cada cinco minutos, separados do sync cifrado. O
 
 Sites publicados usam bucket `SITES`, com conteúdo público, e outro Worker. Os limites de publicação, cache, manifesto e slug estão em [publicação](publicacao.md#blup-cloud). Isso não publica automaticamente um cofre sincronizado.
 
-Stripe é configurado pelo plugin Better Auth. O registro Customer é criado no primeiro checkout, sem criar clientes para todo cadastro grátis. O webhook `/api/auth/stripe/webhook` mantém assinaturas; `billing.ts` registra pagamentos, falhas, reembolsos, disputas e alertas de fraude com ID de evento único. O painel oferece checkout e portal por redirecionamento. A exclusão lógica bloqueia a conta, retira os sites da entrega e revoga sessões imediatamente; o cancelamento Stripe é tentado e repetido em segundo plano. A purga é agendada para depois de 30 dias, conforme a seção seguinte. Procedimentos operacionais, Access e secrets estão em [deploy](../deploy.md), e os fluxos completos em [arquitetura](../arquitetura.md).
+Stripe é configurado pelo plugin Better Auth, com SDK 23.1.0 e API `2026-10-28.endive` fixada em [stripe-client.ts](../../cloud/worker/stripe-client.ts). O registro Customer é criado no primeiro checkout, sem criar clientes para todo cadastro grátis. O endpoint `/api/auth/stripe/webhook` é próprio, em `billing.ts`, e verifica assinatura e ambiente test/live. Usa IDs do evento para consultar o estado atual no Stripe; a leitura da subscription ocorre depois da lease por assinatura. Uma lease por conta protege a adoção de referência pendente compartilhada por assinaturas distintas, preservando ambas. Estado, evento financeiro e recibo por `event.id` entram no mesmo batch D1, condicionado às leases. O handler registra pagamentos, falhas, reembolsos, disputas e alertas de fraude. Os caminhos webhook/success do plugin estão desativados; o success próprio só redireciona para URL local, sem gravar direitos. A migração `0013` cria os recibos e índices. Há deduplicação e repetição após erro; recibos ficam elegíveis para remoção após 90 dias em lotes diários de até 500, podendo permanecer mais com acúmulo. O painel oferece checkout e portal por redirecionamento. A exclusão lógica bloqueia a conta, retira os sites da entrega e revoga sessões imediatamente; o cancelamento Stripe é tentado e repetido em segundo plano. A purga é agendada para depois de 30 dias, conforme a seção seguinte. Procedimentos operacionais, Access e secrets estão em [deploy](../deploy.md), e os fluxos completos em [arquitetura](../arquitetura.md).
 
 
 ## Reservas, concorrência e limites de requisição

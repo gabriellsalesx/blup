@@ -54,7 +54,7 @@ Templates são um complemento: falha nessa etapa gera aviso na CLI. Na conversã
 
 A API `CreateSite`, em `internal/app/create_api.go`, recebe `NewSiteOptions` com `vault`, `folder`, `dir`, `model`, `sections`, `title`, `description`, `author`, `lang` e `adjustLinks`. Ela é usada pelo Studio, aceita pasta comum e Nori. Modelo diferente de `bento` ou `nori` vira `mochi`, sem erro; fora do Bento, descarta `sections`. Exige título não vazio, valida os tipos e a seleção não vazia de seções Bento, recusa `..` em `folder` e normaliza idioma diferente de `pt` e `es` para `en`.
 
-`vault` e `dir` passam por `expandHome` antes da verificação de vazio: se `filepath.Abs` funcionar, uma entrada vazia vira o diretório atual, portanto essa verificação não garante rejeitar caminho vazio de entrada. O diretório técnico ainda precisa passar por `CheckSiteDir`. A API cria as pastas de notas e técnica quando ausentes e registra o site. Não cria a pasta de modelos do Obsidian (Templates/Modelos/Plantillas): o Studio cria as notas ele mesmo e a pasta só confundia a árvore; só a CLI a cria. Não executa as perguntas opcionais, o download Hugo ou a conversão do fluxo da CLI.
+`vault` e `dir` passam por `expandHome` antes da verificação de vazio: se `filepath.Abs` funcionar, uma entrada vazia vira o diretório atual, portanto essa verificação não garante rejeitar caminho vazio de entrada. O diretório técnico ainda precisa passar por `CheckSiteDir`. A API cria as pastas de notas e técnica quando ausentes e registra o site, escrevendo as notas de exemplo diretamente na pasta escolhida. A instalação de templates descrita acima é exclusiva da CLI. Não executa as perguntas opcionais, o download Hugo ou a conversão do fluxo da CLI.
 
 Os exemplos estão embutidos em `internal/app/starter/{pt,en,es}/{mochi,nori,bento}` e em `starter/covers`. `starter.go` copia arquivos ausentes, preenche dados do site e permite acrescentar uma seção sem sobrescrever notas existentes. `templates.go` fornece templates de post para Mochi/Nori e de documentação, roadmap e changelog para Bento.
 
@@ -102,7 +102,7 @@ Esse comando ainda prepara explicitamente o transporte GitHub: não é uma inter
 
 `internal/app/customize.go` repete o menu e salva `blup.toml` e o scaffold após uma mudança bem-sucedida. Inclui:
 
-- Menu superior com seleção de pastas e tags, links externos e botão com `button_text` e `button_link`. Um menu com submenus não é refeito pelo terminal, que avisa (`custom.menu_sub`) e pergunta só o botão; os submenus se editam no Studio ou no Obsidian.
+- Menu superior com seleção de pastas e tags, links externos e botão com `button_text` e `button_link`. Um menu com submenus não é refeito pelo terminal, que avisa (`custom.menu_sub`) e pergunta só o botão; os submenus se editam nas propriedades da nota ou no Studio.
 - Inclusão de seções no Bento. O fluxo CLI de seções adiciona exemplos; a remoção é feita nas notas. O Studio tem remoção para a lixeira.
 - Feedback com issues e instalação do GitHub App; cookies, ferramentas e política de privacidade.
 - Redes sociais, logo, favicon, nome, descrição e autor/perfil.

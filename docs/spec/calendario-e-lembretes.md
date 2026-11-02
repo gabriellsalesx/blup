@@ -53,7 +53,7 @@ Max permite 50 e Ultra 100 envios aceitos pelo provedor por mês UTC; Grátis e 
 
 | API autenticada | Efeito |
 | --- | --- |
-| `GET /api/reminders` | Limite do plano e contador usado no mês UTC |
+| `GET /api/reminders` | Limite do plano, contador usado no mês UTC e `emailMissing`, indicando conta só com passkey sem e-mail |
 | `PUT /api/reminders` | Substitui pendentes da conta com `{reminders: [{id, at}]}`; `at` é Unix em milissegundos |
 
 O schema aceita no máximo 300 IDs únicos, de 32 a 64 caracteres hexadecimais, e horários inteiros positivos. `keep` limita a janela a 12 horas de atraso e 32 dias adiante. Listas recebidas substituem os pendentes da conta; ocorrências já marcadas não são reinseridas. Ao receber lista num plano sem e-mails, apaga pendentes. Não há fila separada do D1 nem agendamento no provedor para cada evento.
@@ -61,6 +61,8 @@ O schema aceita no máximo 300 IDs únicos, de 32 a 64 caracteres hexadecimais, 
 `sendDue`, disparado pelo cron `*/5 * * * *`, lê até 100 vencidos por rodada. Reivindica cada item por lease de 120 segundos e reserva uma vaga mensal considerando `sent + reserved`, por operações condicionais D1. A tentativa é contada antes da chamada; há no máximo três por lembrete. Até 50 reivindicações vencidas são recuperadas por rodada, permitindo continuar depois de uma queda.
 
 Se o provedor aceita o envio, confirma o contador mensal e marca `sentAt`. Em falha, libera a reserva e espera pelo menos cinco minutos para tentar novamente; ao esgotar três tentativas, marca como pulado. Atraso superior a 12 horas ou plano sem e-mails também pula o item. Cota mensal esgotada impede nova reivindicação, sem ultrapassar o limite; o item pode acabar expirando pela janela de atraso.
+
+Conta sem e-mail real também tem o item marcado como pulado antes de reservar cota ou tentar envio. No Studio, Configurações mostra o aviso de adicionar e-mail quando notificações estão ligadas e o plano permite e-mails; as notificações locais continuam funcionando. O Go preserva `emailMissing` nos bindings como booleano; sua ausência em servidor antigo é aceita como `false`. Isso é diferente de `limit` e `used`, cuja presença e valores não negativos são obrigatórios.
 
 A lista substitui apenas itens ainda não reivindicados. Cancelar preferências ou sair não desfaz um envio que já está em andamento. Horários já deixados na fila podem ser executados com o Studio fechado. A limpeza diária remove itens sem lease com mais de 36 horas e contadores antigos sem reserva, em até 20 lotes de cem; atrasos de limpeza continuam na rodada seguinte.
 

@@ -1,6 +1,6 @@
 # Blup
 
-O Blup é um editor de notas e publicador de sites. O Studio permite escrever no computador, organizar cofres e criar um blog ou site de produto; a CLI transforma notas Markdown em páginas Hugo. As notas continuam sendo arquivos, compatíveis com o Obsidian. O Blup Cloud acrescenta conta, sincronização cifrada, histórico, IA e hospedagem conforme o plano.
+O Blup é um editor de notas e publicador de sites. O Studio permite escrever no computador, organizar cofres e criar um blog ou site de produto; a CLI transforma notas Markdown em páginas Hugo. As notas continuam sendo arquivos Markdown no disco. O Blup Cloud acrescenta conta, sincronização cifrada, histórico, IA e hospedagem conforme o plano.
 
 <p align="center"><img src=".github/assets/blup.jpg" alt="Blup ao lado de um caderno cujas páginas viram um site" width="720"></p>
 
@@ -11,6 +11,8 @@ O Blup é um editor de notas e publicador de sites. O Studio permite escrever no
 | [Especificação técnica](docs/spec/README.md) | Contratos atuais da CLI, Studio, temas, configuração e serviços |
 | [Arquitetura](docs/arquitetura.md) | Componentes, persistência e fluxos com diagramas |
 | [Deploy de produção](docs/deploy.md) | Cloudflare, banco, storage, e-mail, Stripe, DNS e distribuição desktop |
+| [Checklist de deploy](docs/deploy-checklist.md) | Ordem de lançamento, bloqueios e publicação dos canais |
+| [Instalar o Studio](docs/instalacao.md) | Windows/macOS sem assinatura e pacotes Linux |
 | [Segurança](docs/seguranca.md) | Cifra, dados visíveis, ameaças, limites e cotas |
 | [Blup Cloud](cloud/README.md) | Desenvolvimento do painel e dos Workers |
 | [Testes e build](docs/spec/testes-e-build.md) | Dois módulos Go, frontend, integração e pacotes |
@@ -55,7 +57,7 @@ CLI em PowerShell:
 irm https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.ps1 | iex
 ```
 
-Os scripts de instalação inicial buscam a release e conferem somente SHA-256. A autoatualização CLI exige também assinatura Ed25519 dos checksums. O fluxo de distribuição do Studio é separado da release CLI; consulte [builds e assinatura](docs/deploy.md#9-lançamento-do-studio-e-da-cli).
+Os scripts de instalação inicial buscam a release e conferem somente SHA-256. A autoatualização CLI exige também assinatura Ed25519 dos checksums. Para o aplicativo desktop, consulte [Instalar o Blup Studio](docs/instalacao.md), com instruções de abertura sem assinatura no Windows/macOS e os canais Linux AppImage, AUR, bundle `.flatpak` no GitHub e `.deb`. A disponibilidade de cada pacote depende da release publicada. O responsável pelo lançamento segue o [checklist de deploy](docs/deploy-checklist.md).
 
 Para a CLI, execute `blup`, escolha o cofre/pasta, tema e dados do site, abra a prévia e depois publique. Uma pasta vazia recebe o tutorial do tema como notas editáveis. O Studio também aceita pastas comuns e oferece criação de cofre sem site.
 

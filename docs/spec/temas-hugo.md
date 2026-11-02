@@ -27,7 +27,7 @@ O redirecionamento usa `location.replace`, preservando query e fragmento. É pul
 | `theme/assets/css/{mochi,bento,nori}.css` | Folha escolhida por modelo |
 | `theme/assets/js/` | Tema de cores, navegação, busca, player, proteção, feedback, consentimento e PWA |
 | `theme/assets/favicon.svg` | Favicon padrão e fallback de origem dos ícones do app |
-| `theme/assets/defaults/` | `apple-touch-icon.png`, `avatar.png` e `avatar.svg` padrão |
+| `theme/assets/defaults/` | `apple-touch-icon.png` e `avatar.png` padrão |
 | `theme/assets/og/` | Base e fonte da geração de imagem social |
 | `theme/i18n/{pt,en,es}.toml` | Textos dos temas, independentes das mensagens da CLI e da interface do Studio |
 | `theme/static/fonts/` | Inter local em WOFF2 e licença |
@@ -105,11 +105,11 @@ Os controles são traduzidos por `theme/i18n/{pt,en,es}.toml`; título e exemplo
 
 ## Conteúdo, links e imagens
 
-`title.html` usa título disponível, primeiro H1 renderizado ou nome do arquivo, retirando prefixo numérico da apresentação. `content.html` remove o H1 inicial para o layout não o repetir e passa pelo filtro de comentários Obsidian. `uncomment.html` remove `%%...%%` do conteúdo renderizado, preservando os trechos de código tratados pelo filtro. Um `%%` aberto sem fechamento esconde o restante do conteúdo, em vez de revelar o comentário incompleto.
+`title.html` usa título disponível, primeiro H1 renderizado ou nome do arquivo, retirando prefixo numérico da apresentação. `content.html` remove o H1 inicial para o layout não o repetir e passa pelo filtro de comentários `%%...%%`. `uncomment.html` remove `%%...%%` do conteúdo renderizado, preservando os trechos de código tratados pelo filtro. Um `%%` aberto sem fechamento esconde o restante do conteúdo, em vez de revelar o comentário incompleto.
 
 `description.html` prefere descrição explícita; na home usa a configuração; depois extrai texto, normaliza espaços e limita a 160 caracteres. Para post protegido retorna descrição genérica traduzida. Algumas áreas visuais de página usam `.Description` diretamente, portanto descrição explícita e demais metadados não devem ser considerados criptografados.
 
-Na extração automática, o partial retira comentários Obsidian e trata um `%%` aberto no fim de um resumo truncado. Se o resumo só contém comentário, tenta o conteúdo completo antes de escolher o texto. `toc.html` retira do sumário entradas cujo heading não permaneceu no conteúdo visível, inclusive headings dentro de comentários. `mochi/cover.html` prefere `image`/`cover`; o fallback de primeira imagem ignora comentários e não é usado para tirar capa do corpo de uma nota protegida. Uma capa configurada explicitamente continua pública.
+Na extração automática, o partial retira comentários `%%...%%` e trata um `%%` aberto no fim de um resumo truncado. Se o resumo só contém comentário, tenta o conteúdo completo antes de escolher o texto. `toc.html` retira do sumário entradas cujo heading não permaneceu no conteúdo visível, inclusive headings dentro de comentários. `mochi/cover.html` prefere `image`/`cover`; o fallback de primeira imagem ignora comentários e não é usado para tirar capa do corpo de uma nota protegida. Uma capa configurada explicitamente continua pública.
 
 `render-link.html` resolve caminhos Markdown relativos com `Page.GetPage`, preserva fragmentos normalizados e publica anexos encontrados. Link externo recebe `rel="noopener"`; não é forçado a abrir nova aba. Destino interno ausente gera aviso Hugo. Links para notas conhecidas como não publicadas (`draft`, `publish: false`, `private: true`) viram texto sem link, evitando apontar a páginas que não entram no build normal.
 
@@ -123,7 +123,7 @@ Na extração automática, o partial retira comentários Obsidian e trata um `%%
 - Áudio e vídeo locais embutidos viram players HTML; PDF e outros anexos viram links.
 - URL de YouTube reconhecida no formato de imagem embed gera iframe em `youtube-nocookie.com`, ou placeholder dependente de consentimento.
 
-O hook de heading inclui âncoras a partir de H2 e suporta classe. `render-blockquote.html` interpreta callouts do Obsidian, aliases de tipos e título padrão traduzido. `+`/`-` após o tipo geram `<details>` aberto/fechado. Tipo desconhecido recebe aparência de nota. Fórmulas são transformadas em MathML por `transform.ToMath` no build, com aviso e fallback quando falham, sem biblioteca matemática no navegador.
+O hook de heading inclui âncoras a partir de H2 e suporta classe. `render-blockquote.html` interpreta callouts Markdown, aliases de tipos e título padrão traduzido. `+`/`-` após o tipo geram `<details>` aberto/fechado. Tipo desconhecido recebe aparência de nota. Fórmulas são transformadas em MathML por `transform.ToMath` no build, com aviso e fallback quando falham, sem biblioteca matemática no navegador.
 
 ## Identidade, autoria, SEO e feeds
 
