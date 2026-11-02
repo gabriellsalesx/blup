@@ -1,10 +1,10 @@
-import {beforeEach,afterEach,describe,it,expect} from "vitest";
+import {beforeEach,afterEach,describe,it,expect,vi} from "vitest";
 import {TestD1,seedUser} from "./security-test-support";
 import {reserve,release,settle,expireReservations,siteLock,unlockSite} from "./quota";
 import {approveDevice,deviceMark,finishDevice} from "./devices";
 let d1:TestD1;
-beforeEach(()=>{d1=new TestD1();seedUser(d1,"quota-owner");});
-afterEach(()=>d1.close());
+beforeEach(()=>{vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));d1=new TestD1();seedUser(d1,"quota-owner");});
+afterEach(()=>{d1.close();vi.useRealTimers();});
 describe("atomic D1 admission on the real SQLite engine",()=>{
 	it("shares storage between existing notes, sites and parallel reservations",async()=>{
 		d1.sqlite.exec("INSERT INTO sync_account(user_id,wrapped_key,storage_bytes) VALUES ('quota-owner','{}',4);INSERT INTO site(id,user_id,slug,title,bytes) VALUES ('s','quota-owner','quota-site','x',4)");

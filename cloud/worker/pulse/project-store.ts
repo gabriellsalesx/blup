@@ -34,13 +34,15 @@ INSERT OR IGNORE INTO meta VALUES('schema','1');`);
   const limits=pulseLimits[plan],cutoff=now-limits.retentionDays*86_400_000,month=monthOf(now),minute=Math.floor(now/60_000);
   return this.transaction(()=>{
    if(this.seen(event.id,cutoff))return {duplicate:true,id:event.id};
-   if(this.sql.databaseSize>limits.projectBytes){this.sql.exec("DELETE FROM sample WHERE id IN (SELECT id FROM sample ORDER BY received_at LIMIT 100)");if(this.sql.databaseSize>limits.projectBytes)throw new IngestError(429,"CAPACITY",60);}
+   // Keep one MiB of physical headroom for the bounded event and indexes.
+   // A failed transaction cannot free space; never pretend it evicted rows.
+   if(this.sql.databaseSize>=limits.projectBytes-1024*1024)throw new IngestError(429,"CAPACITY",60);
    const burst=this.sql.exec<{count:number}>("SELECT count FROM burst WHERE minute=?",minute).toArray()[0]?.count??0;if(burst>=limits.burst)throw new IngestError(429,"BURST",60-Math.floor(now/1000)%60);
    const grant=this.sql.exec<{id:string}>("SELECT id FROM grant_slot WHERE month=? AND used<amount ORDER BY id LIMIT 1",month).toArray()[0];if(!grant)throw new IngestError(429,"MONTHLY",60);
    const previous=this.sql.exec<{state:string}>("SELECT state FROM issue WHERE id=? AND last_at>?",event.group,cutoff).toArray()[0];
-   this.sql.exec("INSERT INTO issue VALUES(?,'open',?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET state=CASE WHEN issue.state='ignored' THEN 'ignored' ELSE 'open' END,title=excluded.title,level=excluded.level,last_at=excluded.last_at,environment=excluded.environment,release=excluded.release",event.group,event.title,event.level,now,now,event.environment,event.release);
-   this.sql.exec("INSERT INTO seen VALUES(?,?,?)",event.id,event.group,now);
-   this.sql.exec("INSERT INTO sample VALUES(?,?,?,?)",event.id,event.group,now,JSON.stringify(event));
+   this.sql.exec("INSERT INTO issue VALUES(?,'open',?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET state=CASE WHEN issue.last_at<=? THEN 'open' WHEN issue.state='ignored' THEN 'ignored' ELSE 'open' END,first_at=CASE WHEN issue.last_at<=? THEN excluded.first_at ELSE issue.first_at END,title=excluded.title,level=excluded.level,last_at=excluded.last_at,environment=excluded.environment,release=excluded.release",event.group,event.title,event.level,now,now,event.environment,event.release,cutoff,cutoff);
+   this.sql.exec("INSERT INTO seen VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET issue_id=excluded.issue_id,received_at=excluded.received_at",event.id,event.group,now);
+   this.sql.exec("INSERT INTO sample VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET issue_id=excluded.issue_id,received_at=excluded.received_at,event=excluded.event",event.id,event.group,now,JSON.stringify(event));
    this.sql.exec("DELETE FROM sample WHERE issue_id=? AND id NOT IN (SELECT id FROM sample WHERE issue_id=? ORDER BY received_at DESC,id DESC LIMIT 100)",event.group,event.group);
    this.sql.exec("INSERT INTO issue_day VALUES(?,?,1) ON CONFLICT(issue_id,day) DO UPDATE SET count=count+1",event.group,Math.floor(now/86_400_000));
    this.sql.exec("UPDATE grant_slot SET used=used+1 WHERE id=?",grant.id);
@@ -49,8 +51,8 @@ INSERT OR IGNORE INTO meta VALUES('schema','1');`);
    return {duplicate:false,id:event.id};
   });
  }
- issues(cutoff:number,filter:{state?:string;environment?:string;release?:string;q?:string;before?:number;limit:number}){
-  return this.sql.exec<Issue>(`SELECT i.id,i.state,i.title,i.level,i.first_at AS firstAt,i.last_at AS lastAt,(SELECT coalesce(sum(count),0) FROM issue_day WHERE issue_id=i.id AND day>=?) AS count,i.environment,i.release FROM issue i WHERE last_at>? AND (? IS NULL OR state=?) AND (? IS NULL OR environment=?) AND (? IS NULL OR release=?) AND (? IS NULL OR instr(lower(title),lower(?))>0) AND (? IS NULL OR last_at<?) ORDER BY last_at DESC,id DESC LIMIT ?`,Math.floor(cutoff/86_400_000),cutoff,filter.state??null,filter.state??null,filter.environment??null,filter.environment??null,filter.release??null,filter.release??null,filter.q??null,filter.q??null,filter.before??null,filter.before??null,filter.limit).toArray();
+ issues(cutoff:number,filter:{state?:string;environment?:string;release?:string;q?:string;before?:number;beforeId?:string;limit:number}){
+  return this.sql.exec<Issue>(`SELECT i.id,i.state,i.title,i.level,i.first_at AS firstAt,i.last_at AS lastAt,(SELECT coalesce(sum(count),0) FROM issue_day WHERE issue_id=i.id AND day>=?) AS count,i.environment,i.release FROM issue i WHERE last_at>? AND (? IS NULL OR state=?) AND (? IS NULL OR environment=?) AND (? IS NULL OR release=?) AND (? IS NULL OR instr(lower(title),lower(?))>0) AND (? IS NULL OR last_at<? OR (last_at=? AND ? IS NOT NULL AND i.id<?)) ORDER BY last_at DESC,id DESC LIMIT ?`,Math.floor(cutoff/86_400_000),cutoff,filter.state??null,filter.state??null,filter.environment??null,filter.environment??null,filter.release??null,filter.release??null,filter.q??null,filter.q??null,filter.before??null,filter.before??null,filter.before??null,filter.beforeId??null,filter.beforeId??null,filter.limit).toArray();
  }
  samples(id:string,cutoff:number,limit=50){return this.sql.exec<{id:string;receivedAt:number;event:string}>("SELECT id,received_at AS receivedAt,event FROM sample WHERE issue_id=? AND received_at>? ORDER BY received_at DESC,id DESC LIMIT ?",id,cutoff,limit).toArray().map(row=>({...row,event:JSON.parse(row.event) as SafeEvent}));}
  setState(id:string,state:Issue["state"],cutoff:number){return this.sql.exec("UPDATE issue SET state=? WHERE id=? AND last_at>? RETURNING id",state,id,cutoff).toArray().length>0;}
@@ -58,12 +60,12 @@ INSERT OR IGNORE INTO meta VALUES('schema','1');`);
  cleanup(cutoff:number,now=Date.now()){
   return this.transaction(()=>{
    for(const table of ["sample","seen"]){this.sql.exec(`DELETE FROM ${table} WHERE id IN (SELECT id FROM ${table} WHERE received_at<=? LIMIT 500)`,cutoff);}
-   this.sql.exec("DELETE FROM issue_day WHERE day<?",Math.floor(cutoff/86_400_000));
+   this.sql.exec("DELETE FROM issue_day WHERE (issue_id,day) IN(SELECT issue_id,day FROM issue_day WHERE day<? LIMIT 500)",Math.floor(cutoff/86_400_000));
    this.sql.exec("DELETE FROM issue WHERE id IN (SELECT id FROM issue WHERE last_at<=? LIMIT 500)",cutoff);
    this.sql.exec("DELETE FROM burst WHERE minute<?",Math.floor(now/60_000)-1);
    this.sql.exec("DELETE FROM grant_slot WHERE month<?",monthOf(cutoff));
-   this.sql.exec("DELETE FROM pending_alert WHERE created_at<=?",now-86_400_000);
-   return this.sql.exec<{n:number}>("SELECT count(*) AS n FROM seen WHERE received_at<=?",cutoff).toArray()[0].n>0;
+   this.sql.exec("DELETE FROM pending_alert WHERE id IN(SELECT id FROM pending_alert WHERE created_at<=? LIMIT 500)",now-86_400_000);
+   return this.sql.exec<{n:number}>("SELECT EXISTS(SELECT 1 FROM seen WHERE received_at<=?) OR EXISTS(SELECT 1 FROM sample WHERE received_at<=?) OR EXISTS(SELECT 1 FROM issue WHERE last_at<=?) OR EXISTS(SELECT 1 FROM issue_day WHERE day<?) OR EXISTS(SELECT 1 FROM pending_alert WHERE created_at<=?) AS n",cutoff,cutoff,cutoff,Math.floor(cutoff/86_400_000),now-86_400_000).toArray()[0].n>0;
   });
  }
 }

@@ -16,7 +16,29 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $get: {
             input: {};
             output: {
-                name: "free" | "pro" | "max" | "ultra";
+                name: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                basePlan: "free" | "pro" | "max" | "ultra";
+                pulse: {
+                    readonly projects: 3;
+                    readonly events: 50000;
+                    readonly retentionDays: 30;
+                    readonly monitors: 10;
+                    readonly intervalMinutes: 5;
+                    readonly pages: 1;
+                    readonly customDomain: false;
+                    readonly projectBytes: number;
+                    readonly burst: 60;
+                } | {
+                    readonly projects: 10;
+                    readonly events: 250000;
+                    readonly retentionDays: 90;
+                    readonly monitors: 50;
+                    readonly intervalMinutes: 2;
+                    readonly pages: 3;
+                    readonly customDomain: true;
+                    readonly projectBytes: number;
+                    readonly burst: 300;
+                } | null;
                 label: string;
                 limits: {
                     storageMB: number;
@@ -116,6 +138,32 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 createdAt: string;
                 plan: {
                     name: "free" | "pro" | "max" | "ultra";
+                    billingName: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    billingInterval: "year" | "month" | null;
+                    pulse: {
+                        enabled: boolean;
+                        limits: {
+                            readonly projects: 3;
+                            readonly events: 50000;
+                            readonly retentionDays: 30;
+                            readonly monitors: 10;
+                            readonly intervalMinutes: 5;
+                            readonly pages: 1;
+                            readonly customDomain: false;
+                            readonly projectBytes: number;
+                            readonly burst: 60;
+                        } | {
+                            readonly projects: 10;
+                            readonly events: 250000;
+                            readonly retentionDays: 90;
+                            readonly monitors: 50;
+                            readonly intervalMinutes: 2;
+                            readonly pages: 3;
+                            readonly customDomain: true;
+                            readonly projectBytes: number;
+                            readonly burst: 300;
+                        } | null;
+                    };
                     label: string;
                     limits: {
                         storageMB: number;
@@ -1849,33 +1897,6 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     id: string;
                 };
             };
-            output: {
-                code: string;
-                error: {
-                    code: string;
-                    message: string;
-                };
-            };
-            outputFormat: "json";
-            status: 400;
-        } | {
-            input: {
-                param: {
-                    id: string;
-                };
-            };
-            output: {
-                code: string;
-                fields: string[];
-            };
-            outputFormat: "json";
-            status: 400;
-        } | {
-            input: {
-                param: {
-                    id: string;
-                };
-            };
             output: null;
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;
@@ -1905,6 +1926,33 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
                 code: "DOMAIN_PROVIDER" | "DOMAIN_UNAVAILABLE" | "DOMAIN_TAKEN";
             };
             outputFormat: "json";
@@ -1914,6 +1962,29 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
 } & {
     "/": {
         $post: {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                hostname: string;
+                status: "error" | "pending_ownership" | "pending" | "active" | "disabled";
+                disableAt: string | null;
+                ssl: "error" | "pending" | "active";
+                records: {
+                    type: "TXT" | "CNAME";
+                    name: string;
+                    value: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
             input: {
                 param: {
                     id: string;
@@ -1948,29 +2019,6 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             outputFormat: "json";
             status: 400;
-        } | {
-            input: {
-                param: {
-                    id: string;
-                };
-            } & {
-                json: {
-                    hostname: string;
-                };
-            };
-            output: {
-                hostname: string;
-                status: "error" | "pending_ownership" | "pending" | "active" | "disabled";
-                disableAt: string | null;
-                ssl: "error" | "pending" | "active";
-                records: {
-                    type: "TXT" | "CNAME";
-                    name: string;
-                    value: string;
-                }[];
-            };
-            outputFormat: "json";
-            status: import("hono/utils/http-status").ContentfulStatusCode;
         } | {
             input: {
                 param: {
@@ -3046,7 +3094,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-}, "/api/ai"> | import("hono/types").MergeSchemaPath<(((((((((((({
+}, "/api/ai"> | import("hono/types").MergeSchemaPath<((((((((((((({
     "/public/:slug": {
         $get: {
             input: {
@@ -3340,6 +3388,22 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $get: {
             input: {};
             output: {
+                selectionRequired: boolean;
+                resources: {
+                    projects: {
+                        id: string;
+                        name: string;
+                    }[];
+                    monitors: {
+                        id: string;
+                        name: string;
+                        projectId: string;
+                    }[];
+                    pages: {
+                        id: string;
+                        name: string;
+                    }[];
+                };
                 plan: "max_pulse" | "ultra_pulse" | null;
                 limits: {
                     readonly projects: 3;
@@ -3374,16 +3438,94 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 }) & {
+    "/selection": {
+        $put: {
+            input: {
+                json: {
+                    projects: string[];
+                    monitors: string[];
+                    pages: string[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    projects: string[];
+                    monitors: string[];
+                    pages: string[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    projects: string[];
+                    monitors: string[];
+                    pages: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
+            input: {
+                json: {
+                    projects: string[];
+                    monitors: string[];
+                    pages: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    projects: string[];
+                    monitors: string[];
+                    pages: string[];
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}) & {
     "/projects": {
         $get: {
             input: {};
             output: {
                 projects: {
                     active: boolean;
+                    writable: boolean;
+                    readOnlyUntil: string | null;
                     createdAt: string;
                     id: string;
                     name: string;
                     platform: string;
+                    planDisabled: number;
+                    retireAt: number | null;
                 }[];
             };
             outputFormat: "json";
@@ -3799,6 +3941,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     environment?: string | undefined;
                     release?: string | undefined;
                     q?: string | undefined;
+                    beforeId?: string | undefined;
                     before?: string | string[] | undefined;
                     limit?: string | string[] | undefined;
                 };
@@ -3823,6 +3966,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     environment?: string | undefined;
                     release?: string | undefined;
                     q?: string | undefined;
+                    beforeId?: string | undefined;
                     before?: string | string[] | undefined;
                     limit?: string | string[] | undefined;
                 };
@@ -3844,6 +3988,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     environment?: string | undefined;
                     release?: string | undefined;
                     q?: string | undefined;
+                    beforeId?: string | undefined;
                     before?: string | string[] | undefined;
                     limit?: string | string[] | undefined;
                 };
@@ -3868,6 +4013,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     environment?: string | undefined;
                     release?: string | undefined;
                     q?: string | undefined;
+                    beforeId?: string | undefined;
                     before?: string | string[] | undefined;
                     limit?: string | string[] | undefined;
                 };
@@ -3889,6 +4035,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     environment?: string | undefined;
                     release?: string | undefined;
                     q?: string | undefined;
+                    beforeId?: string | undefined;
                     before?: string | string[] | undefined;
                     limit?: string | string[] | undefined;
                 };
@@ -3909,6 +4056,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     environment?: string | undefined;
                     release?: string | undefined;
                     q?: string | undefined;
+                    beforeId?: string | undefined;
                     before?: string | string[] | undefined;
                     limit?: string | string[] | undefined;
                 };
@@ -4129,6 +4277,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 monitors: {
                     active: boolean;
+                    writable: boolean;
+                    readOnlyUntil: string | null;
                     lastAt: string | null;
                     id: string;
                     projectId: string;
@@ -4136,6 +4286,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     intervalMinutes: number;
                     state: string;
+                    planDisabled: number;
+                    retireAt: number | null;
                 }[];
             };
             outputFormat: "json";
@@ -4536,6 +4688,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 pages: {
                     published: boolean;
+                    writable: boolean;
+                    readOnlyUntil: string | null;
                     components: {
                         monitorId: string;
                         name: string;
@@ -4544,6 +4698,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     title: string;
                     slug: string;
                     language: string;
+                    planDisabled: number;
+                    retireAt: number | null;
                 }[];
             };
             outputFormat: "json";
@@ -4762,6 +4918,27 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             outputFormat: "json";
             status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title?: string | undefined;
+                    components?: {
+                        monitorId: string;
+                        name: string;
+                    }[] | undefined;
+                    published?: boolean | undefined;
+                    language?: "pt" | "en" | "es" | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 403;
         } | {
             input: {
                 param: {
@@ -5025,6 +5202,24 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                };
+            };
+            output: {
                 id: string;
             };
             outputFormat: "json";
@@ -5159,6 +5354,23 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            } & {
+                json: {
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                };
+            };
+            output: {
                 ok: true;
             };
             outputFormat: "json";
@@ -5180,6 +5392,286 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             outputFormat: "json";
             status: 409;
+        };
+    };
+}, "/pages"> | import("hono/types").MergeSchemaPath<{
+    "/:page/domain": {
+        $get: {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: null;
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                hostname: string;
+                status: "error" | "pending_ownership" | "pending" | "active" | "disabled";
+                disableAt: string | null;
+                ssl: "error" | "pending" | "active";
+                records: {
+                    type: "TXT" | "CNAME";
+                    name: string;
+                    value: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:page/domain": {
+        $post: {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                hostname: string;
+                status: "error" | "pending_ownership" | "pending" | "active" | "disabled";
+                disableAt: string | null;
+                ssl: "error" | "pending" | "active";
+                records: {
+                    type: "TXT" | "CNAME";
+                    name: string;
+                    value: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        };
+    };
+} & {
+    "/:page/domain": {
+        $delete: {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
 }, "/pages"> | import("hono/types").MergeSchemaPath<{
@@ -5775,4 +6267,271 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-}, "/projects">, "/api/pulse">, "/api", "/api/devices/:id">;
+}, "/projects">, "/api/pulse"> | import("hono/types").MergeSchemaPath<{
+    "/checkout": {
+        $post: {
+            input: {
+                json: {
+                    plan: "max_pulse" | "ultra_pulse" | "pro" | "max" | "ultra";
+                    annual: boolean;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    plan: "max_pulse" | "ultra_pulse" | "pro" | "max" | "ultra";
+                    annual: boolean;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    plan: "max_pulse" | "ultra_pulse" | "pro" | "max" | "ultra";
+                    annual: boolean;
+                };
+            };
+            output: {
+                url: string;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/portal": {
+        $post: {
+            input: {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: Record<string, never>;
+            };
+            output: {
+                url: string;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/preview": {
+        $post: {
+            input: {
+                json: {
+                    plan: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    annual: boolean;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    plan: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    annual: boolean;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    plan: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    annual: boolean;
+                };
+            };
+            output: {
+                ticket: string;
+                expiresAt: string;
+                quote: {
+                    mode: "cancel" | "restore" | "scheduled" | "immediate";
+                    target: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    annual: boolean;
+                    currency: string;
+                    amountDue: number;
+                    total: number;
+                    credit: number;
+                    debit: number;
+                    recurringAmount: number;
+                    effectiveAt: string;
+                    periodStart: number;
+                    periodEnd: number;
+                    itemId: string;
+                    currentPrice: string;
+                    targetPrice: string | null;
+                    prorationDate: number;
+                    selectionRequired: boolean;
+                    resources: {
+                        projects: {
+                            id: string;
+                            name: string;
+                        }[];
+                        monitors: {
+                            id: string;
+                            name: string;
+                            projectId: string;
+                        }[];
+                        pages: {
+                            id: string;
+                            name: string;
+                        }[];
+                    };
+                    limits: {
+                        projects: number;
+                        monitors: number;
+                        pages: number;
+                    } | null;
+                };
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/confirm": {
+        $post: {
+            input: {
+                json: {
+                    ticket: string;
+                    keep?: {
+                        projects: string[];
+                        monitors: string[];
+                        pages: string[];
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    ticket: string;
+                    keep?: {
+                        projects: string[];
+                        monitors: string[];
+                        pages: string[];
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    ticket: string;
+                    keep?: {
+                        projects: string[];
+                        monitors: string[];
+                        pages: string[];
+                    } | undefined;
+                };
+            };
+            output: {
+                state: "pending" | "scheduled" | "restored" | "awaiting_webhook";
+                effectiveAt: string;
+                paymentUrl: string | null;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/state": {
+        $get: {
+            input: {};
+            output: {
+                paymentUrl: string | null;
+                change: {
+                    plan: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    effectiveAt: string;
+                } | null;
+                checkout: {
+                    plan: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    url: string;
+                    expiresAt: string;
+                } | null;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/pending": {
+        $delete: {
+            input: {};
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/checkout": {
+        $delete: {
+            input: {};
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/api/billing">, "/api", "/api/devices/:id">;

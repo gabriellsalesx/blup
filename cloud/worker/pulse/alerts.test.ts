@@ -10,12 +10,13 @@ import {enqueueSignals,dispatchAlerts} from "./outbox";
 let db:TestD1;
 const WEBHOOK=`https://discord.com/api/webhooks/123456789012345678/${"test_fixture_".repeat(6)}`;
 beforeEach(()=>{
+ vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
  db=new TestD1();seedUser(db,"alice","max_pulse");seedUser(db,"bob","ultra_pulse");seedUser(db,"free");
  db.sqlite.exec("INSERT INTO pulse_project(id,user_id,name,platform,object_name,created_at) VALUES('1','alice','App','go','one',0),('2','bob','Other','go','two',0)");
  Object.assign(state.env,{DB:db.asD1(),STAFF_OWNER_EMAIL:"",PULSE_CHANNEL_KEY:btoa("x".repeat(32)),PULSE_TELEGRAM_TOKEN:`123456:${"local_fixture_".repeat(3)}`,PULSE_TELEGRAM_WEBHOOK_SECRET:"local-webhook-test-fixture",PULSE_PROJECT:{getByName:()=>({notification:async()=>({state:"open",title:"Sanitized error"})})}});
  vi.stubGlobal("fetch",vi.fn(async()=>{throw new Error("Unmocked provider forbidden");}));
 });
-afterEach(()=>{db.close();vi.unstubAllGlobals();vi.restoreAllMocks();});
+afterEach(()=>{db.close();vi.unstubAllGlobals();vi.restoreAllMocks();vi.useRealTimers();});
 const request=(path:string,method="GET",body?:unknown,user="alice",headers:Record<string,string>={})=>pulseApi.fetch(new Request(`https://cloud.audit.invalid${path}`,{method,headers:{...(user?{authorization:`Bearer ${user}`} : {}),...(body===undefined?{}:{"content-type":"application/json"}),...headers},body:body===undefined?undefined:JSON.stringify(body)}),state.env);
 async function channel(){return await(await request("/channels","POST",{type:"discord",webhook:WEBHOOK})).json() as {id:string};}
 it("encrypts destinations with owner/channel/type binding and rejects forged targets",async()=>{

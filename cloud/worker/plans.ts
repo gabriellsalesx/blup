@@ -1,4 +1,5 @@
 import {planPerks} from "../shared/plan-i18n.ts";
+import {basePlanName,pulsePlanSchema,pulseLimits,type PlanName} from "../shared/pulse-plans.ts";
 // Blup Cloud's plans. Prices live in Stripe and are found by lookup key
 // (scripts/stripe-setup.ts checks them), so no Stripe ID is kept here.
 // A limit of -1 means no limit.
@@ -28,7 +29,9 @@ export type Limits = {
 };
 
 export type Plan = {
-	name: "free" | "pro" | "max" | "ultra"; // as Better Auth stores it
+	name: PlanName; // as Better Auth stores it
+	basePlan:"free"|"pro"|"max"|"ultra";
+	pulse:typeof pulseLimits[keyof typeof pulseLimits]|null;
 	label: string;
 	lookupKey?: string; // the Stripe monthly price (paid plans only)
 	yearlyLookupKey?: string; // the Stripe yearly price
@@ -36,7 +39,7 @@ export type Plan = {
 	perks: string[];
 };
 
-function definePlan(plan:Omit<Plan,"perks">):Plan{return {...plan,perks:planPerks("pt",plan.name,plan.limits)};}
+function definePlan(plan:Omit<Plan,"perks"|"basePlan"|"pulse">):Plan{const pulse=pulsePlanSchema.safeParse(plan.name);return {...plan,basePlan:basePlanName(plan.name),pulse:pulse.success?pulseLimits[pulse.data]:null,perks:planPerks("pt",plan.name,plan.limits)};}
 
 const FREE = definePlan({
 	name: "free",
@@ -73,6 +76,13 @@ export const PLANS: Plan[] = [
 	}),
 ];
 
+// Complete variants share the Cloud limits of their base plan. A single
+// recurring Stripe item buys the complete variant, never a second add-on.
+for(const [name,base] of [["max_pulse","max"],["ultra_pulse","ultra"]] as const){
+ const original=PLANS.find(p=>p.name===base);if(!original)throw new Error("Missing base plan");
+ PLANS.push(definePlan({name,label:`${original.label} + Pulse`,lookupKey:`blup_${name}_mensal`,yearlyLookupKey:`blup_${name}_anual`,limits:original.limits}));
+}
+
 // The plan the panel suggests (the middle one).
 export const SUGGESTED = "max";
 
@@ -80,7 +90,7 @@ export const planNamed = (name: string | null | undefined) => PLANS.find((p) => 
 
 // The owner of Blup (STAFF_OWNER_EMAIL) has GIFT_PLAN for free. Only a
 // verified e-mail equal to the owner's counts; no owner set, no gift.
-export const GIFT_PLAN = "ultra";
+export const GIFT_PLAN = "ultra_pulse";
 export function ownerMatches(owner: string | null | undefined, email: string | null | undefined, verified: boolean | null | undefined) {
 	const o = owner?.trim().toLowerCase();
 	return !!o && !!verified && email?.trim().toLowerCase() === o;

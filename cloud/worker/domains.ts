@@ -1,4 +1,5 @@
 import { queueSitePurge } from "./site-cache-purge";
+import {claimHostname,releaseHostname} from "./hostname-claim";
 import { Hono } from "hono";
 import { z } from "zod";
 import { siteLock,unlockSite } from "./quota";
@@ -23,6 +24,7 @@ async function refresh(env:Cloudflare.Env,row:DomainRow,reenable=false):Promise<
 		if(row.status==="disabled"){
 			if(!reenable)return display(env,row);
 			await removeDomainProvider(env,{hostname:row.hostname,providerId:row.provider_id,verifiedAt:row.verified_at});
+			await releaseHostname(env.DB,row.hostname,"site",row.site_id).run();
 			await env.DB.prepare("UPDATE site_domain SET status='pending_ownership',ssl='pending',proof=?,verified_at=NULL,provider_id=NULL,records='[]',checked_at=NULL,disable_at=NULL WHERE site_id=?").bind(`blup-verification=${crypto.randomUUID().replaceAll("-","")}${crypto.randomUUID().replaceAll("-","")}`,row.site_id).run();
 			const reset=await read(env,row.site_id);if(!reset)throw new DomainError("DOMAIN_PROVIDER");return display(env,reset);
 		}
@@ -31,6 +33,7 @@ async function refresh(env:Cloudflare.Env,row:DomainRow,reenable=false):Promise<
 			return display(env,row);
 		}
 		if(!row.verified_at){
+			if(!await claimHostname(env.DB,row.hostname,"site",row.site_id))throw new DomainError("DOMAIN_TAKEN");
 			try{await env.DB.prepare("UPDATE site_domain SET verified_at=? WHERE site_id=? AND verified_at IS NULL").bind(Date.now(),row.site_id).run();}
 			catch(e){if(String(e).includes("UNIQUE"))throw new DomainError("DOMAIN_TAKEN");throw e;}
 		}
@@ -82,6 +85,7 @@ export const domainsApi=new Hono<App>()
 		if(!lock)return c.json({code:"TOO_MANY_REQUESTS"},429);
 		try{
 			const row=await read(c.env,id);if(row)await removeDomainProvider(c.env,{hostname:row.hostname,providerId:row.provider_id,verifiedAt:row.verified_at});
+			if(row)await releaseHostname(c.env.DB,row.hostname,"site",id).run();
 			await queueSitePurge(c.env.DB,id).run();
 			await c.env.DB.prepare("DELETE FROM site_domain WHERE site_id=?").bind(id).run();
 			return c.json({ok:true});

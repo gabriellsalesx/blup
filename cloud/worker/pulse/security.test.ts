@@ -5,6 +5,7 @@ import {safeEvent} from "./event";
 import {authKey,checkDepth,ingestBytes,normalizeEventId,parseEnvelope,IngestError} from "./protocol";
 import {reserveGrant} from "./quota";
 import {pulseAccess,sha256} from "./limits";
+import {pulseLimits} from "./limits";
 const state=vi.hoisted(()=>({env:{} as Cloudflare.Env}));
 vi.mock("cloudflare:workers",()=>({env:state.env,DurableObject:class{constructor(readonly ctx:DurableObjectState,readonly env:Cloudflare.Env){}}}));
 vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})=>{const id=headers.get("authorization")?.replace("Bearer ","");return id?{user:{id}}:null;}}}}));
@@ -23,8 +24,9 @@ function engine(db:TestD1){
  return {sql,transaction};
 }
 let d1:TestD1,local:TestD1,store:ProjectStore;
-beforeEach(()=>{d1=new TestD1();local=new TestD1();seedUser(d1,"alice","max_pulse");seedUser(d1,"bob","ultra_pulse");seedUser(d1,"free");const e=engine(local);store=new ProjectStore(e.sql,e.transaction);Object.assign(state.env,{DB:d1.asD1(),STAFF_OWNER_EMAIL:"",PULSE_INGEST_LIMIT:{limit:async()=>({success:true})}});});
-afterEach(()=>{d1.close();local.close();vi.unstubAllGlobals();});
+beforeEach(()=>{
+ vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));d1=new TestD1();local=new TestD1();seedUser(d1,"alice","max_pulse");seedUser(d1,"bob","ultra_pulse");seedUser(d1,"free");const e=engine(local);store=new ProjectStore(e.sql,e.transaction);Object.assign(state.env,{DB:d1.asD1(),STAFF_OWNER_EMAIL:"",PULSE_INGEST_LIMIT:{limit:async()=>({success:true})}});});
+afterEach(()=>{d1.close();local.close();vi.unstubAllGlobals();vi.useRealTimers();});
 const raw=(id="a".repeat(32),message="failure")=>({event_id:id,message,platform:"go",exception:{values:[{type:"Error",value:message}]}});
 const envelope=(event:unknown,header:unknown={})=>{const payload=JSON.stringify(event);return new TextEncoder().encode(`${JSON.stringify(header)}\n${JSON.stringify({type:"event",length:new TextEncoder().encode(payload).length})}\n${payload}`);};
 const request=(path:string,method="GET",body?:unknown,user="alice")=>pulseApi.fetch(new Request(`https://cloud.audit.invalid${path}`,{method,headers:{...(user?{authorization:`Bearer ${user}`} : {}),...(body===undefined?{}:{"content-type":"application/json"})},body:body===undefined?undefined:JSON.stringify(body)}),state.env);
@@ -64,6 +66,20 @@ describe("Pulse protocol and privacy",()=>{
  });
 });
 describe("Pulse atomic admission and retention",()=>{
+ it("separates quota grants and accepted events at the UTC year/month boundary",async()=>{
+  const before=Date.UTC(2026,11,31,23,59,59,999),after=before+1;
+  const old=await reserveGrant(d1.asD1(),"alice","1",0,32,before),fresh=await reserveGrant(d1.asD1(),"alice","1",0,32,after);
+  expect(old.id).not.toBe(fresh.id);store.importGrant(old,"2026-12");store.importGrant(fresh,"2027-01");const event=await safeEvent(raw(),"a".repeat(32));store.accept(event,"max_pulse",before);store.accept({...event,id:"b".repeat(32)},"max_pulse",after);expect(store.usage("2026-12").accepted).toBe(1);expect(store.usage("2027-01").accepted).toBe(1);expect(d1.sqlite.prepare("SELECT month,reserved FROM pulse_month ORDER BY month").all()).toEqual([{month:"2026-12",reserved:32},{month:"2027-01",reserved:32}]);
+ });
+ it("expires deduplication and issue state before physical cleanup has run",async()=>{
+  const now=Date.now(),old=now-31*86400000,event=await safeEvent(raw(),"a".repeat(32));store.importGrant({id:"old-window",amount:32},new Date(old).toISOString().slice(0,7));store.accept(event,"max_pulse",old);store.setState(event.group,"ignored",0);store.importGrant({id:"new-window",amount:32},new Date(now).toISOString().slice(0,7));expect(store.accept(event,"max_pulse",now).duplicate).toBe(false);expect(store.issues(now-30*86400000,{limit:5})[0]).toMatchObject({state:"open",firstAt:now,lastAt:now,count:1});expect(store.samples(event.group,now-30*86400000)).toHaveLength(1);
+ });
+ it("reserves physical database headroom without consuming an event or grant",async()=>{
+  const e=engine(local),sql={exec:e.sql.exec.bind(e.sql),databaseSize:pulseLimits.max_pulse.projectBytes-1024*1024} as ProjectSQL,limited=new ProjectStore(sql,e.transaction),now=Date.now(),month=new Date(now).toISOString().slice(0,7),event=await safeEvent(raw(),"a".repeat(32));limited.importGrant({id:"capacity",amount:32},month);expect(()=>limited.accept(event,"max_pulse",now)).toThrow(IngestError);expect(limited.usage(month).accepted).toBe(0);expect(limited.seen(event.id,0)).toBe(false);
+ });
+ it("paginates issues sharing the same timestamp without skipping IDs",async()=>{
+  const now=Date.now();store.importGrant({id:"pagination",amount:32},new Date(now).toISOString().slice(0,7));for(let i=1;i<=3;i++)store.accept(await safeEvent(raw(i.toString().repeat(32),["alpha failure","beta failure","gamma failure"][i-1]),i.toString().repeat(32)),"max_pulse",now);const first=store.issues(0,{limit:2}),last=first[1];const next=store.issues(0,{limit:2,before:last.lastAt,beforeId:last.id});expect(new Set([...first,...next].map(i=>i.id)).size).toBe(3);
+ });
  it("serializes grants across projects, imports once and never refunds uncertain grants",async()=>{
   const attempts=await Promise.allSettled([reserveGrant(d1.asD1(),"alice","1",0,32),reserveGrant(d1.asD1(),"alice","2",0,32)]);expect(attempts.filter(a=>a.status==="fulfilled")).toHaveLength(1);
   const grant=await reserveGrant(d1.asD1(),"alice","1",0,32);store.importGrant(grant,new Date().toISOString().slice(0,7));store.importGrant(grant,new Date().toISOString().slice(0,7));expect(store.slots(new Date().toISOString().slice(0,7))).toBe(32);
@@ -87,6 +103,14 @@ describe("Pulse atomic admission and retention",()=>{
  });
 });
 describe("Pulse actual routes and DO",()=>{
+ it("keeps monitor writes inside the same project physical capacity boundary",async()=>{
+  const created=await(await request("/projects","POST",{name:"Capacity",platform:"go"})).json() as {id:string};d1.sqlite.prepare("INSERT INTO pulse_monitor(id,user_id,project_id,name,url,interval_minutes,next_at,created_at) VALUES('capacity-monitor','alice',?,'monitor','https://example.com',5,0,0)").run(created.id);
+  const e=engine(local),sql={exec:e.sql.exec.bind(e.sql),databaseSize:pulseLimits.max_pulse.projectBytes-1024*1024} as ProjectSQL,ctx={waitUntil:(p:Promise<unknown>)=>p.catch(()=>{}),storage:{sql,transactionSync:e.transaction,getAlarm:async()=>null,setAlarm:async()=>{}}} as unknown as DurableObjectState,object=new PulseProject(ctx,state.env),now=Date.now();
+  const result=await object.recordChecks([{id:"capacity-check",monitor:"capacity-monitor",revision:1,scheduledAt:now,checkedAt:now,intervalMinutes:5,result:{outcome:"up",status:200,durationMs:1,reason:"http"}}]);expect(result[0].state).toBe("unknown");expect(local.sqlite.prepare("SELECT count(*) AS n FROM monitor_check").get()?.n).toBe(0);
+ });
+ it("rotates concurrent DSNs atomically and keeps only one active key",async()=>{
+  const created=await(await request("/projects","POST",{name:"Rotation",platform:"go"})).json() as {id:string};const rotations=await Promise.all([request(`/projects/${created.id}/keys`,"POST"),request(`/projects/${created.id}/keys`,"POST")]);expect(rotations.map(r=>r.status)).toEqual([201,201]);expect(d1.sqlite.prepare("SELECT count(*) AS n FROM pulse_key WHERE project_id=? AND revoked_at IS NULL").get(created.id)?.n).toBe(1);
+ });
  it("rejects IDOR, arbitrary owner/limit, unpaid creation and excess projects",async()=>{
   const made=await request("/projects","POST",{name:"App",platform:"go"});expect(made.status).toBe(201);const body=await made.json() as {id:string;key:{dsn:string}};
   expect(body.key.dsn).toMatch(/^https:\/\/[a-f0-9]{48}@ingest.getblup.io\/\d+$/);

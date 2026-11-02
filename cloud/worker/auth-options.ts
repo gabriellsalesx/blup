@@ -1,4 +1,4 @@
-import {requestLanguage,stripeLocale,type Language} from "../shared/language";
+import {requestLanguage,type Language} from "../shared/language";
 import type { BetterAuthOptions } from "better-auth";
 import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -53,7 +53,7 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 		basePath: "/api/auth",
 		// The Worker owns signed webhook reconciliation. The plugin's snapshot
 		// handler must never write an older event after that reconciliation.
-		disabledPaths: ["/stripe/webhook","/subscription/success"],
+		disabledPaths: ["/stripe/webhook","/subscription/success","/subscription/upgrade","/subscription/billing-portal","/subscription/cancel","/subscription/restore"],
 		secret: cfg.secret,
 		trustedOrigins: [cfg.appUrl,...(cfg.pulseUrl?[cfg.pulseUrl]:[])],
 		database: drizzleAdapter(db, { provider: "sqlite", schema }),
@@ -136,15 +136,6 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 				subscription: {
 					enabled: true,
 					plans: PLANS.filter((p) => p.lookupKey).map((p) => ({ name: p.name, lookupKey: p.lookupKey, annualDiscountLookupKey: p.yearlyLookupKey, limits: p.limits })),
-					// Stripe's recommendations: flexible billing mode, and a label to
-					// follow this checkout flow in the Dashboard (8 random letters).
-					getCheckoutSessionParams: async (_data,request) => ({
-						params: {
-							locale: stripeLocale[requestLanguage(request?.headers)],
-							subscription_data: { billing_mode: { type: "flexible" } },
-							integration_identifier: "blup_cloud_plans_qmzrtxwa",
-						},
-					}),
 				},
 			}),
 		],

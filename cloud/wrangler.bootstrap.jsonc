@@ -1,0 +1,15 @@
+{
+ "$schema":"node_modules/wrangler/config-schema.json",
+ // FIRST EMPTY INSTALLATION ONLY. Never replace a working production app.
+ // Same final script and migration tags as wrangler.jsonc --env production.
+ "name":"blup-cloud-production",
+ "main":"worker/bootstrap.ts",
+ "compatibility_date":"2026-10-28",
+ "compatibility_flags":["nodejs_compat","global_fetch_strictly_public"],
+ "workers_dev":false,
+ "preview_urls":false,
+ "routes":[],
+ "triggers":{"crons":[]},
+ "durable_objects":{"bindings":[{"name":"SYNC_LIVE","class_name":"SyncLive"},{"name":"PULSE_PROJECT","class_name":"PulseProject"}]},
+ "migrations":[{"tag":"v1","new_sqlite_classes":["SyncLive"]},{"tag":"v2-pulse","new_sqlite_classes":["PulseProject"]}]
+}

@@ -53,7 +53,7 @@ function pricesOf(plan:Plan,values:ReadonlyMap<string,Price|null>):Prices{
 }
 export async function publicPlans(env:Pick<Cloudflare.Env,"STRIPE_SECRET_KEY">,language:Language="pt"){
 	const values=await catalog(env).prices();
-	return PLANS.map(({name,label,limits,perks,lookupKey,yearlyLookupKey})=>({name,label:planLabel(name,language),limits,perks:planPerks(language,name,limits),suggested:name===SUGGESTED,prices:pricesOf({name,label,limits,perks,lookupKey,yearlyLookupKey},values)}));
+	return PLANS.map(plan=>({name:plan.name,basePlan:plan.basePlan,pulse:plan.pulse,label:planLabel(plan.name,language),limits:plan.limits,perks:planPerks(language,plan.name,plan.limits),suggested:plan.basePlan===SUGGESTED,prices:pricesOf(plan,values)}));
 }
 export async function purchaseAvailable(env:Pick<Cloudflare.Env,"STRIPE_SECRET_KEY">,name:string,annual:boolean){
 	const plan=PLANS.find(p=>p.name===name);

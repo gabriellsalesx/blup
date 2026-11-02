@@ -1,3 +1,4 @@
+import {observePulseEntitlements} from "./pulse/entitlements";
 import { z } from "zod";
 import type Stripe from "stripe";
 import { createStripe } from "./stripe-client";
@@ -35,7 +36,7 @@ type Lease={id:string;token:string};
 class BillingError extends Error {}
 
 async function receipt(db:D1Database,eventId:string){return db.prepare("SELECT user_id AS userId FROM stripe_webhook_event WHERE id=?").bind(eventId).first<Receipt>();}
-async function refreshPlan(env:Cloudflare.Env,userId:string|null){if(userId){const plan=await accountPlan(env,userId);if(plan)await observePlan(env.DB,userId,plan.name);}}
+async function refreshPlan(env:Cloudflare.Env,userId:string|null){if(userId){const plan=await accountPlan(env,userId);if(plan)await observePlan(env.DB,userId,plan.name);await observePulseEntitlements(env,userId);}}
 
 // Only identifiers are read from the signed event. All mutable state and
 // amounts come from current API objects, never from the delivered snapshot.
@@ -76,9 +77,10 @@ async function subscriptionWrites(db:D1Database,stripe:Stripe,subscriptionId:str
  // This retrieval must happen AFTER acquiring the subscription lease.
  const current=subscriptionSchema.parse(await stripe.subscriptions.retrieve(subscriptionId,{expand:["items.data.price.product"]},requestOptions));
  if(current.id!==subscriptionId)throw new BillingError();
- const owner=await db.prepare("SELECT id FROM user WHERE stripe_customer_id=? LIMIT 1").bind(current.customer).first<{id:string}>();
+ const owner=await db.prepare("SELECT u.id,q.deleted_at AS deletedAt FROM user u LEFT JOIN resource_quota q ON q.user_id=u.id WHERE u.stripe_customer_id=? LIMIT 1").bind(current.customer).first<{id:string;deletedAt:number|null}>();
  // A deleted account or another application's customer must not be recreated.
  if(!owner)return {userId:null,writes:[]};
+ if(owner.deletedAt!==null&&owner.deletedAt!==undefined)return {userId:owner.id,writes:[db.prepare("UPDATE resource_quota SET billing_cancel_pending=1 WHERE user_id=? AND deleted_at IS NOT NULL").bind(owner.id)]};
  if([current.metadata.userId,current.metadata.referenceId].some(value=>value&&value!==owner.id))throw new BillingError();
  // Two distinct subscriptions may reference the same pending Checkout
  // row. Serialize its adoption as well as this account's plan transition.

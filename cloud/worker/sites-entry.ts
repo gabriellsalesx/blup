@@ -28,6 +28,11 @@ export default {
 	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
 		const url = new URL(req.url);
 		if(url.hostname===env.PULSE_PUBLIC_HOST)return await servePulsePage(req,env)??new Response("Not found",{status:404});
+		// Custom Pulse hostnames use the same verified SaaS namespace.
+		// Resolve eligibility on every request before the short public cache.
+		if(!slugOfHost(url.hostname,env.SITES_DOMAIN)){
+			const pulse=await servePulsePage(req,env);if(pulse)return pulse;
+		}
 		const local = env.SITES_DOMAIN === "localhost";
 		// Always HTTPS, and www.name.getblup.site is the same site as
 		// name.getblup.site (one address, so search engines see one).

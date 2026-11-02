@@ -1,4 +1,5 @@
 import { queueSitePurge } from "./site-cache-purge";
+import {releaseHostname} from "./hostname-claim";
 import { accountPlan, observePlan } from "./lifecycle";
 import { siteLock, unlockSite } from "./quota";
 import { removeDomainProvider } from "./domain-provider";
@@ -19,6 +20,7 @@ export async function disableExpiredDomain(env:Cloudflare.Env,siteId:string,now=
 		await queueSitePurge(env.DB,siteId).run();
 		// Keep the ID/proof until this succeeds, including a lost provider ID.
 		await removeDomainProvider(env,claimed);
+		await releaseHostname(env.DB,claimed.hostname,"site",siteId).run();
 		await env.DB.prepare("UPDATE site_domain SET provider_id=NULL,verified_at=NULL,ssl='pending',records='[]',checked_at=NULL WHERE site_id=? AND status='disabled'").bind(siteId).run();
 		return true;
 	}finally{await unlockSite(env.DB,`domain:${siteId}`,lock);}

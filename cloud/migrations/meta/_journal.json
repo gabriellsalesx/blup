@@ -134,6 +134,13 @@
       "when": 1793655182348,
       "tag": "0018_pulse_avisos",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1793657831415,
+      "tag": "0019_pulse_cobranca_dominios",
+      "breakpoints": true
     }
   ]
 }

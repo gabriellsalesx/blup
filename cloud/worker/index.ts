@@ -1,7 +1,8 @@
+import {billingApi} from "./billing-api";
 import {languageSchema,languageOf,requestLanguage} from "../shared/language";
 import {planLabel} from "../shared/plan-i18n";
 import { stripeWebhook,cleanWebhookReceipts } from "./billing";
-import { publicPlans,purchaseAvailable } from "./pricing";
+import { publicPlans } from "./pricing";
 import { flushSitePurges } from "./site-cache-purge";
 import { expireTransfers } from "./sync-transfers";
 import { SyncError,drainSyncGarbage } from "./sync-storage";
@@ -94,17 +95,7 @@ app.on("POST", ["/auth/email-otp/request-email-change", "/auth/email-otp/change-
 });
 
 // Paying needs a real e-mail (receipts, and a way back into the account).
-app.post("/auth/subscription/upgrade", async (c, next) => {
-	const s = await auth.api.getSession({ headers: c.req.raw.headers });
-	if (s && !hasEmail(s.user.email)) return c.json({ code: "EMAIL_REQUIRED", message: "Vincule um e-mail antes de assinar." }, 403);
-	if(s){
-		const input=z.object({plan:z.enum(["pro","max","ultra"]),annual:z.boolean().optional(),referenceId:opaqueId.optional()}).safeParse(await c.req.raw.clone().json().catch(()=>null));
-		if(!input.success)return c.json({code:"INVALID"},400);
-		if(input.data.referenceId&&input.data.referenceId!==s.user.id)return c.json({code:"FORBIDDEN"},403);
-		if(!await purchaseAvailable(c.env,input.data.plan,input.data.annual??false))return c.json({code:"PRICING_UNAVAILABLE",message:"Preço indisponível agora. Tente novamente em instantes."},503);
-	}
-	await next();
-});
+app.post("/auth/subscription/upgrade",c=>c.json({code:"BILLING_USE_PREVIEW"},409));
 
 // Approval and the pending slot are committed in one D1 transaction.
 app.post("/auth/device/approve",validate("json",approvalBody),async c=>{
@@ -126,7 +117,7 @@ app.post("/auth/delete-user",validate("json",z.object({}).strict()),async c=>{
 // transfer has storage quotas and a separate 500/10s per-account fuse.
 app.use("*",async(c,next)=>{
  const path=c.req.path,method=c.req.method;
- const costly=(c.req.path.startsWith("/api/pulse/")&&!["GET","HEAD"].includes(method))||(method==="POST"&&/^\/api\/(?:ai\/(?:audio\/speech|translate)|sites\/?|sync\/vaults)$/.test(path)) || /\/api\/sites\/[^/]+\/domain$/.test(path) || method==="GET"&&path==="/api/sites/check" || method==="PUT"&&/^\/api\/reminders\/?$/.test(path) || /\/api\/sync\/vaults\/[^/]+\/(?:prepare|history)$/.test(path) || method==="PUT"&&path==="/api/sites/retained" || method==="DELETE"&&/^\/api\/sites\/[^/]+$/.test(path);
+ const costly=((c.req.path.startsWith("/api/pulse/")||c.req.path.startsWith("/api/billing/"))&&!["GET","HEAD"].includes(method))||(method==="POST"&&/^\/api\/(?:ai\/(?:audio\/speech|translate)|sites\/?|sync\/vaults)$/.test(path)) || /\/api\/sites\/[^/]+\/domain$/.test(path) || method==="GET"&&path==="/api/sites/check" || method==="PUT"&&/^\/api\/reminders\/?$/.test(path) || /\/api\/sync\/vaults\/[^/]+\/(?:prepare|history)$/.test(path) || method==="PUT"&&path==="/api/sites/retained" || method==="DELETE"&&/^\/api\/sites\/[^/]+$/.test(path);
  const bulk=!costly&&(path.startsWith("/api/pulse/")||/^\/api\/sync\//.test(path)||/^\/api\/sites\/[^/]+\/(?:files|missing|deploys)(?:\/|$)/.test(path));
  if(!costly&&!bulk)return next();
  const s=await auth.api.getSession({headers:c.req.raw.headers});if(!s)return next();
@@ -180,7 +171,7 @@ const routes = app
 			email: hasEmail(user.email) ? user.email : null,
 			name: user.name,
 			createdAt: user.createdAt,
-			plan: { name: plan.name, label: planLabel(plan.name,requestLanguage(c.req.raw.headers)), limits: plan.limits, gift, status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
+			plan: { name: plan.basePlan,billingName:plan.name,billingInterval:z.enum(["month","year"]).nullable().catch(null).parse(sub?.billingInterval??null),pulse:{enabled:plan.pulse!==null,limits:plan.pulse}, label: planLabel(plan.name,requestLanguage(c.req.raw.headers)), limits: plan.limits, gift, status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
 		});
 	})
 	// The Blup Studio installs signed in (each is a session), to see and
@@ -209,7 +200,8 @@ const routes = app
 	.route("/sites",sitesApi)
 	.route("/reminders",remindersApi)
 	.route("/ai",aiApi)
-	.route("/pulse",pulseApi);
+	.route("/pulse",pulseApi)
+ .route("/billing",billingApi);
 
 app.notFound((c) => c.json({ code: "NOT_FOUND" }, 404));
 app.onError(async (err, c) => {

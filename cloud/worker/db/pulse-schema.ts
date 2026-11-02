@@ -3,7 +3,8 @@ import {sqliteTable,text,integer,index,primaryKey} from "drizzle-orm/sqlite-core
 // D1 contains configuration/admission only. Event bodies belong to project DOs.
 export const pulseProject=sqliteTable("pulse_project",{
  id:text("id").primaryKey(),userId:text("user_id").notNull(),name:text("name").notNull(),platform:text("platform").notNull(),objectName:text("object_name").notNull().unique(),active:integer("active").notNull().default(1),deletedAt:integer("deleted_at"),createdAt:integer("created_at").notNull(),cleanedAt:integer("cleaned_at").notNull().default(0),alertCheckedAt:integer("alert_checked_at").notNull().default(0),
-},t=>[index("pulse_project_owner_idx").on(t.userId,t.id),index("pulse_project_deleted_idx").on(t.deletedAt),index("pulse_project_cleaned_idx").on(t.cleanedAt),index("pulse_project_alert_idx").on(t.alertCheckedAt)]);
+ planDisabled:integer("plan_disabled").notNull().default(0),retireAt:integer("retire_at"),
+},t=>[index("pulse_project_owner_idx").on(t.userId,t.id),index("pulse_project_deleted_idx").on(t.deletedAt),index("pulse_project_retire_idx").on(t.retireAt),index("pulse_project_cleaned_idx").on(t.cleanedAt),index("pulse_project_alert_idx").on(t.alertCheckedAt)]);
 export const pulseKey=sqliteTable("pulse_key",{
  id:text("id").primaryKey(),projectId:text("project_id").notNull(),hash:text("hash").notNull().unique(),prefix:text("prefix").notNull(),revokedAt:integer("revoked_at"),createdAt:integer("created_at").notNull(),
 },t=>[index("pulse_key_project_idx").on(t.projectId)]);
@@ -14,14 +15,16 @@ export const pulseGrant=sqliteTable("pulse_grant",{
  id:text("id").primaryKey(),userId:text("user_id").notNull(),projectId:text("project_id").notNull(),month:text("month").notNull(),amount:integer("amount").notNull(),createdAt:integer("created_at").notNull(),
 },t=>[index("pulse_grant_owner_month_idx").on(t.userId,t.month),index("pulse_grant_project_idx").on(t.projectId),index("pulse_grant_month_idx").on(t.month)]);
 export const pulseAccount=sqliteTable("pulse_account",{
- userId:text("user_id").primaryKey(),lastPlan:text("last_plan").notNull(),readOnlyUntil:integer("read_only_until"),purgeStarted:integer("purge_started"),
+ userId:text("user_id").primaryKey(),lastPlan:text("last_plan").notNull(),paidUntil:integer("paid_until"),resourcePlan:text("resource_plan"),readOnlyUntil:integer("read_only_until"),purgeStarted:integer("purge_started"),
 },t=>[index("pulse_account_purge_idx").on(t.readOnlyUntil)]);
 export const pulseMonitor=sqliteTable("pulse_monitor",{
  id:text("id").primaryKey(),userId:text("user_id").notNull(),projectId:text("project_id").notNull(),name:text("name").notNull(),url:text("url").notNull(),intervalMinutes:integer("interval_minutes").notNull(),active:integer("active").notNull().default(1),nextAt:integer("next_at").notNull(),claim:text("claim"),claimUntil:integer("claim_until").notNull().default(0),state:text("state").notNull().default("unknown"),revision:integer("revision").notNull().default(1),lastAt:integer("last_at"),createdAt:integer("created_at").notNull(),
-},t=>[index("pulse_monitor_owner_idx").on(t.userId,t.id),index("pulse_monitor_due_idx").on(t.active,t.nextAt),index("pulse_monitor_project_idx").on(t.projectId)]);
+ planDisabled:integer("plan_disabled").notNull().default(0),retireAt:integer("retire_at"),
+},t=>[index("pulse_monitor_owner_idx").on(t.userId,t.id),index("pulse_monitor_retire_idx").on(t.retireAt),index("pulse_monitor_due_idx").on(t.active,t.nextAt),index("pulse_monitor_project_idx").on(t.projectId)]);
 export const pulsePage=sqliteTable("pulse_page",{
  id:text("id").primaryKey(),userId:text("user_id").notNull(),slug:text("slug").notNull().unique(),title:text("title").notNull(),published:integer("published").notNull().default(0),language:text("language").notNull().default("en"),createdAt:integer("created_at").notNull(),
-},t=>[index("pulse_page_owner_idx").on(t.userId,t.id)]);
+ planDisabled:integer("plan_disabled").notNull().default(0),retireAt:integer("retire_at"),
+},t=>[index("pulse_page_owner_idx").on(t.userId,t.id),index("pulse_page_retire_idx").on(t.retireAt)]);
 export const pulseComponent=sqliteTable("pulse_component",{
  pageId:text("page_id").notNull(),monitorId:text("monitor_id").notNull(),name:text("name").notNull(),position:integer("position").notNull(),
 },t=>[primaryKey({columns:[t.pageId,t.monitorId]})]);
@@ -53,3 +56,15 @@ export const pulseCooldown=sqliteTable("pulse_cooldown",{
  key:text("key").primaryKey(),until:integer("until").notNull(),
 },t=>[index("pulse_cooldown_expiry_idx").on(t.until)]);
 export const pulseDeliveryBudget=sqliteTable("pulse_delivery_budget",{key:text("key").primaryKey(),nextAt:integer("next_at").notNull()});
+export const pulseBillingTicket=sqliteTable("pulse_billing_ticket",{
+ id:text("id").primaryKey(),userId:text("user_id").notNull(),subscriptionId:text("subscription_id").notNull(),targetPlan:text("target_plan").notNull(),annual:integer("annual").notNull(),prorationDate:integer("proration_date").notNull(),fingerprint:text("fingerprint").notNull(),quote:text("quote").notNull(),targetPrice:text("target_price"),expiresAt:integer("expires_at").notNull(),state:text("state").notNull().default("preview"),result:text("result"),scheduleId:text("schedule_id"),
+},t=>[index("pulse_billing_ticket_owner_idx").on(t.userId),index("pulse_billing_ticket_expiry_idx").on(t.expiresAt)]);
+export const pulseSelection=sqliteTable("pulse_selection",{
+ userId:text("user_id").primaryKey(),targetPlan:text("target_plan").notNull(),effectiveAt:integer("effective_at").notNull(),keep:text("keep").notNull(),appliedAt:integer("applied_at"),
+},t=>[index("pulse_selection_due_idx").on(t.appliedAt,t.effectiveAt)]);
+export const hostnameClaim=sqliteTable("hostname_claim",{
+ hostname:text("hostname").primaryKey(),kind:text("kind").notNull(),resourceId:text("resource_id").notNull(),
+});
+export const billingCheckout=sqliteTable("billing_checkout",{
+ userId:text("user_id").primaryKey(),id:text("id").notNull(),plan:text("plan").notNull(),annual:integer("annual").notNull(),params:text("params").notNull(),sessionId:text("session_id"),url:text("url"),expiresAt:integer("expires_at").notNull(),
+},t=>[index("billing_checkout_expiry_idx").on(t.expiresAt)]);

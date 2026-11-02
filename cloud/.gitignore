@@ -8,3 +8,6 @@ build/
 !.dev.vars.example
 .env
 .env.*
+
+# Temporary local audit state and SDK installations.
+.lupa-*/

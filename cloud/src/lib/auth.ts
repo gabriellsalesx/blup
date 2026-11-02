@@ -3,13 +3,12 @@ import {errorMessage} from "./i18n/errors";
 import { createAuthClient } from "better-auth/svelte";
 import { emailOTPClient, deviceAuthorizationClient } from "better-auth/client/plugins";
 import { passkeyClient } from "@better-auth/passkey/client";
-import { stripeClient } from "@better-auth/stripe/client";
 
 // Same origin as the Worker: /api/auth.
 export const authClient = createAuthClient({
 	basePath: "/api/auth",
 	fetchOptions:{onRequest:ctx=>{ctx.headers.set("x-blup-language",language());}},
-	plugins: [emailOTPClient(), passkeyClient(), stripeClient({ subscription: true }), deviceAuthorizationClient()],
+	plugins: [emailOTPClient(), passkeyClient(), deviceAuthorizationClient()],
 });
 
 // Better Auth's errors, in the panel's words.

@@ -7,9 +7,11 @@
   },
   "scripts": {
     "dev": "vite build && wrangler dev",
-    "build": "node worker/export-rpc.mjs && vite build",
-    "check": "node worker/export-rpc.mjs && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc -p worker/tsconfig.json --noEmit && tsc -p scripts/tsconfig.json --noEmit",
+    "build": "node worker/export-rpc.mjs && vite build && npm run pulse:build",
+    "check": "node worker/export-rpc.mjs && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc -p worker/tsconfig.json --noEmit && tsc -p scripts/tsconfig.json --noEmit && npm run pulse:check",
     "test": "vitest run",
+    "pulse:check": "cd pulse && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "pulse:build": "cd pulse && vite build",
     "types": "wrangler types worker/worker-configuration.d.ts --env-interface CloudflareBindings",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",

@@ -19,7 +19,7 @@ export async function enqueueSignals(env:Cloudflare.Env,project:string,signals:A
  }}
 }
 export async function reconcileAlerts(env:Cloudflare.Env,now=Date.now()){
- const rows=await env.DB.prepare("SELECT p.id,p.object_name AS objectName FROM pulse_project p WHERE p.alert_checked_at<? AND p.active=1 AND p.deleted_at IS NULL AND EXISTS(SELECT 1 FROM pulse_project_channel pc WHERE pc.project_id=p.id) ORDER BY p.alert_checked_at LIMIT 50").bind(now-60_000).all<{id:string;objectName:string}>();
+ const rows=await env.DB.prepare("SELECT p.id,p.object_name AS objectName FROM pulse_project p WHERE p.alert_checked_at<? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL AND EXISTS(SELECT 1 FROM pulse_project_channel pc WHERE pc.project_id=p.id) ORDER BY p.alert_checked_at LIMIT 50").bind(now-60_000).all<{id:string;objectName:string}>();
  for(const p of rows.results){await env.PULSE_PROJECT.getByName(p.objectName).flushAlerts(p.id);await env.DB.prepare("UPDATE pulse_project SET alert_checked_at=? WHERE id=?").bind(now,p.id).run();}
 }
 async function budget(db:D1Database,kind:string,now:number,spacing:number){
@@ -51,7 +51,7 @@ export async function dispatchAlerts(env:Cloudflare.Env,now=Date.now()){
    if(item.expiresAt<=Date.now()||item.attempts>=5||!item.active||!access.writable||!isKind(item.kind)){await discard();continue;}
    let title="";
    if(item.kind!=="test"){
-    const project=await env.DB.prepare("SELECT object_name AS objectName FROM pulse_project p WHERE p.id=? AND p.user_id=? AND p.active=1 AND p.deleted_at IS NULL AND EXISTS(SELECT 1 FROM pulse_project_channel pc WHERE pc.project_id=p.id AND pc.channel_id=?)").bind(item.projectId,item.userId,item.channelId).first<{objectName:string}>();if(!project){await discard();continue;}
+    const project=await env.DB.prepare("SELECT object_name AS objectName FROM pulse_project p WHERE p.id=? AND p.user_id=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL AND EXISTS(SELECT 1 FROM pulse_project_channel pc WHERE pc.project_id=p.id AND pc.channel_id=?)").bind(item.projectId,item.userId,item.channelId).first<{objectName:string}>();if(!project){await discard();continue;}
     if(item.kind.startsWith("monitor_")){
      const monitor=await env.DB.prepare("SELECT name,state FROM pulse_monitor WHERE id=? AND project_id=? AND user_id=? AND active=1").bind(item.refId,item.projectId,item.userId).first<{name:string;state:string}>();if(!monitor||`monitor_${monitor.state}`!==item.kind){await discard();continue;}title=cleanText(monitor.name,160);
     }else{const issue=await env.PULSE_PROJECT.getByName(project.objectName).notification(item.refId,Date.now()-(access.limits?.retentionDays??30)*86_400_000);if(!issue||issue.state!=="open"){await discard();continue;}title=issue.title;}

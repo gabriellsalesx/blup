@@ -11,6 +11,7 @@ import {checkDue} from "./scheduler";
 import {publicPage,servePulsePage} from "./public";
 let db:TestD1,storage:TestD1,store:MonitorStore;
 beforeEach(()=>{
+ vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
  db=new TestD1();storage=new TestD1();seedUser(db,"alice","max_pulse");seedUser(db,"bob","ultra_pulse");
  db.sqlite.exec("INSERT INTO pulse_project(id,user_id,name,platform,object_name,created_at) VALUES('1','alice','Private project','go','object1',0),('2','bob','Other project','go','object2',0)");
  const sql={get databaseSize(){return 0;},exec(query:string,...args:unknown[]){if(query.includes(";")){storage.sqlite.exec(query);return {toArray:()=>[]};}const rows=storage.sqlite.prepare(query).all(...args);return {toArray:()=>rows};}} as unknown as ProjectSQL;
@@ -18,7 +19,7 @@ beforeEach(()=>{
  store=new MonitorStore(sql,fn=>{storage.sqlite.exec("BEGIN");try{const result=fn();storage.sqlite.exec("COMMIT");return result;}catch(e){storage.sqlite.exec("ROLLBACK");throw e;}});
  Object.assign(state.env,{DB:db.asD1(),STAFF_OWNER_EMAIL:"",PULSE_PUBLIC_HOST:"pulse.audit.invalid",PULSE_PUBLIC_LIMIT:{limit:async()=>({success:true})},PULSE_PROJECT:{getByName:()=>({recordChecks:async(observations:Parameters<MonitorStore["record"]>[0][])=>observations.map(o=>store.record(o)),monitorHistory:async(id:string,days:number)=>store.history(id,days)})}});
 });
-afterEach(()=>{db.close();storage.close();vi.unstubAllGlobals();vi.restoreAllMocks();});
+afterEach(()=>{db.close();storage.close();vi.unstubAllGlobals();vi.restoreAllMocks();vi.useRealTimers();});
 const request=(path:string,method="GET",body?:unknown,user="alice")=>pulseApi.fetch(new Request(`https://cloud.audit.invalid${path}`,{method,headers:{authorization:`Bearer ${user}`,...(body===undefined?{}:{"content-type":"application/json"})},body:body===undefined?undefined:JSON.stringify(body)}),state.env);
 const fakePublic=vi.fn(async(input:RequestInfo|URL)=>String(input).startsWith("https://cloudflare-dns.com/")?Response.json({Status:0,Answer:[{type:1,data:"93.184.216.34"}]}):new Response("",{status:503}));
 it("blocks URL tricks, literals, reserved ranges and our control hosts",()=>{
@@ -35,12 +36,25 @@ it("limits redirects to three hops and turns network timeout into a bounded fail
  expect(await checkHTTP("https://example.com/",false,async()=>{throw new TypeError("network");})).toMatchObject({outcome:"down",reason:"network"});
 });
 it("requires two consecutive failures/successes, ignores duplicate checks and records gaps",()=>{
- const now=Date.now(),base={id:"one",monitor:"monitor1",revision:1,scheduledAt:now,checkedAt:now,intervalMinutes:5,result:{outcome:"down" as const,status:500,durationMs:1,reason:"http" as const}};
+ const now=Date.UTC(2026,10,15,12),base={id:"one",monitor:"monitor1",revision:1,scheduledAt:now,checkedAt:now,intervalMinutes:5,result:{outcome:"down" as const,status:500,durationMs:1,reason:"http" as const}};
  expect(store.record(base).state).toBe("unknown");expect(store.record(base).duplicate).toBe(true);
  expect(store.record({...base,id:"two",scheduledAt:now+300_000,checkedAt:now+300_000}).state).toBe("down");
  for(let i=3;i<=4;i++)expect(store.record({...base,id:String(i),scheduledAt:now+(i-1)*300_000,checkedAt:now+(i-1)*300_000,result:{...base.result,outcome:"up",status:200}}).state).toBe(i===4?"up":"down");
  expect(store.record({...base,id:"gap",scheduledAt:now+1_200_000,checkedAt:now+3_600_000}).state).toBe("unknown");expect(store.history("monitor1",30,now+3_600_000).days[0]).toMatchObject({up:2,down:2,unknown:1});
  expect(store.history("monitor1",30,now+8*86_400_000).checks).toEqual([]);store.cleanup(30,now+31*86_400_000);expect(store.history("monitor1",30,now+31*86_400_000).days).toEqual([]);
+});
+it.each([Date.UTC(2026,10,15,23,5),Date.UTC(2026,10,30,23,5),Date.UTC(2026,11,31,23,5)])("keeps transitions and UTC daily buckets correct across midnight at %s",now=>{
+ const base={id:"one",monitor:"monitor1",revision:1,scheduledAt:now,checkedAt:now,intervalMinutes:5,result:{outcome:"down" as const,status:503,durationMs:1,reason:"http" as const}};
+ expect(store.record(base).state).toBe("unknown");expect(store.record({...base,id:"two",scheduledAt:now+300000,checkedAt:now+300000}).state).toBe("down");
+ for(let i=3;i<=4;i++)expect(store.record({...base,id:String(i),scheduledAt:now+(i-1)*300000,checkedAt:now+(i-1)*300000,result:{...base.result,outcome:"up",status:200}}).state).toBe(i===4?"up":"down");
+ expect(store.record({...base,id:"gap",scheduledAt:now+1200000,checkedAt:now+3600000}).state).toBe("unknown");
+ const days=store.history("monitor1",30,now+3600000).days;
+ expect(days).toEqual([expect.objectContaining({day:Math.floor(now/86400000)+1,up:0,down:0,unknown:1}),expect.objectContaining({day:Math.floor(now/86400000),up:2,down:2,unknown:0})]);
+});
+it("keeps cleanup scheduled while expired monitor checks exceed one batch",()=>{
+ const now=Date.now(),old=now-8*86400000;
+ for(let i=0;i<501;i++)store.record({id:`expired-${i}`,monitor:"monitor1",revision:1,scheduledAt:old,checkedAt:old,intervalMinutes:5,result:{outcome:"up",status:200,durationMs:1,reason:"http"}});
+ expect(store.cleanup(30,now)).toBe(true);expect(store.sql.exec<{n:number}>("SELECT count(*) AS n FROM monitor_check").toArray()[0].n).toBe(1);expect(store.cleanup(30,now)).toBe(false);expect(store.sql.exec<{n:number}>("SELECT count(*) AS n FROM monitor_check").toArray()[0].n).toBe(0);
 });
 it("enforces owner, interval and count; cron overlap cannot check twice",async()=>{
  expect((await request("/monitors","POST",{projectId:"2",name:"x",url:"https://example.com",intervalMinutes:5})).status).toBe(404);

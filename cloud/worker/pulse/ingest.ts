@@ -15,7 +15,7 @@ export async function pulseIngest(req:Request,env:Cloudflare.Env){
   const content=req.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
   if(content&&!["application/x-sentry-envelope","application/json","text/plain"].includes(content))throw new IngestError(415,"CONTENT_TYPE");
   const parsed=parseEnvelope(await ingestBytes(req),m[2]==="store"),key=authKey(req,m[1],parsed.dsn),keyHash=await sha256(key);
-  const project=await env.DB.prepare("SELECT p.id,p.user_id AS userId,p.object_name AS objectName FROM pulse_project p JOIN pulse_key k ON k.project_id=p.id WHERE p.id=? AND p.active=1 AND p.deleted_at IS NULL AND k.hash=? AND k.revoked_at IS NULL").bind(m[1],keyHash).first<{id:string;userId:string;objectName:string}>();
+  const project=await env.DB.prepare("SELECT p.id,p.user_id AS userId,p.object_name AS objectName FROM pulse_project p JOIN pulse_key k ON k.project_id=p.id WHERE p.id=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL AND k.hash=? AND k.revoked_at IS NULL").bind(m[1],keyHash).first<{id:string;userId:string;objectName:string}>();
   if(!project||!(await pulseAccess(env,project.userId)).writable)throw new IngestError(403,"KEY");
   if(!parsed.event)return respond({});
   if(parsed.event.type!==undefined&&parsed.event.type!=="default"&&parsed.event.type!=="error")return respond({});

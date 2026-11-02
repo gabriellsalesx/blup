@@ -19,7 +19,8 @@
 	],
 	"r2_buckets": [{ "binding": "SITES", "bucket_name": "blup-cloud-sites" }],
 	// No computador: nome.localhost:<porta>.
-	"vars": { "SITES_DOMAIN": "localhost" },
+	"ratelimits": [{"name":"PULSE_PUBLIC_LIMIT","namespace_id":"1005","simple":{"limit":300,"period":60}}],
+	"vars": { "SITES_DOMAIN": "localhost", "PULSE_PUBLIC_HOST":"pulse.localhost" },
 	"env": {
 		"production": {
 			"workers_dev": false,
@@ -31,7 +32,9 @@
 				{ "binding": "DB", "database_name": "blup-cloud", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
 			],
 			"r2_buckets": [{ "binding": "SITES", "bucket_name": "blup-cloud-sites" }],
-			"vars": { "SITES_DOMAIN": "getblup.site" }
+			"ratelimits": [{"name":"PULSE_PUBLIC_LIMIT","namespace_id":"1005","simple":{"limit":300,"period":60}}],
+			"durable_objects":{"bindings":[{"name":"PULSE_PROJECT","class_name":"PulseProject","script_name":"blup-cloud-production"}]},
+			"vars": { "SITES_DOMAIN": "getblup.site", "PULSE_PUBLIC_HOST":"pulse.getblup.site" }
 		}
 	}
 }

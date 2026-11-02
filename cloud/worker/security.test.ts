@@ -32,6 +32,7 @@ const HASH = "a".repeat(64);
 const ctx = {waitUntil:(p:Promise<unknown>) => pending.push(p),passThroughOnException:()=>{}} as unknown as ExecutionContext;
 
 beforeEach(() => {
+ vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
 	d1 = new TestD1(); notes = new TestBucket(); sites = new TestBucket(); pending = []; state.mails = [];state.mailFailures=0;state.mailCalls=0;
 	state.db = drizzle(d1.asD1(), {schema});
 	Object.assign(state.env, {DB:d1.asD1(),NOTES:notes.asR2(),SITES:sites.asR2(),APP_URL:"https://cloud.audit.invalid",STAFF_HOST:"staff.audit.invalid",SITES_DOMAIN:"getblup.site",OTP_LIMIT:{limit:async()=>({success:true})},ABUSE_LIMIT:{limit:async()=>({success:true})},BULK_LIMIT:{limit:async()=>({success:true})},TURNSTILE_SITE_KEY:"audit-sitekey"});
@@ -41,7 +42,7 @@ beforeEach(() => {
 	d1.sqlite.exec("INSERT INTO sync_account(user_id,wrapped_key) VALUES ('alice','{}'),('bob','{}'),('free','{}'); INSERT INTO vault(id,user_id,name) VALUES ('vault-a','alice','YQ=='),('vault-b','bob','Yg=='); INSERT INTO site(id,user_id,slug,title) VALUES ('site-a','alice','alice-site','A'),('site-b','bob','bob-site','B')");
 	vi.stubGlobal("fetch", vi.fn(async () => {throw new Error("External network forbidden in audit tests");}));
 });
-afterEach(async () => { await Promise.allSettled(pending); d1.close(); vi.unstubAllGlobals(); });
+afterEach(async () => { await Promise.allSettled(pending); d1.close(); vi.unstubAllGlobals();vi.useRealTimers(); });
 
 async function request(path:string, method="GET", body?:unknown, user="alice", headers:Record<string,string>={}) {
 	return worker.fetch(new Request(`https://cloud.audit.invalid/api${path}`,{method,headers:{...(user?{authorization:`Bearer audit-${user}`} : {}),...(body!==undefined?{"content-type":"application/json"}:{}),...headers},body:body===undefined?undefined:JSON.stringify(body)}),state.env,ctx);
@@ -502,9 +503,10 @@ it("keeps the AI error envelope for unauthenticated requests and invalid headers
 it("refuses checkout when no verified display price exists",async()=>{
  Object.assign(state.env,{STRIPE_SECRET_KEY:"sk_test_audit_no_verified_catalog"});
  vi.stubGlobal("fetch",vi.fn(async()=>{throw new Error("fixture Stripe outage");}));
- const res=await request("/auth/subscription/upgrade","POST",{plan:"pro",annual:true});
+ const res=await request("/billing/checkout","POST",{plan:"pro",annual:true});
  expect(res.status).toBe(503);expect(await res.json()).toMatchObject({code:"PRICING_UNAVAILABLE"});
- const foreign=await request("/auth/subscription/upgrade","POST",{plan:"pro",referenceId:"bob"});expect(foreign.status).toBe(403);
+ const foreign=await request("/billing/checkout","POST",{plan:"pro",annual:false,referenceId:"bob"});expect(foreign.status).toBe(400);
+ expect((await request("/auth/subscription/upgrade","POST",{plan:"pro"})).status).toBe(409);
 });
 
 it("does not retain an obsolete password wrapping after a key update",async()=>{

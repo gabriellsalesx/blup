@@ -4,6 +4,7 @@ export type MonitorObservation={id:string;monitor:string;revision:number;schedul
 export class MonitorStore{
  constructor(readonly sql:ProjectSQL,readonly transaction:<T>(fn:()=>T)=>T){sql.exec(`CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS monitor_state(id TEXT PRIMARY KEY,state TEXT NOT NULL,failures INTEGER NOT NULL,successes INTEGER NOT NULL,last_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS monitor_state_expiry ON monitor_state(last_at);
 CREATE TABLE IF NOT EXISTS monitor_check(id TEXT PRIMARY KEY,monitor_id TEXT NOT NULL,scheduled_at INTEGER NOT NULL,checked_at INTEGER NOT NULL,outcome TEXT NOT NULL,state TEXT NOT NULL,status INTEGER,duration_ms INTEGER NOT NULL,reason TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS monitor_check_lookup ON monitor_check(monitor_id,checked_at,id);
 CREATE INDEX IF NOT EXISTS monitor_check_expiry ON monitor_check(checked_at);
@@ -30,5 +31,11 @@ INSERT INTO meta VALUES('schema','2') ON CONFLICT(key) DO UPDATE SET value=exclu
   const days=this.sql.exec<{day:number;up:number;down:number;unknown:number;durationMs:number}>("SELECT day,up,down,unknown,duration_ms AS durationMs FROM monitor_day WHERE monitor_id=? AND day>=? ORDER BY day DESC LIMIT 90",monitor,Math.ceil(cutoff/86_400_000)).toArray();
   return {checks,days};
  }
- cleanup(retentionDays:number,now=Date.now()){this.sql.exec("DELETE FROM monitor_check WHERE id IN (SELECT id FROM monitor_check WHERE checked_at<=? LIMIT 500)",now-7*86_400_000);this.sql.exec("DELETE FROM monitor_day WHERE day<?",Math.ceil((now-retentionDays*86_400_000)/86_400_000));}
+ cleanup(retentionDays:number,now=Date.now()){
+  const checkCutoff=now-7*86_400_000,dayCutoff=Math.ceil((now-retentionDays*86_400_000)/86_400_000),stateCutoff=now-retentionDays*86_400_000;
+  this.sql.exec("DELETE FROM monitor_state WHERE id IN(SELECT id FROM monitor_state WHERE last_at<=? LIMIT 500)",stateCutoff);
+  this.sql.exec("DELETE FROM monitor_check WHERE id IN(SELECT id FROM monitor_check WHERE checked_at<=? LIMIT 500)",checkCutoff);
+  this.sql.exec("DELETE FROM monitor_day WHERE (monitor_id,day) IN(SELECT monitor_id,day FROM monitor_day WHERE day<? LIMIT 500)",dayCutoff);
+  return this.sql.exec<{more:number}>("SELECT EXISTS(SELECT 1 FROM monitor_check WHERE checked_at<=?) OR EXISTS(SELECT 1 FROM monitor_day WHERE day<?) OR EXISTS(SELECT 1 FROM monitor_state WHERE last_at<=?) AS more",checkCutoff,dayCutoff,stateCutoff).toArray()[0].more===1;
+ }
 }

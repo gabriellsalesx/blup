@@ -1,7 +1,8 @@
+import {releaseHostname} from "./hostname-claim";
 import {purgePulseAccount} from "./pulse/cleanup";
 import {languageOf} from "../shared/language";
 import { queueAccountPurge,queueSitePurge } from "./site-cache-purge";
-import { planNamed, ownerMatches } from "./plans";
+import { planNamed, ownerMatches,GIFT_PLAN } from "./plans";
 import { ensureQuota } from "./quota";
 import { createStripe } from "./stripe-client";
 import { removeDomainProvider } from "./domain-provider";
@@ -43,7 +44,7 @@ export async function observePlan(db:D1Database,userId:string,name:string,now=Da
 export async function accountPlan(env:Cloudflare.Env,userId:string) {
 	const row=await env.DB.prepare("SELECT email,email_verified AS verified,(SELECT plan FROM subscription WHERE reference_id=user.id AND status IN ('active','trialing','past_due') LIMIT 1) AS plan FROM user WHERE id=? AND banned=0").bind(userId).first<{email:string;verified:number;plan:string|null}>();
 	if(!row) return null;
-	const plan=planNamed(ownerMatches(env.STAFF_OWNER_EMAIL,row.email,!!row.verified)?"ultra":row.plan);
+	const plan=planNamed(ownerMatches(env.STAFF_OWNER_EMAIL,row.email,!!row.verified)?GIFT_PLAN:row.plan);
 	return plan;
 }
 
@@ -83,7 +84,7 @@ export async function purgeAccounts(env:Cloudflare.Env,now=Date.now()) {
 		const sites=await env.DB.prepare("SELECT id FROM site WHERE user_id=?").bind(id).all<{id:string}>();
 		for(const s of sites.results){
 			const domain=await env.DB.prepare("SELECT hostname,provider_id AS providerId,verified_at AS verifiedAt FROM site_domain WHERE site_id=?").bind(s.id).first<{hostname:string;providerId:string|null;verifiedAt:number|null}>();
-			if(domain)await removeDomainProvider(env,domain);
+			if(domain){await removeDomainProvider(env,domain);await releaseHostname(env.DB,domain.hostname,"site",s.id).run();}
 			await queueSitePurge(env.DB,s.id).run();
 			await deletePrefix(env.SITES,`s/${s.id}/`);
 			await env.DB.batch(["site_blob","retired_deploy","site_domain","site_lease"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE site_id=?`).bind(s.id)));
@@ -92,7 +93,7 @@ export async function purgeAccounts(env:Cloudflare.Env,now=Date.now()) {
 			env.DB.prepare("DELETE FROM vault_head_block WHERE vault_id IN (SELECT id FROM vault WHERE user_id=?)").bind(id),
 			env.DB.prepare("DELETE FROM sync_transfer_block WHERE ticket_id IN (SELECT id FROM sync_transfer WHERE user_id=?)").bind(id),
 			env.DB.prepare("DELETE FROM vault_version WHERE vault_id IN (SELECT id FROM vault WHERE user_id=?)").bind(id),
-			...["vault","sync_block","sync_account","site","ai_usage","reminder","reminder_month","device_approval","resource_reservation","sync_transfer","sync_garbage","stripe_webhook_event"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(id)),
+			...["vault","sync_block","sync_account","site","ai_usage","reminder","reminder_month","device_approval","resource_reservation","sync_transfer","sync_garbage","stripe_webhook_event","pulse_billing_ticket","pulse_selection","billing_checkout"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(id)),
 			env.DB.prepare("DELETE FROM subscription WHERE reference_id=?").bind(id),
 			env.DB.prepare("DELETE FROM device_code WHERE user_id=?").bind(id),
 			env.DB.prepare("DELETE FROM billing_event WHERE user_id=?").bind(id),
@@ -112,6 +113,7 @@ export async function cancelDeletedBilling(env:Cloudflare.Env){
 		try{
 			if(row.customer){
 				const stripe=createStripe(env.STRIPE_SECRET_KEY);
+				for await(const checkout of stripe.checkout.sessions.list({customer:row.customer,status:"open"})){if(checkout.mode==="subscription")await stripe.checkout.sessions.expire(checkout.id);}
 				for await(const sub of stripe.subscriptions.list({customer:row.customer,status:"all"})){
 					if(!["canceled","incomplete_expired"].includes(sub.status))await stripe.subscriptions.cancel(sub.id);
 				}
