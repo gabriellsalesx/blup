@@ -1,7 +1,9 @@
 {{- /* A translated site opens in the visitor's language: on the first
 visit, the language their browser asks for (pt, en or es, when the site
-has it and this page has a translation in it); after they pick one in the
-language switcher, that one, kept on their browser. Search engines' robots
+has it and this page has a translation in it), else English, the one most
+visitors read (Portuguese and Spanish only for who reads them); after they
+pick one in the language switcher, that one, kept on their browser.
+Search engines' robots
 are never moved: each language is indexed at its own address. Only on the
 published site (the Studio's preview shows the language being written). */ -}}
 {{- if and (gt (len hugo.Sites) 1) (eq (os.Getenv "HUGO_BLUP_MODE") "publish") -}}
@@ -11,6 +13,6 @@ published site (the Studio's preview shows the language being written). */ -}}
 try{chosen=localStorage.getItem(key)||""}catch(e){}
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-lang-choice]");if(a)try{localStorage.setItem(key,a.getAttribute("hreflang"))}catch(e){}},true);
 if(navigator.webdriver||/bot|crawl|spider|slurp|preview|lighthouse|headless/i.test(navigator.userAgent))return;
-var want=chosen;if(!want){var l=navigator.languages||[navigator.language||""];for(var i=0;i<l.length;i++){var c=String(l[i]).slice(0,2).toLowerCase();if(urls[c]){want=c;break}}}
+var want=chosen;if(!want){var l=navigator.languages||[navigator.language||""];for(var i=0;i<l.length;i++){var c=String(l[i]).slice(0,2).toLowerCase();if(urls[c]){want=c;break}}if(!want)want="en"}
 if(want&&want!==here&&urls[want]&&urls[want]!==location.pathname)location.replace(urls[want]+location.search+location.hash)})();</script>
 {{- end -}}
