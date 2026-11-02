@@ -1,10 +1,12 @@
 # Blup Pulse
 
-Especificação de produto e proposta técnica, pesquisada e atualizada em 02/11/2026. Nome, preços e decisões comerciais refletem a atualização aprovada pelo dono. O produto ainda está em implementação por fases; este documento não afirma que os contratos já estejam disponíveis em produção. As definições técnicas permanecem como propostas para implementar e validar. Exemplos usam marcadores, sem credenciais reais.
+Especificação de produto e proposta técnica, pesquisada e atualizada em 02/11/2026. Nome, preços e decisões comerciais refletem a atualização aprovada pelo dono. O produto ainda está em implementação por fases; este documento não afirma que os contratos já estejam disponíveis em produção. O estado das Fases 1 e 2 abaixo descreve o código local conferido; os recursos restantes continuam como proposta e oferta-alvo. Exemplos usam marcadores, sem credenciais reais.
 
 ## Estado da entrega por fases
 
-**Fase 1 entregue localmente, sem publicação.** Os contratos desta subseção foram conferidos no código e no handoff da Lupa. As demais seções mantêm a arquitetura e a oferta-alvo; recursos ainda não cobertos pela Fase 1 não devem ser apresentados como entregues ou compráveis.
+**Fases 1 e 2 entregues localmente, sem publicação.** Os contratos desta seção foram conferidos no código e nos handoffs da Lupa. As demais seções distinguem comportamento atual de oferta-alvo; recursos das próximas fases não devem ser apresentados como entregues ou compráveis.
+
+### Núcleo da Fase 1
 
 Fontes atuais: [API](../../cloud/worker/pulse/api.ts), [ingestão](../../cloud/worker/pulse/ingest.ts), [protocolo](../../cloud/worker/pulse/protocol.ts), [dados tratados](../../cloud/worker/pulse/event.ts), [SQLite](../../cloud/worker/pulse/project-store.ts), [DO](../../cloud/worker/pulse/project.ts), [admissão](../../cloud/worker/pulse/quota.ts), [limites](../../cloud/worker/pulse/limits.ts), [schema D1](../../cloud/worker/db/pulse-schema.ts) e [painel](../../cloud/pulse/src/routes/+page.svelte).
 
@@ -19,7 +21,7 @@ Fontes atuais: [API](../../cloud/worker/pulse/api.ts), [ingestão](../../cloud/w
 | Tratamento de dados | Projeção fechada do evento: descarta pedido HTTP, usuário, contextos, extra, breadcrumbs, variáveis locais, tags e anexos; trata mensagens e frames antes de persistir |
 | Interface | Projetos, copiar/rotacionar DSN, listar problemas, resolver/ignorar/reabrir, amostras e uso; painel estático separado em `cloud/pulse`, com tipos inferidos do RPC Cloud |
 
-O tratamento de texto não comprova ausência de todo dado pessoal possível em mensagem livre. O aceite e o filtro específico do Studio ainda precisam ser implementados antes de enviar erros do aplicativo automaticamente. As consultas já filtram a retenção; a limpeza física usa alarmes e lotes. Após o handoff, a Lupa corrigiu o agendamento para preservar um alarme anterior em vez de adiá-lo a cada evento. A regressão de dois ingests separados por 30 minutos foi acrescentada; o gate dessa correção fica para a Fase 2 e não está incluído nos 292 testes informados da Fase 1.
+O tratamento de texto não comprova ausência de todo dado pessoal possível em mensagem livre. O aceite e o filtro específico do Studio ainda precisam ser implementados antes de enviar erros do aplicativo automaticamente. As consultas já filtram a retenção; a limpeza física usa alarmes e lotes. O agendamento preserva um alarme anterior em vez de adiá-lo a cada evento. A Lupa confirmou a regressão de dois ingests separados por 30 minutos no gate da Fase 2; essa correção não integra o retrato histórico dos 292 testes da Fase 1.
 
 ### Rotas atuais da Fase 1
 
@@ -49,7 +51,49 @@ A migração [0015_pulse_nucleo.sql](../../cloud/migrations/0015_pulse_nucleo.sq
 
 A Lupa informou: 292/292 testes, check/build Cloud e Pulse aprovados e D1 local do zero com `0000..0015`. SDKs oficiais Node `11.10.0` e Go `0.50.0` foram testados localmente; quatro eventos, entre exceções e mensagens, foram persistidos sem as sentinelas pessoais inseridas no ensaio. Os [scripts de SDK](../../cloud/scripts/pulse-sdk/check.mjs) e a [fixture Go](../../cloud/scripts/pulse-sdk/main.go.fixture) documentam o recorte. O ensaio Node desativa integrações padrão, client reports, logs e tracing; isso não homologa todos os defaults, plataformas ou recursos dos SDKs. Esses testes foram executados pela área Cloud, não repetidos por esta documentação.
 
-As Fases 2 a 4 ainda precisam entregar e homologar monitores, páginas públicas/incidentes/domínio, avisos Discord/Telegram, compra/troca dos planos e integração de aceite no Studio. Os preços são aprovados comercialmente, mas ainda não representam produtos compráveis ou serviço pronto. A premissa de saída pública/anti-SSRF dos futuros monitores é registrada na seção 7, sem prova local da rede de produção.
+### Fase 2: monitores, páginas e incidentes
+
+Fontes: [rotas de monitores](../../cloud/worker/pulse/monitors.ts), [checagem HTTP](../../cloud/worker/pulse/monitor-http.ts), [agendamento](../../cloud/worker/pulse/scheduler.ts), [histórico SQLite](../../cloud/worker/pulse/monitor-store.ts), [páginas/incidentes](../../cloud/worker/pulse/pages.ts), [projeção pública e HTML](../../cloud/worker/pulse/public.ts) e [limpeza](../../cloud/worker/pulse/cleanup.ts).
+
+As rotas privadas abaixo usam a sessão Cloud e verificam o dono. Criar, editar, publicar e registrar incidentes exigem direito gravável; exclusão continua permitida ao dono. IDs de monitor/página/incidente usam `opaqueId`; o vínculo com projeto usa o identificador decimal da Fase 1. Bodies são estritos e validados por Zod.
+
+| Método e caminho relativo a `/api/pulse` | Contrato local da Fase 2 |
+| --- | --- |
+| `GET /monitors` | `{monitors}`, até 50, com `id, projectId, name, url, intervalMinutes, active, state, lastAt`; `lastAt` em ISO UTC ou `null` |
+| `POST /monitors` | `{projectId, name, url, intervalMinutes}`; nome até 80, URL até 2.048 caracteres, intervalo inteiro entre o mínimo do plano e 1.440 minutos; `201 {id}` |
+| `PATCH /monitors/:monitor` | Um ou mais de `name, url, intervalMinutes, active`; reinicia estado em `unknown`, limpa a última checagem e incrementa a revisão; `{ok:true}` |
+| `DELETE /monitors/:monitor` | Remove a configuração; `{ok:true}` ou 404 |
+| `GET /monitors/:monitor/checks` | `{checks, days}`; até 100 checagens dos últimos 7 dias e até 90 resumos diários, respeitando os 30/90 dias do plano; sem cursor |
+| `GET /pages` | `{pages}`, até 3, com `id, title, slug, published, language, components`; cada componente privado usa `{monitorId, name}` |
+| `POST /pages` | `{title, slug, language, components}`; título até 100, idioma `pt/en/es`, até 50 componentes distintos do mesmo dono; cria despublicada; `201 {id, slug}` |
+| `PATCH /pages/:page` | Um ou mais de `title, language, components, published`; o slug não muda; `{ok:true}` |
+| `DELETE /pages/:page` | Despublica e remove componentes/incidentes/atualizações; com domínio vinculado, fica despublicada e responde `409 DOMAIN_EXISTS` até retirar o vínculo |
+| `GET /pages/:page/incidents` | `{incidents}`, até 50 dentro da retenção; `id, title, state, impact, createdAt, updatedAt`; datas privadas em milissegundos |
+| `POST /pages/:page/incidents` | `{title, body, state, impact}`; título até 120, texto até 2.000, máximo de 200 incidentes por página; cria a primeira atualização; `201 {id}` |
+| `POST /pages/:page/incidents/:incident/updates` | `{body, state}`, até 100 atualizações por incidente; atualiza estado/prazo do incidente, sem renovar os textos anteriores; `201 {ok:true}` |
+| `GET /public/:slug` | Sem sessão; projeção pública fechada ou `404 NOT_FOUND`; sem direito gravável retorna `200 {unavailable:true}` |
+
+O slug tem de 3 a 40 caracteres minúsculos, números e hífens internos, é único e não aceita nomes reservados. Os estados de incidente são `investigating`, `identified`, `monitoring`, `resolved`; os impactos são `operational`, `degraded`, `partial_outage`, `major_outage`. Limite de quantidade retorna `409 QUOTA`, slug ocupado retorna `409 SLUG_TAKEN` e intervalo abaixo do plano retorna `403 PLAN`. As checagens privadas usam milissegundos em `scheduledAt`/`checkedAt`; resumos privados usam número de dia UTC e contagens `up/down/unknown`, além de `durationMs` acumulado.
+
+O painel tem [Monitores](../../cloud/pulse/src/routes/monitores/+page.svelte), para criar, pausar/retomar, excluir e consultar histórico, e [Páginas](../../cloud/pulse/src/routes/paginas/+page.svelte), para selecionar monitores, definir seus nomes públicos, editar, publicar/despublicar e escrever incidentes/atualizações. O idioma da página é salvo a partir da escolha atual do painel. Os tipos de transporte vêm do RPC Hono.
+
+### Publicação e cache da Fase 2
+
+`https://pulse.getblup.site/<slug>/` serve HTML escapado, sem JavaScript, com atualização da página a cada 60 segundos; `/<slug>/status.json` serve o JSON. O caminho sem barra final redireciona para o caminho com barra. Ambos aceitam GET/HEAD, usam ETag do corpo e respondem 304 para `If-None-Match` igual. O navegador recebe `public, max-age=0, must-revalidate`. A rota API `/public/:slug` entrega o mesmo DTO, mas não implementa esse ETag/304.
+
+O DTO disponível tem `unavailable:false`, `title`, `slug`, `language`, `components` e `incidents`. Componente público contém somente `name, state, lastCheckedAt, days`; cada dia tem `date, up, down, unknown`. Incidente público contém somente `title, state, impact, createdAt, updatedAt, updates`; cada atualização tem `body, state, createdAt`. Datas públicas usam ISO UTC, e `lastCheckedAt` pode ser `null`. Há até 50 componentes, 20 incidentes e 20 atualizações por incidente. Não são expostos IDs privados, URL monitorada, DSN, dono, payload de erro ou stack trace. Os nomes/textos públicos escolhidos pela pessoa continuam sendo informação publicada por ela.
+
+O gateway relê publicação, conta e direito gravável antes de cada consulta ao cache. Só a projeção pública validada fica na Cache API por até 15 segundos. Um componente sem observação recente, após duas vezes o intervalo efetivo, aparece como `unknown`. Página inexistente/despublicada retorna 404; no host público, conta/plano indisponível retorna `503 UNAVAILABLE` com `Retry-After: 60`, mesmo que exista cache anterior. O binding `PULSE_PUBLIC_LIMIT` limita pedidos públicos a 300 por minuto por IP no escopo do limitador Workers; excesso retorna 429 e `Retry-After: 60`.
+
+### Banco, retenção e gates da Fase 2
+
+A migração [0016_pulse_monitores_paginas.sql](../../cloud/migrations/0016_pulse_monitores_paginas.sql) cria monitores, páginas, componentes, incidentes/atualizações, estrutura de domínio e índices de agendamento/limpeza. A [0017_pulse_expiracao_incidentes.sql](../../cloud/migrations/0017_pulse_expiracao_incidentes.sql) acrescenta prazos e índices de expiração de incidentes e atualizações. Ambas foram geradas pelo Drizzle e devem anteceder o Worker correspondente. A existência da tabela de domínio ainda não entrega o fluxo de domínio próprio Ultra, previsto para a Fase 4.
+
+O DO acrescenta `monitor_state`, `monitor_check` e `monitor_day`. Duas falhas confirmam `down` e dois sucessos confirmam `up`; atraso/lacuna reinicia a sequência, sem inventar sucesso ou falha. A seleção/retenção e o agendamento estão detalhados na seção 7. As consultas filtram expirados; limpeza física é em lotes, com reconciliação pelo cron. O fim dos 14 dias de leitura reivindica a purga da conta Pulse; a exclusão da conta Cloud integra essa purga ao prazo de 30 dias. A retirada inclui objetos, monitores, chaves, páginas, incidentes e vínculos de domínio; falha externa pode exigir nova execução.
+
+A Lupa informou para esta fase: 303/303 testes, check Cloud/Pulse com zero erros e avisos e builds aprovados, incluindo a regressão de preservação do alarme. Esta documentação conferiu os contratos no código e não repetiu esses gates. O handoff confirma `0016`/`0017` geradas; isso não comprova aplicação remota.
+
+As Fases 3 e 4 ainda precisam fechar avisos Discord/Telegram, compra/troca dos planos, domínio próprio Ultra e integração de aceite no Studio. Os preços são aprovados comercialmente, mas ainda não representam produtos compráveis ou serviço pronto. A saída pública dos monitores depende da premissa de plataforma descrita na seção 7 e de ensaio em homologação; os testes locais não demonstram proteção universal contra DNS rebinding.
 
 ## 1. Produto e MVP
 
@@ -225,7 +269,7 @@ As últimas 100 ocorrências completas são o evento permitido pela política de
 
 ## 6. Modelo de dados proposto
 
-A Fase 1 já tem schema D1/SQLite e migração `0015`, listados na subseção de entrega. As tabelas abaixo preservam o desenho-alvo dos demais recursos e podem ter nomes diferentes do núcleo atual. Migrações posteriores precisam ser geradas e revisadas sem alterar o histórico existente.
+As Fases 1 e 2 têm schema D1/SQLite e migrações `0015..0017`, listados no estado da entrega. As tabelas abaixo preservam o desenho-alvo dos demais recursos e podem ter nomes diferentes dos atuais. Migrações posteriores precisam ser geradas e revisadas sem alterar o histórico existente.
 
 | D1 geral | Campos e índices principais |
 | --- | --- |
@@ -260,25 +304,27 @@ Contador, deduplicação, grupo e amostra entram na mesma transação SQLite. N�
 
 Usar o horário de recebimento no servidor para expiração, sem permitir que um timestamp futuro do SDK estenda o prazo. Amostras, IDs, contadores, incidentes e resumos operacionais têm expiração compatível com 30/90 dias; não manter histórico de ocorrências em contadores eternos. A contagem exibida representa a janela vigente e desconta os buckets diários expirados. Configuração ativa de projeto/monitor é outra classe de dado, mantida enquanto o recurso existir.
 
-Checagens completas expiram em 7 dias, depois de contabilizadas no resumo diário. Alarmes processam lotes por índice de expiração; o próximo alarme é o menor prazo pendente. Há apenas um alarme por DO e ele pode executar mais de uma vez, então o trabalho deve ser idempotente. O cron diário revisita projetos para recuperar limpeza interrompida. [Alarmes oficiais](https://developers.cloudflare.com/durable-objects/api/alarms/).
+Checagens completas expiram em 7 dias, depois de contabilizadas no resumo diário. O DO agenda limpeza em uma hora e preserva um alarme anterior na ingestão; depois da limpeza, agenda um minuto se ainda houver lote de eventos a retirar ou uma hora nos demais casos. A poda de checagens detalhadas remove até 500 por execução. Há apenas um alarme por DO e ele pode executar mais de uma vez, então o trabalho é idempotente. A manutenção pelo cron revisita projetos para recuperar limpeza interrompida. [Implementação](../../cloud/worker/pulse/project.ts), [alarmes oficiais](https://developers.cloudflare.com/durable-objects/api/alarms/).
 
 Expirados deixam de aparecer nas consultas imediatamente. Atraso na remoção física é uma falha operacional a medir e corrigir, não uma extensão comercial da retenção. O teto de 90 dias não autoriza restaurar dados vencidos por backup: após restauração, reaplicar expiração antes de servir. O dono precisa fechar como o teto será apresentado diante de backups/recuperação do provedor; não afirmar destruição instantânea de todas as cópias.
 
 ## 7. Monitores HTTP e páginas de status
 
-Proposta de monitor MVP: `GET` HTTPS em porta 443, nome, projeto, URL, intervalo do plano e ativo/pausado. Resposta 2xx é sucesso. Erro DNS/TLS, timeout e demais status são falha. Não seguir redirects no MVP; a pessoa informa a URL final. Não aceitar cookies, Authorization, headers arbitrários ou corpo de pedido nesta fase. Não armazenar corpo de resposta.
+O monitor entregue na Fase 2 usa `GET` HTTP ou HTTPS nas portas padrão, com nome, projeto, URL, intervalo do plano e ativo/pausado. Resposta 2xx é sucesso; erro DNS/TLS, timeout e demais status são falha. Segue até três redirecionamentos 301/302/303/307/308, validando URL e DNS novamente em cada destino; redirecionamento sem Location ou além desse limite é falha. Não aceita cookies, Authorization, headers arbitrários ou corpo de pedido. Cancela imediatamente o corpo de resposta, sem carregá-lo em memória nem guardá-lo no histórico.
 
-Aplicar timeout de 10 segundos, cancelar leitura e limitar bytes processados. Bloquear usuário/senha na URL, IP literal, localhost, redes privadas, link-local e destinos de metadados. Só uma expressão regular de hostname não comprova a proteção da conexão efetiva. [Fetch no Workers](https://developers.cloudflare.com/workers/runtime-apis/fetch/).
+O prazo total é de 10 segundos, compartilhado entre consultas DNS e redirecionamentos. A URL tem até 2.048 caracteres e rejeita credenciais, fragmento, porta fora do padrão, controles, espaços e barra invertida. A aplicação bloqueia nomes locais/reservados e IPs privados/reservados, aceitando IP literal público. Para nomes, consulta A/AAAA por DNS-over-HTTPS Cloudflare e rejeita respostas fora das faixas públicas. Esse teste anterior à conexão não fixa o endereço que o `fetch()` resolverá depois. Fontes: [validação e execução](../../cloud/worker/pulse/monitor-http.ts) e [Fetch no Workers](https://developers.cloudflare.com/workers/runtime-apis/fetch/).
 
-Estratégia prevista para as próximas fases, conforme o alinhamento do Maestro: usar o `fetch()` público do Workers com `global_fetch_strictly_public`, além da validação de URL e dos limites acima. A documentação da flag descreve o roteamento como pedido vindo da Internet, inclusive na própria zona; os erros 1000/1002 documentam restrições do proxy/DNS para domínios. Essas referências não são prova local de todos os bloqueios de rede do `fetch()` em produção nem uma homologação contra DNS rebinding. Registrar essa dependência da plataforma como premissa e validar o comportamento no ambiente apropriado, sem anunciar uma garantia de rede que o ensaio local não demonstrou. [Flag de fetch público](https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public), [erro 1000](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1000/), [erro 1002](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1002/).
+A estratégia implementada, conforme o alinhamento do Maestro, usa o `fetch()` público do Workers com `global_fetch_strictly_public` em [wrangler.jsonc](../../cloud/wrangler.jsonc), além da validação e dos limites acima. A flag documenta roteamento como pedido da Internet, inclusive na própria zona; os erros 1000/1002 descrevem restrições do proxy/DNS Cloudflare. Essas referências não demonstram todos os bloqueios de rede do `fetch()` nem uma proteção universal contra DNS rebinding. A fronteira de rede da plataforma é uma premissa operacional, sem prova no workerd local. Ensaiar em homologação com destinos controlados e DNS mutável, sem atingir terceiros ou redes internas reais. Não associar bindings de rede privada/VPC a esse caminho. [Flag de fetch público](https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public), [erro 1000](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1000/), [erro 1002](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1002/).
 
-Um cron `* * * * *` seleciona monitores vencidos; Max fica elegível a cada cinco minutos e Ultra a cada dois. Os horários são UTC. Índice por vencimento e claim com lease impedem execução concorrente do mesmo monitor/horário. Processar em lotes e com concorrência limitada, sem criar uma promessa de checagem no segundo exato. Não repetir milhares de checagens atrasadas para recuperar cron perdido: registrar lacuna e retomar o próximo horário. [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
+Contas comuns não podem monitorar `getblup.io`, `getblup.site`, `workers.dev` nem seus subdomínios. O dono operacional, reconhecido pelo e-mail verificado configurado no servidor, pode monitorar páginas públicas Blup; continuam proibidos `workers.dev`, `ingest.getblup.io` e caminhos `/api` ou `/api/...`. A mesma regra vale em cada redirecionamento. Essa exceção não autoriza acesso privado nem entrega credenciais de conta ao monitor.
 
-Estado definido para a implementação: começar `unknown`, marcar `down` após duas falhas consecutivas e `up` após duas respostas válidas. Avisar apenas transições confirmadas. Atraso da própria infraestrutura do Blup é `unknown`, não prova de indisponibilidade do destino. Mostrar horário da última checagem, lacunas e que o teste parte da infraestrutura Cloudflare, sem prometer múltiplas regiões ou SLA. Disponibilidade usa falhas/sucessos observados, exibindo também cobertura e intervalos sem observação.
+O cron `* * * * *` seleciona até 100 monitores vencidos, em grupos de cinco e por até 45 segundos; Max fica elegível a cada cinco minutos e Ultra a cada dois. Os horários são UTC. Uma lease global e claims por monitor de 55 segundos evitam duplicação; revisão do monitor invalida resultados da configuração anterior. A nova execução é marcada após a checagem, sem recuperar toda a fila de horários perdidos nem prometer execução no segundo exato. Monitores sem direito gravável não são consultados. [Agendador](../../cloud/worker/pulse/scheduler.ts), [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
+
+O estado começa `unknown`, passa a `down` após duas falhas consecutivas e a `up` após dois sucessos. Resultado bloqueado ou execução atrasada por mais de duas vezes o intervalo fica `unknown`; lacunas interrompem a sequência de confirmações. A publicação também apresenta como `unknown` uma última observação que ficou antiga. As transições confirmadas geram metadados em `pending_alert`, mas o envio externo depende da próxima fase. Não há promessa de múltiplas regiões ou SLA. Os resumos contam observações `up/down/unknown`; não preenchem todos os minutos sem execução nem equivalem a uma medição contínua de disponibilidade.
 
 A página pública mostra componentes escolhidos, estado atual, resumos diários e incidentes escritos manualmente. Estados do incidente: `investigating`, `identified`, `monitoring`, `resolved`; impacto público: operacional, degradado, interrupção parcial ou indisponível. Erros privados nunca viram incidentes públicos automaticamente. URL monitorada, DSN, stack trace, nomes privados e credenciais não entram no HTML/JSON público.
 
-O endereço público aprovado é `https://pulse.getblup.site/<nome>`, com nome único por página e sem cookie da conta. Domínio próprio Ultra exige prova de posse, unicidade e TLS ativo pelo fluxo Cloudflare for SaaS; reutilizar o desenho de [domínio Cloud](publicacao.md#domínio-próprio-no-blup-cloud), com vínculo para página Pulse e sem consumir sites Hugo. A zona base é `getblup.site`; o hostname público `pulse.getblup.site` deve ser reservado para esse serviço, sem ser oferecido como slug de site Hugo. A configuração de fallback origin/CNAME, prova e certificados fica no procedimento de deploy. Escapar texto de incidentes, sem HTML arbitrário, e limitar cache público para não esconder transições indefinidamente.
+O endereço implementado localmente é `https://pulse.getblup.site/<nome>/`, com nome único por página e sem cookie da conta. O contrato público e seu cache estão no estado da entrega. Domínio próprio Ultra permanece na Fase 4: exige prova de posse, unicidade e TLS ativo pelo fluxo Cloudflare for SaaS, aproveitando o desenho de [domínio Cloud](publicacao.md#domínio-próprio-no-blup-cloud), com vínculo para página Pulse e sem consumir sites Hugo. A zona base é `getblup.site`; reservar `pulse.getblup.site` para esse serviço, sem oferecê-lo como slug de site Hugo. A estrutura D1 e o caminho de entrega por domínio existente não equivalem ao fluxo Ultra entregue ou homologado.
 
 ## 8. Avisos Discord e Telegram
 
@@ -304,7 +350,7 @@ O limite global do bot precisa de coordenação entre contas. Proposta MVP: um d
 
 ## 9. API Hono tipada
 
-A subseção da Fase 1 lista as rotas já entregues. A tabela abaixo descreve a API-alvo completa sob `/api/pulse`, incluindo recursos das próximas fases. Todas exigem sessão, dono e direito do plano, exceto leitura pública e webhooks com sua autenticação própria. IDs, query, body e cursores passam por Zod, com JSON de configuração estrito. O parser binário Sentry é separado do middleware JSON geral de 96 KiB do Cloud; precisa dos limites próprios desta spec. Metadados extras de SDK desconhecidos podem ser descartados com segurança, sem exigir que SDKs só emitam campos que o painel conhece.
+As subseções das Fases 1 e 2 listam as rotas já entregues e seus formatos reais. A tabela abaixo descreve a API-alvo completa sob `/api/pulse`, incluindo recursos das próximas fases. Todas exigem sessão, dono e direito do plano, exceto leitura pública e webhooks com sua autenticação própria. IDs, query, body e cursores passam por Zod, com JSON de configuração estrito. O parser binário Sentry é separado do middleware JSON geral de 96 KiB do Cloud; precisa dos limites próprios desta spec. Metadados extras de SDK desconhecidos podem ser descartados com segurança, sem exigir que SDKs só emitam campos que o painel conhece.
 
 Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com respostas inferidas no painel. Reaproveitar a geração RPC existente, sem repetir DTOs manualmente. Exceções do transporte Sentry têm o formato compatível da seção 4; a API do painel mantém erro JSON com `code` estável e mensagem traduzida no cliente. [RPC Hono](https://hono.dev/docs/guides/rpc), [contratos do projeto](tipagem-e-contratos.md).
 
@@ -320,9 +366,9 @@ Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com
 | `GET /api/pulse/projects/:project/issues/:issue/events` | Amostras paginadas dentro da retenção |
 | `GET/POST /api/pulse/monitors` | Lista; criação `{projectId, name, url, intervalMinutes}` |
 | `PATCH/DELETE /api/pulse/monitors/:monitor` | Configuração permitida e pausa; índice recuperável |
-| `GET /api/pulse/monitors/:monitor/checks` | Janela limitada e cursor; detalhe ou resumo diário conforme idade |
-| `GET/POST /api/pulse/pages` | Lista; criação `{title, slug, componentIds}` com recursos do mesmo dono |
-| `GET/PATCH/DELETE /api/pulse/pages/:page` | Configuração, publicação/retirada e componentes selecionados |
+| `GET /api/pulse/monitors/:monitor/checks` | `{checks, days}` com limites de quantidade/retenção; sem cursor na Fase 2 |
+| `GET/POST /api/pulse/pages` | Lista; criação `{title, slug, language, components:[{monitorId, name}]}` com recursos do mesmo dono |
+| `PATCH/DELETE /api/pulse/pages/:page` | Configuração, publicação/retirada e componentes; sem GET de detalhe separado na Fase 2 |
 | `GET/POST /api/pulse/pages/:page/incidents` | Histórico limitado e criação de incidente manual |
 | `POST /api/pulse/pages/:page/incidents/:incident/updates` | Atualização pública de texto e estado |
 | `GET/POST/DELETE /api/pulse/pages/:page/domain` | Contrato de domínio no plano elegível; DELETE não tem body |
@@ -336,7 +382,7 @@ Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com
 | `POST /api/pulse/telegram/webhook` | Update do Telegram autenticado por secret, sem sessão do painel |
 | `GET /api/pulse/public/:slug` | Só DTO público, usado em `pulse.getblup.site/:slug` |
 
-Na API-alvo, padronizar datas em ISO UTC; a Fase 1 ainda tem os timestamps numéricos descritos na subseção de entrega. Ausência explícita usa `null`, listas vazias usam `[]`. Um recurso de outra conta responde como não encontrado. Reservar slugs, limitar nomes/textos, validar cada vínculo de componentes/canais e usar idempotência nas operações que podem ser repetidas. Não aceitar owner, plano, limite ou nome de DO fornecidos pelo cliente como autoridade.
+Na API-alvo, padronizar datas em ISO UTC; as Fases 1 e 2 ainda têm os timestamps numéricos privados descritos no estado da entrega. Ausência explícita usa `null`, listas vazias usam `[]`. Um recurso de outra conta responde como não encontrado. Reservar slugs, limitar nomes/textos, validar cada vínculo de componentes/canais e usar idempotência nas operações que podem ser repetidas. Não aceitar owner, plano, limite ou nome de DO fornecidos pelo cliente como autoridade.
 
 ## 10. Telas do painel
 
@@ -344,8 +390,8 @@ Na API-alvo, padronizar datas em ISO UTC; a Fase 1 ainda tem os timestamps numé
 | --- | --- |
 | Projetos | Uso/cota, criar projeto, copiar DSN, rotacionar/revogar chave e exemplos de SDK homologado; lista de problemas, filtros, amostras tratadas e resolver/ignorar |
 | Monitores | URL privada, intervalo, estado, última checagem, lacunas e histórico; criar, pausar e apagar |
-| Página de status | Título, endereço, componentes públicos, prévia, incidentes manuais e domínio próprio Ultra |
-| Avisos | Discord mascarado, vínculo Telegram por código, projetos associados, teste explícito e resultado das entregas |
+| Página de status | Título, endereço, componentes públicos e incidentes manuais na Fase 2; domínio próprio Ultra permanece na Fase 4 |
+| Avisos, fase futura | Discord mascarado, vínculo Telegram por código, projetos associados, teste explícito e resultado das entregas |
 
 Sem Pulse na assinatura, mostrar explicação e link para a página de planos Cloud; não criar uma segunda área de cobrança. Reaproveitar idioma da conta/navegador, temas claro/escuro e componentes acessíveis do Cloud. Nenhum erro privado aparece na página pública sem ação explícita. O teste de canal nunca é disparado ao apenas abrir a tela.
 
@@ -467,7 +513,7 @@ Com os tetos de banco mantidos na proposta, o total máximo é 768 MiB no Max e 
 | Gravidade | Risco | Condição de liberação |
 | --- | --- | --- |
 | Alto | Conteúdo de notas/credenciais escapar em erro, contexto ou breadcrumb | Aceite separado e teste de ausência de sentinelas antes da rede; tratamento no servidor |
-| Alto | Monitores usados para SSRF ou atingir serviços internos | Saída restrita, defesa verificada contra DNS rebinding, timeout e limites |
+| Alto | Monitores usados para SSRF ou atingir serviços internos | Preservar saída pública e validações; ensaiar a premissa de rede em homologação, sem afirmar garantia universal no teste local |
 | Alto | Variante Stripe cair no Grátis, cobrar duas assinaturas ou liberar antes do pagamento | Migração conjunta dos enums/reconciliador, lease por conta e testes de proporcionalidade/pendência |
 | Alto | Chave pública ser usada para drenar cota ou criar grupos sem limite | Fusíveis, pico no DO, admissão mensal e teto físico por projeto |
 | Médio | CORS ou retorno de login permitir uso indevido da sessão central | Cookie restrito ao host Cloud, origens exatas e testes de sessão/logout/CSRF |
@@ -479,7 +525,9 @@ Fase 0: preparar o catálogo e os hosts aprovados, fechar apenas os detalhes ope
 
 Fase 1 entregue localmente: núcleo de ingestão, projetos/chaves, problemas/amostras/uso, DO/D1 e quotas, painel Projetos separado e login central. Migração `0015` e ensaios Node/Go foram conferidos localmente. Não inclui a entrega comercial completa do MVP.
 
-Fases 2 a 4 pendentes: monitores, páginas públicas/incidentes/domínio Ultra, avisos, contratação e integração do Studio, com contratos atualizados a cada handoff. Browser e demais versões de SDK precisam de homologação; React Native/Flutter continuam como em teste. O domínio próprio faz parte da oferta Ultra e deve ter disponibilidade real informada antes de cobrar por ele.
+Fase 2 entregue localmente: monitores/checagens, páginas públicas, incidentes/atualizações, DTO fechado, cache curto e purga integrada. Migrações `0016`/`0017` geradas; 303/303 testes e check/build Cloud/Pulse aprovados conforme handoff da Lupa.
+
+Fases 3 e 4 pendentes: avisos, domínio próprio Ultra na Fase 4, contratação e integração do Studio, com contratos atualizados a cada handoff. Browser e demais versões de SDK precisam de homologação; React Native/Flutter continuam como em teste. O domínio próprio faz parte da oferta Ultra e deve ter disponibilidade real informada antes de cobrar por ele.
 
 Performance, tracing, replay e source maps não entram automaticamente numa fase posterior: exigem nova decisão de produto, orçamento e spec.
 

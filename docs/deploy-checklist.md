@@ -48,7 +48,7 @@ npx wrangler r2 bucket create blup-cloud-sites
 
 ## 4. Planejar a migração e aplicar o SQL
 
-- [ ] **BLOQUEANTE:** conferir backup e revisar a sequência [migrations/](../cloud/migrations). A sequência do núcleo Pulse validada no handoff local vai de `0000` até `0015_pulse_nucleo.sql`; conferir novas migrações das fases seguintes antes da release.
+- [ ] **BLOQUEANTE:** conferir backup e revisar a sequência [migrations/](../cloud/migrations). O handoff local da Fase 2 Pulse inclui os arquivos até `0017_pulse_expiracao_incidentes.sql`; conferir novas migrações das fases seguintes antes da release. Arquivo gerado não comprova aplicação remota.
 - [ ] Em instalação nova, aplicar toda a sequência antes dos Workers. Em instalação existente, **não aplicar `0012` com o código antigo atendendo tráfego ou cron**: ele ainda escrevia os campos removidos. Preparar e ensaiar uma atualização em etapas compatíveis ou uma janela de manutenção, suspendendo tráfego/gravações e crons antigos, aplicando SQL e publicando os dois Workers novos antes de reabrir. A sequência abaixo pressupõe essa condição; rollback de código antigo pode ser incompatível com o schema novo.
 
 ```sh
@@ -58,7 +58,7 @@ npx wrangler d1 migrations list DB --remote --env production
 ```
 
 - [ ] Confirmar que não ficaram migrações pendentes. `0011` prepara carências e sync transacional; `0012` remove `sync_account.previous_key` e `site_domain.disabled_at`, sem consumidor; `0013` cria recibos de webhook e índices; `0014` acrescenta `user.language`, com `pt` nas contas existentes, e precisa vir antes do Worker novo. As migrações anteriores permanecem intactas.
-- [ ] Para um Worker que inclua o núcleo Pulse, aplicar também `0015_pulse_nucleo.sql` antes do código e conferir `PULSE_PROJECT`/`PulseProject` e a migração Workers SQLite `v2-pulse`. A Fase 1 local não libera venda nem declara o produto pronto; acompanhar os [contratos por fase](spec/blup-pulse.md#estado-da-entrega-por-fases).
+- [ ] Para um Worker que inclua Pulse, aplicar `0015_pulse_nucleo.sql`, `0016_pulse_monitores_paginas.sql` e `0017_pulse_expiracao_incidentes.sql` antes do código. Conferir `PULSE_PROJECT`/`PulseProject` e a migração Workers SQLite `v2-pulse`, separada do SQL D1. As Fases 1 e 2 locais não liberam venda nem declaram o produto pronto; acompanhar os [contratos por fase](spec/blup-pulse.md#estado-da-entrega-por-fases).
 - [x] Validação local da tradução fechada pela Lupa: gates, sequência D1 `0000..0014`, integridade e migração de conta antiga preservando `pt`. A aplicação de `0014` no banco de produção continua obrigatória antes do Worker novo.
 - [ ] Em atualização de instalação anterior à marca de aparelho, planejar revogar sessões Studio antigas e solicitar novo login, conforme [cloud/README.md](../cloud/README.md).
 
@@ -177,7 +177,9 @@ Se os secrets dos sites não forem necessários ou já estiverem cadastrados, om
 
 ## 10. Conferir cron e fazer o primeiro teste em produção
 
-- [ ] **BLOQUEANTE para automações:** confirmar os dois Cron Triggers no Worker da conta: `0 4 * * *` e `*/5 * * * *`, ambos UTC. Conferir execuções e falhas em observabilidade; propagação de cron pode demorar. [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
+- [ ] **BLOQUEANTE para automações:** confirmar os três Cron Triggers no Worker da conta: `0 4 * * *` para limpeza diária, `*/5 * * * *` para lembretes/manutenção e `* * * * *` para monitores Pulse, todos UTC. Conferir execuções e falhas em observabilidade; propagação de cron pode demorar. [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
+- [ ] Antes de liberar monitores Pulse, conferir `global_fetch_strictly_public`, as regras de destino e o ensaio em homologação com DNS/redirecionamentos controlados. A fronteira de rede Cloudflare é uma [premissa operacional](spec/blup-pulse.md#7-monitores-http-e-páginas-de-status); os testes locais não demonstram proteção universal contra DNS rebinding. Preservar a proibição de API/ingestão também para o dono.
+- [ ] No piloto Pulse, conferir login central/CORS, uma página publicada em `pulse.getblup.site/<slug>/`, seu `status.json`, ETag/304 e ausência de URL/DSN/dados privados. Despublicar precisa impedir entrega apesar do cache; perda de direito precisa mostrar indisponibilidade. Ensaiar prazo/purga de leitura em ambiente isolado. Domínio Ultra permanece na Fase 4.
 - [ ] Abrir `/api/config` e `/api/plans`; conferir Turnstile e valores/moedas reais ou indisponibilidade explícita, sem preço inventado.
 - [ ] Usar uma conta interna, preferencialmente com destino de e-mail verificado no Email Service: entrar por OTP, cadastrar/usar passkey, aprovar aparelho do Studio e conferir o ID da conta/copiar. Verificar recebimento, não apenas log de envio.
 - [ ] Confirmar que staff exige Access e papel válido e que suas rotas não abrem pelo host público.

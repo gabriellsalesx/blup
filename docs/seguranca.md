@@ -14,6 +14,7 @@ Escopo: código local, tema e Blup Cloud observados em 02/11/2026. Este guia des
 | Senha de post | Protege o corpo pós-processado; não restringe todo o diretório publicado |
 | Conta e cobrança | D1, Better Auth e Stripe; números de cartão ficam no fluxo hospedado pelo Stripe |
 | Agenda | Notas locais; por e-mail saem apenas IDs opacos e horários |
+| Pulse, Fases 1 e 2 locais | Eventos tratados e histórico de checagens no DO; configuração, URLs de monitores e índice no D1; DTO público separado |
 
 As três senhas/credenciais não devem ser confundidas: login da conta por OTP/passkey, senha que embrulha a chave das notas e senha de leitura de post. Trocar uma não equivale a trocar as outras.
 
@@ -61,8 +62,19 @@ Não existe fluxo de troca da senha das notas na CLI ou no Studio. A API de embr
 | Lembretes por e-mail | Conta, ID opaco, instante, contador e destinatário, sem título ou corpo do evento |
 | Comentários e Feedback | Conteúdo público e identidade GitHub nas issues; não são notas privadas cifradas |
 | Podcast | Feed, endereço de contato configurado, narração e capas públicos |
+| Pulse, Fases 1 e 2 locais | Mensagens/frames tratados, configuração de monitores e resultados HTTP; texto público de componentes/incidentes escolhido pela pessoa |
 
 O Go exige aceite local separado para cada destino de IA, `openrouter` e `blup`, antes do primeiro envio de texto. A escolha pode ser revogada nas Configurações e fica em `ai-consent.json`, não sincronizado. Arquivo inválido não concede aceite. Notas com senha são recusadas pela tradução remota e pela narração; a tradução local pode processá-las. Escolher voz local não provoca fallback automático para a nuvem. IA remota não é processamento cifrado de ponta a ponta: o texto precisa ser fornecido ao serviço para ser narrado ou traduzido. O fato de a mesma nota estar cifrada no bucket de sync não muda isso. A seleção da voz e o custo estão em [narração](spec/narracao-e-voz.md); o campo de contato público do feed está em [podcast](spec/podcast.md).
+
+## Pulse: limites da entrega local
+
+As Fases 1 e 2 do Pulse foram entregues localmente, sem publicação ou contratação liberada. Eventos, monitores e incidentes não usam a cifra de ponta a ponta das notas: o serviço processa os dados aceitos. O parser projeta e trata os eventos antes de persistir, descartando contextos como pedido HTTP, usuário, breadcrumbs, tags e anexos. Texto livre ainda pode conter dados pessoais. O aceite e o filtro específico do Studio continuam pendentes antes de enviar seus erros automaticamente.
+
+Monitores validam URL, faixas de IP e DNS, revalidam até três redirecionamentos, compartilham um timeout de dez segundos e cancelam o corpo sem armazená-lo. O caminho usa `fetch()` público com `global_fetch_strictly_public`. A restrição de rede efetiva é uma premissa da plataforma, a ensaiar em homologação com destinos controlados; DNS consultado antes do pedido não fixa a resolução usada depois. A documentação da flag não é prova universal contra DNS rebinding. Contas comuns não podem usar os hosts Blup/Workers; a exceção operacional do dono admite páginas públicas Blup e mantém bloqueadas ingestão e rotas API do Blup. Ver [premissa, fontes oficiais e validações](spec/blup-pulse.md#7-monitores-http-e-páginas-de-status).
+
+A página pública usa uma projeção fechada, sem URL monitorada, DSN, dono ou erro privado. O gateway revalida conta, plano e publicação antes do cache interno de até 15 segundos. HTML escapa textos e não executa JavaScript; HTML e `status.json` usam ETag/304. Revogação/despublicação não depende de expirar esse cache. Textos de componentes e incidentes são públicos por escolha explícita; o cache não transforma texto privado em conteúdo seguro para publicar.
+
+As consultas respeitam retenção de 30/90 dias e detalhe de checagem de sete dias. Ao perder o direito Pulse, a leitura privada dura 14 dias, sem renovar a retenção; depois fica elegível à purga em lotes. Exclusão da conta Cloud bloqueia acesso imediatamente e integra a purga Pulse ao prazo de 30 dias. Alarmes e cron retomam limpeza; não há promessa de remoção física no segundo exato. Domínio Ultra, avisos e cobrança completa ainda dependem das próximas fases. Os [contratos locais](spec/blup-pulse.md#estado-da-entrega-por-fases) distinguem essa implementação da oferta-alvo.
 
 ## Publicação, senha e navegador
 

@@ -16,7 +16,7 @@ Para a visão entre componentes, consulte [Arquitetura](../arquitetura.md). A op
 | [Scaffold e build](scaffold-e-build.md) | Arquivos gerados, mounts, ferramentas, pipeline e mapa da prévia |
 | [Notas e sync](notas-e-sync.md) | Notas Markdown, wikilinks, sincronização, conflitos e recuperação em outra máquina |
 | [Blup Cloud e sync cifrado](blup-cloud-sync.md) | Conta, planos, dispositivos, cifra de ponta a ponta, histórico, IA e cobrança |
-| [Blup Pulse](blup-pulse.md) | Fase 1 local de projetos, ingestão, problemas/amostras/uso e painel próprio; Fases 2 a 4 e contratação ainda pendentes |
+| [Blup Pulse](blup-pulse.md) | Fases 1 e 2 locais: ingestão, problemas, monitores, páginas públicas e incidentes; avisos, domínio Ultra, contratação e aceite Studio ainda pendentes |
 | [Calendário e lembretes](calendario-e-lembretes.md) | Eventos Markdown, recorrência, notificações locais e e-mails Max 50 / Ultra 100 |
 | [Publicação](publicacao.md) | Sites em `getblup.site`, Cloudflare Pages, GitHub Pages e domínio próprio |
 | [Narração e voz](narracao-e-voz.md) | Idioma pela pasta da nota, voz por idioma, OpenRouter, Blup Cloud, MP3 e Kokoro |
