@@ -2,22 +2,35 @@
  import Domain from "../../lib/Domain.svelte";
  import {onMount} from "svelte";
  import {type InferResponseType} from "hono/client";
+ import Plus from "@lucide/svelte/icons/plus";
+ import Pencil from "@lucide/svelte/icons/pencil";
+ import Eye from "@lucide/svelte/icons/eye";
+ import EyeOff from "@lucide/svelte/icons/eye-off";
+ import Trash2 from "@lucide/svelte/icons/trash-2";
+ import ExternalLink from "@lucide/svelte/icons/external-link";
  import {t,language,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import {confirm} from "#lib/confirm.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
  import Card from "#lib/ui/Card.svelte";
  import FloatField from "#lib/ui/FloatField.svelte";
+ import Select from "#lib/ui/Select.svelte";
+ import Switch from "#lib/ui/Switch.svelte";
  import {pulseApi,parseResponse} from "../../lib/api";
  import {panel} from "../../lib/panel.svelte";
  type Page=InferResponseType<typeof pulseApi.pages.$get,200>["pages"][number];
  type Monitor=InferResponseType<typeof pulseApi.monitors.$get,200>["monitors"][number];
  const incidentsGET=pulseApi.pages[":page"].incidents.$get;
  type Incident=InferResponseType<typeof incidentsGET,200>["incidents"][number];
+ type IncidentState="investigating"|"identified"|"monitoring"|"resolved";
+ type Impact="operational"|"degraded"|"partial_outage"|"major_outage";
  let pages=$state<Page[]>([]),monitors=$state<Monitor[]>([]),incidents=$state<Incident[]>([]),editing=$state<Page|null>(null),chosen=$state<Record<string,string>>({}),title=$state(""),slug=$state(""),busy=$state(false),error=$state<unknown>(null);
- let incidentTitle=$state(""),text=$state(""),incidentId=$state<string|null>(null),incidentStateValue=$state<"investigating"|"identified"|"monitoring"|"resolved">("investigating"),impact=$state<"operational"|"degraded"|"partial_outage"|"major_outage">("degraded");
+ let incidentTitle=$state(""),text=$state(""),incidentId=$state<string|null>(null),incidentStateValue=$state<IncidentState>("investigating"),impact=$state<Impact>("degraded");
  const writable=$derived(panel.usage?.readOnly===false);
  const validComponents=$derived(Object.values(chosen).every(v=>v.trim().length>0));
+ const states=$derived([{value:"investigating",label:t("pulseInvestigating")},{value:"identified",label:t("pulseIdentified")},{value:"monitoring",label:t("pulseMonitoring")},{value:"resolved",label:t("pulseResolved")}] as const);
+ const impacts=$derived([{value:"operational",label:t("pulseOperational")},{value:"degraded",label:t("pulseDegraded")},{value:"partial_outage",label:t("pulsePartial")},{value:"major_outage",label:t("pulseMajor")}] as const);
+ const stateLabel=(s:string)=>states.find(o=>o.value===s)?.label??s;
  async function run(fn:()=>Promise<void>){busy=true;error=null;try{await fn();}catch(e){error=e;}finally{busy=false;}}
  async function refresh(){pages=(await parseResponse(pulseApi.pages.$get())).pages;}
  async function edit(page:Page){editing=page;title=page.title;slug=page.slug;chosen=Object.fromEntries(page.components.map(c=>[c.monitorId,c.name]));incidents=(await parseResponse(incidentsGET({param:{page:page.id}}))).incidents;}
@@ -29,8 +42,35 @@
  function toggleMonitor(id:string,checked:boolean){if(checked)chosen[id]="";else{const copy={...chosen};delete copy[id];chosen=copy;}}
  onMount(()=>{void run(async()=>{await refresh();monitors=(await parseResponse(pulseApi.monitors.$get())).monitors;});});
 </script>
-<h1 class="text-3xl font-bold">{t("pulsePages")}</h1><p class="my-4 text-sm text-neutral-500">{t("pulsePublicPrivacy")}</p>
-{#if error}<p class="my-4 text-red-600" role="alert">{errorMessage(error)}</p>{/if}
-{#if writable&&(!editing||editing.writable)}<form class="my-6 grid gap-4" onsubmit={save}><div class="grid gap-4 sm:grid-cols-2"><FloatField id="page-title" label={t("pulsePageTitle")} required maxlength={100} bind:value={title}/><FloatField id="page-slug" label={t("pulseSlug")} required disabled={!!editing} maxlength={40} pattern="[a-z0-9]+(-[a-z0-9]+)*" bind:value={slug}/></div><fieldset class="grid gap-3"><legend class="mb-3 text-sm font-semibold">{t("pulseComponents")}</legend>{#each monitors as monitor(monitor.id)}<div class="flex flex-wrap items-center gap-3"><label class="flex items-center gap-2 text-sm"><input type="checkbox" checked={Object.hasOwn(chosen,monitor.id)} onchange={e=>toggleMonitor(monitor.id,e.currentTarget.checked)}/>{monitor.name}</label>{#if Object.hasOwn(chosen,monitor.id)}<FloatField id={`public-${monitor.id}`} label={t("pulsePublicName")} maxlength={80} required bind:value={chosen[monitor.id]}/>{/if}</div>{/each}</fieldset><div class="flex gap-2"><Button {busy} disabled={!validComponents}>{editing?t("save"):t("pulseCreatePage")}</Button>{#if editing}<Button type="button" variant="secondary" onclick={clear}>{t("cancel")}</Button>{/if}</div></form>{/if}
-<div class="grid gap-3">{#each pages as page(page.id)}<Card><h2 class="font-bold">{page.title}</h2><a class="my-2 block break-all text-sm text-blup underline" href={`https://pulse.getblup.site/${page.slug}/`} target="_blank" rel="noopener noreferrer">pulse.getblup.site/{page.slug}/</a><div class="flex flex-wrap gap-2"><Button variant="secondary" onclick={()=>run(()=>edit(page))}>{t("pulseEdit")}</Button>{#if page.writable}<Button variant="secondary" onclick={()=>publish(page)}>{page.published?t("pulseUnpublish"):t("pulsePublish")}</Button>{/if}<Button variant="secondary" onclick={()=>remove(page)}>{t("delete")}</Button></div></Card>{:else}<p class="my-4 text-neutral-500">{t("pulseNoPages")}</p>{/each}</div>
-{#if editing}<Domain page={editing.id} eligible={editing.writable&&!!panel.usage?.limits?.customDomain}/><section class="mt-8"><h2 class="text-xl font-bold">{editing.title}: {t("pulseIncidents")}</h2>{#if editing.writable}<form class="my-5 grid gap-4" onsubmit={incident}>{#if !incidentId}<FloatField id="incident-title" label={t("pulseIncidentTitle")} required maxlength={120} bind:value={incidentTitle}/>{/if}<label class="grid gap-2 text-sm">{t("pulseIncidentText")}<textarea class="min-h-28 rounded-lg border border-neutral-300 p-3 dark:border-neutral-700 dark:bg-neutral-900" required maxlength={2000} bind:value={text}></textarea></label><div class="flex flex-wrap gap-3"><select class="rounded-lg border p-3 dark:bg-neutral-900" aria-label={t("pulseIncidents")} bind:value={incidentStateValue}><option value="investigating">{t("pulseInvestigating")}</option><option value="identified">{t("pulseIdentified")}</option><option value="monitoring">{t("pulseMonitoring")}</option><option value="resolved">{t("pulseResolved")}</option></select>{#if !incidentId}<select class="rounded-lg border p-3 dark:bg-neutral-900" aria-label={t("pulseMonitors")} bind:value={impact}><option value="operational">{t("pulseOperational")}</option><option value="degraded">{t("pulseDegraded")}</option><option value="partial_outage">{t("pulsePartial")}</option><option value="major_outage">{t("pulseMajor")}</option></select>{/if}<Button {busy}>{incidentId?t("pulseUpdateIncident"):t("pulseNewIncident")}</Button></div></form>{/if}<div class="grid gap-3">{#each incidents as item(item.id)}<Card><h3 class="font-semibold">{item.title}</h3><p class="my-2 text-xs text-neutral-500">{formatDate(new Date(item.updatedAt))}</p>{#if editing.writable}<Button variant="secondary" onclick={()=>{incidentId=item.id;incidentTitle=item.title;text="";}}>{t("pulseUpdateIncident")}</Button>{/if}</Card>{/each}</div></section>{/if}
+
+<h1 class="text-3xl font-extrabold tracking-tight">{t("pulsePages")}</h1>
+<p class="mt-2 text-neutral-500">{t("pulsePublicPrivacy")}</p>
+{#if error}<p class="mt-6 text-red-600" role="alert">{errorMessage(error)}</p>{/if}
+
+{#if writable&&(!editing||editing.writable)}<div class="mt-8"><Card title={editing?`${t("pulseEdit")}: ${editing.title}`:t("pulseNewPage")}><form class="mt-5 grid gap-5" onsubmit={save}>
+ <div class="grid gap-4 sm:grid-cols-2"><FloatField id="page-title" surface="bg-white dark:bg-neutral-900" label={t("pulsePageTitle")} required maxlength={100} bind:value={title}/><FloatField id="page-slug" surface="bg-white dark:bg-neutral-900" label={t("pulseSlug")} required disabled={!!editing} maxlength={40} pattern="[a-z0-9]+(-[a-z0-9]+)*" bind:value={slug}/></div>
+ <fieldset><legend class="mb-3 text-sm font-semibold">{t("pulseComponents")}</legend><div class="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">{#each monitors as monitor(monitor.id)}<div class="grid gap-3 border-b border-neutral-200 px-4 py-3 last:border-b-0 sm:grid-cols-[1fr_minmax(0,18rem)] sm:items-center dark:border-neutral-800"><Switch tone="mint" label={monitor.name} checked={Object.hasOwn(chosen,monitor.id)} onchange={on=>toggleMonitor(monitor.id,on)}/>{#if Object.hasOwn(chosen,monitor.id)}<FloatField id={`public-${monitor.id}`} surface="bg-white dark:bg-neutral-900" label={t("pulsePublicName")} maxlength={80} required bind:value={chosen[monitor.id]}/>{/if}</div>{:else}<p class="px-4 py-6 text-center text-sm text-neutral-500">{t("pulseNoMonitors")}</p>{/each}</div></fieldset>
+ <div class="flex flex-wrap justify-end gap-2">{#if editing}<Button type="button" variant="secondary" onclick={clear}>{t("cancel")}</Button>{/if}<Button {busy} disabled={!validComponents}>{#if !editing}<Plus class="size-4"/>{/if}{editing?t("save"):t("pulseCreatePage")}</Button></div>
+</form></Card></div>{/if}
+
+<div class="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+ {#each pages as page(page.id)}
+  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-5 py-4 last:border-b-0 dark:border-neutral-800 {editing?.id===page.id?'bg-neutral-50 dark:bg-neutral-800/50':''}">
+   <div class="min-w-0 flex-1 basis-full sm:basis-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{page.title}</span><span class="rounded-full px-2 py-0.5 text-xs font-semibold {page.published?'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300':'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'}">{page.published?t("pulsePublished"):t("pulseDraft")}</span></p><a class="mt-0.5 inline-flex items-center gap-1 text-sm text-blup hover:underline" href={`https://pulse.getblup.site/${page.slug}/`} target="_blank" rel="noopener noreferrer">pulse.getblup.site/{page.slug}/<ExternalLink class="size-3.5"/></a></div>
+   <div class="flex flex-wrap gap-2"><Button small variant="secondary" onclick={()=>run(()=>edit(page))}><Pencil class="size-4"/>{t("pulseEdit")}</Button>{#if page.writable}<Button small variant="secondary" onclick={()=>publish(page)}>{#if page.published}<EyeOff class="size-4"/>{t("pulseUnpublish")}{:else}<Eye class="size-4"/>{t("pulsePublish")}{/if}</Button>{/if}<Button small variant="secondary" onclick={()=>remove(page)}><Trash2 class="size-4"/>{t("delete")}</Button></div>
+  </div>
+ {:else}<p class="px-5 py-10 text-center text-neutral-500">{t("pulseNoPages")}</p>{/each}
+</div>
+
+{#if editing}
+ <Domain page={editing.id} eligible={editing.writable&&!!panel.usage?.limits?.customDomain}/>
+ <section class="mt-6"><Card title={t("pulseIncidents")}>
+  {#if editing.writable}<form class="mt-5 grid gap-4" onsubmit={incident}>
+   {#if !incidentId}<FloatField id="incident-title" surface="bg-white dark:bg-neutral-900" label={t("pulseIncidentTitle")} required maxlength={120} bind:value={incidentTitle}/>{/if}
+   <div class="relative"><label for="incident-text" class="absolute -top-2.5 left-2 bg-white px-1 text-[13px] text-neutral-500 dark:bg-neutral-900">{t("pulseIncidentText")}</label><textarea id="incident-text" class="min-h-28 w-full rounded-md border border-neutral-300 bg-white p-3 outline-none focus:border-blup dark:border-neutral-700 dark:bg-neutral-900" required maxlength={2000} bind:value={text}></textarea></div>
+   <div class="grid gap-4 sm:grid-cols-2"><Select surface="bg-white dark:bg-neutral-900" label={t("pulseIncidentState")} options={states} bind:value={incidentStateValue}/>{#if !incidentId}<Select surface="bg-white dark:bg-neutral-900" label={t("pulseImpact")} options={impacts} bind:value={impact}/>{/if}</div>
+   <div class="flex flex-wrap justify-end gap-2">{#if incidentId}<Button type="button" variant="secondary" onclick={()=>{incidentId=null;text="";}}>{t("cancel")}</Button>{/if}<Button {busy}>{incidentId?t("pulseUpdateIncident"):t("pulseNewIncident")}</Button></div>
+  </form>{/if}
+  <div class="mt-5 grid">{#each incidents as item(item.id)}<div class="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 py-3 dark:border-neutral-800"><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span>{item.title}</span><span class="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{stateLabel(item.state)}</span></p><p class="text-xs text-neutral-500">{formatDate(new Date(item.updatedAt))}</p></div>{#if editing.writable&&item.state!=="resolved"}<Button small variant="secondary" onclick={()=>{incidentId=item.id;incidentTitle=item.title;text="";}}>{t("pulseUpdateIncident")}</Button>{/if}</div>{/each}</div>
+ </Card></section>
+{/if}

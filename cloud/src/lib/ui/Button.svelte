@@ -6,9 +6,10 @@
 	// The panel's button: primary (dark) or secondary (outlined); `pill` is
 	// the tall rounded one of the sign-in page. While busy it shows a spinner
 	// and can't be pressed again.
-	let { variant = "primary", pill = false, busy = false, disabled = false, class: extra = "", children, ...rest }: HTMLButtonAttributes & {
+	let { variant = "primary", pill = false, small = false, busy = false, disabled = false, class: extra = "", children, ...rest }: HTMLButtonAttributes & {
 		variant?: "primary" | "secondary";
 		pill?: boolean;
+		small?: boolean;
 		busy?: boolean;
 		children: Snippet;
 	} = $props();
@@ -20,7 +21,7 @@
 </script>
 
 <button
-	class="flex items-center justify-center gap-2 font-semibold transition-colors disabled:opacity-50 {pill ? 'h-[52px] rounded-full px-6 text-[15px]' : 'rounded-lg px-4 py-2.5'} {look[variant]} {extra}"
+	class="flex items-center justify-center gap-2 font-semibold transition-colors disabled:opacity-50 {pill ? 'h-[52px] rounded-full px-6 text-[15px]' : small ? 'rounded-lg px-3 py-1.5 text-sm' : 'rounded-lg px-4 py-2.5'} {look[variant]} {extra}"
 	disabled={disabled || busy}
 	{...rest}
 >

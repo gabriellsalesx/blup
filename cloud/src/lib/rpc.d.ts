@@ -3145,6 +3145,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 title: string;
                 slug: string;
                 language: "pt" | "en" | "es";
+                historyDays: number;
                 components: {
                     name: string;
                     state: "unknown" | "up" | "down";
@@ -3342,6 +3343,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 title: string;
                 slug: string;
                 language: "pt" | "en" | "es";
+                historyDays: number;
                 components: {
                     name: string;
                     state: "unknown" | "up" | "down";

@@ -35,7 +35,6 @@
  {#if !panel.usage?.plan}<p class="mb-6 rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950">{t("pulseNeedPlan")} <a href={`${cloudURL}/conta/plano`} class="underline">{t("subscription")}</a></p>{/if}
  {#if panel.usage?.readOnlyUntil}<p class="mb-6 rounded-lg bg-amber-50 p-4 dark:bg-amber-950">{t("pulseReadOnly",{date:new Intl.DateTimeFormat(intlLocale(),{dateStyle:"long"}).format(new Date(panel.usage.readOnlyUntil))})}</p>{/if}
  {#if panel.usage?.selectionRequired&&panel.usage.limits}<PulseSelection resources={panel.usage.resources} limits={panel.usage.limits} bind:keep/><Button busy={selectionBusy} onclick={saveSelection}>{t("save")}</Button>{/if}
- <p class="mb-5 text-xs text-neutral-500">{t("pulseScope")}</p>
  {@render children()}
  </PanelShell>{/if}
 <Toaster /><ConfirmHost />

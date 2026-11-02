@@ -1,11 +1,10 @@
 import {languageOf} from "../../shared/language";
-import {translate} from "../../src/lib/i18n/catalog";
 import {pulseAccess,sha256} from "./limits";
 import {z} from "zod";
 import {pageSlug} from "./page-rules";
+import {renderStatusPage} from "./public-html";
 
-const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]??""));
-const publicSchema=z.object({unavailable:z.literal(false),title:z.string().max(100),slug:pageSlug,language:z.enum(["pt","en","es"]),components:z.array(z.object({name:z.string().max(80),state:z.enum(["up","down","unknown"]),lastCheckedAt:z.iso.datetime().nullable(),days:z.array(z.object({date:z.string(),up:z.number().int().nonnegative(),down:z.number().int().nonnegative(),unknown:z.number().int().nonnegative()})).max(90)})).max(50),incidents:z.array(z.object({title:z.string().max(120),state:z.string(),impact:z.string(),createdAt:z.iso.datetime(),updatedAt:z.iso.datetime(),updates:z.array(z.object({body:z.string().max(2000),state:z.string(),createdAt:z.iso.datetime()})).max(20)})).max(20)});
+const publicSchema=z.object({unavailable:z.literal(false),title:z.string().max(100),slug:pageSlug,language:z.enum(["pt","en","es"]),historyDays:z.number().int().min(1).max(90),components:z.array(z.object({name:z.string().max(80),state:z.enum(["up","down","unknown"]),lastCheckedAt:z.iso.datetime().nullable(),days:z.array(z.object({date:z.string(),up:z.number().int().nonnegative(),down:z.number().int().nonnegative(),unknown:z.number().int().nonnegative()})).max(90)})).max(50),incidents:z.array(z.object({title:z.string().max(120),state:z.string(),impact:z.string(),createdAt:z.iso.datetime(),updatedAt:z.iso.datetime(),updates:z.array(z.object({body:z.string().max(2000),state:z.string(),createdAt:z.iso.datetime()})).max(20)})).max(20)});
 export async function publicPage(env:Cloudflare.Env,slug:string){
  const parsed=pageSlug.safeParse(slug);if(!parsed.success)return null;
  const page=await env.DB.prepare("SELECT id,user_id AS userId,title,slug,language FROM pulse_page WHERE slug=? AND published=1 AND plan_disabled=0").bind(parsed.data).first<{id:string;userId:string;title:string;slug:string;language:string}>();if(!page)return null;
@@ -26,7 +25,7 @@ export async function publicPage(env:Cloudflare.Env,slug:string){
  const incidents=await env.DB.prepare("SELECT id,title,state,impact,created_at AS createdAt,updated_at AS updatedAt FROM pulse_incident WHERE page_id=? AND updated_at>? ORDER BY created_at DESC LIMIT 20").bind(page.id,cutoff).all<{id:string;title:string;state:string;impact:string;createdAt:number;updatedAt:number}>();
  const publicIncidents=[];
  for(const item of incidents.results){const updates=await env.DB.prepare("SELECT body,state,created_at AS createdAt FROM pulse_incident_update WHERE incident_id=? AND created_at>? ORDER BY created_at DESC LIMIT 20").bind(item.id,cutoff).all<{body:string;state:string;createdAt:number}>();publicIncidents.push({title:item.title,state:item.state,impact:item.impact,createdAt:new Date(item.createdAt).toISOString(),updatedAt:new Date(item.updatedAt).toISOString(),updates:updates.results.map(u=>({...u,createdAt:new Date(u.createdAt).toISOString()}))});}
- const result=publicSchema.parse({unavailable:false,title:page.title,slug:page.slug,language:languageOf(page.language)??"en",components:publicComponents,incidents:publicIncidents});
+ const result=publicSchema.parse({unavailable:false,title:page.title,slug:page.slug,language:languageOf(page.language)??"en",historyDays:access.limits?.retentionDays??30,components:publicComponents,incidents:publicIncidents});
  try{await cache?.put(key,Response.json(result,{headers:{"cache-control":"public, max-age=15"}}));}catch{}
  return result;
 }
@@ -44,7 +43,6 @@ export async function servePulsePage(req:Request,env:Cloudflare.Env,slugOverride
  const headers={"cache-control":"public, max-age=0, must-revalidate","Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
  const respond=async(body:string,type:string)=>{const etag=`"${await sha256(body)}"`,responseHeaders={...headers,etag,"content-type":type};return new Response(req.method==="HEAD"||req.headers.get("if-none-match")===etag?null:body,{status:req.headers.get("if-none-match")===etag?304:200,headers:responseHeaders});};
  if(url.pathname.endsWith("status.json")||slugOverride)return respond(JSON.stringify(page),"application/json; charset=utf-8");
- const t=(key:"pulseOperational"|"pulseDown"|"pulseUnknown"|"pulseIncidents"|"pulseObservations"|"pulseNoIncidents")=>translate(page.language,key);
- const body=`<!doctype html><html lang="${page.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(page.title)}</title><style>body{font:16px system-ui;max-width:780px;margin:4rem auto;padding:0 1.5rem;color:#16352d}article{border:1px solid #d2e7df;padding:1.2rem;margin:1rem 0;border-radius:1rem}small,footer{color:#507267}h1{font-size:2rem}p{white-space:pre-wrap;overflow-wrap:anywhere}</style></head><body><h1>${escape(page.title)}</h1>${page.components.map(c=>`<article><h2>${escape(c.name)}</h2><p>${escape(t(c.state==="up"?"pulseOperational":c.state==="down"?"pulseDown":"pulseUnknown"))}</p><small>${escape(t("pulseObservations"))}: ${c.days.reduce((n,d)=>n+d.up+d.down,0).toLocaleString(page.language)}</small></article>`).join("")}<h2>${escape(t("pulseIncidents"))}</h2>${page.incidents.map(i=>`<article><h3>${escape(i.title)}</h3>${i.updates.map(u=>`<p>${escape(u.body)}</p><small>${escape(new Intl.DateTimeFormat(page.language,{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"}).format(new Date(u.createdAt)))}</small>`).join("")}</article>`).join("")||`<p>${escape(t("pulseNoIncidents"))}</p>`}<footer>Blup Pulse</footer></body></html>`;
+ const body=renderStatusPage(page);
  return respond(body,"text/html; charset=utf-8");
 }
