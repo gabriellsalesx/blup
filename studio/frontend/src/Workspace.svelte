@@ -6,7 +6,7 @@
   import Tree from "./Tree.svelte";
   import Editor from "./Editor.svelte";
   import Database from "@lucide/svelte/icons/database";
-  import CalendarDays from "@lucide/svelte/icons/calendar-days";
+  import NotebookPen from "@lucide/svelte/icons/notebook-pen";
   import type { DBSchema } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Template } from "./db";
   import { boardKind, fileTitle, type NewKind } from "./boards";
@@ -422,6 +422,8 @@
   const reload = () => LoadSettings().then((s) => (settings = s)).catch((e) => (error = String(e)));
   // A vault of notes: the editor, attachments, sync and trash; no site.
   const notesVault = $derived(site.kind === "notes");
+  // The terminal button's hint, with its shortcut when there is one.
+  const termTip = $derived(t.term.button + (keysOf(look.keys, "terminal") ? ` (${keysOf(look.keys, "terminal")})` : ""));
   // The screens, in groups split by a line: what one writes, the site,
   // what the public sees and answers, privacy; publishing and the trash
   // sit at the bottom ("end").
@@ -705,7 +707,7 @@
 <div class="ws" class:names={look.railNames} class:no-preview={!previewOn} class:no-side={!sideOpen} class:resizing style:--side="{sideW}px" style:--prev={prevW ? `${prevW}px` : "minmax(0, 1fr)"}>
   <!-- The ribbon, like Obsidian's: icons only, the name on hover. -->
   <nav class="ribbon">
-    <button class="rib" title={t.side.toggle} onclick={() => (sideOpen = !sideOpen)}><PanelLeft size={19} strokeWidth={1.75} /></button>
+    <button class="rib" aria-label={t.side.toggle} data-tip={t.side.toggle} onclick={() => (sideOpen = !sideOpen)}><PanelLeft size={19} strokeWidth={1.75} /><span class="rib-name">{t.side.toggle}</span></button>
     <span class="sep"></span>
     {#each top as { key, label, Icon, group }, i (key)}
       {#if i > 0 && top[i - 1].group !== group}<span class="sep"></span>{/if}
@@ -714,17 +716,17 @@
     {#if notesVault}
       <!-- Making things: a canvas, a drawing (opened right away). -->
       <span class="sep"></span>
-      <button class="rib" title={t.boards.newCanvas} onclick={() => quickBoard("canvas")}><LayoutDashboard size={19} strokeWidth={1.75} /></button>
-      <button class="rib" title={t.boards.newDrawing} onclick={() => quickBoard("drawing")}><PenTool size={19} strokeWidth={1.75} /></button>
-      <button class="rib" title={t.db.newDb} onclick={() => { dbFolder = ""; dbNew = true; }}><Database size={19} strokeWidth={1.75} /></button>
-      <button class="rib" title={t.daily.button} onclick={dailyNote}><CalendarDays size={19} strokeWidth={1.75} /></button>
+      <button class="rib" aria-label={t.boards.newCanvas} data-tip={t.boards.newCanvas} onclick={() => quickBoard("canvas")}><LayoutDashboard size={19} strokeWidth={1.75} /><span class="rib-name">{t.boards.newCanvas}</span></button>
+      <button class="rib" aria-label={t.boards.newDrawing} data-tip={t.boards.newDrawing} onclick={() => quickBoard("drawing")}><PenTool size={19} strokeWidth={1.75} /><span class="rib-name">{t.boards.newDrawing}</span></button>
+      <button class="rib" aria-label={t.db.newDb} data-tip={t.db.newDb} onclick={() => { dbFolder = ""; dbNew = true; }}><Database size={19} strokeWidth={1.75} /><span class="rib-name">{t.db.newDb}</span></button>
+      <button class="rib" aria-label={t.daily.button} data-tip={t.daily.button} onclick={dailyNote}><NotebookPen size={19} strokeWidth={1.75} /><span class="rib-name">{t.daily.button}</span></button>
     {/if}
     <span class="grow"></span>
     {#each bottom as { key, label, Icon } (key)}
       <button class="rib" class:active={screen === key} aria-label={label} data-tip={label} onclick={() => openScreen(key)}><Icon size={19} strokeWidth={1.75} /><span class="rib-name">{label}</span></button>
     {/each}
     <span class="sep"></span>
-    <button class="rib" class:active={termOpen} title={t.term.button + (keysOf(look.keys, "terminal") ? ` (${keysOf(look.keys, "terminal")})` : "")} onclick={() => (termOpen = !termOpen)}><SquareTerminal size={19} strokeWidth={1.75} /></button>
+    <button class="rib" class:active={termOpen} aria-label={termTip} data-tip={termTip} onclick={() => (termOpen = !termOpen)}><SquareTerminal size={19} strokeWidth={1.75} /><span class="rib-name">{t.term.button}</span></button>
   </nav>
 
   {#if sideOpen}
