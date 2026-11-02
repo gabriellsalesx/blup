@@ -113,6 +113,10 @@ func TestBentoHomeSingleSection(t *testing.T) {
 		}
 		b := buildBento(t, site)
 		b.homeIs("changelog", "changelog-head")
+		// The logo still leads home, which is now the section.
+		if !strings.Contains(b.read("changelog/v9.3/index.html"), "class=brand href=/") {
+			t.Error("the logo doesn't lead home")
+		}
 		if !b.has("page/2/index.html") || b.has("changelog/page/2/index.html") {
 			t.Error("the second page is not /page/2/")
 		}

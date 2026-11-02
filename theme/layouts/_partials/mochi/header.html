@@ -8,7 +8,7 @@ with the properties button_text and button_link. */ -}}
 {{- $set := partialCached "site/settings.html" . "site" -}}
 <header class="site-header">
   <div class="container">
-    <a class="brand" href="{{ site.Home.RelPermalink }}"{{ if not $set.showName }} aria-label="{{ $set.name }}"{{ end }}>{{ partial "mochi/logo.html" . }}{{ if $set.showName }}<span>{{ $set.name }}</span>{{ end }}</a>
+    <a class="brand" href="{{ partialCached "site/logo-link.html" . site.Language.Lang }}"{{ if not $set.showName }} aria-label="{{ $set.name }}"{{ end }}>{{ partial "mochi/logo.html" . }}{{ if $set.showName }}<span>{{ $set.name }}</span>{{ end }}</a>
     <nav class="nav" aria-label="{{ T "menu" }}">
       {{- range $menu }}
       {{ partial "site/nav-item.html" . }}

@@ -1,0 +1,10 @@
+{{- /* Where the logo and the name beside it lead: the address set in Blup
+Studio (params.logoLink: an http(s) address or a path of the site),
+else the home page of the current language. */ -}}
+{{- $u := site.Home.RelPermalink -}}
+{{- with site.Params.logoLink -}}
+  {{- /* A path of the site follows its base (a site under /repo/ on
+  GitHub Pages), as in the menu. */ -}}
+  {{- $u = cond (hasPrefix . "/") (relURL (strings.TrimPrefix "/" .)) . -}}
+{{- end -}}
+{{- return $u -}}

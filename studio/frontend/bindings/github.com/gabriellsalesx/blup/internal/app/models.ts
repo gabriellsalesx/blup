@@ -801,6 +801,11 @@ export interface Settings {
      * the home with the sections.
      */
     "home": string;
+
+    /**
+     * LogoLink: where the logo leads, "" for the home page.
+     */
+    "logoLink": string;
     "cookies": config$0.Cookies;
 
     /**

@@ -5,6 +5,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -69,6 +70,10 @@ type Site struct {
 	// "" shows the sections (or leads to the only one). A folder that is
 	// no longer a section counts as "".
 	Home string `toml:"home,omitempty"`
+	// LogoLink is where the logo (and the name beside it) leads: an
+	// http(s) address or a path of the site; "" (or not valid) leads to
+	// the home page. See ValidLogoLink.
+	LogoLink string `toml:"logo_link,omitempty"`
 	// Password is this site's own general password of protected notes
 	// ("password: sim"); without it, the one in the credentials file counts.
 	// It stays on the user's computer and is never published (nor synced).
@@ -355,4 +360,23 @@ func (s *Site) OtherLangs() []string {
 		}
 	}
 	return out
+}
+
+// ValidLogoLink tells whether s can be the logo's link: an http:// or
+// https:// address with a host, or a path of the site starting with one
+// "/". No spaces or control characters, no user in the address.
+func ValidLogoLink(s string) bool {
+	if s == "" || len(s) > 2000 || strings.ContainsAny(s, " \t\r\n\\<>\"'`") {
+		return false
+	}
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	if strings.HasPrefix(s, "/") {
+		return !strings.HasPrefix(s, "//")
+	}
+	u, err := url.Parse(s)
+	return err == nil && (u.Scheme == "https" || u.Scheme == "http") && u.Host != "" && u.User == nil
 }

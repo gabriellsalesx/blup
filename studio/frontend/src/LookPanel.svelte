@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { SaveAbout, SaveMenu, SaveSocial, PickImage, RemoveImage, ImageData, SetShowName } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { SaveAbout, SaveMenu, SaveSocial, PickImage, RemoveImage, ImageData, SetShowName, SaveLogoLink } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Saved from "./Saved.svelte";
   import Switch from "./Switch.svelte";
   import SocialLinks from "./ui/SocialLinks.svelte";
+  import TextField from "./ui/TextField.svelte";
+  import { validLogoLink } from "./logolink";
   import MenuEditor, { toGroups, toMenu, newGroup } from "./ui/MenuEditor.svelte";
   import { NETWORKS } from "./social";
   import { saver } from "./saving.svelte";
@@ -49,6 +51,22 @@
   const nameSave = saver();
   const setShowName = (v: boolean) => nameSave.run(async () => { await SetShowName(v); reload(); });
 
+  // The logo's own link (the company's main site, say): off, the logo
+  // leads home. Saved only when valid; turning it off saves "".
+  const savedLink = () => settings.logoLink ?? "";
+  let ownLink = $state(!!savedLink());
+  let logoLink = $state(savedLink());
+  const linkSave = saver();
+  const linkError = $derived(logoLink.trim() && !validLogoLink(logoLink.trim()) ? t.look.logoLinkBad : "");
+  function setOwnLink(on: boolean) {
+    if (!on && settings.logoLink) linkSave.run(async () => { await SaveLogoLink(""); logoLink = ""; reload(); });
+  }
+  function saveLogoLink() {
+    const v = logoLink.trim();
+    if (!v || linkError || v === settings.logoLink) return;
+    linkSave.run(async () => { await SaveLogoLink(v); reload(); });
+  }
+
   // Social links
   // As the author's profile: each link with its network's icon (an e-mail
   // keeps its mailto: so it shows the e-mail icon).
@@ -83,7 +101,11 @@
       </div>
     {/each}
     <Switch label={t.look.showName} help={t.look.showNameHelp} bind:checked={showName} onchange={setShowName} />
-    <div class="actions"><Saved state={img.state} /><Saved state={nameSave.state} /></div>
+    <Switch label={t.look.logoLink} help={t.look.logoLinkHelp} bind:checked={ownLink} onchange={setOwnLink} />
+    {#if ownLink}
+      <TextField label={t.look.logoLinkUrl} bind:value={logoLink} help={t.look.logoLinkUrlHelp} error={linkError} placeholder="https://" spellcheck="false" autocomplete="off" onblur={saveLogoLink} onkeydown={(e) => e.key === "Enter" && saveLogoLink()} />
+    {/if}
+    <div class="actions"><Saved state={img.state} /><Saved state={nameSave.state} /><Saved state={linkSave.state} /></div>
   </section>
 
   <section class="card">

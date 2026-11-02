@@ -1081,6 +1081,13 @@ export function SaveLayout(items: $models.HomeItem[] | null): $CancellablePromis
 }
 
 /**
+ * SaveLogoLink sets where the logo leads ("" for the home page).
+ */
+export function SaveLogoLink(link: string): $CancellablePromise<void> {
+    return $Call.ByID(487495064, link);
+}
+
+/**
  * SaveMenu sets the top menu and the top right button.
  */
 export function SaveMenu(menu: app$0.MenuItem[] | null, buttonText: string, buttonLink: string): $CancellablePromise<void> {

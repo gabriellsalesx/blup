@@ -124,6 +124,8 @@ whole site. Change it only when the person asks.
 - `site_name`, `site_description`: name and one sentence about the site.
 - `logo`, `favicon`: images, like `"[[logo.png]]"`.
 - `header_name`: `false` hides the site name next to the logo.
+- Where the logo leads (the home page, or an address like the company's
+  main site) is set in the Studio (Appearance), not in this note.
 - `button_text` and `button_link`: a button in the header (both needed).
 - `social`: list of profile URLs. The icon comes from the address. An
   e-mail becomes a `mailto:` link.

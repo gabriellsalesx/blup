@@ -44,6 +44,7 @@ type sharedSite struct {
 	Kind        string `toml:"kind,omitempty"` // "notes" for a vault of notes
 	Domain      string `toml:"domain,omitempty"`
 	Home        string `toml:"home,omitempty"` // Bento: the section the home leads to
+	LogoLink    string `toml:"logo_link,omitempty"`
 	// Translations: the site's other languages. nil (a file from an older
 	// version, without the key) keeps this computer's.
 	Translations *[]string      `toml:"translations"`
@@ -57,7 +58,7 @@ func shareOf(s *config.Site) sharedSite {
 	}
 	return sharedSite{
 		Version: config.SiteVersion, Title: s.Title, Description: s.Description, Author: s.Author, Lang: s.Lang,
-		Model: s.Model, Kind: s.Kind, Domain: s.Domain, Home: s.Home, Translations: &langs, Cookies: s.Cookies,
+		Model: s.Model, Kind: s.Kind, Domain: s.Domain, Home: s.Home, LogoLink: s.LogoLink, Translations: &langs, Cookies: s.Cookies,
 	}
 }
 
@@ -66,6 +67,11 @@ func shareOf(s *config.Site) sharedSite {
 func (sh sharedSite) apply(s *config.Site) {
 	s.Title, s.Description, s.Author, s.Lang, s.Model, s.Kind = sh.Title, sh.Description, sh.Author, sh.Lang, sh.Model, sh.Kind
 	s.Domain, s.Cookies, s.Home = sh.Domain, sh.Cookies, sh.Home
+	// From another computer: only a valid link (else the home page).
+	s.LogoLink = ""
+	if config.ValidLogoLink(sh.LogoLink) {
+		s.LogoLink = sh.LogoLink
+	}
 	if sh.Translations != nil {
 		// Only known languages (they name folders and mount patterns).
 		var langs []string

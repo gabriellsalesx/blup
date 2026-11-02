@@ -353,12 +353,17 @@ func globs(exts []string) []string {
 func params(s *config.Site, folder, authors string, unpublished []string) map[string]any {
 	// Name, description, logo, favicon, menu and social links are properties
 	// of the site folder's _index note, read by the theme (site/settings.html).
-	return map[string]any{
+	p := map[string]any{
 		"model":       s.Model,
 		"description": s.Description,
 		"author":      s.Author,
 		"blup":        blupParams(s, folder, authors, unpublished),
 	}
+	if config.ValidLogoLink(s.LogoLink) {
+		// Where the logo leads (mochi/header.html, nori/header.html).
+		p["logoLink"] = s.LogoLink
+	}
+	return p
 }
 
 func blupParams(s *config.Site, folder, authors string, unpublished []string) map[string]any {

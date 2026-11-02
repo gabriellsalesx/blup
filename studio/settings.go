@@ -46,6 +46,11 @@ func (s *Studio) SaveHome(folder string) error {
 	return s.with(func(site *config.Site) error { return app.SaveHome(site, folder) })
 }
 
+// SaveLogoLink sets where the logo leads ("" for the home page).
+func (s *Studio) SaveLogoLink(link string) error {
+	return s.with(func(site *config.Site) error { return app.SaveLogoLink(site, link) })
+}
+
 // SaveSocial sets the footer's social links.
 func (s *Studio) SaveSocial(links []string) error {
 	return s.with(func(site *config.Site) error { return app.SaveSocial(site, links) })

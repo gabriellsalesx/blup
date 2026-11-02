@@ -178,6 +178,8 @@ whole site. Change it only when the person asks.
 - `title`, `description` and the note's text: the home page heading.
 - `site_name`, `site_description`, `logo`, `favicon` (`"[[logo.png]]"`).
 - `header_name: false` hides the name next to the logo.
+- Where the logo leads (the home page, or an address like the company's
+  main site) is set in the Studio (Appearance), not in this note.
 - `button_text` and `button_link`: a header button (both needed).
 - `social`: list of profile URLs.
 - `menu`: one line per item: `Docs` (a folder or note by name),

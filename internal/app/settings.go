@@ -38,7 +38,9 @@ type Settings struct {
 	Sections    []Section  `json:"sections"` // Bento only
 	// Home (Bento): the folder of the section the home leads to, "" for
 	// the home with the sections.
-	Home            string         `json:"home"`
+	Home string `json:"home"`
+	// LogoLink: where the logo leads, "" for the home page.
+	LogoLink        string         `json:"logoLink"`
 	Cookies         config.Cookies `json:"cookies"`
 	PrivacyNote     string         `json:"privacyNote"` // the policy note, relative to the notes folder
 	Feedback        bool           `json:"feedback"`
@@ -172,6 +174,9 @@ func LoadSettings(site *config.Site) (Settings, error) {
 				folder = ""
 			}
 			s.Sections = append(s.Sections, Section{Kind: k, Folder: folder, Present: ok})
+		}
+		if config.ValidLogoLink(site.LogoLink) {
+			s.LogoLink = site.LogoLink
 		}
 		if site.Model == "bento" && homeSection(site, site.Home) {
 			s.Home = site.Home
@@ -639,5 +644,16 @@ func SaveHome(site *config.Site, folder string) error {
 		return errors.New("not a section of the site: " + folder)
 	}
 	site.Home = folder
+	return saved(site)
+}
+
+// SaveLogoLink makes the logo (and the name beside it) lead to link: an
+// http(s) address or a path of the site. "" leads to the home page again.
+func SaveLogoLink(site *config.Site, link string) error {
+	link = strings.TrimSpace(link)
+	if link != "" && !config.ValidLogoLink(link) {
+		return errors.New(i18n.T("look.logo_link_bad"))
+	}
+	site.LogoLink = link
 	return saved(site)
 }
