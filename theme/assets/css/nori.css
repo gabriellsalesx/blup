@@ -127,6 +127,11 @@ neutral palette and layout. Bundled into one file by css.Build. */
   a.nori-author:hover, .nori-tag:hover { text-decoration: underline; }
   .nori-tag { color: var(--main-600); }
 
+  /* Share buttons at the end of a post: on the box color, like the rest. */
+  .nori-share { margin-block: 2.5rem 0; padding-block-start: 2rem; border-block-start: 1px solid var(--main-200); }
+  .nori-share .share :is(a, button) { background: var(--panel); }
+  .nori-share .share :is(a, button):hover { background: var(--panel-hover); }
+
   .nori-author-head { display: grid; justify-items: start; gap: .5rem; }
   .nori-author-head .avatar { width: 4rem; height: 4rem; }
   .nori-bio { color: var(--main-600); }

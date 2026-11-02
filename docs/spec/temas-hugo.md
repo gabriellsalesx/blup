@@ -49,7 +49,7 @@ Os três modelos têm o mesmo cabeçalho do Nori: logo e nome à esquerda (o nom
 
 ## Nori
 
-Nori usa uma coluna central e componentes em `nori/`, com cabeçalho, rodapé, home, listas, datas, avatares, destaque e páginas de taxonomia próprios. Compartilha resolução de capas, perfis, conteúdo, proteção, player, busca e feedback com as peças comuns.
+Nori usa uma coluna central e componentes em `nori/`, com cabeçalho, rodapé, home, listas, datas, avatares, destaque e páginas de taxonomia próprios. Compartilha resolução de capas, perfis, conteúdo, proteção, player, busca e feedback com as peças comuns. Ao fim de cada post, antes do feedback, mostra os botões de compartilhamento do Mochi (`mochi/share.html`: copiar link, X, Facebook, LinkedIn e WhatsApp) na cor das caixas do Nori.
 
 Na home também escolhe um destaque e pagina os demais. Com feedback, o markup inclui abas de recentes, mais reagidos e mais comentados, inicialmente ocultas. `feedback.js` só as mostra quando há pelo menos uma issue carregada com reações e pelo menos uma com comentários; podem ser issues diferentes. As abas de mais reagidos/comentados têm uma busca própria de páginas seguintes para ordenar a lista, separada do carregar mais de `blup.js`. O post apresenta capa, título, descrição, autores, data, tags, áudio, corpo e comentários. Política de privacidade usa layout simples.
 

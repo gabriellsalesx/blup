@@ -29,6 +29,11 @@
       {{ partial "content.html" . }}
     </div>
     {{- end }}
+    {{- /* Share: copy the link or post it on a network (Mochi's buttons). */}}
+    <footer class="post-end nori-share">
+      <h2>{{ T "shareArticle" }}</h2>
+      {{ partial "mochi/share.html" . }}
+    </footer>
     {{- /* Reactions and comments (GitHub issues). */}}
     {{ partial "bento/feedback.html" . }}
   </article>
