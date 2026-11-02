@@ -97,13 +97,13 @@ Os controles são traduzidos por `theme/i18n/{pt,en,es}.toml`; título e exemplo
 
 ## Conteúdo, links e imagens
 
-`title.html` usa título disponível, primeiro H1 renderizado ou nome do arquivo, retirando prefixo numérico da apresentação. `content.html` remove o H1 inicial para o layout não o repetir e passa pelo filtro de comentários Obsidian. `uncomment.html` remove `%%...%%` do conteúdo renderizado, preservando os trechos de código tratados pelo filtro.
+`title.html` usa título disponível, primeiro H1 renderizado ou nome do arquivo, retirando prefixo numérico da apresentação. `content.html` remove o H1 inicial para o layout não o repetir e passa pelo filtro de comentários Obsidian. `uncomment.html` remove `%%...%%` do conteúdo renderizado, preservando os trechos de código tratados pelo filtro. Um `%%` aberto sem fechamento esconde o restante do conteúdo, em vez de revelar o comentário incompleto.
 
 `description.html` prefere descrição explícita; na home usa a configuração; depois extrai texto, normaliza espaços e limita a 160 caracteres. Para post protegido retorna descrição genérica traduzida. Algumas áreas visuais de página usam `.Description` diretamente, portanto descrição explícita e demais metadados não devem ser considerados criptografados.
 
 Na extração automática, o partial retira comentários Obsidian e trata um `%%` aberto no fim de um resumo truncado. Se o resumo só contém comentário, tenta o conteúdo completo antes de escolher o texto. `toc.html` retira do sumário entradas cujo heading não permaneceu no conteúdo visível, inclusive headings dentro de comentários. `mochi/cover.html` prefere `image`/`cover`; o fallback de primeira imagem ignora comentários e não é usado para tirar capa do corpo de uma nota protegida. Uma capa configurada explicitamente continua pública.
 
-`render-link.html` resolve caminhos Markdown relativos com `Page.GetPage`, preserva fragmentos normalizados e publica anexos encontrados. Link externo recebe `rel="noopener"`; não é forçado a abrir nova aba. Destino interno ausente gera aviso Hugo.
+`render-link.html` resolve caminhos Markdown relativos com `Page.GetPage`, preserva fragmentos normalizados e publica anexos encontrados. Link externo recebe `rel="noopener"`; não é forçado a abrir nova aba. Destino interno ausente gera aviso Hugo. Links para notas conhecidas como não publicadas (`draft`, `publish: false`, `private: true`) viram texto sem link, evitando apontar a páginas que não entram no build normal.
 
 `vault-resource.html` aceita links relativos, caminhos do cofre e referências de propriedade como `[[foto.png]]`. Tenta diretório da nota, raiz publicada, raiz do cofre e busca por nome. O fallback por nome significa que arquivos homônimos podem depender da primeira correspondência.
 
@@ -137,6 +137,8 @@ A CLI prepara índice no início da prévia; o Studio não o gera em `StartPrevi
 
 ## Posts protegidos
 
+`draft: true`, `publish: false` e `private: true` são condições de não publicação em `internal/obsidian` e nos mounts do scaffold, incluindo traduções relacionadas por nome ou `translationKey`. A prévia as inclui como rascunhos; o publish normal as exclui. `hidden` conserva a URL e só retira de listagens filtradas.
+
 `locked.html` considera `password` preenchido. `true`, `sim`, `sí`, `si` e `yes`, sem distinção de caixa, viram `__global__`; outros valores não vazios são senha literal. O booleano YAML `false` não ativa a proteção. `mochi/lock.html` tem três modos:
 
 | Modo | Corpo |
@@ -145,11 +147,11 @@ A CLI prepara índice no início da prévia; o Studio não o gera em `StartPrevi
 | `HUGO_BLUP_MODE=publish` | Entre marcadores provisórios para pós-processamento |
 | Sem modo Blup | Omitido; formulário permanece sem corpo legível |
 
-O manifesto `blup-locks.json` relaciona `File.UniqueID` a senha. `internal/lock.Process` percorre HTML, substitui regiões por um elemento `data-blup-cipher` e remove o manifesto. Usa AES-256-GCM, PBKDF2-SHA256 com 600.000 iterações, salt aleatório de 16 bytes e IV de 12 bytes. Verifica marcadores residuais nos HTML processados. A camada de build apaga a saída quando a proteção falha.
+O manifesto `blup-locks.json` relaciona `File.UniqueID` a senha. `internal/lock.Process` percorre HTML, substitui regiões por um elemento `data-blup-cipher` e remove o manifesto. Usa AES-256-GCM, PBKDF2-SHA256 com 600.000 iterações, salt aleatório de 16 bytes e IV de 12 bytes. Verifica marcadores residuais mesmo com manifesto vazio, recusando saída provisória sem instruções suficientes para cifrar. A camada de build apaga a saída quando a proteção falha.
 
 `lock.js` usa WebCrypto para derivar a mesma chave e inserir o HTML decifrado no DOM. Lembra até cinco senhas bem-sucedidas em `sessionStorage`, na chave `blup:passwords`, somente para aquela sessão de aba. Reutiliza-as em outros posts protegidos. Não há servidor de autenticação para desbloquear posts.
 
-A proteção envolve o corpo delimitado. Título, capa, autores, URL e outros dados renderizados fora dele continuam públicos. Anexos referenciados são arquivos estáticos separados. O código de narração recusa gerar áudio de nota protegida, mas o template de player é independente da criptografia do corpo. `hidden` e `noindex` não oferecem a mesma proteção.
+A proteção envolve o corpo delimitado. Título, capa, autores, URL e outros dados renderizados fora dele continuam públicos. Antes da cifra, [attachments.go](../../internal/lock/attachments.go) incorpora referências locais de até 10 MiB por arquivo como URLs `data:` no HTML protegido. Para imagens responsivas, escolhe uma versão e remove referências alternativas. `lock.Prune` remove mídias geradas sem referência na saída pública, inclusive anexos usados só no corpo protegido ou comentários. Arquivo também usado publicamente permanece público. Arquivo acima de 10 MiB não é incorporado; se exclusivo, pode ser removido pela poda e deixar de abrir depois do desbloqueio. Não é uma cifra geral de tudo em `static/`, capas, metadados ou diretórios de overrides. O código de narração recusa gerar áudio de nota protegida, mas o template de player é independente da criptografia do corpo. `hidden` e `noindex` não oferecem a mesma proteção.
 
 ## Comentários, reações e votos
 
@@ -157,7 +159,7 @@ A proteção envolve o corpo delimitado. Título, capa, autores, URL e outros da
 
 `internal/app/feedback.go` cria ou atualiza uma issue por chave de nota em minúsculas com `/`. `bento/feedback-key.html` usa o caminho da original no idioma principal quando uma tradução ligada está disponível; assim todas as versões de uma página compartilham comentários, votos e reações. Sem original ligada, usa o caminho da própria página. A issue recebe um marcador `<!-- blup:<chave> -->` e label gerenciada. O mapeamento é salvo em `<site>/data/blup_feedback.json`, com repositório, URL do site, API de login habilitada e mapa de issues. O build pode repetir Hugo para incorporar a nova relação. Renomear a original altera sua chave; não há identidade de feedback independente do caminho.
 
-Configurar feedback cria ou usa um repositório público `<slug>-feedback`, ativa issues e verifica permissões. O site de hospedagem pode estar no GitHub ou Cloudflare. `appInstalled` consulta `/installed?repo=...` no serviço de login; somente instalação confirmada acrescenta `data-fb-api` aos scripts gerados. Sem ela, os controles encaminham ao GitHub.
+Configurar feedback prepara um repositório público `<slug>-feedback` e verifica issues/permissões. O cliente ainda tenta criá-lo se a credencial permite; com token fine-grained restrito, orienta criação/inclusão manual no GitHub, conforme [publicação](publicacao.md#autenticação-github). O site de hospedagem pode estar no GitHub ou Cloudflare. `appInstalled` consulta `/installed?repo=...` no serviço de login; somente instalação confirmada acrescenta `data-fb-api` aos scripts gerados. Sem ela, os controles encaminham ao GitHub.
 
 `feedback.js` lê contagens e comentários, faz login GitHub pelo serviço, recebe e valida estado do retorno e mantém a autenticação em `localStorage`, no navegador do visitante (decisão do dono: não pedir login a cada visita); sair apaga a chave. Renova a autorização quando necessário. Visitante anônimo pode ler pelo serviço com cache; autenticado usa diretamente GitHub com sua chave. Existem caches em sessão e invalidação após mudanças. HTML recebido para corpos e prévias passa pela cópia de elementos permitidos em `markdown`, sem handlers, estilos ou embeds ativos; `safeURL` filtra endereços.
 

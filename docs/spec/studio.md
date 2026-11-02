@@ -16,7 +16,7 @@ O idioma inicial segue `config.Global.Lang`, senão `i18n.System()`, em `studio/
 
 Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsalesx/blup/`, especialmente `studio/studio.ts` e `studio/models.ts`, com modelos de `internal/app`, `config` e `deploy/cfpages`. A interface importa essas funções em vez de construir endpoints HTTP próprios para cada operação local.
 
-`studio/build/Taskfile.yml` gera bindings com `wails3 generate bindings`, flags de build, limpeza do destino, TypeScript e interfaces. `vite.config.ts` aplica o plugin Wails ao diretório de bindings. Eles são artefatos de integração derivados das assinaturas Go e precisam acompanhar as alterações de serviço.
+`studio/build/Taskfile.yml` gera bindings com `wails3 generate bindings`, flags de build, limpeza do destino, TypeScript e interfaces. `vite.config.ts` aplica o plugin Wails ao diretório de bindings. Eles são artefatos de integração derivados das assinaturas Go e precisam acompanhar as alterações de serviço. Campos opcionais, ponteiros, slices/mapas nulos e números seguem os tipos gerados; a interface trata ausência e estreita propriedades YAML dinâmicas. O código em `frontend/src` não usa `any` para contornar a checagem. Bindings gerados de `any` Go continuam podendo conter esse tipo. A [spec de contratos](tipagem-e-contratos.md) detalha a fronteira e seus limites.
 
 | Serviço Go | Grupos de operações expostas |
 | --- | --- |
@@ -42,7 +42,8 @@ Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsal
 | Evento | Payload e finalidade |
 | --- | --- |
 | `progress` | `{kind, text}`; etapas, avisos e resultados de publicação/sync |
-| `previewChanged` | Notifica rebuild Hugo para recarregar a página da prévia |
+| `previewChanged` | String vazia; notifica rebuild Hugo para recarregar a página da prévia |
+| `calendarOpen` | `{dir, path, date}`; clique numa notificação de calendário |
 | `previewRestarted` | Nova URL quando o processo de prévia reiniciado muda de endereço |
 | `notesChanged` | Caminhos relativos separados por quebra de linha; alterações externas |
 | `term` | `{id, data, exit}`; bytes do terminal em base64 ou término |
@@ -50,6 +51,8 @@ Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsal
 | `voiceInstall` | `{done, total, step}`; download do motor local |
 | `translate` | `{note, lang, done, total}`; partes da tradução remota de uma nota |
 | `translateSite` | `{lang, done, total, note}`; progresso da tradução do site |
+
+`studio/events.go` registra os tipos de `previewChanged` e `calendarOpen`; os demais eventos são registrados pelos serviços que os emitem. A entrada importa os bindings de eventos, tipando os callbacks `Events.On`. Dados de notificação vindos do sistema são estreitados antes da emissão.
 
 `running` em `publish.go` usa mutex e devolve `busy` se já houver publicação/sync em execução. Durante a operação encaminha `ui.Report` a eventos da janela e atribui `nil` ao hook ao terminar, sem restaurar um valor anterior. Esse mutex não é um agendador geral para todos os serviços.
 
@@ -187,7 +190,7 @@ Canvases (`.canvas`) e desenhos (`.draw`) são do próprio Studio, feitos em Sve
 
 `CanvasView.svelte` (lógica em `canvas.ts`) grava no formato aberto JSON Canvas: cartões de texto em Markdown, notas do cofre (`CanvasFile.svelte` mostra o texto, ou a imagem), links da web e grupos, ligados por setas com texto e cor. Arrastar o vazio ou a roda move a tela; Ctrl e a roda, ou pinça, dão zoom; dois cliques criam um cartão; arrastar do ponto lateral de um cartão cria uma seta; notas arrastadas da árvore viram cartões. Teclado: Enter edita o selecionado, Delete ou Backspace apaga, `Ctrl+A` seleciona tudo, `Ctrl+Z`, `Ctrl+Shift+Z` e `Ctrl+Y` desfazem e refazem.
 
-`DrawingView.svelte` (lógica em `draw.ts`) desenha retângulo, losango, elipse, seta, linha, desenho livre, texto (solto ou dentro da forma), borracha e imagens, com cor, fundo (suave ou sólido), espessura, tracejado e tamanho de texto; seleção por caixa, redimensionar, duplicar, ordem e exportar PNG para os anexos. Cada ferramenta tem uma letra: H mover a tela, V selecionar, R retângulo, D losango, O elipse, A seta, L linha, P desenho livre, T texto, E borracha. Também: Espaço segurado move a tela, setas movem o selecionado (Shift, de 10 em 10), Enter escreve na forma ou no texto, `Ctrl+D` duplica, `Ctrl+=`, `Ctrl+-` e `Ctrl+0` aproximam, afastam e enquadram. O arquivo é JSON com um elemento por linha; cada elemento tem caixa `x, y, w, h`, e linhas, setas e traços guardam os pontos relativos a ela. Chaves desconhecidas no topo do arquivo são preservadas.
+`DrawingView.svelte` (lógica em `draw.ts`) desenha retângulo, losango, elipse, seta, linha, desenho livre, texto (solto ou dentro da forma), borracha e imagens, com cor, fundo (suave ou sólido), espessura, tracejado e tamanho de texto; seleção por caixa, redimensionar, duplicar, ordem e exportar PNG para os anexos. Cada ferramenta tem uma letra: H mover a tela, V selecionar, R retângulo, D losango, O elipse, A seta, L linha, P desenho livre, T texto, E borracha. Também: Espaço segurado move a tela, setas movem o selecionado (Shift, de 10 em 10), Enter escreve na forma ou no texto, `Ctrl+D` duplica, `Ctrl+=`, `Ctrl+-` e `Ctrl+0` aproximam, afastam e enquadram. O arquivo é JSON com um elemento por linha; cada elemento tem caixa `x, y, w, h`, e linhas, setas e traços guardam os pontos relativos a ela. Chaves desconhecidas no topo do arquivo são preservadas. Os parsers de `canvas.ts` e `draw.ts` validam a forma lida, tipos de elemento, IDs, geometria finita e limites de quantidade, descartando entradas inválidas e normalizando estilos. Canvas remove arestas sem nós válidos e duplicatas; desenho valida pontos necessários a cada ferramenta. Não há aceitação cega de um cast do JSON sincronizado; veja [contratos de arquivos](tipagem-e-contratos.md#arquivos-locais-e-sincronizados).
 
 As duas telas têm tela cheia (botão nos controles, F dentro da tela, ou o atalho `F11` do Studio): ocupam a janela inteira, sem faixa, árvore ou barra. Esc sai quando nada está selecionado (no desenho, também com a ferramenta de seleção). Salvam sozinhas e recarregam quando o arquivo muda fora do editor (evento `notesChanged`), se não houver mudança própria pendente.
 
@@ -202,7 +205,7 @@ Bancos de dados/Clientes/        uma nota por registro, campos nas propriedades
 
 ### Arquivo `.table`
 
-JSON do próprio Studio, indentado com tabulação:
+JSON do próprio Studio, indentado com tabulação. `internal/app/database.go` normaliza o schema, tipos de coluna e referências das views, removendo duplicatas e referências inválidas antes do uso:
 
 | Campo | Conteúdo |
 | --- | --- |
@@ -275,7 +278,7 @@ Avisos por e-mail permitem 50 tentativas por mês UTC no Max e 100 no Ultra. `pu
 
 ## Prévia
 
-`StartPreview` encontra ou baixa Hugo, gera scaffold e inicia servidor restrito a `127.0.0.1`, em memória, com rascunhos e `HUGO_BLUP_MODE=preview`. Desativa live reload nativo e observa o log e emite `previewChanged` tanto em `Total in` (conteúdo) quanto em `Rebuilt in`, que o Hugo escreve depois de reler a configuração; assim o que as telas do Site salvam (nome, logo, menu, redes, mostrar o nome no cabeçalho) aparece na prévia sem recarregar à mão. Não executa o preparo Pagefind da CLI.
+`StartPreview` encontra ou baixa Hugo, gera scaffold e inicia servidor restrito a `127.0.0.1`, em memória, com rascunhos e `HUGO_BLUP_MODE=preview`. `PreviewGuard`, em `internal/app/preview.go`, expõe um proxy de porta aleatória e mantém Hugo em outra porta interna aleatória. Confere Host com `127.0.0.1:P`/`localhost:P` e Origin, quando presente, limitado à prévia e às origens autorizadas do app. Desativa live reload nativo e observa o log e emite `previewChanged` tanto em `Total in` (conteúdo) quanto em `Rebuilt in`, que o Hugo escreve depois de reler a configuração; assim o que as telas do Site salvam (nome, logo, menu, redes, mostrar o nome no cabeçalho) aparece na prévia sem recarregar à mão. Não executa o preparo Pagefind da CLI.
 
 `AddSection`, `RemoveSection` e `RestoreSection`, em [studio/settings.go](../../studio/settings.go), chamam `sectionsChanged` depois de uma operação bem-sucedida. Em [studio/translate.go](../../studio/translate.go), essa rotina solicita o reinício de uma prévia em execução. O motivo é a descoberta de pastas pelo watcher do Hugo: uma seção pode ser copiada com todas as notas antes de o watcher passar a observar a pasta, deixando páginas ausentes até outra alteração. Não basta recarregar o iframe para Hugo descobrir essas notas.
 
@@ -340,7 +343,7 @@ A lixeira do Blup fica em `<site>/.blup/trash`, fora das notas, com diretório d
 
 O link de ajuda é definido em `DOCS` nesse arquivo. A lista de modelos do OpenRouter não traz o Kokoro, que já roda grátis no computador.
 
-Nas escolhas em segmento de `SettingsModal.svelte`, os rótulos de cada botão permanecem numa linha (`white-space: nowrap`). Em Quem traduz, exibido quando a tradução local está instalada, a linha usa quebra flexível: as opções ficam ao lado da explicação enquanto couberem e passam para baixo quando falta largura. Isso altera a disposição visual, mantendo a preferência `translateAI` e as opções No computador e IA na nuvem.
+Nas escolhas em segmento de `SettingsModal.svelte`, os rótulos de cada botão permanecem numa linha (`white-space: nowrap`). Em Quem traduz, exibido quando a tradução local está instalada, a linha usa quebra flexível: as opções ficam ao lado da explicação enquanto couberem e passam para baixo quando falta largura. Isso altera a disposição visual, com `translateAI` distinguindo `local`, `openrouter` e `blup`. O destino remoto exige escolha explícita e aceite próprio; saldo ou chave disponível não troca automaticamente o provedor.
 
 Os atalhos padrão de `src/keys.ts` são (os marcados com cofre só agem num cofre de anotações; a tela cheia só com um canvas ou desenho aberto):
 
@@ -373,14 +376,22 @@ Um site é escrito no idioma de `lang` (`pt`, `en` ou `es`) e pode ser publicado
 
 - Painel Idiomas na nota (`NoteLangs.svelte`): a original e cada idioma, com Abrir, Traduzir, Traduzir de novo e revisão. Aparece em toda nota de um site, inclusive nas notas de seção (`_index.md` com `blup:`, como Podcast e Feedback). O bloco ocupa as duas colunas das propriedades por `grid-column: 1 / -1`; nomes e ações usam quebra flexível, colocando botões abaixo do nome quando falta espaço. A tradução guarda `translation_hash`, a impressão da original (versão do tradutor, título, descrição, texto e textos dos exemplos, quando presentes); quando essa impressão muda, uma tradução com hash salvo aparece desatualizada.
 - Tela Idiomas do site (`LangsPanel.svelte`): quantas notas estão traduzidas, desatualizadas e faltando em cada idioma, e Traduzir o que falta de uma vez.
-- Quem traduz (`internal/translate`): a IA do plano no Blup Cloud (`/api/ai/translate`, que monta o pedido no servidor e desconta o custo real) quando o plano inclui IA, senão a chave do OpenRouter (Claude Haiku 5.5). A nota vai em partes de até 12 KB, cortadas em linhas em branco fora de blocos de código. Código, links, imagens e o tipo dos callouts não mudam.
+- Quem traduz (`internal/translate`): `translateAI` escolhe explicitamente `local`, `openrouter` ou `blup`. A IA do plano usa `/api/ai/translate`, com prompt no servidor e custo reportado quando disponível; OpenRouter usa a chave própria (Claude Haiku 5.5). Falha num destino não muda para outro. A nota vai em partes de até 12 KB, cortadas em linhas em branco fora de blocos de código. Código, links, imagens e o tipo dos callouts não mudam.
 - A tradução também traduz o que o site mostra fora do texto: na nota inicial, `site_description`, `button_text` e os rótulos do menu (`Nome | destino`: o nome; um item só com o nome de uma pasta usa o título traduzido da seção), e em qualquer nota `linkTitle` (o nome curto dos cartões e do menu), `category` e `tags` (`TextProps`). Quando o que a tradução cobre muda, `translateVersion` entra na impressão da original e as traduções antigas aparecem desatualizadas. A nota de uma seção (`_index.md`) mantém o nome na pasta do idioma, e é ela que dá o nome traduzido da seção, do blog, do roadmap, da documentação ou do changelog.
 - Na nota da seção Feedback (Bento), `exampleTexts` e `walkExamples`, em `internal/app/translate.go`, percorrem `examples[].title`, `body` e `replies[].text`, para a tradução local e remota. Votos, tipo, status, autores e `days` ficam. Esses textos entram na impressão só das notas com `examples`, sem invalidar as outras por essa ampliação; mudar somente votos ou status não altera o hash. O cabeçalho do quadro inclui `site/ai-badge.html`, com selo quando há marca de IA e original ligada. Interface e categorias usam o i18n do tema; os exemplos dependem da tradução da nota; pedidos e comentários reais mantêm seus textos e idioma de origem, sem tradução automática. Veja [Feedback](feedback.md#idiomas-e-tradução).
 - Os perfis dos autores também são traduzidos (o cargo, `role`, e a bio), na pasta do idioma dentro da pasta de autores e com o mesmo nome (o nome é o autor). Cada idioma do site lê o perfil no seu idioma; sem tradução, o original. Como a pasta de autores, essas traduções nunca viram páginas.
 - Comentários, reações e votos: todas as versões de uma página usam a conversa da original (a mesma issue do GitHub, `bento/feedback-key.html`), então votos e reações somam os leitores de todos os idiomas. Um comentário guarda o idioma em que foi escrito (uma marca invisível no texto) e, visto em outra versão, mostra "comentado em English".
 - Uma tradução feita pela IA leva `ai_translated: true`, e o site mostra junto do título um selo "Traduzido com IA" que abre um balão com o idioma original e o link para ele (`site/ai-badge.html`, nos três temas). No painel Idiomas, "Marcar como revisada" tira a marca e o selo.
-- A narração consulta `NoteOrigin(site, rel)`: a pasta imediata `en`, `es` ou `pt` determina o idioma de uma tradução; fora dela usa o idioma principal. `Studio.Narrate` lê `Prefs.Voices[lang]`, e `app.Narrate` resolve a escolha por `voiceFor` naquele idioma, com fallback local ou remoto. O arquivo novo de uma tradução leva o idioma no nome (`Nota (en).mp3`), salvo quando uma referência existente a MP3 é reutilizada. As regras estão em [narração e voz](narracao-e-voz.md#idioma-da-nota-e-escolha-de-voz).
-- Tradução no computador (`internal/localtr`, `localtranslate.ts`, `public/bergamot`): o motor e os modelos do Firefox Translations (Bergamot 4.0 e modelos 3.0 de inglês com português e espanhol), baixados da Mozilla sob demanda (cerca de 100 MB, 145 MB no disco, cada arquivo conferido por SHA-256 antes e depois de descompactar) e servidos à janela em `/local-translate/`. Roda num worker; português e espanhol passam pelo inglês. Cada linha do Markdown vira HTML que o motor preserva: código, endereços, alvos de wikilinks, imagens e matemática vão em marcações com o próprio texto (só para contexto) e voltam exatamente como eram, com os espaços e a caixa baixa do original. A escolha de quem traduz fica em `translateAI` (vazio: no computador quando instalado).
+- A narração consulta `NoteOrigin(site, rel)`: a pasta imediata `en`, `es` ou `pt` determina o idioma de uma tradução; fora dela usa o idioma principal. `Studio.Narrate` lê `Prefs.Voices[lang]`, e `app.Narrate` resolve a escolha por `voiceFor` naquele idioma, sem escolher envio remoto automaticamente quando a voz local está ausente ou inválida. O arquivo novo de uma tradução leva o idioma no nome (`Nota (en).mp3`), salvo quando uma referência existente a MP3 é reutilizada. As regras estão em [narração e voz](narracao-e-voz.md#idioma-da-nota-e-escolha-de-voz).
+- Tradução no computador (`internal/localtr`, `localtranslate.ts`, `public/bergamot`): o motor e os modelos do Firefox Translations (Bergamot 4.0 e modelos 3.0 de inglês com português e espanhol), baixados da Mozilla sob demanda (cerca de 100 MB, 145 MB no disco, cada arquivo conferido por SHA-256 antes e depois de descompactar) e servidos à janela em `/local-translate/`. Roda num worker; português e espanhol passam pelo inglês. Cada linha do Markdown vira HTML que o motor preserva: código, endereços, alvos de wikilinks, imagens e matemática vão em marcações com o próprio texto (só para contexto) e voltam exatamente como eram, com os espaços e a caixa baixa do original. A escolha de quem traduz fica em `translateAI` (vazio: opção local).
+
+Antes do envio remoto, `aiconsent.ts`/`aiconsentui.ts` pedem aceite separado para OpenRouter e Blup. O backend também exige `ai-consent.json`, impedindo contornar a escolha pela chamada direta do binding. Configurações permite revogar. Narração e tradução remota recusam notas com senha; `TranslateSite` informa notas puladas e a tradução local permanece possível. O texto remoto é legível pelo serviço/provedor, diferente do sync cifrado.
+
+### Domínio e retirada de site Blup Cloud
+
+`BlupDomain.svelte` oferece `BlupDomain`, `SetBlupDomain` e `RemoveBlupDomain` para sites publicados em contas Max/Ultra. Mostra prova TXT, CNAME, estado de propriedade/SSL e orientação para domínio raiz, consultando a cada minuto enquanto está aberto e pendente. Não grava domínio no TOML nem troca a baseURL; URLs absolutas seguem `getblup.site`. A tela de apagar inclui `BlupSite` independentemente do provedor atualmente selecionado. Os contratos completos estão em [publicação](publicacao.md#domínio-próprio-no-blup-cloud).
+
+Sair tenta esvaziar a fila de lembretes antes de encerrar a sessão. Sem rede, `signout-pending` conserva só o trabalho necessário à repetição, com modo `0600`; notas locais continuam no disco. Desligar notificações também repete cancelamento remoto enquanto necessário.
 
 ## Busca, exportar e desempenho
 
@@ -431,5 +442,7 @@ Os comandos de compilação, dependências nativas e pacotes AppImage, nfpm, DMG
 - `OpenURL` só abre `http`, `https`, `mailto` e `tel`; outro endereço (`file:///…`, um esquema que abre um programa) é ignorado.
 - Caminhos: `notesPath`, `notePath` e `ImageData` exigem que o caminho, seguido pelos links simbólicos (`app.Within`), fique dentro da pasta das notas. Um link para nada também é recusado, porque escreveria onde ele aponta.
 - A prévia roda num iframe com `sandbox` (scripts e a própria origem, sem navegar a janela do Studio), e as mensagens dela só valem vindas da origem da prévia.
+
+A CSP de `frontend/index.html` limita recursos da janela e permite o WASM usado pelo corretor/tradutor; o iframe de prévia usa loopback. O mapa `blup-map.json` tem teto de 16 MiB, status HTTP conferido e caminhos/URLs locais validados antes da navegação.
 
 `guardRuntime`, em [studio/guard.go](../../studio/guard.go), envolve o servidor de assets antes da rota de tradução local. `/wails/runtime` exige POST e header `x-wails-client-id`; rotas `/wails/` recusam `Sec-Fetch-Site` diferente de vazio, `same-origin` ou `none`. Assim, uma imagem ou navegação GET vinda do conteúdo não pode chamar os bindings. Os testes `guard_test.go`, `paths_security_test.go` e `frontend/tests/security.test.ts` cobrem esses limites e esquemas de link, sem substituir revisão da distribuição e do ambiente real. O [guia de segurança](../seguranca.md) reúne a fronteira local, cloud e site publicado.

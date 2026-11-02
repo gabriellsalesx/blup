@@ -1,6 +1,6 @@
 # Especificação técnica do Blup
 
-Esta especificação descreve a implementação do repositório `github.com/gabriellsalesx/blup`, conferida em 02/11/2026, incluindo `a75800f`, a auditoria `2c95df5` e as alterações locais da auditoria cloud de pré-deploy. A leitura do código prevalece sobre mensagens de commit e comentários antigos. Os caminhos citados são relativos à raiz. Os exemplos são fictícios; a existência de integração não comprova provisionamento de conta ou infraestrutura de produção.
+Esta especificação descreve a implementação do repositório `github.com/gabriellsalesx/blup`, conferida em 02/11/2026, incluindo as alterações da rodada 2 de pré-deploy. A leitura do código prevalece sobre mensagens de commit e comentários antigos. Os caminhos citados são relativos à raiz. Exemplos são fictícios; integração implementada não comprova provisionamento de infraestrutura de produção.
 
 Para a visão entre componentes, consulte [Arquitetura](../arquitetura.md). A operação está em [Deploy de produção](../deploy.md), e as fronteiras de confiança, em [Segurança](../seguranca.md).
 
@@ -20,6 +20,7 @@ Para a visão entre componentes, consulte [Arquitetura](../arquitetura.md). A op
 | [Publicação](publicacao.md) | Sites em `getblup.site`, Cloudflare Pages, GitHub Pages e domínio próprio |
 | [Narração e voz](narracao-e-voz.md) | Idioma pela pasta da nota, voz por idioma, OpenRouter, Blup Cloud, MP3 e Kokoro |
 | [Studio](studio.md) | Wails, Svelte, editor, Feedback, tradução, reinício da prévia, painéis, terminal e integração desktop |
+| [Tipagem e contratos](tipagem-e-contratos.md) | Hono RPC/Zod, bindings/eventos Wails, null/opcionais, arquivos externos e limites residuais |
 | [Testes e build](testes-e-build.md) | Validação, compilação dos dois módulos, empacotamento e release |
 
 ## O que é o Blup
@@ -51,15 +52,25 @@ O site publicado é um conjunto de arquivos estáticos. Busca usa Pagefind no na
 | `studio/`, `studio/frontend/` | Aplicativo desktop, bindings, editor, prévia e painéis |
 | `cloud/` | Conta, painel SvelteKit, API Hono/Better Auth, D1/R2, Stripe e Worker dos sites |
 
-O fluxo de publicação é: notas e configurações alimentam o scaffold; Hugo gera `public/`; o Blup atualiza os dados de feedback e pode repetir Hugo; criptografa regiões protegidas; cria busca e PWA; envia `public/` ao provedor. O sync das notas é uma operação separada da publicação.
+O fluxo de publicação é: notas e configurações alimentam o scaffold; Hugo gera `public/`; o Blup atualiza os dados de feedback e pode repetir Hugo; incorpora anexos locais pequenos nas regiões protegidas e as cifra; poda mídias sem referência pública; cria busca e PWA; envia `public/` ao provedor. O sync das notas é uma operação separada da publicação.
 
 O [quadro de Feedback](feedback.md) é acrescentado em Seções pelo Studio. A nota marcada `blup: feedback` guarda exemplos; os pedidos reais são issues criadas pelos visitantes e lidas no navegador. O dono altera seus status no painel Feedback, sem republicar. Interface, exemplos e conversas têm contratos de idioma diferentes: o i18n traduz os controles, a tradução da nota cobre os exemplos e as conversas reais mantêm o texto de origem, compartilhado entre as versões do site.
 
 O Studio também abre cofres `kind = "notes"`, com diário, mapa de notas, canvas, desenhos, tabelas e calendário. Eventos são notas; avisos locais dependem do aplicativo aberto, e e-mails dependem de uma lista de horários enviada à nuvem. O calendário do changelog do Bento é outro recurso, gerado estaticamente.
 
-A troca de idioma do Studio atualiza os textos sem recarregar a janela. Nos sites traduzidos, a publicação escolhe uma tradução disponível conforme o navegador e usa inglês como fallback quando essa página existe. Nori compartilha posts com os controles comuns do Mochi. Narração escolhe idioma pela pasta da nota e permite modelo/voz Blup Cloud com custo de catálogo descontado da cota. Veja [Studio](studio.md), [Temas Hugo](temas-hugo.md) e [Narração](narracao-e-voz.md).
+A troca de idioma do Studio atualiza os textos sem recarregar a janela. Nos sites traduzidos, a publicação escolhe uma tradução disponível conforme o navegador e usa inglês como fallback quando essa página existe. Nori compartilha posts com os controles comuns do Mochi. Narração escolhe idioma pela pasta da nota e permite modelo/voz Blup Cloud, com reserva de cota e custo reportado pelo provedor quando disponível, senão estimativa de catálogo. Sem escolha remota explícita, não troca voz local por nuvem. IA remota exige aceite por destino e recusa notas com senha. Veja [Studio](studio.md), [Temas Hugo](temas-hugo.md) e [Narração](narracao-e-voz.md).
 
 O Podcast organiza narrações públicas em episódios e feed. O reinício após mudanças de seções trata o servidor local de prévia, sem reiniciar o desktop. Notas podem sincronizar pelo GitHub ou pelo Blup Cloud; só o segundo transporte cifra blocos, nomes e manifestos no cliente. Conteúdo enviado à IA e saída de sites públicos têm outras fronteiras de privacidade, descritas em [Segurança](../seguranca.md).
+
+## Contratos da rodada 2
+
+- Blup Cloud: arquivo máximo de 10/25/100/100 MiB para Grátis/Pro/Max/Ultra; reservas D1 limitam concorrência de armazenamento, sites, aparelhos e IA. Publicação e limpeza usam leases e preservação temporária de manifestos.
+- Domínio próprio Max/Ultra: um hostname por site, prova TXT aleatória e SSL ativo. Serve os arquivos existentes; canonical/feed/sitemap continuam na baseURL `getblup.site`, sem republicação ao vincular.
+- Exclusão de conta: bloqueio e revogação imediatos, retenção de 30 dias e purga diária em lotes com repetição em falhas. Staff restaura antes do prazo/início da purga. Pago para Grátis tem 14 dias para os sites; Max/Ultra para Pro mantém sites e retira domínio próprio.
+- Autoatualização CLI: Ed25519 dos checksums e SHA-256 do pacote, com versão estritamente mais nova. Instalação inicial por scripts continua só com SHA-256. Builds `production` exigem versão `x.y.z`.
+- Sync portátil: `translations` viaja; `Deploy`, `Feedback`, credenciais e senha geral ficam fora. Eventos Wails são registrados e tipados; o painel cloud infere os DTOs de `AppType` Hono. A [spec de contratos](tipagem-e-contratos.md) registra as validações em execução e os wrappers externos ainda sem schema estrito.
+
+O [relatório da rodada 2](../auditoria/rodada2-documentacao.md) registra os achados encaminhados, os checks executados e os limites que permanecem.
 
 ## Diretórios que não devem ser confundidos
 
@@ -84,7 +95,7 @@ Fontes centrais: [config](../../internal/config/config.go), [scaffold](../../int
 ## Limites confirmados na implementação
 
 - Existem três modelos válidos: `mochi`, `nori` e `bento`. O assistente da CLI em `internal/app/new.go` oferece somente Mochi e Bento. O Studio oferece os três.
-- A prévia mostra rascunhos e o corpo de posts protegidos. A publicação passa por criptografia. Rodar somente Hugo com `HUGO_BLUP_MODE=publish` não executa essa etapa Go.
+- A prévia mostra rascunhos, notas `publish: false`/`private: true` e o corpo de posts protegidos. Usa proxy loopback com Host/Origin conferidos. A publicação passa por criptografia. Rodar somente Hugo com `HUGO_BLUP_MODE=publish` não executa essa etapa Go.
 - `hidden: true` mantém a página acessível pela URL e a retira das listagens que usam o filtro do tema. Não equivale a senha ou exclusão do build.
 - O sync de notas não envia automaticamente os overrides do diretório técnico, os tokens ou a senha geral do site. Senhas literais presentes nas próprias notas viajam como conteúdo dessas notas.
 - A instalação automática do Kokoro está completa na tabela de plataformas somente para Linux amd64 com CGO. Outras entradas não têm pacote de ferramentas configurado.
@@ -111,7 +122,7 @@ O [parecer do Prumo](../auditoria/conferencia-spec.md) foi conferido item por it
 
 O script de rolagem do item M9 também foi acrescentado à comparação entre prévia e publicação em scaffold e build. A observação final sobre empacotamento ganhou um link no documento do Studio.
 
-Na revisão da conferência, os achados de código C1 a C5 foram documentados sem correção de código por este trabalho. Ela registrou o rename da busca que podia falhar entre sistemas de arquivos; as limitações de carregar mais e feedback; a versão `dev` dos pacotes do Studio; os clientes interativos de domínio e exclusão, sem presumir seu efeito numa janela sem terminal; e os comentários desatualizados. A revisão de 01/11/2026 atualiza os contratos que mudaram desde então, inclusive o fallback de cópia do índice da prévia e a descoberta de seções só nas propriedades. A tabela de instalação de voz e o workflow de release prevalecem sobre o comentário que atribui a geração das ferramentas ao workflow.
+A seção abaixo é o histórico da primeira conferência, não uma lista de pendências atuais. Versão de produção, índice entre discos e exclusão do destino Blup Cloud já mudaram desde aquele parecer. Na revisão da conferência, os achados de código C1 a C5 foram documentados sem correção de código por este trabalho. Ela registrou o rename da busca que podia falhar entre sistemas de arquivos; as limitações de carregar mais e feedback; a versão `dev` dos pacotes do Studio; os clientes interativos de domínio e exclusão, sem presumir seu efeito numa janela sem terminal; e os comentários desatualizados. A revisão de 01/11/2026 atualiza os contratos que mudaram desde então, inclusive o fallback de cópia do índice da prévia e a descoberta de seções só nas propriedades. A tabela de instalação de voz e o workflow de release prevalecem sobre o comentário que atribui a geração das ferramentas ao workflow.
 
 ## Divergências com a conferência
 

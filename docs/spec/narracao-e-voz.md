@@ -12,7 +12,7 @@ O resultado tem `link`, `hash`, `seconds`, `bytes` e `used`. O MP3 já foi grava
 
 O link tem formato `[[Nome.mp3]]`. Uma narração anterior apontando para MP3 simples existente na pasta de anexos é reutilizada e sobrescrita. Sem ela, o nome vem da nota, com sanitização e número para evitar colisão; se o idioma da nota difere do principal, acrescenta ` (en)`, ` (es)` ou ` (pt)` antes da extensão. A pasta acompanha o idioma principal do site: `Anexos` para `pt`, `Adjuntos` para `es` ou `Attachments` para inglês e fallback. O arquivo máximo é 25 MiB, mesmo quando o provedor de publicação tem limite diferente.
 
-Uma nota cuja propriedade `password` tenha valor não vazio e diferente de texto `false` é recusada pela API de narração. Isso evita gerar um arquivo público de áudio com o corpo protegido. A regra não apaga MP3 já criado antes de a senha ser configurada.
+Uma nota protegida por `password` é recusada pela API de narração. `noteLocked`, em `internal/app/ai_privacy.go`, acompanha o tema: booleano `false`, zero e ausência não protegem; uma string não vazia, inclusive `"false"`, é senha literal. Isso evita gerar um arquivo público de áudio com o corpo protegido. A regra não apaga MP3 já criado antes de a senha ser configurada.
 
 ## Preparação do texto
 
@@ -40,12 +40,12 @@ Por exemplo, num site `pt`, `Posts/Texto.md` usa `Prefs.Voices["pt"]`, `Posts/en
 
 `voiceFor(lang, chosen)`, em `internal/app/narration_api.go`, aplica esta ordem:
 
-1. Conserva `kokoro:<id>` se o ID existe e fala o idioma da nota. Essa aceitação não testa a instalação; uma escolha local válida com instalação ausente pode falhar ao gerar.
-2. Para `blup:`, preserva modelo e voz dos outros modelos para validação remota. Só no modelo recomendado normaliza a voz pelo idioma com `narrate.VoiceFor`, caindo para a voz padrão desse idioma quando necessário. A autorização e o uso do plano são verificados no fluxo remoto.
-3. Conserva uma escolha OpenRouter de outro modelo para validação posterior. No modelo recomendado, só a conserva se `narrate.VoiceFor(lang, voz)` devolver a mesma voz.
-4. Sem escolha aplicável, usa a primeira voz Kokoro compatível se o motor estiver instalado; sem ela, usa o modelo remoto recomendado com `narrate.DefaultVoice(lang)`.
+1. Uma escolha explícita `blup:` conserva o destino Blup Cloud. No modelo recomendado, ajusta a voz ao idioma por `narrate.VoiceFor`; nos outros modelos, preserva modelo/voz para validação posterior.
+2. Uma escolha explícita OpenRouter conserva esse destino, normalizando a voz do modelo recomendado para o idioma. Outros modelos passam pela consulta remota posterior.
+3. Uma escolha Kokoro só é conservada quando o ID existe e fala o idioma. Sem escolha local compatível, usa a primeira voz Kokoro daquele idioma, mesmo se o motor ainda não estiver instalado.
+4. Se a instalação local necessária está ausente, a geração devolve orientação para escolher/baixar uma voz. Não escolhe automaticamente um destino remoto.
 
-Uma voz local incompatível é descartada, e o modelo recomendado resolve o idioma conforme essas regras. Outros modelos conservam a escolha para validação posterior; não se atribui detecção universal de idioma às vozes deles. Para idiomas fora de `pt`, `en` e `es`, as rotinas usam inglês como fallback. O retorno ao padrão resolve escolhas ausentes ou incompatíveis; falha de síntese de uma voz já aceita não inicia automaticamente outro motor.
+Para idiomas fora de `pt`, `en` e `es`, as rotinas de idioma usam inglês como fallback. A seleção nunca muda de Kokoro para OpenRouter/Blup Cloud por faltar instalação ou por falhar a síntese. A substituição de modelo/voz dentro do OpenRouter é um mecanismo separado e mantém o destino explicitamente escolhido.
 
 `NarrationVoices(idioma, modelo, modeloBlup)` lista locais, vozes do modelo escolhido para o Blup Cloud (só modelos pagos: os gratuitos não passam pelo plano) e vozes do modelo OpenRouter solicitado. Nas Configurações, os grupos Blup Cloud e OpenRouter só aparecem depois de conectar; o do Blup Cloud tem o mesmo seletor de modelo, sem preço, com o aviso de que modelos mais caros gastam a cota mais rápido. Informa motor, nome, disponibilidade e existência de amostra. Disponibilidade OpenRouter significa haver chave salva; no Blup Cloud depende de o plano incluir IA. Isso não garante saldo ou sucesso da próxima chamada. Amostras gravadas estão em `studio/frontend/public/voices`. `Studio.NarrationEstimate` usa o mesmo idioma e preferência para decidir se deve estimar o uso de IA do Blup Cloud.
 
@@ -55,7 +55,7 @@ O cliente usa a base `https://openrouter.ai/api/v1`, token global em `credential
 
 O modelo recomendado codificado é `microsoft/mai-voice-2.1`. Os padrões são Luana (`pt-BR`) para português, Harper (`en-US`) para inglês e Valeria (`es-MX`) para espanhol. `Known()` contém vozes e estimativa de preço fallback; não é uma tabela de preços atualizada fora do código.
 
-`Models` consulta `/models?output_modalities=speech`, filtra famílias configuradas como apenas PCM e interpreta vozes, descrição e preço. Usa heurísticas de nome para idioma e de descrição para modelo multilíngue. Sem voz nomeada, pode oferecer a voz padrão. O modelo recomendado vem primeiro; os outros são ordenados por nome na implementação, apesar de comentário antigo mencionar preço.
+`Models` consulta `/models?output_modalities=speech` com corpo limitado e validação dos dados de preço, recusando valores não finitos ou negativos, filtra famílias configuradas como apenas PCM e interpreta vozes, descrição e preço. Usa heurísticas de nome para idioma e de descrição para modelo multilíngue. Sem voz nomeada, pode oferecer a voz padrão. O modelo recomendado vem primeiro; os outros são ordenados por nome na implementação, apesar de comentário antigo mencionar preço.
 
 `NarrationModels` filtra por idioma e expõe `perPost = PerThousand * 7`, uma estimativa para cerca de 7.000 unidades de texto. Valor zero pode representar outra forma de cobrança. Se a consulta falhar ou vier vazia, usa `Known` como fallback e pode retornar também o erro ao frontend.
 
@@ -78,14 +78,14 @@ O servidor em [ai.ts](../../cloud/worker/ai.ts) valida modelo/voz e calcula por 
 ```text
 modelo recomendado: perCharMicros = 22
 outros modelos: perCharMicros = Number(pricing.prompt) * 1.000.000
-custoMicros = ceil(quantidade de caracteres Unicode * perCharMicros)
+estimativaMicros = ceil(quantidade de caracteres Unicode * perCharMicros)
 ```
 
-O catálogo dos outros modelos é consultado em `/models?output_modalities=speech`, com cache de até seis horas por isolate. Exclui famílias configuradas como PCM/local, exige preço positivo e aceita somente voz listada, ou vazia quando o modelo não lista vozes. Na falta de catálogo, só resta o recomendado. A requisição de voz admite até 4.000 caracteres Unicode; o cliente normalmente divide em 2.500 bytes. A confirmação do catálogo no Studio e o cache do servidor ocorrem em momentos diferentes, portanto a estimativa não é uma reserva de preço ou cota.
+O catálogo dos outros modelos é consultado em `/models?output_modalities=speech`, com cache de até seis horas por isolate. Exclui famílias configuradas como PCM/local, exige preço positivo e aceita somente voz listada, ou vazia quando o modelo não lista vozes. Na falta de catálogo, só resta o recomendado; esse fallback também tem cache para evitar repetir consultas em cada falha. A requisição de voz admite até 4.000 caracteres Unicode; o cliente normalmente divide em 2.500 bytes. A confirmação do catálogo no Studio e o cache do servidor ocorrem em momentos diferentes, portanto a estimativa não é uma reserva de preço ou cota.
 
-A base mensal é 660.000 milionésimos de dólar multiplicados pelo fator do plano (Pro 1, Max 2, Ultra 5). A janela móvel dos últimos sete dias admite metade da cota mensal, que renova no primeiro dia UTC. Narração e tradução usam a mesma cota. O preço por modelo vem do catálogo e da fórmula implementada; a narração não reconcilia posteriormente `usage.cost` ou uma fatura do provedor. A tradução registra esse custo reportado quando disponível, senão uma estimativa. A verificação de saldo e a gravação posterior de uso não constituem uma reserva atômica entre chamadas concorrentes.
+A base mensal é 660.000 milionésimos de dólar multiplicados pelo fator do plano (Pro 1, Max 2, Ultra 5). A janela móvel dos últimos sete dias admite metade da cota mensal, que renova no primeiro dia UTC. Narração e tradução usam a mesma cota. O servidor reserva a estimativa nas cotas mensal e semanal antes de chamar o provedor, por operação condicional D1. Na voz, prefere o custo em dólares informado por `x-openrouter-cost` ou `x-usage-cost`, validado como finito e não negativo, convertido em milionésimos com arredondamento para cima; sem esses headers, usa a estimativa acima. Não faz conciliação posterior com fatura. A tradução usa `usage.cost` quando disponível; sem ele, aplica uma estimativa conservadora e limita tokens de saída. Contabiliza custo reportado mesmo se a resposta paga vier incompleta ou inválida. A confirmação ocorre antes de devolver o resultado; falhas após trabalho remoto continuam sem garantia transacional entre o provedor, D1 e o computador.
 
-O servidor e o OpenRouter recebem o texto em claro para síntese remota, conforme [Segurança](../seguranca.md). Os MP3 são unidos por `JoinMP3`; falha de crédito, preço ou autorização interrompe, sem troca automática para Kokoro. Controles da conta e uso estão em [Studio](studio.md#configurações-globais), e a tabela dos planos em [Blup Cloud](blup-cloud-sync.md#planos-executados).
+Antes do primeiro envio, o Studio pede aceite para o destino escolhido e o Go confere `ai-consent.json`. `openrouter` e `blup` têm aceites independentes, revogáveis nas Configurações; JSON inválido não autoriza. O servidor e o OpenRouter recebem o texto em claro para síntese remota, conforme [Segurança](../seguranca.md). Os MP3 são unidos por `JoinMP3`; falha de crédito, preço ou autorização interrompe, sem troca automática para Kokoro. Controles da conta e uso estão em [Studio](studio.md#configurações-globais), e a tabela dos planos em [Blup Cloud](blup-cloud-sync.md#planos-executados).
 
 ## Kokoro local
 

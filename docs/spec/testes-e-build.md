@@ -17,13 +17,13 @@ go test ./...
 go build -o bin/blup ./cmd/blup
 ```
 
-Para reproduzir o perfil sem CGO e a injeção de versão usados na release CLI, com `0.1.0` como exemplo:
+Para reproduzir o perfil sem CGO e a injeção de versão usados na release CLI, com `1.0.0` como exemplo:
 
 ```sh
-CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X github.com/gabriellsalesx/blup/internal/app.Version=0.1.0" -o bin/blup ./cmd/blup
+CGO_ENABLED=0 go build -tags production -trimpath -ldflags="-s -w -X github.com/gabriellsalesx/blup/internal/app.Version=1.0.0" -o bin/blup ./cmd/blup
 ```
 
-Sem `-X ...app.Version=...`, o binário mantém `dev`, e a oferta automática de atualização fica desativada. O comando de build cria o binário; sua execução usa o estado real do usuário, pode escrever configurações e pode baixar Hugo/Pagefind. Uma validação de documentação não precisa iniciar os fluxos interativos.
+Sem tag `production` e sem `-X ...app.Version=...`, o binário mantém `dev`, e a oferta automática de atualização fica desativada. Com `production`, `internal/app/version_production.go` recusa iniciar sem versão `x.y.z`, evitando distribuir um executável `dev`. O comando de build cria o binário; sua execução usa o estado real do usuário, pode escrever configurações e pode baixar Hugo/Pagefind. Uma validação de documentação não precisa iniciar os fluxos interativos.
 
 | Área | Testes presentes e finalidade |
 | --- | --- |
@@ -114,7 +114,7 @@ go build -o bin/blup-studio .
 O `go build` simples acima não seleciona a tag `production`. Para reproduzir as flags do build nativo de produção do Studio, use, ainda em `studio`:
 
 ```sh
-go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o bin/blup-studio .
+go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -X github.com/gabriellsalesx/blup/internal/app.Version=1.0.0" -o bin/blup-studio .
 ```
 
 O módulo contém testes específicos de Hyprland em `studio/hyprland_test.go`. Compilar o Studio desktop em Linux exige toolchain nativa e bibliotecas da pilha gráfica; não basta copiar o binário da CLI.
@@ -167,21 +167,21 @@ Esses são nomes de runtime dos arquivos de pacote, não uma lista universal de 
 | macOS | `studio/build/darwin/Taskfile.yml`, `.app`, build universal, DMG, assinatura e notarização |
 | Windows | `studio/build/windows/Taskfile.yml`, recursos `.syso`, NSIS, MSIX e assinatura |
 
-O pacote nfpm em `studio/build/linux/nfpm/nfpm.yaml` identifica `blup-studio` com versão fixa `0.1.0`, sem derivação automática da tag Git, e usa `GIT_COMMITTER_NAME` e `GIT_COMMITTER_EMAIL` no campo `maintainer`. Instala o executável em `/usr/local/bin/blup-studio`, ícone em `/usr/share/icons/hicolor/128x128/apps/` e desktop entry em `/usr/share/applications/`. Seu hook ativo é `postinstall`; hooks adicionais existem como arquivos ou exemplos comentados e não devem ser presumidos ativos.
+O pacote nfpm em `studio/build/linux/nfpm/nfpm.yaml` identifica `blup-studio` com versão fixa `1.0.0`, sem derivação automática da tag Git, e usa `GIT_COMMITTER_NAME` e `GIT_COMMITTER_EMAIL` no campo `maintainer`. Instala o executável em `/usr/local/bin/blup-studio`, ícone em `/usr/share/icons/hicolor/128x128/apps/` e desktop entry em `/usr/share/applications/`. Seu hook ativo é `postinstall`; hooks adicionais existem como arquivos ou exemplos comentados e não devem ser presumidos ativos.
 
 A tarefa Linux `package` chama AppImage, DEB, RPM e Arch. A criação de AppImage usada pelo Taskfile chama `wails3 generate appimage`. Existe também `studio/build/linux/appimage/build.sh`, script auxiliar com linuxdeploy, mas sua existência não significa que todas as tarefas usem esse script diretamente.
 
 As tarefas Linux `sign:deb`, `sign:rpm` e `sign:packages` chamam `wails3 tool sign`; podem usar a configuração de assinatura Wails ou `PGP_KEY`, e a tarefa DEB também passa `SIGN_ROLE` quando definido. A tarefa conjunta assina DEB e RPM, não todos os formatos Linux.
 
-As tarefas macOS e Windows incluem arquivos e opções de assinatura específicos. Ter esses templates não demonstra que certificados, chaves ou ferramentas de assinatura estejam instalados. `build/config.yml` informa produto, identificador e versão `0.1.0`. Já `Studio.Version()` retorna `app.Version`: nenhuma tarefa atual do Studio injeta esse símbolo com `-X`, então o binário produzido por essas tarefas reporta `dev` pela API, inclusive quando empacotado. Os metadados de pacote e a versão retornada pela aplicação são fontes distintas; injetar a versão exigiria um build customizado.
+As tarefas macOS e Windows incluem arquivos e opções de assinatura específicos. Ter esses templates não demonstra que certificados, chaves ou ferramentas de assinatura estejam instalados. `build/config.yml` informa produto, identificador e versão `1.0.0`. `Studio.Version()` retorna `app.Version`, agora injetada por ldflags nas Taskfiles Linux/macOS/Windows e nos builds cruzados, com `VERSION` padrão `1.0.0`. Para outra release, ajuste a versão passada e confira metadados fixos de pacote/recursos; não são todos derivados automaticamente da tag.
 
 Há tarefas adicionais `build:server`, `run:server`, `build:docker`, `run:docker` e `setup:docker`. O modo server usa tags `server` e `production` e pode construir sem GUI nativa. Isso é uma capacidade de build Wails presente no projeto, sem substituir as integrações desktop ou comprovar um serviço hospedado de Studio em produção. Também há assets/tarefas iOS de origem Wails; não há fluxo de release móvel do Blup no workflow atual.
 
 ## Release e instalação CLI
 
-`.goreleaser.yaml` compila `./cmd/blup` com `CGO_ENABLED=0` para Linux, macOS e Windows, em amd64 e arm64. Usa `-trimpath`, remove símbolos e injeta `app.Version`. Os arquivos seguem `blup_<versão>_<os>_<arch>.tar.gz`, ou ZIP em Windows, e incluem README, licença, avisos de terceiros e licença de ícones.
+`.goreleaser.yaml` compila `./cmd/blup` com `CGO_ENABLED=0` para Linux, macOS e Windows, em amd64 e arm64. Usa tag `production`, `-trimpath`, remove símbolos e injeta `app.Version`. Os arquivos seguem `blup_<versão>_<os>_<arch>.tar.gz`, ou ZIP em Windows, e incluem README, licença, avisos de terceiros e licença de ícones.
 
-O checksum é SHA-256 em `checksums.txt`. `internal/update`, `install.sh` e `install.ps1` dependem desses nomes. As notas de release são manuais; o changelog automático do GoReleaser está desativado.
+O checksum é SHA-256 em `checksums.txt`, acompanhado de `checksums.txt.sig`, assinatura Ed25519 dos bytes exatos dos checksums. `internal/update`, `install.sh` e `install.ps1` dependem desses nomes. GoReleaser executa `go run ./scripts/sign-release` com a chave privada fornecida por `BLUP_RELEASE_KEY` no CI ou arquivo fora do repositório. O atualizador exige assinatura válida com a lista pública de `internal/update/keys.go` antes de conferir SHA-256 e substituir o executável; recusa versão igual/anterior e `dev`. Os instaladores iniciais continuam só com SHA-256. Rotação e preparação de chave estão em [deploy](../deploy.md#assinatura-da-autoatualização-cli). As notas de release são manuais; o changelog automático do GoReleaser está desativado.
 
 `.github/workflows/release.yml` dispara em tags `v*.*.*`, faz checkout completo, usa a versão Go do módulo, instala Hugo, roda testes da raiz e chama GoReleaser v2. Não compila Studio ou seus pacotes e não publica as ferramentas de voz nesse workflow.
 
@@ -199,11 +199,11 @@ go test ./...
 (cd studio/frontend && npx svelte-check)
 ```
 
-`cloud/package.json` também oferece `check` para SvelteKit/Svelte/TypeScript e `build` para assets de produção. Não confunda analisar apenas `worker/tsconfig.json` com construir o painel. `npm ci` usa os lockfiles; não se deve acrescentar dependência para validar documentação.
+`cloud/package.json` gera `src/lib/rpc.d.ts` por `worker/export-rpc.mjs` antes de `check` e `build`. O contrato do painel vem de `AppType` e não deve ser refeito por DTOs manuais. Também oferece `check` para SvelteKit/Svelte/TypeScript e `build` para assets de produção. Não confunda analisar apenas `worker/tsconfig.json` com construir o painel. `npm ci` usa os lockfiles; não se deve acrescentar dependência para validar documentação.
 
-Os testes Cloud usam D1/R2/auth simulados. `plans.test.ts`, `history.test.ts`, `reminders.test.ts` e `site-rules.test.ts` cobrem regras dos planos, limpeza, agenda e publicação; `security.test.ts`, `auth-security.test.ts` e `serve-site-security.test.ts` exercitam entradas forjadas e fronteiras de origem, autenticação e cache. Casos `it.fails` documentam limitações conhecidas de cotas concorrentes, contabilização de IA, limpeza de deploy e revogação de sites. Seu resultado precisa ser informado separadamente dos testes que passam. Veja [Segurança](../seguranca.md#cotas-e-retenção).
+Os testes Cloud usam D1/R2/auth simulados. `plans.test.ts`, `history.test.ts`, `reminders.test.ts` e `site-rules.test.ts` cobrem regras dos planos, limpeza, agenda e publicação; `security.test.ts`, `auth-security.test.ts` e `serve-site-security.test.ts` exercitam entradas forjadas e fronteiras de origem, autenticação e cache. As regressões de cotas concorrentes, contabilização de IA, limpeza de deploy e revogação agora são testes normais, sem `it.fails`. A rodada 2 acrescentou contratos RPC/erros, JSON e multipart malformados, domínios com prova TXT/SSL, retenção/purga e lembretes com tentativas. A suíte verde vale para os cenários simulados; veja [Segurança](../seguranca.md#cotas-concorrência-e-revogação).
 
-No cliente, `internal/app/blup_reminders_test.go` confere payload opaco; `narration_blup_test.go` confere escolha de voz e preço desconhecido; `internal/cloudcrypt/attack_test.go` cobre parâmetros abusivos, troca de dados autenticados e recuperação. `studio/guard_test.go` e `paths_security_test.go` verificam chamadas Wails e caminhos de arquivos. `studio/frontend/tests/security.test.ts` verifica os tratamentos de HTML/link no frontend.
+No cliente, `internal/app/blup_reminders_test.go` confere payload opaco; `narration_blup_test.go` confere escolha de voz e preço desconhecido; `internal/cloudcrypt/attack_test.go` cobre parâmetros abusivos, troca de dados autenticados e recuperação. `studio/guard_test.go` e `paths_security_test.go` verificam chamadas Wails e caminhos de arquivos. Há também regressões para assinatura Ed25519/versão, consentimento de IA, arquivos privados, anexos cifrados, proxy Host/Origin, manifestos até 100 MiB, respostas externas e normalização de Prefs/agenda/canvas/desenho/bancos. `studio/frontend/tests/security.test.ts` verifica os tratamentos de HTML/link no frontend.
 
 Testes HTTP locais usam portas efêmeras próprias. Se o sandbox impedir `httptest` de abrir sockets, é preciso executar o mesmo teste com a permissão apropriada, preservando portas e processos reservados. Para temporários grandes, use pasta da sessão e `TMPDIR`/`GOTMPDIR`; remova só os arquivos da própria execução. Testes de IA, Stripe e e-mail usam simulações; não comprovam entrega, cobrança ou publicação de produção.
 

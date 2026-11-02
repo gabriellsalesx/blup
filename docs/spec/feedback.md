@@ -116,3 +116,12 @@ Título e descrição da seção, `linkTitle` e textos dos exemplos dependem da 
 O cabeçalho do quadro chama `site/ai-badge.html`: com `ai_translated` e uma página original ligada, mostra o selo de tradução com IA e o acesso à original. Marcar a tradução como revisada remove a marca. O selo se refere à nota traduzida, sem afirmar que as issues foram traduzidas.
 
 Pedidos e comentários reais mantêm o texto de quem os escreveu, compartilhado por todos os idiomas do site. O pedido usa `lang` na marca de feedback; novos comentários pelo site recebem `<!-- blup:lang=es -->`, por exemplo. Em outra versão, o cliente mostra o idioma de origem. Comentários sem essa marca não recebem inferência automática de idioma. A [documentação dos temas](temas-hugo.md#comentários-reações-e-votos) descreve também como páginas traduzidas compartilham uma issue.
+
+
+## Contratos compartilhados na rodada 2
+
+O token fine-grained orientado pelo Studio pede Contents/Pages/Issues em escrita e Metadata em leitura, sem Administration. O cliente ainda tenta criar repositórios quando a credencial permite; com token restrito, `ErrRepoMissing` orienta criar ou incluir o repositório no GitHub. As APIs de estado usam a chave do dono, diferente da autorização do visitante mantida no navegador. Veja [publicação](publicacao.md#autenticação-github).
+
+A configuração `[feedback]` fica fora de `.blup/site.toml`, junto com `[deploy]`, para o sync não importar destinos de outra instalação. Os exemplos continuam viajando dentro da nota da seção, e `translations` acompanha a configuração portátil. Recuperar notas não equivale a reconectar o repositório público ou instalar o App. Tradução remota desses exemplos exige aceite explícito para o destino de IA, como qualquer nota enviada; conversas reais seguem sem tradução automática.
+
+Os retornos `FeedbackPosts`/`SetFeedbackStatus` passam pelos bindings Wails gerados e tipados. Os limites de paginação do quadro e do serviço de comentários acima continuam valendo; a tipagem do Blup Cloud não altera o contrato do repositório irmão `blup-api`.

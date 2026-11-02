@@ -39,6 +39,8 @@ Os anexos elegíveis são `png`, `jpg`, `jpeg`, `webp`, `avif`, `gif`, `svg`, `b
 
 Quando há traduções, `translationMounts` monta cada pasta `en`, `es` ou `pt` correspondente a outro idioma no lugar da pasta mãe, somente na versão daquele idioma, por `sites.matrix`. A pasta de autores é excluída desse percurso: seus perfis e traduções entram em `assets/vault` pelos padrões `<autores>/*.md` e `<autores>/*/*.md`, sem virar páginas de conteúdo. `site/author-profile.html` escolhe o perfil traduzido ou o original. `linkTitle` traduzido no índice fornece o nome curto da seção para os cartões e o menu.
 
+No modo normal, os mounts excluem notas com `publish: false` ou `private: true` e suas traduções relacionadas, além do tratamento de rascunhos. A configuração de prévia permite ver esse conteúdo.
+
 O scaffold inclui o tema do [quadro de Feedback](feedback.md), mas não transforma `examples` em páginas ou issues individuais. Hugo gera cartões e detalhes `#ex-N` no HTML da seção. Pedidos reais são lidos pelo navegador; mudar seu status não exige outro build.
 
 ## Hugo e Pagefind
@@ -58,7 +60,7 @@ Pagefind é fixado em `1.5.2`, com cache `<cache>/blup/pagefind-1.5.2/pagefind`,
 3. Executa Hugo no diretório técnico com `--gc --minify --cleanDestinationDir --environment production --baseURL <url> --destination <site>/public --logLevel warn`, e `HUGO_BLUP_MODE=publish`.
 4. Extrai avisos e erros da saída. Falha de Hugo interrompe com erro de build.
 5. Processa `blup-feedback.json`, cria/atualiza issues e dados locais. Se os dados usados pelo tema mudaram, executa Hugo novamente. Falha de feedback é aviso e não impede o restante; sem chave GitHub e sem terminal interativo, pula o sync de feedback com aviso `fb.no_token`, sem pedir chave.
-6. Remove o manifesto de feedback e criptografa regiões protegidas usando `internal/lock`. Remove `blup-locks.json`. Se essa etapa falhar, apaga `public/` e encerra.
+6. Remove o manifesto de feedback e criptografa regiões protegidas usando `internal/lock`. Incorpora anexos locais pequenos no HTML protegido, remove `blup-locks.json` e executa `lock.Prune` para mídias sem referência pública. Verifica marcadores provisórios mesmo com manifesto vazio. Se essa etapa falhar, apaga `public/` e encerra.
 7. Executa Pagefind depois da criptografia, exceto com `BLUP_NO_SEARCH` não vazio. Falha de busca gera aviso.
 8. Executa `pwa.Write` depois da busca, para o worker considerar a saída final. Falha de PWA também gera aviso.
 
@@ -87,6 +89,8 @@ A CLI usa um diretório temporário para montar o índice e move `pagefind/` par
 
 A rotina `placeSearch`, em `internal/app/preview.go`, remove o índice anterior e chama `moveDir` para levar `pagefind/` do temporário ao site. `moveDir`, em `internal/app/settings.go`, tenta rename e, se ele falhar, usa cópia e remoção da origem; assim aceita temporário e site em sistemas de arquivos diferentes. Uma falha restante emite aviso e a prévia continua.
 
+`PreviewGuard`, em `internal/app/preview.go`, serve a prévia por proxy `127.0.0.1` em porta aleatória e encaminha para outra porta interna do Hugo. Valida Host exato (`127.0.0.1:P` ou `localhost:P`) e Origin, quando presente, com origens da prévia e do aplicativo. A CLI não acrescenta origens de janela desktop. O encerramento fecha proxy e Hugo.
+
 O Studio retorna uma prévia já em execução se houver processo registrado. Para iniciar, espera a URL até dois minutos. Após a URL, linhas com `Total in` ou `Rebuilt in` geram `previewChanged`, incluindo mudanças de configuração. Em Linux, ausência de plugin de áudio pode ocultar o player apenas nessa prévia.
 
 Ao adicionar, remover ou restaurar uma seção pelo Studio, `sectionsChanged` solicita reinício do servidor de prévia em execução. A cópia de uma pasta inteira pode terminar antes de o watcher Hugo começar a observá-la, deixando notas sem página mesmo após recarregar o iframe. `restartPreview` emite `previewChanged` se a URL permanece igual ou `previewRestarted` se mudou; o workspace volta à página da nota aberta. Para traduções, `previewFollows` compara a configuração gerada com a que iniciou o servidor e reinicia quando idiomas ou mounts mudam. Os detalhes estão em [Studio](studio.md#prévia).
@@ -103,4 +107,4 @@ Ao adicionar, remover ou restaurar uma seção pelo Studio, `sectionsChanged` so
 
 `theme/layouts/home.blupmap.json` serializa um array de `{ "file": "Pasta/Nota.md", "url": "/pasta/nota/" }` para `site.Pages` com arquivo de origem. `file` é relativo à pasta de conteúdo, com `/` entre segmentos. Inclui páginas de seção que tenham nota; páginas geradas sem arquivo não entram.
 
-`Studio.PreviewPage` busca esse JSON no servidor local com timeout de cinco segundos e compara o caminho de nota sem diferenciar maiúsculas. `Studio.NoteAt` faz o caminho inverso, decodificando URL e normalizando `/` final e `index.html`. A interface segue a nota editada e abre no editor a nota de uma página navegada. Taxonomias ou outras páginas sem nota não têm correspondência garantida.
+`Studio.PreviewPage` busca esse JSON no servidor local com timeout de cinco segundos, status HTTP válido e limite de 16 MiB. A leitura descarta URLs externas ou com controles e arquivos fora das notas, inclusive após links simbólicos, e compara o caminho de nota sem diferenciar maiúsculas. `Studio.NoteAt` faz o caminho inverso, decodificando URL e normalizando `/` final e `index.html`. A interface segue a nota editada e abre no editor a nota de uma página navegada. Taxonomias ou outras páginas sem nota não têm correspondência garantida.

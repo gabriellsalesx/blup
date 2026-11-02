@@ -23,11 +23,11 @@ A documentação foi revisada em 02/11/2026 contra o código. Recursos disponív
 - Cofres sem publicação, com nota do dia, calendário, lembretes no computador, mapa de notas, canvas, desenhos e bancos de dados baseados em arquivos.
 - Interface em português, inglês e espanhol, com troca de idioma sem recarregar o Studio.
 - Sites estáticos com busca Pagefind, imagens WebP, SEO, RSS, modo claro/escuro, app instalável e leitura offline.
-- Posts com corpo protegido por senha no build. Título, URL, capa e anexos continuam públicos; `hidden` não é controle de acesso.
+- Posts com corpo protegido por senha no build. Título, URL e capa continuam públicos; anexos exclusivos do corpo podem ser incorporados na cifra, com limites descritos na spec; `hidden` não é controle de acesso.
 - Comentários, reações e votos em issues do GitHub, com login pelo serviço [blup-api](https://github.com/gabriellsalesx/blup-api). O Bento tem quadro de pedidos Feedback acrescentado pelo Studio.
 - Narração local com Kokoro ou remota com OpenRouter/Blup Cloud, com voz por idioma. Blogs podem agrupar as narrações num Podcast com página e feed.
 - Tradução local com Firefox Translations ou remota com IA, gravada em notas por idioma. Sites traduzidos escolhem uma versão existente conforme o visitante e lembram a escolha manual.
-- Publicação em Cloudflare Pages, GitHub Pages ou `nome.getblup.site` pelo Blup Cloud. Domínio próprio dos dois primeiros está implementado; no Blup Cloud ainda é pendência.
+- Publicação em Cloudflare Pages, GitHub Pages ou `nome.getblup.site` pelo Blup Cloud. Domínio próprio também no Blup Cloud Max/Ultra, com prova TXT/SSL; URLs absolutas do build continuam em `getblup.site`.
 - Sync por repositório privado GitHub, ou pelo Blup Cloud com cifra de ponta a ponta. Conta e senha das notas são mecanismos separados.
 - Lembretes genéricos por e-mail no Max, até 50 por mês, e Ultra, até 100, separados das notificações gratuitas do computador.
 
@@ -55,7 +55,7 @@ CLI em PowerShell:
 irm https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.ps1 | iex
 ```
 
-Os scripts buscam a release e conferem SHA-256. O fluxo de distribuição do Studio é separado da release CLI; consulte [builds e assinatura](docs/deploy.md#9-lançamento-do-studio-e-da-cli).
+Os scripts de instalação inicial buscam a release e conferem somente SHA-256. A autoatualização CLI exige também assinatura Ed25519 dos checksums. O fluxo de distribuição do Studio é separado da release CLI; consulte [builds e assinatura](docs/deploy.md#9-lançamento-do-studio-e-da-cli).
 
 Para a CLI, execute `blup`, escolha o cofre/pasta, tema e dados do site, abra a prévia e depois publique. Uma pasta vazia recebe o tutorial do tema como notas editáveis. O Studio também aceita pastas comuns e oferece criação de cofre sem site.
 

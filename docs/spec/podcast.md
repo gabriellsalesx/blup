@@ -25,7 +25,7 @@ Propriedades da nota (todas opcionais):
 
 ## Episódios
 
-`theme/layouts/_partials/podcast/episodes.html` lista os posts do idioma da página com `audio`, do mais novo para o mais antigo. Ficam de fora notas com `hidden`, rascunhos e posts protegidos (`password`), porque o áudio entregaria o texto. A capa de cada episódio é a capa do post (`mochi/cover.html`: a propriedade `image` ou a primeira imagem da nota).
+`theme/layouts/_partials/podcast/episodes.html` lista os posts do idioma da página com `audio`, do mais novo para o mais antigo. Ficam de fora notas com `hidden`, rascunhos, conteúdo não publicado (`publish: false` ou `private: true`) e posts protegidos (`password`), porque o áudio entregaria o texto. A capa de cada episódio é a capa do post (`mochi/cover.html`: a propriedade `image` ou a primeira imagem da nota).
 
 ## Página
 
@@ -62,3 +62,8 @@ Propriedades da nota (todas opcionais):
 - `SavePodcast` só grava as propriedades da lista `PodcastProps` e recusa e-mail sem `@`.
 
 Os atalhos abrem serviços externos; o Blup não cadastra automaticamente o programa nem garante aprovação em diretórios. `podcast_email` fica público no feed. Cada idioma usa os posts com áudio daquele idioma: traduzir uma nota não cria uma narração, e narrar a tradução consulta sua voz em `Prefs.Voices[lang]`. O [fluxo de narração](narracao-e-voz.md) descreve como gerar e atualizar esses arquivos.
+
+
+## URL, proteção e publicação
+
+Feed, canonical e URLs absolutas dos episódios usam a baseURL do build. No Blup Cloud, vincular domínio próprio serve os mesmos arquivos sem republicar; essas URLs continuam em `getblup.site`, conforme [publicação](publicacao.md#domínio-próprio-no-blup-cloud). O filtro de episódios evita divulgar o corpo protegido em áudio, mas configurar senha depois de uma narração não apaga automaticamente MP3 já criado ou baixado. A poda de anexos e seus limites estão em [temas](temas-hugo.md).

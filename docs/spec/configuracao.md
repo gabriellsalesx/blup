@@ -11,6 +11,8 @@ O diretório global é `filepath.Join(os.UserConfigDir(), "blup")`. Em Linux nor
 | `<site>/blup.toml` | Configuração técnica e destino deste site | TOML, modo `0644`, substituição por arquivo temporário e rename |
 | `<config>/blup/config.toml` | Idioma e sites conhecidos | TOML, `0644`, escrita atômica |
 | `<config>/blup/credentials.toml` | Tokens e senha geral entre sites | TOML, `0600`, escrita atômica |
+| `<config>/blup/ai-consent.json` | Aceite explícito para envio de texto a `openrouter` e `blup` | JSON, `0600`, escrita atômica; arquivo inválido não autoriza |
+| `<config>/blup/signout-pending` | Sessão de trabalho para cancelar lembretes após sair sem rede | `0600`; removido quando a pendência termina |
 | `<config>/blup/studio-prefs.json` | Preferências globais e navegação do Studio | JSON indentado, `0644` |
 | `<config>/blup/studio.json` | Ordem e agrupamentos de sites na tela inicial | JSON indentado, `0644` |
 | `<config>/blup/reminders-sent.json` | Registro local dos avisos já exibidos | JSON, `0600` |
@@ -118,7 +120,7 @@ A senha geral é resolvida por `app.PostPassword`: primeiro `Site.Password`, dep
 
 ## Preferências do Studio
 
-`Prefs()` começa com valores padrão e depois decodifica o JSON sobre a estrutura. Falhas de leitura ou decode são ignoradas. `SavePrefs` mantém a lista `recent` do estado em disco para não substituí-la com uma cópia antiga da tela. As preferências são globais à máquina.
+`Prefs()` começa com padrões e decodifica numa cópia. Falha de leitura ou JSON danificado devolve os padrões completos, sem aproveitar um campo parcialmente decodificado. A leitura e `SavePrefs` normalizam enums e faixas: fonte do editor 13 a 22, terminal 11 a 20, largura lateral 0 a 4.000 e prévia 0 a 8.000; valores fora de faixa voltam ao padrão. `SavePrefs` mantém a lista `recent` do estado em disco para não substituí-la com uma cópia antiga da tela. As preferências são globais à máquina.
 
 | Chave JSON | Tipo | Padrão inicial e significado |
 | --- | --- | --- |
@@ -143,11 +145,11 @@ A senha geral é resolvida por `app.PostPassword`: primeiro `Site.Password`, dep
 | `welcomed` | booleano | Telas iniciais já foram vistas |
 | `cloudTip` | booleano | O convite ao Blup Cloud depois do primeiro site foi respondido |
 | `backupDir` | texto | Pasta da cópia diária das notas; vazio desliga |
-| `translateAI` | texto | Quem traduz: `local` (no computador) ou `cloud` (OpenRouter ou Blup Cloud); vazio usa o computador quando instalado |
+| `translateAI` | texto | Quem traduz: `local`, `openrouter` ou `blup`, escolhidos explicitamente; vazio acompanha a opção local, sem escolher provedor remoto por disponibilidade |
 | `railNames` | booleano | `false`; mostra nomes junto dos ícones da faixa lateral quando ativado |
 | `notifications` | booleano | `true`; avisos locais e lista de lembretes por e-mail dos planos Max/Ultra |
 
-Voz local usa `kokoro:<id>`, voz pelo plano Blup Cloud usa `blup:<modelo>|<voz>` e voz OpenRouter usa `<modelo>|<voz>`, inclusive voz vazia para o padrão do modelo. A forma antiga `blup:<voz>` usa o modelo recomendado. Nomes antigos sem separador são tratados como voz do modelo remoto recomendado. A resolução por `voiceFor` e os fallbacks de idioma estão em [narração e voz](narracao-e-voz.md#idioma-da-nota-e-escolha-de-voz).
+Voz local usa `kokoro:<id>`, voz pelo plano Blup Cloud usa `blup:<modelo>|<voz>` e voz OpenRouter usa `<modelo>|<voz>`, inclusive voz vazia para o padrão do modelo. A forma antiga `blup:<voz>` usa o modelo recomendado. Sem escolha remota explícita, a resolução fica local; faltar instalação não autoriza enviar texto à nuvem. Nomes antigos sem separador são tratados como voz do modelo remoto recomendado. A resolução por `voiceFor` e os fallbacks de idioma estão em [narração e voz](narracao-e-voz.md#idioma-da-nota-e-escolha-de-voz).
 
 `studio.json` é uma lista de `HomeItem`: item simples `{ "site": "/caminho" }` ou grupo `{ "folder": "Pessoais", "sites": ["/caminho"] }`. `Layout()` remove referências indisponíveis e duplicadas e acrescenta os sites conhecidos ainda não posicionados. Agrupamentos não são pastas físicas.
 
@@ -172,6 +174,7 @@ Voz local usa `kokoro:<id>`, voz pelo plano Blup Cloud usa `blup:<modelo>|<voz>`
 | `featured` | Seleção de destaque em Mochi/Nori |
 | `weight` | Ordenação de seções e páginas Bento |
 | `draft` | Incluído na prévia; omitido no build normal de publicação |
+| `publish: false`, `private: true` | Tratados como não publicados no build normal, incluindo traduções relacionadas; aparecem na prévia |
 | `hidden` | Retira de listas filtradas, RSS e marcação de busca; mantém URL da página |
 | `noindex` | Emite meta robots noindex; não é um controle de acesso |
 | `password` | Literal, ou `true`, `sim`, `sí`, `si`, `yes` para senha geral |
@@ -189,7 +192,7 @@ Perfis ficam na pasta com `blup: authors`, normalmente `Autores` ou `Writers`. C
 
 No Feedback, `status` dentro de `examples` é apenas o estado do exemplo. Pedidos reais têm status nas etiquetas GitHub `status: planned`, `status: progress`, `status: done` ou `status: declined`; não há nota por pedido. Categorias e opções de status são fixas no código, sem configuração pelo Studio. O [contrato do quadro](feedback.md) detalha esses campos e o que é traduzido.
 
-O contrato portátil de `.blup/site.toml`, o estado do sync e os caches estão detalhados em [notas e sync](notas-e-sync.md) e [scaffold e build](scaffold-e-build.md).
+O domínio próprio Blup Cloud fica em `site_domain` no servidor, não é gravado em `Site.Domain` ou `Deploy.Blup.URL` pelas APIs de vínculo. `Deploy` e `Feedback` ficam fora do TOML portátil; `translations` viaja. O contrato portátil de `.blup/site.toml`, o estado do sync e os caches estão detalhados em [notas e sync](notas-e-sync.md) e [scaffold e build](scaffold-e-build.md).
 
 Os campos `podcast_*`, `outputs` e `audio*` do programa e seus episódios estão em [Podcast](podcast.md). Eventos de cofre usam `date`, `time`, `event`, `repeat` e `remind`, conforme [Calendário e lembretes](calendario-e-lembretes.md). A preferência `blup-lang` do visitante fica no `localStorage` do site publicado, sem alterar `config.toml` ou as preferências do Studio.
 
@@ -212,6 +215,7 @@ As configurações de servidor, bindings D1/R2, planos e nomes de secrets do Blu
 | `XDG_CONFIG_HOME`, `XDG_DATA_HOME` | Afetam resolução Linux de configuração/autostart e lixeira |
 | `NO_COLOR` | Pula a animação de piscar do splash da CLI conforme `internal/ui/splash.go` |
 | `WAILS_VITE_PORT` | Porta do frontend de desenvolvimento |
+| `BLUP_RELEASE_KEY` | Somente CI/ferramenta `scripts/sign-release`: chave privada de assinatura fora do repositório; não é configuração de site ou Studio |
 | `BLUP_INSTALL_DIR`, `BLUP_VERSION` | Destino e versão dos instaladores CLI shell/PowerShell |
 
 As variáveis `BLUP_KEEP`, `BLUP_STARTER_OUT` e `BLUP_KOKORO_DIR` são auxiliares de testes, descritas em [testes e build](testes-e-build.md). `--hidden` e `--toggle` são argumentos do executável Studio, tratados pela integração desktop; não são chaves TOML.

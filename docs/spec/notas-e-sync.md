@@ -54,7 +54,7 @@ Eventos de calendário, diário, canvas, desenhos, bancos `.table` e registros p
 
 ## Repositório GitHub de sync
 
-Nesse transporte, o destino é um repositório GitHub privado, com branch `main`, criado vazio e inicializado quando necessário por `.blup/README.md`. O transporte usa a API REST do GitHub: blobs, árvores, commits e referências usam Git data; criação do repositório usa `POST /user/repos`, inicialização usa `PUT /repos/{owner}/{repo}/contents/...`, e descoberta/configuração portátil usam também `/topics` e `/contents`. Não se cria checkout `.git` e não se chama o executável `git`.
+Nesse transporte, o destino é um repositório GitHub privado, com branch `main`, inicializado quando necessário por `.blup/README.md`. O transporte usa a API REST do GitHub: blobs, árvores, commits e referências usam Git data; a preparação ainda tenta `POST /user/repos`, mas o token fine-grained restrito orientado pela interface exige criar/incluir o repositório pela pessoa em `github.com/new`; inicialização usa `PUT /repos/{owner}/{repo}/contents/...`, e descoberta/configuração portátil usam também `/topics` e `/contents`. Não se cria checkout `.git` e não se chama o executável `git`.
 
 `site.Sync` guarda `owner` e `repo`. Se faltar nome, a aplicação sugere `Slug(title)` com o sufixo de notas traduzido. O estado local fica em `<site>/.blup/sync-state.json`. A lixeira de exclusões recebidas fica por padrão em `<site>/.blup/sync-trash/<AAAA-MM-DD HHMMSS>/`.
 
@@ -83,7 +83,7 @@ A cópia usa `Nome (conflict AAAA-MM-DD HHMM).ext`, com número adicional quando
 
 A CLI apresenta ambos, além dos itens `Skipped`, seus motivos e a lixeira. A API do Studio devolve `SyncInfo`: `SyncStatus` usa os nomes originais em `conflicts`; `SyncNow` usa os nomes das cópias. Não expõe `Skipped` nem `SkipReasons`; traz contagens de envio/recebimento, repositório, `upToDate` e, após sync, dados da lixeira. `SyncNow` define `upToDate = true` na resposta concluída, mesmo sem transportar os motivos dos arquivos ignorados.
 
-O estado JSON contém `version`, `owner`, `repo`, `branch`, `commit`, `synced_at` e mapa `files` com `sha`, `size` e `mtime`. Estado ausente, corrompido, de versão diferente ou de outro destino é tratado como ausência de base, evitando deduzir exclusões de um histórico inválido. Erros de leitura do arquivo que não sejam ausência continuam sendo erros.
+O estado JSON contém `version`, `owner`, `repo`, `branch`, `commit`, `synced_at` e mapa `files` com `sha`, `size` e `mtime`. Estado ausente, corrompido, de versão diferente, com caminhos/SHA/tamanhos inválidos ou de outro destino é tratado como ausência de base, evitando deduzir exclusões de um histórico inválido. Erros de leitura do arquivo que não sejam ausência continuam sendo erros.
 
 O scanner reutiliza hash quando tamanho e mtime correspondem ao cache e o arquivo tem mtime anterior ao início da leitura em mais de dois segundos. Antes de substituir ou remover um arquivo local recebido, o sync confere se o conteúdo ainda é o planejado; uma mudança concorrente nesse destino faz a operação ser ignorada para tentativa posterior. No envio, `uploadOne` relê o arquivo: se mudou desde o scan, envia o conteúdo recém-lido, registra seu SHA e desabilita a reutilização daquele cache de hash.
 
@@ -97,20 +97,20 @@ Se o remoto reaparece vazio depois de uma base com mais de um arquivo, `snapshot
 
 ## `.blup/site.toml` e recuperação em outra máquina
 
-`internal/app/cloud_sites.go` define o tópico `blup-site` e o formato `sharedSite`. Antes do sync normal, a aplicação escreve uma cópia portátil ao lado das notas. A adição do tópico é tentada, mas seu erro não bloqueia o sync.
+`internal/app/cloud_sites.go` define o tópico `blup-site` e o formato `sharedSite`. Antes do sync normal, a aplicação escreve uma cópia portátil ao lado das notas. A adição do tópico é tentada, mas seu erro não bloqueia o sync. Ela exige Administration no GitHub, permissão que a chave fine-grained orientada pelo Blup não pede; por isso a descoberta também aceita os sufixos de nome de notas reconhecidos, mantendo `.blup/site.toml` como confirmação do site.
 
 | Viaja no TOML portátil | Fica fora dele |
 | --- | --- |
 | `version`, `title`, `description`, `author`, `lang`, `model`, `kind` | Caminhos `vault`, `folder` e diretório técnico |
-| `domain`, `deploy` | `Site.Password` e senha global |
-| `feedback`, `cookies` | Tokens, preferências Studio e estado local |
-| Configurações de destino | `sync`, reconstruído pelo repositório escolhido |
+| `domain`, `translations` | `Site.Password` e senha global |
+| `cookies` | `deploy`, `feedback`, tokens, preferências Studio e estado local |
+| Identidade e idiomas do site | `sync`, reconstruído pelo destino escolhido |
 
-`deploy` inclui também a identidade do destino Blup Cloud. A estrutura portátil atual não tem `translations`: as notas traduzidas viajam, mas a lista de idiomas de `blup.toml` não é copiada por `sharedSite`. Portanto não se garante restaurar essa lista em uma instalação nova somente pelo arquivo portátil. Essa diferença está registrada no [guia de segurança](../seguranca.md).
+`sharedSite` não serializa `Deploy` nem `Feedback`, e a leitura de arquivos antigos não importa essas tabelas. A cópia portátil não troca contas ou destinos de publicação. `translations` usa presença explícita: se ausente num arquivo antigo, preserva os idiomas locais; lista presente e vazia limpa a lista, e valores presentes são filtrados para idiomas conhecidos, únicos e diferentes do principal. `domain` continua portátil, mas o vínculo de domínio Blup Cloud é estado separado no servidor.
 
 Overrides em `layouts/`, `assets/`, `static/`, `i18n/` e `data/` do diretório técnico não são incluídos por esse mecanismo. As notas, inclusive YAML com senhas literais, continuam sendo arquivos enviados ao repositório de notas.
 
-`FindCloudSites` lista repositórios próprios por `OwnRepos`, com `affiliation=owner` e no máximo dez páginas de cem repositórios. Seleciona os privados com o tópico e lê `.blup/site.toml` por `FileContent`, limitado a 1 MiB. Arquivo ilegível, ausente, sem título ou de versão futura faz aquele repositório ser omitido da lista sem aviso individual. Ordena os resultados por atualização remota e associa um diretório local quando aquele `owner/repo` já consta em algum site conhecido. Repositórios públicos usados pela CLI não aparecem nessa descoberta.
+`FindCloudSites` lista repositórios próprios por `OwnRepos`, com `affiliation=owner` e no máximo dez páginas de cem repositórios. Seleciona os privados com o tópico ou com sufixo de nome de notas reconhecido e lê `.blup/site.toml` por `FileContent`, limitado a 1 MiB. Arquivo ilegível, ausente, sem título ou de versão futura faz aquele repositório ser omitido da lista sem aviso individual. Ordena os resultados por atualização remota e associa um diretório local quando aquele `owner/repo` já consta em algum site conhecido. Repositórios públicos usados pela CLI não aparecem nessa descoberta.
 
 `BringSite`, ao encontrar um site local já associado a `owner/repo`, apenas chama `LoadSite` e retorna, sem sincronizar. Sem associação, cria diretórios livres para notas e arquivos técnicos, aplica a configuração portátil, define `Vault` para a nova pasta e `Folder` vazio, salva o destino de sync e recebe o conteúdo. Não escreve sua configuração portátil antes desse primeiro recebimento. Depois lê o arquivo recebido e registra o site. Se o recebimento falhar, os diretórios e `blup.toml` já podem existir, mas o registro na lista global ainda não ocorreu. A janela do Studio abre o workspace a partir do `SiteInfo` retornado.
 
