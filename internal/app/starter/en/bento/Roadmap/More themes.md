@@ -1,6 +1,6 @@
 ---
 title: More themes
-description: New looks to choose from when creating the site.
+description: New looks to choose from when you create the site.
 status: planned
 category: Themes
 weight: 1

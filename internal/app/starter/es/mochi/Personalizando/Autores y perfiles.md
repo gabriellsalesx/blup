@@ -1,14 +1,27 @@
 ---
 title: Autores y perfiles
 date: {{date-7}}
-description: Una nota por autor, con foto, cargo, redes sociales y biografía. Posts con más de un autor.
-tags: [Personalización]
+description: Un perfil por autor, con foto, cargo, redes y bio. Posts con más de un autor.
+tags: [Personalización, Studio, Obsidian]
 image: "[[blup-autores.jpg]]"
 authors: [Blup]
 ---
-Este post lo "escribió" **Blup**, la mascota. Fíjate en la foto y el nombre de arriba: vienen de su nota, en la carpeta **Autores**.
+Este post lo "escribió" **Blup**, la mascota. Fíjate en la foto y el nombre arriba: vienen de su perfil, en la carpeta **Autores**.
 
-## La carpeta de autores
+## En el Studio
+
+La pantalla **Autores**, en el menú lateral, muestra los perfiles. En cada uno:
+
+- **Foto**: una imagen tuya o uno de los avatares listos.
+- **Cargo**: la función, como "Editora".
+- **Redes sociales**: elige la red y completa la dirección del perfil.
+- **Bio**: un texto corto sobre la persona.
+
+Cuando creaste el sitio, Blup ya creó tu perfil. Completa la foto y la bio.
+
+Para decir quién escribió un post, usa el campo **Autores** en el panel **Propiedades** del post. Empieza a escribir y elige el nombre.
+
+## En Obsidian
 
 La carpeta **Autores** tiene una nota **_index** con la propiedad `blup: authors`. Le avisa a Blup que las notas de ahí son perfiles, no posts: la carpeta no se vuelve página ni aparece en el menú.
 
@@ -25,22 +38,15 @@ social:
 Ana escribe sobre libros y viajes.
 ```
 
-- **photo**: la foto del perfil.
-- **role**: el cargo o función.
-- **social**: enlaces a los perfiles, con ícono automático.
-- El **texto de la nota** es la biografía.
-
-Cuando creaste el sitio, Blup ya creó tu nota en esta carpeta. Completa la foto y la biografía.
-
-## En los posts
+El texto de la nota es la bio. En los posts:
 
 ```yaml
 authors: [Ana]
 authors: [Ana, Bruno]
 ```
 
-Sin la propiedad, el post es del autor del sitio. Con más de un autor, las fotos aparecen una al lado de la otra y los nombres juntos.
+## Cómo se ve
 
-## La página de cada autor
+Sin autor, el post es del autor del sitio. Con más de uno, las fotos aparecen una al lado de la otra y los nombres juntos.
 
-Haz clic en el nombre del autor de un post: su página muestra foto, cargo, biografía, redes sociales y todos los posts que escribió.
+Haz clic en el nombre del autor de un post: su página muestra la foto, el cargo, la bio, las redes y todos los posts que escribió. En un blog en varios idiomas, el cargo y la bio también se traducen.

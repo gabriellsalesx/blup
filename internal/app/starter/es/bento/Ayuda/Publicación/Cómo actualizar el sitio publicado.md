@@ -1,8 +1,11 @@
 ---
-title: Cómo actualizar el sitio publicado
+title: ¿Cómo actualizo el sitio que ya está en línea?
 description: Escribiste, revisaste, publicaste.
-weight: 2
+weight: 3
 ---
-Ejecuta `blup publish` otra vez. Blup genera el sitio y envía solo los archivos que cambiaron.
+Haz clic en **Publicar** otra vez (o ejecuta `blup publish`, o `blup publicar`). Blup genera el sitio y envía solo los archivos que cambiaron, así que las actualizaciones son rápidas.
 
 Si nada cambió desde la última vez, te avisa y no envía nada.
+
+> [!tip] Publica poco y seguido
+> Publicar con cada cambio es más tranquilo que juntarlo todo para un solo día.

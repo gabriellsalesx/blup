@@ -11,7 +11,7 @@ $$
 x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
 $$
 
-Las fórmulas se vuelven MathML: el navegador las dibuja, sin descargar nada.
+Las fórmulas se convierten en MathML: el navegador las dibuja, sin descargar nada.
 
 ## Código
 
@@ -29,4 +29,9 @@ Los colores siguen el lenguaje: `go`, `js`, `py`, `sh`, `yaml`, `html`, `css` y 
 
 El texto entre `%%` y `%%` es un comentario de Obsidian: aparece mientras editas y no va al sitio. %%Como este fragmento, que solo existe en la nota.%%
 
-Úsalos para recordatorios, borradores e instrucciones para quien edita, como en la nota **_index** de la carpeta del sitio.
+Úsalo para recordatorios, borradores e instrucciones para quien edita, como en la nota **_index** de la carpeta del sitio.
+
+En el Studio, la barra de formato tiene el botón **Comentario (queda fuera del sitio)**. La narración también se salta los comentarios.
+
+> [!tip] Bloque de código en el Studio
+> En el editor del Studio, el bloque de código tiene fondo, el nombre del lenguaje y el botón **Copiar**. Las tres comillas invertidas solo aparecen con el cursor dentro del bloque.

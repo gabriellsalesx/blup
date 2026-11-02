@@ -18,7 +18,9 @@ tags: [Novedad, Mejora]
 - **date** ordena las versiones: la más nueva queda arriba.
 - **tags** se vuelven etiquetas de colores (cada nombre siempre con el mismo color) y páginas de filtro.
 - El texto de la nota aparece completo en la lista; el título lleva a la página de la versión.
-- Con muchas versiones, la lista tiene el botón de cargar más.
+- Con muchas versiones, la lista recibe el botón para cargar más.
+
+En Blup Studio, crea la nota en la carpeta del changelog con **Nueva nota** y completa **Fecha** y **Etiquetas** en las propiedades. Para avisar a los lectores, el Blog también es un buen lugar para contar la novedad con más calma.
 
 > [!tip] Una nota por versión
-> Dale a la nota el nombre de la versión, como `v1.3.0`, y usa el **title** para el texto bonito.
+> Ponle a la nota el nombre de la versión, como `v1.3.0`, y usa el **title** para el texto bonito.

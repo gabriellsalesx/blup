@@ -1,55 +1,73 @@
 ---
 title: Escribiendo posts
 date: {{date-3}}
-description: Las propiedades que entiende el sitio, enlaces entre notas, imágenes y secciones.
-tags: [Escritura]
+description: Crear un post, las propiedades, enlaces entre notas, imágenes y secciones. En el Studio y en Obsidian.
+tags: [Escritura, Studio, Obsidian]
 image: "[[blup-escrever.jpg]]"
 ---
-Para crear un post, haz clic en **Nueva nota** en el panel Archivos, ponle un nombre y escribe. Eso es todo. El resto es opcional y está en el panel **Propiedades**, arriba del editor. Haz clic en el nombre del panel para abrirlo o cerrarlo.
+Para crear un post, crea una nota en la carpeta del sitio y escribe. Eso es todo. El resto es opcional.
+
+En el Studio, haz clic en **Nueva nota** en el panel Archivos, ponle un nombre y presiona Enter. La vista previa de al lado muestra cómo va a quedar el post en el sitio, mientras escribes.
+
+## Comandos con /
+
+Al principio de una línea (o después de un espacio), escribe `/` y elige: título, lista, lista de tareas, cita, callout, tabla, bloque de código, línea divisoria, enlace a otra nota, enlace externo, imagen de la computadora o la fecha de hoy. Enter o Tab eligen.
+
+Escribe `@` para mencionar otra nota o una fecha, como hoy, mañana o el próximo viernes.
+
+La **barra de formato**, encima del texto, tiene los mismos comandos en botones. El clic derecho en el editor también tiene los menús **Formato** e **Insertar**.
 
 ## Las propiedades
 
-| En el panel | Para qué sirve |
-| --- | --- |
-| **Título** | Título del post. Vacío, se usa el nombre de la nota. |
-| **Descripción** | Resumen en las listas, en Google y al compartir. |
-| **Fecha** | Fecha del post. |
-| **Etiquetas** | Temas. Escribe y presiona Enter. Cada etiqueta tiene su página. |
-| **Portada** | La imagen de portada del post. |
-| **Autores** | Quién lo escribió, en **Más opciones**. Vacío, se usa el autor del sitio. |
-| **Borrador** | Deja la nota fuera del sitio. Solo aparece en la vista previa. |
-| **Oculto** | Se publica, pero sale de las listas y de Google. |
-| **Contraseña** | Pide una contraseña para leer. Mira [Posts con contraseña](Posts%20con%20contraseña.md). |
+La fecha, las etiquetas, la portada y lo demás están en el panel **Propiedades**, encima del editor. Haz clic en el nombre del panel para abrirlo o cerrarlo. El Studio guarda todo al principio de la propia nota.
 
-Studio guarda todo arriba de la propia nota. Abre este post y mira sus propiedades en el panel.
+| En el Studio | En la nota | Para qué sirve |
+| --- | --- | --- |
+| **Título** | `title` | Título del post. Si está vacío, se usa el nombre de la nota. |
+| **Descripción** | `description` | Resumen en las listas, en Google y al compartir. |
+| **Fecha** | `date` | Fecha del post. |
+| **Etiquetas** | `tags` | Temas. Cada etiqueta tiene su página. |
+| **Autores** | `authors` | Quién escribió. Si está vacío, se usa el autor del sitio. |
+| **Portada** | `image` | La imagen de portada, como `"[[mi-portada.jpg]]"`. |
+| **Borrador** | `draft: true` | Deja la nota fuera del sitio. Solo aparece en la vista previa. |
+| **Oculto** | `hidden: true` | Se publica, pero sale de las listas y de Google. |
+| **Contraseña** | `password` | Pide una contraseña para leer. Mira [Posts con contraseña](Posts%20con%20contraseña.md). |
+
+En Obsidian, las mismas propiedades están en el bloque del principio de la nota: escribe `---` en la primera línea o usa el comando "Añadir propiedad".
 
 ## Enlaces entre notas
 
-En la barra de formato, haz clic en **Enlace a otra nota** y elige la nota. O escribe `[[` en el texto: Studio sugiere las notas por su nombre, y Tab elige la nota.
+En el Studio, escribe `[[` y elige la nota por el nombre (Tab elige), o usa **Enlace a otra nota** en el menú `/`. En el texto, el enlace aparece solo con el nombre, en azul. Guardado en la nota, queda así:
 
-En la nota, el enlace queda guardado así: `[Formato que funciona](Formato%20que%20funciona.md)`.
+```md
+[Formato que funciona](Formato%20que%20funciona.md)
+```
 
-En el sitio, se vuelve el enlace de la página. Ejemplo: [Formato que funciona](Formato%20que%20funciona.md).
+En el sitio, se vuelve el enlace a la página. Ejemplo: [Formato que funciona](Formato%20que%20funciona.md).
 
-Para un enlace a otro sitio, usa el botón **Enlace** (Ctrl+K).
+Para un enlace a otro sitio, usa **Enlace** (Ctrl+K).
 
 > [!tip] ¿Renombraste una nota?
-> Puedes renombrar sin miedo. Studio actualiza solo los enlaces que apuntan a ella.
+> En el Studio, puedes renombrar sin miedo: actualiza solo los enlaces que apuntan a ella.
+
+En Obsidian, arrastra una nota dentro de otra o escribe `[[`. Con el ajuste de enlaces que Blup hace en Obsidian, el enlace se guarda en el mismo formato de arriba. ¿Ya tienes notas antiguas con wikilinks? Ejecuta `blup convert`: Blup cambia los enlaces antiguos por el formato estándar y antes te muestra lo que va a cambiar.
 
 ## Imágenes
 
-Pega o arrastra la imagen dentro de la nota, o usa el botón **Imagen de la computadora**. Studio guarda el archivo en la carpeta **Adjuntos** solo. Blup genera versiones más pequeñas y modernas (WebP) de cada imagen, y el navegador descarga solo el tamaño que necesita.
+Pega la imagen directo en la nota, o arrástrala, o usa **Imagen de la computadora**. El Studio guarda el archivo en la carpeta **Adjuntos** solo, y la imagen aparece en su lugar, dentro del texto. En Obsidian, arrastra la imagen a la nota, como siempre.
+
+Blup crea versiones más pequeñas y modernas (WebP) de cada imagen, y el navegador descarga solo el tamaño que necesita.
 
 ![Blup escribiendo en una tarjeta de nota](../Adjuntos/blup-escrever.jpg)
 
 El texto entre corchetes es la descripción de la imagen: ayuda a quien usa lector de pantalla y a Google.
 
-La pantalla **Adjuntos**, en el menú lateral, muestra todas las imágenes y archivos que usan las notas. El filtro **Sin usar** encuentra lo que sobró.
+La pantalla **Adjuntos**, en el menú lateral del Studio, muestra todas las imágenes y archivos que usan las notas. El filtro **Sin usar** encuentra lo que sobró.
 
 ## Organizar en secciones
 
-Crea una carpeta con **Nueva carpeta**, como **Viajes**, y pon posts en ella: el sitio gana la sección Viajes, con página propia y elemento en el menú. Para darle título y descripción a la sección, crea una nota **_index** dentro de ella, como la de esta sección.
+Crea una carpeta en la carpeta del sitio, como **Viajes**, y pon posts en ella: el sitio gana la sección Viajes, con página propia y elemento en el menú. Para darle título y descripción a la sección, crea una nota **_index** dentro de ella, como la de esta sección.
 
 ## Corrector ortográfico
 
-Studio subraya las palabras con errores mientras escribes. Haz clic derecho en la palabra para ver las sugerencias o agregar la palabra al diccionario.
+El Studio subraya las palabras con errores mientras escribes. Haz clic derecho en la palabra para ver las sugerencias o agregar la palabra al diccionario. El corrector funciona en tu computadora: el texto no sale de ella.

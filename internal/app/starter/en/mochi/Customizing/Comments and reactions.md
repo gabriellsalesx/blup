@@ -1,36 +1,48 @@
 ---
 title: Comments and reactions
 date: {{date-9}}
-description: Readers react to posts and comment on them without leaving the blog. Everything lives on your GitHub.
-tags: [Customizing, CLI]
+description: Readers react to and comment on posts without leaving the blog. Everything lives on your GitHub.
+tags: [Customizing, Studio]
 ---
-Visitors can react to posts (👍 ❤️ 🎉 🚀 and others) and leave comments. No server and no subscription: everything lives in issues of a public repository on your GitHub.
+People visiting the blog can react to posts (👍 ❤️ 🎉 🚀 and others) and leave comments. No server and no monthly fee: everything lives in issues of a public repository on your GitHub.
 
-## Turn on
+## Turn it on in the Studio
 
-Run `blup customize` and choose **Comments and reactions on posts**. The new site wizard also asks at the end.
+In the side menu, click **Comments** and turn on **Show comments and reactions**. The first time, there are two steps:
 
-1. Blup creates the public repository named after the site plus `-feedback`. A blog called "My Blog" gets `my-blog-feedback`.
-2. It opens the page of the **Blup Comments** app on GitHub. Choose **Only select repositories**, pick the `-feedback` repository and click **Install**. This app is what lets people react and comment without leaving the blog.
-3. Run `blup publish`. On every publish Blup opens an issue for each new post and keeps titles up to date.
+1. **Connect GitHub**: click **Open the form**, create the key (the permissions come already ticked), paste it into the Studio and click **Connect**.
+2. **Create the comments space**: click **Create and turn on**. Blup creates a public repository on your GitHub just for the comments, named after the site plus `-feedback`.
+
+After that, there is one more detail so people can comment **without leaving the blog**: installing the Blup app on the repository. Click **Install the app on GitHub** and, on the page that opens:
+
+- choose **Only select repositories**;
+- tick the `-feedback` repository;
+- click **Install** and go back to the Studio. Click **I installed it**.
+
+Finally, publish again so the comments show up on the site.
+
+> [!info] With Obsidian
+> Run `blup customize` and choose **Comments and reactions on posts**. Blup does the same steps in the terminal.
 
 > [!info] Without the app
-> If you skip the install, everything still works, but reacting and commenting take people to the issue on GitHub. Install it later the same way, from `blup customize`.
+> If you skip the install, everything still works, but reacting and commenting take the person to the issue on GitHub. You can install it later, the same way.
 
-## How it shows
+## How it shows up
 
-At the end of each post come the reactions, the comments and a box to comment, which takes Markdown. Click a reaction to add yours, or the smiley button to pick another one; clicking again takes it back.
+At the end of each post are the reactions, the comments and a box to comment in, which accepts Markdown. Click a reaction to add yours, or the smiley button to pick another one; clicking again undoes it.
 
-To answer someone, click **Reply** on their comment: the box comes with a quote and a mention of that person, and GitHub lets them know (a notification and, if they want, an email). As the repository owner, you hear about every new comment.
+To answer someone, click **Reply** on the comment: the box comes with a quoted bit and a mention of the person, and GitHub lets them know. As the repository owner, you are notified of every new comment.
+
+On a blog in several languages, all versions of a post share the same conversation.
 
 ## Who can take part
 
-Reading is open to everyone. To react or comment, people click **Sign in with GitHub** and authorize the app once. They stay on the same post; the connection lives only in their browser, and **Sign out** disconnects.
+Reading is open to everyone. To react or comment, the person clicks **Sign in with GitHub** and authorizes the app once. They stay on the same post; the connection lives only in their browser, and **Sign out** disconnects it.
 
-Everyone can delete their own comments with the **Delete** button. As the repository owner, you see that button on every comment when you sign in on the blog.
+Each person can delete their own comments with the **Delete** button. You, as the repository owner, see that button on every comment when you sign in to the blog.
 
-Asking for a GitHub account keeps spam away. For more moderation, use GitHub's own tools: block a user or lock the conversation.
+Requiring a GitHub account keeps spam away. To moderate more, use GitHub's own tools: block a user or lock the conversation.
 
-## Turn off
+## Turn it off
 
-Run `blup customize`, choose **Comments and reactions on posts** and answer **No**. On the next publish the blocks leave the blog. The repository and its issues stay on your GitHub.
+On the **Comments** screen, turn off **Show comments and reactions** and publish again: the blocks leave the blog. The repository and the issues stay on your GitHub.

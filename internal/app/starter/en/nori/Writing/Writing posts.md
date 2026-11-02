@@ -1,50 +1,73 @@
 ---
 title: Writing posts
 date: {{date-3}}
-description: The properties the site understands, links between notes and images.
-tags: [Writing]
+description: Creating a post, properties, links between notes, images and sections. In the Studio and in Obsidian.
+tags: [Writing, Studio, Obsidian]
 image: "[[blup-escrever.jpg]]"
 ---
-To create a post, click **New note** in the **Files** panel and give it a name. That's it. Everything else is optional and lives in the note's **Properties**, a form the Studio shows above the text.
+To create a post, create a note in the site folder and write. That's all. The rest is optional.
+
+In the Studio, click **New note** in the Files panel, give it a name and press Enter. The preview next to it shows the post as it will look on the site, while you write.
+
+## Commands with /
+
+At the start of a line (or after a space), type `/` and choose: heading, list, task list, quote, callout, table, code block, divider, link to another note, external link, image from the computer or today's date. Enter or Tab picks one.
+
+Type `@` to mention another note or a date, like today, tomorrow or next Friday.
+
+The **formatting bar**, above the text, has the same commands as buttons. Right clicking in the editor also gives you the **Format** and **Insert** menus.
 
 ## The properties
 
-| Property | What it's for |
-| --- | --- |
-| **Title** | Post title. Without it, the note name is used. |
-| **Description** | Summary in lists, on Google and when someone shares the post. |
-| **Date** | Post date. Without it, the file date is used. |
-| **Tags** | Topics. Type one and press Enter. Each tag gets a page. |
-| **Cover** | The post image, at the top and in lists. |
-| **Draft** | Only in the preview, never published. |
-| **Hidden** | Published, but out of lists and Google. |
-| **Password** | Asks for a password to read it. See [Password protected posts](Password%20protected%20posts.md). |
-| **Authors** | Who wrote it. Without it, the site author. It's under **More options**. |
+Date, tags, cover and the rest live in the **Properties** panel, above the editor. Click the panel's name to open or close it. The Studio saves everything at the top of the note itself.
 
-Open this post in the Studio to see its properties filled in.
+| In the Studio | In the note | What it's for |
+| --- | --- | --- |
+| **Title** | `title` | The post's title. Empty, the note's name is used. |
+| **Description** | `description` | Summary in lists, on Google and when shared. |
+| **Date** | `date` | The post's date. |
+| **Tags** | `tags` | Topics. Each tag gets its own page. |
+| **Authors** | `authors` | Who wrote it. Empty, the site's author is used. |
+| **Cover** | `image` | The cover image, like `"[[my-cover.jpg]]"`. |
+| **Draft** | `draft: true` | Keeps the note off the site. It shows only in the preview. |
+| **Hidden** | `hidden: true` | Publishes it, but keeps it out of lists and Google. |
+| **Password** | `password` | Asks for a password to read. See [Password protected posts](Password%20protected%20posts.md). |
 
-> [!info] Where they are saved
-> The properties are saved at the top of the note, between two lines of `---`. The Studio shows them as a form, so you never need to touch that block.
+In Obsidian, the same properties sit in the block at the top of the note: type `---` on the first line or use the "Add file property" command.
 
 ## Links between notes
 
-Right-click in the text and choose **Link to another note**, then find the note by name. Or type `[[` and pick the note from the list (Tab picks it). In the note, the link is saved like this: `[Formatting that works](Formatting%20that%20works.md)`. On the site, it becomes the page link. Example: [Formatting that works](Formatting%20that%20works.md).
+In the Studio, type `[[` and pick the note by name (Tab picks), or use **Link to another note** in the `/` menu. In the text, the link shows just the name, in blue. Saved in the note, it looks like this:
 
-For a link to another website, select the text and use **Link** in the formatting bar (or Ctrl+K).
+```md
+[Formatting that works](Formatting%20that%20works.md)
+```
 
-> [!tip] Renaming is safe
-> Renaming a note in the **Files** panel updates every link that points to it.
+On the site, it becomes the link to the page. Example: [Formatting that works](Formatting%20that%20works.md).
+
+For a link to another website, use **Link** (Ctrl+K).
+
+> [!tip] Renamed a note?
+> In the Studio, rename without worry: it updates the links that point to the note by itself.
+
+In Obsidian, drag a note into another or type `[[`. With the link setting Blup applies to Obsidian, the link is saved in the same format as above. Already have old notes with wikilinks? Run `blup convert`: Blup turns the old links into the standard format and shows what will change first.
 
 ## Images
 
-Paste or drag the image into the note. The Studio saves it in **Attachments** by itself. You can also use **Image from the computer** in the formatting bar. Blup creates smaller, modern versions (WebP) of each image, and the browser downloads only the size it needs.
+Paste the image right into the note, or drag it, or use **Image from the computer**. The Studio saves the file in the **Attachments** folder by itself and the image shows up in place, inside the text. In Obsidian, drag the image into the note, as usual.
+
+Blup makes smaller, modern versions (WebP) of each image, and the browser downloads only the size it needs.
 
 ![Blup writing on a note card](../Attachments/blup-escrever.jpg)
 
-The text between the brackets is the image description: it helps people using screen readers, and Google.
+The text in square brackets is the image's description: it helps people who use screen readers, and Google.
 
-**Attachments**, in the side menu, lists every image and file the notes use. There you can rename them (the notes are updated) and find the ones no note uses.
+The **Attachments** screen, in the Studio's side menu, shows all the images and files the notes use. The **Unused** filter finds what's left over.
 
 ## Organize into sections
 
-Click **New folder** in the **Files** panel, name it **Travel** and put posts in it: the site gets a Travel section, with its own page and menu item. To give the section a title and description, create an **_index** note inside it, like the one in this section.
+Create a folder in the site folder, like **Travel**, and put posts in it: the site gets a Travel section, with its own page and a menu item. To give the section a title and description, create an **_index** note inside it, like the one in this section.
+
+## Spell checker
+
+The Studio underlines misspelled words while you write. Right click the word to see suggestions or add the word to the dictionary. The checker runs on your computer: the text never leaves it.

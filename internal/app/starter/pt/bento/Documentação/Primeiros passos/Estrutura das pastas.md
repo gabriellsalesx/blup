@@ -32,7 +32,7 @@ Site/                     a pasta das notas do site
 
 - Notas com `draft: true` (aparecem só na prévia).
 - Pastas que começam com ponto, como `.obsidian` e `.blup`.
-- A pasta de modelos do Obsidian (Templates).
+- A pasta de modelos do Obsidian (Modelos).
 - A pasta de autores: ela vira só os dados dos perfis.
 - Os guias para agentes de IA (`AGENTS.md`, `CLAUDE.md` e `GEMINI.md`), que o Studio cria ao abrir o terminal.
 - Anexos que nenhuma nota usa.

@@ -1,25 +1,28 @@
 ---
 title: Bienvenido a Blup
 date: {{date}}
-description: Tu bóveda de Obsidian se convirtió en un sitio de producto. Mira por dónde empezar.
+description: Este sitio de ejemplo es un tutorial de Blup. Mira por dónde empezar.
 tags: [Novedades]
 image: "[[blup-bem-vindo.jpg]]"
+authors: [Blup]
 ---
-Este sitio entero lo creó Blup a partir de una carpeta de Obsidian, y sirve de tutorial y de plantilla.
+Todo este sitio lo creó Blup a partir de una carpeta de notas. Sirve de tutorial y de modelo para el tuyo.
 
 ## Qué hay aquí
 
-- **Documentación**: todo sobre Blup, de la instalación a la publicación.
-- **Roadmap**: un tablero de ejemplo con elementos planeados, en curso y completados.
-- **Changelog**: versiones de ejemplo, de la más nueva a la más antigua.
-- **Centro de ayuda**: colecciones de preguntas y respuestas.
-- **Blog**: este de aquí, con portada, etiquetas, autores y posts relacionados.
+- **Documentación**: todo sobre Blup, desde la instalación hasta la publicación.
+- **Roadmap**: un tablero con elementos planeados, en progreso y completados.
+- **Changelog**: las versiones, de la más nueva a la más antigua.
+- **Centro de ayuda**: preguntas y respuestas cortas, con paso a paso.
+- **Blog**: este mismo, con portada, etiquetas, autores y posts relacionados.
 
-## Cómo usar esta plantilla
+## Cómo usar este modelo
 
-1. Abre cada nota en Obsidian y compárala con la página.
+1. Abre las notas en **Blup Studio**, con la vista previa al lado, y compáralas con las páginas.
 2. Cambia el texto por el de tu producto, poco a poco.
-3. Borra lo que no uses: una sección entera sale del sitio cuando borras su carpeta.
+3. Elimina lo que no uses. En el Studio, la pantalla **Secciones** quita una sección entera (y te deja recuperarla después).
+
+¿Prefieres Obsidian? Abre la misma carpeta allí: las notas son archivos Markdown comunes.
 
 > [!tip] Empieza por el nombre
-> La nota **_index** de la carpeta del sitio tiene la configuración: nombre, descripción, logo, menú y redes.
+> En el Studio, la pantalla **Sitio** cambia el nombre, la descripción, el logo, el menú y las redes. En Obsidian, esos ajustes están en la nota **_index** de la carpeta del sitio.

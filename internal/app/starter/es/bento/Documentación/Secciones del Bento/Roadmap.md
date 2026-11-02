@@ -11,9 +11,9 @@ La propiedad **status** elige la columna. Funciona en español, portugués o ing
 
 | Columna | Escribe |
 | --- | --- |
-| Planeado | `planeado`, `planificado` o `planned` (también es el valor por defecto, sin status) |
-| En curso | `en progreso`, `en curso`, `haciendo`, `in progress` |
-| Completado | `completado`, `hecho`, `lanzado`, `done`, `shipped` |
+| Planeado | `planeado`, `planejado` o `planned` (también es el valor por defecto, sin status) |
+| En curso | `en progreso`, `en curso`, `haciendo`, `em andamento`, `in progress` |
+| Completado | `completado`, `hecho`, `lanzado`, `concluído`, `done`, `shipped` |
 
 ## La tarjeta
 
@@ -32,7 +32,7 @@ weight: 1
 - **weight** ordena las tarjetas dentro de la columna.
 - El texto de la nota se vuelve la página del elemento, que se abre al hacer clic en la tarjeta.
 
-Para cambiar un elemento de columna, cambia el **status** y guarda.
+Para cambiar un elemento de columna, cambia el **status** y guarda. En Blup Studio, los campos **Columna** y **Categoría** aparecen en las propiedades de la nota, con las opciones listas.
 
 ## Orden por votos
 

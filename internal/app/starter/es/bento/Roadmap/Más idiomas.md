@@ -1,8 +1,8 @@
 ---
 title: Más idiomas
-description: Sitios y CLI en otros idiomas además de portugués, inglés y español.
-status: en progreso
+description: Sitios en portugués, inglés y español, con traducción de cada nota.
+status: completado
 category: Idiomas
-weight: 1
+weight: 4
 ---
-Para mover una tarjeta de columna, cambia el `status` y guarda. Aquí, `en progreso`.
+Cada página traducida recibe un selector de idioma. La traducción la puede hacer la IA de Blup Cloud, tu clave de OpenRouter o la propia computadora.

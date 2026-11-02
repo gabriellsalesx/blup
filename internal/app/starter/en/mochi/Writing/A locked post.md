@@ -10,4 +10,4 @@ You typed the right password. 🎉
 
 This text was encrypted when the site was built and could only be read now, in your browser, with the password.
 
-Open this note in Obsidian: the only difference from a regular post is the `password: blup` property.
+Open this note in the Studio: in the **Properties** panel, **Password** is on, with its own password `blup`. In Obsidian, the only difference from a regular post is the `password: blup` property.

@@ -1,17 +1,17 @@
 ---
 title: Formato que funciona
 date: {{date-4}}
-description: Todo lo que escribes en Obsidian y aparece en el sitio, con ejemplos.
-tags: [Obsidian]
+description: Todo lo que escribes en el Studio o en Obsidian y aparece en el sitio, con ejemplos.
+tags: [Escritura]
 image: "[[blup-formatacao.jpg]]"
 ---
-Este post es un muestrario. Abre la nota en Obsidian y mira cómo se escribió cada bloque.
+Este post es un muestrario. Abre la nota en el Studio (o en Obsidian) y mira cómo se escribió cada bloque. En el Studio, casi todo tiene un botón en la **barra de formato** y un elemento en el menú `/`, y el editor ya muestra el resultado: las marcas solo aparecen cuando el cursor pasa por ellas.
 
 ## Texto
 
-**Negrita**, *cursiva*, ~~tachado~~, ==resaltado==, `código` y [enlace externo](https://obsidian.md). Una nota al pie también funciona.[^1]
+**Negrita**, *cursiva*, ~~tachado~~, ==resaltado==, `código` y [enlace externo](https://github.com/gabriellsalesx/blup). Una nota al pie también funciona.[^1]
 
-[^1]: Las notas al pie van al final del post, con un enlace de regreso.
+[^1]: Las notas al pie van al final del post, con un enlace de vuelta.
 
 ## Listas
 
@@ -29,7 +29,8 @@ Este post es un muestrario. Abre la nota en Obsidian y mira cómo se escribió c
 
 | Tema | Para quién |
 | --- | --- |
-| Mochi | Blog personal |
+| Mochi | Blog con tarjetas y portadas |
+| Nori | Blog de una columna, con el texto en primer plano |
 | Bento | Sitio de producto |
 
 ## Cita
@@ -38,7 +39,7 @@ Este post es un muestrario. Abre la nota en Obsidian y mira cómo se escribió c
 
 ## Callouts
 
-Los callouts de Obsidian se vuelven cajas de colores, con el mismo ícono:
+Los callouts se vuelven cajas de colores, con ícono. En el Studio, usa **Callout**:
 
 > [!note] Nota
 > El tipo va entre corchetes: `> [!note]`. El título es opcional.
@@ -67,7 +68,7 @@ func main() {
 }
 ```
 
-El resaltado de colores sigue el lenguaje escrito después de las tres comillas invertidas.
+Los colores siguen el lenguaje escrito después de las tres comillas invertidas.
 
 ## Fórmulas
 
@@ -79,10 +80,10 @@ $$
 
 ## Comentarios
 
-El texto entre `%%` y `%%` es un comentario de Obsidian: aparece mientras editas y desaparece en el sitio. Sirve para recordatorios y borradores dentro del post. %%Este fragmento, por ejemplo, solo existe en Obsidian.%%
+El texto entre `%%` y `%%` es un comentario: aparece mientras editas, en el Studio o en Obsidian, y desaparece en el sitio. Sirve para recordatorios y borradores dentro del post. %%Este fragmento, por ejemplo, solo existe en las notas.%%
 
 ## Línea divisoria
 
 ---
 
-Tres guiones solos en una línea dibujan la línea de arriba.
+Tres guiones en una línea sola dibujan la línea de arriba.

@@ -1,13 +1,19 @@
 ---
-title: Cómo crear una página nueva
-description: Crea una nota en la carpeta correcta. Eso es todo.
+title: ¿Cómo creo una página nueva?
+description: Crea una nota en la carpeta de la sección. Eso es todo.
 weight: 1
 ---
-1. En Obsidian, crea una nota dentro de la carpeta de la sección, como **Documentación** o **Blog**.
-2. Ponle un nombre a la nota: se convierte en el título si no hay propiedad `title`.
-3. Escribe y guarda.
+## En Blup Studio
 
-En la vista previa (`blup preview`), la página aparece al instante. Para publicar, `blup publish`.
+1. En la barra lateral, haz clic en la carpeta de la sección, como **Documentación** o **Blog**.
+2. Usa **Nueva nota** (o `Ctrl+N`), escribe el nombre y pulsa Enter.
+3. Escribe. El Studio guarda solo, y la vista previa muestra la página al instante.
 
-> [!tip] Empieza con una plantilla
-> Usa **Plantillas: Insertar plantilla** en Obsidian para empezar con las propiedades correctas.
+El nombre de la nota se convierte en el título de la página, salvo que completes **Título** en las propiedades.
+
+## En Obsidian
+
+Crea la nota dentro de la carpeta de la sección y escribe. Con `blup preview` abierto, la página aparece en la vista previa en cuanto guardas.
+
+> [!tip] Empieza desde una plantilla
+> En Obsidian, usa **Plantillas: Insertar plantilla** para empezar con las propiedades correctas de cada sección.

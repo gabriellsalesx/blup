@@ -7,7 +7,7 @@ O roadmap é uma pasta cuja **_index** tem `blup: roadmap`. Cada nota dentro del
 
 ## A coluna
 
-A propriedade **status** escolhe a coluna. Vale em português ou inglês:
+A propriedade **status** escolhe a coluna. Vale em português, inglês ou espanhol:
 
 | Coluna | Escreva |
 | --- | --- |

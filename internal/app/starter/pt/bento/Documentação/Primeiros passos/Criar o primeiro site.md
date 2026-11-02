@@ -48,7 +48,7 @@ Rode `blup novo` (ou só `blup`, na primeira vez). Cada pergunta aparece sozinha
 9. **Guardar as notas no GitHub**: opcional. Veja [Sincronizar](../Linha%20de%20comando/Sincronizar.md).
 10. **Abrir a prévia**.
 
-A linha de comando também cria a pasta **Templates** com modelos de nota para o Obsidian.
+A linha de comando também cria a pasta **Modelos** com modelos de nota para o Obsidian.
 
 ## O que é criado
 

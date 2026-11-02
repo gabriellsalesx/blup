@@ -1,8 +1,10 @@
 ---
 title: Formatting and callouts
-description: Text, lists, tables and Obsidian's callout boxes.
+description: Text, lists, tables and Obsidian's highlight boxes.
 weight: 3
 ---
+Everything here is plain Markdown, the same in the Studio and in Obsidian. In the Studio, the formatting bar and the `/` menu insert each thing without you memorizing the syntax. See [Writing in the editor](../Blup%20Studio/Writing%20in%20the%20editor.md).
+
 ## Text
 
 **Bold**, *italic*, ~~strikethrough~~, ==highlight== and `code`. Footnotes too.[^1]
@@ -17,8 +19,8 @@ weight: 3
 1. Numbered steps
 2. In order
 
-- [x] Done task
-- [ ] Pending task
+- [x] Task done
+- [ ] Task to do
 
 ## Tables
 
@@ -29,7 +31,7 @@ weight: 3
 
 ## Headings
 
-Level 2 (`##`) and level 3 (`###`) headings show up in **On this page**, next to the text, and get their own link.
+Level 2 (`##`) and level 3 (`###`) headings show in **On this page**, next to the text, and get their own link.
 
 ## Callouts
 
@@ -37,7 +39,7 @@ Level 2 (`##`) and level 3 (`###`) headings show up in **On this page**, next to
 > Write `> [!note] Title` and the text on the following lines, starting with `>`.
 
 > [!info]
-> Without a title, the callout shows the type name.
+> Without a title, the callout shows the name of its type.
 
 > [!tip] Tip
 > Types: note, abstract, info, todo, tip, success, question, warning, failure, danger, bug, example and quote. Obsidian's aliases (hint, important, faq, caution, error...) work too.
@@ -46,7 +48,7 @@ Level 2 (`##`) and level 3 (`###`) headings show up in **On this page**, next to
 > Each type has its own color and icon.
 
 > [!question] Question
-> Handy for FAQs.
+> Handy for frequently asked questions.
 
 > [!warning] Warning
 > For heads-ups.
@@ -55,4 +57,4 @@ Level 2 (`##`) and level 3 (`###`) headings show up in **On this page**, next to
 > For things that can't be undone.
 
 > [!faq]- Folded callout
-> A `-` after the type starts the callout folded; click to open. A `+` starts it open, but foldable.
+> A `-` after the type keeps the callout folded; click to open it. A `+` keeps it open, but foldable.

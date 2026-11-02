@@ -1,13 +1,15 @@
 ---
 title: Formato y callouts
-description: Texto, listas, tablas y los cuadros destacados de Obsidian.
+description: Texto, listas, tablas y las cajas destacadas de Obsidian.
 weight: 3
 ---
+Todo aquí es Markdown común, igual en el Studio y en Obsidian. En el Studio, la barra de formato y el menú `/` insertan cada cosa sin que tengas que memorizar la sintaxis. Mira [Escribir en el editor](../Blup%20Studio/Escribir%20en%20el%20editor.md).
+
 ## Texto
 
-**Negrita**, *cursiva*, ~~tachado~~, ==resaltado== y `código`. Notas al pie también.[^1]
+**Negrita**, *cursiva*, ~~tachado~~, ==resaltado== y `código`. También notas al pie.[^1]
 
-[^1]: Van al final de la página, con un enlace de regreso.
+[^1]: Van al final de la página, con un enlace de vuelta.
 
 ## Listas
 
@@ -29,7 +31,7 @@ weight: 3
 
 ## Títulos
 
-Los títulos de nivel 2 (`##`) y 3 (`###`) aparecen en **En esta página**, al lado del texto, y reciben un enlace propio.
+Los títulos de nivel 2 (`##`) y 3 (`###`) aparecen en **En esta página**, junto al texto, y reciben su propio enlace.
 
 ## Callouts
 
@@ -40,7 +42,7 @@ Los títulos de nivel 2 (`##`) y 3 (`###`) aparecen en **En esta página**, al l
 > Sin título, el callout muestra el nombre del tipo.
 
 > [!tip] Consejo
-> Tipos: note, abstract, info, todo, tip, success, question, warning, failure, danger, bug, example y quote. Los alias de Obsidian (hint, important, faq, caution, error...) también funcionan.
+> Tipos: note, abstract, info, todo, tip, success, question, warning, failure, danger, bug, example y quote. Los alias de Obsidian (hint, important, faq, caution, error...) también valen.
 
 > [!success] Éxito
 > Cada tipo tiene color e ícono.

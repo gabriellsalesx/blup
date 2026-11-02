@@ -1,19 +1,22 @@
 ---
-title: My note doesn't show up on the site
-description: The most common causes, from most to least likely.
+title: Why is my note missing from the site?
+description: The most common causes, from the most likely to the least.
 weight: 1
 ---
 > [!question]- Is the note inside the site folder?
-> Only notes in the folder chosen in the wizard go to the site.
+> Only notes in the site folder go on the site.
 
-> [!question]- Does the note have draft: true?
-> Drafts show up only in the preview. Change it to `false` or remove the property.
+> [!question]- Is the note marked as a draft?
+> Drafts show only in the preview. In the Studio, uncheck **Draft** in Properties. In Obsidian, change `draft` to `false` or delete the property.
 
-> [!question]- Does the note have hidden: true?
-> It's on the site, but out of lists. Open it by its address or remove the property.
+> [!question]- Is the note marked as hidden?
+> It is on the site, but out of the lists. Open it by its address or uncheck **Hidden**.
 
-> [!question]- Is the note in the templates or writers folder?
+> [!question]- Is the note in the templates or authors folder?
 > Those folders never become pages.
 
 > [!question]- Is the date in the future?
-> Posts dated in the future only show up when that date arrives.
+> Posts with a future date only show up when that date arrives.
+
+> [!question]- Did you publish after the change?
+> The live site only changes when you publish again.

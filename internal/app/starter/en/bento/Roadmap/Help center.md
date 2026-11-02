@@ -5,4 +5,4 @@ status: done
 category: Bento
 weight: 2
 ---
-**weight** orders the cards inside the column: this one comes after "Sync the notes".
+The **weight** orders the cards inside the column: this one comes after "Blup Studio".

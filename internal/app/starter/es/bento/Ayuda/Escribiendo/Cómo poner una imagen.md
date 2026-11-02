@@ -1,14 +1,20 @@
 ---
-title: Cómo poner una imagen
-description: Arrástrala a la nota, como siempre.
+title: ¿Cómo pongo una imagen?
+description: Pega o arrastra la imagen dentro de la nota.
 weight: 2
 ---
-Arrastra la imagen a la nota en Obsidian. Se copia a la bóveda y el enlace entra en el texto.
+## En Blup Studio
 
-Para la **portada** de un post, usa la propiedad `image`:
+Pega la imagen (o arrastra el archivo) dentro de la nota. El Studio guarda la imagen en la carpeta de adjuntos y pone el enlace en el texto. La imagen ya aparece en el editor.
+
+Para la **portada** de un post, elige la imagen en **Propiedades**, en el campo de la imagen.
+
+## En Obsidian
+
+Arrastra la imagen a la nota. Para la portada, usa la propiedad `image`:
 
 ```yaml
 image: "[[mi-portada.jpg]]"
 ```
 
-Blup redimensiona y convierte las imágenes solo. Las portadas se ven bien en 1600x900.
+Blup redimensiona y convierte las imágenes por sí solo. Las portadas se ven bien en 1600x900.

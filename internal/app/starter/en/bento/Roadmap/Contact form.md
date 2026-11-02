@@ -1,6 +1,6 @@
 ---
 title: Contact form
-description: Receive messages from visitors with no server.
+description: Get messages from visitors through the site.
 status: planned
 category: Features
 weight: 2

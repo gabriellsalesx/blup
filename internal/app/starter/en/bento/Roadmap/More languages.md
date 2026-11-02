@@ -1,8 +1,8 @@
 ---
 title: More languages
-description: Sites and CLI in other languages besides English and Portuguese.
-status: in progress
+description: Sites in Portuguese, English and Spanish, with translation for each note.
+status: done
 category: Languages
-weight: 1
+weight: 4
 ---
-To move a card to another column, change the `status` and save. Here, `in progress`.
+Each translated page gets a language switcher. The translation can come from Blup Cloud AI, from your OpenRouter key or from your computer.

@@ -47,7 +47,7 @@ irm https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.ps1 | iex
 
 ### Conferir
 
-Rode `blup`. Na primeira vez ele pergunta o idioma (português ou inglês) e abre o assistente de site novo.
+Rode `blup`. Na primeira vez ele pergunta o idioma (português, inglês ou espanhol) e abre o assistente de site novo.
 
 > [!info] Atualizações da linha de comando
 > O `blup` confere uma vez por dia se há versão nova e sempre pergunta antes de atualizar. Veja [Atualizar](../Linha%20de%20comando/Atualizar.md).

@@ -1,27 +1,23 @@
 ---
 title: Formatting that works
 date: {{date-4}}
-description: Everything you write in the Studio that shows up on the site, with examples.
+description: Everything you write in the Studio or in Obsidian that shows up on the site, with examples.
 tags: [Writing]
 image: "[[blup-formatacao.jpg]]"
 ---
-This post is a showcase. Open the note in the Studio and see how each block was written.
-
-Almost everything here comes from the **formatting bar** at the top of the editor: select the text and click the button. The rest is in the menu that opens when you right-click the text (**Format**, **Paragraph** and **Insert**).
+This post is a showcase. Open the note in the Studio (or in Obsidian) and see how each block was written. In the Studio, almost everything has a button on the **formatting bar** and an item in the `/` menu, and the editor already shows the result: the marks only appear when the cursor passes over them.
 
 ## Text
 
-**Bold**, *italic*, ~~strikethrough~~, ==highlight==, `code` and an [external link](https://github.com/gabriellsalesx/blup). A footnote works too.[^1]
+**Bold**, *italic*, ~~strikethrough~~, ==highlight==, `code` and [a link out](https://github.com/gabriellsalesx/blup). A footnote works too.[^1]
 
 [^1]: Footnotes go to the end of the post, with a link back.
-
-Bold, italic, strikethrough and highlight have their own buttons; code is in the bar too. For an external link, select the text and click **Link** (or Ctrl+K). For a footnote, type `[^1]` where it goes and, on a line of its own, `[^1]:` followed by the note.
 
 ## Lists
 
 - A list
 - with items
-  - and sub-items
+  - and sub items
 
 1. Numbered list
 2. Second step
@@ -29,42 +25,36 @@ Bold, italic, strikethrough and highlight have their own buttons; code is in the
 - [x] Done task
 - [ ] Pending task
 
-The bar has **List**, **Numbered list** and **Task list**.
-
 ## Table
 
 | Theme | For whom |
 | --- | --- |
-| Nori | Personal blog, a single column |
-| Mochi | Personal blog |
-| Bento | Product site |
-
-Click **Table** in the bar. Right-click a cell to add or delete rows and columns.
+| Mochi | A blog with cards and covers |
+| Nori | A single column blog, with the text up front |
+| Bento | A product site |
 
 ## Quote
 
 > Writing is thinking twice.
 
-Use **Quote** in the bar.
-
 ## Callouts
 
-Callouts are colored boxes, each with its own icon. Click **Callout** in the bar and pick the type:
+Callouts become colored boxes, with an icon. In the Studio, use **Callout**:
 
 > [!note] Note
-> The type goes between brackets: `> [!note]`. The title is optional.
+> The type goes in square brackets: `> [!note]`. The title is optional.
 
 > [!tip] Tip
 > There are also info, todo, success, question, warning, failure, danger, bug, example, quote and abstract.
 
-> [!warning] Warning
-> Without a title, the callout shows the type name.
+> [!warning] Heads up
+> With no title, the callout shows the type's name.
 
 > [!danger]
 > This one has no title.
 
 > [!example]- Click to open
-> To make it start folded, tick **Starts folded** in the callout menu. In the text, that is a `-` after the type; a `+` starts it open, but foldable.
+> A `-` after the type keeps the callout closed. A `+` keeps it open, but foldable.
 
 ## Code
 
@@ -78,24 +68,22 @@ func main() {
 }
 ```
 
-Right-click and choose **Insert**, then **Code block**. The colors follow the language written after the three backticks.
+The colors follow the language written after the three backticks.
 
-## Math
+## Formulas
 
-Math inline, like $E = mc^2$, and as a block:
+Formulas in the middle of the text, like $E = mc^2$, and as a block:
 
 $$
 x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
 $$
 
-Type it between `$` signs for inline math, or between `$$` lines for a block.
-
 ## Comments
 
-Text between `%%` and `%%` is a comment: you see it while editing and it disappears on the site. Use it for reminders and drafts inside the post. To add one, right-click and choose **Format**, then **Comment (stays off the site)**. %%This bit, for example, only exists in the notes.%%
+Text between `%%` and `%%` is a comment: it shows while you edit, in the Studio or in Obsidian, and disappears on the site. It's for reminders and drafts inside the post. %%This part, for example, only exists in the notes.%%
 
 ## Divider
 
 ---
 
-Click **Divider** in the bar to draw the line above.
+Three hyphens on a line by themselves draw the line above.

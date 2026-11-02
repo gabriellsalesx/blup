@@ -1,19 +1,17 @@
 ---
 title: Formato que funciona
 date: {{date-4}}
-description: Todo lo que escribes en Studio y aparece en el sitio, con ejemplos.
+description: Todo lo que escribes en el Studio o en Obsidian y aparece en el sitio, con ejemplos.
 tags: [Escritura]
 image: "[[blup-formatacao.jpg]]"
 ---
-Este post es un muestrario. Abre la nota en Studio y mira cómo se escribió cada bloque. Casi todo tiene un botón en la **barra de formato**, arriba del texto. El clic derecho en el editor también tiene los menús **Formato** e **Insertar**.
+Este post es un muestrario. Abre la nota en el Studio (o en Obsidian) y mira cómo se escribió cada bloque. En el Studio, casi todo tiene un botón en la **barra de formato** y un elemento en el menú `/`, y el editor ya muestra el resultado: las marcas solo aparecen cuando el cursor pasa por ellas.
 
 ## Texto
 
 **Negrita**, *cursiva*, ~~tachado~~, ==resaltado==, `código` y [enlace externo](https://github.com/gabriellsalesx/blup). Una nota al pie también funciona.[^1]
 
-[^1]: Las notas al pie van al final del post, con un enlace de regreso.
-
-Selecciona el texto y usa los botones **Negrita** (Ctrl+B), **Cursiva** (Ctrl+I), **Tachado**, **Resaltar**, **Código** y **Enlace** (Ctrl+K). La nota al pie no tiene botón: escribe `[^1]` en el texto y, en una línea aparte, `[^1]:` seguido de la nota.
+[^1]: Las notas al pie van al final del post, con un enlace de vuelta.
 
 ## Listas
 
@@ -27,26 +25,21 @@ Selecciona el texto y usa los botones **Negrita** (Ctrl+B), **Cursiva** (Ctrl+I)
 - [x] Tarea hecha
 - [ ] Tarea pendiente
 
-Los botones **Lista**, **Lista numerada** y **Lista de tareas** hacen cada una. Los títulos están en el botón **Título**.
-
 ## Tabla
 
 | Tema | Para quién |
 | --- | --- |
-| Nori | Blog de una sola columna |
-| Mochi | Blog con cuadrícula de posts |
-
-El botón **Tabla** crea una tabla lista para llenar. Haz clic derecho en una celda para insertar o eliminar filas y columnas.
+| Mochi | Blog con tarjetas y portadas |
+| Nori | Blog de una columna, con el texto en primer plano |
+| Bento | Sitio de producto |
 
 ## Cita
 
 > Escribir es pensar dos veces.
 
-Usa el botón **Cita (línea destacada)**.
-
 ## Callouts
 
-El botón **Callout** abre la lista de tipos. Cada uno se vuelve una caja de color, con ícono:
+Los callouts se vuelven cajas de colores, con ícono. En el Studio, usa **Callout**:
 
 > [!note] Nota
 > El tipo va entre corchetes: `> [!note]`. El título es opcional.
@@ -61,7 +54,7 @@ El botón **Callout** abre la lista de tipos. Cada uno se vuelve una caja de col
 > Este no tiene título.
 
 > [!example]- Haz clic para abrir
-> Marca **Empieza plegado** en el mismo menú y el callout ya nace cerrado. Por debajo, es un `-` después del tipo.
+> Un `-` después del tipo deja el callout cerrado. Un `+` lo deja abierto, pero plegable.
 
 ## Código
 
@@ -75,7 +68,7 @@ func main() {
 }
 ```
 
-Usa **Bloque de código** en el menú Insertar del clic derecho. El resaltado de colores sigue el lenguaje escrito después de las tres comillas invertidas, como `go` aquí.
+Los colores siguen el lenguaje escrito después de las tres comillas invertidas.
 
 ## Fórmulas
 
@@ -85,14 +78,12 @@ $$
 x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
 $$
 
-Las fórmulas no tienen botón: escribe entre `$` (en medio del texto) o entre `$$` (en bloque).
-
 ## Comentarios
 
-El texto entre `%%` y `%%` es un comentario: aparece mientras editas y desaparece en el sitio. Sirve para recordatorios y borradores dentro del post. Selecciona el texto y usa **Comentario (queda fuera del sitio)**, en el menú Formato del clic derecho. %%Este fragmento, por ejemplo, solo existe en el editor.%%
+El texto entre `%%` y `%%` es un comentario: aparece mientras editas, en el Studio o en Obsidian, y desaparece en el sitio. Sirve para recordatorios y borradores dentro del post. %%Este fragmento, por ejemplo, solo existe en las notas.%%
 
 ## Línea divisoria
 
 ---
 
-El botón **Separador** dibuja la línea de arriba.
+Tres guiones en una línea sola dibujan la línea de arriba.

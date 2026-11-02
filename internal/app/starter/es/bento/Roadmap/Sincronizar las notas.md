@@ -1,8 +1,8 @@
 ---
 title: Sincronizar las notas
-description: Notas en un repositorio privado de GitHub, sin git.
+description: Con Blup Cloud, con cifrado de extremo a extremo, o con un repositorio privado de GitHub.
 status: completado
-category: Funciones
-weight: 1
+category: Blup Cloud
+weight: 3
 ---
-Los elementos con `status: completado` van a la última columna. También sirven `terminado`, `lanzado`, `done` y `shipped`.
+En Blup Cloud, las notas se cifran en la computadora antes de subir. Desde el plan Pro, la sincronización es en tiempo real.

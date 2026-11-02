@@ -1,14 +1,20 @@
 ---
-title: How to add an image
-description: Drag it into the note, as always.
+title: How do I add an image?
+description: Paste or drag the image into the note.
 weight: 2
 ---
-Drag the image into the note in Obsidian. It is copied into the vault and the link goes into the text.
+## In Blup Studio
 
-For a post's **cover**, use the `image` property:
+Paste the image (or drag the file) into the note. The Studio saves the image in the attachments folder and puts the link in the text. The image shows up in the editor right away.
+
+For a post's **cover**, pick the image in **Properties**, in the image field.
+
+## In Obsidian
+
+Drag the image into the note. For the cover, use the `image` property:
 
 ```yaml
 image: "[[my-cover.jpg]]"
 ```
 
-Blup resizes and converts images by itself. Covers look good at 1600x900.
+Blup resizes and converts images on its own. Covers look good at 1600x900.

@@ -1,5 +1,5 @@
 ---
 title: Primeros pasos
-description: Qué es Blup, cómo crear el sitio en Studio y cómo ponerlo en línea.
+description: Qué es Blup, cómo instalarlo, cómo poner el sitio en línea y las bóvedas de notas.
 ---
-Empieza por aquí: qué es Blup, cómo crear el sitio en Studio y cómo publicarlo.
+Empieza aquí: qué es Blup, cómo instalar el Studio, cómo publicar el sitio y qué más guarda para ti.

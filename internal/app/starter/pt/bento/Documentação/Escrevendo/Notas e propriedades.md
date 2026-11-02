@@ -48,4 +48,4 @@ Para criar uma página, crie uma nota na pasta certa. As **propriedades** (o blo
 | `created`, `updated` | O Studio, nas notas dos cofres. |
 
 > [!tip] Modelos prontos no Obsidian
-> Sites criados pela linha de comando ganham a pasta **Templates**, com modelos de página da documentação, item do roadmap e versão do changelog. Use o comando **Modelos: Inserir modelo** do Obsidian para começar uma nota com as propriedades certas.
+> Sites criados pela linha de comando ganham a pasta **Modelos**, com modelos de página da documentação, item do roadmap e versão do changelog. Use o comando **Modelos: Inserir modelo** do Obsidian para começar uma nota com as propriedades certas.

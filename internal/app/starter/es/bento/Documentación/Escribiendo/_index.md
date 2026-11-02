@@ -1,4 +1,5 @@
 ---
 title: Escribiendo
-weight: 2
+description: Markdown, propiedades, enlaces, imágenes, callouts, fórmulas y comentarios.
+weight: 4
 ---

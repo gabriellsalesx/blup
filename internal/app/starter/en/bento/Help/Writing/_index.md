@@ -1,6 +1,6 @@
 ---
 title: Writing
-description: Pages, images and what does or doesn't go to the site.
+description: Pages, images, links and what goes on the site or not.
 icon: pen-line
 weight: 2
 ---

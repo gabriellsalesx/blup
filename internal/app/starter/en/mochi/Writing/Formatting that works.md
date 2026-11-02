@@ -1,15 +1,15 @@
 ---
 title: Formatting that works
 date: {{date-4}}
-description: Everything you write in Obsidian that shows up on the site, with examples.
-tags: [Obsidian]
+description: Everything you write in the Studio or in Obsidian that shows up on the site, with examples.
+tags: [Writing]
 image: "[[blup-formatacao.jpg]]"
 ---
-This post is a showcase. Open the note in Obsidian and see how each block was written.
+This post is a showcase. Open the note in the Studio (or in Obsidian) and see how each block was written. In the Studio, almost everything has a button on the **formatting bar** and an item in the `/` menu, and the editor already shows the result: the marks only appear when the cursor passes over them.
 
 ## Text
 
-**Bold**, *italic*, ~~strikethrough~~, ==highlight==, `code` and an [external link](https://obsidian.md). A footnote works too.[^1]
+**Bold**, *italic*, ~~strikethrough~~, ==highlight==, `code` and [a link out](https://github.com/gabriellsalesx/blup). A footnote works too.[^1]
 
 [^1]: Footnotes go to the end of the post, with a link back.
 
@@ -17,7 +17,7 @@ This post is a showcase. Open the note in Obsidian and see how each block was wr
 
 - A list
 - with items
-  - and sub-items
+  - and sub items
 
 1. Numbered list
 2. Second step
@@ -29,8 +29,9 @@ This post is a showcase. Open the note in Obsidian and see how each block was wr
 
 | Theme | For whom |
 | --- | --- |
-| Mochi | Personal blog |
-| Bento | Product site |
+| Mochi | A blog with cards and covers |
+| Nori | A single column blog, with the text up front |
+| Bento | A product site |
 
 ## Quote
 
@@ -38,22 +39,22 @@ This post is a showcase. Open the note in Obsidian and see how each block was wr
 
 ## Callouts
 
-Obsidian callouts become colored boxes, with the same icon:
+Callouts become colored boxes, with an icon. In the Studio, use **Callout**:
 
 > [!note] Note
-> The type goes between brackets: `> [!note]`. The title is optional.
+> The type goes in square brackets: `> [!note]`. The title is optional.
 
 > [!tip] Tip
 > There are also info, todo, success, question, warning, failure, danger, bug, example, quote and abstract.
 
-> [!warning] Warning
-> Without a title, the callout shows the type name.
+> [!warning] Heads up
+> With no title, the callout shows the type's name.
 
 > [!danger]
 > This one has no title.
 
 > [!example]- Click to open
-> A `-` after the type starts the callout folded. A `+` starts it open, but foldable.
+> A `-` after the type keeps the callout closed. A `+` keeps it open, but foldable.
 
 ## Code
 
@@ -69,9 +70,9 @@ func main() {
 
 The colors follow the language written after the three backticks.
 
-## Math
+## Formulas
 
-Math inline, like $E = mc^2$, and as a block:
+Formulas in the middle of the text, like $E = mc^2$, and as a block:
 
 $$
 x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
@@ -79,10 +80,10 @@ $$
 
 ## Comments
 
-Text between `%%` and `%%` is an Obsidian comment: you see it while editing and it disappears on the site. Use it for reminders and drafts inside the post. %%This bit, for example, only exists in Obsidian.%%
+Text between `%%` and `%%` is a comment: it shows while you edit, in the Studio or in Obsidian, and disappears on the site. It's for reminders and drafts inside the post. %%This part, for example, only exists in the notes.%%
 
-## Horizontal rule
+## Divider
 
 ---
 
-Three hyphens on a line of their own draw the line above.
+Three hyphens on a line by themselves draw the line above.

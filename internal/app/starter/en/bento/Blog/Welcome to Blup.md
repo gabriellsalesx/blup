@@ -1,25 +1,28 @@
 ---
 title: Welcome to Blup
 date: {{date}}
-description: Your Obsidian vault is now a product site. See where to start.
-tags: [Announcements]
+description: This example site is a Blup tutorial. Here is where to start.
+tags: [News]
 image: "[[blup-bem-vindo.jpg]]"
+authors: [Blup]
 ---
-This whole site was created by Blup from an Obsidian folder, and works as both a tutorial and a template.
+This whole site was made by Blup from a folder of notes. It works as a tutorial and as a template for yours.
 
-## What's here
+## What is here
 
 - **Docs**: everything about Blup, from installing to publishing.
-- **Roadmap**: an example board with planned, in progress and done items.
-- **Changelog**: example versions, from newest to oldest.
-- **Help center**: collections of questions and answers.
-- **Blog**: this one, with cover, tags, authors and related posts.
+- **Roadmap**: a board with planned, in progress and done items.
+- **Changelog**: the versions, newest first.
+- **Help center**: short questions and answers, step by step.
+- **Blog**: this one, with covers, tags, authors and related posts.
 
 ## How to use this template
 
-1. Open each note in Obsidian and compare it with the page.
+1. Open the notes in **Blup Studio**, with the preview beside them, and compare them with the pages.
 2. Replace the text with your product's, little by little.
-3. Delete what you don't use: a whole section leaves the site when you delete its folder.
+3. Delete what you don't need. In the Studio, the **Sections** screen removes a whole section (and lets you bring it back later).
+
+Prefer Obsidian? Open the same folder there: the notes are plain Markdown files.
 
 > [!tip] Start with the name
-> The **_index** note of the site folder has the settings: name, description, logo, menu and social links.
+> In the Studio, the **Site** screen changes the name, description, logo, menu and social links. In Obsidian, these settings live in the **_index** note of the site folder.

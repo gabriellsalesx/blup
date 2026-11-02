@@ -1,13 +1,45 @@
 ---
 title: Install and create the site
 date: {{date-1}}
-description: One command to install, and a wizard that asks one thing at a time.
-tags: [Getting started, CLI]
-image: "[[blup-terminal.jpg]]"
+description: Download Blup Studio and create the site by answering one question at a time. Or use the command line with Obsidian.
+tags: [Getting started, Studio]
+image: "[[blup-dicas.jpg]]"
 ---
-Blup is a terminal program, but you don't need to memorize anything: it shows a menu and asks one question at a time.
+## Install Blup Studio
 
-## Install
+**Blup Studio** downloads from **getblup.io**, for Linux, macOS and Windows. Install it like any other app and open it.
+
+The first time, the Studio says hello and asks a few quick questions: the language, whether you want to connect your GitHub account now, and a general password for password protected posts. You can skip whatever you like and come back to it later, in **Settings** (the gear, at the bottom of the side menu).
+
+## Create a site
+
+On the home screen, click **Create a new site**. The Studio asks one question at a time, and you can change everything later.
+
+1. **What kind of site**: a personal blog or a product site.
+2. **Which theme**: Mochi (this one, with cards and covers) or Nori, for a blog; Bento, for a product site.
+3. **What's the site called**: the name, one sentence about it, your name and the site's language.
+4. **Where do the notes live**: in a new folder (the simplest way), in a folder you pick or in your Obsidian vault.
+5. **All set?** Check everything and create the site.
+
+If the folder is empty, Blup puts in the theme's example site: this tutorial.
+
+> [!tip] Using Obsidian too?
+> If you pick your Obsidian vault, leave **Adjust Obsidian so links work on the site** checked. Obsidian then saves links in the format the site understands.
+
+## The site window
+
+- **Files**, on the left: the notes and folders. Use **New note** and **New folder** to create them, and the search to find a note.
+- **The editor**, in the middle: where you write. Above it is the note's **Properties** panel.
+- **Preview**, on the right: the real site, updated while you write.
+- **The side menu**: Write, Attachments, Authors, Site, Sections, Languages, Comments, Cookies and statistics, Publish and Trash, plus the terminal.
+
+There is no save button: the Studio saves on its own while you write.
+
+Right click a note to create another one there, make a copy, move it, copy the link, rename, export or delete it. **Rename** updates the links that point to the note by itself, and **Delete** sends the note to the **Trash**, where you can restore it.
+
+## With Obsidian, through the command line
+
+Prefer writing in Obsidian? Install the `blup` command line.
 
 On macOS or Linux, open the Terminal and paste:
 
@@ -21,42 +53,19 @@ On Windows, open PowerShell and paste:
 irm https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.ps1 | iex
 ```
 
-Then run `blup`. The first time, it asks for the language and opens the new site wizard.
-
-## The wizard
-
-Every question comes with a suggested answer; when in doubt, press Enter.
-
-1. **Which Obsidian vault** becomes a site.
-2. **Which folder** of it: the whole vault or just one folder, like "Blog".
-3. **Theme**: Mochi (personal blog, this one) or Bento (product site, with docs, roadmap, changelog, help center and blog).
-4. **Site name**, **one sentence about it** and **your name**.
-5. **Site language** and **where to save** the site files on your computer.
-6. **Obsidian adjustments**: Blup asks to use Markdown links with relative paths, the format websites understand.
-7. **Keep the notes on GitHub**, if you want to use them on another computer.
-8. **Open the preview**.
-
-> [!info] Where things live
-> Your notes stay in your vault, as always. In a separate folder, Blup keeps the **blup.toml** file (where to publish, general password) and the files Hugo uses to build the site. You don't need to open that folder.
-
-## The commands
-
-Running just `blup` opens the menu with everything. If you prefer, each action has a command:
+Then run `blup`. The first time it asks for the language and opens the new site wizard: which Obsidian vault, which folder in it, the theme (Mochi or Bento), the site's name and where to save it. Each question comes with a suggested answer; when in doubt, press Enter.
 
 | Command | What it does |
 | --- | --- |
 | `blup new` | Creates a new site |
 | `blup preview` | Opens the preview in the browser |
 | `blup publish` | Puts the site online |
-| `blup customize` | Menu, social links, logo, favicon and author |
+| `blup customize` | Menu, social links, logo, comments, cookies and domain |
 | `blup sync` | Keeps the notes in a private GitHub repository |
 | `blup convert` | Turns `[[wikilinks]]` into standard links |
-| `blup build` | Builds the site into the public folder, with no questions |
-| `blup language` | Changes Blup's language |
 | `blup update` | Updates Blup |
 
-The Portuguese commands work too: `novo`, `ver`, `publicar`, `personalizar`, `sincronizar`, `converter`, `gerar`, `idioma` and `atualizar`.
+The same commands also work in Portuguese: `novo`, `ver`, `publicar`, `personalizar`, `sincronizar`, `converter` and `atualizar`.
 
-## Updates
-
-Blup checks once a day for a new version and **always asks** before updating. If something goes wrong, `blup update --rollback` goes back to the previous version.
+> [!info] Both together
+> A site created in the Studio opens in the command line, and the other way around too. The notes are the same; only where you click changes.

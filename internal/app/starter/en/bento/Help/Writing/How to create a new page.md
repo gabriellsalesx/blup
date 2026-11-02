@@ -1,13 +1,19 @@
 ---
-title: How to create a new page
-description: Create a note in the right folder. That's it.
+title: How do I create a new page?
+description: Create a note in the section folder. That's it.
 weight: 1
 ---
-1. In Obsidian, create a note inside the section's folder, like **Docs** or **Blog**.
-2. Name the note: the name becomes the title, if there is no `title` property.
-3. Write and save.
+## In Blup Studio
 
-In the preview (`blup preview`), the page shows up right away. To publish, `blup publish`.
+1. In the sidebar, click the section folder, like **Docs** or **Blog**.
+2. Use **New note** (or `Ctrl+N`), type the name and press Enter.
+3. Write. The Studio saves on its own, and the preview shows the page right away.
+
+The note's name becomes the page title, unless you fill in **Title** in the properties.
+
+## In Obsidian
+
+Create the note inside the section folder and write. With `blup preview` running, the page shows up in the preview as soon as you save.
 
 > [!tip] Start from a template
-> Use **Templates: Insert template** in Obsidian to start with the right properties.
+> In Obsidian, use **Templates: Insert template** to start with the right properties for each section.

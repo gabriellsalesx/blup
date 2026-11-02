@@ -1,6 +1,6 @@
 ---
 title: "{{title}}"
-description: Documentación, roadmap, novedades, centro de ayuda y blog, todo escrito en Obsidian.
+description: Documentación, roadmap, novedades, centro de ayuda y blog, escritos en Blup Studio o en Obsidian.
 site_name: "{{title}}"
 site_description:
 logo:
@@ -11,18 +11,18 @@ social:
 button_text:
 button_link:
 ---
-Este sitio ya trae un tutorial completo de Blup. Cada sección de abajo es una carpeta de tu bóveda: abre las notas en Obsidian para ver cómo se hizo cada página, después edítalas y cámbialas por el contenido de tu producto.
+Este sitio de ejemplo ya trae un tutorial completo de Blup. Cada sección de abajo es una carpeta de tus notas: abre las notas en **Blup Studio** (la forma recomendada) para ver cómo se hizo cada página, con la vista previa del sitio al lado. Si prefieres, las mismas carpetas se abren en **Obsidian**, porque las notas son archivos Markdown comunes. Después, solo tienes que editarlas y cambiarlas por el contenido de tu producto.
 
 %%
-Este bloque es un comentario de Obsidian (el texto entre los dos pares de signos de porcentaje): solo aparece mientras editas, nunca en el sitio.
+Este bloque es un comentario (el texto entre los dos pares de signos de porcentaje): solo aparece mientras editas, nunca en el sitio.
 
-El texto de arriba es la presentación de la página de inicio. Las propiedades de esta nota (_index) configuran todo el sitio, y Blup ("Personalizar el sitio") edita las mismas:
+El texto de arriba es la presentación de la página de inicio. Las propiedades de esta nota (_index) configuran todo el sitio. En Blup Studio, las editas todas en la pantalla Sitio, sin tocar nada aquí. En Obsidian, edítalas a mano en las propiedades de la nota:
 
 - site_name y site_description: el nombre (pestaña del navegador, pie de página y Google) y una frase sobre el sitio.
-- logo y favicon: imágenes de la bóveda, como [[logo.png]].
-- menu: un elemento por línea. "Documentación" usa la carpeta; "Tienda | https://ejemplo.com" se vuelve un enlace. Vacío, el menú muestra las secciones.
-- social: direcciones de tus perfiles; el ícono sale de la dirección.
-- button_text y button_link: el botón de la esquina superior derecha.
+- logo y favicon: imágenes de tus notas, como [[logo.png]].
+- menu: un elemento por línea. "Documentación" usa la carpeta; "Tienda | https://ejemplo.com" se convierte en un enlace. Si está vacío, el menú muestra las secciones. En el Studio, puedes crear submenús arrastrando un elemento sobre otro.
+- social: las direcciones de tus perfiles; el ícono sale de la dirección. En el Studio, hay un botón para cada red.
+- button_text y button_link: el botón destacado en la esquina superior derecha.
 
-Todo explicado en Documentación > Configuración.
+Todo está explicado en la Documentación.
 %%

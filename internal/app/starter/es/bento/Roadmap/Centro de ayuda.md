@@ -5,4 +5,4 @@ status: completado
 category: Bento
 weight: 2
 ---
-El **weight** ordena las tarjetas dentro de la columna: esta va después de "Sincronizar las notas".
+El **weight** ordena las tarjetas dentro de la columna: esta va después de "Blup Studio".

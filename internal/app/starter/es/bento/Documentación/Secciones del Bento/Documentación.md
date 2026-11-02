@@ -10,7 +10,7 @@ La documentación es la sección que estás leyendo. Está en una carpeta de la 
 - Cada **nota** es una página.
 - Cada **subcarpeta** es un grupo en el menú lateral, con el título de su _index.
 - La **_index** de la carpeta de la documentación es la página de apertura.
-- El orden sigue la propiedad **weight** (el menor primero) y, sin ella, el nombre de la nota.
+- El orden sigue la propiedad **weight** (menor primero) y, sin ella, el nombre de la nota.
 
 ```text
 Documentación/
@@ -23,7 +23,7 @@ Documentación/
     └── _index.md       weight: 2
 ```
 
-## Qué tiene cada página
+## Lo que recibe cada página
 
 - **Menú lateral** con todos los grupos; el grupo actual queda abierto.
 - **En esta página**: los títulos `##` y `###`, al lado del texto.
@@ -31,5 +31,12 @@ Documentación/
 - **Anterior y Siguiente** al final, siguiendo el orden del menú.
 - **Búsqueda** en todas las páginas del sitio.
 
+## Crear una página
+
+- **En Blup Studio**: haz clic en una subcarpeta de la Documentación, luego en **Nueva nota** (o `Ctrl+N`). Completa **Título**, **Descripción** y **Orden** en las propiedades.
+- **En Obsidian**: crea la nota en la subcarpeta y escribe `title`, `description` y `weight` arriba.
+
+Para un grupo nuevo, crea una subcarpeta con una nota **_index** (título, descripción y `weight`).
+
 > [!tip] Una descripción corta ayuda
-> La propiedad **description** aparece debajo del título y en Google. Una frase basta.
+> La propiedad **description** aparece debajo del título y en Google. Basta con una frase.

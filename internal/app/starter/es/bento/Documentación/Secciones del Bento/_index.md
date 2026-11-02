@@ -1,4 +1,5 @@
 ---
 title: Secciones del Bento
-weight: 3
+description: Documentación, roadmap, changelog, centro de ayuda, blog, feedback y comentarios.
+weight: 7
 ---
