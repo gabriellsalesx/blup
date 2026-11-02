@@ -33,7 +33,7 @@ Por exemplo, num site `pt`, `Posts/Texto.md` usa `Prefs.Voices["pt"]`, `Posts/en
 | Representação | Interpretação |
 | --- | --- |
 | `kokoro:pf_dora` | Voz local |
-| `blup:pt-BR-Luana:MAI-Voice-2.1` | Voz remota pelo uso de IA do plano Blup Cloud |
+| `blup:<modelo>\|<voz>` | Voz remota pelo uso de IA do plano Blup Cloud, de qualquer modelo de voz do OpenRouter que responde MP3 (escolhas antigas `blup:<voz>` valem como do modelo recomendado) |
 | `microsoft/mai-voice-2.1\|pt-BR-Luana:MAI-Voice-2.1` | Modelo e voz OpenRouter |
 | `<modelo>\|` | Voz padrão do modelo |
 | Nome antigo sem `\|` | Voz do modelo remoto recomendado |
@@ -47,7 +47,7 @@ Por exemplo, num site `pt`, `Posts/Texto.md` usa `Prefs.Voices["pt"]`, `Posts/en
 
 Assim, uma voz portuguesa salva no campo inglês não força a leitura em português: ela é descartada nessa resolução e cai no padrão inglês aplicável. Para idiomas fora de `pt`, `en` e `es`, as rotinas usam inglês como fallback. O retorno ao padrão resolve escolhas ausentes ou incompatíveis; falha de síntese de uma voz já aceita não inicia automaticamente outro motor.
 
-`NarrationVoices` lista locais, vozes do modelo recomendado pelo Blup Cloud e vozes do modelo OpenRouter solicitado. Informa motor, nome, disponibilidade e existência de amostra. Disponibilidade OpenRouter significa haver chave salva; no Blup Cloud depende de o plano incluir IA. Isso não garante saldo ou sucesso da próxima chamada. Amostras gravadas estão em `studio/frontend/public/voices`. `Studio.NarrationEstimate` usa o mesmo idioma e preferência para decidir se deve estimar o uso de IA do Blup Cloud.
+`NarrationVoices(idioma, modelo, modeloBlup)` lista locais, vozes do modelo escolhido para o Blup Cloud (só modelos pagos: os gratuitos não passam pelo plano) e vozes do modelo OpenRouter solicitado. Nas Configurações, os grupos Blup Cloud e OpenRouter só aparecem depois de conectar; o do Blup Cloud tem o mesmo seletor de modelo, sem preço, com o aviso de que modelos mais caros gastam a cota mais rápido. Informa motor, nome, disponibilidade e existência de amostra. Disponibilidade OpenRouter significa haver chave salva; no Blup Cloud depende de o plano incluir IA. Isso não garante saldo ou sucesso da próxima chamada. Amostras gravadas estão em `studio/frontend/public/voices`. `Studio.NarrationEstimate` usa o mesmo idioma e preferência para decidir se deve estimar o uso de IA do Blup Cloud.
 
 ## OpenRouter
 
@@ -71,7 +71,7 @@ O frontend decide entre reproduzir a amostra gravada indicada por `sample` e cha
 
 ## Voz pelo Blup Cloud
 
-`internal/app/narration_blup.go` trata escolhas `blup:`. `EstimateNarration` conta os caracteres Unicode do texto falável e consulta o custo por caractere e o uso disponível. `speakBlup` verifica se o texto inteiro cabe no uso restante, considerando o teto semanal, e envia as partes pela API de IA do Blup Cloud usando o modelo recomendado e a voz já resolvida no idioma da nota. Junta os MP3 pelo mesmo `JoinMP3`; falha de crédito ou autorização interrompe, sem troca automática para Kokoro. Os controles da conta e do uso estão em [Studio](studio.md#configurações-globais).
+`internal/app/narration_blup.go` trata escolhas `blup:`. `EstimateNarration` conta os caracteres Unicode do texto falável e consulta o custo por caractere e o uso disponível. `speakBlup` verifica se o texto inteiro cabe no uso restante, considerando o teto semanal, e envia as partes pela API de IA do Blup Cloud usando o modelo e a voz escolhidos (a voz do modelo recomendado é resolvida no idioma da nota). O custo por caractere é o do Blup Cloud para o modelo recomendado e, para os outros, o preço do OpenRouter (`perCharMicros`), o mesmo que o servidor cobra: `cloud/worker/ai.ts` lê a lista de modelos de voz do OpenRouter (no máximo a cada 6 horas por isolate), aceita o modelo e a voz que ela traz e desconta da cota o preço real do modelo. Junta os MP3 pelo mesmo `JoinMP3`; falha de crédito ou autorização interrompe, sem troca automática para Kokoro. Os controles da conta e do uso estão em [Studio](studio.md#configurações-globais).
 
 ## Kokoro local
 

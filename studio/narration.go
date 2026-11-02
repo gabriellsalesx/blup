@@ -59,8 +59,8 @@ func (s *Studio) OpenAIKeyPage() { s.OpenURL(narrate.KeyPage) }
 
 // Voices lists the narration voices for sites in lang ("pt", "en" or "es"): the
 // local ones, then those of the OpenRouter model ("" for the recommended).
-func (s *Studio) Voices(lang, model string) ([]app.Voice, error) {
-	return app.NarrationVoices(context.Background(), lang, model)
+func (s *Studio) Voices(lang, model, blupModel string) ([]app.Voice, error) {
+	return app.NarrationVoices(context.Background(), lang, model, blupModel)
 }
 
 // VoiceModels lists OpenRouter's voice models that can read sites in lang.
@@ -110,7 +110,7 @@ func (s *Studio) NarrationEstimate(rel string) (*app.NarrationCost, error) {
 	if !app.NarratesThroughBlup(lang, s.Prefs().Voices[lang]) {
 		return nil, nil
 	}
-	c, err := app.EstimateNarration(context.Background(), site, rel)
+	c, err := app.EstimateNarration(context.Background(), site, rel, s.Prefs().Voices[lang])
 	if err != nil {
 		return nil, err
 	}

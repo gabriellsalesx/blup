@@ -168,7 +168,7 @@ func TestBlupNarration(t *testing.T) {
 	if !NarratesThroughBlup("pt", voice) {
 		t.Fatal("blup voice not recognized")
 	}
-	cost, err := EstimateNarration(ctx, site, "post.md")
+	cost, err := EstimateNarration(ctx, site, "post.md", "")
 	if err != nil || !cost.Enough || cost.Percent < 5 || cost.Percent > 20 {
 		t.Fatalf("estimate = %+v, %v", cost, err)
 	}
@@ -176,14 +176,14 @@ func TestBlupNarration(t *testing.T) {
 	if err != nil || n.Bytes == 0 {
 		t.Fatalf("narrate = %+v, %v", n, err)
 	}
-	after, _ := EstimateNarration(ctx, site, "post.md")
+	after, _ := EstimateNarration(ctx, site, "post.md", "")
 	if after.Left >= cost.Left {
 		t.Fatalf("the allowance did not go down: %d -> %d", cost.Left, after.Left)
 	}
 	// A text larger than what is left is refused before anything is spent.
 	big := strings.Repeat("Texto enorme para narrar de uma vez só. ", 1000)
 	os.WriteFile(filepath.Join(notes, "enorme.md"), []byte("---\ntitle: Enorme\n---\n"+big+"\n"), 0o644)
-	if c, _ := EstimateNarration(ctx, site, "enorme.md"); c.Enough {
+	if c, _ := EstimateNarration(ctx, site, "enorme.md", ""); c.Enough {
 		t.Fatalf("a huge text fits? %+v", c)
 	}
 	if _, err := Narrate(ctx, site, "enorme.md", voice, nil); err == nil || !strings.Contains(err.Error(), "uso de IA") {

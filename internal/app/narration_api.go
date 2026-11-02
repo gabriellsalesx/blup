@@ -105,6 +105,15 @@ func splitChoice(c string) (model, voice string) {
 
 func joinChoice(model, voice string) string { return model + "|" + voice }
 
+// blupChoice is a Blup Cloud voice's model and voice ("blup:" taken off):
+// "<model>|<voice>", or a recommended model's voice alone (older choices).
+func blupChoice(rest string) (model, voice string) {
+	if m, v, ok := strings.Cut(rest, "|"); ok {
+		return m, v
+	}
+	return narrate.DefaultModel, rest
+}
+
 // ModelOption is an OpenRouter voice model for a site's language.
 type ModelOption struct {
 	ID          string  `json:"id"`
@@ -158,7 +167,7 @@ type Voice struct {
 // NarrationVoices lists the voices for a site in lang ("pt", "en" or "es"): the
 // local ones, then those of the OpenRouter model (the recommended one when
 // model is "").
-func NarrationVoices(ctx context.Context, lang, model string) ([]Voice, error) {
+func NarrationVoices(ctx context.Context, lang, model, blupModel string) ([]Voice, error) {
 	creds, err := config.LoadCredentials()
 	if err != nil {
 		return nil, err
@@ -170,15 +179,28 @@ func NarrationVoices(ctx context.Context, lang, model string) ([]Voice, error) {
 			out = append(out, Voice{ID: localPrefix + v.ID, Name: v.Name, Engine: "local", Female: v.Female, Ready: installed, Sample: true})
 		}
 	}
-	// Through Blup Cloud: the recommended model's voices, on paid plans.
-	included := blupAIIncluded(ctx)
-	for _, v := range narrate.VoicesFor(narrate.Known(), lang) {
-		out = append(out, Voice{ID: blupPrefix + v, Name: narrate.VoiceName(v), Engine: "blup", Ready: included, Sample: narrate.HasSample(v)})
-	}
 	if model == "" {
 		model = narrate.DefaultModel
 	}
+	if blupModel == "" {
+		blupModel = narrate.DefaultModel
+	}
 	list, err := speechModels(ctx)
+	// Through Blup Cloud, on plans with AI: the voices of the model chosen
+	// there (any of OpenRouter's; a dearer one uses the allowance faster).
+	included := blupAIIncluded(ctx)
+	for _, m := range list {
+		if m.ID != blupModel || m.PerThousand <= 0 { // free ones aren't offered through the plan
+			continue
+		}
+		for _, v := range narrate.VoicesFor(m, lang) {
+			name := narrate.VoiceName(v)
+			if v == "" {
+				name = byLangCode(lang, "Voz padrão do modelo", "The model's default voice", "Voz predeterminada del modelo")
+			}
+			out = append(out, Voice{ID: blupPrefix + joinChoice(m.ID, v), Name: name, Engine: "blup", Ready: included, Sample: m.ID == narrate.DefaultModel && narrate.HasSample(v)})
+		}
+	}
 	for _, m := range list {
 		if m.ID != model {
 			continue
@@ -225,8 +247,12 @@ func voiceFor(lang, chosen string) string {
 				return chosen
 			}
 		}
-	} else if v, ok := strings.CutPrefix(chosen, blupPrefix); ok {
-		return blupPrefix + narrate.VoiceFor(lang, v)
+	} else if rest, ok := strings.CutPrefix(chosen, blupPrefix); ok {
+		if model, v := blupChoice(rest); model != narrate.DefaultModel {
+			return blupPrefix + joinChoice(model, v)
+		} else {
+			return blupPrefix + joinChoice(model, narrate.VoiceFor(lang, v))
+		}
 	} else if model, voice := splitChoice(chosen); model != "" && (model != narrate.DefaultModel || narrate.VoiceFor(lang, voice) == voice) {
 		return joinChoice(model, voice)
 	}
@@ -294,8 +320,9 @@ func PreviewVoice(ctx context.Context, lang, choice string) ([]byte, error) {
 	// person's OpenRouter key.
 	key, base := creds.OpenRouterToken, openRouterURL
 	model, voice := splitChoice(choice)
-	if v, ok := strings.CutPrefix(choice, blupPrefix); ok {
-		model, voice, key, base = narrate.DefaultModel, v, creds.BlupToken, blupcloud.AIBaseURL()
+	if rest, ok := strings.CutPrefix(choice, blupPrefix); ok {
+		model, voice = blupChoice(rest)
+		key, base = creds.BlupToken, blupcloud.AIBaseURL()
 	}
 	if key == "" {
 		return nil, ErrNoAIKey
@@ -401,8 +428,9 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 	var used string
 	if id, ok := strings.CutPrefix(voice, localPrefix); ok {
 		mp3, seconds, err = speakLocal(ctx, text, id, progress)
-	} else if v, ok := strings.CutPrefix(voice, blupPrefix); ok {
-		mp3, seconds, err = speakBlup(ctx, site, text, v, progress)
+	} else if rest, ok := strings.CutPrefix(voice, blupPrefix); ok {
+		model, v := blupChoice(rest)
+		mp3, seconds, err = speakBlup(ctx, site, text, model, v, progress)
 	} else {
 		mp3, seconds, used, err = speakOpenRouter(ctx, lang, text, voice, progress)
 	}

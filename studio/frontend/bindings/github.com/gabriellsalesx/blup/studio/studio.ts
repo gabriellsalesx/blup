@@ -1383,8 +1383,8 @@ export function VoiceModels(lang: string): $CancellablePromise<app$0.ModelOption
  * Voices lists the narration voices for sites in lang ("pt", "en" or "es"): the
  * local ones, then those of the OpenRouter model ("" for the recommended).
  */
-export function Voices(lang: string, model: string): $CancellablePromise<app$0.Voice[] | null> {
-    return $Call.ByID(766145645, lang, model);
+export function Voices(lang: string, model: string, blupModel: string): $CancellablePromise<app$0.Voice[] | null> {
+    return $Call.ByID(766145645, lang, model, blupModel);
 }
 
 /**

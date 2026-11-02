@@ -23,6 +23,43 @@ export const VOICE_MODEL = "microsoft/mai-voice-2.1";
 export const PER_CHAR_MICROS = 22;
 const VOICE = /^(pt-BR|en-US|es-MX|es-ES)-[A-Za-z]+:MAI-Voice-2\.1$/;
 
+// The other voice models: any of OpenRouter's that answer MP3, at what
+// OpenRouter charges (a dearer one uses the allowance faster). The list
+// is read from OpenRouter at most every 6 hours per isolate; without it,
+// only the recommended model.
+type SpeechModel = { perCharMicros: number; voices: string[] };
+let speechCache: { at: number; models: Map<string, SpeechModel> } | null = null;
+// Models that answer only raw audio, or are run on the computer instead.
+const NOT_OFFERED = /^(google\/gemini|heygen\/)|kokoro|seed/i;
+async function speechModels(env: Cloudflare.Env): Promise<Map<string, SpeechModel>> {
+	if (speechCache && Date.now() - speechCache.at < 6 * 3600 * 1000) return speechCache.models;
+	const models = new Map<string, SpeechModel>();
+	try {
+		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/models?output_modalities=speech`);
+		if (res.ok) {
+			const list = (await res.json()) as { data?: { id?: string; pricing?: { prompt?: string }; supported_voices?: string[] }[] };
+			for (const m of list.data ?? []) {
+				const perChar = Number(m.pricing?.prompt ?? 0) * 1e6;
+				if (!m.id || NOT_OFFERED.test(m.id) || !(perChar > 0)) continue;
+				models.set(m.id, { perCharMicros: perChar, voices: (m.supported_voices ?? []).filter((v) => typeof v === "string") });
+			}
+		}
+	} catch {}
+	if (!models.size) return new Map([[VOICE_MODEL, { perCharMicros: PER_CHAR_MICROS, voices: [] }]]);
+	speechCache = { at: Date.now(), models };
+	return models;
+}
+
+// What a narration request costs per character, or null when the model
+// or the voice isn't offered.
+export async function voicePrice(env: Cloudflare.Env, model: string, voice: string): Promise<number | null> {
+	if (model === VOICE_MODEL) return VOICE.test(voice) ? PER_CHAR_MICROS : null;
+	const m = (await speechModels(env)).get(model);
+	if (!m || voice.length > 100) return null;
+	if (m.voices.length ? !m.voices.includes(voice) : voice !== "") return null;
+	return m.perCharMicros;
+}
+
 // The translation model (the same as the Studio's internal/translate) and
 // its languages. The request is built here: Blup Cloud translates notes,
 // it is not a general chat.
@@ -118,13 +155,16 @@ export const aiApi = new Hono<App>()
 		const body = await c.req.json<{ model?: string; input?: string; voice?: string }>().catch(() => null);
 		const input = typeof body?.input === "string" ? body.input : "";
 		const chars = [...input].length;
-		if (body?.model !== VOICE_MODEL || !VOICE.test(body.voice ?? "") || !chars || chars > MAX_INPUT) {
+		const model = typeof body?.model === "string" ? body.model : "";
+		const voice = typeof body?.voice === "string" ? body.voice : "";
+		const perChar = model ? await voicePrice(c.env, model, voice) : null;
+		if (perChar === null || !chars || chars > MAX_INPUT) {
 			return c.json(fail("Pedido de narração inválido.", "BAD_REQUEST"), 400);
 		}
 		const plan = await planOf(userId);
 		if (!plan.limits.aiUsage) return c.json(fail("O seu plano não inclui IA pelo Blup Cloud.", "NO_AI"), 402);
 		const use = await aiUsageOf(userId, plan);
-		const cost = chars * PER_CHAR_MICROS;
+		const cost = Math.ceil(chars * perChar);
 		if (use.usedMonthMicros + cost > use.monthMicros) return c.json(fail("O uso de IA deste mês acabou. Ele renova no dia 1.", "AI_MONTH_LIMIT"), 402);
 		if (use.usedWeekMicros + cost > use.weekCapMicros) return c.json(fail("Você já usou metade do uso de IA do mês nesta semana. Tente de novo em alguns dias.", "AI_WEEK_LIMIT"), 402);
 		if (!c.env.OPENROUTER_API_KEY) return c.json(fail("A narração pelo Blup Cloud está indisponível agora.", "UNAVAILABLE"), 503);
@@ -137,7 +177,7 @@ export const aiApi = new Hono<App>()
 				"HTTP-Referer": "https://getblup.io",
 				"X-Title": "Blup Cloud",
 			},
-			body: JSON.stringify({ model: VOICE_MODEL, input, voice: body.voice, response_format: "mp3" }),
+			body: JSON.stringify({ model, input, ...(voice ? { voice } : {}), response_format: "mp3" }),
 		});
 		if (!res.ok) {
 			console.error("[blup] narração falhou", res.status, (await res.text()).slice(0, 300));

@@ -196,7 +196,12 @@
   type Voice = { id: string; name: string; engine: string; female: boolean; ready: boolean; sample: boolean };
   type Model = { id: string; name: string; perPost: number; recommended: boolean; voices: number };
   const DEFAULT_MODEL = "microsoft/mai-voice-2.1";
-  const norm = (id = "") => (id && !id.includes("|") && !id.startsWith("kokoro:") ? `${DEFAULT_MODEL}|${id}` : id);
+  // Blup Cloud's are "blup:<model>|<voice>" (older: "blup:<voice>", of the
+  // recommended model).
+  const norm = (id = "") => {
+    if (id.startsWith("blup:")) return id.includes("|") ? id : `blup:${DEFAULT_MODEL}|${id.slice(5)}`;
+    return id && !id.includes("|") && !id.startsWith("kokoro:") ? `${DEFAULT_MODEL}|${id}` : id;
+  };
   // A default voice per language, for every site: a post is narrated in
   // the language picked then (Props), with that language's voice.
   const LANGS = [["pt", "Português"], ["en", "English"], ["es", "Español"]] as const;
@@ -205,16 +210,20 @@
   let voiceLang = $state<string>(firstLang());
   let voices = $state<Record<string, Voice[]>>({ pt: [], en: [], es: [] });
   let models = $state<Record<string, Model[]>>({ pt: [], en: [], es: [] });
-  const modelOf = (l: string) => { const c = norm(look.voices?.[l]); return c.includes("|") ? c.split("|")[0] : DEFAULT_MODEL; };
-  let model = $state<Record<string, string>>({ pt: modelOf("pt"), en: modelOf("en"), es: modelOf("es") });
+  // The model chosen for OpenRouter and for Blup Cloud, each from the
+  // voice chosen (else the recommended one).
+  const modelOf = (l: string, blup: boolean) => { const c = norm(look.voices?.[l]); return c.startsWith("blup:") === blup && c.includes("|") ? c.replace(/^blup:/, "").split("|")[0] : DEFAULT_MODEL; };
+  let model = $state<Record<string, string>>({ pt: modelOf("pt", false), en: modelOf("en", false), es: modelOf("es", false) });
+  let blupModel = $state<Record<string, string>>({ pt: modelOf("pt", true), en: modelOf("en", true), es: modelOf("es", true) });
+  const reloadVoices = (l: string) => Voices(l, model[l], blupModel[l]).then((v) => (voices[l] = v ?? [])).catch(() => {});
   const loadVoices = () => {
     for (const [l] of LANGS) {
-      Voices(l, model[l]).then((v) => (voices[l] = v ?? [])).catch(() => {});
+      reloadVoices(l);
       VoiceModels(l).then((m) => (models[l] = m ?? [])).catch(() => {});
     }
   };
   loadVoices();
-  const pickModel = (l: string, id: string) => { model[l] = id; Voices(l, id).then((v) => (voices[l] = v ?? [])).catch(() => {}); };
+  const pickModel = (l: string, id: string, blup = false) => { if (blup) blupModel[l] = id; else model[l] = id; reloadVoices(l); };
   const price = (m: Model) => (m.perPost > 0 ? `US$ ${m.perPost.toFixed(2).replace(".", t.lang === "pt" ? "," : ".")}/post` : lv.otherPrice);
   AIConnected().then((v) => (aiOn = v)).catch(() => (aiOn = false));
   const chosen = (l: string) => {
@@ -607,6 +616,16 @@
                     {#each models[l] as m (m.id)}<option value={m.id}>{m.name.replace(/^[^:]+:\s*/, "")}{m.recommended ? ` (${lv.recommended})` : ""} · {price(m)}</option>{/each}
                   </select>
                 </label>
+              {:else if engine === "blup" && models[l].length}
+                <!-- The same models, without the price: the plan pays (a
+                     dearer one uses the month's AI allowance faster). -->
+                <label class="model">
+                  <span>{lv.model}</span>
+                  <select value={blupModel[l]} onchange={(e) => pickModel(l, e.currentTarget.value, true)}>
+                    {#each models[l].filter((m) => m.perPost > 0) as m (m.id)}<option value={m.id}>{m.name.replace(/^[^:]+:\s*/, "")}{m.recommended ? ` (${lv.recommended})` : ""}</option>{/each}
+                  </select>
+                </label>
+                <small class="muted model-help">{lv.blupModelHelp}</small>
               {/if}
               {#each voices[l].filter((v) => v.engine === engine) as v (v.id)}
                 <div class="voice" class:off={!v.ready} class:on={chosen(l) === v.id}>
@@ -767,6 +786,7 @@
   .listen .ring .fill { stroke: var(--blue); stroke-linecap: round; }
   .listen.playing { color: var(--blue); }
   .more { margin-top: .5rem; font-size: .85rem; }
+  .model-help { font-size: .78rem; }
   .listen.loading .ring { animation: ring-turn .9s linear infinite; }
   .listen.loading .ring .fill { stroke-dasharray: 22 78; }
   @keyframes ring-turn { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
