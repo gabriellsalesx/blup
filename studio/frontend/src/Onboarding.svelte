@@ -22,10 +22,10 @@
     nori: { key: "nori", blup: "turma-2", name: o.nori, kind: o.noriFor, about: o.noriAbout, has: o.noriHas },
     bento: { key: "bento", blup: "turma-4", name: o.bento, kind: o.bentoFor, about: o.bentoAbout, has: o.bentoHas },
   };
-  const CATEGORIES = [
+  const CATEGORIES = $derived([
     { key: "blog", blup: "turma-3", scene: "blog-pessoal", name: o.catBlog, about: o.catBlogAbout, themes: ["nori", "mochi"] },
     { key: "product", blup: "turma-4", scene: "site-de-produto", name: o.catProduct, about: o.catProductAbout, themes: ["bento"] },
-  ];
+  ]);
   let category = $state("");
   let model = $state("");
   const catThemes = $derived((CATEGORIES.find((c) => c.key === category)?.themes ?? []).map((k) => THEMES[k]));

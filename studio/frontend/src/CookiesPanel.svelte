@@ -10,16 +10,17 @@
   let { settings, reload, onOpenNote }: { settings: Settings; reload: () => void; onOpenNote: (path: string) => void } = $props();
 
   // The tools: key in blup.toml, field of config.Cookies, label, example.
-  const tools = [
+  const tools = $derived([
     { key: "google_analytics", field: "GoogleAnalytics", label: t.ck.ga, ph: t.ck.gaPh },
     { key: "google_tag_manager", field: "TagManager", label: t.ck.gtm, ph: t.ck.gtmPh },
     { key: "meta_pixel", field: "MetaPixel", label: t.ck.pixel, ph: t.ck.pixelPh },
     { key: "umami", field: "Umami", label: t.ck.umami, ph: t.ck.umamiPh, script: "UmamiScript" },
     { key: "plausible", field: "Plausible", label: t.ck.plausible, ph: t.ck.plausiblePh, script: "PlausibleScript" },
-  ] as const;
+  ] as const);
 
   const c = $state({ ...settings.cookies }) as Record<string, any>;
   // Tools shown: the ones set, plus the ones being added.
+  // svelte-ignore state_referenced_locally
   let shown = $state<string[]>(tools.filter((x) => c[x.field]).map((x) => x.key));
   let errors = $state<Record<string, string>>({});
   let addPick = $state("");

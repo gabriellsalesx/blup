@@ -10,7 +10,7 @@ O Studio é um aplicativo Wails v3 com backend Go e frontend Svelte 5, TypeScrip
 
 O frontend usa runes Svelte como `$state`, `$derived`, `$effect` e `$props`. A entrada `src/main.ts` carrega idioma, tema e mecanismo de undo antes de montar `App`. As traduções da janela ficam em `src/i18n.ts`; as mensagens de trabalho Go continuam em `internal/i18n`.
 
-O idioma inicial segue `config.Global.Lang`, senão `i18n.System()`, em `studio/main.go`. `SetLanguage`, em `studio/about.go`, aceita `pt`, `en` ou `es`, converte outros valores para `en` e salva o idioma global. As Configurações recarregam a interface após a troca. Os rótulos da bandeja são montados no início em `studio/main.go` e só mudam ao reiniciar. Isso não troca o idioma dos sites existentes.
+O idioma inicial segue `config.Global.Lang`, senão `i18n.System()`, em `studio/main.go`. `SetLanguage`, em `studio/about.go`, aceita `pt`, `en` ou `es`, converte outros valores para `en` e salva o idioma global. A troca nas Configurações não recarrega a janela: `t` (`i18n.ts`) é estado do Svelte (`i18n-live.svelte.ts`), e `setLanguage` copia os textos do novo idioma para dentro dos mesmos grupos (`fill`), então toda tela que guardou `t.prefs`, `t.cal` etc. passa a mostrar o novo idioma; listas montadas com textos usam `$derived`. O editor de notas, que monta menus uma vez, é refeito no lugar (`{#key shown.lang}`), com a mesma nota e o mesmo texto. O corretor segue o idioma quando não há dicionário escolhido. No Go, `SetLanguage` troca também o menu da bandeja (`trayLanguage`). Isso não troca o idioma dos sites existentes.
 
 ## Bindings e eventos
 

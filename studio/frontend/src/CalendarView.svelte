@@ -47,7 +47,7 @@
 
   // The weeks shown: six, from the week of the month's first day (Sunday
   // first; Monday in Spanish).
-  const weekStart = t.lang === "es" ? 1 : 0;
+  const weekStart = $derived(t.lang === "es" ? 1 : 0);
   const days = $derived.by(() => {
     const first = new Date(year, month, 1);
     const from = addDays(first, -((first.getDay() - weekStart + 7) % 7));
@@ -68,7 +68,7 @@
   let picker = $state(false);
   let pickYear = $state(0);
   const nowMonth = new Date().getMonth(), nowYear = new Date().getFullYear();
-  const monthNames = Array.from({ length: 12 }, (_, i) => new Intl.DateTimeFormat(t.locale, { month: "short" }).format(new Date(2026, i, 1)).replace(".", ""));
+  const monthNames = $derived(Array.from({ length: 12 }, (_, i) => new Intl.DateTimeFormat(t.locale, { month: "short" }).format(new Date(2026, i, 1)).replace(".", "")));
 
   function go(months: number) {
     const d = new Date(year, month + months, 1);

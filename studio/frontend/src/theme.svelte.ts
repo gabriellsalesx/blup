@@ -10,7 +10,8 @@ export const look = $state<P>({ theme: "system", editorFont: 16, editorWidth: "n
 // The spell check's dictionary: the one chosen, else the Studio's language.
 export const spellLang = () => look.spellLang || t.lang;
 let spellWords: number | undefined;
-const spell = () => { setupSpell(spellLang(), look.words ?? []); enableSpell(look.spellcheck); };
+// Also run when the Studio's language changes (its dictionary may follow).
+export const spell = () => { setupSpell(spellLang(), look.words ?? []); enableSpell(look.spellcheck); };
 
 // Whether the Studio is dark now (chosen, or the system's), for what draws
 // its own colors (the drawings).

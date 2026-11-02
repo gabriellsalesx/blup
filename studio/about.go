@@ -12,7 +12,7 @@ import (
 func (s *Studio) Version() string { return app.Version }
 
 // SetLanguage changes the language of Blup and the Studio ("pt", "en" or "es").
-// The window reloads to show it.
+// The window changes its texts in place (i18n.ts); here, the tray's menu.
 func (s *Studio) SetLanguage(lang string) error {
 	if lang != "pt" && lang != "en" && lang != "es" {
 		lang = "en"
@@ -27,5 +27,6 @@ func (s *Studio) SetLanguage(lang string) error {
 	}
 	i18n.Set(i18n.Lang(lang))
 	s.lang = lang
+	trayLanguage(lang)
 	return nil
 }

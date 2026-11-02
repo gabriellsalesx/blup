@@ -31,8 +31,8 @@
   import LockKeyhole from "@lucide/svelte/icons/lock-keyhole";
   import { ACTIONS, keysOf, type Action } from "./keys";
   import Switch from "./Switch.svelte";
-  import { look, setPref, spellLang } from "./theme.svelte";
-  import { t } from "./i18n";
+  import { look, setPref, spellLang, spell } from "./theme.svelte";
+  import { t, setLanguage } from "./i18n";
 
   // The Studio's settings, like Obsidian's: a window with sections on the
   // left. They are the Studio's (and Blup's), not the open site's.
@@ -50,7 +50,7 @@
 
   // The sections, in groups: the Studio itself, what publishes the sites,
   // AI and voice. Blup Cloud (the account) sits above them, About below.
-  const groups = [
+  const groups = $derived([
     { label: s.groupStudio, tabs: [
       { key: "general", label: s.general, Icon: Settings },
       { key: "look", label: s.look, Icon: Palette },
@@ -66,8 +66,8 @@
       { key: "ai", label: t.ai.title, Icon: Sparkles },
       { key: "narration", label: t.ai.narration, Icon: AudioLines },
     ] },
-  ];
-  const tabs = [{ key: "cloud", label: s.cloud, Icon: Cloud }, ...groups.flatMap((g) => g.tabs), { key: "about", label: s.about, Icon: Info }];
+  ]);
+  const tabs = $derived([{ key: "cloud", label: s.cloud, Icon: Cloud }, ...groups.flatMap((g) => g.tabs), { key: "about", label: s.about, Icon: Info }]);
   const k = t.keys;
 
   // The desktop: opening with the computer, the tray, the global shortcut.
@@ -162,9 +162,15 @@
     try { toast(s.backupDone.replace("{path}", await BackupNow())); } catch (e) { toastError(e); }
     backingUp = false;
   }
+  // The new language shows at once, here and on every screen, without
+  // leaving this one (the Go side changes the tray's menu too).
   async function changeLang(l: string) {
-    await SetLanguage(l);
-    location.reload();
+    try {
+      await SetLanguage(l);
+      setLanguage(l);
+      lang = l;
+      spell();
+    } catch (e) { toastError(e); }
   }
   async function disconnect(account: string) {
     await Disconnect(account);

@@ -53,7 +53,7 @@
   import Cookie from "@lucide/svelte/icons/cookie";
   import Upload from "@lucide/svelte/icons/upload";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
-  import { t } from "./i18n";
+  import { t, shown } from "./i18n";
   import { byDay, iso, parse, type Event as CalEvent } from "./calendar";
   import { lazy } from "./lazy";
   // The views and panels opened now and then load when first opened: a
@@ -856,7 +856,7 @@
           {:else}
           <div class="note">
             {#if !notesVault}<Props props={noteProps} {kind} note={current} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} onOpenNote={openNote} />{/if}
-            <div class="body"><Editor {text} note={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onChange={changed} onSave={save} onError={(e) => (error = e)} onOpenNote={openNote} onNewBoard={notesVault ? (kind) => makeBoard(kind) : undefined} header={notesVault ? noteHead : undefined} {atEnd} onReady={() => (atEnd = false)} /></div>
+            <div class="body">{#key shown.lang}<Editor {text} note={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onChange={changed} onSave={save} onError={(e) => (error = e)} onOpenNote={openNote} onNewBoard={notesVault ? (kind) => makeBoard(kind) : undefined} header={notesVault ? noteHead : undefined} {atEnd} onReady={() => (atEnd = false)} />{/key}</div>
             {#if notesVault}<Backlinks note={current} onOpenNote={openNote} />{/if}
           </div>
           {/if}

@@ -32,23 +32,50 @@ type desktop struct {
 	app    *application.App
 	win    *application.WebviewWindow
 	tray   *application.SystemTray
-	hotkey string // the global shortcut registered now
+	menu   *application.Menu
+	items  [2]*application.MenuItem // the tray menu's Open and Quit
+	hotkey string                   // the global shortcut registered now
 }
 
 var desk desktop
+
+// trayLabels are the tray menu's Open and Quit in a language.
+func trayLabels(lang string) [2]string {
+	switch lang {
+	case "pt":
+		return [2]string{"Abrir o Blup Studio", "Sair"}
+	case "es":
+		return [2]string{"Abrir Blup Studio", "Salir"}
+	}
+	return [2]string{"Open Blup Studio", "Quit"}
+}
+
+// trayLanguage puts the tray's menu in a new language (chosen in the
+// settings, without a restart).
+func trayLanguage(lang string) {
+	if desk.menu == nil || desk.items[0] == nil {
+		return
+	}
+	labels := trayLabels(lang)
+	desk.items[0].SetLabel(labels[0])
+	desk.items[1].SetLabel(labels[1])
+	desk.menu.Update()
+}
 
 // quitting is set by "Quit" in the tray's menu: then closing really closes.
 var quitting atomic.Bool
 
 // setupDesktop wires the tray, the minimize hook and the saved shortcut.
-func setupDesktop(s *Studio, app *application.App, win *application.WebviewWindow, labels [2]string) {
+func setupDesktop(s *Studio, app *application.App, win *application.WebviewWindow) {
 	desk.app, desk.win = app, win
 	prefs := s.Prefs()
 
+	labels := trayLabels(s.lang)
 	menu := application.NewMenu()
-	menu.Add(labels[0]).OnClick(func(*application.Context) { showWindow() })
+	desk.items[0] = menu.Add(labels[0]).OnClick(func(*application.Context) { showWindow() })
 	menu.AddSeparator()
-	menu.Add(labels[1]).OnClick(func(*application.Context) { quitting.Store(true); app.Quit() })
+	desk.items[1] = menu.Add(labels[1]).OnClick(func(*application.Context) { quitting.Store(true); app.Quit() })
+	desk.menu = menu
 	desk.tray = app.SystemTray.New().SetIcon(trayIcon).SetMenu(menu)
 	if runtime.GOOS == "linux" {
 		// The tray item's name (Wails says "Wails" otherwise). On macOS a

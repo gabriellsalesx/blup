@@ -6,11 +6,11 @@
   import { t } from "./i18n";
 
   let { big = false }: { big?: boolean } = $props();
-  const options = [
+  const options = $derived([
     { key: "light", label: t.look2.light, Icon: Sun },
     { key: "dark", label: t.look2.dark, Icon: Moon },
     { key: "system", label: t.look2.system, Icon: Monitor },
-  ];
+  ]);
 </script>
 
 <div class="picker" class:big role="radiogroup" aria-label={t.look2.label}>

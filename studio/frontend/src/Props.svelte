@@ -161,7 +161,7 @@
   // _index (the menu) and Bento's docs, help center and roadmap.
   const ordered = $derived(isIndex || ["docs", "help", "roadmap"].includes(kind));
 
-  const statuses = { pt: ["planejado", "em andamento", "concluído"], es: ["planeado", "en curso", "listo"] }[t.lang] ?? ["planned", "in progress", "done"];
+  const statuses = $derived({ pt: ["planejado", "em andamento", "concluído"], es: ["planeado", "en curso", "listo"] }[t.lang] ?? ["planned", "in progress", "done"]);
 </script>
 
 <section class="props">
