@@ -39,7 +39,7 @@ In real time, the notes sync by themselves while you write. On the paid plans, r
 3. Click **Check**. Blup compares the notes here with the ones on GitHub and **shows what it will do** before doing it: what changed here is sent, what changed on another computer is received, and what was deleted on one side is deleted on the other.
 4. If everything looks right, click **Sync now**.
 
-> [!info] With Obsidian
+> [!info] In the command line
 > Run `blup sync`. The command line syncs through GitHub, the same way.
 
 ## When both sides changed

@@ -4,8 +4,9 @@
 
 <script lang="ts">
   import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails, AIConsent, SetAIConsent } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
-  import type { Connections as Conn, BlupAccount as Account, AIQuota, AIConsent as Consent } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import type { Connections as Conn, BlupAccount as Account, AIQuota, AIConsent as Consent, UpdateInfo } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
+  import type { ReminderUse } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { untrack } from "svelte";
   import Settings from "@lucide/svelte/icons/settings";
   import Palette from "@lucide/svelte/icons/palette";
@@ -43,7 +44,7 @@
   const s = t.prefs;
   // The calendar's reminders: on unless turned off; in Max and Ultra also
   // by e-mail, with the month's use.
-  let mailUse = $state<{ limit: number; used: number } | null>(null);
+  let mailUse = $state<ReminderUse | null>(null);
   ReminderEmails().then((u) => (mailUse = u)).catch(() => {});
   async function setNotify(on: boolean) {
     look.notifications = on;
@@ -122,9 +123,11 @@
   Version().then((v) => (version = v));
   // A newer Studio: checked once a day (from the day's answer otherwise),
   // or now with the button.
-  let update = $state<{ newer: boolean; latest: string; url: string } | null>(null);
+  let update = $state<UpdateInfo | null>(null);
   let updateState = $state<"" | "checking" | "fail">("");
   CheckUpdate(false).then((u) => (update = u)).catch(() => {});
+  // Who brings new versions when Blup doesn't (see app.UpdatesBy).
+  const updatesBy = (by: string) => ({ msstore: s.updatesStore, flatpak: s.updatesFlatpak }[by] ?? s.updatesPackage);
   async function checkUpdate() {
     updateState = "checking";
     try { update = await CheckUpdate(true); updateState = ""; } catch { updateState = "fail"; }
@@ -421,7 +424,11 @@
       <div class="item"><Switch label={k.autostart} help={k.autostartHelp} checked={autostart} onchange={setAutostart} /></div>
       <div class="item"><Switch label={k.tray} help={k.trayHelp} checked={!!look.tray} onchange={setTray} /></div>
       <div class="item"><Switch label={s.notify} help={s.notifyHelp} checked={look.notifications} onchange={setNotify} /></div>
-      {#if mailUse && mailUse.limit > 0 && look.notifications}<p class="muted note">{s.notifyMail.replace("{used}", String(mailUse.used)).replace("{limit}", String(mailUse.limit))}</p>{/if}
+      {#if mailUse && mailUse.limit > 0 && look.notifications}
+        <!-- A passkey only account has no e-mail: the reminders can't go by e-mail. -->
+        {#if mailUse.emailMissing}<p class="bad note">{s.notifyNoEmail}</p>
+        {:else}<p class="muted note">{s.notifyMail.replace("{used}", String(mailUse.used)).replace("{limit}", String(mailUse.limit))}</p>{/if}
+      {/if}
       {#if deskError}<p class="bad">{deskError}</p>{/if}
       <div class="item">
         <div class="text"><b>{s.backup}</b><small>{look.backupDir || s.backupOff}</small><small>{s.backupHelp}</small></div>
@@ -487,10 +494,11 @@
       </div>
       <div class="item">
         <div class="text"><b>{s.update}</b>
-          <small class:warn={update?.newer}>{version === "dev" ? s.updateDev : updateState === "checking" ? s.updateChecking : updateState === "fail" ? s.updateFail : update?.newer ? s.updateNew.replace("{v}", update.latest) : update?.latest ? s.updateCurrent : ""}</small>
+          <small class:warn={update?.newer}>{version === "dev" ? s.updateDev : update?.updatesBy ? updatesBy(update.updatesBy) : updateState === "checking" ? s.updateChecking : updateState === "fail" ? s.updateFail : update?.newer ? s.updateNew.replace("{v}", update.latest) : update?.latest ? s.updateCurrent : ""}</small>
         </div>
-        {#if update?.newer}<button class="btn" onclick={() => OpenURL(update!.url)}>{s.updateGet}</button>
-        {:else if version !== "dev"}<button class="btn ghost" disabled={updateState === "checking"} onclick={checkUpdate}>{s.updateCheck}</button>{/if}
+        <!-- A store or the system's packages update it: nothing to look for here. -->
+        {#if update?.newer && !update.updatesBy}<button class="btn" onclick={() => OpenURL(update!.url)}>{s.updateGet}</button>
+        {:else if version !== "dev" && !update?.updatesBy}<button class="btn ghost" disabled={updateState === "checking"} onclick={checkUpdate}>{s.updateCheck}</button>{/if}
       </div>
       <div class="item">
         <div class="text"><b>{s.help}</b><small>{s.helpHelp}</small></div>

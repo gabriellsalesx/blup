@@ -26,5 +26,5 @@ Escribe `@` para mencionar otra nota o una fecha, y `/` para insertar un título
 
 Las notas de la bóveda son archivos comunes, en una carpeta de tu computadora. Para tener las mismas notas en otra computadora, usa el botón **Sincronizar**: con Blup Cloud, con cifrado de extremo a extremo, o en un repositorio privado de GitHub. Mira [Sincronizar las notas](../Personalizando/Sincronizar%20las%20notas.md).
 
-> [!info] ¿Y Obsidian?
-> Las notas de una bóveda también se abren en Obsidian. El canvas usa el formato abierto JSON Canvas. Los dibujos, las bases de datos, el mapa de notas y la nota del día son funciones del propio Studio.
+> [!info] Archivos abiertos
+> Las notas de una bóveda son archivos Markdown, y el canvas usa el formato abierto JSON Canvas. Puedes abrirlos en otros programas. Los dibujos, las bases de datos, el mapa de notas y la nota del día son funciones del propio Studio.

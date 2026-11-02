@@ -2,7 +2,7 @@
 title: Authors and profiles
 date: {{date-7}}
 description: One profile per author, with photo, role, social links and bio. Posts with more than one author.
-tags: [Customizing, Studio, Obsidian]
+tags: [Customizing, Studio]
 image: "[[blup-autores.jpg]]"
 authors: [Blup]
 ---
@@ -21,7 +21,7 @@ When you created the site, Blup already created your profile. Fill in the photo 
 
 To say who wrote a post, use the **Authors** field in the post's **Properties** panel. Start typing and pick the name.
 
-## In Obsidian
+## In the note's file
 
 The **Writers** folder has an **_index** note with the property `blup: authors`. It tells Blup that the notes in there are profiles, not posts: the folder doesn't become a page and doesn't show up in the menu.
 

@@ -16,15 +16,14 @@ On the home screen, click **Create a new site**. The Studio asks one question at
 3. **Which parts will the site have?** (Bento only): Docs, Roadmap, Changelog, Help center and Blog. Each part comes with example notes that teach you how to use it. Pick at least one.
 4. **What's the site called?** The name, an optional description, your name (it signs the posts) and the **site language**.
 5. **Where do the notes live?**
-   - **In a new folder**: the simplest way. You can open it in Obsidian later.
-   - **In my Obsidian vault**: the site uses a folder of the vault you already have, or the whole vault.
-   - **In a folder I choose**: notes from VS Code, Foam or any other editor.
+   - **In a new folder**: the simplest way.
+   - **In a folder I choose**: notes you already have, written in any editor. The site can use the whole folder or just part of it.
 6. **All set?** Check the summary and click **Create the site**.
 
 Done: click **Open the site**. The editor opens with the preview beside it. See [The Studio window](../Blup%20Studio/The%20Studio%20window.md).
 
-> [!tip] Adjust Obsidian
-> If the notes are in an Obsidian vault, the Studio offers **Adjust Obsidian so links work on the site**. This way new links between notes are saved in a format the web understands. Blup keeps a copy of your settings first.
+> [!tip] Adjust the folder
+> If the folder already has notes, the Studio offers **Adjust the folder so links work on the site**. This way new links between notes are saved in a format the web understands. Blup keeps a copy of your settings first.
 
 > [!note] Where the site's files live
 > In **Where to keep the site's files**, you pick the folder for the settings and the generated pages. It sits outside your notes and you never need to open it.
@@ -48,7 +47,7 @@ Run `blup new` (or just `blup`, the first time). Each question shows up on its o
 9. **Keep the notes on GitHub**: optional. See [Sync](../Command%20line/Sync.md).
 10. **Open the preview**.
 
-The command line also creates a **Templates** folder with note templates for Obsidian.
+The command line also creates a **Templates** folder with note templates.
 
 ## What gets created
 

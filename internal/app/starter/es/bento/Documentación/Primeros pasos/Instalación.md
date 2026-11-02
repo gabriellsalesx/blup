@@ -6,13 +6,12 @@ weight: 1
 Hay dos formas de usar Blup, y conviven bien:
 
 - **Blup Studio** (recomendado): una app para la computadora, con editor, vista previa en vivo, pantallas de configuración y publicación con un botón.
-- **Línea de comandos** `blup` (opcional): para quien escribe en Obsidian y prefiere la terminal.
+- **Línea de comandos** `blup` (opcional): para quien prefiere la terminal.
 
 ## Requisitos
 
 - Linux, macOS o Windows.
 - Nada más. Blup descarga solo lo que necesita para generar el sitio.
-- Obsidian es opcional. Si ya tienes una bóveda, Blup la encuentra y la usa.
 
 ## Instalar Blup Studio
 

@@ -31,8 +31,8 @@ Site/                     the folder with the site's notes
 ## What stays off the site
 
 - Notes with `draft: true` (they only show in the preview).
-- Folders that start with a dot, like `.obsidian` and `.blup`.
-- The Obsidian templates folder (Templates).
+- Folders that start with a dot, like `.blup`.
+- The templates folder (Templates).
 - The authors folder: it only becomes the profile data.
 - The guides for AI agents (`AGENTS.md`, `CLAUDE.md` and `GEMINI.md`), which the Studio creates when you open the terminal.
 - Attachments that no note uses.

@@ -27,7 +27,7 @@ On the **Site** screen, in the **Top menu** block:
 
 In the **Top button** block, write the **Button text** and **Where it leads**. It shows to the right of the menu, highlighted. Leave the text empty for no button.
 
-## In Obsidian
+## In the note's file
 
 In the **_index** note of the site folder, one item per line:
 
@@ -57,4 +57,4 @@ The item of the current page is highlighted.
 
 ## From the command line
 
-`blup customize` > top menu builds the menu by picking folders, tags and links, and asks about the button. Submenus are not rebuilt from the terminal: it tells you and lets you edit them in the Studio or in Obsidian.
+`blup customize` > top menu builds the menu by picking folders, tags and links, and asks about the button. Submenus are not rebuilt from the terminal: it tells you and lets you edit them in the Studio or in the note.

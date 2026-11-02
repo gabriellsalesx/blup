@@ -27,7 +27,7 @@ En la pantalla **Sitio**, bloque **Menú superior**:
 
 En el bloque **Botón superior**, escribe el **Texto del botón** y **A dónde lleva**. Aparece a la derecha del menú, destacado. Deja el texto vacío para no tener botón.
 
-## Desde Obsidian
+## En el archivo de la nota
 
 En la nota **_index** de la carpeta del sitio, un elemento por línea:
 
@@ -57,4 +57,4 @@ El elemento de la página actual queda marcado.
 
 ## Desde la línea de comandos
 
-`blup customize` (o `blup personalizar`) > menú arma el menú eligiendo carpetas, etiquetas y enlaces, y pregunta por el botón. Los submenús no se rehacen desde la terminal: te avisa y te deja editarlos en el Studio o en Obsidian.
+`blup customize` (o `blup personalizar`) > menú arma el menú eligiendo carpetas, etiquetas y enlaces, y pregunta por el botón. Los submenús no se rehacen desde la terminal: te avisa y te deja editarlos en el Studio o en la nota **_index**.

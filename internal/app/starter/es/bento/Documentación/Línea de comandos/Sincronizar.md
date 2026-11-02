@@ -32,5 +32,5 @@ Blup compara y **muestra antes** cuántas notas va a enviar, recibir, eliminar e
 
 - Las notas eliminadas en otra computadora van a una **papelera fuera de las notas**, en la carpeta del sitio; Blup muestra dónde.
 - Si la carpeta del sitio aparece vacía pero ya tenía notas, Blup **se detiene** y no elimina nada en GitHub.
-- Las carpetas que empiezan con punto (como `.obsidian`) no se sincronizan.
+- Las carpetas que empiezan con punto no se sincronizan.
 - Los archivos de más de 100 MB quedan fuera, con un aviso.

@@ -3,11 +3,11 @@ title: Documentación
 linkTitle: Documentación
 blup: docs
 weight: 1
-description: Todo sobre Blup, desde la instalación hasta la publicación, en Blup Studio y en Obsidian.
+description: Todo sobre Blup, desde la instalación hasta la publicación.
 ---
 **Blup** convierte tus notas en un sitio rápido y también guarda notas solo para ti, en las **bóvedas de notas**. La forma recomendada de usarlo es **Blup Studio**, la app para computadora (Linux, macOS y Windows): escribes, ves la vista previa del sitio al lado y publicas con un botón.
 
-¿Prefieres **Obsidian**? Puedes seguir con él. Las notas son archivos Markdown comunes, y la misma carpeta se abre en los dos. Para generar y publicar sin el Studio, existe la línea de comandos `blup`.
+Las notas son archivos Markdown comunes, en una carpeta de tu computadora. Para generar y publicar desde la terminal, también existe la línea de comandos `blup`.
 
 ## Lo más destacado
 
@@ -21,7 +21,7 @@ Esta documentación es, en sí misma, un ejemplo: cada página es una nota de la
 
 - **¿Nunca lo usaste?** Empieza por [Instalación](Primeros%20pasos/Instalación.md) y luego [Crear el primer sitio](Primeros%20pasos/Crear%20el%20primer%20sitio.md).
 - **¿Quieres entender la diferencia entre sitio y bóveda?** Mira [Sitios y bóvedas de notas](Primeros%20pasos/Sitios%20y%20bóvedas%20de%20notas.md).
-- **¿Vienes de Obsidian?** Lee [Studio u Obsidian](Primeros%20pasos/Studio%20u%20Obsidian.md).
+- **¿Studio o terminal?** Lee [Studio y línea de comandos](Primeros%20pasos/Studio%20y%20línea%20de%20comandos.md).
 - **¿Ya abriste el Studio?** Conoce [La pantalla del Studio](Blup%20Studio/La%20pantalla%20del%20Studio.md) y [Escribir en el editor](Blup%20Studio/Escribir%20en%20el%20editor.md).
 - **¿Quieres tomar notas sin hacer un sitio?** Mira [Qué es una bóveda](Bóvedas%20de%20notas/Qué%20es%20una%20bóveda.md).
 - **¿Vas a cambiar el diseño y el menú?** Mira [Ajustes del sitio](Configuración%20del%20sitio/Ajustes%20del%20sitio.md).
@@ -46,7 +46,7 @@ Esta documentación es, en sí misma, un ejemplo: cada página es una nota de la
 | Secciones del Bento | Documentación, roadmap, changelog, centro de ayuda, blog y feedback |
 | Publicación | Poner el sitio en línea y usar un dominio tuyo |
 | Blup Cloud | Cuenta, planes, sincronización cifrada y sitios en Blup |
-| Línea de comandos | El `blup` en la terminal, para quien usa Obsidian |
+| Línea de comandos | El `blup` en la terminal, para quien prefiere la terminal o quiere automatizar |
 
 > [!tip] Esta es la primera página
 > El texto que estás leyendo está en la nota **_index** de la carpeta Documentación. Toda carpeta puede tener una nota _index: se vuelve la página de apertura de la carpeta.

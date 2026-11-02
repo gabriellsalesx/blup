@@ -3,11 +3,11 @@ title: Documentação
 linkTitle: Documentação
 blup: docs
 weight: 1
-description: Tudo sobre o Blup, da instalação à publicação, no Blup Studio e no Obsidian.
+description: Tudo sobre o Blup, da instalação à publicação, no Blup Studio e na linha de comando.
 ---
 O **Blup** transforma as suas notas num site rápido e também guarda notas só suas, nos **cofres de anotações**. O jeito recomendado de usar é o **Blup Studio**, o app para computador (Linux, macOS e Windows): você escreve, vê a prévia do site ao lado e publica com um botão.
 
-Prefere o **Obsidian**? Pode continuar com ele. As notas são arquivos Markdown comuns, e a mesma pasta abre nos dois. Para gerar e publicar sem o Studio, existe a linha de comando `blup`.
+As notas são arquivos Markdown comuns, numa pasta do seu computador. Para gerar e publicar sem o Studio, existe a linha de comando `blup`.
 
 ## Em destaque
 
@@ -21,7 +21,7 @@ Esta documentação é, ela mesma, um exemplo: cada página é uma nota na pasta
 
 - **Nunca usou?** Comece em [Instalação](Primeiros%20passos/Instalação.md) e depois [Criar o primeiro site](Primeiros%20passos/Criar%20o%20primeiro%20site.md).
 - **Quer entender a diferença entre site e cofre?** Veja [Sites e cofres de notas](Primeiros%20passos/Sites%20e%20cofres%20de%20notas.md).
-- **Vem do Obsidian?** Leia [Studio ou Obsidian](Primeiros%20passos/Studio%20ou%20Obsidian.md).
+- **Quer saber o que o Studio faz?** Leia [O Blup Studio](Primeiros%20passos/O%20Blup%20Studio.md).
 - **Já abriu o Studio?** Conheça [A tela do Studio](Blup%20Studio/A%20tela%20do%20Studio.md) e [Escrever no editor](Blup%20Studio/Escrever%20no%20editor.md).
 - **Quer anotar sem fazer site?** Veja [O que é um cofre](Cofres%20de%20notas/O%20que%20é%20um%20cofre.md).
 - **Vai mexer no visual e no menu?** Veja [Configurações do site](Configuração%20do%20site/Configurações%20do%20site.md).
@@ -46,7 +46,7 @@ Esta documentação é, ela mesma, um exemplo: cada página é uma nota na pasta
 | Seções do Bento | Documentação, roadmap, changelog, central de ajuda, blog e feedback |
 | Publicação | Colocar o site no ar e usar um domínio seu |
 | Blup Cloud | Conta, planos, sincronização criptografada e sites no Blup |
-| Linha de comando | O `blup` no terminal, para quem usa o Obsidian |
+| Linha de comando | O `blup` no terminal, para gerar e publicar sem o Studio |
 
 > [!tip] Esta é a primeira página
 > O texto que você está lendo fica na nota **_index** da pasta Documentação. Toda pasta pode ter uma nota _index: ela vira a página de abertura da pasta.

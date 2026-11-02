@@ -24,7 +24,7 @@ Cada cambio aparece al instante en la vista previa de al lado, sin recargar.
 
 ![Blup configurando](../../Adjuntos/blup-configurar.jpg)
 
-## Desde Obsidian: la nota _index
+## En el archivo: la nota _index
 
 | Propiedad | Qué hace |
 | --- | --- |

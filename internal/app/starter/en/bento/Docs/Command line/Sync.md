@@ -32,5 +32,5 @@ Blup compares and **shows you first** how many notes it will send, receive, dele
 
 - Notes deleted on another computer go to a **trash outside your notes**, in the site's folder; Blup shows you where.
 - If the site's folder shows up empty but it had notes before, Blup **stops** and deletes nothing on GitHub.
-- Folders that start with a dot (like `.obsidian`) are not synced.
+- Folders that start with a dot (like `.git`) are not synced.
 - Files over 100 MB stay out, with a warning.

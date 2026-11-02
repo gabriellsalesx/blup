@@ -24,7 +24,7 @@ A prévia se atualiza sozinha depois de cada mudança.
 
 ## Pela linha de comando
 
-Rode `blup personalizar` e escolha **Seções do site**. O Blup mostra as que faltam e cria a pasta de cada uma, com notas de exemplo. Para tirar, apague a pasta no Obsidian. O Feedback não aparece nesta lista.
+Rode `blup personalizar` e escolha **Seções do site**. O Blup mostra as que faltam e cria a pasta de cada uma, com notas de exemplo. Para tirar, apague a pasta. O Feedback não aparece nesta lista.
 
 ## À mão
 

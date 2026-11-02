@@ -7,7 +7,7 @@ weight: 1
 > Only notes in the site folder go on the site.
 
 > [!question]- Is the note marked as a draft?
-> Drafts show only in the preview. In the Studio, uncheck **Draft** in Properties. In Obsidian, change `draft` to `false` or delete the property.
+> Drafts show only in the preview. In the Studio, uncheck **Draft** in Properties. In the note's file, change `draft` to `false` or delete the property.
 
 > [!question]- Is the note marked as hidden?
 > It is on the site, but out of the lists. Open it by its address or uncheck **Hidden**.

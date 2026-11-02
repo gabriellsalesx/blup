@@ -50,4 +50,4 @@ blup build --url https://mysite.pages.dev/bento/ --out ../my-landing/bento
 
 ## What only the Studio does
 
-Some things have no command: note vaults, translation, narration, the podcast, the Feedback board, submenus, and publishing and syncing with Blup Cloud. A site that already uses these features keeps building and publishing normally from the terminal. See [Studio or Obsidian](../Getting%20started/Studio%20or%20Obsidian.md).
+Some things have no command: note vaults, translation, narration, the podcast, the Feedback board, submenus, and publishing and syncing with Blup Cloud. A site that already uses these features keeps building and publishing normally from the terminal. See [Studio and command line](../Getting%20started/Studio%20and%20command%20line.md).

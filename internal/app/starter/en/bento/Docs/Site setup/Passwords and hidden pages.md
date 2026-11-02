@@ -16,7 +16,7 @@ In the note's **Properties**, under **Password**, pick:
 - **General password**: the same password for many posts. It lives in **Settings > General password** and works for all your sites.
 - **Its own password**: a password for this post only, in **This post's password**.
 
-### In Obsidian
+### In the note's file
 
 ```yaml
 password: my-password
@@ -35,7 +35,7 @@ On the command line, `blup customize` also sets a general password for that site
 
 ## Hidden pages
 
-In the Studio, turn on **Hidden** in the properties. In Obsidian:
+In the Studio, turn on **Hidden** in the properties. In the note's file:
 
 ```yaml
 hidden: true
@@ -45,7 +45,7 @@ The page is published, but it leaves the lists, the tags and the site search, an
 
 ## Drafts
 
-In the Studio, turn on **Draft**. In Obsidian:
+In the Studio, turn on **Draft**. In the note's file:
 
 ```yaml
 draft: true

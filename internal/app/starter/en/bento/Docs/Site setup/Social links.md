@@ -17,7 +17,7 @@ If the rest of the address is missing, the Studio warns you: a line with only th
 
 On the **Authors** screen, each person's profile has the same buttons.
 
-## In Obsidian
+## In the note's file
 
 In the **_index** note of the site folder:
 

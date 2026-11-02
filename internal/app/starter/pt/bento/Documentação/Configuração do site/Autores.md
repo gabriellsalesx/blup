@@ -18,7 +18,7 @@ Clique em **Autores** na faixa lateral. A tela lista as pessoas, com o número d
 
 Nos posts, escolha os autores no campo **Autores** das [Propriedades da nota](../Blup%20Studio/Propriedades%20da%20nota.md).
 
-## Pelo Obsidian
+## Direto nas notas
 
 Os perfis ficam numa pasta cuja **_index** tem `blup: authors`, aqui chamada **Autores**. Essa pasta não vira página: as notas dela são só os dados.
 

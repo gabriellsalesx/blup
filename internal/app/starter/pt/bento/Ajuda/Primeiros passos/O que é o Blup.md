@@ -14,7 +14,7 @@ Ele faz dois tipos de coisa:
 
 O jeito recomendado é o **Blup Studio**, um app para Linux, macOS e Windows com editor, prévia do site ao lado e telas para configurar tudo.
 
-Se você já usa o **Obsidian**, pode continuar nele. As notas são arquivos Markdown comuns, e a mesma pasta abre nos dois. Para gerar e publicar sem o Studio, existe a linha de comando `blup`.
+As notas são arquivos Markdown comuns, numa pasta do seu computador. Para gerar e publicar sem o Studio, existe a linha de comando `blup`.
 
 > [!tip] Este é um artigo da central
 > Cada nota numa subpasta da central de ajuda é um artigo. A subpasta é a coleção.

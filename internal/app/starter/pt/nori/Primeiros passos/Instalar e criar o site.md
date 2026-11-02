@@ -1,7 +1,7 @@
 ---
 title: Instalar e criar o site
 date: {{date-1}}
-description: Baixe o Blup Studio e crie o site respondendo uma pergunta de cada vez. Ou use a linha de comando com o Obsidian.
+description: Baixe o Blup Studio e crie o site respondendo uma pergunta de cada vez. Ou use a linha de comando.
 tags: [Começando, Studio]
 image: "[[blup-dicas.jpg]]"
 ---
@@ -18,13 +18,13 @@ Na tela inicial, clique em **Criar site novo**. O Studio faz uma pergunta de cad
 1. **Que tipo de site**: blog pessoal ou site de produto.
 2. **Qual tema**: Nori (este aqui, uma coluna só, com o texto em primeiro plano) ou Mochi, para o blog; Bento, para o site de produto.
 3. **Como o site se chama**: nome, uma frase sobre ele, seu nome e o idioma do site.
-4. **Onde ficam as notas**: numa pasta nova (o jeito mais simples), numa pasta que você escolher ou no seu cofre do Obsidian.
+4. **Onde ficam as notas**: numa pasta nova (o jeito mais simples), numa pasta que você escolher ou numa pasta de notas que você já usa.
 5. **Tudo pronto?** Confira e crie o site.
 
 Se a pasta estiver vazia, o Blup coloca o site de exemplo do tema: este tutorial.
 
-> [!tip] Vai usar o Obsidian também?
-> Se escolher o seu cofre do Obsidian, deixe marcado **Ajustar o Obsidian para os links funcionarem no site**. O Obsidian passa a gravar os links no formato que o site entende.
+> [!tip] Já tem uma pasta de notas?
+> Se escolher uma pasta de notas que você já usa, deixe marcado **Ajustar a pasta para que os links funcionem no site**. O Blup ajusta as configurações das notas da pasta, e os links passam a ser gravados no formato que o site entende.
 
 ## A janela do site
 
@@ -37,9 +37,9 @@ Não existe botão de salvar: o Studio salva sozinho enquanto você escreve.
 
 Clique com o botão direito numa nota para criar outra ali, fazer uma cópia, mover, copiar o link, renomear, exportar ou apagar. **Renomear** atualiza sozinho os links que apontam para a nota, e **Apagar** manda a nota para a **Lixeira**, de onde dá para restaurar.
 
-## Pelo Obsidian, com a linha de comando
+## Pela linha de comando
 
-Prefere escrever no Obsidian? Instale a linha de comando `blup`.
+Prefere o terminal? Instale a linha de comando `blup`.
 
 No macOS ou Linux, abra o Terminal e cole:
 

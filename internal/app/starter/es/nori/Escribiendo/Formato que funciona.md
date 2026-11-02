@@ -1,11 +1,11 @@
 ---
 title: Formato que funciona
 date: {{date-4}}
-description: Todo lo que escribes en el Studio o en Obsidian y aparece en el sitio, con ejemplos.
+description: Todo lo que escribes en las notas y aparece en el sitio, con ejemplos.
 tags: [Escritura]
 image: "[[blup-formatacao.jpg]]"
 ---
-Este post es un muestrario. Abre la nota en el Studio (o en Obsidian) y mira cómo se escribió cada bloque. En el Studio, casi todo tiene un botón en la **barra de formato** y un elemento en el menú `/`, y el editor ya muestra el resultado: las marcas solo aparecen cuando el cursor pasa por ellas.
+Este post es un muestrario. Abre la nota en el Studio y mira cómo se escribió cada bloque. En el Studio, casi todo tiene un botón en la **barra de formato** y un elemento en el menú `/`, y el editor ya muestra el resultado: las marcas solo aparecen cuando el cursor pasa por ellas.
 
 ## Texto
 
@@ -80,7 +80,7 @@ $$
 
 ## Comentarios
 
-El texto entre `%%` y `%%` es un comentario: aparece mientras editas, en el Studio o en Obsidian, y desaparece en el sitio. Sirve para recordatorios y borradores dentro del post. %%Este fragmento, por ejemplo, solo existe en las notas.%%
+El texto entre `%%` y `%%` es un comentario: aparece mientras editas y desaparece en el sitio. Sirve para recordatorios y borradores dentro del post. %%Este fragmento, por ejemplo, solo existe en las notas.%%
 
 ## Línea divisoria
 

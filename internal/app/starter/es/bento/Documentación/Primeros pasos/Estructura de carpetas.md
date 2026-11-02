@@ -31,8 +31,8 @@ Sitio/                    la carpeta de las notas del sitio
 ## Lo que queda fuera del sitio
 
 - Notas con `draft: true` (aparecen solo en la vista previa).
-- Carpetas que empiezan con punto, como `.obsidian` y `.blup`.
-- La carpeta de plantillas de Obsidian (Plantillas).
+- Carpetas que empiezan con punto, como `.blup`.
+- La carpeta de plantillas (Plantillas).
 - La carpeta de autores: se vuelve solo los datos de los perfiles.
 - Las guías para agentes de IA (`AGENTS.md`, `CLAUDE.md` y `GEMINI.md`), que el Studio crea al abrir la terminal.
 - Adjuntos que ninguna nota usa.

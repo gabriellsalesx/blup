@@ -18,11 +18,11 @@ O Blup guarda dois tipos de coisa:
 
 Nos dois casos, as notas são arquivos Markdown comuns, numa pasta do seu computador. Nada fica preso a um programa.
 
-## Blup Studio ou Obsidian?
+## O Blup Studio
 
 O jeito recomendado de usar o Blup é o **Blup Studio**, um app para Linux, macOS e Windows. Nele você escreve, vê a prévia e publica, tudo na mesma janela.
 
-Quem gosta do **Obsidian** pode continuar com ele: as notas são as mesmas, e a mesma pasta abre nos dois. Do lado do Obsidian, a linha de comando `blup` gera a prévia e publica. Os posts deste blog mostram os dois caminhos sempre que existem.
+Quem prefere o terminal pode usar a linha de comando `blup`, que gera a prévia e publica a mesma pasta de notas. Os posts deste blog mostram os dois caminhos sempre que existem.
 
 Algumas coisas só o Studio faz:
 

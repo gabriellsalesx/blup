@@ -14,5 +14,5 @@ test("the help text is exactly the approved one", () => {
 });
 
 test("no dashes in the new texts", () => {
-  for (const m of src.matchAll(/(accountId|accountIdHelp|copyId|idCopied): "([^"]*)"/g)) assert.doesNotMatch(m[2], /[–—]/, m[0]);
+  for (const m of src.matchAll(/(accountId|accountIdHelp|copyId|idCopied|notifyNoEmail): "([^"]*)"/g)) assert.doesNotMatch(m[2], /[–—]/, m[0]);
 });

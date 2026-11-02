@@ -3,7 +3,7 @@
 This folder is a Blup site with the Nori theme: a personal blog in a
 single column, with the text up front. Blup turns these Markdown notes
 into a website with Hugo. The person writes and publishes in Blup
-Studio (or edits the same files in Obsidian).
+Studio.
 
 Write notes in {{LANGUAGE}}.
 
@@ -31,15 +31,14 @@ Write notes in {{LANGUAGE}}.
 
 Left out of the site:
 
-- Files and folders whose name starts with a dot (`.obsidian`, `.blup`,
-  `.trash`...).
+- Files and folders whose name starts with a dot (`.blup`, `.trash`...).
 - The authors folder (the one whose `_index.md` has `blup: authors`).
   It holds profiles, not pages.
-- The Obsidian templates folder (set in `.obsidian/templates.json`).
+- The note templates folder, when the notes folder sets one.
 - `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` and `INSTRUCTIONS.md`.
 - Notes with `publish: false` or `private: true`, and their translations.
 - Drafts (`draft: true`): they show only in the Studio preview.
-- Text between `%%` and `%%` (Obsidian comments).
+- Text between `%%` and `%%` (comments).
 - Any file that is not a note or a supported attachment.
 
 ## Create a post
@@ -197,15 +196,15 @@ Use standard Markdown links with a path relative to the note:
 
 ## Writing that works
 
-- Obsidian callouts: `> [!tip] Title`. Types include note, info, todo,
+- Callouts: `> [!tip] Title`. Types include note, info, todo,
   success, question, warning, failure, danger, bug, example, quote,
   abstract. `> [!example]- Title` starts folded, `+` starts open.
 - Math: `$x^2$` inline and `$$ ... $$` blocks.
 - `==highlight==`, footnotes, task lists, tables and code blocks.
 - A `{.text-center}` line under a paragraph centers it.
 - Use `##` and `###` headings to split long posts.
-- A single line break is kept as a line break (unless the Obsidian vault
-  uses strict line breaks).
+- A single line break is kept as a line break (unless the notes folder
+  is set to strict line breaks).
 
 ## Password protected posts
 
@@ -245,7 +244,7 @@ page. The Studio creates and manages it. Its properties are
 
 ## Never touch
 
-- `.obsidian/`, `.blup/` and any other folder that starts with a dot.
+- `.blup/` and any other folder that starts with a dot.
 - `blup.toml`, `hugo.toml`, `hugo.preview.toml` and the `themes/` folder,
   if you see them.
 - `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `INSTRUCTIONS.md`.

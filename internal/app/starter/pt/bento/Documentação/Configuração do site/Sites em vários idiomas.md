@@ -59,5 +59,5 @@ Uma tradução feita pela IA mostra, junto do título, um selo **Traduzido com I
 
 Todas as versões de uma página dividem a mesma conversa: votos e reações somam os leitores de todos os idiomas. Um comentário mostra em que idioma foi escrito, como "comentado em English".
 
-> [!tip] Pelo Obsidian
+> [!tip] Tradução à mão
 > Dá para traduzir à mão: crie a pasta `en` ao lado da nota e escreva a tradução lá, com o mesmo nome de arquivo da original (ou a mesma `translationKey`). Os idiomas publicados ficam em `translations` no blup.toml, que o Studio preenche ao traduzir.

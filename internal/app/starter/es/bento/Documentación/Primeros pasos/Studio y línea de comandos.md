@@ -1,20 +1,20 @@
 ---
-title: Studio u Obsidian
-description: Los dos abren las mismas notas. El Studio hace todo el camino, del texto al sitio en línea.
+title: Studio y línea de comandos
+description: Dos formas de usar Blup con las mismas notas. El Studio hace todo el camino, del texto al sitio en línea.
 weight: 4
 ---
-Las notas de Blup son **archivos Markdown comunes** en una carpeta de tu computadora. Por eso la misma carpeta se abre en Blup Studio y en Obsidian, y puedes alternar cuando quieras.
+Las notas de Blup son **archivos Markdown comunes** en una carpeta de tu computadora. Puedes trabajar con ellas en Blup Studio o con la línea de comandos `blup`, y alternar cuando quieras.
 
 ## La forma recomendada: Blup Studio
 
 El Studio reúne todo en una sola app: escribir, ver el sitio, configurar y publicar. Para quien está empezando, es el camino más corto.
 
-## También vale: Obsidian y la línea de comandos
+## También vale: la línea de comandos
 
-Si ya te gusta Obsidian, sigue con él. Escribe las notas allí y usa `blup` en la terminal para ver la vista previa (`blup preview`), publicar (`blup publish`) y cambiar la configuración (`blup customize`). Mira [Comandos](../Línea%20de%20comandos/Comandos.md).
+`blup` en la terminal genera la vista previa (`blup preview`), publica (`blup publish`) y cambia la configuración (`blup customize`). Sirve para quien prefiere la terminal o quiere automatizar. Mira [Comandos](../Línea%20de%20comandos/Comandos.md).
 
-> [!tip] Usa los dos
-> Mucha gente escribe en Obsidian y abre el Studio solo para ver la vista previa, configurar y publicar. El Studio se da cuenta cuando una nota cambia fuera de él y actualiza la pantalla.
+> [!tip] Notas editadas fuera del Studio
+> El Studio se da cuenta cuando una nota cambia fuera de él y actualiza la pantalla.
 
 ## Lo que existe solo en el Studio
 
@@ -40,4 +40,4 @@ Si ya te gusta Obsidian, sigue con él. Escribe las notas allí y usa `blup` en 
 
 ## Enlaces entre notas
 
-Los sitios entienden enlaces Markdown con ruta relativa, como `[Instalación](Instalación.md)`. El Studio siempre guarda los enlaces así, incluso cuando escribes `[[`. En Obsidian, acepta el ajuste que Blup ofrece al crear el sitio (activa **Usar enlaces Markdown** y **ruta relativa**). Las notas antiguas con wikilinks se pueden convertir con `blup convert`. Mira [Enlaces e imágenes](../Escribiendo/Enlaces%20e%20imágenes.md).
+Los sitios entienden enlaces Markdown con ruta relativa, como `[Instalación](Instalación.md)`. El Studio siempre guarda los enlaces así, incluso cuando escribes `[[`. Las notas antiguas con wikilinks se pueden convertir con `blup convert`. Mira [Enlaces e imágenes](../Escribiendo/Enlaces%20e%20imágenes.md).

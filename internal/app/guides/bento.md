@@ -3,7 +3,7 @@
 This folder is a Blup site with the Bento theme: a product site with
 docs, roadmap, changelog, help center, blog and feedback. Blup turns
 these Markdown notes into a website with Hugo. The person writes and
-publishes in Blup Studio (or edits the same files in Obsidian).
+publishes in Blup Studio.
 
 Write notes in {{LANGUAGE}}.
 
@@ -49,12 +49,12 @@ section by its `blup` property, not by its name.
 
 Left out of the site:
 
-- Files and folders whose name starts with a dot (`.obsidian`, `.blup`...).
-- The authors folder, the Obsidian templates folder, and `AGENTS.md`,
+- Files and folders whose name starts with a dot (`.blup`, `.trash`...).
+- The authors folder, the note templates folder, and `AGENTS.md`,
   `CLAUDE.md`, `GEMINI.md`, `INSTRUCTIONS.md`.
 - Notes with `publish: false` or `private: true`, and their translations.
 - Drafts (`draft: true`): only in the Studio preview.
-- Text between `%%` and `%%` (Obsidian comments).
+- Text between `%%` and `%%` (comments).
 
 ## Common front matter keys
 
@@ -240,7 +240,7 @@ such a folder is a normal folder. Do not edit `translationKey`,
 
 ## Never touch
 
-- `.obsidian/`, `.blup/` and any other dot folder.
+- `.blup/` and any other dot folder.
 - `blup.toml`, `hugo.toml`, `hugo.preview.toml`, `themes/`, if present.
 - `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `INSTRUCTIONS.md`.
 - Content between `%%` and `%%`.

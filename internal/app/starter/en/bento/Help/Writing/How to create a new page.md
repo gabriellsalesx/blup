@@ -11,9 +11,9 @@ weight: 1
 
 The note's name becomes the page title, unless you fill in **Title** in the properties.
 
-## In Obsidian
+## By hand
 
-Create the note inside the section folder and write. With `blup preview` running, the page shows up in the preview as soon as you save.
+Create the note inside the section folder, in any text editor, and write. With `blup preview` running, the page shows up in the preview as soon as you save.
 
 > [!tip] Start from a template
-> In Obsidian, use **Templates: Insert template** to start with the right properties for each section.
+> Sites created from the command line have a **Templates** folder. Copy a template to start with the right properties for each section.

@@ -1,70 +1,75 @@
-# Feel free to remove those if you don't want/need to use them.
-# Make sure to check the documentation at https://nfpm.goreleaser.com
-#
-# The lines below are called `modelines`. See `:help modeline`
+# Blup Studio's .deb (and .rpm): wails3 tool package -format deb
+#   -config ./build/linux/nfpm/nfpm.yaml, run from studio/ after the build.
+# VERSION is the release (1.2.3) and the metainfo is the one the release
+# workflow fills (bin/io.github.gabriellsalesx.blupstudio.metainfo.xml).
+# https://nfpm.goreleaser.com/configuration/
 
 name: "blup-studio"
-arch: ${GOARCH}
+arch: "${GOARCH}"
 platform: "linux"
-version: "1.0.0"
-section: "default"
-priority: "extra"
-maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "Write in Markdown, preview and publish your site"
+version: "${VERSION}"
+section: "editors"
+priority: "optional"
+# Debian wants a name and an e-mail: the release passes DEB_MAINTAINER
+# (a repository variable; Blup <no-reply@getblup.io> when unset).
+maintainer: "${DEB_MAINTAINER}"
+description: |
+  Write in Markdown, preview and publish your site.
+  Blup Studio turns a folder of Markdown notes, with links between
+  notes, into a website, and publishes it to GitHub Pages, Cloudflare or
+  Blup Cloud.
 vendor: "Gabriell Sales"
 homepage: "https://github.com/gabriellsalesx/blup"
 license: "AGPL-3.0-only"
 release: "1"
 
+# In /usr/bin: the Studio then leaves updates to the package manager
+# (app.UpdatesBy), and a new version comes as a new package.
 contents:
   - src: "./bin/blup-studio"
-    dst: "/usr/local/bin/blup-studio"
-  - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/128x128/apps/blup-studio.png"
+    dst: "/usr/bin/blup-studio"
   - src: "./build/linux/blup-studio.desktop"
     dst: "/usr/share/applications/blup-studio.desktop"
+    file_info:
+      mode: 0644
+  - src: "./bin/io.github.gabriellsalesx.blupstudio.metainfo.xml"
+    dst: "/usr/share/metainfo/io.github.gabriellsalesx.blupstudio.metainfo.xml"
+    file_info:
+      mode: 0644
+  - src: "./build/linux/icons/128x128/blup-studio.png"
+    dst: "/usr/share/icons/hicolor/128x128/apps/blup-studio.png"
+  - src: "./build/linux/icons/256x256/blup-studio.png"
+    dst: "/usr/share/icons/hicolor/256x256/apps/blup-studio.png"
+  - src: "./build/linux/icons/512x512/blup-studio.png"
+    dst: "/usr/share/icons/hicolor/512x512/apps/blup-studio.png"
+  - src: "../THIRD_PARTY_NOTICES.md"
+    dst: "/usr/share/doc/blup-studio/THIRD_PARTY_NOTICES.md"
+  - src: "../LICENSE"
+    dst: "/usr/share/doc/blup-studio/copyright"
 
-# Dependencies of the GTK4 + WebKitGTK 6.0 stack the Studio is built with
-# (Wails 3's default). GStreamer's "good" plugins let the window (and the
-# live preview in it) play the posts' MP3 narration: WebKitGTK plays media
-# through GStreamer and only lists them as optional.
+# The GTK 4 + WebKitGTK 6.0 stack the Studio is built with (Wails 3's
+# default; GTK 4.10 or newer). Ubuntu 24.04 and Debian 13 have both.
+# GStreamer's "good" plugins let the window play the posts' MP3 narration:
+# without them the Studio hides the player (media.go).
+# No install scripts: dpkg's triggers update the menus and icon cache.
 depends:
-  - libgtk-4-1
+  - libgtk-4-1 (>= 4.10)
   - libwebkitgtk-6.0-4
+recommends:
   - gstreamer1.0-plugins-good
 
-# Distribution-specific overrides for different package formats
 overrides:
-  # RPM packages for Fedora / RHEL / AlmaLinux / Rocky Linux
+  # Fedora (RPM): the same stack.
   rpm:
     depends:
-      - gtk4
+      - gtk4 >= 4.10
       - webkitgtk6.0
+    recommends:
       - gstreamer1-plugins-good
-
-  # Arch Linux packages
+  # Arch (the create:aur task; the AUR itself uses aur/PKGBUILD).
   archlinux:
     depends:
       - gtk4
       - webkitgtk-6.0
+    recommends:
       - gst-plugins-good
-
-# scripts section to ensure desktop database is updated after install
-scripts:
-  postinstall: "./build/linux/nfpm/scripts/postinstall.sh"
-  # You can also add preremove, postremove if needed
-  # preremove: "./build/linux/nfpm/scripts/preremove.sh"
-  # postremove: "./build/linux/nfpm/scripts/postremove.sh"
-
-# replaces:
-#   - foobar
-# provides:
-#   - bar
-# recommends:
-#   - whatever
-# suggests:
-#   - something-else
-# conflicts:
-#   - not-foo
-#   - not-bar
-# changelog: "changelog.yaml"

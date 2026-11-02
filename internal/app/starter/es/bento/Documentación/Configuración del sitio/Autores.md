@@ -18,7 +18,7 @@ Haz clic en **Autores** en la barra lateral. La pantalla muestra las personas, c
 
 En los posts, elige los autores en el campo **Autores** de las [Propiedades de la nota](../Blup%20Studio/Propiedades%20de%20la%20nota.md).
 
-## Desde Obsidian
+## En el archivo de la nota
 
 Los perfiles están en una carpeta cuya **_index** tiene `blup: authors`, aquí llamada **Autores**. Esa carpeta no se convierte en página: sus notas son solo los datos.
 

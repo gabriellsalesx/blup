@@ -23,6 +23,6 @@ La pantalla **Adjuntos** muestra las imágenes y archivos que usan las notas. Ll
 
 Al publicar, Blup genera versiones más pequeñas y en WebP de cada imagen y le entrega al navegador solo el tamaño que necesita. Consulta [Enlaces e imágenes](../Escribiendo/Enlaces%20e%20imágenes.md).
 
-## Desde Obsidian
+## Fuera del Studio
 
-Los adjuntos están en la carpeta **Adjuntos** de las notas. En Obsidian, arrastra la imagen a la nota como siempre.
+Los adjuntos son archivos comunes, en la carpeta **Adjuntos** de las notas.

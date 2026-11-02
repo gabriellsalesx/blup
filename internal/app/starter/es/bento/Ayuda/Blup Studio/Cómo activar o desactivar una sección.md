@@ -9,5 +9,5 @@ weight: 2
 
 La sección **Feedback** (un tablero de pedidos con votos) solo se agrega desde aquí.
 
-> [!tip] En Obsidian
+> [!tip] En las carpetas
 > Cada sección es una carpeta con una nota **_index** y la propiedad `blup`. Eliminar la carpeta quita la sección del sitio.

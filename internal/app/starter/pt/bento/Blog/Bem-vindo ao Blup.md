@@ -22,7 +22,7 @@ Este site inteiro foi criado pelo Blup a partir de uma pasta de notas. Ele serve
 2. Troque o texto pelo do seu produto, aos poucos.
 3. Apague o que não usar. No Studio, a tela **Seções** tira uma seção inteira (e deixa restaurar depois).
 
-Prefere o Obsidian? Abra a mesma pasta nele: as notas são arquivos Markdown comuns.
+As notas são arquivos Markdown comuns e abrem em qualquer editor de texto.
 
 > [!tip] Comece pelo nome
-> No Studio, a tela **Site** muda o nome, a descrição, o logo, o menu e as redes. No Obsidian, essas configurações ficam na nota **_index** da pasta do site.
+> No Studio, a tela **Site** muda o nome, a descrição, o logo, o menu e as redes. Direto nas notas, essas configurações ficam na nota **_index** da pasta do site.

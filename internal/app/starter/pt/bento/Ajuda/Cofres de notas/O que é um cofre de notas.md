@@ -13,7 +13,7 @@ Além das notas, o cofre tem:
 - **Bancos de dados**, como uma lista de clientes ou de tarefas;
 - **Mapa de notas**, que mostra como as notas se ligam.
 
-Os cofres são um recurso do Blup Studio. As notas continuam sendo arquivos Markdown, então abrem também no Obsidian.
+Os cofres são um recurso do Blup Studio. As notas continuam sendo arquivos Markdown, então abrem em qualquer editor de texto.
 
 ## Como criar
 

@@ -3,7 +3,7 @@ title: Comandos
 description: Un menú para todo, y un comando para cada acción, en inglés o en portugués.
 weight: 1
 ---
-La línea de comandos es el camino para quien escribe en **Obsidian** y quiere generar y publicar el sitio sin Blup Studio. Instálala siguiendo la [Instalación](../Primeros%20pasos/Instalación.md).
+La línea de comandos genera y publica el sitio desde la terminal, a partir de una bóveda de Obsidian. Instálala siguiendo la [Instalación](../Primeros%20pasos/Instalación.md).
 
 Ejecutar solo `blup` abre el **menú**: vista previa, publicar, personalizar, sincronizar, convertir enlaces, cambiar de sitio, crear otro e idioma. Es la forma más fácil.
 
@@ -50,4 +50,4 @@ blup build --url https://tusitio.pages.dev/bento/ --out ../mi-landing/bento
 
 ## Lo que queda solo en el Studio
 
-Algunas cosas no tienen comando: las bóvedas de notas, la traducción, la narración, el podcast, el tablero de Feedback, los submenús, la publicación y la sincronización con Blup Cloud. Un sitio que ya usa estas funciones sigue generándose y publicándose con normalidad desde la terminal. Mira [Studio u Obsidian](../Primeros%20pasos/Studio%20u%20Obsidian.md).
+Algunas cosas no tienen comando: las bóvedas de notas, la traducción, la narración, el podcast, el tablero de Feedback, los submenús, la publicación y la sincronización con Blup Cloud. Un sitio que ya usa estas funciones sigue generándose y publicándose con normalidad desde la terminal. Mira [Studio y línea de comandos](../Primeros%20pasos/Studio%20y%20línea%20de%20comandos.md).

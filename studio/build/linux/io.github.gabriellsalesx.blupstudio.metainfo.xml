@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Blup Studio's AppStream metadata (.deb, AppImage and the .flatpak of the
+     GitHub release). @VERSION@ and @DATE@ are filled by the release workflow. -->
+<component type="desktop-application">
+  <id>io.github.gabriellsalesx.blupstudio</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-only</project_license>
+
+  <name>Blup Studio</name>
+  <summary>Write in Markdown, preview and publish your site</summary>
+  <summary xml:lang="pt-BR">Escreva em Markdown, veja a prévia e publique o seu site</summary>
+  <summary xml:lang="es">Escribe en Markdown, ve la vista previa y publica tu sitio</summary>
+
+  <developer id="io.github.gabriellsalesx">
+    <name>Gabriell Sales</name>
+  </developer>
+
+  <description>
+    <p>Blup Studio turns a folder of Markdown notes, with links between notes, into a website: a blog, a product site or a notebook.</p>
+    <p xml:lang="pt-BR">O Blup Studio transforma uma pasta de notas em Markdown, com links entre as notas, em um site: um blog, um site de produto ou um caderno.</p>
+    <p xml:lang="es">Blup Studio convierte una carpeta de notas en Markdown, con enlaces entre notas, en un sitio web: un blog, un sitio de producto o un cuaderno.</p>
+    <p>Write with a live preview beside the text, pick a theme and publish to GitHub Pages, Cloudflare or Blup Cloud.</p>
+    <p xml:lang="pt-BR">Escreva com a prévia ao lado do texto, escolha um tema e publique no GitHub Pages, na Cloudflare ou no Blup Cloud.</p>
+    <p xml:lang="es">Escribe con la vista previa al lado del texto, elige un tema y publica en GitHub Pages, Cloudflare o Blup Cloud.</p>
+  </description>
+
+  <launchable type="desktop-id">blup-studio.desktop</launchable>
+  <provides>
+    <binary>blup-studio</binary>
+  </provides>
+
+  <url type="homepage">https://github.com/gabriellsalesx/blup</url>
+  <url type="bugtracker">https://github.com/gabriellsalesx/blup/issues</url>
+  <url type="vcs-browser">https://github.com/gabriellsalesx/blup</url>
+
+  <categories>
+    <category>Office</category>
+    <category>TextEditor</category>
+  </categories>
+  <keywords>
+    <keyword>Markdown</keyword>
+    <keyword>Notes</keyword>
+    <keyword>Blog</keyword>
+    <keyword>Website</keyword>
+    <keyword>Hugo</keyword>
+  </keywords>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#a5d8ff</color>
+    <color type="primary" scheme_preference="dark">#1c3a5e</color>
+  </branding>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="@VERSION@" date="@DATE@" />
+  </releases>
+</component>

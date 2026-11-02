@@ -6,7 +6,7 @@ weight: 1
 To create a page, create a note in the right folder. **Properties** (the block at the top of the note, between `---` lines) are optional and control how it shows up.
 
 - **In Blup Studio**: click **New note** (or `Ctrl+N`) and fill in the **Properties** panel, above the text. See [Note properties](../Blup%20Studio/Note%20properties.md).
-- **In Obsidian**: type `---` on the first line or use the **Add file property** command.
+- **By hand**: type `---` on the first line, write the properties and close the block with another `---`.
 
 ## On every page
 
@@ -47,5 +47,5 @@ To create a page, create a note in the right folder. **Properties** (the block a
 | `translationKey`, `translation_hash`, `ai_translated` | Translation. See [Multilingual sites](../Site%20setup/Multilingual%20sites.md). |
 | `created`, `updated` | The Studio, in vault notes. |
 
-> [!tip] Ready-made templates in Obsidian
-> Sites created from the command line get a **Templates** folder, with templates for a docs page, a roadmap item and a changelog version. Use Obsidian's **Templates: Insert template** command to start a note with the right properties.
+> [!tip] Ready-made templates
+> Sites created from the command line get a **Templates** folder, with templates for a docs page, a roadmap item and a changelog version. Copy one to start a note with the right properties.

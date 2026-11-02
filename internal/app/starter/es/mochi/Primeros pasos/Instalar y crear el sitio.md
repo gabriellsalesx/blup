@@ -1,7 +1,7 @@
 ---
 title: Instalar y crear el sitio
 date: {{date-1}}
-description: Descarga Blup Studio y crea el sitio respondiendo una pregunta a la vez. O usa la línea de comandos con Obsidian.
+description: Descarga Blup Studio y crea el sitio respondiendo una pregunta a la vez. O usa la línea de comandos.
 tags: [Primeros pasos, Studio]
 image: "[[blup-dicas.jpg]]"
 ---
@@ -18,13 +18,13 @@ En la pantalla de inicio, haz clic en **Crear un sitio nuevo**. El Studio hace u
 1. **Qué tipo de sitio**: blog personal o sitio de producto.
 2. **Qué tema**: Mochi (este, con tarjetas y portadas) o Nori, para el blog; Bento, para el sitio de producto.
 3. **Cómo se llama el sitio**: nombre, una frase sobre él, tu nombre y el idioma del sitio.
-4. **Dónde viven las notas**: en una carpeta nueva (lo más simple), en una carpeta que elijas o en tu bóveda de Obsidian.
+4. **Dónde viven las notas**: en una carpeta nueva (lo más simple) o en una carpeta que elijas, que puede tener notas.
 5. **¿Todo listo?** Revisa y crea el sitio.
 
 Si la carpeta está vacía, Blup pone el sitio de ejemplo del tema: este tutorial.
 
-> [!tip] ¿Vas a usar Obsidian también?
-> Si eliges tu bóveda de Obsidian, deja marcado **Ajustar Obsidian para que los enlaces funcionen en el sitio**. Obsidian empieza a guardar los enlaces en el formato que el sitio entiende.
+> [!tip] ¿Ya tienes una carpeta con notas?
+> Si la eliges, deja marcado **Ajustar la carpeta para que los enlaces funcionen en el sitio**. Así los enlaces nuevos se guardan en el formato que el sitio entiende.
 
 ## La ventana del sitio
 
@@ -37,9 +37,9 @@ No hay botón de guardar: el Studio guarda solo mientras escribes.
 
 Haz clic derecho en una nota para crear otra ahí, hacer una copia, moverla, copiar el enlace, renombrarla, exportarla o eliminarla. **Renombrar** actualiza solo los enlaces que apuntan a la nota, y **Eliminar** manda la nota a la **Papelera**, desde donde puedes restaurarla.
 
-## Con Obsidian y la línea de comandos
+## Por la línea de comandos
 
-¿Prefieres escribir en Obsidian? Instala la línea de comandos `blup`.
+Blup también tiene una línea de comandos, `blup`. Para instalarla:
 
 En macOS o Linux, abre la Terminal y pega:
 
@@ -67,5 +67,5 @@ Después, ejecuta `blup`. La primera vez pregunta el idioma y abre el asistente 
 
 Los mismos comandos también funcionan en portugués: `novo`, `ver`, `publicar`, `personalizar`, `sincronizar`, `converter` y `atualizar`.
 
-> [!info] Los dos juntos
-> Un sitio creado en el Studio se abre en la línea de comandos, y al revés también. Las notas son las mismas; solo cambia dónde haces clic.
+> [!info] El mismo sitio
+> Un sitio creado en el Studio se abre en la línea de comandos, y al revés también. Las notas son las mismas.

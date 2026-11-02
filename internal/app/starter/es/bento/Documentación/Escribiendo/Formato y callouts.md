@@ -1,9 +1,9 @@
 ---
 title: Formato y callouts
-description: Texto, listas, tablas y las cajas destacadas de Obsidian.
+description: Texto, listas, tablas y las cajas destacadas (callouts).
 weight: 3
 ---
-Todo aquí es Markdown común, igual en el Studio y en Obsidian. En el Studio, la barra de formato y el menú `/` insertan cada cosa sin que tengas que memorizar la sintaxis. Mira [Escribir en el editor](../Blup%20Studio/Escribir%20en%20el%20editor.md).
+Todo aquí es Markdown común. En el Studio, la barra de formato y el menú `/` insertan cada cosa sin que tengas que memorizar la sintaxis. Mira [Escribir en el editor](../Blup%20Studio/Escribir%20en%20el%20editor.md).
 
 ## Texto
 
@@ -42,7 +42,7 @@ Los títulos de nivel 2 (`##`) y 3 (`###`) aparecen en **En esta página**, junt
 > Sin título, el callout muestra el nombre del tipo.
 
 > [!tip] Consejo
-> Tipos: note, abstract, info, todo, tip, success, question, warning, failure, danger, bug, example y quote. Los alias de Obsidian (hint, important, faq, caution, error...) también valen.
+> Tipos: note, abstract, info, todo, tip, success, question, warning, failure, danger, bug, example y quote. Los alias (hint, important, faq, caution, error...) también valen.
 
 > [!success] Éxito
 > Cada tipo tiene color e ícono.

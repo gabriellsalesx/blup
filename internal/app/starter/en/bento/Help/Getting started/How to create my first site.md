@@ -9,7 +9,7 @@ weight: 3
 2. Pick the kind: **blog** (Mochi or Nori themes) or **product site** (Bento theme).
 3. In Bento, check the sections you want: docs, roadmap, changelog, help center and blog.
 4. Give the site a name and check the suggested details.
-5. Choose where the notes live: a new folder, a folder you already have or a folder in your Obsidian vault.
+5. Choose where the notes live: a new folder or a folder you already have.
 6. Review and create.
 
 The site starts with example notes, like these. Open **Preview** to see the site while you write.

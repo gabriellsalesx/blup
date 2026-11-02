@@ -34,7 +34,7 @@ Docs/
 ## Create a page
 
 - **In Blup Studio**: click a subfolder of Docs, then **New note** (or `Ctrl+N`). Fill in **Title**, **Description** and **Order** in the properties.
-- **In Obsidian**: create the note in the subfolder and write `title`, `description` and `weight` at the top.
+- **By hand**: create the note in the subfolder and write `title`, `description` and `weight` at the top.
 
 For a new group, create a subfolder with an **_index** note (title, description and `weight`).
 

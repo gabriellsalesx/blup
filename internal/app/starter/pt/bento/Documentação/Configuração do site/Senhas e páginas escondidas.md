@@ -16,7 +16,7 @@ Nas **Propriedades** da nota, em **Senha**, escolha:
 - **Senha geral**: a mesma senha para vários posts. Ela fica em **Configurações > Senha geral** e vale para todos os seus sites.
 - **Senha própria**: uma senha só deste post, em **Senha deste post**.
 
-### Pelo Obsidian
+### Direto na nota
 
 ```yaml
 password: minha-senha
@@ -35,7 +35,7 @@ Na linha de comando, `blup personalizar` também define uma senha geral só para
 
 ## Páginas escondidas
 
-No Studio, ligue **Escondida** nas propriedades. No Obsidian:
+No Studio, ligue **Escondida** nas propriedades. Direto na nota:
 
 ```yaml
 hidden: true
@@ -45,7 +45,7 @@ A página é publicada, mas sai das listas, das tags e da busca do site, e pede 
 
 ## Rascunhos
 
-No Studio, ligue **Rascunho**. No Obsidian:
+No Studio, ligue **Rascunho**. Direto na nota:
 
 ```yaml
 draft: true

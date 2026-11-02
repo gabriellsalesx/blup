@@ -24,7 +24,7 @@ La vista previa se actualiza sola después de cada cambio.
 
 ## Con la línea de comandos
 
-Ejecuta `blup customize` y elige **Secciones del sitio**. Blup muestra las que faltan y crea la carpeta de cada una, con notas de ejemplo. Para quitar una, elimina la carpeta en Obsidian. El Feedback no aparece en esta lista.
+Ejecuta `blup customize` y elige **Secciones del sitio**. Blup muestra las que faltan y crea la carpeta de cada una, con notas de ejemplo. Para quitar una, elimina la carpeta. El Feedback no aparece en esta lista.
 
 ## A mano
 

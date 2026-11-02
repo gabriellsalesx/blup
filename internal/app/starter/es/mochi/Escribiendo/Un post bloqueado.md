@@ -10,4 +10,4 @@ Escribiste la contraseña correcta. 🎉
 
 Este texto se cifró cuando se generó el sitio y solo se pudo leer ahora, en tu navegador, con la contraseña.
 
-Abre esta nota en el Studio: en el panel **Propiedades**, la **Contraseña** está activada, con la contraseña propia `blup`. En Obsidian, la única diferencia con un post común es la propiedad `password: blup`.
+Abre esta nota en el Studio: en el panel **Propiedades**, la **Contraseña** está activada, con la contraseña propia `blup`. En el archivo de la nota, la única diferencia con un post común es la propiedad `password: blup`.

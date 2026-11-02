@@ -6,7 +6,7 @@ weight: 1
 Para criar uma página, crie uma nota na pasta certa. As **propriedades** (o bloco no topo da nota, entre linhas `---`) são opcionais e controlam como ela aparece.
 
 - **No Blup Studio**: clique em **Nova nota** (ou `Ctrl+N`) e preencha o painel **Propriedades**, acima do texto. Veja [Propriedades da nota](../Blup%20Studio/Propriedades%20da%20nota.md).
-- **No Obsidian**: digite `---` na primeira linha ou use o comando **Adicionar propriedade**.
+- **Direto no arquivo**: escreva as propriedades no topo da nota, entre duas linhas `---`, em qualquer editor de texto.
 
 ## Em todas as páginas
 
@@ -47,5 +47,5 @@ Para criar uma página, crie uma nota na pasta certa. As **propriedades** (o blo
 | `translationKey`, `translation_hash`, `ai_translated` | A tradução. Veja [Sites em vários idiomas](../Configuração%20do%20site/Sites%20em%20vários%20idiomas.md). |
 | `created`, `updated` | O Studio, nas notas dos cofres. |
 
-> [!tip] Modelos prontos no Obsidian
-> Sites criados pela linha de comando ganham a pasta **Modelos**, com modelos de página da documentação, item do roadmap e versão do changelog. Use o comando **Modelos: Inserir modelo** do Obsidian para começar uma nota com as propriedades certas.
+> [!tip] Modelos prontos
+> Sites criados pela linha de comando ganham a pasta **Modelos**, com modelos de página da documentação, item do roadmap e versão do changelog. Copie um modelo para começar uma nota com as propriedades certas.

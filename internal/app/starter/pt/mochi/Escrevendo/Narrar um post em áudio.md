@@ -39,5 +39,5 @@ Um post traduzido é narrado no idioma da tradução, com a voz daquele idioma. 
 
 Os posts narrados podem virar episódios de um podcast do blog, com feed para Spotify e Apple Podcasts. Veja [Seu blog vira podcast](../Personalizando/Seu%20blog%20vira%20podcast.md).
 
-> [!info] E no Obsidian?
+> [!info] Pela linha de comando
 > A narração é do Studio. Depois de gerada, ela fica nas propriedades da nota e continua no site mesmo quando você publica pela linha de comando.

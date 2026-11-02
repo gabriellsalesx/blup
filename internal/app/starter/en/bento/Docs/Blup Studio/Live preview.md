@@ -26,6 +26,6 @@ When you open a site, the Studio turns on the preview next to the editor. It is 
 > [!note] No audio player on Linux?
 > Some Linux systems are missing an audio component (GStreamer). In that case the preview hides the player, but the published site shows it as usual.
 
-## In Obsidian
+## Without the Studio
 
-Without the Studio, run `blup preview` in the terminal: the preview opens in your browser and updates with every saved note. See [Preview](../Command%20line/Preview.md).
+Run `blup preview` in the terminal: the preview opens in your browser and updates with every saved note. See [Preview](../Command%20line/Preview.md).

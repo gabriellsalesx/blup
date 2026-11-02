@@ -65,7 +65,7 @@ The authors and attachments folders don't show in the tree: they have their own 
 
 The Studio saves on its own while you write, and before you switch notes or leave. The state shows on screen: saved, saving or not saved. `Ctrl+S` saves too.
 
-If a note changes outside the Studio (in Obsidian or by an AI in the terminal), the tree refreshes. If you were editing that same note, the Studio lets you know and you choose between **Load the new one** and **Keep mine**.
+If a note changes outside the Studio (in another editor or by an AI in the terminal), the tree refreshes. If you were editing that same note, the Studio lets you know and you choose between **Load the new one** and **Keep mine**.
 
 ## Main shortcuts
 

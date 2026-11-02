@@ -14,10 +14,10 @@ social:
 button_text:
 button_link:
 ---
-This blog comes with a Blup tutorial built in. Read the posts and open the notes in Blup Studio (or in Obsidian) to see how each page was made. Then just edit them and write your own.
+This blog comes with a Blup tutorial built in. Read the posts and open the notes in Blup Studio to see how each page was made. Then just edit them and write your own.
 
 %%
-This block is a comment (the text between the two pairs of percent signs): you only see it while editing, in the Studio or in Obsidian, and it never goes to the site.
+This block is a comment (the text between the two pairs of percent signs): you only see it while editing, and it never goes to the site.
 
 The text above is the introduction of the home page. The properties of this note (_index) hold the settings of the whole site. The Site screen, in the Studio's side menu, edits the same ones:
 

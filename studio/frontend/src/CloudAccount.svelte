@@ -62,7 +62,13 @@
     if (pw.length < 8) return (error = c.short);
     if (pw !== pw2) return (error = c.differ);
     busy = true;
-    try { recovery = await CreateNotesPassword(pw); pw = pw2 = ""; } catch (e) { error = msg(e); } finally { busy = false; }
+    try { recovery = await CreateNotesPassword(pw); pw = pw2 = ""; } catch (e) {
+      // Another computer may have created it first: the account is read
+      // again (it then asks for that password), the message stays.
+      const m = msg(e);
+      await load();
+      error = m;
+    } finally { busy = false; }
   }
   async function copyRecovery() { await Clipboard.SetText(recovery); copied = true; setTimeout(() => (copied = false), 1500); }
   async function finish() { recovery = ""; kept = false; await load(); }

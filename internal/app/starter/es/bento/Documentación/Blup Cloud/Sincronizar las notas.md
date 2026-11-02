@@ -63,4 +63,4 @@ Si la misma nota se editó en dos computadoras antes de sincronizar, Blup **guar
 | Editada de los dos lados | Se quedan las dos |
 
 > [!tip] Lo que no se sincroniza
-> Las carpetas que empiezan con punto (como `.obsidian`) quedan fuera. La configuración del sitio que necesita viajar (nombre, tema, destino de la publicación) va incluida; las contraseñas y las claves de acceso, no.
+> Las carpetas que empiezan con punto quedan fuera. La configuración del sitio que necesita viajar (nombre, tema, destino de la publicación) va incluida; las contraseñas y las claves de acceso, no.

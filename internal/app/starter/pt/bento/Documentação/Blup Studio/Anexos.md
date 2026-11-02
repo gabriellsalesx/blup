@@ -23,6 +23,6 @@ A tela **Anexos** mostra as imagens e arquivos que as notas usam. Eles chegam so
 
 Na publicação, o Blup gera versões menores e em WebP de cada imagem e entrega ao navegador só o tamanho de que ele precisa. Veja [Links e imagens](../Escrevendo/Links%20e%20imagens.md).
 
-## Pelo Obsidian
+## A pasta Anexos
 
-Os anexos ficam na pasta **Anexos** das notas. No Obsidian, arraste a imagem para a nota como de costume.
+Os anexos ficam na pasta **Anexos** das notas, como arquivos comuns.

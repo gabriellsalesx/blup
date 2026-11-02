@@ -7,7 +7,7 @@ weight: 1
 > Só as notas da pasta do site vão para o site.
 
 > [!question]- A nota está marcada como rascunho?
-> Rascunhos aparecem só na prévia. No Studio, desmarque **Rascunho** em Propriedades. No Obsidian, mude `draft` para `false` ou apague a propriedade.
+> Rascunhos aparecem só na prévia. No Studio, desmarque **Rascunho** em Propriedades. Direto na nota, mude `draft` para `false` ou apague a propriedade.
 
 > [!question]- A nota está marcada como escondida?
 > Ela está no site, mas fora das listas. Abra pelo endereço ou desmarque **Escondida**.

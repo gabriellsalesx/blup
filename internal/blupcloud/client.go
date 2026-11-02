@@ -36,6 +36,9 @@ var (
 	ErrSignedOut = errors.New("blupcloud: not signed in to Blup Cloud")
 	// ErrNoKey: sync was never turned on for this account (no notes password).
 	ErrNoKey = errors.New("blupcloud: the notes password was never created")
+	// ErrKeyExists: another computer created the notes password first (409
+	// KEY_EXISTS); the one made here is dropped, the notes open with theirs.
+	ErrKeyExists = errors.New("blupcloud: the notes password was already created")
 	// ErrMoved: another computer saved a version first.
 	ErrMoved = errors.New("blupcloud: the notes changed on another computer")
 	// ErrQuota: the plan's storage is full.
@@ -162,6 +165,8 @@ func (c *Client) do(ctx context.Context, method, path string, body any, contentT
 			return ErrSignedOut
 		case e.Code == "NO_KEY":
 			return ErrNoKey
+		case e.Code == "KEY_EXISTS":
+			return ErrKeyExists
 		case e.Code == "MOVED":
 			return ErrMoved
 		case e.Code == "QUOTA":

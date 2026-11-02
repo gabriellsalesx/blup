@@ -5,7 +5,7 @@ description: La app de Blup para Linux, macOS y Windows, con editor, vista previ
 tags: [Novedades, Studio]
 image: "[[blup-configurar.jpg]]"
 ---
-Blup empezó como una línea de comandos para quien escribe en Obsidian. Hoy, la forma recomendada de usarlo es **Blup Studio**, una app que reúne todo en una sola ventana.
+Blup empezó como una línea de comandos. Hoy, la forma recomendada de usarlo es **Blup Studio**, una app que reúne todo en una sola ventana.
 
 ## Escribir viendo el sitio
 
@@ -24,8 +24,8 @@ Cada parte del sitio tiene su pantalla: **Sitio** (nombre, logo, menú y redes),
 - **Sincronizar** y **publicar** con Blup Cloud.
 - Terminal con agentes de IA, papelera e historial.
 
-## ¿Y Obsidian?
+## ¿Y la línea de comandos?
 
-Sigue siendo bienvenido. Las notas son archivos Markdown, y la misma carpeta se abre en los dos. Quien prefiere Obsidian usa la línea de comandos `blup` para ver la vista previa y publicar.
+Sigue disponible. Las notas son archivos Markdown, y la misma carpeta funciona en los dos. Quien prefiere la terminal usa `blup` para ver la vista previa y publicar.
 
 Descarga el Studio en getblup.io.

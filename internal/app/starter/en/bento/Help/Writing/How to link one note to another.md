@@ -10,6 +10,6 @@ weight: 3
 
 The Studio inserts a link in the format the site understands. In the editor, the link shows only as its text, in blue. Click it to open the other note.
 
-## In Obsidian
+## By hand
 
-Use relative Markdown links, like `[Installation](../Getting%20started/Installation.md)`. When you create the site, Blup offers to set Obsidian up to make links like these. If your vault already has `[[wikilinks]]`, run `blup convert` to change them all at once.
+Use relative Markdown links, like `[Installation](../Getting%20started/Installation.md)`. If your notes already have `[[wikilinks]]`, run `blup convert` to change them all at once.

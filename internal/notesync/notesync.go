@@ -61,7 +61,7 @@ var (
 // folder, so it is never downloaded into the vault.
 var InitFile = github.InitFile{
 	Path:    ".blup/README.md",
-	Content: []byte("# Notes\n\nThese notes are kept in sync by blup.\nEdit them in Obsidian and run `blup sync`.\n"),
+	Content: []byte("# Notes\n\nThese notes are kept in sync by Blup.\n"),
 	Message: "Start notes backup",
 }
 

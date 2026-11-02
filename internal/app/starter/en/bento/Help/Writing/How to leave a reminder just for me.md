@@ -9,6 +9,6 @@ Write the reminder between two pairs of percent signs:
 %% Check this number before publishing. %%
 ```
 
-The text shows while you edit, in the Studio and in Obsidian, but never on the site. In the Studio, the formatting bar has a button for this.
+The text shows while you edit, but never on the site. In the Studio, the formatting bar has a button for this.
 
 %% This is an example: you only see this sentence while you edit the note. %%

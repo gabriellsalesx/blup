@@ -11,7 +11,7 @@ No Studio, clique em **Prévia**, no topo. O site aparece ao lado do editor e **
 
 A prévia mostra também os rascunhos, para você conferir antes de publicar.
 
-> [!info] Pelo Obsidian
+> [!info] Pela linha de comando
 > Rode `blup ver`. O site abre no navegador e atualiza a cada nota salva. Para parar, aperte Ctrl+C no terminal.
 
 ## Onde publicar
@@ -38,7 +38,7 @@ Conecte a conta uma vez:
 
 Pronto: clique em **Publicar agora**. Quando terminar, o Studio mostra o endereço do site.
 
-> [!info] Pelo Obsidian
+> [!info] Pela linha de comando
 > Rode `blup publicar`. Na primeira vez ele pergunta onde publicar (Cloudflare Pages ou GitHub Pages), abre a página da chave e pede para colar no terminal.
 
 Das próximas vezes, só o que mudou é enviado.

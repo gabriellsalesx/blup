@@ -65,5 +65,5 @@ examples:
 %%
 Esta pasta é o quadro de feedback do site: quem visita abre pedidos (bug, recurso, melhoria ou outro), vota e comenta, entrando com o GitHub. Os pedidos ficam nas issues do repositório de comentários do site, não aqui. Para o quadro receber pedidos de verdade, ligue os comentários na tela Comentários do Blup Studio. O status de cada pedido (planejado, em andamento, feito, recusado) você muda na tela Feedback.
 
-Os pedidos da lista examples são exemplos, como as notas das outras seções: aparecem no quadro até chegar o primeiro pedido de verdade. No Obsidian, mude ou apague a lista nas propriedades desta nota.
+Os pedidos da lista examples são exemplos, como as notas das outras seções: aparecem no quadro até chegar o primeiro pedido de verdade. Direto na nota, mude ou apague a lista nas propriedades desta nota.
 %%

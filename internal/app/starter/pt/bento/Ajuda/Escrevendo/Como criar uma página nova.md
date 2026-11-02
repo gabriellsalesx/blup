@@ -11,9 +11,9 @@ weight: 1
 
 O nome da nota vira o título da página, a não ser que você preencha **Título** nas propriedades.
 
-## No Obsidian
+## Pela linha de comando
 
-Crie a nota dentro da pasta da seção e escreva. Com `blup ver` aberto, a página aparece na prévia assim que você salva.
+Crie a nota dentro da pasta da seção, em qualquer editor de texto, e escreva. Com `blup ver` aberto, a página aparece na prévia assim que você salva.
 
 > [!tip] Comece de um modelo
-> No Obsidian, use **Modelos: Inserir modelo** para começar com as propriedades certas de cada seção.
+> Sites criados pela linha de comando têm a pasta **Modelos**. Copie um modelo para começar com as propriedades certas de cada seção.

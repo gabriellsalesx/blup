@@ -5,10 +5,9 @@ weight: 2
 ---
 ## Links between notes
 
-- **In Blup Studio**: type `[[`, pick the note and you're done. Or use `/` and **Link to another note**. See [Writing in the editor](../Blup%20Studio/Writing%20in%20the%20editor.md).
-- **In Obsidian**: type `[[` and pick the note, or drag the note into the text. With the adjustment Blup made in Obsidian, the link is saved in the standard format.
+In Blup Studio, type `[[`, pick the note and you're done. Or use `/` and **Link to another note**. See [Writing in the editor](../Blup%20Studio/Writing%20in%20the%20editor.md).
 
-Either way, the link looks like this, with a relative path:
+The link is saved like this, with a relative path:
 
 ```md
 [Formatting and callouts](Formatting%20and%20callouts.md)
@@ -24,12 +23,11 @@ On the site it becomes a link to the page: [Formatting and callouts](Formatting%
 
 ## Links to other sites
 
-Write them as usual: `[Obsidian](https://obsidian.md)`. In the Studio, the link button (or `Ctrl+K`) puts in the format and selects the address so you can paste it.
+Write them as usual: `[Blup](https://getblup.io)`. In the Studio, the link button (or `Ctrl+K`) puts in the format and selects the address so you can paste it.
 
 ## Images
 
-- **In the Studio**: paste (`Ctrl+V`) or drag the image into the editor. It goes to **Attachments** and shows up right there.
-- **In Obsidian**: drag the image into the note.
+In the Studio, paste (`Ctrl+V`) or drag the image into the editor. It goes to **Attachments** and shows up right there.
 
 When publishing, Blup:
 

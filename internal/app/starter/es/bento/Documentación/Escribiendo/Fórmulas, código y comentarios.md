@@ -27,7 +27,7 @@ Los colores siguen el lenguaje: `go`, `js`, `py`, `sh`, `yaml`, `html`, `css` y 
 
 ## Comentarios
 
-El texto entre `%%` y `%%` es un comentario de Obsidian: aparece mientras editas y no va al sitio. %%Como este fragmento, que solo existe en la nota.%%
+El texto entre `%%` y `%%` es un comentario: aparece mientras editas y no va al sitio. %%Como este fragmento, que solo existe en la nota.%%
 
 Úsalo para recordatorios, borradores e instrucciones para quien edita, como en la nota **_index** de la carpeta del sitio.
 

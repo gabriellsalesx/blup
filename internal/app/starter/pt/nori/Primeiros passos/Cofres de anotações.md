@@ -26,5 +26,5 @@ Digite `@` para citar outra nota ou uma data, e `/` para inserir um título, uma
 
 As notas do cofre são arquivos comuns, numa pasta do seu computador. Para ter as mesmas notas em outro computador, use o botão **Sincronizar**: pelo Blup Cloud, com criptografia de ponta a ponta, ou num repositório privado do GitHub. Veja [Sincronizar as notas](../Personalizando/Sincronizar%20as%20notas.md).
 
-> [!info] E o Obsidian?
-> As notas de um cofre também abrem no Obsidian. O canvas usa o formato aberto JSON Canvas. Desenhos, bancos de dados, mapa de notas e nota do dia são recursos do próprio Studio.
+> [!info] Formatos abertos
+> As notas de um cofre são arquivos Markdown comuns e abrem em qualquer editor de texto. O canvas usa o formato aberto JSON Canvas. Desenhos, bancos de dados, mapa de notas e nota do dia são recursos do próprio Studio.

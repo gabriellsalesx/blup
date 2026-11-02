@@ -1,10 +1,12 @@
 [Desktop Entry]
 Type=Application
-Name=blup-studio
+Name=Blup Studio
 Exec=blup-studio
 Icon=blup-studio
-Categories=Development;
+Categories=Office;TextEditor;Publishing;
+Comment=Write in Markdown, preview and publish your site
 Terminal=false
-Keywords=wails
+Keywords=Markdown;Notes;Wiki;Blog;Website;Hugo;
 Version=1.0
+GenericName=Markdown Editor
 StartupNotify=false

@@ -2,7 +2,7 @@
 title: Autores e perfis
 date: {{date-7}}
 description: Um perfil por autor, com foto, cargo, redes e bio. Posts com mais de um autor.
-tags: [Personalização, Studio, Obsidian]
+tags: [Personalização, Studio]
 image: "[[blup-autores.jpg]]"
 authors: [Blup]
 ---
@@ -21,9 +21,9 @@ Quando você criou o site, o Blup já criou o seu perfil. Preencha a foto e a bi
 
 Para dizer quem escreveu um post, use o campo **Autores** no painel **Propriedades** do post. Comece a digitar e escolha o nome.
 
-## No Obsidian
+## Direto nas notas
 
-A pasta **Autores** tem uma nota **_index** com a propriedade `blup: authors`. Ela avisa o Blup que as notas dali são perfis, não posts: a pasta não vira página nem aparece no menu.
+Você também pode editar os perfis em qualquer editor de texto. A pasta **Autores** tem uma nota **_index** com a propriedade `blup: authors`. Ela avisa o Blup que as notas dali são perfis, não posts: a pasta não vira página nem aparece no menu.
 
 Cada autor é uma nota com o nome da pessoa:
 

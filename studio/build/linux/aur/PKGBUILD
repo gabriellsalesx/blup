@@ -1,0 +1,35 @@
+# Maintainer: Gabriell Sales (https://github.com/gabriellsalesx)
+#
+# Blup Studio from the GitHub release (the binary the release workflow
+# builds and checksums). pkgver and sha256sums are filled by update.sh for
+# each release; then .SRCINFO is made again (makepkg --printsrcinfo).
+
+pkgname=blup-studio-bin
+_pkgname=blup-studio
+pkgver=1.0.0
+pkgrel=1
+pkgdesc='Write in Markdown, preview and publish your site (Blup Studio)'
+arch=('x86_64')
+url='https://github.com/gabriellsalesx/blup'
+license=('AGPL-3.0-only')
+# The window: GTK 4 and WebKitGTK 6.0 (Wails 3's Linux stack). The list is
+# what the binary links (readelf -d, then pacman -Qo).
+depends=('gtk4' 'webkitgtk-6.0' 'libsoup3' 'glib2' 'glibc' 'pango' 'harfbuzz' 'cairo'
+  'gdk-pixbuf2' 'graphene' 'libx11' 'vulkan-icd-loader')
+optdepends=(
+  'gst-plugins-good: play the posts narration (MP3) in the window and the preview'
+  'hugo: use the system Hugo (0.169 or newer) instead of the one Blup downloads'
+)
+provides=("${_pkgname}")
+conflicts=("${_pkgname}")
+# A Go binary built and stripped by the release.
+options=('!strip' '!debug')
+source_x86_64=("${_pkgname}_${pkgver}_linux_amd64.tar.gz::${url}/releases/download/v${pkgver}/${_pkgname}_${pkgver}_linux_amd64.tar.gz")
+sha256sums_x86_64=('0000000000000000000000000000000000000000000000000000000000000000')
+
+package() {
+  install -Dm755 "${_pkgname}" "${pkgdir}/usr/bin/${_pkgname}"
+  install -Dm644 "${_pkgname}.desktop" "${pkgdir}/usr/share/applications/${_pkgname}.desktop"
+  install -Dm644 "${_pkgname}.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/${_pkgname}.png"
+  install -Dm644 THIRD_PARTY_NOTICES.md "${pkgdir}/usr/share/licenses/${pkgname}/THIRD_PARTY_NOTICES.md"
+}

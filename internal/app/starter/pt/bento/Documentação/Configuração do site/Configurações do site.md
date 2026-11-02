@@ -24,7 +24,7 @@ Cada mudança aparece na prévia ao lado na hora, sem recarregar.
 
 ![O Blup configurando](../../Anexos/blup-configurar.jpg)
 
-## Pelo Obsidian: a nota _index
+## Direto na nota _index
 
 | Propriedade | O que faz |
 | --- | --- |

@@ -9,6 +9,6 @@ Escreva o lembrete entre dois pares de sinais de porcentagem:
 %% Conferir este número antes de publicar. %%
 ```
 
-O texto aparece enquanto você edita, no Studio e no Obsidian, mas nunca no site. No Studio, a barra de formatação tem um botão para isso.
+O texto aparece enquanto você edita, mas nunca no site. No Studio, a barra de formatação tem um botão para isso.
 
 %% Este é um exemplo: você só vê esta frase enquanto edita a nota. %%

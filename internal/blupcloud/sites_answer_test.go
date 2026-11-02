@@ -142,3 +142,18 @@ func TestAccountID(t *testing.T) {
 		t.Error("a number was taken as the id")
 	}
 }
+
+// Reminders tell when the account has no e-mail (passkey only); an older
+// cloud that doesn't say means an e-mail is there.
+func TestReminderEmailMissing(t *testing.T) {
+	ctx := context.Background()
+	if u, err := saying(t, `{"limit":5,"used":0,"emailMissing":true}`).ReminderEmails(ctx); err != nil || !u.EmailMissing {
+		t.Fatalf("no e-mail: %+v %v", u, err)
+	}
+	if u, err := saying(t, `{"limit":5,"used":0}`).ReminderEmails(ctx); err != nil || u.EmailMissing {
+		t.Fatalf("older cloud: %+v %v", u, err)
+	}
+	if _, err := saying(t, `{"limit":5,"used":0,"emailMissing":"yes"}`).ReminderEmails(ctx); err == nil {
+		t.Fatal("a text was taken as emailMissing")
+	}
+}

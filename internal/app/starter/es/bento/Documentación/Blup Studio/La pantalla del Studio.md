@@ -65,7 +65,7 @@ Las carpetas de autores y de adjuntos no aparecen en el árbol: tienen pantallas
 
 El Studio guarda solo mientras escribes, y antes de cambiar de nota o salir. El estado aparece en la pantalla: guardado, guardando o sin guardar. `Ctrl+S` también guarda.
 
-Si una nota cambia fuera del Studio (en Obsidian o por una IA en la terminal), el árbol se actualiza. Si estabas editando esa misma nota, el Studio avisa y te deja elegir entre **Cargar la nueva** y **Conservar la mía**.
+Si una nota cambia fuera del Studio (en otro editor o por una IA en la terminal), el árbol se actualiza. Si estabas editando esa misma nota, el Studio avisa y te deja elegir entre **Cargar la nueva** y **Conservar la mía**.
 
 ## Atajos principales
 

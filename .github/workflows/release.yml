@@ -32,3 +32,148 @@ jobs:
           # Ed25519 key that signs checksums.txt (scripts/sign-release).
           # Without it the release stops before publishing anything.
           BLUP_RELEASE_KEY: ${{ secrets.BLUP_RELEASE_KEY }}
+
+  # Blup Studio for Linux: the binary (for the AUR), AppImage, .deb and
+  # .flatpak, built on Ubuntu 24.04 (its glibc 2.39 and GTK 4.14 are the
+  # oldest the packages target), then installed and checked on Ubuntu,
+  # Debian 13 and Arch before anything is published.
+  studio-linux:
+    needs: release
+    runs-on: ubuntu-24.04
+    env:
+      DEB_MAINTAINER: ${{ vars.DEB_MAINTAINER || 'Blup <no-reply@getblup.io>' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: studio/go.mod
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev \
+            appstream desktop-file-utils lintian flatpak dbus
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+          (cd studio/frontend && npm ci)
+      - name: Build and AppImage
+        working-directory: studio
+        run: wails3 task linux:create:appimage VERSION="${GITHUB_REF_NAME#v}"
+      - name: Metainfo and desktop file
+        working-directory: studio
+        run: |
+          sed -e "s/@VERSION@/${GITHUB_REF_NAME#v}/" -e "s/@DATE@/$(date -u +%F)/" \
+            build/linux/io.github.gabriellsalesx.blupstudio.metainfo.xml > bin/io.github.gabriellsalesx.blupstudio.metainfo.xml
+          appstreamcli validate --no-net bin/io.github.gabriellsalesx.blupstudio.metainfo.xml
+          desktop-file-validate build/linux/blup-studio.desktop
+      - name: .deb
+        working-directory: studio
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}" GOARCH=amd64 wails3 tool package -name blup-studio -format deb \
+            -config ./build/linux/nfpm/nfpm.yaml -out "$PWD/bin"
+          lintian --fail-on error bin/blup-studio.deb
+      - name: .flatpak (GNOME 51 runtime)
+        working-directory: studio
+        run: |
+          flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak --user install -y --noninteractive --no-related flathub org.gnome.Platform//51
+          build/linux/flatpak/bundle.sh "${GITHUB_REF_NAME#v}" bin/blup-studio.flatpak
+          flatpak --user install -y --noninteractive bin/blup-studio.flatpak
+          dbus-run-session -- flatpak --user run --command=sh io.github.gabriellsalesx.blupstudio -c 'if ldd /app/bin/blup-studio | grep "not found"; then exit 1; fi'
+      - name: Name the files
+        working-directory: studio/bin
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          mkdir -p ../../dist-studio && d=../../dist-studio
+          cp ../build/linux/blup-studio.desktop .
+          cp ../build/linux/icons/512x512/blup-studio.png .
+          cp ../../LICENSE ../../THIRD_PARTY_NOTICES.md ../../README.md .
+          tar -czf "$d/blup-studio_${v}_linux_amd64.tar.gz" blup-studio blup-studio.desktop blup-studio.png LICENSE THIRD_PARTY_NOTICES.md README.md
+          mv blup-studio-x86_64.AppImage "$d/blup-studio_${v}_x86_64.AppImage"
+          mv blup-studio.deb "$d/blup-studio_${v}_amd64.deb"
+          mv blup-studio.flatpak "$d/blup-studio_${v}_x86_64.flatpak"
+      - name: Installs on Ubuntu 24.04, Debian 13 and Arch
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          sudo apt-get install -y "./dist-studio/blup-studio_${v}_amd64.deb"
+          if ldd /usr/bin/blup-studio | grep "not found"; then exit 1; fi
+          docker run --rm -v "$PWD/dist-studio:/d:ro" debian:trixie sh -ec \
+            "apt-get update -qq && apt-get install -y -qq /d/blup-studio_${v}_amd64.deb >/dev/null && if ldd /usr/bin/blup-studio | grep 'not found'; then exit 1; fi"
+          docker run --rm -v "$PWD/dist-studio:/d:ro" archlinux:latest sh -ec \
+            "pacman -Sy --noconfirm --needed gtk4 webkitgtk-6.0 >/dev/null && tar -xzf /d/blup-studio_${v}_linux_amd64.tar.gz -C /tmp && if ldd /tmp/blup-studio | grep 'not found'; then exit 1; fi"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: studio-linux
+          path: dist-studio/*
+          if-no-files-found: error
+
+  # Blup Studio for the Microsoft Store: an unsigned .msix per architecture
+  # (the Store signs it), kept as this run's artifact. Nothing goes to the
+  # Store or to the release. The product identity comes from repository
+  # variables (Partner Center > Product identity); without them this job
+  # only says so.
+  studio-msix:
+    needs: release
+    runs-on: windows-latest
+    env:
+      MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+      MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+      MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
+    steps:
+      - if: env.MSIX_PUBLISHER == ''
+        run: |
+          echo "::notice::MSIX skipped: set MSIX_IDENTITY_NAME, MSIX_PUBLISHER and MSIX_PUBLISHER_DISPLAY_NAME in the repository variables."
+      - if: env.MSIX_PUBLISHER != ''
+        uses: actions/checkout@v7
+      - if: env.MSIX_PUBLISHER != ''
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: studio/go.mod
+      - if: env.MSIX_PUBLISHER != ''
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - if: env.MSIX_PUBLISHER != ''
+        name: .msix for x64 and arm64
+        shell: bash
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+          (cd studio/frontend && npm ci)
+          mkdir -p dist-msix
+          for arch in x64 arm64; do
+            goarch=$([ "$arch" = x64 ] && echo amd64 || echo arm64)
+            go run ./scripts/msix-manifest -version "$v" -arch "$arch" -out "$RUNNER_TEMP/AppxManifest-$arch.xml"
+            (cd studio && wails3 task windows:create:msix:package ARCH="$goarch" VERSION="$v" CHANNEL=msstore MANIFEST="$RUNNER_TEMP/AppxManifest-$arch.xml")
+            mv "studio/bin/blup-studio-$goarch.msix" "dist-msix/blup-studio_${v}_${arch}.msix"
+          done
+      - if: env.MSIX_PUBLISHER != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: studio-msix
+          path: dist-msix/*.msix
+          if-no-files-found: error
+
+  # The Linux files go up to the release with their sha256 and the owner's
+  # Ed25519 signature over the list, as checksums.txt does for the CLI.
+  studio-publish:
+    needs: studio-linux
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v8
+        with:
+          name: studio-linux
+          path: dist-studio
+      - name: Checksums, signature and upload
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BLUP_RELEASE_KEY: ${{ secrets.BLUP_RELEASE_KEY }}
+        run: |
+          (cd dist-studio && sha256sum -- * > studio-checksums.txt)
+          go run ./scripts/sign-release -in dist-studio/studio-checksums.txt -out dist-studio/studio-checksums.txt.sig
+          gh release upload "$GITHUB_REF_NAME" dist-studio/* --clobber

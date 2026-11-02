@@ -1,7 +1,7 @@
 # Instructions for AI agents in this vault
 
 This folder is a Blup vault of notes: plain Markdown files the person
-opens in Blup Studio (and, if they like, in Obsidian). It is not a
+opens in Blup Studio. It is not a
 website. There is no theme, no preview and no publishing here. The
 Studio gives it an editor, a calendar, a map of notes, canvases,
 drawings, databases and sync.
@@ -154,7 +154,7 @@ the Studio moves them together. Change the `.table` only when asked.
 
 ## Canvases (.canvas)
 
-JSON Canvas 1.0, the format Obsidian uses. An empty one is
+JSON Canvas 1.0, an open format. An empty one is
 `{"nodes":[],"edges":[]}`.
 
 - Node: `id`, `type` (`text`, `file`, `link`, `group`), `x`, `y`,
@@ -166,7 +166,7 @@ JSON Canvas 1.0, the format Obsidian uses. An empty one is
   `color`, `label`.
 - Ids must be unique. An edge to a missing node is dropped. Keys the
   Studio does not know are kept.
-- Cards of other types (from Obsidian plugins) and the edges to them are
+- Cards of other types (made by other apps) and the edges to them are
   not shown in the Studio, but are kept as they are when it saves. Do not
   remove or change them.
 
@@ -182,7 +182,7 @@ and pen strokes have `points`, relative to `x`, `y`. Text has `text` and
 
 ## Writing that the editor shows well
 
-Headings, lists, task lists, tables, quotes, code blocks, Obsidian
+Headings, lists, task lists, tables, quotes, code blocks,
 callouts (`> [!tip] Title`), `==highlight==` and `$math$`. Text between
 `%%` and `%%` is a comment.
 
@@ -193,7 +193,7 @@ whose name starts with a dot are not synced (except `.blup/site.toml`).
 
 ## Never touch
 
-- `.obsidian/`, `.blup/` and any other folder that starts with a dot.
+- `.blup/` and any other folder that starts with a dot.
 - `blup.toml` (it lives in Blup's own folder, not here).
 - `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `INSTRUCTIONS.md`.
 - The content between `%%` and `%%`: leave it as it is.

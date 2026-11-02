@@ -9,7 +9,7 @@ weight: 3
 2. Escolha o tipo: **blog** (temas Mochi ou Nori) ou **site de produto** (tema Bento).
 3. No Bento, marque as seções que quer: documentação, roadmap, changelog, central de ajuda e blog.
 4. Dê um nome ao site e confira os dados sugeridos.
-5. Escolha onde ficam as notas: uma pasta nova, uma pasta que você já tem ou uma pasta do seu cofre do Obsidian.
+5. Escolha onde ficam as notas: uma pasta nova, uma pasta que você escolher ou uma pasta de notas que você já usa.
 6. Revise e crie.
 
 O site já nasce com notas de exemplo, como estas. Abra o botão **Prévia** para ver o site enquanto escreve.

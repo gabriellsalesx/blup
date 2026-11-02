@@ -27,7 +27,7 @@ Na tela **Site**, bloco **Menu do topo**:
 
 No bloco **Botão do topo**, escreva o **Texto do botão** e **Para onde leva**. Ele aparece à direita do menu, em destaque. Deixe o texto vazio para não ter botão.
 
-## Pelo Obsidian
+## Direto na nota
 
 Na nota **_index** da pasta do site, um item por linha:
 
@@ -57,4 +57,4 @@ O item da página atual fica marcado.
 
 ## Pela linha de comando
 
-`blup personalizar` > menu monta o menu escolhendo pastas, tags e links, e pergunta o botão. Submenus não são refeitos pelo terminal: ele avisa e deixa você editar no Studio ou no Obsidian.
+`blup personalizar` > menu monta o menu escolhendo pastas, tags e links, e pergunta o botão. Submenus não são refeitos pelo terminal: ele avisa e deixa você editar no Studio ou direto na nota.

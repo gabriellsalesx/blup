@@ -6,7 +6,7 @@ weight: 2
 ## Enlaces entre notas
 
 - **En Blup Studio**: escribe `[[`, elige la nota y listo. O usa `/` y **Enlace a otra nota**. Mira [Escribir en el editor](../Blup%20Studio/Escribir%20en%20el%20editor.md).
-- **En Obsidian**: escribe `[[` y elige la nota, o arrastra la nota al texto. Con el ajuste que Blup hizo en Obsidian, el enlace se guarda en el formato estándar.
+- **En cualquier editor de texto**: escribe el enlace Markdown a mano, con la ruta de la nota.
 
 En los dos casos, el enlace queda así, con ruta relativa:
 
@@ -24,12 +24,11 @@ En el sitio se convierte en el enlace de la página: [Formato y callouts](Format
 
 ## Enlaces a otros sitios
 
-Escribe normalmente: `[Obsidian](https://obsidian.md)`. En el Studio, el botón de enlace (o `Ctrl+K`) ya pone el formato y selecciona la dirección para que la pegues.
+Escribe normalmente: `[Blup](https://getblup.io)`. En el Studio, el botón de enlace (o `Ctrl+K`) ya pone el formato y selecciona la dirección para que la pegues.
 
 ## Imágenes
 
-- **En el Studio**: pega (`Ctrl+V`) o arrastra la imagen al editor. Va a **Adjuntos** y aparece en su lugar.
-- **En Obsidian**: arrastra la imagen a la nota.
+En el Studio, pega (`Ctrl+V`) o arrastra la imagen al editor. Va a **Adjuntos** y aparece en su lugar.
 
 Al publicar, Blup:
 

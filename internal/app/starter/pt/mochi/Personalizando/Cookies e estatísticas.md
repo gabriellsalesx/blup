@@ -54,5 +54,5 @@ No site vira o player, pelo endereço `youtube-nocookie.com`. Com o banner ligad
 
 Para desligar tudo, remova as ferramentas e desligue o banner na mesma tela.
 
-> [!info] Pelo Obsidian
+> [!info] Pela linha de comando
 > Rode `blup personalizar` e escolha **Cookies, estatísticas e anúncios**. O terminal pergunta as mesmas coisas: as ferramentas, os IDs, o banner e a política de privacidade.

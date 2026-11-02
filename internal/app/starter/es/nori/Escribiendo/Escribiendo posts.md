@@ -1,8 +1,8 @@
 ---
 title: Escribiendo posts
 date: {{date-3}}
-description: Crear un post, las propiedades, enlaces entre notas, imágenes y secciones. En el Studio y en Obsidian.
-tags: [Escritura, Studio, Obsidian]
+description: Crear un post, las propiedades, enlaces entre notas, imágenes y secciones.
+tags: [Escritura, Studio]
 image: "[[blup-escrever.jpg]]"
 ---
 Para crear un post, crea una nota en la carpeta del sitio y escribe. Eso es todo. El resto es opcional.
@@ -33,7 +33,7 @@ La fecha, las etiquetas, la portada y lo demás están en el panel **Propiedades
 | **Oculto** | `hidden: true` | Se publica, pero sale de las listas y de Google. |
 | **Contraseña** | `password` | Pide una contraseña para leer. Mira [Posts con contraseña](Posts%20con%20contraseña.md). |
 
-En Obsidian, las mismas propiedades están en el bloque del principio de la nota: escribe `---` en la primera línea o usa el comando "Añadir propiedad".
+En el archivo de la nota, las mismas propiedades están en el bloque del principio, entre dos líneas `---`. Puedes editarlas en cualquier editor de texto.
 
 ## Enlaces entre notas
 
@@ -50,11 +50,11 @@ Para un enlace a otro sitio, usa **Enlace** (Ctrl+K).
 > [!tip] ¿Renombraste una nota?
 > En el Studio, puedes renombrar sin miedo: actualiza solo los enlaces que apuntan a ella.
 
-En Obsidian, arrastra una nota dentro de otra o escribe `[[`. Con el ajuste de enlaces que Blup hace en Obsidian, el enlace se guarda en el mismo formato de arriba. ¿Ya tienes notas antiguas con wikilinks? Ejecuta `blup convert`: Blup cambia los enlaces antiguos por el formato estándar y antes te muestra lo que va a cambiar.
+¿Ya tienes notas antiguas con wikilinks, como `[[Formato que funciona]]`? Ejecuta `blup convert`: Blup cambia los enlaces antiguos por el formato estándar y antes te muestra lo que va a cambiar.
 
 ## Imágenes
 
-Pega la imagen directo en la nota, o arrástrala, o usa **Imagen de la computadora**. El Studio guarda el archivo en la carpeta **Adjuntos** solo, y la imagen aparece en su lugar, dentro del texto. En Obsidian, arrastra la imagen a la nota, como siempre.
+Pega la imagen directo en la nota, o arrástrala, o usa **Imagen de la computadora**. El Studio guarda el archivo en la carpeta **Adjuntos** solo, y la imagen aparece en su lugar, dentro del texto.
 
 Blup crea versiones más pequeñas y modernas (WebP) de cada imagen, y el navegador descarga solo el tamaño que necesita.
 

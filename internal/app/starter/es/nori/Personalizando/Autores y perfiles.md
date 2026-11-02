@@ -2,7 +2,7 @@
 title: Autores y perfiles
 date: {{date-7}}
 description: Un perfil por autor, con foto, cargo, redes y bio. Posts con más de un autor.
-tags: [Personalización, Studio, Obsidian]
+tags: [Personalización, Studio]
 image: "[[blup-autores.jpg]]"
 authors: [Blup]
 ---
@@ -21,7 +21,7 @@ Cuando creaste el sitio, Blup ya creó tu perfil. Completa la foto y la bio.
 
 Para decir quién escribió un post, usa el campo **Autores** en el panel **Propiedades** del post. Empieza a escribir y elige el nombre.
 
-## En Obsidian
+## En el archivo de la nota
 
 La carpeta **Autores** tiene una nota **_index** con la propiedad `blup: authors`. Le avisa a Blup que las notas de ahí son perfiles, no posts: la carpeta no se vuelve página ni aparece en el menú.
 

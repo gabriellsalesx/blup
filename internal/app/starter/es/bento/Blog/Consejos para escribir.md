@@ -15,7 +15,7 @@ Usa `##` y `###` para dividir el texto. Forman el índice **En esta página** y 
 
 ## Vista previa abierta al lado
 
-En el Studio, deja la **Vista previa** abierta: cada cambio aparece al instante. En Obsidian, ejecuta `blup preview`.
+En el Studio, deja la **Vista previa** abierta: cada cambio aparece al instante. Con la línea de comandos, ejecuta `blup preview`.
 
 ## Callouts
 

@@ -3,9 +3,9 @@ title: Como esconder uma nota do site?
 description: Rascunho, página escondida, página com senha ou fora do site de vez.
 weight: 4
 ---
-No Blup Studio, abra **Propriedades** da nota e marque a opção. No Obsidian, escreva a propriedade.
+No Blup Studio, abra **Propriedades** da nota e marque a opção. Direto no arquivo da nota, escreva a propriedade.
 
-| Quero que a nota... | No Studio | No Obsidian |
+| Quero que a nota... | No Studio | Na nota |
 | --- | --- | --- |
 | não vá para o site ainda | Rascunho | `draft: true` |
 | esteja no site, mas fora das listas e do Google | Escondida | `hidden: true` |

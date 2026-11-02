@@ -1,20 +1,20 @@
 ---
-title: Studio or Obsidian
-description: Both open the same notes. The Studio covers the whole path, from text to a live site.
+title: Studio and command line
+description: Two ways to use the same notes. The Studio covers the whole path, from text to a live site.
 weight: 4
 ---
-Blup notes are **plain Markdown files** in a folder on your computer. That is why the same folder opens in Blup Studio and in Obsidian, and you can switch whenever you like.
+Blup notes are **plain Markdown files** in a folder on your computer. Blup Studio opens that folder, and so does the `blup` command line. You can switch whenever you like.
 
 ## The recommended way: Blup Studio
 
 The Studio puts everything in one app: writing, seeing the site, setting it up and publishing. If you are just starting, it is the shortest path.
 
-## Also fine: Obsidian and the command line
+## Also fine: the command line
 
-If you already like Obsidian, keep using it. Write your notes there and use `blup` in the terminal to preview (`blup preview`), publish (`blup publish`) and change the settings (`blup customize`). See [Commands](../Command%20line/Commands.md).
+If you prefer the terminal, use `blup` to preview (`blup preview`), publish (`blup publish`) and change the settings (`blup customize`). See [Commands](../Command%20line/Commands.md).
 
 > [!tip] Use both
-> Many people write in Obsidian and open the Studio only to preview, set things up and publish. The Studio notices when a note changes outside it and refreshes the screen.
+> You can edit the notes in any text editor and open the Studio only to preview, set things up and publish. The Studio notices when a note changes outside it and refreshes the screen.
 
 ## What only the Studio has
 
@@ -40,4 +40,4 @@ If you already like Obsidian, keep using it. Write your notes there and use `blu
 
 ## Links between notes
 
-Sites understand Markdown links with relative paths, like `[Installation](Installation.md)`. The Studio always saves links this way, even when you type `[[`. In Obsidian, accept the adjustment Blup offers when you create the site (it turns on **Use Markdown links** and **relative path**). Older notes with wikilinks can be converted with `blup convert`. See [Links and images](../Writing/Links%20and%20images.md).
+Sites understand Markdown links with relative paths, like `[Installation](Installation.md)`. The Studio always saves links this way, even when you type `[[`. Older notes with `[[wikilinks]]` can be converted with `blup convert`. See [Links and images](../Writing/Links%20and%20images.md).

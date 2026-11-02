@@ -3,9 +3,9 @@ title: ¿Cómo oculto una nota del sitio?
 description: Borrador, página oculta, página con contraseña o fuera del sitio para siempre.
 weight: 4
 ---
-En Blup Studio, abre **Propiedades** de la nota y marca la opción. En Obsidian, escribe la propiedad.
+En Blup Studio, abre **Propiedades** de la nota y marca la opción. En el archivo de la nota, escribe la propiedad.
 
-| Quiero que la nota... | En el Studio | En Obsidian |
+| Quiero que la nota... | En el Studio | En el archivo |
 | --- | --- | --- |
 | no vaya al sitio todavía | Borrador | `draft: true` |
 | esté en el sitio, pero fuera de las listas y de Google | Oculto | `hidden: true` |

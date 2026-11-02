@@ -16,15 +16,15 @@ Na tela inicial, clique em **Criar site novo**. O Studio mostra uma pergunta por
 3. **Quais partes o site vai ter?** (só no Bento): Documentação, Roadmap, Changelog, Central de ajuda e Blog. Cada parte vem com notas de exemplo que ensinam a usar. Escolha pelo menos uma.
 4. **Como o site se chama?** O nome, uma descrição opcional, o seu nome (assina os posts) e o **idioma do site**.
 5. **Onde ficam as notas?**
-   - **Numa pasta nova**: o jeito mais simples. Dá para abrir no Obsidian depois.
-   - **No meu cofre do Obsidian**: o site usa uma pasta do cofre que você já tem, ou o cofre inteiro.
-   - **Numa pasta que eu escolher**: notas do VS Code, do Foam ou de qualquer editor.
+   - **Numa pasta nova**: o jeito mais simples.
+   - **Numa pasta de notas que já tenho**: o site usa uma pasta dessas notas, ou a pasta inteira.
+   - **Numa pasta que eu escolher**: notas de qualquer editor de texto.
 6. **Tudo pronto?** Confira o resumo e clique em **Criar o site**.
 
 Pronto: clique em **Abrir o site**. O editor abre com a prévia ao lado. Veja [A tela do Studio](../Blup%20Studio/A%20tela%20do%20Studio.md).
 
-> [!tip] Ajustar o Obsidian
-> Se as notas estão num cofre do Obsidian, o Studio oferece **Ajustar o Obsidian para os links funcionarem no site**. Assim os links novos entre notas são salvos no formato que a web entende. O Blup guarda uma cópia das configurações antes.
+> [!tip] Ajustar a pasta
+> Se as notas estão numa pasta de notas que você já usa, o Studio oferece **Ajustar a pasta para que os links funcionem no site**. Assim os links novos entre notas são salvos no formato que a web entende. O Blup guarda uma cópia das configurações antes.
 
 > [!note] Onde ficam os arquivos do site
 > Em **Onde guardar os arquivos do site**, você escolhe a pasta das configurações e das páginas geradas. Ela fica fora das notas e você não precisa abrir.
@@ -44,11 +44,11 @@ Rode `blup novo` (ou só `blup`, na primeira vez). Cada pergunta aparece sozinha
 5. **Nome do site**, **uma frase sobre ele** e **seu nome**.
 6. **Idioma do site** e **onde salvar** os arquivos do site no computador.
 7. **Resumo** para confirmar.
-8. **Ajuste no Obsidian**: links Markdown com caminho relativo.
+8. **Ajuste dos links**: links Markdown com caminho relativo.
 9. **Guardar as notas no GitHub**: opcional. Veja [Sincronizar](../Linha%20de%20comando/Sincronizar.md).
 10. **Abrir a prévia**.
 
-A linha de comando também cria a pasta **Modelos** com modelos de nota para o Obsidian.
+A linha de comando também cria a pasta **Modelos** com modelos de nota.
 
 ## O que é criado
 

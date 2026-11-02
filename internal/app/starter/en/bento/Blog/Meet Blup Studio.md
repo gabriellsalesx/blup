@@ -5,7 +5,7 @@ description: The Blup app for Linux, macOS and Windows, with an editor, a previe
 tags: [News, Studio]
 image: "[[blup-configurar.jpg]]"
 ---
-Blup started as a command line for people who write in Obsidian. Today, the recommended way to use it is **Blup Studio**, an app that puts everything in one window.
+Blup started as a command line. Today, the recommended way to use it is **Blup Studio**, an app that puts everything in one window.
 
 ## Write while you see the site
 
@@ -24,8 +24,8 @@ Each part of the site has its own screen: **Site** (name, logo, menu and social 
 - **Sync** and **publish** with Blup Cloud.
 - A terminal with AI agents, a trash and a history.
 
-## What about Obsidian?
+## And the command line?
 
-It is still welcome. The notes are Markdown files, and the same folder opens in both. People who prefer Obsidian use the `blup` command line to preview and publish.
+It still works. The notes are Markdown files, and the `blup` command line can preview and publish them too.
 
 Download the Studio at getblup.io.

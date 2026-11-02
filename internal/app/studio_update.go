@@ -16,14 +16,17 @@ type UpdateInfo struct {
 	Newer   bool   `json:"newer"`
 	Notes   string `json:"notes"`
 	URL     string `json:"url"`
+	// UpdatesBy: a store or the system's packages bring new versions (see
+	// UpdatesBy); then nothing is looked up.
+	UpdatesBy string `json:"updatesBy"`
 }
 
 // CheckUpdate looks for a newer release: from the day's cache, or from
 // GitHub when the cache is older than a day or force is set (the
 // "Check for updates" button). A development build never checks.
 func CheckUpdate(ctx context.Context, force bool) (UpdateInfo, error) {
-	info := UpdateInfo{Current: Version}
-	if Version == "dev" || os.Getenv("BLUP_NO_UPDATE_CHECK") != "" {
+	info := UpdateInfo{Current: Version, UpdatesBy: UpdatesBy()}
+	if Version == "dev" || info.UpdatesBy != "" || os.Getenv("BLUP_NO_UPDATE_CHECK") != "" {
 		return info, nil
 	}
 	cache := update.LoadCache()

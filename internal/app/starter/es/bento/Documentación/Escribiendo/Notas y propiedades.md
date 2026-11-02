@@ -6,7 +6,7 @@ weight: 1
 Para crear una página, crea una nota en la carpeta correcta. Las **propiedades** (el bloque al inicio de la nota, entre líneas `---`) son opcionales y controlan cómo aparece.
 
 - **En Blup Studio**: haz clic en **Nueva nota** (o `Ctrl+N`) y completa el panel **Propiedades**, encima del texto. Mira [Propiedades de la nota](../Blup%20Studio/Propiedades%20de%20la%20nota.md).
-- **En Obsidian**: escribe `---` en la primera línea o usa el comando **Añadir propiedad**.
+- **En cualquier editor de texto**: escribe `---` en la primera línea, después las propiedades y otra línea `---` para cerrar el bloque.
 
 ## En todas las páginas
 
@@ -47,5 +47,5 @@ Para crear una página, crea una nota en la carpeta correcta. Las **propiedades*
 | `translationKey`, `translation_hash`, `ai_translated` | La traducción. Mira [Sitios en varios idiomas](../Configuración%20del%20sitio/Sitios%20en%20varios%20idiomas.md). |
 | `created`, `updated` | El Studio, en las notas de las bóvedas. |
 
-> [!tip] Plantillas listas en Obsidian
-> Los sitios creados desde la línea de comandos reciben la carpeta **Plantillas**, con plantillas de página de la documentación, elemento del roadmap y versión del changelog. Usa el comando **Plantillas: Insertar plantilla** de Obsidian para empezar una nota con las propiedades correctas.
+> [!tip] Plantillas de la línea de comandos
+> Los sitios creados desde la línea de comandos reciben la carpeta **Plantillas**, con plantillas de página de la documentación, elemento del roadmap y versión del changelog. Copia una para empezar una nota con las propiedades correctas.

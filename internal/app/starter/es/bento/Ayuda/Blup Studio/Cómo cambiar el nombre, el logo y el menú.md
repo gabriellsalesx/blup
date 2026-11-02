@@ -13,5 +13,5 @@ weight: 1
 
 Los cambios aparecen en la vista previa sin tener que recargar.
 
-> [!tip] En Obsidian
+> [!tip] En el archivo de la nota
 > La misma configuración está en las propiedades de la nota **_index** de la carpeta del sitio.

@@ -9,5 +9,5 @@ weight: 2
 
 The **Feedback** section (a board of requests with votes) can only be added here.
 
-> [!tip] In Obsidian
+> [!tip] Sections are folders
 > Each section is a folder with an **_index** note and the `blup` property. Deleting the folder takes the section off the site.

@@ -81,6 +81,12 @@ export interface NoteVersion {
 export interface ReminderUse {
     "limit": number;
     "used": number;
+
+    /**
+     * EmailMissing: the account has no e-mail (passkey only), so no
+     * reminder e-mail can go.
+     */
+    "emailMissing": boolean;
 }
 
 /**

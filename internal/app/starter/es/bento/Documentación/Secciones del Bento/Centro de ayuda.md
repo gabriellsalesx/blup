@@ -26,7 +26,7 @@ weight: 1
 
 **En Blup Studio**: abre la nota **_index** de la colección. En las propiedades aparece **Ícono de la colección**: haz clic para abrir la cuadrícula de íconos y busca por el nombre en inglés o por palabras comunes en español (cohete, libro, ayuda...). **Automático** quita el ícono y deja que el tema los alterne.
 
-**En Obsidian**: la propiedad **icon** acepta cualquier nombre de la biblioteca [Lucide](https://lucide.dev/icons), con más de 2 mil íconos: `rocket`, `pen-line`, `globe`, `life-buoy`, `credit-card`, `shield-check`, `users`... Copia el nombre del sitio de Lucide. Sin icon, el tema elige uno.
+**En el archivo de la nota**: la propiedad **icon** acepta cualquier nombre de la biblioteca [Lucide](https://lucide.dev/icons), con más de 2 mil íconos: `rocket`, `pen-line`, `globe`, `life-buoy`, `credit-card`, `shield-check`, `users`... Copia el nombre del sitio de Lucide. Sin icon, el tema elige uno.
 
 ## Título y menú
 

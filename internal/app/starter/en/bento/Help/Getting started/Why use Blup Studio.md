@@ -1,9 +1,9 @@
 ---
-title: Should I use Blup Studio or Obsidian?
-description: Both work with the same notes. See what each one offers.
+title: Why use Blup Studio?
+description: What the Studio does for you, and when the command line is enough.
 weight: 4
 ---
-Both open the same folders, because the notes are plain Markdown files. You can even switch between them.
+Your notes are plain Markdown files in a folder. Blup Studio opens that folder and takes you from the text to a live site.
 
 ## Why the Studio is recommended
 
@@ -16,6 +16,6 @@ It puts everything in one place:
 - **syncing** and **publishing** with Blup Cloud;
 - a terminal with AI agents, a Trash and history.
 
-## When Obsidian makes sense
+## When the command line is enough
 
-If you already have a well organized vault and like your plugins, stay with it. Use the `blup` command line to preview (`blup preview`) and publish (`blup publish`). The site settings live in the properties of the **_index** note in the site folder.
+If you prefer the terminal, use the `blup` command line to preview (`blup preview`) and publish (`blup publish`). The site settings live in the properties of the **_index** note in the site folder.

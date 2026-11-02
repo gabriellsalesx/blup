@@ -23,6 +23,6 @@ The **Attachments** screen shows the images and files your notes use. They arriv
 
 When publishing, Blup makes smaller WebP versions of each image and sends the browser only the size it needs. See [Links and images](../Writing/Links%20and%20images.md).
 
-## In Obsidian
+## Where they live
 
-Attachments live in the **Attachments** folder of your notes. In Obsidian, drag the image into the note as usual.
+Attachments live in the **Attachments** folder of your notes.

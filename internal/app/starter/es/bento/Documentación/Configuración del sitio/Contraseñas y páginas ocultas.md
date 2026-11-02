@@ -16,7 +16,7 @@ En las **Propiedades** de la nota, en **Contraseña**, elige:
 - **Contraseña general**: la misma contraseña para varios posts. Está en **Configuración > Contraseña general** y vale para todos tus sitios.
 - **Contraseña propia**: una contraseña solo para este post, en **Contraseña de este post**.
 
-### Desde Obsidian
+### En el archivo de la nota
 
 ```yaml
 password: mi-contraseña
@@ -35,7 +35,7 @@ En la línea de comandos, `blup customize` (o `blup personalizar`) también defi
 
 ## Páginas ocultas
 
-En el Studio, activa **Oculto** en las propiedades. En Obsidian:
+En el Studio, activa **Oculto** en las propiedades. En el archivo de la nota:
 
 ```yaml
 hidden: true
@@ -45,7 +45,7 @@ La página se publica, pero sale de las listas, de las etiquetas y de la búsque
 
 ## Borradores
 
-En el Studio, activa **Borrador**. En Obsidian:
+En el Studio, activa **Borrador**. En el archivo de la nota:
 
 ```yaml
 draft: true

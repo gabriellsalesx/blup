@@ -39,5 +39,5 @@ En la **Configuración** del Studio, en **IA y voz**, elige quién traduce:
 
 Los comentarios y las reacciones son los mismos en todos los idiomas: quien lee en inglés y quien lee en español conversan en la misma página, y cada comentario muestra el idioma en que se escribió. La narración de un post traducido sale en el idioma de la traducción. Mira [Narrar un post en audio](Narrar%20un%20post%20en%20audio.md).
 
-> [!info] ¿Y en Obsidian?
-> La traducción y el selector de idioma se preparan en el Studio. Las traducciones son notas comunes, así que puedes revisarlas y editarlas en Obsidian después.
+> [!info] ¿Y con la línea de comandos?
+> La traducción y el selector de idioma se preparan en el Studio. Las traducciones son notas comunes, así que puedes revisarlas y editarlas después, y siguen en el sitio aunque publiques con la línea de comandos.

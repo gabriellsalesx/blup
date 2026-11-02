@@ -9,9 +9,9 @@ Paste the image (or drag the file) into the note. The Studio saves the image in 
 
 For a post's **cover**, pick the image in **Properties**, in the image field.
 
-## In Obsidian
+## By hand
 
-Drag the image into the note. For the cover, use the `image` property:
+Put the image in the attachments folder and link it in the note. For the cover, use the `image` property:
 
 ```yaml
 image: "[[my-cover.jpg]]"

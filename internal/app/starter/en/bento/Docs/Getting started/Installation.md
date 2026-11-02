@@ -6,13 +6,12 @@ weight: 1
 There are two ways to use Blup, and they get along well:
 
 - **Blup Studio** (recommended): a desktop app with an editor, live preview, settings screens and one-button publishing.
-- **The `blup` command line** (optional): for people who write in Obsidian and prefer the terminal.
+- **The `blup` command line** (optional): for people who prefer the terminal.
 
 ## Requirements
 
 - Linux, macOS or Windows.
 - That's it. Blup downloads what it needs to build the site on its own.
-- Obsidian is optional. If you already have a vault, Blup finds it and uses it.
 
 ## Install Blup Studio
 

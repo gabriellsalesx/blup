@@ -21,6 +21,7 @@ func init() {
 	registerErrors(
 		knownError{blupcloud.ErrSignedOut, "blup.err_signed_out"},
 		knownError{blupcloud.ErrNoKey, "blup.err_no_key"},
+		knownError{blupcloud.ErrKeyExists, "blup.err_key_exists"},
 		knownError{blupcloud.ErrQuota, "blup.err_quota"},
 		knownError{blupcloud.ErrDevicesLimit, "blup.err_devices"},
 		knownError{blupcloud.ErrSyncBusy, "blup.err_sync_busy"},

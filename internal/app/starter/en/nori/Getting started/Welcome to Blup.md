@@ -18,11 +18,11 @@ Blup keeps two kinds of things:
 
 Either way, the notes are plain Markdown files in a folder on your computer. Nothing is locked into one app.
 
-## Blup Studio or Obsidian?
+## Blup Studio
 
 The recommended way to use Blup is **Blup Studio**, an app for Linux, macOS and Windows. In it you write, see the preview and publish, all in the same window.
 
-If you like **Obsidian**, you can keep using it: the notes are the same, and the same folder opens in both. On the Obsidian side, the `blup` command line makes the preview and publishes. The posts in this blog show both ways whenever there are two.
+Prefer the terminal? The `blup` command line also makes the preview and publishes, with the same notes. The posts in this blog show both ways whenever there are two.
 
 Some things only the Studio does:
 

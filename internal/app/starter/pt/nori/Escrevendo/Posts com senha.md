@@ -16,9 +16,9 @@ No painel **Propriedades** do post, ligue **Senha** e escolha:
 - **Senha própria**: digite a senha deste post.
 - **Senha geral**: uma senha só para vários posts. Ela fica nas **Configurações** do Studio e vale para todos os seus sites. Se quiser, um site pode ter uma senha própria, que vale só para ele.
 
-## No Obsidian
+## Direto na nota
 
-Adicione a propriedade **password** à nota:
+Você também pode editar o arquivo da nota em qualquer editor de texto. Adicione a propriedade **password**:
 
 ```yaml
 password: minha-senha

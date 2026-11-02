@@ -54,5 +54,5 @@ En el sitio se vuelve el reproductor, con la dirección `youtube-nocookie.com`. 
 
 Para desactivarlo todo, quita las herramientas y desactiva el aviso en la misma pantalla.
 
-> [!info] Con Obsidian
+> [!info] Por la línea de comandos
 > Ejecuta `blup customize` y elige **Cookies, estadísticas de visitantes y anuncios**. El terminal pregunta lo mismo: las herramientas, los ID, el aviso y la política de privacidad.

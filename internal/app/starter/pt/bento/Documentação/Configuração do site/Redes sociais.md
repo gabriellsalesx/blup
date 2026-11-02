@@ -17,7 +17,7 @@ Se faltar o resto do endereço, o Studio avisa: uma linha só com o começo não
 
 Na tela **Autores**, o perfil de cada pessoa tem os mesmos botões.
 
-## Pelo Obsidian
+## Direto na nota
 
 Na nota **_index** da pasta do site:
 

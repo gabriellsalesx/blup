@@ -2,12 +2,12 @@
 title: Set up the site
 date: {{date-6}}
 description: Name, description, logo, menu with submenus, button and social links, on the Studio's Site screen or in the _index note.
-tags: [Customizing, Studio, Obsidian]
+tags: [Customizing, Studio]
 image: "[[blup-configurar.jpg]]"
 ---
 The site's settings are on the **Site** screen, in the Studio's side menu. Change it there and it changes on the site: the preview shows it right away.
 
-All of this is saved in the properties of the **_index** note in the site folder. So, in Obsidian, you just edit that note. At the end of each part there is the way to write it in Obsidian.
+All of this is saved in the properties of the **_index** note in the site folder. You can also edit that note directly. At the end of each part there is the way to write it in the note.
 
 ## Name and description
 
@@ -47,7 +47,7 @@ The pages in the menu, in order:
 
 With no items, the menu is automatic: the folders at the root of the site.
 
-In Obsidian, one item per line. `Name | target` changes the item's text, an address becomes a link out, and `+ ` in front puts the item in the submenu of the line above:
+In the note, one item per line. `Name | target` changes the item's text, an address becomes a link out, and `+ ` in front puts the item in the submenu of the line above:
 
 ```yaml
 menu:

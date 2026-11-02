@@ -34,7 +34,7 @@ Documentación/
 ## Crear una página
 
 - **En Blup Studio**: haz clic en una subcarpeta de la Documentación, luego en **Nueva nota** (o `Ctrl+N`). Completa **Título**, **Descripción** y **Orden** en las propiedades.
-- **En Obsidian**: crea la nota en la subcarpeta y escribe `title`, `description` y `weight` arriba.
+- **En el archivo de la nota**: crea la nota en la subcarpeta y escribe `title`, `description` y `weight` arriba.
 
 Para un grupo nuevo, crea una subcarpeta con una nota **_index** (título, descripción y `weight`).
 

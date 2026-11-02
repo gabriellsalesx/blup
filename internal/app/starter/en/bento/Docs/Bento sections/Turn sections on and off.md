@@ -24,7 +24,7 @@ The preview updates by itself after each change.
 
 ## From the command line
 
-Run `blup customize` and pick **Site sections (docs, roadmap, changelog)**. Blup shows the ones that are missing and creates each one's folder, with example notes. To remove one, delete the folder in Obsidian. Feedback does not show in this list.
+Run `blup customize` and pick **Site sections (docs, roadmap, changelog)**. Blup shows the ones that are missing and creates each one's folder, with example notes. To remove one, delete the folder. Feedback does not show in this list.
 
 ## By hand
 

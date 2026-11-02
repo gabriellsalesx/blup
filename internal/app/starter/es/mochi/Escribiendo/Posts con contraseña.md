@@ -16,7 +16,7 @@ En el panel **Propiedades** del post, activa **Contraseña** y elige:
 - **Contraseña propia**: escribe la contraseña de este post.
 - **Contraseña general**: una sola contraseña para varios posts. Está en la **Configuración** del Studio y vale para todos tus sitios. Si quieres, un sitio puede tener su propia contraseña, que vale solo para él.
 
-## En Obsidian
+## En el archivo de la nota
 
 Agrega la propiedad **password** a la nota:
 

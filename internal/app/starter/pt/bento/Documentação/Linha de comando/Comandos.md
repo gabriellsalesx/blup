@@ -50,4 +50,4 @@ blup gerar --url https://meusite.pages.dev/bento/ --saida ../minha-landing/bento
 
 ## O que fica só no Studio
 
-Algumas coisas não têm comando: os cofres de anotações, a tradução, a narração, o podcast, o quadro de Feedback, os submenus, a publicação e a sincronização pelo Blup Cloud. Um site que já usa esses recursos continua gerando e publicando normalmente pelo terminal. Veja [Studio ou Obsidian](../Primeiros%20passos/Studio%20ou%20Obsidian.md).
+Algumas coisas não têm comando: os cofres de anotações, a tradução, a narração, o podcast, o quadro de Feedback, os submenus, a publicação e a sincronização pelo Blup Cloud. Um site que já usa esses recursos continua gerando e publicando normalmente pelo terminal. Veja [O Blup Studio](../Primeiros%20passos/O%20Blup%20Studio.md).

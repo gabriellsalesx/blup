@@ -36,5 +36,5 @@ Peça em português mesmo: "revise os títulos dos posts", "crie um post sobre a
 
 Se a IA mudar a nota que está aberta no editor, o Studio avisa e deixa você escolher entre **Carregar a nova** e **Manter a minha**.
 
-> [!info] E no Obsidian?
+> [!info] Pela linha de comando
 > Narração, tradução e o terminal com agentes são do Studio. Uma narração ou tradução feita no Studio continua no site mesmo quando você publica pela linha de comando.

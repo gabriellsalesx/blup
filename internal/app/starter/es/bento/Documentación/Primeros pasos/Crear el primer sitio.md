@@ -16,15 +16,14 @@ En la pantalla de inicio, haz clic en **Crear un sitio nuevo**. El Studio muestr
 3. **¿Qué partes tendrá el sitio?** (solo en Bento): Documentación, Roadmap, Changelog, Centro de ayuda y Blog. Cada parte trae notas de ejemplo que enseñan a usarla. Elige al menos una.
 4. **¿Cómo se llama el sitio?** El nombre, una descripción opcional, tu nombre (firma los posts) y el **Idioma del sitio**.
 5. **¿Dónde viven las notas?**
-   - **En una carpeta nueva**: la forma más simple. Puedes abrirla en Obsidian después.
-   - **En mi bóveda de Obsidian**: el sitio usa una carpeta de la bóveda que ya tienes, o la bóveda entera.
-   - **En una carpeta que yo elija**: notas de VS Code, de Foam o de cualquier editor.
+   - **En una carpeta nueva**: la forma más simple.
+   - **En una carpeta que yo elija**: una carpeta que ya tienes, con notas en Markdown escritas en cualquier editor.
 6. **¿Todo listo?** Revisa el resumen y haz clic en **Crear el sitio**.
 
 Listo: haz clic en **Abrir el sitio**. El editor se abre con la vista previa al lado. Mira [La pantalla del Studio](../Blup%20Studio/La%20pantalla%20del%20Studio.md).
 
-> [!tip] Ajustar Obsidian
-> Si las notas están en una bóveda de Obsidian, el Studio ofrece **Ajustar Obsidian para que los enlaces funcionen en el sitio**. Así los enlaces nuevos entre notas se guardan en el formato que entiende la web. Blup guarda antes una copia de la configuración.
+> [!tip] Ajustar la carpeta
+> Si eliges una carpeta que ya tiene notas, el Studio ofrece **Ajustar la carpeta para que los enlaces funcionen en el sitio**. Así los enlaces nuevos entre notas se guardan en el formato que entiende la web. Blup guarda antes una copia de la configuración.
 
 > [!note] Dónde quedan los archivos del sitio
 > En **Dónde guardar los archivos del sitio**, eliges la carpeta de la configuración y de las páginas generadas. Queda fuera de las notas y no necesitas abrirla.
@@ -44,11 +43,11 @@ Ejecuta `blup new` (o solo `blup`, la primera vez). Cada pregunta aparece sola y
 5. **Nombre del sitio**, **una frase sobre él** y **tu nombre**.
 6. **Idioma del sitio** y **dónde guardar** los archivos del sitio en la computadora.
 7. **Resumen** para confirmar.
-8. **Ajuste en Obsidian**: enlaces Markdown con ruta relativa.
+8. **Ajuste de los enlaces**: enlaces Markdown con ruta relativa.
 9. **Guardar las notas en GitHub**: opcional. Mira [Sincronizar](../Línea%20de%20comandos/Sincronizar.md).
 10. **Abrir la vista previa**.
 
-La línea de comandos también crea la carpeta **Plantillas** con plantillas de nota para Obsidian.
+La línea de comandos también crea la carpeta **Plantillas** con plantillas de nota para cada sección.
 
 ## Qué se crea
 

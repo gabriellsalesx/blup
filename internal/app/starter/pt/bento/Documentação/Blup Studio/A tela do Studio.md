@@ -65,7 +65,7 @@ Pastas de autores e de anexos não aparecem na árvore: elas têm telas própria
 
 O Studio salva sozinho enquanto você escreve, e antes de trocar de nota ou sair. O estado aparece na tela: salvo, salvando ou não salvo. `Ctrl+S` também salva.
 
-Se uma nota mudar fora do Studio (no Obsidian ou por uma IA no terminal), a árvore se atualiza. Se você estava editando a mesma nota, o Studio avisa e deixa escolher entre **Carregar a nova** e **Manter a minha**.
+Se uma nota mudar fora do Studio (em outro editor ou por uma IA no terminal), a árvore se atualiza. Se você estava editando a mesma nota, o Studio avisa e deixa escolher entre **Carregar a nova** e **Manter a minha**.
 
 ## Atalhos principais
 

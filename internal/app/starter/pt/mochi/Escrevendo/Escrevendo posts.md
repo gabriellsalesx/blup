@@ -1,8 +1,8 @@
 ---
 title: Escrevendo posts
 date: {{date-3}}
-description: Criar um post, as propriedades, links entre notas, imagens e seções. No Studio e no Obsidian.
-tags: [Escrita, Studio, Obsidian]
+description: Criar um post, as propriedades, links entre notas, imagens e seções, no Blup Studio.
+tags: [Escrita, Studio]
 image: "[[blup-escrever.jpg]]"
 ---
 Para criar um post, crie uma nota na pasta do site e escreva. Só isso. O resto é opcional.
@@ -33,7 +33,7 @@ Data, tags, capa e o resto ficam no painel **Propriedades**, em cima do editor. 
 | **Escondida** | `hidden: true` | Publica, mas tira das listas e do Google. |
 | **Senha** | `password` | Pede uma senha para ler. Veja [Posts com senha](Posts%20com%20senha.md). |
 
-No Obsidian, as mesmas propriedades ficam no bloco do topo da nota: digite `---` na primeira linha ou use o comando "Adicionar propriedade".
+No arquivo da nota, as mesmas propriedades ficam no bloco do topo, entre duas linhas `---`. Dá para editar ali em qualquer editor de texto.
 
 ## Links entre notas
 
@@ -50,11 +50,11 @@ Para um link de outro site, use **Link** (Ctrl+K).
 > [!tip] Renomeou uma nota?
 > No Studio, pode renomear sem medo: ele atualiza sozinho os links que apontam para ela.
 
-No Obsidian, arraste uma nota para dentro de outra ou digite `[[`. Com o ajuste de links que o Blup faz no Obsidian, o link é gravado no mesmo formato acima. Já tem notas antigas com wikilinks? Rode `blup converter`: o Blup troca os links antigos pelo formato padrão e mostra o que vai mudar antes.
+Já tem notas antigas com wikilinks? Rode `blup converter`: o Blup troca os links antigos pelo formato padrão e mostra o que vai mudar antes.
 
 ## Imagens
 
-Cole a imagem direto na nota, ou arraste, ou use **Imagem do computador**. O Studio guarda o arquivo na pasta **Anexos** sozinho e a imagem aparece no lugar, dentro do texto. No Obsidian, arraste a imagem para a nota, como sempre.
+Cole a imagem direto na nota, ou arraste, ou use **Imagem do computador**. O Studio guarda o arquivo na pasta **Anexos** sozinho e a imagem aparece no lugar, dentro do texto.
 
 O Blup gera versões menores e modernas (WebP) de cada imagem, e o navegador baixa só o tamanho que precisa.
 

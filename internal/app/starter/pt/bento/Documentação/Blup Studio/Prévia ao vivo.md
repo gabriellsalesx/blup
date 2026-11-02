@@ -26,6 +26,6 @@ Ao abrir um site, o Studio liga a prévia ao lado do editor. É o seu site, gera
 > [!note] Sem player de áudio no Linux?
 > Em alguns Linux falta um componente de áudio do sistema (GStreamer). Nesse caso a prévia esconde o player, mas o site publicado mostra normalmente.
 
-## Pelo Obsidian
+## Pela linha de comando
 
 Sem o Studio, rode `blup ver` no terminal: a prévia abre no navegador e se atualiza a cada nota salva. Veja [Prévia](../Linha%20de%20comando/Prévia.md).

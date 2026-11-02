@@ -11,7 +11,7 @@ In the Studio, click **Preview**, at the top. The site shows up next to the edit
 
 The preview also shows drafts, so you can check them before publishing.
 
-> [!info] With Obsidian
+> [!info] In the command line
 > Run `blup preview`. The site opens in the browser and updates every time you save a note. To stop, press Ctrl+C in the terminal.
 
 ## Where to publish
@@ -38,7 +38,7 @@ Connect the account once:
 
 Done: click **Publish now**. When it finishes, the Studio shows the site's address.
 
-> [!info] With Obsidian
+> [!info] In the command line
 > Run `blup publish`. The first time it asks where to publish (Cloudflare Pages or GitHub Pages), opens the key page and asks you to paste the key in the terminal.
 
 From then on, only what changed is sent.

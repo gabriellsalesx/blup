@@ -65,5 +65,5 @@ examples:
 %%
 This folder is the site's feedback board: visitors open requests (bug, feature, improvement or other), vote and comment, signing in with GitHub. The requests live in the issues of the site's comments repository, not here. For the board to get real requests, turn on comments on the Comments screen in Blup Studio. You change each request's status (planned, in progress, done, declined) on the Feedback screen.
 
-The requests in the examples list are examples, like the notes in the other sections: they show on the board until the first real request arrives. In Obsidian, change or delete the list in this note's properties.
+The requests in the examples list are examples, like the notes in the other sections: they show on the board until the first real request arrives. You can also change or delete the list in this note's properties.
 %%

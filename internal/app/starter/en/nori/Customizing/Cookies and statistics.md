@@ -54,5 +54,5 @@ On the site it becomes the player, through the `youtube-nocookie.com` address. W
 
 To turn it all off, remove the tools and turn off the banner on the same screen.
 
-> [!info] With Obsidian
+> [!info] In the command line
 > Run `blup customize` and choose **Cookies, visitor statistics and ads**. The terminal asks the same things: the tools, the IDs, the banner and the privacy policy.

@@ -15,7 +15,7 @@ Use `##` e `###` para dividir o texto. Eles viram o sumário **Nesta página** e
 
 ## Prévia aberta ao lado
 
-No Studio, deixe a **Prévia** aberta: cada mudança aparece na hora. No Obsidian, rode `blup ver`.
+No Studio, deixe a **Prévia** aberta: cada mudança aparece na hora. Pela linha de comando, rode `blup ver`.
 
 ## Destaques
 

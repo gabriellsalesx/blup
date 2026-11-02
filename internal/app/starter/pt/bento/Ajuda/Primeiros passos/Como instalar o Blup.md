@@ -11,7 +11,7 @@ weight: 2
 
 ## Linha de comando
 
-Quem prefere o terminal (ou escreve no Obsidian) pode instalar o comando `blup`.
+Quem prefere o terminal pode instalar o comando `blup`.
 
 No macOS e no Linux, abra o **Terminal** e cole:
 

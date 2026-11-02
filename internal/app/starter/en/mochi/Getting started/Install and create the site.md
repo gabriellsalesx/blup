@@ -1,7 +1,7 @@
 ---
 title: Install and create the site
 date: {{date-1}}
-description: Download Blup Studio and create the site by answering one question at a time. Or use the command line with Obsidian.
+description: Download Blup Studio and create the site by answering one question at a time. Or use the command line.
 tags: [Getting started, Studio]
 image: "[[blup-dicas.jpg]]"
 ---
@@ -18,13 +18,13 @@ On the home screen, click **Create a new site**. The Studio asks one question at
 1. **What kind of site**: a personal blog or a product site.
 2. **Which theme**: Mochi (this one, with cards and covers) or Nori, for a blog; Bento, for a product site.
 3. **What's the site called**: the name, one sentence about it, your name and the site's language.
-4. **Where do the notes live**: in a new folder (the simplest way), in a folder you pick or in your Obsidian vault.
+4. **Where do the notes live**: in a new folder (the simplest way) or in a folder you pick.
 5. **All set?** Check everything and create the site.
 
 If the folder is empty, Blup puts in the theme's example site: this tutorial.
 
-> [!tip] Using Obsidian too?
-> If you pick your Obsidian vault, leave **Adjust Obsidian so links work on the site** checked. Obsidian then saves links in the format the site understands.
+> [!tip] A folder that already has notes?
+> Leave **Adjust the folder so links work on the site** checked. Links between notes then work on the site.
 
 ## The site window
 
@@ -37,9 +37,9 @@ There is no save button: the Studio saves on its own while you write.
 
 Right click a note to create another one there, make a copy, move it, copy the link, rename, export or delete it. **Rename** updates the links that point to the note by itself, and **Delete** sends the note to the **Trash**, where you can restore it.
 
-## With Obsidian, through the command line
+## Through the command line
 
-Prefer writing in Obsidian? Install the `blup` command line.
+Prefer the terminal? Install the `blup` command line.
 
 On macOS or Linux, open the Terminal and paste:
 

@@ -11,7 +11,7 @@ weight: 2
 
 ## Command line
 
-If you prefer the terminal (or write in Obsidian), you can install the `blup` command.
+If you prefer the terminal, you can install the `blup` command.
 
 On macOS and Linux, open the **Terminal** and paste:
 

@@ -63,4 +63,4 @@ Se a mesma nota foi editada em dois computadores antes de sincronizar, o Blup **
 | Editada dos dois lados | As duas ficam |
 
 > [!tip] O que não sincroniza
-> Pastas que começam com ponto (como `.obsidian`) ficam de fora. As configurações do site que precisam viajar (nome, tema, destino da publicação) vão junto; senhas e chaves de acesso, não.
+> Pastas que começam com ponto ficam de fora. As configurações do site que precisam viajar (nome, tema, destino da publicação) vão junto; senhas e chaves de acesso, não.

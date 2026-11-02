@@ -39,7 +39,7 @@ En tiempo real, las notas se sincronizan solas mientras escribes. En los planes 
 3. Haz clic en **Revisar**. Blup compara las notas de aquí con las de GitHub y **te muestra lo que va a hacer** antes de hacerlo: lo que cambió aquí se envía, lo que cambió en otra computadora se recibe, y lo que se eliminó de un lado se elimina del otro.
 4. Si todo está bien, haz clic en **Sincronizar ahora**.
 
-> [!info] Con Obsidian
+> [!info] Por la línea de comandos
 > Ejecuta `blup sync`. La línea de comandos sincroniza con GitHub, de la misma forma.
 
 ## Cuando los dos lados cambiaron

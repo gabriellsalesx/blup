@@ -9,9 +9,9 @@ Cole a imagem (ou arraste o arquivo) para dentro da nota. O Studio guarda a imag
 
 Para a **capa** de um post, escolha a imagem em **Propriedades**, no campo da imagem.
 
-## No Obsidian
+## Direto na nota
 
-Arraste a imagem para a nota. Para a capa, use a propriedade `image`:
+No arquivo da nota, a capa fica na propriedade `image`:
 
 ```yaml
 image: "[[minha-capa.jpg]]"

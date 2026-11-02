@@ -34,5 +34,5 @@ The screen also shows how many episodes there are and the **Podcast feed**, with
 > [!warning] It needs a full address
 > Spotify and Apple need the feed's full address. Once the site is published (through Blup Cloud, Cloudflare Pages or GitHub Pages), the full address shows on the Podcast screen.
 
-> [!info] What about Obsidian?
-> The Podcast section is turned on in the Studio. Once it's on, the show's details live in the properties of the **_index** note in the Podcast folder, which also opens in Obsidian, and the page and the feed keep being made when you publish from the command line.
+> [!info] And the command line?
+> The Podcast section is turned on in the Studio. Once it's on, the show's details live in the properties of the **_index** note in the Podcast folder, and the page and the feed keep being made when you publish from the command line.

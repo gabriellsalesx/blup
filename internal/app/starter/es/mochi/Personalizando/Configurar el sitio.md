@@ -2,12 +2,12 @@
 title: Configurar el sitio
 date: {{date-6}}
 description: Nombre, descripción, logo, menú con submenús, botón y redes sociales, en la pantalla Sitio del Studio o en la nota _index.
-tags: [Personalización, Studio, Obsidian]
+tags: [Personalización, Studio]
 image: "[[blup-configurar.jpg]]"
 ---
 La configuración del sitio está en la pantalla **Sitio**, en el menú lateral del Studio. Lo que cambias ahí cambia en el sitio: la vista previa lo muestra al instante.
 
-Todo esto se guarda en las propiedades de la nota **_index** de la carpeta del sitio. Por eso, en Obsidian, basta con editar esa nota. Al final de cada parte está la forma de escribirlo en Obsidian.
+Todo esto se guarda en las propiedades de la nota **_index** de la carpeta del sitio. Al final de cada parte está cómo queda escrito en esa nota, por si prefieres editar el archivo directamente.
 
 ## Nombre y descripción
 
@@ -47,7 +47,7 @@ Las páginas del menú, en orden:
 
 Sin ningún elemento, el menú es automático: las carpetas de la raíz del sitio.
 
-En Obsidian, un elemento por línea. `Nombre | destino` cambia el texto del elemento, una dirección se vuelve un enlace externo, y `+ ` al principio pone el elemento en el submenú de la línea de arriba:
+En la nota **_index**, un elemento por línea. `Nombre | destino` cambia el texto del elemento, una dirección se vuelve un enlace externo, y `+ ` al principio pone el elemento en el submenú de la línea de arriba:
 
 ```yaml
 menu:

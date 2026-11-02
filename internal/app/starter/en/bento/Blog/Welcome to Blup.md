@@ -22,7 +22,7 @@ This whole site was made by Blup from a folder of notes. It works as a tutorial 
 2. Replace the text with your product's, little by little.
 3. Delete what you don't need. In the Studio, the **Sections** screen removes a whole section (and lets you bring it back later).
 
-Prefer Obsidian? Open the same folder there: the notes are plain Markdown files.
+The notes are plain Markdown files, so you can also edit them in any text editor.
 
 > [!tip] Start with the name
-> In the Studio, the **Site** screen changes the name, description, logo, menu and social links. In Obsidian, these settings live in the **_index** note of the site folder.
+> In the Studio, the **Site** screen changes the name, description, logo, menu and social links. These settings live in the properties of the **_index** note of the site folder.

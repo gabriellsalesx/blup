@@ -3,11 +3,11 @@ title: Docs
 linkTitle: Docs
 blup: docs
 weight: 1
-description: Everything about Blup, from installing to publishing, in Blup Studio and in Obsidian.
+description: Everything about Blup, from installing to publishing.
 ---
 **Blup** turns your notes into a fast site, and it also keeps notes just for you, in **note vaults**. The recommended way to use it is **Blup Studio**, the app for your computer (Linux, macOS and Windows): you write, see the site preview beside the text and publish with one button.
 
-Prefer **Obsidian**? You can keep using it. The notes are plain Markdown files, and the same folder opens in both. To build and publish without the Studio, there is the `blup` command line.
+The notes are plain Markdown files, so any text editor opens them too. To build and publish without the Studio, there is the `blup` command line.
 
 ## Highlights
 
@@ -21,7 +21,7 @@ These docs are themselves an example: each page is a note in the **Docs** folder
 
 - **Never used it?** Start with [Installation](Getting%20started/Installation.md) and then [Create your first site](Getting%20started/Create%20your%20first%20site.md).
 - **Want to understand the difference between a site and a vault?** See [Sites and note vaults](Getting%20started/Sites%20and%20note%20vaults.md).
-- **Coming from Obsidian?** Read [Studio or Obsidian](Getting%20started/Studio%20or%20Obsidian.md).
+- **Studio or terminal?** Read [Studio and command line](Getting%20started/Studio%20and%20command%20line.md).
 - **Already opened the Studio?** Get to know [The Studio window](Blup%20Studio/The%20Studio%20window.md) and [Writing in the editor](Blup%20Studio/Writing%20in%20the%20editor.md).
 - **Want to take notes without making a site?** See [What is a vault](Note%20vaults/What%20is%20a%20vault.md).
 - **Going to change the look and the menu?** See [Site settings](Site%20setup/Site%20settings.md).
@@ -46,7 +46,7 @@ These docs are themselves an example: each page is a note in the **Docs** folder
 | Bento sections | Docs, roadmap, changelog, help center, blog and feedback |
 | Publishing | Put the site online and use a domain of your own |
 | Blup Cloud | Account, plans, encrypted sync and sites on Blup |
-| Command line | `blup` in the terminal, for people who use Obsidian |
+| Command line | `blup` in the terminal, for people who prefer it |
 
 > [!tip] This is the first page
 > The text you are reading lives in the **_index** note of the Docs folder. Every folder can have an _index note: it becomes the folder's opening page.

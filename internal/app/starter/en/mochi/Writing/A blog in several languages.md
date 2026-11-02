@@ -39,5 +39,5 @@ In the Studio's **Settings**, under **AI and voice**, choose who translates:
 
 Comments and reactions are the same in every language: people reading in English and in Portuguese talk on the same page, and each comment shows the language it was written in. The narration of a translated post comes out in the translation's language. See [Narrate a post as audio](Narrate%20a%20post%20as%20audio.md).
 
-> [!info] What about Obsidian?
-> Translation and the language picker are set up in the Studio. Translations are ordinary notes, so you can review and edit them in Obsidian afterwards.
+> [!info] Translations are notes
+> Translation and the language picker are set up in the Studio. Translations are ordinary notes, so you can review and edit them afterwards.

@@ -65,5 +65,5 @@ examples:
 %%
 Esta carpeta es el tablero de feedback del sitio: quien visita abre solicitudes (error, función, mejora u otra), vota y comenta, entrando con GitHub. Las solicitudes quedan en las issues del repositorio de comentarios del sitio, no aquí. Para que el tablero reciba solicitudes reales, activa los comentarios en la pantalla Comentarios de Blup Studio. El estado de cada solicitud (planeado, en curso, hecho, rechazado) lo cambias en la pantalla Feedback.
 
-Las solicitudes de la lista examples son ejemplos, como las notas de las otras secciones: aparecen en el tablero hasta que llega la primera solicitud real. En Obsidian, cambia o borra la lista en las propiedades de esta nota.
+Las solicitudes de la lista examples son ejemplos, como las notas de las otras secciones: aparecen en el tablero hasta que llega la primera solicitud real. En el archivo de la nota, cambia o borra la lista en las propiedades de esta nota.
 %%

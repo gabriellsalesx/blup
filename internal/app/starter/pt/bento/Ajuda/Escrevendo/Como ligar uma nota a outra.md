@@ -10,6 +10,6 @@ weight: 3
 
 O Studio insere um link no formato que o site entende. No editor, o link aparece só pelo texto, em azul. Clique nele para abrir a outra nota.
 
-## No Obsidian
+## Direto no arquivo
 
-Use links Markdown relativos, como `[Instalação](../Primeiros%20passos/Instalação.md)`. Quando você cria o site, o Blup oferece ajustar o Obsidian para criar links assim. Se o cofre já tem `[[wikilinks]]`, rode `blup converter` para trocar tudo de uma vez.
+Use links Markdown relativos, como `[Instalação](../Primeiros%20passos/Instalação.md)`. Quando você cria o site numa pasta de notas que já existe, o Blup oferece ajustar a pasta para que os links funcionem no site. Se as notas já têm `[[wikilinks]]`, rode `blup converter` para trocar tudo de uma vez.

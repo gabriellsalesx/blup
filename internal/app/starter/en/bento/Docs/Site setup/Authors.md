@@ -18,7 +18,7 @@ Click **Authors** in the side bar. The screen lists the people, with how many po
 
 On posts, pick the authors in the **Authors** field of the [Note properties](../Blup%20Studio/Note%20properties.md).
 
-## In Obsidian
+## In the note's file
 
 The profiles live in a folder whose **_index** has `blup: authors`, here called **Writers**. This folder does not become a page: its notes are only data.
 

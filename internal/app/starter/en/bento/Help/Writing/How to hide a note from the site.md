@@ -3,9 +3,9 @@ title: How do I hide a note from the site?
 description: Draft, hidden page, password-protected page or off the site for good.
 weight: 4
 ---
-In Blup Studio, open the note's **Properties** and check the option. In Obsidian, write the property.
+In Blup Studio, open the note's **Properties** and check the option. In the note's file, write the property.
 
-| I want the note to... | In the Studio | In Obsidian |
+| I want the note to... | In the Studio | In the note's file |
 | --- | --- | --- |
 | stay off the site for now | Draft | `draft: true` |
 | be on the site, but out of the lists and Google | Hidden | `hidden: true` |

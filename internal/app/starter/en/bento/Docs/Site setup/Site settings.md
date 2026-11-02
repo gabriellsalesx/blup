@@ -24,7 +24,7 @@ Each change shows up in the preview next to it right away, without reloading.
 
 ![Blup setting things up](../../Attachments/blup-configurar.jpg)
 
-## In Obsidian: the _index note
+## In the _index note
 
 | Property | What it does |
 | --- | --- |

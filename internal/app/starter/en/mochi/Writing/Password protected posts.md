@@ -16,9 +16,9 @@ In the post's **Properties** panel, turn on **Password** and choose:
 - **Its own password**: type the password for this post.
 - **General password**: one password for many posts. It lives in the Studio's **Settings** and works for all your sites. If you want, a site can have its own password, which works only for that site.
 
-## In Obsidian
+## In the note's file
 
-Add the **password** property to the note:
+You can also write the **password** property by hand:
 
 ```yaml
 password: my-password

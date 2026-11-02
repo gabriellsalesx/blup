@@ -1,6 +1,6 @@
 ---
 title: "{{title}}"
-description: Documentação, roadmap, novidades, central de ajuda e blog, escritos no Blup Studio ou no Obsidian.
+description: Documentação, roadmap, novidades, central de ajuda e blog, escritos no Blup Studio.
 site_name: "{{title}}"
 site_description:
 logo:
@@ -11,12 +11,12 @@ social:
 button_text:
 button_link:
 ---
-Este site de exemplo já vem com um tutorial completo do Blup. Cada seção abaixo é uma pasta das suas notas: abra as notas no **Blup Studio** (o jeito recomendado) para ver como cada página foi feita, com a prévia do site ao lado. Se preferir, as mesmas pastas abrem no **Obsidian**, porque as notas são arquivos Markdown comuns. Depois é só editar e trocar pelo conteúdo do seu produto.
+Este site de exemplo já vem com um tutorial completo do Blup. Cada seção abaixo é uma pasta das suas notas: abra as notas no **Blup Studio** (o jeito recomendado) para ver como cada página foi feita, com a prévia do site ao lado. As notas são arquivos Markdown comuns. Depois é só editar e trocar pelo conteúdo do seu produto.
 
 %%
 Este bloco é um comentário (o texto entre os dois pares de sinais de porcentagem): só aparece enquanto você edita, nunca no site.
 
-O texto acima é a apresentação da página inicial. As propriedades desta nota (_index) configuram o site inteiro. No Blup Studio, você edita todas elas na tela Site, sem mexer aqui. No Obsidian, edite à mão nas propriedades da nota:
+O texto acima é a apresentação da página inicial. As propriedades desta nota (_index) configuram o site inteiro. No Blup Studio, você edita todas elas na tela Site, sem mexer aqui. Ou edite à mão nas propriedades da nota:
 
 - site_name e site_description: o nome (aba do navegador, rodapé e Google) e uma frase sobre o site.
 - logo e favicon: imagens das notas, como [[logo.png]].

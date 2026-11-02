@@ -26,7 +26,7 @@ weight: 1
 
 **In Blup Studio**: open the collection's **_index** note. The properties show **Collection icon**: click it to open the icon grid and search by name or by everyday words (rocket, book, help...). **Automatic** removes the icon and lets the theme pick.
 
-**In Obsidian**: the **icon** property takes any name from the [Lucide](https://lucide.dev/icons) library, with more than 2 thousand icons: `rocket`, `pen-line`, `globe`, `life-buoy`, `credit-card`, `shield-check`, `users`... Copy the name from the Lucide site. Without icon, the theme picks one.
+**By hand**: the **icon** property takes any name from the [Lucide](https://lucide.dev/icons) library, with more than 2 thousand icons: `rocket`, `pen-line`, `globe`, `life-buoy`, `credit-card`, `shield-check`, `users`... Copy the name from the Lucide site. Without icon, the theme picks one.
 
 ## Title and menu
 

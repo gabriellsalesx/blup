@@ -9,5 +9,5 @@ weight: 2
 
 A seção **Feedback** (um quadro de pedidos com votos) só se acrescenta por aqui.
 
-> [!tip] No Obsidian
+> [!tip] Direto nas pastas
 > Cada seção é uma pasta com uma nota **_index** e a propriedade `blup`. Apagar a pasta tira a seção do site.

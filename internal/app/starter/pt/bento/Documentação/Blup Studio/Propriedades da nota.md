@@ -38,6 +38,6 @@ Nos posts e páginas comuns, o painel tem o bloco **Narração**: **Gerar narra�
 
 Toda nota de um site tem o bloco **Idiomas**: a original e cada idioma, com **Traduzir**, **Abrir**, **Traduzir de novo** e **Marcar como revisada**. Veja [Sites em vários idiomas](../Configuração%20do%20site/Sites%20em%20vários%20idiomas.md).
 
-## Pelo Obsidian
+## Direto na nota
 
 As mesmas propriedades podem ser escritas à mão no topo da nota. Veja a lista completa em [Notas e propriedades](../Escrevendo/Notas%20e%20propriedades.md).

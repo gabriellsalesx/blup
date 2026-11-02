@@ -9,9 +9,9 @@ Pega la imagen (o arrastra el archivo) dentro de la nota. El Studio guarda la im
 
 Para la **portada** de un post, elige la imagen en **Propiedades**, en el campo de la imagen.
 
-## En Obsidian
+## En el archivo de la nota
 
-Arrastra la imagen a la nota. Para la portada, usa la propiedad `image`:
+Guarda la imagen en la carpeta de adjuntos y enlázala en el texto. Para la portada, usa la propiedad `image`:
 
 ```yaml
 image: "[[mi-portada.jpg]]"

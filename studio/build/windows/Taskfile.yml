@@ -60,7 +60,10 @@ tasks:
       # Blup version written into the binary (internal/app.Version). Release
       # builds pass VERSION=x.y.z; keep the default equal to config.yml.
       VERSION: '{{.VERSION | default "1.0.0"}}'
-      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if or .EXTRA_TAGS (eq .OBFUSCATED "true")}}-tags {{if eq .OBFUSCATED "true"}}wails_obfuscated{{if .EXTRA_TAGS}},{{end}}{{end}}{{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui -X github.com/gabriellsalesx/blup/internal/app.Version={{.VERSION}}"{{end}}'
+      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if or .EXTRA_TAGS (eq .OBFUSCATED "true")}}-tags {{if eq .OBFUSCATED "true"}}wails_obfuscated{{if .EXTRA_TAGS}},{{end}}{{end}}{{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui -X github.com/gabriellsalesx/blup/internal/app.Version={{.VERSION}}{{if .CHANNEL}} -X github.com/gabriellsalesx/blup/internal/app.Channel={{.CHANNEL}}{{end}}"{{end}}'
+      # CHANNEL=msstore: the Microsoft Store build, which never looks for
+      # new versions itself (the store updates it; see app.UpdatesBy).
+      CHANNEL: '{{.CHANNEL | default ""}}'
     env:
       GOOS: windows
       CGO_ENABLED: '{{.CGO_ENABLED | default "0"}}'
@@ -152,6 +155,8 @@ tasks:
           --executable "{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.APP_NAME}}.exe" \
           --arch "{{.ARCH}}" \
           --out "{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.APP_NAME}}-{{.ARCH}}.msix" \
+          --icon "{{.ROOT_DIR}}/build/appicon.png" \
+          {{if .MANIFEST}}--manifest "{{.MANIFEST}}"{{end}} \
           {{if .CERT_PATH}}--cert "{{.CERT_PATH}}"{{end}} \
           {{if .PUBLISHER}}--publisher "{{.PUBLISHER}}"{{end}} \
           {{if eq .USE_MSIX_TOOL "true"}}--use-msix-tool{{else}}--use-makeappx{{end}}
@@ -159,6 +164,9 @@ tasks:
       ARCH: '{{.ARCH | default ARCH}}'
       CERT_PATH: '{{.CERT_PATH | default ""}}'
       PUBLISHER: '{{.PUBLISHER | default ""}}'
+      # The Microsoft Store's AppxManifest.xml, filled from the Partner
+      # Center's product identity (go run ./scripts/msix-manifest).
+      MANIFEST: '{{.MANIFEST | default ""}}'
       USE_MSIX_TOOL: '{{.USE_MSIX_TOOL | default "false"}}'
 
   install:msix:tools:

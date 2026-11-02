@@ -63,4 +63,4 @@ If the same note was edited on two computers before syncing, Blup **keeps both**
 | Edited on both sides | Both stay |
 
 > [!tip] What doesn't sync
-> Folders that start with a dot (like `.obsidian`) stay out. The site settings that need to travel (name, theme, where it's published) go along; passwords and access keys don't.
+> Folders that start with a dot (like `.git`) stay out. The site settings that need to travel (name, theme, where it's published) go along; passwords and access keys don't.

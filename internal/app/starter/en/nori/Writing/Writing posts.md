@@ -1,8 +1,8 @@
 ---
 title: Writing posts
 date: {{date-3}}
-description: Creating a post, properties, links between notes, images and sections. In the Studio and in Obsidian.
-tags: [Writing, Studio, Obsidian]
+description: Creating a post, properties, links between notes, images and sections.
+tags: [Writing, Studio]
 image: "[[blup-escrever.jpg]]"
 ---
 To create a post, create a note in the site folder and write. That's all. The rest is optional.
@@ -33,7 +33,7 @@ Date, tags, cover and the rest live in the **Properties** panel, above the edito
 | **Hidden** | `hidden: true` | Publishes it, but keeps it out of lists and Google. |
 | **Password** | `password` | Asks for a password to read. See [Password protected posts](Password%20protected%20posts.md). |
 
-In Obsidian, the same properties sit in the block at the top of the note: type `---` on the first line or use the "Add file property" command.
+In the note's file, the same properties sit in a block at the top, between two `---` lines.
 
 ## Links between notes
 
@@ -50,11 +50,11 @@ For a link to another website, use **Link** (Ctrl+K).
 > [!tip] Renamed a note?
 > In the Studio, rename without worry: it updates the links that point to the note by itself.
 
-In Obsidian, drag a note into another or type `[[`. With the link setting Blup applies to Obsidian, the link is saved in the same format as above. Already have old notes with wikilinks? Run `blup convert`: Blup turns the old links into the standard format and shows what will change first.
+Already have old notes with `[[wikilinks]]`? Run `blup convert`: Blup turns the old links into the standard format and shows what will change first.
 
 ## Images
 
-Paste the image right into the note, or drag it, or use **Image from the computer**. The Studio saves the file in the **Attachments** folder by itself and the image shows up in place, inside the text. In Obsidian, drag the image into the note, as usual.
+Paste the image right into the note, or drag it, or use **Image from the computer**. The Studio saves the file in the **Attachments** folder by itself and the image shows up in place, inside the text.
 
 Blup makes smaller, modern versions (WebP) of each image, and the browser downloads only the size it needs.
 

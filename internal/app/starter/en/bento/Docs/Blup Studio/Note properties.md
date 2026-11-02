@@ -38,6 +38,6 @@ In posts and regular pages, the panel has a **Narration** block: **Make narratio
 
 Every note of a site has a **Languages** block: the original and each language, with **Translate**, **Open**, **Translate again** and **Mark as reviewed**. See [Multilingual sites](../Site%20setup/Multilingual%20sites.md).
 
-## In Obsidian
+## By hand
 
 You can write the same properties by hand at the top of the note. See the full list in [Notes and properties](../Writing/Notes%20and%20properties.md).

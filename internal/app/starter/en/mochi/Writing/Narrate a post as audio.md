@@ -39,5 +39,5 @@ A translated post is narrated in the translation's language, with that language'
 
 Narrated posts can become episodes of a podcast for the blog, with a feed for Spotify and Apple Podcasts. See [Your blog becomes a podcast](../Customizing/Your%20blog%20becomes%20a%20podcast.md).
 
-> [!info] What about Obsidian?
+> [!info] And the command line?
 > Narration is a Studio feature. Once made, it stays in the note's properties and remains on the site even when you publish from the command line.

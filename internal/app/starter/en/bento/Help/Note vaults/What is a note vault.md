@@ -13,7 +13,7 @@ Besides notes, a vault has:
 - **Databases**, like a list of clients or tasks;
 - **Map of notes**, which shows how your notes link to each other.
 
-Vaults are a Blup Studio feature. The notes are still Markdown files, so they open in Obsidian too.
+Vaults are a Blup Studio feature. The notes are still Markdown files, so any text editor opens them too.
 
 ## How to create one
 

@@ -26,5 +26,5 @@ Type `@` to mention another note or a date, and `/` to insert a heading, a list,
 
 The vault's notes are plain files in a folder on your computer. To have the same notes on another computer, use the **Sync** button: through Blup Cloud, with end-to-end encryption, or in a private GitHub repository. See [Sync the notes](../Customizing/Sync%20the%20notes.md).
 
-> [!info] What about Obsidian?
-> A vault's notes also open in Obsidian. The canvas uses the open JSON Canvas format. Drawings, databases, the map of notes and the note of the day are the Studio's own features.
+> [!info] Plain files
+> A vault's notes are plain Markdown files. The canvas uses the open JSON Canvas format. Drawings, databases, the map of notes and the note of the day are the Studio's own features.

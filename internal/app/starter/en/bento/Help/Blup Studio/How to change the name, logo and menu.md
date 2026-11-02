@@ -13,5 +13,5 @@ weight: 1
 
 The changes show in the preview without reloading.
 
-> [!tip] In Obsidian
+> [!tip] Where they are saved
 > The same settings live in the properties of the **_index** note in the site folder.

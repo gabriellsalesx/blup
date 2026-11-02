@@ -17,7 +17,7 @@ Si falta el resto de la dirección, el Studio te avisa: una línea que solo tien
 
 En la pantalla **Autores**, el perfil de cada persona tiene los mismos botones.
 
-## Desde Obsidian
+## En el archivo de la nota
 
 En la nota **_index** de la carpeta del sitio:
 

@@ -34,5 +34,5 @@ La pantalla también muestra cuántos episodios hay y el **Feed del podcast**, c
 > [!warning] Necesita una dirección completa
 > Spotify y Apple necesitan la dirección completa del feed. Después de publicar el sitio (con Blup Cloud, Cloudflare Pages o GitHub Pages), la dirección completa aparece en la pantalla Podcast.
 
-> [!info] ¿Y en Obsidian?
-> La sección Podcast se activa en el Studio. Una vez activada, los datos del programa quedan en las propiedades de la nota **_index** de la carpeta Podcast, que también se abre en Obsidian, y la página y el feed se siguen generando cuando publicas con la línea de comandos.
+> [!info] ¿Y con la línea de comandos?
+> La sección Podcast se activa en el Studio. Una vez activada, los datos del programa quedan en las propiedades de la nota **_index** de la carpeta Podcast, y la página y el feed se siguen generando cuando publicas con la línea de comandos.

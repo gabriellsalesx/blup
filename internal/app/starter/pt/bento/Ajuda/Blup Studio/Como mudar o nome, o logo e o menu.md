@@ -13,5 +13,5 @@ weight: 1
 
 As mudanças aparecem na prévia sem precisar recarregar.
 
-> [!tip] No Obsidian
+> [!tip] Direto na nota
 > As mesmas configurações ficam nas propriedades da nota **_index** da pasta do site.

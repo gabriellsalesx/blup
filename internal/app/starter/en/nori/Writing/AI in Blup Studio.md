@@ -36,5 +36,5 @@ Just ask in plain English: "review the post titles", "write a post about the tri
 
 If the AI changes the note that is open in the editor, the Studio tells you and lets you choose between **Load the new one** and **Keep mine**.
 
-> [!info] What about Obsidian?
+> [!info] And the command line?
 > Narration, translation and the terminal with agents are in the Studio. A narration or translation made in the Studio stays on the site even when you publish from the command line.

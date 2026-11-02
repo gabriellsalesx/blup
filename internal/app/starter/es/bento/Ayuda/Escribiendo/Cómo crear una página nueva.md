@@ -11,9 +11,9 @@ weight: 1
 
 El nombre de la nota se convierte en el título de la página, salvo que completes **Título** en las propiedades.
 
-## En Obsidian
+## Por la línea de comandos
 
 Crea la nota dentro de la carpeta de la sección y escribe. Con `blup preview` abierto, la página aparece en la vista previa en cuanto guardas.
 
 > [!tip] Empieza desde una plantilla
-> En Obsidian, usa **Plantillas: Insertar plantilla** para empezar con las propiedades correctas de cada sección.
+> Los sitios creados desde la línea de comandos traen la carpeta **Plantillas**. Copia una plantilla para empezar con las propiedades correctas de cada sección.

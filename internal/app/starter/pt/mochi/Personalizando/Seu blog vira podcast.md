@@ -34,5 +34,5 @@ A tela também mostra quantos episódios há e o **Feed do podcast**, com **Copi
 > [!warning] Precisa de um endereço completo
 > O Spotify e a Apple precisam do endereço completo do feed. Depois que o site for publicado (pelo Blup Cloud, Cloudflare Pages ou GitHub Pages), o endereço completo aparece na tela Podcast.
 
-> [!info] E no Obsidian?
-> A seção Podcast se liga no Studio. Depois de ligada, os dados do programa ficam nas propriedades da nota **_index** da pasta Podcast, que também abre no Obsidian, e a página e o feed continuam sendo gerados quando você publica pela linha de comando.
+> [!info] Pela linha de comando
+> A seção Podcast se liga no Studio. Depois de ligada, os dados do programa ficam nas propriedades da nota **_index** da pasta Podcast, e a página e o feed continuam sendo gerados quando você publica pela linha de comando.

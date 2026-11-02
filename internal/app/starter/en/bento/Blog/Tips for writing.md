@@ -15,7 +15,7 @@ Use `##` and `###` to split the text. They become the **On this page** table of 
 
 ## Keep the preview open
 
-In the Studio, leave the **Preview** open: every change shows up right away. In Obsidian, run `blup preview`.
+In the Studio, leave the **Preview** open: every change shows up right away. In the command line, run `blup preview`.
 
 ## Callouts
 

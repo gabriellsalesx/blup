@@ -21,7 +21,7 @@ Depois, falta um detalhe para as pessoas comentarem **sem sair do blog**: instal
 
 Por fim, publique de novo para os comentários aparecerem no site.
 
-> [!info] Pelo Obsidian
+> [!info] Pela linha de comando
 > Rode `blup personalizar` e escolha **Comentários e reações nos posts**. O Blup faz os mesmos passos pelo terminal.
 
 > [!info] Sem o app

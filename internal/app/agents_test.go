@@ -154,3 +154,15 @@ func TestAgentGuidesNotNotes(t *testing.T) {
 		}
 	}
 }
+
+// The guides speak of the notes and the Studio only, never of another
+// note app (a rule of the product).
+func TestAgentGuidesNameNoOtherApp(t *testing.T) {
+	for _, theme := range []string{"mochi", "nori", "bento", "notes"} {
+		for lang := range languageNames {
+			if s := strings.ToLower(instructions(theme, lang)); strings.Contains(s, "obsidian") {
+				t.Errorf("%s/%s names Obsidian", theme, lang)
+			}
+		}
+	}
+}

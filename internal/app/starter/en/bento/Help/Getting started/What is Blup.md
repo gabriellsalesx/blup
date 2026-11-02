@@ -14,7 +14,7 @@ It does two kinds of things:
 
 The recommended way is **Blup Studio**, an app for Linux, macOS and Windows with an editor, a preview of the site right beside it and screens to set everything up.
 
-If you already use **Obsidian**, you can keep using it. The notes are plain Markdown files, and the same folder opens in both. To build and publish without the Studio, there is the `blup` command line.
+The notes are plain Markdown files, so any text editor opens them too. To build and publish without the Studio, there is the `blup` command line.
 
 > [!tip] This is a help center article
 > Each note in a subfolder of the help center is an article. The subfolder is the collection.

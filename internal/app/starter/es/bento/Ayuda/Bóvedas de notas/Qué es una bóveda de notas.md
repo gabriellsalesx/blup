@@ -13,7 +13,7 @@ Además de las notas, la bóveda tiene:
 - **Bases de datos**, como una lista de clientes o de tareas;
 - **Mapa de notas**, que muestra cómo se conectan las notas.
 
-Las bóvedas son una función de Blup Studio. Las notas siguen siendo archivos Markdown, así que también se abren en Obsidian.
+Las bóvedas son una función de Blup Studio. Las notas siguen siendo archivos Markdown, así que también se abren en otros programas.
 
 ## Cómo crearla
 

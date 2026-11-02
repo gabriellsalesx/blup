@@ -14,10 +14,10 @@ social:
 button_text:
 button_link:
 ---
-Este blog ya viene con un tutorial de Blup. Lee los posts y abre las notas en Blup Studio (o en Obsidian) para ver cómo se hizo cada página. Después solo tienes que editarlas y escribir las tuyas.
+Este blog ya viene con un tutorial de Blup. Lee los posts y abre las notas en Blup Studio para ver cómo se hizo cada página. Después solo tienes que editarlas y escribir las tuyas.
 
 %%
-Este bloque es un comentario (el texto entre los dos pares de signos de porcentaje): solo aparece mientras editas, en el Studio o en Obsidian, y nunca llega al sitio.
+Este bloque es un comentario (el texto entre los dos pares de signos de porcentaje): solo aparece mientras editas y nunca llega al sitio.
 
 El texto de arriba es la presentación de la página de inicio. Las propiedades de esta nota (_index) guardan la configuración de todo el sitio. La pantalla Sitio, en el menú lateral del Studio, edita las mismas:
 

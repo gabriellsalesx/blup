@@ -38,6 +38,6 @@ En los posts y en las páginas comunes, el panel tiene el bloque **Narración**:
 
 Cada nota de un sitio tiene el bloque **Idiomas**: la original y cada idioma, con **Traducir**, **Abrir**, **Traducir de nuevo** y **Marcar como revisada**. Consulta [Sitios en varios idiomas](../Configuración%20del%20sitio/Sitios%20en%20varios%20idiomas.md).
 
-## Desde Obsidian
+## En el archivo de la nota
 
 Las mismas propiedades se pueden escribir a mano al principio de la nota. Consulta la lista completa en [Notas y propiedades](../Escribiendo/Notas%20y%20propiedades.md).

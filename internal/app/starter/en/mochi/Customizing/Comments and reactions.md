@@ -21,7 +21,7 @@ After that, there is one more detail so people can comment **without leaving the
 
 Finally, publish again so the comments show up on the site.
 
-> [!info] With Obsidian
+> [!info] In the command line
 > Run `blup customize` and choose **Comments and reactions on posts**. Blup does the same steps in the terminal.
 
 > [!info] Without the app

@@ -961,6 +961,12 @@ export interface UpdateInfo {
     "newer": boolean;
     "notes": string;
     "url": string;
+
+    /**
+     * UpdatesBy: a store or the system's packages bring new versions (see
+     * UpdatesBy); then nothing is looked up.
+     */
+    "updatesBy": string;
 }
 
 /**

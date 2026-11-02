@@ -21,6 +21,9 @@ type Reminder struct {
 type ReminderUse struct {
 	Limit int `json:"limit"`
 	Used  int `json:"used"`
+	// EmailMissing: the account has no e-mail (passkey only), so no
+	// reminder e-mail can go.
+	EmailMissing bool `json:"emailMissing"`
 }
 
 // ReminderEmails tells the month's use.
@@ -44,6 +47,8 @@ func reminderUse(call func(out any) error) (ReminderUse, error) {
 	var r struct {
 		Limit *int `json:"limit"`
 		Used  *int `json:"used"`
+		// Older clouds don't send it: an e-mail is then assumed.
+		EmailMissing *bool `json:"emailMissing"`
 	}
 	if err := call(&r); err != nil {
 		return ReminderUse{}, err
@@ -51,5 +56,9 @@ func reminderUse(call func(out any) error) (ReminderUse, error) {
 	if r.Limit == nil || r.Used == nil || *r.Limit < 0 || *r.Used < 0 {
 		return ReminderUse{}, fmt.Errorf("%w: reminders", ErrBadAnswer)
 	}
-	return ReminderUse{Limit: *r.Limit, Used: *r.Used}, nil
+	u := ReminderUse{Limit: *r.Limit, Used: *r.Used}
+	if r.EmailMissing != nil {
+		u.EmailMissing = *r.EmailMissing
+	}
+	return u, nil
 }

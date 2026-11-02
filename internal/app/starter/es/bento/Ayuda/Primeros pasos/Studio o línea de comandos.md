@@ -1,9 +1,9 @@
 ---
-title: ¿Uso Blup Studio u Obsidian?
+title: ¿Uso Blup Studio o la línea de comandos?
 description: Los dos funcionan con las mismas notas. Mira lo que ofrece cada uno.
 weight: 4
 ---
-Los dos abren las mismas carpetas, porque las notas son archivos Markdown normales. Incluso puedes alternar entre ellos.
+Los dos trabajan con las mismas carpetas, porque las notas son archivos Markdown normales. Incluso puedes alternar entre ellos.
 
 ## Por qué se recomienda el Studio
 
@@ -16,6 +16,6 @@ Reúne todo en un solo lugar:
 - **sincronización** y **publicación** con Blup Cloud;
 - terminal con agentes de IA, papelera e historial.
 
-## Cuándo tiene sentido Obsidian
+## Cuándo tiene sentido la línea de comandos
 
-Si ya tienes una bóveda organizada y te gustan tus plugins, sigue en ella. Usa la línea de comandos `blup` para ver la vista previa (`blup preview`, o `blup ver`) y publicar (`blup publish`, o `blup publicar`). La configuración del sitio está en las propiedades de la nota **_index** de la carpeta del sitio.
+Si prefieres la terminal o quieres automatizar, usa `blup` para ver la vista previa (`blup preview`, o `blup ver`) y publicar (`blup publish`, o `blup publicar`). La configuración del sitio está en las propiedades de la nota **_index** de la carpeta del sitio.

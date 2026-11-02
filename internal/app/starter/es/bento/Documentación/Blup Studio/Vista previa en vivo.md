@@ -26,6 +26,6 @@ Al abrir un sitio, el Studio activa la vista previa junto al editor. Es tu sitio
 > [!note] ¿Sin reproductor de audio en Linux?
 > En algunos Linux falta un componente de audio del sistema (GStreamer). En ese caso la vista previa oculta el reproductor, pero el sitio publicado lo muestra normalmente.
 
-## Desde Obsidian
+## Por la línea de comandos
 
 Sin el Studio, ejecuta `blup preview` en la terminal (en portugués, el alias es `blup ver`): la vista previa se abre en el navegador y se actualiza con cada nota guardada. Consulta [Vista previa](../Línea%20de%20comandos/Vista%20previa.md).

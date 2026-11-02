@@ -1,11 +1,11 @@
 ---
 title: Formatting that works
 date: {{date-4}}
-description: Everything you write in the Studio or in Obsidian that shows up on the site, with examples.
+description: Everything you write in the Studio that shows up on the site, with examples.
 tags: [Writing]
 image: "[[blup-formatacao.jpg]]"
 ---
-This post is a showcase. Open the note in the Studio (or in Obsidian) and see how each block was written. In the Studio, almost everything has a button on the **formatting bar** and an item in the `/` menu, and the editor already shows the result: the marks only appear when the cursor passes over them.
+This post is a showcase. Open the note in the Studio and see how each block was written. In the Studio, almost everything has a button on the **formatting bar** and an item in the `/` menu, and the editor already shows the result: the marks only appear when the cursor passes over them.
 
 ## Text
 
@@ -80,7 +80,7 @@ $$
 
 ## Comments
 
-Text between `%%` and `%%` is a comment: it shows while you edit, in the Studio or in Obsidian, and disappears on the site. It's for reminders and drafts inside the post. %%This part, for example, only exists in the notes.%%
+Text between `%%` and `%%` is a comment: it shows while you edit and disappears on the site. It's for reminders and drafts inside the post. %%This part, for example, only exists in the notes.%%
 
 ## Divider
 

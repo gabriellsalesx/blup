@@ -125,6 +125,12 @@ tasks:
       - cp "{{.APP_BINARY}}" "{{.APP_NAME}}"
       - cp ../../appicon.png "{{.APP_NAME}}.png"
       - wails3 generate appimage -binary "{{.APP_NAME}}" -icon "{{.ICON}}" -desktopfile "{{.DESKTOP_FILE}}" -outputdir "{{.OUTPUT_DIR}}" -builddir "{{.ROOT_DIR}}/build/linux/appimage/build"
+    env:
+      # Wails names the AppImage with OUTPUT, a bare file name; the current
+      # appimagetool resolves it from the home folder instead of the build
+      # folder, so the AppImage landed in ~ and Wails didn't find it.
+      # LDAI_OUTPUT (which the plugin prefers) gives the full path.
+      LDAI_OUTPUT: '{{.ROOT_DIR}}/build/linux/appimage/build/{{.APP_NAME}}-{{if eq ARCH "arm64"}}aarch64{{else}}x86_64{{end}}.AppImage'
     vars:
       APP_NAME: '{{.APP_NAME}}'
       APP_BINARY: '../../../bin/{{.APP_NAME}}'
@@ -176,12 +182,15 @@ tasks:
     dir: build
     cmds:
       - mkdir -p "{{.ROOT_DIR}}/build/linux/appimage"
-      - wails3 generate .desktop -name "{{.APP_NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop" -categories "{{.CATEGORIES}}"
+      - wails3 generate .desktop -name "Blup Studio" -genericname "{{.GENERIC_NAME}}" -comment "{{.COMMENT}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop" -categories "{{.CATEGORIES}}" -keywords "{{.KEYWORDS}}"
     vars:
       APP_NAME: '{{.APP_NAME}}'
       EXEC: '{{.APP_NAME}}'
       ICON: '{{.APP_NAME}}'
-      CATEGORIES: 'Development;'
+      GENERIC_NAME: 'Markdown Editor'
+      COMMENT: 'Write in Markdown, preview and publish your site'
+      CATEGORIES: 'Office;TextEditor;Publishing;'
+      KEYWORDS: 'Markdown;Notes;Wiki;Blog;Website;Hugo;'
       OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop'
 
   run:

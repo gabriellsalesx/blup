@@ -59,5 +59,5 @@ A translation made by AI shows a **Translated with AI** badge next to the title,
 
 All versions of a page share the same conversation: votes and reactions add up readers from every language. A comment shows which language it was written in, like "commented in Português".
 
-> [!tip] In Obsidian
+> [!tip] Translating by hand
 > You can translate by hand: create the `es` folder next to the note and write the translation there, with the same file name as the original (or the same `translationKey`). The published languages are listed under `translations` in blup.toml, which the Studio fills in when it translates.
