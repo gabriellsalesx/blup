@@ -1,15 +1,15 @@
 ---
 title: Formatação que funciona
 date: {{date-4}}
-description: Tudo que você escreve no Obsidian e aparece no site, com exemplos.
-tags: [Obsidian]
+description: Tudo que você escreve no Studio ou no Obsidian e aparece no site, com exemplos.
+tags: [Escrita]
 image: "[[blup-formatacao.jpg]]"
 ---
-Este post é um mostruário. Abra a nota no Obsidian e veja como cada bloco foi escrito.
+Este post é um mostruário. Abra a nota no Studio (ou no Obsidian) e veja como cada bloco foi escrito. No Studio, quase tudo tem um botão na **barra de formatação** e um item no menu `/`, e o editor já mostra o efeito: as marcas só aparecem quando o cursor passa por elas.
 
 ## Texto
 
-**Negrito**, *itálico*, ~~riscado~~, ==marca-texto==, `código` e [link para fora](https://obsidian.md). Uma nota de rodapé também funciona.[^1]
+**Negrito**, *itálico*, ~~riscado~~, ==marca-texto==, `código` e [link para fora](https://github.com/gabriellsalesx/blup). Uma nota de rodapé também funciona.[^1]
 
 [^1]: As notas de rodapé vão para o fim do post, com link de volta.
 
@@ -29,7 +29,8 @@ Este post é um mostruário. Abra a nota no Obsidian e veja como cada bloco foi 
 
 | Tema | Para quem |
 | --- | --- |
-| Mochi | Blog pessoal |
+| Mochi | Blog com cards e capas |
+| Nori | Blog de uma coluna, com o texto em primeiro plano |
 | Bento | Site de produto |
 
 ## Citação
@@ -38,7 +39,7 @@ Este post é um mostruário. Abra a nota no Obsidian e veja como cada bloco foi 
 
 ## Callouts
 
-Os callouts do Obsidian viram caixas coloridas, com o mesmo ícone:
+Os callouts viram caixas coloridas, com ícone. No Studio, use **Destaque (callout)**:
 
 > [!note] Nota
 > O tipo vai entre colchetes: `> [!note]`. O título é opcional.
@@ -79,7 +80,7 @@ $$
 
 ## Comentários
 
-Texto entre `%%` e `%%` é um comentário do Obsidian: aparece enquanto você edita e some no site. Serve para lembretes e rascunhos dentro do post. %%Este trecho, por exemplo, só existe no Obsidian.%%
+Texto entre `%%` e `%%` é um comentário: aparece enquanto você edita, no Studio ou no Obsidian, e some no site. Serve para lembretes e rascunhos dentro do post. %%Este trecho, por exemplo, só existe nas notas.%%
 
 ## Linha divisória
 

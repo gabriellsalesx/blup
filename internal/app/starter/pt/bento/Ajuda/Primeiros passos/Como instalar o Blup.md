@@ -1,19 +1,25 @@
 ---
-title: Como instalar o Blup
-description: Um comando no terminal, no macOS, Linux ou Windows.
-weight: 1
+title: Como instalar o Blup?
+description: Baixe o Blup Studio ou instale a linha de comando, no Linux, macOS ou Windows.
+weight: 2
 ---
-## macOS e Linux
+## Blup Studio (recomendado)
 
-Abra o **Terminal** e cole:
+1. Abra **getblup.io** no navegador.
+2. Baixe a versão do seu sistema: Linux, macOS ou Windows.
+3. Instale e abra o **Blup Studio**. Na primeira vez, ele pergunta o idioma e ajuda com o resto.
+
+## Linha de comando
+
+Quem prefere o terminal (ou escreve no Obsidian) pode instalar o comando `blup`.
+
+No macOS e no Linux, abra o **Terminal** e cole:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.sh | sh
 ```
 
-## Windows
-
-Abra o **PowerShell** e cole:
+No Windows, abra o **PowerShell** e cole:
 
 ```powershell
 irm https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.ps1 | iex
@@ -21,5 +27,5 @@ irm https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.ps1 | iex
 
 Depois rode `blup`.
 
-> [!tip] Este é um artigo da central
-> Cada nota numa subpasta da central de ajuda é um artigo. A subpasta é a coleção.
+> [!info] Preciso instalar mais alguma coisa?
+> Não. O Blup baixa sozinho o que precisa para gerar o site.

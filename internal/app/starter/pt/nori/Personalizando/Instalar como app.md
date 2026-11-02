@@ -15,7 +15,7 @@ O app abre em tela cheia, com o ícone e o nome do site.
 
 ## O ícone
 
-O Blup faz os ícones de cada aparelho a partir do **favicon** do site: Android, iPhone, o ícone recortado em círculo do Android e o `favicon.ico`. Para trocar, troque o favicon na tela **Aparência** (veja [Configurar o site](Configurar%20o%20site.md)). Uma imagem quadrada, de pelo menos 512 pixels ou em SVG, fica melhor.
+O Blup faz os ícones de cada aparelho a partir do **favicon** do site: Android, iPhone, o ícone recortado em círculo do Android e o `favicon.ico`. Para trocar, troque o favicon na tela **Site** do Studio (veja [Configurar o site](Configurar%20o%20site.md)). Uma imagem quadrada, de pelo menos 512 pixels ou em SVG, fica melhor.
 
 ## Sem internet
 
@@ -25,4 +25,4 @@ Na primeira visita, o navegador guarda todas as páginas, os estilos e as fontes
 - **Comentários e reações** precisam de internet; sem ela, o resto da página funciona normalmente.
 - A cada publicação, o navegador baixa a versão nova sozinho.
 
-A **Prévia** do Studio não vira app, porque muda o tempo todo; só o site publicado.
+A prévia (a do Studio ou a do `blup ver`) não vira app, porque muda o tempo todo; só o site publicado.

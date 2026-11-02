@@ -1,6 +1,6 @@
 ---
 title: Formulário de contato
-description: Receber mensagens dos visitantes sem servidor.
+description: Receber mensagens dos visitantes pelo site.
 status: planejado
 category: Recursos
 weight: 2

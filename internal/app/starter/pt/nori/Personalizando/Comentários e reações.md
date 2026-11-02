@@ -6,7 +6,7 @@ tags: [Personalização, Studio]
 ---
 Quem visita o blog pode reagir aos posts (👍 ❤️ 🎉 🚀 e outras) e deixar comentários. Sem servidor e sem mensalidade: tudo fica em issues de um repositório público no seu GitHub.
 
-## Ligar
+## Ligar no Studio
 
 No menu ao lado, clique em **Comentários** e ligue **Mostrar comentários e reações**. Na primeira vez, são dois passos:
 
@@ -21,8 +21,11 @@ Depois, falta um detalhe para as pessoas comentarem **sem sair do blog**: instal
 
 Por fim, publique de novo para os comentários aparecerem no site.
 
+> [!info] Pelo Obsidian
+> Rode `blup personalizar` e escolha **Comentários e reações nos posts**. O Blup faz os mesmos passos pelo terminal.
+
 > [!info] Sem o app
-> Se você pular a instalação, tudo continua funcionando, mas reagir e comentar levam a pessoa para a issue no GitHub. Dá para instalar depois, pela mesma tela.
+> Se você pular a instalação, tudo continua funcionando, mas reagir e comentar levam a pessoa para a issue no GitHub. Dá para instalar depois, pelo mesmo caminho.
 
 ## Como aparece
 
@@ -30,7 +33,9 @@ No fim de cada post ficam as reações, os comentários e uma caixa para comenta
 
 Na página inicial, quando os posts já têm reações e comentários, aparecem as abas **Mais recente**, **Principais** (os posts com mais reações) e **Discussões** (os com mais comentários), logo acima da lista.
 
-Para responder alguém, clique em **Responder** no comentário: a caixa já vem com um trecho citado e a menção à pessoa, e o GitHub avisa ela (notificação e, se ela quiser, e-mail). Como dono do repositório, você é avisado de todo comentário novo.
+Para responder alguém, clique em **Responder** no comentário: a caixa já vem com um trecho citado e a menção à pessoa, e o GitHub avisa ela. Como dono do repositório, você é avisado de todo comentário novo.
+
+Num blog em vários idiomas, todas as versões de um post dividem a mesma conversa.
 
 ## Quem pode participar
 

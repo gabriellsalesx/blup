@@ -47,7 +47,7 @@ Propriedades da nota (todas opcionais):
 - Programa: título, link, descrição, idioma, `atom:link`, `itunes:author`, `itunes:owner`, `itunes:image`, `itunes:category`, `itunes:explicit` e `itunes:type episodic`.
 - Episódio: título, link do post, `guid` estável (`translationKey`, senão o endereço), data, descrição, `enclosure` com o MP3 (tamanho real em bytes e `?v=` com o `audio_hash`), `itunes:duration` (`audio_seconds`) e `itunes:image`.
 - As capas do feed são JPEG quadrados de 1400 px, recortados com `Fill ... smart`: a Apple aceita JPEG ou PNG de 1400 a 3000 px, não WebP.
-- Os endereços só saem completos quando o site tem domínio (`blup.toml` `domain`, que vira `baseURL`). Sem domínio o feed sai com caminhos relativos e os apps não o aceitam.
+- Os endereços saem completos com o endereço do build: o domínio próprio (`blup.toml` `domain`) ou o endereço onde o site é publicado (Blup Cloud, Cloudflare Pages, GitHub Pages), que a publicação passa como `baseURL`. Só a prévia, sem endereço, gera caminhos relativos.
 
 ## Tela Podcast no Studio
 
@@ -56,5 +56,5 @@ Propriedades da nota (todas opcionais):
 - O bloco Idiomas do Studio também aparece nas notas de seção (antes só nas outras), e a tradução da nota do Podcast fica em `Podcast/<idioma>/_index.md`, com as mesmas propriedades.
 - Nome, descrição (a do Google, do compartilhamento e do feed), autor, e-mail de contato, categoria (lista da Apple traduzida, valor em inglês), conteúdo explícito e capa (`PickCover`, com aviso quando a imagem não é um quadrado de 1400 a 3000 px).
 - Quantos episódios há: posts do idioma principal com narração que o podcast lista.
-- O endereço do feed de cada idioma, com Copiar e os atalhos para Spotify for Creators e Apple Podcasts Connect. Sem domínio, a tela explica que é preciso publicar com um.
+- O endereço do feed de cada idioma, com Copiar e os atalhos para Spotify for Creators e Apple Podcasts Connect: pelo domínio próprio, senão pelo endereço onde o site foi publicado (`LoadTarget`). Antes da primeira publicação, a tela explica que é preciso publicar.
 - `SavePodcast` só grava as propriedades da lista `PodcastProps` e recusa e-mail sem `@`.

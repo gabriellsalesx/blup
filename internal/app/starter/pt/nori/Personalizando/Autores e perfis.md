@@ -2,34 +2,51 @@
 title: Autores e perfis
 date: {{date-7}}
 description: Um perfil por autor, com foto, cargo, redes e bio. Posts com mais de um autor.
-tags: [Personalização]
+tags: [Personalização, Studio, Obsidian]
 image: "[[blup-autores.jpg]]"
 authors: [Blup]
 ---
-Este post foi "escrito" pelo **Blup**, o mascote. Repare na foto e no nome no topo: eles vêm do perfil dele, na tela **Autores**.
+Este post foi "escrito" pelo **Blup**, o mascote. Repare na foto e no nome no topo: eles vêm do perfil dele, na pasta **Autores**.
 
-## A tela Autores
+## No Studio
 
-No menu ao lado, clique em **Autores**. Cada autor tem:
+A tela **Autores**, no menu ao lado, lista os perfis. Em cada um:
 
-- **Foto**: clique em **Enviar foto própria**. Sem foto, o autor ganha um desenho do Blup.
-- **Cargo**: a função, como Editora ou Fundador.
-- **Bio**: uma ou duas frases sobre a pessoa.
-- **Redes sociais**: links dos perfis, com ícone automático.
-
-Clique em **Novo autor** para criar outro, ou em **Editar** para mudar um que já existe.
+- **Foto**: uma imagem sua ou um dos avatares prontos.
+- **Cargo**: a função, como "Editora".
+- **Redes sociais**: escolha a rede e complete o endereço do perfil.
+- **Bio**: um texto curto sobre a pessoa.
 
 Quando você criou o site, o Blup já criou o seu perfil. Preencha a foto e a bio.
 
-> [!info] Por baixo
-> Cada autor é uma nota na pasta **Autores**. A nota **_index** dessa pasta avisa o Blup que as notas dali são perfis, não posts: a pasta não vira página nem aparece no menu.
+Para dizer quem escreveu um post, use o campo **Autores** no painel **Propriedades** do post. Comece a digitar e escolha o nome.
 
-## Nos posts
+## No Obsidian
 
-No painel **Propriedades** do post, abra **Mais opções** e escolha um ou mais nomes em **Autores**.
+A pasta **Autores** tem uma nota **_index** com a propriedade `blup: authors`. Ela avisa o Blup que as notas dali são perfis, não posts: a pasta não vira página nem aparece no menu.
 
-Sem autor, o post é do autor do site. Com mais de um autor, as fotos aparecem lado a lado e os nomes juntos.
+Cada autor é uma nota com o nome da pessoa:
 
-## A página de cada autor
+```yaml
+---
+photo: "[[ana.jpg]]"
+role: Editora
+social:
+  - https://instagram.com/ana
+  - https://github.com/ana
+---
+Ana escreve sobre livros e viagens.
+```
 
-Clique no nome do autor de um post: a página dele mostra foto, cargo, bio, redes e todos os posts que ele escreveu.
+O texto da nota é a bio. Nos posts:
+
+```yaml
+authors: [Ana]
+authors: [Ana, Bruno]
+```
+
+## Como aparece
+
+Sem autor, o post é do autor do site. Com mais de um, as fotos aparecem lado a lado e os nomes juntos.
+
+Clique no nome do autor de um post: a página dele mostra foto, cargo, bio, redes e todos os posts que ele escreveu. Num blog em vários idiomas, o cargo e a bio também são traduzidos.

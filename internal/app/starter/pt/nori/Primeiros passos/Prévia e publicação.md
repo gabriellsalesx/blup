@@ -1,42 +1,61 @@
 ---
 title: Prévia e publicação
 date: {{date-2}}
-description: Veja o site enquanto escreve e publique de graça no Cloudflare Pages ou no GitHub Pages.
+description: Veja o site enquanto escreve e publique pelo Blup Cloud, pelo Cloudflare Pages ou pelo GitHub Pages.
 tags: [Começando, Studio]
 image: "[[blup-publicar.jpg]]"
 ---
 ## A prévia
 
-Clique em **Prévia**, no topo. O site aparece ao lado do editor e **atualiza sozinho** a cada nota salva. Clique de novo para esconder.
+No Studio, clique em **Prévia**, no topo. O site aparece ao lado do editor e **atualiza sozinho** enquanto você escreve. Trocou de nota, a prévia vai para a página dela; clicou num link da prévia, o editor abre a nota daquela página.
 
 A prévia mostra também os rascunhos, para você conferir antes de publicar.
 
-## Publicar
+> [!info] Pelo Obsidian
+> Rode `blup ver`. O site abre no navegador e atualiza a cada nota salva. Para parar, aperte Ctrl+C no terminal.
 
-Clique em **Publicar**, no topo. Na primeira vez, escolha onde publicar. Os dois são gratuitos:
+## Onde publicar
 
-- **Cloudflare Pages**: rápido no mundo todo, com endereço como `seusite.pages.dev`.
-- **GitHub Pages**: endereço como `seunome.github.io/seusite`.
+Clique em **Publicar**, no topo. Na primeira vez, escolha onde o site vai ficar:
 
-Depois, conecte a conta uma vez:
+- **Blup Cloud**: endereço como `seusite.getblup.site`, sem configurar nada. Vem nos planos pagos, a partir do Pro.
+- **Cloudflare Pages**: grátis, com endereço como `seusite.pages.dev`. Precisa de uma conta no Cloudflare.
+- **GitHub Pages**: grátis, com endereço como `seunome.github.io/seusite`. Precisa de uma conta no GitHub.
 
-1. Clique em **Abrir no navegador**. O formulário da chave abre já com as permissões certas.
+### Pelo Blup Cloud
+
+Entre com a sua conta do Blup e digite o endereço que quer. Enquanto você digita, o Studio confere se o nome está livre e, se não estiver, sugere outros parecidos. O endereço fica fixo depois da primeira publicação.
+
+Cada plano tem um número de sites: o Pro tem 1, o Max tem 5 e o Ultra tem 10. Domínio próprio nos sites do Blup Cloud está chegando, nos planos Max e Ultra.
+
+### Pelo Cloudflare ou pelo GitHub
+
+Conecte a conta uma vez:
+
+1. Clique em **Conectar a conta** e depois em **Abrir no navegador**. O formulário da chave abre já com as permissões certas.
 2. Crie a chave e copie.
 3. Cole a chave no Studio e clique em **Conectar**. Ela fica guardada só no seu computador.
 
-Pronto: clique em **Publicar agora**. Quando terminar, o Studio mostra o endereço do site. Das próximas vezes, só o que mudou é enviado.
+Pronto: clique em **Publicar agora**. Quando terminar, o Studio mostra o endereço do site.
+
+> [!info] Pelo Obsidian
+> Rode `blup publicar`. Na primeira vez ele pergunta onde publicar (Cloudflare Pages ou GitHub Pages), abre a página da chave e pede para colar no terminal.
+
+Das próximas vezes, só o que mudou é enviado.
 
 > [!tip] Publicar é sempre igual
 > Escreveu, conferiu na prévia, clicou em Publicar. Não existe servidor para manter nem banco de dados.
 
 ## Domínio próprio
 
-Quer um endereço seu, como `meusite.com.br`? Na tela **Publicar**, em **Domínio próprio**, digite o endereço e clique em **Ligar domínio**. O Blup liga o domínio onde o site está publicado e, se faltar algo, mostra o registro de DNS para criar onde você comprou o domínio. Depois, clique em **Verificar**.
+Quer um endereço seu, como `meusite.com.br`? Com o site no ar pelo Cloudflare ou pelo GitHub, vá à tela **Publicar**, em **Domínio próprio**, e digite o endereço. O Blup liga o domínio onde o site está publicado e, se faltar algo, mostra o registro de DNS para criar onde você comprou o domínio. Pela linha de comando, o caminho é `blup personalizar` e **Domínio próprio**.
 
 ## O que vai para o ar
 
-- Todas as notas da pasta do site, menos:
-  - as marcadas como **Rascunho**;
-  - pastas que começam com ponto e a pasta de autores, que vira só dados dos perfis.
-- As imagens e anexos que as notas usam, otimizados.
+O site é público: qualquer pessoa com o endereço pode ler. Por isso só vai o que você publicou:
+
+- Todas as notas da pasta do site, menos as marcadas como **Rascunho** (`draft: true`).
+- Os comentários entre `%%` ficam de fora.
+- Só os anexos que as notas usam, otimizados.
+- Posts com senha saem cifrados do seu computador.
 - A busca, o feed RSS, o mapa do site e o cartão de compartilhamento de cada página.

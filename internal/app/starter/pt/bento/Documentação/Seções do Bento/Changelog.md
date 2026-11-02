@@ -20,5 +20,7 @@ tags: [Novidade, Melhoria]
 - O texto da nota aparece inteiro na lista; o título leva à página da versão.
 - Com muitas versões, a lista ganha o botão de carregar mais.
 
+No Blup Studio, crie a nota na pasta do changelog com **Nova nota** e preencha **Data** e **Tags** nas propriedades. Para avisar os leitores, o Blog também é um bom lugar para contar a novidade com mais calma.
+
 > [!tip] Uma nota por versão
 > Dê à nota o nome da versão, como `v1.3.0`, e use o **title** para o texto bonito.

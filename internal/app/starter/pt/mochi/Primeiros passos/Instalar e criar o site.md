@@ -1,13 +1,45 @@
 ---
 title: Instalar e criar o site
 date: {{date-1}}
-description: Um comando para instalar e um assistente que pergunta uma coisa de cada vez.
-tags: [Começando, CLI]
-image: "[[blup-terminal.jpg]]"
+description: Baixe o Blup Studio e crie o site respondendo uma pergunta de cada vez. Ou use a linha de comando com o Obsidian.
+tags: [Começando, Studio]
+image: "[[blup-dicas.jpg]]"
 ---
-O Blup é um programa de terminal, mas você não precisa decorar nada: ele mostra um menu e faz uma pergunta de cada vez.
+## Instalar o Blup Studio
 
-## Instalar
+O **Blup Studio** se baixa em **getblup.io**, para Linux, macOS e Windows. Instale como qualquer app e abra.
+
+Na primeira vez, o Studio dá boas-vindas e faz algumas perguntas rápidas: o idioma, se você quer conectar a sua conta do GitHub agora e uma senha geral para os posts com senha. Dá para pular o que quiser e voltar depois, nas **Configurações** (a engrenagem, embaixo do menu ao lado).
+
+## Criar um site
+
+Na tela inicial, clique em **Criar site novo**. O Studio faz uma pergunta de cada vez, e dá para mudar tudo depois.
+
+1. **Que tipo de site**: blog pessoal ou site de produto.
+2. **Qual tema**: Mochi (este aqui, com cards e capas) ou Nori, para o blog; Bento, para o site de produto.
+3. **Como o site se chama**: nome, uma frase sobre ele, seu nome e o idioma do site.
+4. **Onde ficam as notas**: numa pasta nova (o jeito mais simples), numa pasta que você escolher ou no seu cofre do Obsidian.
+5. **Tudo pronto?** Confira e crie o site.
+
+Se a pasta estiver vazia, o Blup coloca o site de exemplo do tema: este tutorial.
+
+> [!tip] Vai usar o Obsidian também?
+> Se escolher o seu cofre do Obsidian, deixe marcado **Ajustar o Obsidian para os links funcionarem no site**. O Obsidian passa a gravar os links no formato que o site entende.
+
+## A janela do site
+
+- **Arquivos**, à esquerda: as notas e pastas. Use **Nova nota** e **Nova pasta** para criar, e a busca para achar uma nota.
+- **O editor**, no meio: onde você escreve. Em cima dele fica o painel **Propriedades** da nota.
+- **Prévia**, à direita: o site de verdade, atualizado enquanto você escreve.
+- **O menu ao lado**: Escrever, Anexos, Autores, Site, Seções, Idiomas, Comentários, Cookies e estatísticas, Publicar e Lixeira, além do terminal.
+
+Não existe botão de salvar: o Studio salva sozinho enquanto você escreve.
+
+Clique com o botão direito numa nota para criar outra ali, fazer uma cópia, mover, copiar o link, renomear, exportar ou apagar. **Renomear** atualiza sozinho os links que apontam para a nota, e **Apagar** manda a nota para a **Lixeira**, de onde dá para restaurar.
+
+## Pelo Obsidian, com a linha de comando
+
+Prefere escrever no Obsidian? Instale a linha de comando `blup`.
 
 No macOS ou Linux, abra o Terminal e cole:
 
@@ -21,42 +53,19 @@ No Windows, abra o PowerShell e cole:
 irm https://raw.githubusercontent.com/gabriellsalesx/blup/main/install.ps1 | iex
 ```
 
-Depois, rode `blup`. Na primeira vez ele pergunta o idioma e abre o assistente de site novo.
-
-## O assistente
-
-Cada pergunta já vem com uma resposta sugerida; se estiver em dúvida, aperte Enter.
-
-1. **Qual cofre do Obsidian** vira site.
-2. **Qual pasta** dele: o cofre inteiro ou só uma pasta, como "Blog".
-3. **Tema**: Mochi (blog pessoal, este aqui) ou Bento (site de produto, com documentação, roadmap, changelog, central de ajuda e blog).
-4. **Nome do site**, **uma frase sobre ele** e **seu nome**.
-5. **Idioma do site** e **onde salvar** os arquivos do site no computador.
-6. **Ajustes no Obsidian**: o Blup pede para usar links Markdown com caminho relativo, o formato que sites entendem.
-7. **Guardar as notas no GitHub**, se quiser usar em outro computador.
-8. **Abrir a prévia**.
-
-> [!info] Onde fica cada coisa
-> As notas ficam no seu cofre, como sempre. Numa pasta à parte, o Blup guarda o arquivo **blup.toml** (onde publicar, senha geral) e os arquivos que o Hugo usa para gerar o site. Você não precisa abrir essa pasta.
-
-## Os comandos
-
-Rodar só `blup` abre o menu com tudo. Se preferir, cada ação tem um comando, em português ou inglês:
+Depois, rode `blup`. Na primeira vez ele pergunta o idioma e abre o assistente de site novo: qual cofre do Obsidian, qual pasta dele, o tema (Mochi ou Bento), o nome do site e onde salvar. Cada pergunta já vem com uma resposta sugerida; na dúvida, aperte Enter.
 
 | Comando | O que faz |
 | --- | --- |
 | `blup novo` | Cria um site novo |
 | `blup ver` | Abre a prévia no navegador |
 | `blup publicar` | Coloca o site no ar |
-| `blup personalizar` | Menu, redes, logo, favicon e autor |
+| `blup personalizar` | Menu, redes, logo, comentários, cookies e domínio |
 | `blup sincronizar` | Guarda as notas num repositório privado no GitHub |
 | `blup converter` | Troca `[[wikilinks]]` por links padrão |
-| `blup gerar` | Gera o site na pasta public, sem perguntas |
-| `blup idioma` | Troca o idioma do Blup |
 | `blup atualizar` | Atualiza o Blup |
 
-Os mesmos comandos funcionam em inglês: `new`, `preview`, `publish`, `customize`, `sync`, `convert`, `build`, `language` e `update`.
+Os mesmos comandos funcionam em inglês: `new`, `preview`, `publish`, `customize`, `sync`, `convert` e `update`.
 
-## Atualizações
-
-O Blup confere uma vez por dia se há versão nova e **sempre pergunta** antes de atualizar. Se algo der errado, `blup atualizar --rollback` volta para a versão anterior.
+> [!info] Os dois juntos
+> Um site criado no Studio abre na linha de comando, e o contrário também. As notas são as mesmas; só muda onde você clica.

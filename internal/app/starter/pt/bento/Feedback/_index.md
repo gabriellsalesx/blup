@@ -5,19 +5,19 @@ blup: feedback
 weight: 6
 description: Conte o que falta, o que quebrou e o que pode melhorar. Vote nos pedidos de outras pessoas.
 examples:
-  - title: "Modo escuro automático"
+  - title: "Mais temas para escolher"
     kind: feature
     status: planned
     votes: 42
     days: 2
-    body: "Seguir o tema do sistema, sem precisar trocar à mão toda noite."
+    body: "Gosto muito do Bento, mas queria outras opções de visual para o site do meu produto."
     replies:
       - author: marina
         days: 1
-        text: "Seria ótimo, à noite a tela clara cansa bastante."
+        text: "Seria ótimo ter um tema com mais cara de revista."
       - author: rafael
         days: 1
-        text: "Mais um voto aqui. Dá para seguir o horário do sistema também?"
+        text: "Mais um voto aqui. E que dê para trocar sem perder as notas."
   - title: "Busca não acha palavras com acento"
     kind: bug
     status: progress
@@ -31,26 +31,26 @@ examples:
       - author: time
         days: 2
         text: "Já achamos a causa e a correção sai na próxima versão."
-  - title: "Atalho para criar uma nota nova"
+  - title: "Escolher a cor de destaque do site"
     kind: improvement
     status: new
     votes: 11
     days: 15
-    body: "Um atalho de teclado ajudaria muito quem escreve o dia todo."
+    body: "Queria usar a cor da minha marca nos links e botões, direto na tela Site do Studio."
     replies:
       - author: pedro
         days: 10
-        text: "Ctrl+N seria o mais natural."
-  - title: "Exportar para PDF"
+        text: "Com uma prévia da cor antes de salvar, de preferência."
+  - title: "Narração dos posts em áudio"
     kind: feature
     status: done
     votes: 29
     days: 22
-    body: "Poder baixar uma página inteira em PDF para mandar por e-mail."
+    body: "Muita gente lê no ônibus. Seria bom poder ouvir os posts."
     replies:
       - author: carla
         days: 20
-        text: "Usei hoje para mandar um relatório, ficou perfeito. Obrigada!"
+        text: "Narrei meus posts hoje com a voz no computador. Ficou ótimo, obrigada!"
   - title: "Versão para Windows XP"
     kind: other
     status: declined
@@ -63,7 +63,7 @@ examples:
         text: "Infelizmente o Windows XP não recebe mais atualizações de segurança, então não vamos dar suporte."
 ---
 %%
-Esta pasta é o quadro de feedback do site: quem visita abre pedidos (bug, recurso, melhoria ou outro), vota e comenta, entrando com o GitHub. Os pedidos ficam nas issues do repositório de comentários do site, não aqui. O status de cada pedido (planejado, em andamento, feito, recusado) você muda no Blup Studio, na tela Feedback.
+Esta pasta é o quadro de feedback do site: quem visita abre pedidos (bug, recurso, melhoria ou outro), vota e comenta, entrando com o GitHub. Os pedidos ficam nas issues do repositório de comentários do site, não aqui. Para o quadro receber pedidos de verdade, ligue os comentários na tela Comentários do Blup Studio. O status de cada pedido (planejado, em andamento, feito, recusado) você muda na tela Feedback.
 
-Os pedidos da lista examples são exemplos, como as notas das outras seções: aparecem no quadro até chegar o primeiro pedido de verdade. Pode apagar ou mudar a lista.
+Os pedidos da lista examples são exemplos, como as notas das outras seções: aparecem no quadro até chegar o primeiro pedido de verdade. No Obsidian, mude ou apague a lista nas propriedades desta nota.
 %%

@@ -1,11 +1,17 @@
 ---
-title: Como colocar uma imagem
-description: Arraste para a nota, como sempre.
+title: Como colocar uma imagem?
+description: Cole ou arraste a imagem para dentro da nota.
 weight: 2
 ---
-Arraste a imagem para a nota no Obsidian. Ela é copiada para o cofre e o link entra no texto.
+## No Blup Studio
 
-Para a **capa** de um post, use a propriedade `image`:
+Cole a imagem (ou arraste o arquivo) para dentro da nota. O Studio guarda a imagem na pasta de anexos e coloca o link no texto. A imagem já aparece no editor.
+
+Para a **capa** de um post, escolha a imagem em **Propriedades**, no campo da imagem.
+
+## No Obsidian
+
+Arraste a imagem para a nota. Para a capa, use a propriedade `image`:
 
 ```yaml
 image: "[[minha-capa.jpg]]"

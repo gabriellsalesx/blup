@@ -32,7 +32,7 @@ weight: 1
 - **weight** ordena os cards dentro da coluna.
 - O texto da nota vira a página do item, aberta ao clicar no card.
 
-Para mudar um item de coluna, troque o **status** e salve.
+Para mudar um item de coluna, troque o **status** e salve. No Blup Studio, os campos **Coluna** e **Categoria** aparecem nas propriedades da nota, com as opções prontas.
 
 ## Ordem pelos votos
 

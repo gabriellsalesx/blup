@@ -1,13 +1,34 @@
 ---
 title: Ligar e desligar seções
-description: Todas as seções são opcionais. Adicione pelo Blup, tire apagando a pasta.
-weight: 6
+description: Todas as seções são opcionais. Adicione, tire e restaure quando quiser.
+weight: 9
 ---
-## Adicionar
+## Pelo Blup Studio
 
-Rode `blup personalizar` e escolha **Seções do site**. O Blup mostra as que faltam e cria a pasta de cada uma, com notas de exemplo.
+Clique em **Seções** na faixa lateral (só no Bento). A tela mostra cada parte do site de produto, com uma linha sobre ela:
 
-Também dá para criar à mão: uma pasta na raiz do site com uma nota **_index** que tenha a propriedade **blup**:
+| Seção | O que é |
+| --- | --- |
+| Documentação | Páginas com menu lateral e sumário |
+| Roadmap | Quadro com planejado, em andamento e concluído |
+| Changelog | O que mudou em cada versão |
+| Central de ajuda | Coleções de artigos com busca |
+| Blog | Novidades com capa e tags |
+| Feedback | Quadro onde quem visita pede recursos, conta bugs e vota. Só no Blup Studio |
+
+- **Adicionar** cria a pasta da seção com notas de exemplo que ensinam a usar.
+- As que já estão no site aparecem como **No site**. Tirar uma seção manda a pasta para a **Lixeira**, e o aviso tem **Desfazer**.
+- Uma seção tirada pode ser restaurada pela Lixeira.
+
+A prévia se atualiza sozinha depois de cada mudança.
+
+## Pela linha de comando
+
+Rode `blup personalizar` e escolha **Seções do site**. O Blup mostra as que faltam e cria a pasta de cada uma, com notas de exemplo. Para tirar, apague a pasta no Obsidian. O Feedback não aparece nesta lista.
+
+## À mão
+
+Uma pasta na raiz do site com uma nota **_index** que tenha a propriedade **blup**:
 
 | Seção | Propriedade |
 | --- | --- |
@@ -16,11 +37,8 @@ Também dá para criar à mão: uma pasta na raiz do site com uma nota **_index*
 | Changelog | `blup: changelog` |
 | Central de ajuda | `blup: help` |
 | Blog | `blup: blog` |
+| Feedback | `blup: feedback` |
 | Perfis dos autores | `blup: authors` |
-
-## Tirar
-
-Apague a pasta no Obsidian. Pronto: a seção sai do site e do menu.
 
 ## Renomear e reordenar
 

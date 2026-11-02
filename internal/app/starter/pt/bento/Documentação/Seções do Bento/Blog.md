@@ -19,5 +19,9 @@ authors: [Blup]
 - O post mais novo vira o **destaque** do topo; para escolher outro, use `featured: true`.
 - **image** é a capa. Sem ela, vale a primeira imagem do texto.
 - **tags** viram filtros no topo da lista e páginas próprias.
-- **authors** mostra foto e nome; cada autor ganha uma página. Veja [Autores](../Configuração/Autores.md).
+- **authors** mostra foto e nome; cada autor ganha uma página. Veja [Autores](../Configuração%20do%20site/Autores.md).
 - Cada post tem sumário, barra de leitura, botões de compartilhar e posts relacionados pelas tags.
+- Com uma **narração**, o post ganha um player no topo. Veja [Narração dos posts](../Recursos%20com%20IA/Narração%20dos%20posts.md).
+
+> [!tip] No Blup Studio
+> Crie o post com **Nova nota** na pasta do blog e preencha **Data**, **Tags**, **Capa** e **Autores** nas propriedades. A capa pode ser escolhida nos Anexos ou colada do computador.

@@ -1,11 +1,14 @@
 ---
 title: Links e imagens
-description: Links entre notas, links para fora, imagens e anexos.
+description: Links entre notas, links para fora, imagens, vídeos e anexos.
 weight: 2
 ---
 ## Links entre notas
 
-Digite `[[` e escolha a nota, ou arraste a nota para o texto. Com o ajuste que o Blup fez no Obsidian, o link é gravado no formato padrão, com caminho relativo:
+- **No Blup Studio**: digite `[[`, escolha a nota e pronto. Ou use `/` e **Link para outra nota**. Veja [Escrever no editor](../Blup%20Studio/Escrever%20no%20editor.md).
+- **No Obsidian**: digite `[[` e escolha a nota, ou arraste a nota para o texto. Com o ajuste que o Blup fez no Obsidian, o link é gravado no formato padrão.
+
+Nos dois casos, o link fica assim, com caminho relativo:
 
 ```md
 [Formatação e callouts](Formatação%20e%20callouts.md)
@@ -13,16 +16,22 @@ Digite `[[` e escolha a nota, ou arraste a nota para o texto. Com o ajuste que o
 
 No site ele vira o link da página: [Formatação e callouts](Formatação%20e%20callouts.md). Links para um título da nota (`Nota.md#titulo`) também funcionam.
 
-> [!tip] Notas antigas com [[wikilinks]]
-> Rode `blup converter`. O Blup mostra quantos links vai trocar e, se você confirmar, troca todos os `[[links]]` da pasta do site pelo formato padrão.
+> [!tip] Renomeou ou moveu? Os links acompanham
+> No Studio, **Renomear** e **Mover para…** corrigem os links das outras notas sozinhos.
+
+> [!tip] Notas antigas com wikilinks
+> Rode `blup converter`. O Blup mostra quantos links vai trocar e, se você confirmar, troca todos os wikilinks da pasta do site pelo formato padrão. Antes, guarda uma cópia das notas afetadas.
 
 ## Links para outros sites
 
-Escreva normalmente: `[Obsidian](https://obsidian.md)`. Eles abrem no mesmo lugar, com segurança (`noopener`).
+Escreva normalmente: `[Obsidian](https://obsidian.md)`. No Studio, o botão de link (ou `Ctrl+K`) já põe o formato e seleciona o endereço para você colar.
 
 ## Imagens
 
-Arraste a imagem para a nota. O Blup:
+- **No Studio**: cole (`Ctrl+V`) ou arraste a imagem para o editor. Ela vai para **Anexos** e aparece no lugar.
+- **No Obsidian**: arraste a imagem para a nota.
+
+Na publicação, o Blup:
 
 - gera versões menores e em WebP de cada imagem;
 - entrega ao navegador só o tamanho de que ele precisa;
@@ -32,8 +41,8 @@ Arraste a imagem para a nota. O Blup:
 
 ## Vídeos do YouTube
 
-Cole o link do vídeo como imagem: `![Como publicar](https://www.youtube.com/watch?v=...)`. No site vira o player. Com o banner de cookies ligado, o vídeo espera o aceite; veja [Cookies e estatísticas](../Configuração/Cookies%20e%20estatísticas.md).
+Cole o link do vídeo como imagem: `![Como publicar](https://www.youtube.com/watch?v=...)`. No site vira o player. Com o banner de cookies ligado, o vídeo espera o aceite; veja [Cookies e estatísticas](../Configuração%20do%20site/Cookies%20e%20estatísticas.md).
 
 ## Outros anexos
 
-PDFs, áudios, vídeos e arquivos ZIP do cofre também podem ser linkados: `[Manual em PDF](../../Anexos/manual.pdf)`. Eles são publicados junto com o site.
+PDFs, áudios, vídeos e arquivos ZIP também podem ser linkados, como `[Manual em PDF](../../Anexos/manual.pdf)`. Eles são publicados junto com o site. Veja a tela [Anexos](../Blup%20Studio/Anexos.md).

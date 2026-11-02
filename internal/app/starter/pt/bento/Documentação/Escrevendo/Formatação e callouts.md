@@ -3,6 +3,8 @@ title: Formatação e callouts
 description: Texto, listas, tabelas e as caixas de destaque do Obsidian.
 weight: 3
 ---
+Tudo aqui é Markdown comum, igual no Studio e no Obsidian. No Studio, a barra de formatação e o menu `/` inserem cada coisa sem decorar a sintaxe. Veja [Escrever no editor](../Blup%20Studio/Escrever%20no%20editor.md).
+
 ## Texto
 
 **Negrito**, *itálico*, ~~riscado~~, ==marca-texto== e `código`. Notas de rodapé também.[^1]

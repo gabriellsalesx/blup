@@ -30,3 +30,8 @@ As cores seguem a linguagem: `go`, `js`, `py`, `sh`, `yaml`, `html`, `css` e mui
 Texto entre `%%` e `%%` é um comentário do Obsidian: aparece enquanto você edita e não vai para o site. %%Como este trecho, que só existe na nota.%%
 
 Use para lembretes, rascunhos e instruções para quem edita, como na nota **_index** da pasta do site.
+
+No Studio, a barra de formatação tem o botão **Comentário (não vai para o site)**. A narração também pula os comentários.
+
+> [!tip] Bloco de código no Studio
+> No editor do Studio, o bloco de código ganha fundo, o nome da linguagem e o botão **Copiar**. As três crases só aparecem com o cursor dentro do bloco.

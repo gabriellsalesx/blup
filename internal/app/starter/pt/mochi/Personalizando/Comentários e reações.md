@@ -2,26 +2,38 @@
 title: Comentários e reações
 date: {{date-9}}
 description: Quem lê reage e comenta nos posts, sem sair do blog. Tudo fica no seu GitHub.
-tags: [Personalização, CLI]
+tags: [Personalização, Studio]
 ---
 Quem visita o blog pode reagir aos posts (👍 ❤️ 🎉 🚀 e outras) e deixar comentários. Sem servidor e sem mensalidade: tudo fica em issues de um repositório público no seu GitHub.
 
-## Ligar
+## Ligar no Studio
 
-Rode `blup personalizar` e escolha **Comentários e reações nos posts**. O assistente de site novo também pergunta no final.
+No menu ao lado, clique em **Comentários** e ligue **Mostrar comentários e reações**. Na primeira vez, são dois passos:
 
-1. O Blup cria o repositório público com o nome do site mais `-feedback`. Um blog chamado "Meu Blog" fica com `meu-blog-feedback`.
-2. Ele abre a página do app **Blup Comments** no GitHub. Escolha **Only select repositories**, marque o repositório `-feedback` e clique em **Install**. É esse app que deixa as pessoas reagirem e comentarem sem sair do blog.
-3. Rode `blup publicar`. A cada publicação o Blup abre uma issue para cada post novo e mantém os títulos em dia.
+1. **Conectar o GitHub**: clique em **Abrir formulário**, crie a chave (as permissões já vêm marcadas), cole no Studio e clique em **Conectar**.
+2. **Criar o espaço dos comentários**: clique em **Criar e ligar**. O Blup cria no seu GitHub um repositório público só para os comentários, com o nome do site mais `-feedback`.
+
+Depois, falta um detalhe para as pessoas comentarem **sem sair do blog**: instalar o app do Blup no repositório. Clique em **Instalar o app no GitHub** e, na página que abre:
+
+- escolha **Only select repositories**;
+- marque o repositório `-feedback`;
+- clique em **Install** e volte ao Studio. Clique em **Já instalei**.
+
+Por fim, publique de novo para os comentários aparecerem no site.
+
+> [!info] Pelo Obsidian
+> Rode `blup personalizar` e escolha **Comentários e reações nos posts**. O Blup faz os mesmos passos pelo terminal.
 
 > [!info] Sem o app
-> Se você pular a instalação, tudo continua funcionando, mas reagir e comentar levam a pessoa para a issue no GitHub. Instale depois pelo mesmo caminho em `blup personalizar`.
+> Se você pular a instalação, tudo continua funcionando, mas reagir e comentar levam a pessoa para a issue no GitHub. Dá para instalar depois, pelo mesmo caminho.
 
 ## Como aparece
 
 No fim de cada post ficam as reações, os comentários e uma caixa para comentar, que aceita Markdown. Clique numa reação para somar a sua ou no botão de carinha para escolher outra; clicar de novo desfaz.
 
-Para responder alguém, clique em **Responder** no comentário: a caixa já vem com um trecho citado e a menção à pessoa, e o GitHub avisa ela (notificação e, se ela quiser, e-mail). Como dono do repositório, você é avisado de todo comentário novo.
+Para responder alguém, clique em **Responder** no comentário: a caixa já vem com um trecho citado e a menção à pessoa, e o GitHub avisa ela. Como dono do repositório, você é avisado de todo comentário novo.
+
+Num blog em vários idiomas, todas as versões de um post dividem a mesma conversa.
 
 ## Quem pode participar
 
@@ -33,4 +45,4 @@ Exigir uma conta do GitHub afasta o spam. Para moderar mais, use as ferramentas 
 
 ## Desligar
 
-Rode `blup personalizar`, escolha **Comentários e reações nos posts** e responda **Não**. Na próxima publicação os blocos saem do blog. O repositório e as issues continuam no seu GitHub.
+Na tela **Comentários**, desligue **Mostrar comentários e reações** e publique de novo: os blocos saem do blog. O repositório e as issues continuam no seu GitHub.

@@ -53,3 +53,6 @@ Cole o link do vídeo como imagem:
 No site vira o player, pelo endereço `youtube-nocookie.com`. Com o banner ligado, aparece o botão **Carregar vídeo** até a pessoa aceitar vídeos.
 
 Para desligar tudo, remova as ferramentas e desligue o banner na mesma tela.
+
+> [!info] Pelo Obsidian
+> Rode `blup personalizar` e escolha **Cookies, estatísticas e anúncios**. O terminal pergunta as mesmas coisas: as ferramentas, os IDs, o banner e a política de privacidade.

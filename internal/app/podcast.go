@@ -41,7 +41,7 @@ type PodcastInfo struct {
 	ImageW int `json:"imageW"`
 	ImageH int `json:"imageH"`
 	// The feeds (one per language of the site), full addresses when the
-	// site has a domain, else paths from the site's root.
+	// site has a domain or was published, else paths from the site's root.
 	Feeds    []PodcastFeed `json:"feeds"`
 	HasURL   bool          `json:"hasURL"`
 	Episodes int           `json:"episodes"` // posts with a narration, in the site's language
@@ -74,7 +74,7 @@ func Podcast(site *config.Site) (PodcastInfo, error) {
 		Email:    n.String("podcast_email"),
 		Category: firstOf(n.String("podcast_category"), "Technology"),
 		Image:    n.String("image"),
-		HasURL:   site.Domain != "",
+		HasURL:   site.Domain != "" || LoadTarget(site).URL != "",
 		Episodes: countEpisodes(site),
 	}
 	switch v := n.Props["podcast_explicit"].(type) {
@@ -92,11 +92,15 @@ func Podcast(site *config.Site) (PodcastInfo, error) {
 		}
 	}
 	// The section's address is its folder, as Hugo writes it; the main
-	// language at the root, the others under their code.
+	// language at the root, the others under their code. The site's own
+	// domain, else where it was published (Blup Cloud, Cloudflare, GitHub:
+	// the build has that address in full).
 	slug := urlize(folder)
 	base := "/"
 	if site.Domain != "" {
 		base = "https://" + site.Domain + "/"
+	} else if u := LoadTarget(site).URL; u != "" {
+		base = strings.TrimSuffix(u, "/") + "/"
 	}
 	info.Feeds = append(info.Feeds, PodcastFeed{Lang: site.Lang, URL: base + slug + "/feed.xml"})
 	for _, l := range site.OtherLangs() {
