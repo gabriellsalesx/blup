@@ -1,35 +1,37 @@
-# Blup Status
+# Blup Pulse
 
-Especificação de produto e proposta técnica, pesquisada em 02/11/2026. O produto foi aprovado; os contratos abaixo ainda precisam ser implementados e testados. Este documento não descreve um serviço já disponível. O escopo vem das decisões do dono; valores chamados de proposta técnica ainda podem ser ajustados. Exemplos usam marcadores, sem credenciais reais.
+Especificação de produto e proposta técnica, pesquisada e atualizada em 02/11/2026. Nome, preços e decisões comerciais refletem a atualização aprovada pelo dono. O produto ainda está em implementação por fases; este documento não afirma que os contratos já estejam disponíveis em produção. As definições técnicas permanecem como propostas para implementar e validar. Exemplos usam marcadores, sem credenciais reais.
 
 ## 1. Produto e MVP
 
-O Blup Status reúne erros de aplicações, monitores HTTP, páginas públicas de status e avisos por Discord e Telegram. Serve também para acompanhar Studio, Cloud, sites e futuros aplicativos móveis do próprio Blup.
+O Blup Pulse reúne erros de aplicações, monitores HTTP, páginas públicas de status e avisos por Discord e Telegram. Serve também para acompanhar Studio, Cloud, sites e futuros aplicativos móveis do próprio Blup.
 
-O primeiro lançamento oferece quatro telas em `status.getblup.io`: Projetos, Monitores, Página de status e Avisos. Usa o mesmo login Better Auth e o backend Hono do Blup Cloud. A identidade visual usa o Blup verde-menta `turma-2` e favicon verde, reaproveitando os assets existentes.
+O primeiro lançamento oferece quatro telas em `pulse.getblup.io`: Projetos, Monitores, Página de status e Avisos. Usa o mesmo login Better Auth e o backend Hono do Blup Cloud. A identidade visual usa o Blup verde-menta `turma-2` e favicon verde, reaproveitando os assets existentes.
 
 A integração de erros usa SDKs oficiais do Sentry com um DSN do Blup. A promessa inicial é compatibilidade com envio de erros nas versões homologadas. Não significa reproduzir toda a plataforma Sentry, seus algoritmos de agrupamento ou sua API administrativa. Tracing, performance, replay, profiling, source maps, arquivos de símbolos, minidumps e anexos ficam fora do MVP. Também ficam fora avisos por e-mail/SMS, SDK próprio, equipes e consultas arbitrárias de logs.
 
 ## 2. Planos e limites
 
-O Status não é vendido sozinho. O switch **+ Blup Status** escolhe uma variante completa do plano, com uma única assinatura por pessoa.
+O Pulse não é vendido sozinho. O switch **+ Blup Pulse** escolhe uma variante completa do plano, com uma única assinatura por pessoa.
 
-| Recurso | Max + Status | Ultra + Status |
+| Recurso | Max + Pulse | Ultra + Pulse |
 | --- | --- | --- |
-| Nome interno proposto | `max_status` | `ultra_status` |
+| Nome interno | `max_pulse` | `ultra_pulse` |
+| Preço mensal aprovado, BRL | R$ 49,90 | R$ 129,90 |
+| Preço anual aprovado, BRL | R$ 499 | R$ 1.299 |
 | Direitos do Blup Cloud | Todos do Max | Todos do Ultra |
 | Projetos | 3 | 10 |
 | Erros aceitos por mês, total da conta | 50.000 | 250.000 |
 | Retenção máxima de eventos e contadores | 30 dias | 90 dias |
 | Monitores, total da conta | 10 | 50 |
-| Menor intervalo de checagem | 5 minutos | 1 minuto |
+| Menor intervalo de checagem | 5 minutos | 2 minutos |
 | Páginas públicas de status | 1 | 3 |
 | Domínio próprio nas páginas de status | Não incluído na proposta inicial | Incluído |
 | Avisos | Discord e Telegram | Discord e Telegram |
 
-As cotas de Status acima são a proposta ajustável do dono. Grátis, Pro, Max e Ultra sem o switch não incluem Status. Max continua com 5 GiB de notas, arquivos de até 50 MiB, 3 sites, 3 computadores, histórico de 365 dias, tempo real, domínio próprio, IA 2x e 50 lembretes por e-mail. Ultra continua com 10 GiB, arquivos de até 100 MiB e 10 sites, além dos demais direitos atuais. A [spec Cloud](blup-cloud-sync.md#planos-executados) detalha esses direitos.
+As cotas do Pulse e o mês civil UTC seguem a proposta mantida pelo dono. O anual custa o equivalente a dez mensalidades, cobrado uma vez por ano. Grátis, Pro, Max e Ultra sem o switch não incluem Pulse. Max continua com 5 GiB de notas, arquivos de até 50 MiB, 3 sites, 3 computadores, histórico de 365 dias, tempo real, domínio próprio, IA 2x e 50 lembretes por e-mail. Ultra continua com 10 GiB, arquivos de até 100 MiB e 10 sites, além dos demais direitos atuais. A [spec Cloud](blup-cloud-sync.md#planos-executados) detalha esses direitos.
 
-O armazenamento de eventos é separado da cota de notas e sites. Página de status não consome um site Hugo do plano. Proposta para fechar o contrato: mês civil UTC, sem acumular saldo, sem cobrança automática por excedente e sem zerar uso ao trocar de plano ou recriar projeto. Um novo `event_id` aceito consome uma unidade, mesmo quando pertence a um problema já conhecido. Reenvio com o mesmo ID, dentro da janela de deduplicação, não consome outra unidade.
+O armazenamento de eventos é separado da cota de notas e sites. Página de status não consome um site Hugo do plano. O contrato usa mês civil UTC, sem acumular saldo, sem cobrança automática por excedente e sem zerar uso ao trocar de plano ou recriar projeto. Um novo `event_id` aceito consome uma unidade, mesmo quando pertence a um problema já conhecido. Reenvio com o mesmo ID, dentro da janela de deduplicação, não consome outra unidade.
 
 ### Proteções técnicas propostas
 
@@ -41,8 +43,8 @@ O armazenamento de eventos é separado da cota de notas e sites. Página de stat
 | Linha de cabeçalho do envelope/item | Até 8 KiB |
 | Estrutura JSON | Até 32 níveis; strings/listas e quantidade de chaves limitadas |
 | Ocorrências completas por problema | No máximo as últimas 100, já tratadas para privacidade |
-| Banco por projeto, incluindo índices | Proposta: 256 MiB no Max + Status; 1 GiB no Ultra + Status |
-| Pico de erros por projeto | Proposta: 60/minuto no Max + Status; 300/minuto no Ultra + Status |
+| Banco por projeto, incluindo índices | Proposta: 256 MiB no Max + Pulse; 1 GiB no Ultra + Pulse |
+| Pico de erros por projeto | Proposta: 60/minuto no Max + Pulse; 300/minuto no Ultra + Pulse |
 | Pico de ingestão por IP | Fusível adicional, configurável e independente da cota paga |
 | Histórico de checagens detalhadas | 7 dias; depois só resumo diário dentro da retenção do plano |
 
@@ -53,7 +55,7 @@ Esses são limites do Blup, menores que os do Sentry. Precisam constar nos exemp
 ```mermaid
 flowchart LR
   SDK[SDKs Sentry] --> Ingest[ingest.getblup.io]
-  Pessoa[Pessoa autenticada] --> Painel[status.getblup.io]
+  Pessoa[Pessoa autenticada] --> Painel[pulse.getblup.io]
   Painel --> API[Hono e Better Auth]
   Ingest --> API
   API --> Indice[D1: indice e admissao]
@@ -66,7 +68,7 @@ flowchart LR
   Pagina --> Indice
 ```
 
-O mesmo backend não exige servir o mesmo HTML nos três hosts. O roteamento por hostname precisa separar painel Status, painel Cloud e ingestão. O host de ingestão não serve páginas de login nem aceita cookies como autorização. Assets e fallback SPA devem corresponder ao painel pedido, sem capturar as rotas Sentry ou devolver `index.html` em uma falha de API.
+A organização prevista pela Lupa mantém API em `cloud/worker/pulse` e painel estático próprio em `cloud/pulse`. O mesmo backend não exige servir o mesmo HTML nos três hosts. O roteamento por hostname precisa separar painel Pulse, painel Cloud e ingestão. O host de ingestão não serve páginas de login nem aceita cookies como autorização. Assets e fallback SPA devem corresponder ao painel pedido, sem capturar as rotas Sentry ou devolver `index.html` em uma falha de API.
 
 D1 guarda identidade, configuração, índices de agendamento e metadados de admissão/entrega. Não recebe o JSON bruto dos erros ou stack traces. Cada projeto tem um Durable Object SQLite, identificado por mapeamento do servidor, que serializa eventos, agrupamento, deduplicação, limites locais e histórico de checagens. Não criar um DO por ocorrência nem por problema.
 
@@ -76,11 +78,11 @@ SQLite em DO tem teto de 10 GB por objeto no Workers Paid; os tetos propostos do
 
 ### Login entre subdomínios
 
-Hoje [auth-options.ts](../../cloud/worker/auth-options.ts) usa `APP_URL` e `trustedOrigins` restrito ao Cloud. O Status exige uma mudança explícita, ainda não implementada. Proposta: manter a autenticação em `cloud.getblup.io`, habilitar `advanced.crossSubDomainCookies` com `domain: "getblup.io"` e listar exatamente Cloud e Status nas origens confiáveis. Os cookies de sessão devem continuar `HttpOnly`, `Secure` e com política SameSite adequada ao fluxo.
+O alinhamento de implementação da Lupa mantém o login central em `cloud.getblup.io`, com cookie restrito a esse host. O painel `pulse.getblup.io` chama a API Cloud com `credentials: "include"`; o navegador envia o cookie ao host Cloud de destino, sem precisar de cookie no domínio pai. Configurar as duas origens exatas em `trustedOrigins`, preservando `HttpOnly`, `Secure` e SameSite apropriado. A configuração está em [auth-options.ts](../../cloud/worker/auth-options.ts) e exige validação por fase antes de ser tratada como entregue.
 
-Se o painel Status chamar a API Cloud diretamente, usar `credentials: "include"`, CORS com origem exata e `Access-Control-Allow-Credentials: true`, nunca origem `*`. As passkeys continuam sendo criadas/usadas na origem de autenticação já configurada, preservando o `rpID`; compartilhar cookie não migra uma passkey para outra origem. Sair, revogar sessão, bloquear e excluir a conta devem valer nos dois painéis.
+A API deve responder ao painel Pulse com CORS de origem exata e `Access-Control-Allow-Credentials: true`, nunca origem `*`. As passkeys continuam sendo criadas/usadas na origem Cloud, preservando o `rpID`. Retornos de login para Pulse exigem destino explicitamente permitido, sem aceitar redirects arbitrários. Sair, revogar sessão, bloquear e excluir a conta devem valer nos dois painéis.
 
-Um cookie no domínio pai alcança também outros subdomínios, inclusive o host de ingestão. Não o registrar nem utilizá-lo ali. Manter conteúdo de clientes em `getblup.site`, separado de `getblup.io`; não colocar páginas públicas de clientes sob o domínio que compartilha sessões. Testar a migração de cookies antigos restritos ao host, evitando cookies de mesmo nome com escopos conflitantes. [Cookies Better Auth](https://better-auth.com/docs/concepts/cookies), [segurança](https://better-auth.com/docs/reference/security), [passkeys](https://better-auth.com/docs/plugins/passkey).
+Não habilitar `crossSubDomainCookies` para esta integração nem criar um segundo cookie de sessão em Pulse. O host de ingestão continua sem autenticação por cookie, e as páginas públicas ficam em `pulse.getblup.site/<nome>`, separadas do domínio da conta. Testar login central, requisições autenticadas entre origens e logout, incluindo bloqueio de origem não autorizada. [Cookies Better Auth](https://better-auth.com/docs/concepts/cookies), [segurança](https://better-auth.com/docs/reference/security), [passkeys](https://better-auth.com/docs/plugins/passkey).
 
 ## 4. Ingestão compatível com Sentry
 
@@ -178,16 +180,16 @@ As tabelas abaixo são desenho de schema, não migrações existentes. A próxim
 
 | D1 geral | Campos e índices principais |
 | --- | --- |
-| `status_project` | ID público decimal, `owner_id`, nome, plataforma, ID interno do DO, ativo, versão de configuração, datas; índice por dono |
-| `status_project_key` | Projeto, hash da chave, prefixo para exibição, ativo/revogado, datas; chave única e vínculo ao projeto |
-| `status_usage_month`, `status_quota_grant` | Conta/mês, limite, reservado; concessões por projeto com ID único e quantidade; admissão condicional |
-| `status_monitor` | Dono, projeto, nome público separado, URL privada, intervalo, ativo, próximo horário, claim e estado atual; índice por vencimento |
-| `status_page`, `status_page_component` | Dono, slug único, título, componentes, projetos/monitores autorizados, visibilidade e domínio |
-| `status_incident`, `status_incident_update` | Página, texto público, estado, impacto e datas; índice por página/data |
-| `status_channel` | Dono, tipo, dados de destino protegidos, configuração, estado e último erro sanitizado |
-| `status_channel_project`, `status_alert_outbox` | Vínculos e IDs de problema/monitor; deduplicação, próximo envio, tentativas e estado; índice da fila |
-| `status_telegram_link` | Hash do código, dono, expiração, chat candidato, consumido; sem token do bot |
-| `status_page_domain` | Página, hostname, prova de posse, estado/SSL e identificador do provedor; unicidade de hostname verificado |
+| `pulse_project` | ID público decimal, `owner_id`, nome, plataforma, ID interno do DO, ativo, versão de configuração, datas; índice por dono |
+| `pulse_project_key` | Projeto, hash da chave, prefixo para exibição, ativo/revogado, datas; chave única e vínculo ao projeto |
+| `pulse_usage_month`, `pulse_quota_grant` | Conta/mês, limite, reservado; concessões por projeto com ID único e quantidade; admissão condicional |
+| `pulse_monitor` | Dono, projeto, nome público separado, URL privada, intervalo, ativo, próximo horário, claim e estado atual; índice por vencimento |
+| `pulse_page`, `pulse_page_component` | Dono, slug único, título, componentes, projetos/monitores autorizados, visibilidade e domínio |
+| `pulse_incident`, `pulse_incident_update` | Página, texto público, estado, impacto e datas; índice por página/data |
+| `pulse_channel` | Dono, tipo, dados de destino protegidos, configuração, estado e último erro sanitizado |
+| `pulse_channel_project`, `pulse_alert_outbox` | Vínculos e IDs de problema/monitor; deduplicação, próximo envio, tentativas e estado; índice da fila |
+| `pulse_telegram_link` | Hash do código, dono, expiração, chat candidato, consumido; sem token do bot |
+| `pulse_page_domain` | Página, hostname, prova de posse, estado/SSL e identificador do provedor; unicidade de hostname verificado |
 
 Credenciais Discord não ficam em texto puro: cifrar com AES-GCM usando chave de serviço em Worker secret, nonce único, identificação de versão da chave e dados associados ao dono/canal. O servidor pode decifrar para enviar; isso não é cifra de ponta a ponta. Token do bot Telegram e segredo de verificação do webhook são secrets globais. DSNs são públicos para envio; guardar hash da chave e mostrar o valor completo na criação/rotação, com recuperação por rotação.
 
@@ -219,19 +221,19 @@ Proposta de monitor MVP: `GET` HTTPS em porta 443, nome, projeto, URL, intervalo
 
 Aplicar timeout de 10 segundos, cancelar leitura e limitar bytes processados. Bloquear usuário/senha na URL, IP literal, localhost, redes privadas, link-local e destinos de metadados. A proteção deve valer na resolução e na conexão efetiva, incluindo DNS rebinding; só uma expressão regular de hostname não resolve SSRF. Homologar a estratégia de saída no runtime real antes de abrir monitores arbitrários, sem invocar produção durante os testes. [Fetch no Workers](https://developers.cloudflare.com/workers/runtime-apis/fetch/).
 
-Um cron `* * * * *` seleciona monitores vencidos; Max só fica elegível a cada cinco minutos. Os horários são UTC. Índice por vencimento e claim com lease impedem execução concorrente do mesmo monitor/horário. Processar em lotes e com concorrência limitada, sem criar uma promessa de checagem no segundo exato. Não repetir milhares de checagens atrasadas para recuperar cron perdido: registrar lacuna e retomar o próximo horário. [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
+Um cron `* * * * *` seleciona monitores vencidos; Max fica elegível a cada cinco minutos e Ultra a cada dois. Os horários são UTC. Índice por vencimento e claim com lease impedem execução concorrente do mesmo monitor/horário. Processar em lotes e com concorrência limitada, sem criar uma promessa de checagem no segundo exato. Não repetir milhares de checagens atrasadas para recuperar cron perdido: registrar lacuna e retomar o próximo horário. [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
 
-Proposta de estado: começar `unknown`, marcar `down` após três falhas consecutivas e `up` após duas respostas válidas. Avisar apenas transições confirmadas. Atraso da própria infraestrutura do Blup é `unknown`, não prova de indisponibilidade do destino. Mostrar horário da última checagem, lacunas e que o teste parte da infraestrutura Cloudflare, sem prometer múltiplas regiões ou SLA. Disponibilidade usa falhas/sucessos observados, exibindo também cobertura e intervalos sem observação.
+Estado definido para a implementação: começar `unknown`, marcar `down` após duas falhas consecutivas e `up` após duas respostas válidas. Avisar apenas transições confirmadas. Atraso da própria infraestrutura do Blup é `unknown`, não prova de indisponibilidade do destino. Mostrar horário da última checagem, lacunas e que o teste parte da infraestrutura Cloudflare, sem prometer múltiplas regiões ou SLA. Disponibilidade usa falhas/sucessos observados, exibindo também cobertura e intervalos sem observação.
 
 A página pública mostra componentes escolhidos, estado atual, resumos diários e incidentes escritos manualmente. Estados do incidente: `investigating`, `identified`, `monitoring`, `resolved`; impacto público: operacional, degradado, interrupção parcial ou indisponível. Erros privados nunca viram incidentes públicos automaticamente. URL monitorada, DSN, stack trace, nomes privados e credenciais não entram no HTML/JSON público.
 
-O endereço público padrão ainda depende do dono. Recomendação: um domínio separado de `getblup.io`, sem cookie da conta, com slug por página. Domínio próprio Ultra exige prova de posse, unicidade e TLS ativo pelo fluxo Cloudflare for SaaS; reutilizar o desenho de [domínio Cloud](publicacao.md#domínio-próprio-no-blup-cloud), com vínculo para página Status e sem consumir sites Hugo. A zona e o CNAME de serviço dependem da escolha do endereço padrão. Escapar texto de incidentes, sem HTML arbitrário, e limitar cache público para não esconder transições indefinidamente.
+O endereço público aprovado é `https://pulse.getblup.site/<nome>`, com nome único por página e sem cookie da conta. Domínio próprio Ultra exige prova de posse, unicidade e TLS ativo pelo fluxo Cloudflare for SaaS; reutilizar o desenho de [domínio Cloud](publicacao.md#domínio-próprio-no-blup-cloud), com vínculo para página Pulse e sem consumir sites Hugo. A zona base é `getblup.site`; o hostname público `pulse.getblup.site` deve ser reservado para esse serviço, sem ser oferecido como slug de site Hugo. A configuração de fallback origin/CNAME, prova e certificados fica no procedimento de deploy. Escapar texto de incidentes, sem HTML arbitrário, e limitar cache público para não esconder transições indefinidamente.
 
 ## 8. Avisos Discord e Telegram
 
 Disparos iniciais: novo problema, regressão e mudança confirmada de monitor. Incidente manual pode ser anunciado por ação explícita. Repetições do mesmo problema são contadas, com cooldown proposto de 15 minutos por destino; não enviar uma mensagem por ocorrência. Proposta MVP: um Discord e um chat Telegram por projeto, sem automações arbitrárias.
 
-`status_alert_outbox` registra apenas referência e estado de entrega. O despachante carrega um resumo já tratado, tenta no máximo cinco vezes com espera crescente e jitter, obedece à espera do provedor e expira avisos antigos. Proposta de validade: 24 horas. Se a mensagem foi aceita e a confirmação local se perdeu, pode haver duplicata; a interface não deve prometer entrega exatamente uma vez ou leitura pelo destinatário.
+`pulse_alert_outbox` registra apenas referência e estado de entrega. O despachante carrega um resumo já tratado, tenta no máximo cinco vezes com espera crescente e jitter, obedece à espera do provedor e expira avisos antigos. Proposta de validade: 24 horas. Se a mensagem foi aceita e a confirmação local se perdeu, pode haver duplicata; a interface não deve prometer entrega exatamente uma vez ou leitura pelo destinatário.
 
 ### Discord
 
@@ -241,7 +243,7 @@ Não fixar uma regra universal como cinco mensagens a cada dois segundos. Respei
 
 ### Telegram
 
-O usuário precisa abrir/iniciar a conversa com o bot. A tela cria código aleatório base64url, de uso único, ligado à conta e com validade proposta de dez minutos; persiste apenas seu hash. O link `https://t.me/<BOT>?start=<CODIGO>` faz chegar `/start <CODIGO>`. O parâmetro aceita até 64 caracteres. Vincular primeiro um chat privado; grupos/canais exigem comprovação de permissão e ficam para uma fase posterior. [Deep linking oficial](https://core.telegram.org/bots/features#deep-linking).
+O usuário precisa abrir/iniciar a conversa com o bot. A tela cria código aleatório base64url, de uso único, ligado à conta e com validade proposta de dez minutos; persiste apenas seu hash. O link `https://t.me/BlupPulseBot?start=<CODIGO>` faz chegar `/start <CODIGO>`. O parâmetro aceita até 64 caracteres. O nome definido para o bot é `@BlupPulseBot`; a criação, disponibilidade do nome e configuração no BotFather são tarefas operacionais, não confirmação de um bot já ativo. Vincular primeiro um chat privado; grupos/canais exigem comprovação de permissão e ficam para uma fase posterior. [Deep linking oficial](https://core.telegram.org/bots/features#deep-linking).
 
 O webhook do bot exige `X-Telegram-Bot-Api-Secret-Token` e validação do update. Deduplicar `update_id`; conferir expiração, uso único e remetente/chat; apresentar o chat candidato no painel e exigir confirmação autenticada antes de ativar. IDs de chat são inteiros seguros no protocolo, mas ficam como string decimal no banco/DTO de destino, preservando sinal e evitando conversões descuidadas.
 
@@ -251,37 +253,37 @@ O limite global do bot precisa de coordenação entre contas. Proposta MVP: um d
 
 ## 9. API Hono tipada
 
-Rotas propostas sob `/api/status`. Todas exigem sessão, dono e direito do plano, exceto leitura pública e webhooks com sua autenticação própria. IDs, query, body e cursores passam por Zod, com JSON de configuração estrito. O parser binário Sentry é separado do middleware JSON geral de 96 KiB do Cloud; precisa dos limites próprios desta spec. Metadados extras de SDK desconhecidos podem ser descartados com segurança, sem exigir que SDKs só emitam campos que o painel conhece.
+Rotas propostas sob `/api/pulse`. Todas exigem sessão, dono e direito do plano, exceto leitura pública e webhooks com sua autenticação própria. IDs, query, body e cursores passam por Zod, com JSON de configuração estrito. O parser binário Sentry é separado do middleware JSON geral de 96 KiB do Cloud; precisa dos limites próprios desta spec. Metadados extras de SDK desconhecidos podem ser descartados com segurança, sem exigir que SDKs só emitam campos que o painel conhece.
 
-Exportar rotas encadeadas como `StatusAppType`/parte de `AppType` e usar `hc` com respostas inferidas no painel. Reaproveitar a geração RPC existente, sem repetir DTOs manualmente. Exceções do transporte Sentry têm o formato compatível da seção 4; a API do painel mantém erro JSON com `code` estável e mensagem traduzida no cliente. [RPC Hono](https://hono.dev/docs/guides/rpc), [contratos do projeto](tipagem-e-contratos.md).
+Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com respostas inferidas no painel. Reaproveitar a geração RPC existente, sem repetir DTOs manualmente. Exceções do transporte Sentry têm o formato compatível da seção 4; a API do painel mantém erro JSON com `code` estável e mensagem traduzida no cliente. [RPC Hono](https://hono.dev/docs/guides/rpc), [contratos do projeto](tipagem-e-contratos.md).
 
 | Método e rota | Contrato resumido |
 | --- | --- |
-| `GET /api/status/usage` | Limites, aceitos/reservados do mês, espaço, recursos e datas; números finitos e inteiros quando aplicável |
-| `GET/POST /api/status/projects` | Lista paginada; criação estrita `{name, platform}` e DSN na resposta de criação |
-| `PATCH/DELETE /api/status/projects/:project` | Nome/ativo; exclusão revoga ingestão antes da purga |
-| `POST /api/status/projects/:project/keys` | Rotaciona ou cria chave; valor completo só na emissão |
-| `DELETE /api/status/projects/:project/keys/:key` | Revoga chave do projeto |
-| `GET /api/status/projects/:project/issues` | Filtros `state`, `environment`, `release`, `q`, cursor e limite máximo 50 |
-| `GET/PATCH /api/status/projects/:project/issues/:issue` | Detalhe; alteração estrita `{state}` |
-| `GET /api/status/projects/:project/issues/:issue/events` | Amostras paginadas dentro da retenção |
-| `GET/POST /api/status/monitors` | Lista; criação `{projectId, name, url, intervalMinutes}` |
-| `PATCH/DELETE /api/status/monitors/:monitor` | Configuração permitida e pausa; índice recuperável |
-| `GET /api/status/monitors/:monitor/checks` | Janela limitada e cursor; detalhe ou resumo diário conforme idade |
-| `GET/POST /api/status/pages` | Lista; criação `{title, slug, componentIds}` com recursos do mesmo dono |
-| `GET/PATCH/DELETE /api/status/pages/:page` | Configuração, publicação/retirada e componentes selecionados |
-| `GET/POST /api/status/pages/:page/incidents` | Histórico limitado e criação de incidente manual |
-| `POST /api/status/pages/:page/incidents/:incident/updates` | Atualização pública de texto e estado |
-| `GET/POST/DELETE /api/status/pages/:page/domain` | Contrato de domínio no plano elegível; DELETE não tem body |
-| `GET/POST /api/status/channels` | Lista mascarada; cadastro Discord com destino validado |
-| `DELETE /api/status/channels/:channel` | Desliga canal e cancela pendências ainda não enviadas |
-| `POST /api/status/channels/:channel/test` | Teste explícito, limitado, sem conteúdo privado |
-| `PUT /api/status/projects/:project/channels` | Substitui lista estrita de IDs do mesmo dono |
-| `POST /api/status/telegram/link` | Emite código/link temporário |
-| `GET /api/status/telegram/link/:link` | Consulta estado do vínculo, sem expor código de novo |
-| `POST /api/status/telegram/link/:link/confirm` | Confirma o chat proposto e cria o canal |
-| `POST /api/status/telegram/webhook` | Update do Telegram autenticado por secret, sem sessão do painel |
-| `GET /api/status/public/:slug` | Só DTO público; host final ainda a escolher |
+| `GET /api/pulse/usage` | Limites, aceitos/reservados do mês, espaço, recursos e datas; números finitos e inteiros quando aplicável |
+| `GET/POST /api/pulse/projects` | Lista paginada; criação estrita `{name, platform}` e DSN na resposta de criação |
+| `PATCH/DELETE /api/pulse/projects/:project` | Nome/ativo; exclusão revoga ingestão antes da purga |
+| `POST /api/pulse/projects/:project/keys` | Rotaciona ou cria chave; valor completo só na emissão |
+| `DELETE /api/pulse/projects/:project/keys/:key` | Revoga chave do projeto |
+| `GET /api/pulse/projects/:project/issues` | Filtros `state`, `environment`, `release`, `q`, cursor e limite máximo 50 |
+| `GET/PATCH /api/pulse/projects/:project/issues/:issue` | Detalhe; alteração estrita `{state}` |
+| `GET /api/pulse/projects/:project/issues/:issue/events` | Amostras paginadas dentro da retenção |
+| `GET/POST /api/pulse/monitors` | Lista; criação `{projectId, name, url, intervalMinutes}` |
+| `PATCH/DELETE /api/pulse/monitors/:monitor` | Configuração permitida e pausa; índice recuperável |
+| `GET /api/pulse/monitors/:monitor/checks` | Janela limitada e cursor; detalhe ou resumo diário conforme idade |
+| `GET/POST /api/pulse/pages` | Lista; criação `{title, slug, componentIds}` com recursos do mesmo dono |
+| `GET/PATCH/DELETE /api/pulse/pages/:page` | Configuração, publicação/retirada e componentes selecionados |
+| `GET/POST /api/pulse/pages/:page/incidents` | Histórico limitado e criação de incidente manual |
+| `POST /api/pulse/pages/:page/incidents/:incident/updates` | Atualização pública de texto e estado |
+| `GET/POST/DELETE /api/pulse/pages/:page/domain` | Contrato de domínio no plano elegível; DELETE não tem body |
+| `GET/POST /api/pulse/channels` | Lista mascarada; cadastro Discord com destino validado |
+| `DELETE /api/pulse/channels/:channel` | Desliga canal e cancela pendências ainda não enviadas |
+| `POST /api/pulse/channels/:channel/test` | Teste explícito, limitado, sem conteúdo privado |
+| `PUT /api/pulse/projects/:project/channels` | Substitui lista estrita de IDs do mesmo dono |
+| `POST /api/pulse/telegram/link` | Emite código/link temporário |
+| `GET /api/pulse/telegram/link/:link` | Consulta estado do vínculo, sem expor código de novo |
+| `POST /api/pulse/telegram/link/:link/confirm` | Confirma o chat proposto e cria o canal |
+| `POST /api/pulse/telegram/webhook` | Update do Telegram autenticado por secret, sem sessão do painel |
+| `GET /api/pulse/public/:slug` | Só DTO público, usado em `pulse.getblup.site/:slug` |
 
 Datas saem em ISO UTC; ausência explícita usa `null`, listas vazias usam `[]`. Um recurso de outra conta responde como não encontrado. Reservar slugs, limitar nomes/textos, validar cada vínculo de componentes/canais e usar idempotência nas operações que podem ser repetidas. Não aceitar owner, plano, limite ou nome de DO fornecidos pelo cliente como autoridade.
 
@@ -294,32 +296,34 @@ Datas saem em ISO UTC; ausência explícita usa `null`, listas vazias usam `[]`.
 | Página de status | Título, endereço, componentes públicos, prévia, incidentes manuais e domínio próprio Ultra |
 | Avisos | Discord mascarado, vínculo Telegram por código, projetos associados, teste explícito e resultado das entregas |
 
-Sem Status na assinatura, mostrar explicação e link para a página de planos Cloud; não criar uma segunda área de cobrança. Reaproveitar idioma da conta/navegador, temas claro/escuro e componentes acessíveis do Cloud. Nenhum erro privado aparece na página pública sem ação explícita. O teste de canal nunca é disparado ao apenas abrir a tela.
+Sem Pulse na assinatura, mostrar explicação e link para a página de planos Cloud; não criar uma segunda área de cobrança. Reaproveitar idioma da conta/navegador, temas claro/escuro e componentes acessíveis do Cloud. Nenhum erro privado aparece na página pública sem ação explícita. O teste de canal nunca é disparado ao apenas abrir a tela.
 
 ## 11. Switch e cobrança Stripe
 
-Proposta de catálogo, com preços definidos no Dashboard, não neste documento:
+Catálogo com preços aprovados pelo dono, a criar/conferir no Dashboard Stripe. Os totais são R$ 49,90/mês ou R$ 499/ano no Max + Pulse e R$ 129,90/mês ou R$ 1.299/ano no Ultra + Pulse. Lookup keys seguem a convenção proposta:
 
 | Variante | Lookup key mensal | Lookup key anual |
 | --- | --- | --- |
-| `max_status` | `blup_max_status_mensal` | `blup_max_status_anual` |
-| `ultra_status` | `blup_ultra_status_mensal` | `blup_ultra_status_anual` |
+| `max_pulse` | `blup_max_pulse_mensal` | `blup_max_pulse_anual` |
+| `ultra_pulse` | `blup_ultra_pulse_mensal` | `blup_ultra_pulse_anual` |
 
-O switch altera a variante no seletor Max/Ultra e exibe o preço total daquela assinatura, não um adicional avulso com cobrança paralela. `max_status` herda todos os limites Max; `ultra_status`, todos Ultra. Modelar separadamente `basePlan` e direitos `status`, mesmo que o identificador comercial seja único. O domínio próprio dos sites Cloud e o das páginas Status são direitos distintos: `limits.customDomain` do Max não libera automaticamente `status.customDomain`. Adicionar os nomes aos enums, catálogos de idioma, validação de preços, metadados `blup_plan`, reconciliação e cálculos de downgrade, sem deixar variante desconhecida cair no Grátis.
+O switch altera a variante no seletor Max/Ultra e exibe o preço total daquela assinatura, não um adicional avulso com cobrança paralela. `max_pulse` herda todos os limites Max; `ultra_pulse`, todos Ultra. Modelar separadamente `basePlan` e direitos `pulse`, mesmo que o identificador comercial seja único. O domínio próprio dos sites Cloud e o das páginas Pulse são direitos distintos: `limits.customDomain` do Max não libera automaticamente `pulse.customDomain`. Adicionar os nomes aos enums, catálogos de idioma, validação de preços, metadados `blup_plan`, reconciliação e cálculos de downgrade, sem deixar variante desconhecida cair no Grátis.
 
-Hoje [plans.ts](../../cloud/worker/plans.ts) conhece quatro nomes; [billing.ts](../../cloud/worker/billing.ts) reconhece lookup keys/metadados e o [cliente Stripe](../../cloud/worker/stripe-client.ts) fixa API `2026-10-28.endive`. Esses pontos precisam mudar juntos. `/plans` continua localizando textos e obtendo preços reais do Stripe; ausência de preço mantém a compra desabilitada. Não copiar valores de Max/Ultra para inventar o total com Status.
+As variantes precisam estar consistentes em [plans.ts](../../cloud/worker/plans.ts), na reconciliação de lookup keys/metadados de [billing.ts](../../cloud/worker/billing.ts) e no [cliente Stripe](../../cloud/worker/stripe-client.ts), cuja API de referência é `2026-10-28.endive`. Esses pontos devem ser validados juntos na implementação. `/plans` continua localizando textos e obtendo preços reais do Stripe; ausência de preço mantém a compra desabilitada. Não copiar valores de Max/Ultra para inventar o total com Pulse.
 
-Ativar Status numa assinatura existente deve substituir o item recorrente da própria assinatura, com idempotência e serialização por conta. Fazer prévia da proporcionalidade com o mesmo instante aplicado na atualização, mostrar crédito/débito e exigir confirmação do total. Proposta: `proration_behavior=always_invoice` e `payment_behavior=pending_if_incomplete`, liberando Status somente depois de o Stripe aplicar a mudança paga. Tratar autenticação de pagamento e pendência, sem confiar no retorno visual de sucesso. [Proporcionalidade Stripe](https://docs.stripe.com/billing/subscriptions/prorations), [pending updates](https://docs.stripe.com/billing/subscriptions/pending-updates).
+Ativar Pulse numa assinatura existente deve substituir o item recorrente da própria assinatura, com idempotência e serialização por conta. Fazer prévia da proporcionalidade com o mesmo instante aplicado na atualização, mostrar crédito/débito e exigir confirmação do total. Proposta: `proration_behavior=always_invoice` e `payment_behavior=pending_if_incomplete`, liberando Pulse somente depois de o Stripe aplicar a mudança paga. Tratar autenticação de pagamento e pendência, sem confiar no retorno visual de sucesso. [Proporcionalidade Stripe](https://docs.stripe.com/billing/subscriptions/prorations), [pending updates](https://docs.stripe.com/billing/subscriptions/pending-updates).
 
 O plugin Better Auth oferece troca proporcional e agendamento no fim do período, mas seus padrões não comprovam a política de liberação condicionada a pagamento. Validar integração com o reconciliador próprio do Blup, mantendo os handlers webhook/success concorrentes do plugin desabilitados. A confirmação vem do webhook assinado e retrieve atual sob lease, como no Cloud. Impedir criar outro Checkout quando já existe assinatura aplicável ou troca pendente. [Stripe no Better Auth](https://better-auth.com/docs/plugins/stripe).
 
-Recomendação para desligar o switch ou reduzir Ultra + Status para Max + Status: agendar no fim do período, preservando o que foi pago, sem prometer reembolso automático. Uma troca imediata com crédito proporcional pode ser oferecida se o dono aprovar essa política. Mudança de plano não reinicia o consumo mensal. Antes de reduzir, mostrar projetos/monitores/páginas excedentes e pedir os recursos retidos; não escolher silenciosamente o projeto com os erros mais recentes.
+Desligar o switch mantém o Pulse até o fim do período pago, conforme decisão do dono. Reduzir Ultra + Pulse para Max + Pulse segue a proposta de agendar a mudança para o fim do período, preservando o que foi pago. Mudança de plano não reinicia o consumo mensal. Antes de reduzir, mostrar projetos/monitores/páginas excedentes e pedir os recursos retidos; não escolher silenciosamente o projeto com os erros mais recentes.
 
-Ao terminar o direito de Status, pausar monitores e ingestão, sem novos gastos ou avisos. Proposta: dados privados ficam só para leitura por até 30 dias, respeitando expirações menores e o teto de 90 dias; páginas públicas mostram indisponibilidade do serviço, sem estado operacional antigo. Reativar não ressuscita dados vencidos. Exclusão de conta segue bloqueio imediato e purga do Cloud, incluindo DOs, canais e domínios Status. A duração de carências comerciais específicas ainda depende do dono.
+Ao terminar o período pago sem Pulse, pausar monitores e ingestão, sem novos gastos ou avisos. Os dados privados ficam só para leitura por 14 dias e então são apagados, preservando expirações anteriores e o teto de 90 dias: a carência não renova a retenção dos eventos. Páginas públicas mostram indisponibilidade do serviço, sem estado operacional antigo. Reativar dentro desses 14 dias pode retomar os dados ainda válidos, sem ressuscitar expirados. Essa carência do Pulse é independente dos 30 dias de retenção de conta excluída no Cloud. Exclusão de conta continua bloqueando tudo imediatamente; a purga inclui DOs, canais e domínios Pulse.
+
+A cortesia do dono inclui Pulse com os limites de Ultra + Pulse. Modelar esse direito explicitamente ao resolver o plano de cortesia, sem exigir uma assinatura cobrada e sem criar cota ilimitada. O monitoramento dos próprios produtos continua sujeito ao mesmo aceite e à mesma política de privacidade.
 
 ## 12. Privacidade e aceite no Studio
 
-Eventos de Status não são notas sincronizadas com cifra de ponta a ponta. O servidor precisa ler erro, frames tratados, versão e contadores para agrupar e avisar; Discord/Telegram recebem o resumo que for enviado. Separar essa explicação do [modelo de segurança do sync](../seguranca.md).
+Eventos do Pulse não são notas sincronizadas com cifra de ponta a ponta. O servidor precisa ler erro, frames tratados, versão e contadores para agrupar e avisar; Discord/Telegram recebem o resumo que for enviado. Separar essa explicação do [modelo de segurança do sync](../seguranca.md).
 
 No Studio, o envio fica desligado por padrão. Exigir aceite específico, revogável, antes de iniciar SDK, instalar capturadores automáticos ou enviar qualquer evento. Não reaproveitar o aceite de IA. O monitoramento operacional do backend Cloud é outro fluxo, descrito na política de privacidade institucional.
 
@@ -331,44 +335,81 @@ Não registrar bodies de ingestão, URLs de webhook ou token do bot nos logs do 
 
 ## 13. SDKs e critérios de compatibilidade
 
-Nenhum SDK está homologado só pela pesquisa desta spec. Na implementação, fixar versões e publicar a matriz real, com versão atual estável e pelo menos uma versão anterior que se pretenda suportar.
+No lançamento, a promessa comercial cobre sites, servidores e aplicativo de computador. Integração com celular aparece como **em teste**, sem promessa de suporte móvel homologado. Nenhum SDK está homologado só pela pesquisa desta spec. Na implementação, fixar versões e publicar a matriz real, com versão atual estável e pelo menos uma versão anterior que se pretenda suportar.
 
 | SDK oficial | Primeiro teste | Limite da promessa |
 | --- | --- | --- |
 | [JavaScript browser](https://docs.sentry.io/platforms/javascript/) | `captureException`, mensagem, erro não tratado, CORS, fetch/Beacon e headers de bloqueio | Stack de bundle minificado continua minificada, sem source maps |
 | [Node.js](https://docs.sentry.io/platforms/javascript/guides/node/) | Exceção, rejeição, mensagem, gzip e flush no encerramento | Sem tracing, logs ou perfis como produto implícito |
 | [Go](https://docs.sentry.io/platforms/go/) | Erro/panic recuperado, mensagem, flush e filtragem antes do envio | Não prometer capturar todo encerramento fatal ou falha nativa |
-| [React Native](https://docs.sentry.io/platforms/react-native/) | Erro JavaScript em Android/iOS reais ou simulados e transporte offline | Sem symbolication nativa, source maps, anexos ou minidumps; provar o caminho JSON antes de anunciar |
-| [Flutter](https://docs.sentry.io/platforms/dart/guides/flutter/) | Exceção Dart e transporte em Android/iOS, inclusive após reconexão | Sem símbolos/obfuscação resolvidos ou processamento de crash nativo fora do JSON suportado |
+| [React Native](https://docs.sentry.io/platforms/react-native/), em teste | Erro JavaScript em Android/iOS reais ou simulados e transporte offline | Sem symbolication nativa, source maps, anexos ou minidumps; provar o caminho JSON antes de anunciar |
+| [Flutter](https://docs.sentry.io/platforms/dart/guides/flutter/), em teste | Exceção Dart e transporte em Android/iOS, inclusive após reconexão | Sem símbolos/obfuscação resolvidos ou processamento de crash nativo fora do JSON suportado |
 
 No conjunto comum, testar fingerprint explícito e `{{ default }}`, `event_id` repetido, autenticação por header/query/envelope, itens extras ignorados, comprimentos binários, UTF-8, evento acima de 200 KiB, envelope acima do teto, gzip/deflate corrompido e bomba de descompressão. Confirmar com tráfego capturado localmente que 429 e os dois headers fazem o SDK suspender a categoria, inclusive no navegador.
 
 Matriz também deve testar SDK sem tracing/replay e com defaults reais: ignorar um item não pode corromper o erro do mesmo envelope. Ferramentas de build que tentam enviar source maps/símbolos para APIs administrativas do Sentry não se tornam compatíveis por trocar o DSN; desabilitar esses uploads e explicar o limite. Não mostrar um selo geral de suporte mobile antes desses testes.
 
-## 14. Custos estimados
+## 14. Custos e margem estimados
 
-Estimativas em USD para 30 dias, sem impostos, taxas Stripe, câmbio, domínio ou trabalho humano. Não são preço de venda nem medição. Os limites incluídos abaixo são da conta Cloudflare inteira e já são compartilhados com Blup Cloud.
+Modelo de 30 dias, com todas as cotas usadas. Os preços de venda abaixo foram aprovados em BRL; as despesas de infraestrutura são estimadas em USD. Os limites incluídos são da conta Cloudflare inteira, compartilhados com Blup Cloud. A simulação não é medição de produção.
 
 Tarifas oficiais consultadas: Workers Paid tem base de US$5/mês, 10 milhões de requests e 30 milhões de ms de CPU incluídos; excedentes de US$0,30/milhão de requests e US$0,02/milhão de ms. Subrequests HTTP de checagem não são requests de entrada cobradas por unidade, mas continuam consumindo CPU e limites de execução. [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/).
 
 DO Paid inclui 1 milhão de requests, 400.000 GB-s, 25 bilhões de linhas lidas, 50 milhões escritas e 5 GB-mês; excedentes de US$0,15/milhão de requests, US$12,50/milhão de GB-s, US$0,001/milhão de leituras, US$1/milhão de escritas e US$0,20/GB-mês. D1 tem franquias próprias de 25 bilhões de leituras, 50 milhões de escritas e 5 GB; excedentes SQL equivalentes, com armazenamento D1 a US$0,75/GB-mês. Índices e exclusões também pesam nas escritas. [DO pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/), [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/).
 
-Modelo de carga proposto: todas as cotas de erros/monitores usadas; um evento por envelope; concessões de 32 unidades, duas escritas D1 por concessão; duas escritas D1 e três SQLite por checagem; oito escritas SQLite por erro, incluindo manutenção média. Agrupar resultados por projeto/horário, sem chamar um DO por monitor individual. Essas quantidades precisam ser medidas, incluindo índices e poda, e não vêm de uma garantia da plataforma.
+Premissas: um evento por envelope; concessões de 32 unidades, duas escritas D1 por concessão; duas escritas D1 e três SQLite por checagem; oito escritas SQLite por erro, incluindo manutenção média. Resultados são agrupados por projeto/horário, sem chamar um DO por monitor individual. Essas quantidades precisam ser medidas, incluindo índices e poda.
 
-| Carga em 30 dias por conta | Max + Status | Ultra + Status |
+```text
+checagens = monitores * 30 * 24 * 60 / intervalo_em_minutos
+requests_DO = erros + projetos * 30 * 24 * 60 / intervalo_em_minutos
+escritas_D1 = 2 * checagens + 2 * teto(erros / 32)
+escritas_DO = 8 * erros + 3 * checagens
+custo_USD = (0,30 * erros + 0,15 * requests_DO + escritas_D1 + escritas_DO) / 1.000.000
+```
+
+| Carga em 30 dias por conta | Max + Pulse | Ultra + Pulse |
 | --- | --- | --- |
+| Intervalo mínimo | 5 minutos | 2 minutos |
 | Erros recebidos | 50.000 | 250.000 |
-| Checagens HTTP | 86.400 | 2.160.000 |
-| Requests DO aproximadas, sem painel/alarmes | 75.920 | 682.000 |
-| Escritas D1 aproximadas | 175.926 | 4.335.626 |
-| Escritas SQLite DO aproximadas | 659.200 | 8.480.000 |
-| Custo variável de requests e escritas, sem descontar franquias | US$0,86 | US$12,99 |
+| Checagens HTTP | 86.400 | 1.080.000 |
+| Requests DO aproximadas, sem painel/alarmes | 75.920 | 466.000 |
+| Escritas D1 aproximadas | 175.926 | 2.175.626 |
+| Escritas SQLite DO aproximadas | 659.200 | 5.240.000 |
+| Custo variável de requests e escritas, sem descontar franquias | US$0,86 | US$7,56 |
 
-O último valor soma requests de ingestão, requests DO e escritas dos dois bancos. Não inclui CPU, armazenamento, leituras, alarmes, avisos, acessos públicos e extras do painel. É uma conta conservadora sem franquias; os primeiros clientes podem caber nas franquias compartilhadas, e clientes adicionais passam a consumir excedentes. O Ultra precisa de margem compatível com monitoramento contínuo.
+O cron continua executando a cada minuto; só seleciona os monitores Ultra vencidos a cada dois minutos. O custo bruto modelado do Ultra é US$7,560526, e o do Max, US$0,861514. Não estão incluídos CPU, armazenamento, leituras, alarmes, avisos, acessos públicos ou extras do painel. Os primeiros clientes podem caber nas franquias compartilhadas; a escala consome excedentes.
 
-Com eventos únicos de 5 KiB e retenção completa, o corpo sozinho representa cerca de 0,256 GB no Max e 3,84 GB no Ultra após três meses de carga, antes dos índices. No pior caso de 200 KiB, o Ultra poderia receber 153,6 GB em 90 dias se nada fosse podado. As últimas 100 amostras por problema não evitam isso quando cada evento cria um grupo diferente. Tetos por projeto, retenção e poda são obrigatórios para o produto ser duradouro.
+### Conversão e tarifas de pagamento
 
-Com os tetos propostos de banco, o armazenamento total máximo seria 768 MiB no Max e 10 GiB no Ultra, antes de efeitos de recuperação/backups do provedor. Cobrar espaço dentro desses tetos e medir custos reais antes de fixar preços. Definir alertas de orçamento, limite de contas no piloto, volume da fila e um corte operacional para tráfego abusivo. Discord/Telegram comuns não exigem broadcasts pagos; manter recursos pagos do bot desativados.
+Usar como referência a PTAX de venda de 30/10/2026, R$ 5,4212 por US$1, consultada em 02/11/2026. Ela converte o subtotal modelado para R$ 4,67 no Max e R$ 40,99 no Ultra por mês. A cotação efetiva do pagamento Cloudflare, impostos sobre a operação e spread podem diferir. [Consulta oficial PTAX](https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarDia%28dataCotacao=@dataCotacao%29?%40dataCotacao=%2710-30-2026%27&%24format=json).
+
+Para a simulação Stripe, assumir cartão nacional com tarifa padrão de 3,99% + R$ 0,39 por pagamento e Billing por consumo de 0,7% do volume, totalizando 4,69% mais o valor fixo. No anual, há um pagamento e o fixo é distribuído por 12 meses. Contrato comercial, cartão internacional ou outro método alteram essa conta. [Payments Brasil](https://stripe.com/br/pricing), [Billing Brasil](https://stripe.com/br/billing/pricing).
+
+| Pacote e cobrança | Receita equivalente/mês | Stripe estimado/mês | Requests/escritas Pulse/mês | Saldo parcial/mês |
+| --- | --- | --- | --- | --- |
+| Max + Pulse mensal | R$ 49,90 | R$ 2,73 | R$ 4,67 | R$ 42,50 |
+| Max + Pulse anual, R$ 499 pagos por ano | R$ 41,58 | R$ 1,98 | R$ 4,67 | R$ 34,93 |
+| Ultra + Pulse mensal | R$ 129,90 | R$ 6,48 | R$ 40,99 | R$ 82,43 |
+| Ultra + Pulse anual, R$ 1.299 pagos por ano | R$ 108,25 | R$ 5,11 | R$ 40,99 | R$ 62,15 |
+
+Esse saldo ainda precisa pagar o plano-base inteiro, os custos Pulse não modelados, impostos e operação. O anual equivale a dez mensalidades, com receita distribuída pelos 12 meses de serviço. Os valores exibidos foram arredondados depois do cálculo.
+
+### Margem incremental do adicional
+
+Para isolar a contribuição do Pulse, a referência de preço-base usada é a do catálogo institucional conferido nesta revisão: Max R$ 29,90/mês ou R$ 299/ano; Ultra R$ 59,90/mês ou R$ 599/ano. Recalcular se os preços-base efetivos do Stripe mudarem. Como há uma única assinatura, a parcela fixa de R$ 0,39 já existe no pagamento do plano-base; o acréscimo de tarifa vem dos 4,69% sobre a diferença de preço.
+
+| Cobrança | Receita adicional/mês | Tarifa adicional/mês | Requests/escritas Pulse/mês | Contribuição parcial do Pulse/mês |
+| --- | --- | --- | --- | --- |
+| Max mensal | R$ 20,00 | R$ 0,94 | R$ 4,67 | R$ 14,39 |
+| Max anual | R$ 16,67 | R$ 0,78 | R$ 4,67 | R$ 11,21 |
+| Ultra mensal | R$ 70,00 | R$ 3,28 | R$ 40,99 | R$ 25,73 |
+| Ultra anual | R$ 58,33 | R$ 2,74 | R$ 40,99 | R$ 14,61 |
+
+A contribuição parcial incremental corresponde a cerca de 72,0%/67,3% do acréscimo de receita Max mensal/anual e 36,8%/25,0% no Ultra. Ainda faltam CPU, espaço, avisos, páginas públicas e operação. Em cenário de câmbio a R$6 por dólar, sem mudar as outras premissas, os saldos incrementais caem para R$13,89/R$10,72 no Max e R$21,35/R$10,23 no Ultra. Essa sensibilidade serve para acompanhar a margem aprovada, sem criar novos preços por conta própria.
+
+Com eventos únicos de 5 KiB e retenção completa, o corpo sozinho representa cerca de 0,256 GB no Max e 3,84 GB no Ultra após três meses de carga, antes dos índices. No pior caso de 200 KiB, o Ultra poderia receber 153,6 GB em 90 dias se nada fosse podado. As últimas 100 amostras por problema não evitam isso quando cada evento cria um grupo diferente. Tetos por projeto, retenção e poda são obrigatórios.
+
+Com os tetos de banco mantidos na proposta, o total máximo é 768 MiB no Max e 10 GiB no Ultra, antes de recuperação/backups do provedor. Medir os itens ausentes antes de ampliar o piloto. Definir alertas de orçamento, limite de contas, volume da fila e corte operacional para abuso. Discord/Telegram comuns não exigem broadcasts pagos; manter recursos pagos do bot desativados. A carga varia com o número de dias do mês; custos e tarifas reais substituem a simulação.
 
 ## 15. Riscos e fases
 
@@ -378,30 +419,44 @@ Com os tetos propostos de banco, o armazenamento total máximo seria 768 MiB no 
 | Alto | Monitores usados para SSRF ou atingir serviços internos | Saída restrita, defesa verificada contra DNS rebinding, timeout e limites |
 | Alto | Variante Stripe cair no Grátis, cobrar duas assinaturas ou liberar antes do pagamento | Migração conjunta dos enums/reconciliador, lease por conta e testes de proporcionalidade/pendência |
 | Alto | Chave pública ser usada para drenar cota ou criar grupos sem limite | Fusíveis, pico no DO, admissão mensal e teto físico por projeto |
-| Médio | Cookies compartilhados ampliarem o impacto de outro subdomínio | Hosts confiáveis exatos, domínio público separado e testes de sessão/logout/CSRF |
+| Médio | CORS ou retorno de login permitir uso indevido da sessão central | Cookie restrito ao host Cloud, origens exatas e testes de sessão/logout/CSRF |
 | Médio | Falso alerta por atraso do cron ou mensagem duplicada | Estado desconhecido, confirmação por sequência, deduplicação e limites de retentativa |
 | Médio | Promessa ampla de mobile/compressão sem suporte real | Matriz de SDKs com defaults e limites visíveis |
 | Médio | Retenção nominal esconder atraso de limpeza ou backups | Expiração nas consultas, alarmes, reconciliação e política de recuperação explícita |
 
-Fase 0: fechar cotas/preços, domínio público e políticas pendentes; produzir fixtures dos SDKs e ensaiar custo/SSRF sem dados reais.
+Fase 0: preparar o catálogo e os hosts aprovados, fechar apenas os detalhes operacionais pendentes e produzir fixtures dos SDKs; ensaiar custo/SSRF sem dados reais.
 
 Fase 1, MVP para piloto: ingestão de erros browser/Node/Go, DO/D1 e quotas, Projetos com resolver/ignorar, monitores HTTP, uma implementação simples das páginas e incidentes manuais, Discord/Telegram, aceite Studio e switch com uma assinatura. Os limites de cada variante continuam sendo os da tabela; o piloto pode limitar o número de contas para medir capacidade.
 
-Fase 2: homologar os caminhos JSON de React Native/Flutter e o domínio próprio Ultra antes de anunciar esses recursos como disponíveis. O domínio próprio faz parte da oferta Ultra proposta; sua ausência durante piloto precisa estar clara, sem vender como entregue.
+Fase 2: homologar os caminhos JSON de React Native/Flutter, que no lançamento ficam como em teste. O domínio próprio faz parte da oferta Ultra; pode ser validado em etapa própria do piloto, com sua disponibilidade real claramente informada antes de cobrar por ele.
 
 Performance, tracing, replay e source maps não entram automaticamente numa fase posterior: exigem nova decisão de produto, orçamento e spec.
 
 Antes de produção, exigir testes de concorrência de quotas/concessões, deduplicação com resposta perdida, poda e exclusão retomável, alarme repetido, cron sobreposto, fila com 429, vínculo Telegram roubado/expirado, isolamento entre donos e ausência de dados privados no DTO público. Cobrança só em sandbox, provedores de aviso simulados nos testes. Rodar os gates de Cloud e dos módulos Go afetados; esta entrega documental não executa uma homologação inexistente.
 
-## 16. Decisões ainda necessárias
+## 16. Decisões aprovadas e pendências restantes
 
-1. Valores e moedas de `max_status` e `ultra_status`, mensal/anual, margem diante das checagens e limite de contas no piloto. Nenhum valor novo foi aprovado nesta spec.
-2. Confirmar as cotas ajustáveis do dono, mês civil UTC, tetos de bytes por projeto, pico, cooldown e quantidade de destinos propostos.
-3. Endereço público padrão das páginas de status, zona/CNAME para domínio próprio Ultra e quando esse domínio entra na oferta pública. Recomendação: separar do domínio que compartilha cookies de login.
-4. Desligamento do switch e reduções no fim do período, ou troca imediata com crédito proporcional; carência, seleção de recursos retidos e duração da leitura após perda do direito.
-5. Nome público do bot Telegram e responsável operacional pelo token, canal de suporte e recuperação de destinos inválidos.
-6. Se a cortesia Ultra do dono inclui Status. Hoje a cortesia é `ultra`; não inferir que concede uma variante nova ou cota ilimitada para monitorar o próprio Blup.
-7. Texto do aceite de erros do Studio e atualização das páginas institucionais de privacidade/termos, incluindo Discord/Telegram e a política de backups/recuperação diante do teto de 90 dias.
-8. Escopo exato da promessa mobile no lançamento. Sem symbolication/minidump, anunciar só os erros JSON realmente homologados.
+As definições abaixo incorporam a atualização do dono e o alinhamento técnico de implementação da Lupa.
 
-Essas pendências não impedem revisar a arquitetura, produzir fixtures e implementar o núcleo em ambiente isolado. Impedem tratar preços, domínio público e compatibilidade ampla como compromissos já entregues.
+| Assunto | Definição fechada |
+| --- | --- |
+| Produto e planos | Blup Pulse; variantes `max_pulse` e `ultra_pulse`, sempre com todos os direitos do plano-base e uma assinatura por pessoa |
+| Hosts | Painel `pulse.getblup.io`, ingestão `ingest.getblup.io`, páginas públicas `pulse.getblup.site/<nome>`; Ultra com domínio próprio via Cloudflare for SaaS |
+| Preços | Max + Pulse R$ 49,90/mês ou R$ 499/ano; Ultra + Pulse R$ 129,90/mês ou R$ 1.299/ano; anual equivalente a dez mensalidades |
+| Monitoramento | Max a cada 5 minutos; Ultra a cada 2; marcar indisponível após 2 falhas consecutivas |
+| Desligamento | Direito mantido até o fim do período pago; depois 14 dias só para leitura e apagamento, sem renovar retenção de eventos |
+| Cortesia | O dono recebe Pulse com os limites de Ultra + Pulse |
+| Telegram | Nome adotado `@BlupPulseBot`, sujeito à criação/configuração operacional |
+| Celular | No lançamento, em teste; promessa comercial cobre sites, servidores e aplicativo de computador |
+| Outras definições | Cotas e limites técnicos mantidos como propostos, mês civil UTC, retenção de 30/90 dias e aceite/privacidade do Studio |
+| Login e organização | Login central Cloud com cookie restrito ao host, CORS exato, API em `cloud/worker/pulse`, DO por projeto e painel próprio em `cloud/pulse` |
+
+As pendências restantes são operacionais e de homologação:
+
+1. Definir tamanho do piloto, orçamento global e gatilhos de corte/alerta, usando medições de CPU, SQLite, avisos e acessos públicos para completar a margem.
+2. Criar e conferir os Prices/lookup keys, configurar DNS, fallback origin/CNAME, Cloudflare for SaaS, certificados e reserva do hostname público. O endereço e os preços estão definidos; o provisionamento precisa ser executado.
+3. Criar/configurar o bot adotado e guardar suas credenciais e o segredo de webhook fora do repositório, com responsável operacional e canal de suporte.
+4. Finalizar e publicar o texto do aceite e as políticas institucionais, inclusive como backups/recuperação do provedor se relacionam com retenção e apagamento.
+5. Publicar a matriz de versões SDK realmente homologadas e validar o fluxo de pagamento, SSO, monitores e exclusão em cada fase. A classificação mobile continua em teste até essa homologação.
+
+Essas pendências não reabrem nome, preços, intervalo Ultra, cortesia ou política de desligamento. O produto continua em implementação por fases; os handoffs de cada fase devem atualizar o contrato efetivamente entregue.
