@@ -6,7 +6,7 @@
 
 	// Every error page: a Blup drawing, what happened in plain words and the
 	// way out. Without internet the browser says so before any status does.
-	const drawings = import.meta.glob("../lib/assets/erros/*.svg", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+	const drawings = import.meta.glob<string>("../lib/assets/erros/*.svg", { query: "?raw", import: "default", eager: true });
 	const drawing = (name: string) => drawings[`../lib/assets/erros/${name}.svg`] ?? drawings["../lib/assets/erros/generico.svg"] ?? "";
 
 	type Kind = { title: string; text: string; art: string; retry?: boolean };

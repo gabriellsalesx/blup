@@ -42,9 +42,11 @@ O cron local pode ser invocado pelo endpoint da versão do Wrangler instalada. A
 
 ## Conta, planos e dados
 
+O ID da conta aparece com botão de copiar na tela Conta e no detalhe da staff; ele não é segredo. A ajuda é: “Em caso de ajuda, informe seu ID.” Na lista da staff, contas sem e-mail mostram o ID curto copiável. Uma conta só com passkey recebe o aviso discreto para ligar um e-mail, com acesso ao diálogo existente, sem obrigação.
+
 A conta pode nascer com passkey sem e-mail; um endereço técnico `.invalid` atende ao formato exigido pelo auth. E-mail real vinculado é necessário para assinar. Cadastro grátis não cria Customer no Stripe. O Studio entra por aprovação de aparelho em `/aparelho`; os limites contam sessões marcadas pelo servidor ao resgatar uma aprovação de aparelho; o User-Agent serve apenas como nome de exibição.
 
-Planos, preços e lookup keys ficam em `worker/plans.ts`. Grátis permite 50 MiB, um aparelho e sync pelo botão. Pro, Max e Ultra têm sync ao vivo, histórico, IA e, respectivamente, um, cinco e dez sites. Notas, histórico e sites compartilham o armazenamento. Max tem 50 e Ultra 100 lembretes por e-mail por mês UTC. A [tabela completa](../docs/spec/blup-cloud-sync.md#planos-executados) detalha os limites. Free/Pro permitem arquivos de 10/25 MiB e Max/Ultra de 100 MiB; o texto comercial usa MB. Cada conta tem no máximo 50 cofres. Max/Ultra podem vincular um domínio próprio por site, junto com o endereço getblup.site.
+Limites, benefícios e lookup keys ficam em `worker/plans.ts`. Os preços exibidos vêm dos Prices ativos do Stripe, inclusive os anuais, por `worker/pricing.ts`. Grátis permite 50 MiB, um aparelho e sync pelo botão. Pro, Max e Ultra têm sync ao vivo, histórico, IA e, respectivamente, um, cinco e dez sites. Notas, histórico e sites compartilham o armazenamento. Max tem 50 e Ultra 100 lembretes por e-mail por mês UTC. A [tabela completa](../docs/spec/blup-cloud-sync.md#planos-executados) detalha os limites. Free/Pro permitem arquivos de 10/25 MiB e Max/Ultra de 100 MiB; o texto comercial usa MB. Cada conta tem no máximo 50 cofres. Max/Ultra podem vincular um domínio próprio por site, junto com o endereço getblup.site.
 
 O sync recebe nomes, blocos e manifestos cifrados pelo computador. A conta guarda embrulhos da chave e metadados, sem a senha de notas. Conteúdo enviado à IA é outro fluxo: precisa ser legível para processamento remoto. Lembretes recebem somente ID opaco e instante; o e-mail é genérico. Sites publicados são públicos e são servidos em `nome.getblup.site` pelo segundo Worker.
 
@@ -52,9 +54,9 @@ O sync recebe nomes, blocos e manifestos cifrados pelo computador. A conta guard
 
 Em produção, `cloud.getblup.io` atende a conta e `staff.getblup.io` atende a equipe com Access no host inteiro. A API revalida JWT e papel. `STAFF_OWNER_EMAIL` é secret e faz o bootstrap do admin; a cortesia Ultra requer o e-mail correspondente verificado. `STAFF_DEV_EMAIL` só serve ao ambiente local e não deve ser cadastrado em produção.
 
-Cobrança usa preços por lookup key, checkout/portal hospedados pelo Stripe e webhook assinado em `/api/auth/stripe/webhook`. `scripts/stripe-setup.ts` prepara produtos/preços no ambiente escolhido e avisa sobre divergências. A conta de operação configura sandbox e produção separadamente, com os eventos e permissões descritos em [deploy](../docs/deploy.md#6-stripe-de-produção). Não há segredo Stripe no painel estático.
+Cobrança usa preços por lookup key, checkout/portal hospedados pelo Stripe e webhook assinado em `/api/auth/stripe/webhook`. `scripts/stripe-setup.ts` apenas confere, por leitura, os seis lookup keys no ambiente escolhido. Não cria nem altera produtos ou preços. A conta de operação configura sandbox e produção separadamente, com os eventos e permissões descritos em [deploy](../docs/deploy.md#6-stripe-de-produção). Não há segredo Stripe no painel estático.
 
-Cron de cinco minutos processa até 100 lembretes, reservas expiradas, limpeza adiada de publicação, cancelamento de cobrança e avisos de downgrade. E-mail com falha pode ser tentado até três vezes, em rodadas posteriores; só o envio aceito pelo serviço entra na cota de 50/100 por mês UTC. Isso não garante entrega na caixa de entrada. O cron diário às 04:00 UTC rareia histórico, limpa blocos e registros antigos de lembretes em lotes e executa purgas vencidas de contas.
+Cron de cinco minutos processa até 100 lembretes, reservas expiradas, limpeza adiada de publicação, cancelamento de cobrança e avisos de downgrade. Sem e-mail real, o lembrete é marcado como pulado (`sent_at=0`), sem tentativa nem cota; `GET /api/reminders` informa `emailMissing:boolean`. E-mail com falha pode ser tentado até três vezes, em rodadas posteriores; só o envio aceito pelo serviço entra na cota de 50/100 por mês UTC. Isso não garante entrega na caixa de entrada. O cron diário às 04:00 UTC rareia histórico, limpa blocos e registros antigos de lembretes em lotes e executa purgas vencidas de contas.
 
 ## Checks e mudanças de esquema
 
@@ -83,7 +85,7 @@ No downgrade para Pro, o painel e o e-mail pedem qual site deve ficar. `GET /api
 
 O uso é o total de blocos, manifestos, histórico e sites. `GET /api/me` acrescenta em `usage`: `storageLimitBytes` (novo limite), `storageGraceUntil: string|null` (ISO UTC), `storageGraceLimitBytes: number|null` (limite durante a carência) e `historyBytes: number|null`. Histórico desconhecido por trava ativa ou metadados antigos indisponíveis retorna null, sem inventar zero. O aviso por e-mail informa usado, novo limite e data. Não apagamos dados por excesso de armazenamento.
 
-Depois da carência, uma operação que não aumenta o saldo líquido continua permitida acima da cota. Como exceção aprovada, versão sem blocos novos sempre passa, mesmo se o manifesto cifrado acrescentar alguns bytes; esses bytes continuam registrados no uso real. Crédito de substituição só inclui versões que a política `historyDays` permite remover e blocos que nenhum cofre ou versão retida usa.
+Depois da carência, uma operação que não aumenta o saldo líquido continua permitida acima da cota. Acima do limite efetivo, a exceção para uma versão sem blocos novos exige que seu manifesto cifrado tenha no máximo o tamanho real do manifesto do head mais 4096 bytes. O tamanho vem do R2, sem confiar em um número do cliente. A folga de 4 KiB comporta pequenas mudanças de nomes e metadados, mas impede aumentar o uso sem limite por manifestos inflados. Uma exclusão que reduz o manifesto passa; exceder essa folga retorna `413 QUOTA`. Abaixo do limite e durante a carência vale a reserva normal, com o limite efetivo aplicável. Todos os bytes aceitos continuam registrados no uso real. Crédito de substituição só inclui versões que a política `historyDays` permite remover e blocos que nenhum cofre ou versão retida usa.
 
 O protocolo antigo continua aceito. Para enviar uma substituição acima da cota:
 
@@ -132,18 +134,82 @@ A [documentação Workers Cache](https://developers.cloudflare.com/workers/cache
 
 `ABUSE_LIMIT`: 120/min por conta e por IP para IA, criação de site/cofre, domínio, check de slug, lembretes PUT, escolha de site, preparação/purga de histórico e remoção de site. `BULK_LIMIT`: 500/10 s por conta para uploads, missing, deploys, blocos/manifestos e downloads da sync. Ao negar, ambos retornam `429 TOO_MANY_REQUESTS` e `Retry-After` de 60 ou 10 segundos, respectivamente. A Cloudflare aplica esses limitadores por localização; as cotas financeiras e de armazenamento continuam no D1, que é a autoridade global.
 
-JSON geral: 96 KiB. Metadados de publicação: 8 MiB. Multipart de versão: 34 MiB, com manifesto cifrado de até 32 MiB. Bloco: 4 MiB mais 64 bytes. Arquivo de site: até o limite do plano, no máximo 100 MiB. O servidor verifica Content-Length antes de receber e conta os bytes durante a leitura. Upload de arquivo maior que 4 MiB precisa informar Content-Length. Arquivos grandes são processados em fluxo, com digest incremental e staging R2; a validação não carrega o arquivo todo no isolate de 128 MiB. Staging e cópia final acrescentam operações R2, consideradas no orçamento.
+JSON geral: 96 KiB; webhook Stripe assinado: 1 MiB. Metadados de publicação: 8 MiB. Multipart de versão: 34 MiB, com manifesto cifrado de até 32 MiB. Bloco: 4 MiB mais 64 bytes. Arquivo de site: até o limite do plano, no máximo 100 MiB. O servidor verifica Content-Length antes de receber e conta os bytes durante a leitura. Upload de arquivo maior que 4 MiB precisa informar Content-Length. Arquivos grandes são processados em fluxo, com digest incremental e staging R2; a validação não carrega o arquivo todo no isolate de 128 MiB. Staging e cópia final acrescentam operações R2, consideradas no orçamento.
 
 O painel usa `hc<AppType>` e `InferResponseType`. `worker/export-rpc.mjs` emite `src/lib/rpc.d.ts` diretamente da cadeia completa de rotas Hono, antes do check/build. Não edite a declaração gerada. Isso mantém os tipos JSON sem importar os globais do runtime Worker para o DOM do painel.
 
 ## Antes de publicar
 
-- Aplicar de 0000 até `0011_carencias_e_sync_transacional.sql`, gerada com drizzle-kit, antes do novo Worker. As migrações anteriores permanecem intactas. Em atualização de instalação já usada, revogar as sessões antigas do Studio que ainda não receberam marca de aparelho e pedir novo login.
+- Em instalação nova, aplicar de 0000 até `0013_webhook_stripe_atual.sql` antes do novo Worker. As migrações 0012 e 0013 foram geradas com drizzle-kit, sem alterar as anteriores. A 0012 remove os campos sem uso `previous_key` e `disabled_at`; a 0013 cria recibos de webhook e índice da assinatura Stripe. Em instalação já usada, preparar primeiro as migrações aditivas e publicar o código que não usa os campos removidos antes de aplicar a 0012: o Worker antigo ainda os escrevia. Planejar essa atualização com janela de manutenção se a ordem padrão das migrações impedir separar as etapas. Em atualização de instalação já usada, revogar as sessões antigas do Studio que ainda não receberam marca de aparelho e pedir novo login.
 - Substituir o ID de D1 fictício nas duas configurações, preparar R2, Durable Object e crons e conferir todos os segredos do [guia de deploy](../docs/deploy.md). Configurar os bindings `OTP_LIMIT`, `ABUSE_LIMIT` e `BULK_LIMIT` no ambiente de produção.
-- Configurar Access no host inteiro da staff, Turnstile real, Email Service com remetente permitido, Stripe/webhook de produção e chaves de IA. `EMAIL_MODE` de produção deve ser send. Não copiar `.dev.vars` local para produção.
+- Configurar Access no host inteiro da staff, Turnstile real, Email Service com Email Sending habilitado, domínio remetente verificado e conta Workers Paid para enviar a destinatários arbitrários, Stripe/webhook de produção e chaves de IA. `EMAIL_MODE` de produção deve ser send. Não copiar `.dev.vars` local para produção.
 - Para domínio próprio, habilitar Cloudflare for SaaS na zona dos sites. Cadastrar o secret `CF_API_TOKEN` com permissão SSL and Certificates Write apenas nessa zona e a var `CF_ZONE_ID`. Informar `SITES_CNAME_TARGET` com o CNAME público do serviço. Sem isso, a API retorna `DOMAIN_UNAVAILABLE`.
 - Preparar o fallback origin e o CNAME target com DNS proxied. `wrangler.sites.jsonc` usa a rota `*/*` na zona getblup.site para alcançar também Custom Hostnames, conforme a [documentação Cloudflare](https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/start/advanced-settings/worker-as-origin/). Conferir se algum outro serviço dessa zona precisa de rota de exclusão. Isso não altera a zona getblup.io do painel.
 - Se usar a cortesia do dono sem assinatura Stripe, cadastrar `STAFF_OWNER_EMAIL` como secret também no Worker dos sites. Ambos precisam reconhecer a mesma conta verificada. Nenhum valor de segredo fica neste repositório.
 - Criar alerta de gasto da conta no painel Cloudflare, em Manage Account > Billing > Billable Usage > Create budget alert, escolhendo valor e destinatário aprovados pelo dono. Também é possível abrir esse fluxo pelo resumo de gastos de Workers, D1 e R2. É um aviso por e-mail, sem bloqueio automático de gastos. A [documentação de orçamento](https://developers.cloudflare.com/billing/manage/budget-alerts/) distingue alerta financeiro e notificações por métrica. Acompanhar linhas lidas/escritas D1, operações e armazenamento R2, requests/CPU Workers, e-mails e hostnames provisionados.
 - Provisionar primeiro o Worker dos sites e o binding `SITE_CACHE` para o entrypoint `CachedSite` do Worker correspondente (produção: `blup-sites-production`). Não expor esse entrypoint diretamente por rota pública. Conferir Early Hints da zona, certificado, TXT, CNAME e as purgas em staging.
 - Rodar check, testes e build; testar o fluxo completo em staging com serviços simulados ou sandbox antes de habilitar produção. Esta rodada não publicou nada e não consultou credenciais, DNS ou contas de produção para marcar esses itens como feitos.
+
+## Preços administrados no Stripe
+
+`GET /api/plans` retorna `prices.monthly` e `prices.yearly`, cada um como `{unitAmount,currency}` ou `null`. `unitAmount` segue as unidades menores do Stripe; o painel respeita moedas sem casas decimais e as exceções da API. O plano Grátis não depende de Price. Um período sem preço válido fica sem valor exibido e com compra desabilitada; a API também nega esse checkout com `503 PRICING_UNAVAILABLE`.
+
+O catálogo consulta `prices.list` com `active`, os seis `lookup_keys` e expansão de `data.product`, com validação Zod do produto, moeda, valor inteiro não negativo, recorrência e período. Os valores ficam por dez minutos na memória de cada isolate, sem binding novo. Requisições simultâneas compartilham a atualização. Se o Stripe falhar ou devolver uma lista inválida, permanece o último catálogo bom daquele isolate e a próxima tentativa espera trinta segundos. Um isolate novo sem valor bom retorna preços indisponíveis. Um preço removido ou inválido numa lista válida fica indisponível, sem ressuscitar seu valor antigo. Não existe garantia de cache compartilhado entre regiões ou após reinício.
+
+Para mudar um preço sem alterar código:
+
+1. Comece no sandbox. Abra o Product correspondente a Pro, Max ou Ultra no Dashboard Stripe e configure `metadata.blup_plan` como `pro`, `max` ou `ultra`. Também pode usar essa metadata no Price. Ela é necessária para reconhecer Prices antigos após a transferência do lookup key; não a remova de produtos com assinaturas existentes.
+2. Crie um novo Price ativo no mesmo Product, com valor, moeda e recorrência corretos: mês ou ano, intervalo 1, preço fixo por unidade. O valor de um Price existente é imutável. A mudança anual é independente da mensal.
+3. Atribua ao novo Price o lookup key correspondente: `blup_pro_mensal`, `blup_pro_anual`, `blup_max_mensal`, `blup_max_anual`, `blup_ultra_mensal` ou `blup_ultra_anual`. Se a ferramenta do Dashboard não oferecer a transferência, use a API ou o Workbench oficial do Stripe ao criar/atualizar o Price com `lookup_key` e `transfer_lookup_key=true`. A transferência tira a key do Price antigo e a coloca no novo, sem gravar chave privada em comando compartilhado, log ou arquivo público.
+4. Confira os produtos e preços permitidos na configuração do Customer Portal. Não arquive um Price antigo antes de avaliar o efeito sobre cobranças, Portal e migrações em andamento.
+5. Rode `npm run stripe:setup` com a chave do sandbox fornecida pelo ambiente privado. O script só lê e lista disponibilidade, valor e moeda dos lookup keys. Aguarde até dez minutos por isolate e confira o painel e o Checkout no sandbox. Não existe desconto anual presumido no código.
+6. Repita a configuração no ambiente de produção somente após aprovação e validação operacional. A mudança de preço não exige deploy do Blup Cloud. Alterar limites, benefícios ou acrescentar um plano exige mudar `worker/plans.ts`, acompanhar tipagem/testes e publicar código.
+
+Assinaturas existentes continuam vinculadas ao Price ID antigo; transferir a lookup key não troca seu valor. Para migrá-las, o operador precisa atualizar explicitamente os itens da assinatura ou criar uma alteração agendada no Stripe. Escolha e comunique a data, as regras de proporcionalidade e a cobrança antes de migrar. O plugin usa `create_prorations` por padrão nas mudanças imediatas de plano; a configuração do Customer Portal e eventuais schedules também determinam quando a mudança produz efeito. Este script não migra clientes nem cobra valores. Referências: [gerenciar preços](https://docs.stripe.com/products-prices/manage-prices), [listar lookup keys](https://docs.stripe.com/api/prices/list), [alterar preços de assinaturas](https://docs.stripe.com/billing/subscriptions/change-price) e [proporcionalidade](https://docs.stripe.com/billing/subscriptions/prorations).
+
+### Webhook de cobrança
+
+O SDK instalado é Stripe 23.1.0, com versão de API fixada em `2026-10-28.endive`; Better Auth e seus plugins estão no lockfile em 1.7.14. Configure o endpoint `POST /api/auth/stripe/webhook` com assinatura e eventos snapshot dessa versão. O Worker verifica o corpo bruto com `constructEventAsync`, o tempo da assinatura e a separação sandbox/produção. Não confia no status, preço, cliente nem valores do snapshot: consulta o objeto atual no Stripe e, para eventos de assinatura, checkout e invoice, busca a assinatura atual com `subscriptions.retrieve`, expandindo `items.data.price.product`. `lookup_key` já pertence ao Price e não é um campo expansível separado.
+
+Eventos de assinatura usam `customer.subscription.*`; checkout usa os eventos de conclusão, pagamento assíncrono e expiração necessários ao fluxo; invoices incluem pagamentos e falhas. Registre pelo menos `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `invoice.paid` e `invoice.payment_failed`. Para o histórico financeiro da staff, inclua também `charge.refunded`, `charge.dispute.created` e `radar.early_fraud_warning.created`. Só habilite os tipos realmente usados; configurar todos aumenta consultas e custo sem benefício.
+
+Uma lease por assinatura serializa consulta e gravação, e outra por event.id evita processamento simultâneo da mesma entrega. Uma lease por conta também protege a adoção da linha pendente do Checkout quando duas assinaturas distintas apontam para a mesma referência; uma nunca sobrescreve a outra. Estado, registro financeiro e recibo são gravados na mesma transação D1, condicionada à posse das leases. Trava ocupada, estado inválido ou falha de API retorna 503 com `Retry-After: 1`; o Stripe pode reenviar. `event.created` não serve como ordenação. Evento velho apenas reaplica o estado atual, e uma assinatura cancelada não cancela outra da mesma conta. A identificação do dono cruza o Customer atual com a conta e as referências internas, sem ressuscitar conta apagada.
+
+Os caminhos `/stripe/webhook` e `/subscription/success` do plugin foram desabilitados com `disabledPaths`. A rota pública do webhook é atendida pelo Worker, e a volta do Checkout apenas redireciona para uma URL da origem do painel, sem escrever estado. As demais operações de Checkout/Portal continuam no plugin. A confirmação de pagamento na interface aguarda a confirmação assíncrona, sem prometer plano ativo pelo parâmetro da URL.
+
+Recibos de eventos tornam-se elegíveis para remoção após noventa dias, com limpeza diária indexada em lotes de até 500; uma fila grande pode atrasar a remoção. A purga de uma conta remove os recibos associados. O índice permite localizar os vencidos sem varrer todos os recibos. A unicidade do registro financeiro continua impedindo duplicação desse histórico. Depois da retenção, uma reentrega ainda consulta o estado atual. O endpoint não guarda payloads nem imprime dados de clientes em logs. A assinatura e os testes locais não substituem um teste de entrega real no sandbox antes de cobrar. Referências: [ordem, assinatura e reentrega](https://docs.stripe.com/webhooks), [consulta de assinatura](https://docs.stripe.com/api/subscriptions/retrieve) e [plugin Better Auth](https://better-auth.com/docs/plugins/stripe).
+
+## Variáveis, secrets e bindings
+
+Valores reais ficam fora do repositório. O mesmo nome pode ter valores diferentes em desenvolvimento e produção.
+
+| Var pública ou operacional | Uso |
+| --- | --- |
+| `APP_URL` | Origem oficial do painel, URLs do auth, cookies e origens confiáveis |
+| `PASSKEY_RP_ID` | RP ID das passkeys; precisa combinar com o domínio e a origem |
+| `MAIL_FROM` | Nome e endereço remetente autorizados no Email Sending |
+| `TURNSTILE_SITE_KEY` | Chave pública do widget; trocar a de teste em produção |
+| `EMAIL_MODE` | `log` local ou `send` produção; log local pode conter OTP |
+| `STAFF_HOST` | Host exclusivo da staff, protegido por Access |
+| `OPENROUTER_URL` | Vazio usa o provedor oficial; substituição só em testes controlados |
+| `SITES_DOMAIN` | Sufixo dos sites; normalmente getblup.site |
+| `CF_ZONE_ID` | ID da zona Cloudflare for SaaS dos sites |
+| `SITES_CNAME_TARGET` | Destino CNAME público informado para domínios próprios |
+
+| Secret | Uso |
+| --- | --- |
+| `BETTER_AUTH_SECRET` | Assinatura e proteção dos dados de autenticação |
+| `TURNSTILE_SECRET_KEY` | Verificação do captcha no servidor |
+| `STRIPE_SECRET_KEY` | Leitura do catálogo/assinaturas e operações de Customer, Checkout, Portal e assinatura; separar sandbox/produção e limitar permissões |
+| `STRIPE_WEBHOOK_SECRET` | Verificação da assinatura do endpoint daquele ambiente |
+| `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` | Emissor e audience exigidos no JWT do Cloudflare Access da staff |
+| `STAFF_OWNER_EMAIL` | Bootstrap de admin e cortesia Ultra para a conta com e-mail verificado; também no Worker dos sites |
+| `STAFF_DEV_EMAIL` | Atalho somente local; não configurar em produção |
+| `OPENROUTER_API_KEY` | Autorização das chamadas de IA |
+| `CF_API_TOKEN` | API de Custom Hostnames, SSL and Certificates Write limitada à zona dos sites |
+
+`CLOUDFLARE_API_TOKEN`, quando usado pelo processo de publicação, é uma credencial operacional do Wrangler e não é a credencial `CF_API_TOKEN` do Worker. O catálogo de preços precisa de leitura de Prices e Products; o webhook precisa de leitura de subscriptions, invoices, checkout sessions e dos objetos financeiros registrados. Uma chave restrita deve cobrir também as operações que Checkout/Portal e a exclusão de conta executam.
+
+Bindings: `DB` é D1 compartilhado pelos Workers; `NOTES` e `SITES` são R2 separados; `EMAIL` é Email Sending; `OTP_LIMIT` limita OTP/cadastro; `ABUSE_LIMIT` e `BULK_LIMIT` limitam controle e transferência; `SYNC_LIVE` é o Durable Object de sync; `SITE_CACHE` alcança o entrypoint de cache dos sites; `ASSETS` serve o painel compilado. Não foi acrescentado KV nem outro binding para preços.
+
+Enviar e-mails a destinatários arbitrários exige Email Sending habilitado, domínio autorizado e Workers Paid, conforme a [documentação do Email Service](https://developers.cloudflare.com/email-service/). Não confundir isso com encaminhamento do Email Routing para um destinatário verificado. Confirme cotas, aprovação do serviço e DNS antes de habilitar OTP ou lembretes em produção.

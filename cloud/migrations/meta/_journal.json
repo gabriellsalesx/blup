@@ -85,6 +85,20 @@
       "when": 1793625145375,
       "tag": "0011_carencias_e_sync_transacional",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1793631971059,
+      "tag": "0012_remover_estado_sem_uso",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1793634186708,
+      "tag": "0013_webhook_stripe_atual",
+      "breakpoints": true
     }
   ]
 }

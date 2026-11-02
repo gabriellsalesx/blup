@@ -3,7 +3,7 @@
 // app (ConfirmHost in the root layout). `typeToConfirm` asks to type a word
 // (or the e-mail) first, for the gravest actions.
 
-export type ConfirmOptions = {
+type ConfirmOptions = {
 	title: string;
 	message: string;
 	confirmLabel?: string;

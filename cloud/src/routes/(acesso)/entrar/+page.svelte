@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { api } from "#lib/api.ts";
 	import { goto } from "$app/navigation";
 	import Mail from "@lucide/svelte/icons/mail";
 	import Fingerprint from "@lucide/svelte/icons/fingerprint-pattern";
@@ -21,7 +22,7 @@
 	function turnstile(el: HTMLDivElement) {
 		let gone = false;
 		let ts: Awaited<ReturnType<typeof loadTurnstile>> | undefined;
-		Promise.all([fetch("/api/config").then((r) => r.json() as Promise<{ turnstileSiteKey: string }>), loadTurnstile()])
+		Promise.all([api.config(), loadTurnstile()])
 			.then(([cfg, t]) => {
 				if (gone) return;
 				ts = t;

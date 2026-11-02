@@ -1,10 +1,12 @@
+import { hasEmail } from "./auth-options";
+import { user } from "./db/schema";
 import { accountAllowed } from "./lifecycle";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { and, asc, eq, isNull, lte } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { validate } from "./validation";
 import { auth, db } from "./auth";
-import { reminder, reminderMonth, user } from "./db/schema";
+import { reminderMonth } from "./db/schema";
 import { planOf } from "./account";
 import { sendReminder } from "./email";
 import { DAY, LATE, keep, listSchema, monthOf } from "./reminder-rules";
@@ -36,7 +38,8 @@ export const remindersApi = new Hono<App>()
 	.get("/", async (c) => {
 		const userId = c.get("userId");
 		const [plan, used] = await Promise.all([planOf(userId), usedThisMonth(userId, Date.now())]);
-		return c.json({ limit: plan.limits.reminderEmails, used });
+		const [account]=await db.select({email:user.email}).from(user).where(eq(user.id,userId)).limit(1);
+		return c.json({ limit: plan.limits.reminderEmails, used,emailMissing:!account||!hasEmail(account.email) });
 	})
 
 	// The reminders to come, replacing the ones not sent yet.
@@ -74,7 +77,7 @@ export async function sendDue(env:Cloudflare.Env,now=Date.now()) {
  for(const r of due.results){
   let limit=plans.get(r.userId);
   if(limit===undefined){limit=(await planOf(r.userId)).limits.reminderEmails;plans.set(r.userId,limit);}
-  if(!limit || now-r.sendAt>LATE || r.attempts>=3){await env.DB.prepare("UPDATE reminder SET sent_at=0 WHERE user_id=? AND id=? AND claim IS NULL").bind(r.userId,r.id).run();continue;}
+  if(!hasEmail(r.email) || !limit || now-r.sendAt>LATE || r.attempts>=3){await env.DB.prepare("UPDATE reminder SET sent_at=0 WHERE user_id=? AND id=? AND claim IS NULL").bind(r.userId,r.id).run();continue;}
   const month=monthOf(now),claim=`${month}:${crypto.randomUUID()}`;
   await env.DB.prepare("INSERT OR IGNORE INTO reminder_month(user_id,month) VALUES (?,?)").bind(r.userId,month).run();
   const claimed=await env.DB.batch([

@@ -87,6 +87,7 @@ export const staffApi = new Hono<App>()
 	// How many accounts, per plan. Counting reads every account, so the
 	// answer is kept 5 minutes in the Worker's cache (free, per data center).
 	.get("/stats", async (c) => {
+		c.header("Cache-Control","no-store");
 		const key = new Request(new URL("/api/staff/stats?cache", c.req.url));
 		const hit = await caches.default.match(key);
 		if (hit) return c.json(statsSchema.parse(await hit.json()),200);
@@ -104,8 +105,8 @@ export const staffApi = new Hono<App>()
 			banned,
 			plans: [{ name: "free", label: planNamed("free").label, count: total - paying }, ...paid.map((p) => ({ name: p.plan, label: planNamed(p.plan).label, count: p.n }))],
 		});
-		res.headers.set("Cache-Control", "max-age=300");
-		c.executionCtx.waitUntil(caches.default.put(key, res.clone()));
+		const cached=res.clone();cached.headers.set("Cache-Control","max-age=300");
+		c.executionCtx.waitUntil(caches.default.put(key,cached));
 		return res;
 	})
 
@@ -177,6 +178,7 @@ export const staffApi = new Hono<App>()
 	.post("/users/:id/sessions/revoke", validate("param",idParam), async (c) => {
 		const id = c.req.param("id");
 		const gone = await db.delete(session).where(eq(session.userId, id)).returning({ id: session.id });
+		await c.env.SYNC_LIVE.getByName(id).revoke();
 		await log(c.get("staff").email, "sessions.revoke", id, `${gone.length} sessões`);
 		return c.json({ revoked: gone.length });
 	})
@@ -196,6 +198,7 @@ export const staffApi = new Hono<App>()
 		await db.update(user).set({ banned: true, banReason: reason }).where(eq(user.id, id));
 		await queueAccountPurge(c.env.DB,id).run();
 		await db.delete(session).where(eq(session.userId, id));
+		await c.env.SYNC_LIVE.getByName(id).revoke();
 		await log(c.get("staff").email, "user.ban", id, reason);
 		return c.json({ ok: true });
 	})

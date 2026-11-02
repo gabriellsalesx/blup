@@ -1,8 +1,8 @@
 // Blup Cloud's plans. Prices live in Stripe and are found by lookup key
-// (scripts/stripe-setup.ts creates them), so no Stripe ID is kept here.
+// (scripts/stripe-setup.ts checks them), so no Stripe ID is kept here.
 // A limit of -1 means no limit.
 
-// Every plan syncs any number of folders of notes (vaults).
+// Every account can sync up to 50 folders of notes (vaults).
 // storageMB: notes in the cloud, old versions included. maxFileMB: larger
 // files are not synced (the Studio says so). sites: sites published and
 // hosted by Blup (not the vaults).
@@ -27,26 +27,18 @@ export type Limits = {
 };
 
 export type Plan = {
-	name: string; // as Better Auth stores it (lowercase)
+	name: "free" | "pro" | "max" | "ultra"; // as Better Auth stores it
 	label: string;
-	// In reais: Stripe's Adaptive Pricing shows and charges it in the
-	// customer's currency abroad (it only converts from the account's own
-	// currency). The yearly price is ten months: two months free.
-	priceCents: number; // per month
-	yearlyCents: number; // per year
-	currency: "brl";
 	lookupKey?: string; // the Stripe monthly price (paid plans only)
 	yearlyLookupKey?: string; // the Stripe yearly price
 	limits: Limits;
 	perks: string[];
 };
 
-export const FREE: Plan = {
+const FREE: Plan = {
 	name: "free",
 	label: "Grátis",
-	priceCents: 0,
-	yearlyCents: 0,
-	currency: "brl",
+
 	limits: { storageMB: 50, maxFileMB: 10, sites: 0, customDomain: false, devices: 1, live: false, historyDays: 0, aiUsage: 0, reminderEmails: 0 },
 	perks: ["50 MB de notas, sincronizadas pelo botão", "1 computador conectado", "Arquivos de até 10 MB", "Criptografia de ponta a ponta"],
 };
@@ -56,9 +48,7 @@ export const PLANS: Plan[] = [
 	{
 		name: "pro",
 		label: "Pro",
-		priceCents: 1490,
-		yearlyCents: 14900,
-		currency: "brl",
+
 		lookupKey: "blup_pro_mensal",
 		yearlyLookupKey: "blup_pro_anual",
 		limits: { storageMB: 1024, maxFileMB: 25, sites: 1, customDomain: false, devices: 2, live: true, historyDays: 30, aiUsage: 1, reminderEmails: 0 },
@@ -67,9 +57,7 @@ export const PLANS: Plan[] = [
 	{
 		name: "max",
 		label: "Max",
-		priceCents: 2990,
-		yearlyCents: 29900,
-		currency: "brl",
+
 		lookupKey: "blup_max_mensal",
 		yearlyLookupKey: "blup_max_anual",
 		limits: { storageMB: 10240, maxFileMB: 100, sites: 5, customDomain: true, devices: 3, live: true, historyDays: 365, aiUsage: 2, reminderEmails: 50 },
@@ -78,9 +66,7 @@ export const PLANS: Plan[] = [
 	{
 		name: "ultra",
 		label: "Ultra",
-		priceCents: 5990,
-		yearlyCents: 59900,
-		currency: "brl",
+
 		lookupKey: "blup_ultra_mensal",
 		yearlyLookupKey: "blup_ultra_anual",
 		limits: { storageMB: 51200, maxFileMB: 100, sites: 10, customDomain: true, devices: -1, live: true, historyDays: 365, aiUsage: 5, reminderEmails: 100 },

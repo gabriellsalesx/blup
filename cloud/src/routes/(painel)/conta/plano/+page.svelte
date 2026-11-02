@@ -12,7 +12,7 @@
 	// Stripe's own pages to pay and to manage the subscription.
 	let { data } = $props();
 	let busy = $state(false);
-	// Yearly: ten months' price for twelve.
+	// Monthly and annual amounts come from Stripe, independently.
 	let yearly = $state(false);
 	const current = $derived(data.me.plan);
 	const paid = $derived(current.name !== "free");
@@ -22,22 +22,28 @@
 
 	// Back from Stripe's checkout.
 	onMount(() => {
-		if (page.url.searchParams.get("assinatura") === "ok") toast(`Assinatura feita. Bem-vindo ao ${data.me.plan.label}!`);
+		if (page.url.searchParams.get("assinatura") === "ok") toast("Pagamento concluído. O plano será atualizado após a confirmação.");
 	});
 
 	async function subscribe(plan: string) {
+		const chosen=data.plans.find(p=>p.name===plan)?.prices[yearly?"yearly":"monthly"];
+		if(!chosen){toast("Preço indisponível agora. Tente novamente em instantes.",{kind:"error"});return;}
 		busy = true;
 		const back = `${location.origin}/conta/plano`;
-		const { error } = await authClient.subscription.upgrade({ plan, annual: yearly, successUrl: `${back}?assinatura=ok`, cancelUrl: back });
-		busy = false;
-		if (error) toast(message(error), { kind: "error" });
+		try{
+			const { error } = await authClient.subscription.upgrade({ plan, annual: yearly, successUrl: `${back}?assinatura=ok`, cancelUrl: back });
+			if (error) toast(message(error), { kind: "error" });
+		}catch{toast("Não deu para abrir o pagamento agora. Tente novamente.",{kind:"error"});}
+		finally{busy=false;}
 	}
 
 	async function manage() {
 		busy = true;
-		const { error } = await authClient.subscription.billingPortal({ returnUrl: `${location.origin}/conta/plano` });
-		busy = false;
-		if (error) toast(message(error), { kind: "error" });
+		try{
+			const { error } = await authClient.subscription.billingPortal({ returnUrl: `${location.origin}/conta/plano` });
+			if (error) toast(message(error), { kind: "error" });
+		}catch{toast("Não deu para abrir o pagamento agora. Tente novamente.",{kind:"error"});}
+		finally{busy=false;}
 	}
 </script>
 
@@ -46,30 +52,32 @@
 
 <div class="mt-8 inline-flex rounded-full border border-neutral-200 p-1 text-sm font-semibold dark:border-neutral-800" role="radiogroup" aria-label="Cobrança">
 	<button role="radio" aria-checked={!yearly} class="rounded-full px-4 py-1.5 {!yearly ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900' : 'text-neutral-500'}" onclick={() => (yearly = false)}>Mensal</button>
-	<button role="radio" aria-checked={yearly} class="rounded-full px-4 py-1.5 {yearly ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900' : 'text-neutral-500'}" onclick={() => (yearly = true)}>Anual <span class="font-normal {yearly ? '' : 'text-green-600'}">2 meses grátis</span></button>
+	<button role="radio" aria-checked={yearly} class="rounded-full px-4 py-1.5 {yearly ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900' : 'text-neutral-500'}" onclick={() => (yearly = true)}>Anual</button>
 </div>
 
 <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 	{#each data.plans as p (p.name)}
 		{@const mine = p.name === current.name}
+		{@const price = p.prices[yearly ? "yearly" : "monthly"]}
 		<div class="flex flex-col rounded-xl border p-5 {mine || (p.suggested && !paid) ? 'border-blup ring-1 ring-blup' : 'border-neutral-200 dark:border-neutral-800'}">
 			<div class="flex items-baseline justify-between gap-2">
 				<h2 class="font-semibold">{p.label}</h2>
 				{#if mine}<span class="rounded-full bg-blup/10 px-2 py-0.5 text-xs font-semibold text-blup">{gift ? "Cortesia" : "Seu plano"}</span>
 				{:else if p.suggested}<span class="rounded-full bg-blup px-2 py-0.5 text-xs font-semibold text-white">Mais escolhido</span>{/if}
 			</div>
-			{#if yearly && p.yearlyCents}
-				<p class="mt-1"><b class="text-2xl">{money(p.yearlyCents, p.currency)}</b> <span class="text-sm text-neutral-500">por ano</span></p>
-				<p class="text-sm text-neutral-500">{money(Math.round(p.yearlyCents / 12), p.currency)} por mês</p>
+			{#if p.name==="free"}
+				<p class="mt-1"><b class="text-2xl">Grátis</b></p>
+			{:else if price}
+				<p class="mt-1"><b class="text-2xl">{money(price.unitAmount,price.currency)}</b> <span class="text-sm text-neutral-500">{yearly?"por ano":"por mês"}</span></p>
 			{:else}
-				<p class="mt-1"><b class="text-2xl">{money(p.priceCents, p.currency)}</b> <span class="text-sm text-neutral-500">por mês</span></p>
+				<p class="mt-1 text-sm text-neutral-500">Preço indisponível agora. Tente novamente em instantes.</p>
 			{/if}
 			<ul class="mt-4 grid flex-1 content-start gap-1.5 text-sm">
 				{#each p.perks as perk (perk)}<li class="flex items-start gap-2"><Check class="mt-0.5 size-4 shrink-0 text-green-600" />{perk}</li>{/each}
 			</ul>
-			{#if !mine && p.priceCents && !paid}
+			{#if !mine && p.name!=="free" && !paid}
 				{#if data.me.email}
-					<Button class="mt-5" {busy} onclick={() => subscribe(p.name)}>Assinar o {p.label}</Button>
+					<Button class="mt-5" {busy} disabled={!price} onclick={() => subscribe(p.name)}>Assinar o {p.label}</Button>
 				{:else}
 					<p class="mt-5 text-sm text-neutral-500"><a class="font-semibold text-blup hover:underline" href="/conta">Vincule um e-mail</a> para assinar: é por ele que chegam os recibos.</p>
 				{/if}

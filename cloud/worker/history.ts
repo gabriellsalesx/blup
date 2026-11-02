@@ -4,7 +4,7 @@
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
-export type Version = { n: number; key: string; size: number; createdAt: Date };
+type Version = { n: number; key: string; size: number; createdAt: Date };
 
 // The versions to keep: the head, and the thinned history.
 export function thin(versions: Version[], historyDays: number, now: number): Set<number> {

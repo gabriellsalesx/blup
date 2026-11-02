@@ -14,7 +14,7 @@ export async function disableExpiredDomain(env:Cloudflare.Env,siteId:string,now=
 			await observePlan(env.DB,row.owner,plan.name,now);
 			return false;
 		}
-		const claimed=await env.DB.prepare("UPDATE site_domain SET status='disabled',disabled_at=coalesce(disabled_at,disable_at) WHERE site_id=? AND disable_at<=? RETURNING hostname,provider_id AS providerId,verified_at AS verifiedAt").bind(siteId,now).first<{hostname:string;providerId:string|null;verifiedAt:number|null}>();
+		const claimed=await env.DB.prepare("UPDATE site_domain SET status='disabled' WHERE site_id=? AND disable_at<=? RETURNING hostname,provider_id AS providerId,verified_at AS verifiedAt").bind(siteId,now).first<{hostname:string;providerId:string|null;verifiedAt:number|null}>();
 		if(!claimed)return false;
 		await queueSitePurge(env.DB,siteId).run();
 		// Keep the ID/proof until this succeeds, including a lost provider ID.

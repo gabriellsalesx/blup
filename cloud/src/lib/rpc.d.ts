@@ -16,11 +16,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $get: {
             input: {};
             output: {
-                name: string;
+                name: "free" | "pro" | "max" | "ultra";
                 label: string;
-                priceCents: number;
-                yearlyCents: number;
-                currency: "brl";
                 limits: {
                     storageMB: number;
                     maxFileMB: number;
@@ -34,6 +31,16 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
                 perks: string[];
                 suggested: boolean;
+                prices: {
+                    monthly: {
+                        unitAmount: number;
+                        currency: string;
+                    } | null;
+                    yearly: {
+                        unitAmount: number;
+                        currency: string;
+                    } | null;
+                };
             }[];
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;
@@ -65,7 +72,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 name: string;
                 createdAt: string;
                 plan: {
-                    name: string;
+                    name: "free" | "pro" | "max" | "ultra";
                     label: string;
                     limits: {
                         storageMB: number;
@@ -979,7 +986,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: string;
             };
             outputFormat: "json";
-            status: 500;
+            status: 409;
         } | {
             input: {
                 json: {
@@ -999,7 +1006,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: string;
             };
             outputFormat: "json";
-            status: 409;
+            status: 500;
         } | {
             input: {
                 json: {
@@ -2772,6 +2779,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 limit: number;
                 used: number;
+                emailMissing: boolean;
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;

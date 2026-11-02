@@ -33,7 +33,6 @@ const BLOCK_ID = /^[0-9a-f]{64}$/;
 // A block holds at most 4 MiB plus the seal (cloudcrypt.BlockSize).
 const MAX_BLOCK = 4 * 1024 * 1024 + 64;
 const MAX_MANIFEST = 32 * 1024 * 1024;
-const MB = 1024 * 1024;
 
 const signedIn = createMiddleware<App>(async (c, next) => {
 	const s = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -88,13 +87,13 @@ export const syncApi = new Hono<App>()
 		const { wrapped } = c.req.valid("json");
 		const a = await account(userId);
 		if (!a) {
-			await db.insert(syncAccount).values({ userId, wrappedKey: JSON.stringify(wrapped) }).onConflictDoNothing();
-			return c.json({ ok: true }, 201);
+			const inserted=await db.insert(syncAccount).values({ userId, wrappedKey: JSON.stringify(wrapped) }).onConflictDoNothing().returning({id:syncAccount.userId});
+			return inserted.length?c.json({ok:true},201):c.json({code:"KEY_EXISTS"},409);
 		}
 		const previous=wrappedKey.safeParse(JSON.parse(a.wrappedKey));
 		if(!previous.success)return c.json({code:"INTERNAL"},500);
 		if (previous.data.by_recovery !== wrapped.by_recovery) return c.json({ code: "RECOVERY_KEY_FIXED" }, 409);
-		await db.update(syncAccount).set({ wrappedKey: JSON.stringify(wrapped), previousKey: a.wrappedKey, updatedAt: new Date() }).where(eq(syncAccount.userId, userId));
+		await db.update(syncAccount).set({ wrappedKey: JSON.stringify(wrapped), updatedAt: new Date() }).where(eq(syncAccount.userId, userId));
 		return c.json({ ok: true });
 	})
 

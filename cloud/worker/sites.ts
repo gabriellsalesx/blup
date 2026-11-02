@@ -1,5 +1,5 @@
 import { queueSitePurge } from "./site-cache-purge";
-import { accountAllowed } from "./lifecycle";
+import { accountAllowed,deletePrefix } from "./lifecycle";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { and, desc, eq, inArray } from "drizzle-orm";
@@ -51,20 +51,13 @@ async function ownSite(userId: string, id: string) {
 
 // The site's address, as the visitor types it (on this computer, the
 // sites' Worker runs with npx wrangler dev -c wrangler.sites.jsonc --port 8788).
-export const siteURL = (env: Cloudflare.Env, slug: string) => {
+const siteURL = (env: Cloudflare.Env, slug: string) => {
 	const local = env.SITES_DOMAIN === "localhost";
 	return `${local ? "http" : "https"}://${slug}.${env.SITES_DOMAIN}${local ? ":8788" : ""}/`;
 };
 
 // Every R2 object of a site, in pages of 1000 (list and delete both take that many).
-async function deletePrefix(bucket: R2Bucket, prefix: string) {
-	let cursor: string | undefined;
-	do {
-		const page = await bucket.list({ prefix, cursor, limit: 1000 });
-		if (page.objects.length) await bucket.delete(page.objects.map((o) => o.key));
-		cursor = page.truncated ? page.cursor : undefined;
-	} while (cursor);
-}
+
 
 const created = z.object({ slug: z.string().refine(slugAllowed, "slug"), title: z.string().trim().min(1).max(200) });
 

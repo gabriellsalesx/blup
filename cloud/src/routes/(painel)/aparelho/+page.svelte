@@ -37,7 +37,7 @@
 		busy = true;
 		const { error: err } = approve ? await authClient.device.approve({ userCode: clean(code) }) : await authClient.device.deny({ userCode: clean(code) });
 		busy = false;
-		if ((err as { code?: string } | null)?.code === "DEVICES_LIMIT") return (error = `Seu plano ${data.me.plan.label} permite ${data.me.plan.limits.devices} ${data.me.plan.limits.devices === 1 ? "computador conectado" : "computadores conectados"}. Desconecte um em Sync ou mude de plano.`);
+		if (err && "code" in err && err.code === "DEVICES_LIMIT") return (error = `Seu plano ${data.me.plan.label} permite ${data.me.plan.limits.devices} ${data.me.plan.limits.devices === 1 ? "computador conectado" : "computadores conectados"}. Desconecte um em Sync ou mude de plano.`);
 		if (err) return (error = "Esse código não vale mais. Peça um novo no Blup Studio.");
 		step = approve ? "approved" : "denied";
 	}

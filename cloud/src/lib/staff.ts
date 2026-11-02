@@ -1,12 +1,10 @@
 import {parseResponse,type InferResponseType} from "hono/client";
 import {z} from "zod";
 import {rpc} from "./api";
+import {money as formatMoney} from "./money";
 const client=rpc.staff;
-export type StaffMe=InferResponseType<typeof client.me.$get,200>;
+type StaffMe=InferResponseType<typeof client.me.$get,200>;
 export type Role=StaffMe["role"];
-export type UserRow=InferResponseType<typeof client.users.$get,200>["items"][number];
-export type UserDetail=InferResponseType<typeof client.users[":id"]["$get"],200>;
-export type LogRow=InferResponseType<typeof client.log.$get,200>["items"][number];
 export type Stats=InferResponseType<typeof client.stats.$get,200>;
 export type Team=InferResponseType<typeof client.team.$get,200>;
 export class StaffError extends Error {
@@ -65,6 +63,6 @@ export const billingLabel: Record<string, { text: string; alert: boolean }> = {
 };
 
 export const money = (cents: number | null, currency: string | null) =>
-	cents === null ? "" : (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: (currency ?? "brl").toUpperCase() });
+	cents === null || currency === null ? "" : formatMoney(cents,currency);
 
 export const when = (d: string | null) => d===null?"Sem data":new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import AccountId from "#lib/ui/AccountId.svelte";
+	import { accountIdHelp } from "#lib/account-id.ts";
 	import { goto, invalidateAll } from "$app/navigation";
 	import { page } from "$app/state";
 	import ArrowLeft from "@lucide/svelte/icons/arrow-left";
@@ -66,7 +68,8 @@
 		<h1 class="text-3xl font-extrabold tracking-tight break-all">{d.user.email ?? "Sem e-mail (só passkey)"}</h1>
 		{#if d.user.banned}<span class="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">Bloqueada</span>{/if}
 	</div>
-	<p class="mt-1 text-sm text-neutral-500">Criada em {when(d.user.createdAt)} · <code class="text-xs">{d.user.id}</code></p>
+	<p class="mt-1 text-sm text-neutral-500">Criada em {when(d.user.createdAt)}</p>
+ <Row title="ID da conta" help={accountIdHelp()}><div class="mt-2"><AccountId id={d.user.id} emphasis /></div></Row>
 	{#if d.user.banned && d.user.banReason}<p class="mt-2 text-sm text-red-600">Motivo do bloqueio: {d.user.banReason}</p>{/if}
 
 	{#if d.deletion.requestedAt}

@@ -23,8 +23,8 @@ type App = { Bindings: Cloudflare.Env; Variables: { userId: string } };
 
 // The voice model offered, and what it costs: MAI-Voice-2.1 on OpenRouter,
 // US$ 22 per million characters.
-export const VOICE_MODEL = "microsoft/mai-voice-2.1";
-export const PER_CHAR_MICROS = 22;
+const VOICE_MODEL = "microsoft/mai-voice-2.1";
+const PER_CHAR_MICROS = 22;
 const VOICE = /^(pt-BR|en-US|es-MX|es-ES)-[A-Za-z]+:MAI-Voice-2\.1$/;
 
 // The other voice models: any of OpenRouter's that answer MP3, at what
@@ -72,7 +72,7 @@ export async function voicePrice(env: Cloudflare.Env, model: string, voice: stri
 // The translation model (the same as the Studio's internal/translate) and
 // its languages. The request is built here: Blup Cloud translates notes,
 // it is not a general chat.
-export const TRANSLATE_MODEL = "anthropic/claude-haiku-5.5";
+const TRANSLATE_MODEL = "anthropic/claude-haiku-5.5";
 const LANG_NAMES: Record<string, string> = { pt: "Brazilian Portuguese", en: "English", es: "Spanish (neutral Latin American)" };
 // The Studio sends a note in parts of at most 12000 bytes.
 const MAX_TRANSLATE = 16000;
@@ -97,12 +97,12 @@ const MAX_INPUT = 4000;
 
 const signedIn = createMiddleware<App>(async (c, next) => {
 	const s = await auth.api.getSession({ headers: c.req.raw.headers });
-	if (!s || !await accountAllowed(c.env.DB,s.user.id)) return c.json({ error: { message: "Entre de novo no Blup Cloud." } }, 401);
+	if (!s || !await accountAllowed(c.env.DB,s.user.id)) return c.json(fail("Entre de novo no Blup Cloud.","UNAUTHORIZED"),401);
 	c.set("userId", s.user.id);
 	await next();
 });
 
-export type AIUsage = {
+type AIUsage = {
 	monthMicros: number; // the plan's allowance this month
 	weekCapMicros: number; // the most a week may use
 	usedMonthMicros: number;

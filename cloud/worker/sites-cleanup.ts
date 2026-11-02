@@ -1,4 +1,4 @@
-import { fileKey,manifestKey,manifestSchema,HASH } from "./site-rules";
+import { manifestKey,manifestSchema,HASH } from "./site-rules";
 import { siteLock,unlockSite } from "./quota";
 import { deletePrefix } from "./lifecycle";
 

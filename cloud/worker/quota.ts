@@ -1,7 +1,7 @@
 // D1 serializes conditional UPDATEs. Every reservation is made before an
 // external operation and released together with its durable usage record.
-export type Resource = "storage" | "sites" | "vaults" | "ai" | "devices";
-export type Reservation = { id: string; userId: string; kind: Resource; amount: number };
+type Resource = "storage" | "sites" | "vaults" | "ai" | "devices";
+type Reservation = { id: string; userId: string; kind: Resource; amount: number };
 const columns = { storage: "storage", sites: "sites", vaults: "vaults", ai: "ai", devices: "devices" } satisfies Record<Resource,string>;
 const used = {
 	storage: "coalesce((SELECT storage_bytes FROM sync_account WHERE user_id = resource_quota.user_id),0) + coalesce((SELECT sum(bytes) FROM site WHERE user_id = resource_quota.user_id),0)",

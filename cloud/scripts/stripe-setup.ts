@@ -1,60 +1,36 @@
-// Creates in Stripe the product and the monthly and yearly prices of each paid plan
-// (worker/plans.ts), found again by lookup key. Run it once per Stripe
-// mode (test, then live); running it again changes nothing.
-//
-//   STRIPE_SECRET_KEY=sk_test_... node scripts/stripe-setup.ts
-//
-// Without the variable, the key comes from .dev.vars (never from git).
+// Read-only check of the catalog configured in the Stripe Dashboard.
+// Amounts are never created or copied from the application's source.
 import { readFileSync } from "node:fs";
-import Stripe from "stripe";
+import { pathToFileURL } from "node:url";
 import { PLANS } from "../worker/plans.ts";
+import { createStripe } from "../worker/stripe-client.ts";
+import { validateStripePrices } from "../worker/price-schema.ts";
 
-function key(): string {
-	if (process.env.STRIPE_SECRET_KEY) return process.env.STRIPE_SECRET_KEY;
-	try {
-		const line = readFileSync(new URL("../.dev.vars", import.meta.url), "utf8").split("\n").find((l) => l.startsWith("STRIPE_SECRET_KEY="));
-		return line?.slice("STRIPE_SECRET_KEY=".length).trim() ?? "";
-	} catch {
-		return "";
-	}
+export async function checkCatalog(secret:string,log:(message:string)=>void=console.log):Promise<boolean>{
+ if(!/^(?:sk|rk)_(?:test|live)_[A-Za-z0-9_]+$/.test(secret)||secret.includes("coloque")){
+  log("Falta uma chave Stripe válida no ambiente ou em .dev.vars.");return false;
+ }
+ log(/^(?:sk|rk)_live_/.test(secret)?"Conferindo Stripe em produção (somente leitura).":"Conferindo Stripe no sandbox (somente leitura).");
+ const keys=PLANS.flatMap(p=>[p.lookupKey,p.yearlyLookupKey].filter((k):k is string=>k!==undefined));
+ const intervals=new Map(PLANS.flatMap(p=>[...(p.lookupKey?[[p.lookupKey,"month"] as const]:[]),...(p.yearlyLookupKey?[[p.yearlyLookupKey,"year"] as const]:[])]));
+ const values=validateStripePrices(await createStripe(secret).prices.list({active:true,type:"recurring",lookup_keys:keys,limit:100,expand:["data.product"]},{timeout:5_000,maxNetworkRetries:0}),intervals);
+ let valid=true;
+ for(const key of keys){
+  const price=values.get(key);
+  if(!price){log(`${key}: indisponível. Crie/ative o preço recorrente correto no Stripe e atribua o lookup key.`);valid=false;}
+  else log(`${key}: ${price.unitAmount} unidades menores, ${price.currency.toUpperCase()}.`);
+ }
+ return valid;
 }
-
-const secret = key();
-if (!secret.startsWith("sk_") || secret.includes("coloque")) {
-	console.error("Falta a chave do Stripe: STRIPE_SECRET_KEY no ambiente ou em .dev.vars.");
-	process.exit(1);
+function secretFromEnvironment(){
+ if(process.env.STRIPE_SECRET_KEY)return process.env.STRIPE_SECRET_KEY;
+ try{
+  const vars=readFileSync(new URL("../.dev.vars",import.meta.url),"utf8");
+  const match=vars.match(/^(?:export\s+)?STRIPE_SECRET_KEY\s*=\s*(?:"([^"]*)"|'([^']*)'|([^#\r\n]*))/m);
+  return (match?.[1]??match?.[2]??match?.[3]??"").trim();
+ }catch{return "";}
 }
-const stripe = new Stripe(secret);
-console.log(secret.startsWith("sk_live_") ? "Stripe em PRODUÇÃO" : "Stripe em modo de teste");
-
-// One product per plan, with a monthly and a yearly price.
-async function product(plan: (typeof PLANS)[number]) {
-	const found = await stripe.products.search({ query: `metadata['blup_plan']:'${plan.name}' AND active:'true'` });
-	return found.data[0] ?? (await stripe.products.create({ name: `Blup ${plan.label}`, metadata: { blup_plan: plan.name } }));
-}
-
-for (const plan of PLANS) {
-	if (!plan.lookupKey || !plan.yearlyLookupKey) continue;
-	for (const [lookupKey, cents, interval] of [
-		[plan.lookupKey, plan.priceCents, "month"],
-		[plan.yearlyLookupKey, plan.yearlyCents, "year"],
-	] as const) {
-		const found = await stripe.prices.list({ lookup_keys: [lookupKey], active: true, limit: 1 });
-		const price = found.data[0];
-		if (price) {
-			if (price.unit_amount !== cents || price.currency !== plan.currency || price.recurring?.interval !== interval) {
-				console.warn(`${lookupKey}: o preço no Stripe (${price.unit_amount} ${price.currency}/${price.recurring?.interval}) é diferente do plano (${cents} ${plan.currency}/${interval}). Crie um preço novo no dashboard e passe o lookup key para ele.`);
-			} else console.log(`${lookupKey}: já existe (${price.id})`);
-			continue;
-		}
-		const created = await stripe.prices.create({
-			product: (await product(plan)).id,
-			currency: plan.currency,
-			unit_amount: cents,
-			recurring: { interval },
-			lookup_key: lookupKey,
-			metadata: { blup_plan: plan.name },
-		});
-		console.log(`${lookupKey}: criado (${created.id})`);
-	}
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
+ try{if(!await checkCatalog(secretFromEnvironment()))process.exitCode=1;}
+ catch{console.error("Não foi possível conferir o catálogo Stripe. Confira permissões e conexão.");process.exitCode=1;}
 }

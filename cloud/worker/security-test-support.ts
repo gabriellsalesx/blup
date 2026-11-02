@@ -60,6 +60,7 @@ export class TestBucket {
 		if(body instanceof ReadableStream){this.objects.set(key,new Uint8Array(await new Response(body).arrayBuffer()));return;}
 		this.objects.set(key, typeof body === "string" ? new TextEncoder().encode(body) : new Uint8Array(body));
 	}
+	async head(key: string) { const bytes=this.objects.get(key);return bytes?{size:bytes.byteLength}:null; }
 	async get(key: string) {
 		const bytes = this.objects.get(key);
 		if (!bytes) return null;

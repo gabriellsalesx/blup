@@ -7,6 +7,7 @@ export const opaqueId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 export const hashId = z.string().regex(/^[0-9a-f]{64}$/);
 export const idParam = z.object({id:opaqueId});
 export const safeInt = z.string().regex(/^(0|[1-9][0-9]*)$/).transform(Number).pipe(z.number().int().min(0).max(Number.MAX_SAFE_INTEGER-1));
+export const requestError=(path:string,code:string,message="Pedido inválido.")=>path.startsWith("/api/ai/")?{code,error:{code,message}}:{code};
 export const validate = <T extends z.ZodType, K extends keyof ValidationTargets>(target: K, schema: T) =>
 	zValidator(target,schema,(r,c) => {
 		if (!r.success) return c.req.path.startsWith("/api/ai/")?c.json({code:"INVALID",error:{code:"INVALID",message:"Pedido inválido."}},400):c.json({code:"INVALID",fields:r.error.issues.map(i=>i.path.join("."))},400);

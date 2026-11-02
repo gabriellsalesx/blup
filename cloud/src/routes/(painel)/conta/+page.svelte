@@ -1,4 +1,6 @@
 <script lang="ts">
+	import AccountId from "#lib/ui/AccountId.svelte";
+	import { accountIdHelp } from "#lib/account-id.ts";
 	import { goto, invalidateAll } from "$app/navigation";
 	import KeyRound from "@lucide/svelte/icons/key-round";
 	import Trash from "@lucide/svelte/icons/trash-2";
@@ -103,6 +105,7 @@
 <h1 class="text-3xl font-extrabold tracking-tight">Seu perfil</h1>
 
 <div class="mt-6">
+ <Row title="ID da conta" help={accountIdHelp()}><div class="mt-2"><AccountId id={data.me.id} /></div></Row>
 	<Row title="Nome" value={data.me.name || "Sem nome"}>
 		{#snippet action()}<Button variant="secondary" onclick={() => { name = data.me.name; nameOpen = true; }}>Alterar</Button>{/snippet}
 	</Row>
@@ -110,6 +113,7 @@
 	{#if data.me.email}
 		<Row title="E-mail" value={data.me.email} help="É para ele que mandamos o código de entrar." />
 	{:else}
+		<p class="py-3 text-sm text-neutral-500">Ligue um e-mail para receber recibos e recuperar a conta. <button type="button" class="font-semibold text-blup hover:underline" onclick={()=>{newEmail="";linkCode="";linkStep="email";linkOpen=true;}}>Ligar e-mail</button></p>
 		<Row title="E-mail" value="Nenhum e-mail" help="Vincule um e-mail para entrar por código, assinar um plano e recuperar a conta se perder o aparelho da passkey.">
 			{#snippet action()}<Button onclick={() => { newEmail = ""; linkCode = ""; linkStep = "email"; linkOpen = true; }}>Vincular</Button>{/snippet}
 		</Row>

@@ -2,7 +2,7 @@
 // next() continues after the last item, prev() goes back to the cursor
 // the earlier page started at. reset() starts over (a new search).
 
-export type Page<T> = { items: T[]; nextCursor: string | null };
+type Page<T> = { items: T[]; nextCursor: string | null };
 
 export function createPager<T>(load: (cursor: string | null) => Promise<Page<T>>) {
 	let items = $state<T[]>([]);

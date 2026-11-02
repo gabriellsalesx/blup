@@ -7,7 +7,7 @@ export const DAY = 24 * 3600 * 1000;
 // How far ahead the list goes, and how late a reminder may still go out.
 export const AHEAD = 32 * DAY;
 export const LATE = 12 * 3600 * 1000;
-export const MAX_LIST = 300;
+const MAX_LIST = 300;
 
 // "2026-11": the month a reminder counts in (UTC).
 export const monthOf = (ms: number) => new Date(ms).toISOString().slice(0, 7);

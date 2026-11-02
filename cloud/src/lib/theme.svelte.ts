@@ -18,7 +18,7 @@ export const theme = $state({ value: read() });
 
 const media = () => window.matchMedia("(prefers-color-scheme: dark)");
 
-export function applyTheme() {
+function applyTheme() {
 	const dark = theme.value === "dark" || (theme.value === "system" && media().matches);
 	document.documentElement.dataset.theme = dark ? "dark" : "light";
 }

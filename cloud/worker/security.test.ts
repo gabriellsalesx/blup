@@ -17,8 +17,6 @@ vi.mock("./email", () => ({ sendDowngrade: async()=>true,sendReminder: async (_:
 import worker from "./index";
 import { sendDue, forgetOld } from "./reminders";
 import { staffApi } from "./staff";
-import { recordBillingEvent } from "./billing";
-import type Stripe from "stripe";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
 import { voicePrice } from "./ai";
 import { cleanUp } from "./cleanup";
@@ -50,6 +48,26 @@ async function request(path:string, method="GET", body?:unknown, user="alice", h
 }
 
 describe("local attacks on actual Cloud routes", () => {
+	it.each(["ban","sessions/revoke"])("closes existing live connections on staff %s",async action=>{
+		const revoke=vi.fn(async()=>{});
+		Object.assign(state.env,{STAFF_DEV_EMAIL:"owner@audit.invalid",STAFF_OWNER_EMAIL:"owner@audit.invalid",SYNC_LIVE:{getByName:()=>({revoke})}});
+		const res=await staffApi.fetch(new Request(`http://localhost:18848/users/alice/${action}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({reason:"local test"})}),state.env,ctx);
+		expect(res.status).toBe(200);expect(revoke).toHaveBeenCalledOnce();
+	});
+	it("keeps staff stats out of browser caches while retaining the authorized internal cache",async()=>{
+		const cache=new Map<string,Response>();
+		vi.stubGlobal("caches",{default:{match:async(key:Request)=>cache.get(key.url)?.clone(),put:async(key:Request,res:Response)=>{cache.set(key.url,res);}}});
+		Object.assign(state.env,{STAFF_DEV_EMAIL:"owner@audit.invalid",STAFF_OWNER_EMAIL:"owner@audit.invalid"});
+		const req=()=>new Request("http://localhost:18848/stats");
+		const first=await staffApi.fetch(req(),state.env,ctx);expect(first.headers.get("cache-control")).toBe("no-store");
+		await Promise.all(pending);expect([...cache.values()][0]?.headers.get("cache-control")).toBe("max-age=300");
+		const hit=await staffApi.fetch(req(),state.env,ctx);expect(hit.headers.get("cache-control")).toBe("no-store");
+	});
+	it("returns from Checkout locally without letting the plugin write subscription state",async()=>{
+		const result=await request("/auth/subscription/success?callbackURL="+encodeURIComponent("https://cloud.audit.invalid/conta/plano?assinatura=ok"),"GET",undefined,"");
+		expect(result.status).toBe(303);expect(result.headers.get("location")).toBe("https://cloud.audit.invalid/conta/plano?assinatura=ok");
+		expect((await request("/auth/subscription/success?callbackURL="+encodeURIComponent("https://evil.invalid/"))).status).toBe(400);
+	});
 	it.each(["/me","/devices","/sync/key","/sync/vaults","/sync/blocks/"+HASH,"/sites","/sites/check?slug=alice-site","/reminders","/ai/usage"])("requires a session at %s",async path => {
 		expect((await request(path,"GET",undefined,"")).status).toBe(401);
 	});
@@ -139,12 +157,7 @@ describe("local attacks on actual Cloud routes", () => {
 		expect(res.status).toBe(200);
 		expect((await res.json() as {items:unknown[]}).items).toHaveLength(100);
 	});
-	it("records a retried Stripe payment only once",async()=>{
-		d1.sqlite.exec("UPDATE user SET stripe_customer_id='cus_audit' WHERE id='alice'");
-		const event={id:"evt_audit",type:"invoice.paid",data:{object:{customer:"cus_audit",amount_paid:1490,currency:"brl"}}} as unknown as Stripe.Event;
-		await recordBillingEvent(event,{} as Stripe);await recordBillingEvent(event,{} as Stripe);
-		expect(d1.sqlite.prepare("SELECT user_id,amount FROM billing_event").all()).toEqual([{user_id:"alice",amount:1490}]);
-	});
+
 	it("does not cache account data in a browser or shared proxy by default",async()=>{
 		expect((await request("/me")).headers.get("cache-control")).toBe("no-store");
 	});
@@ -449,6 +462,51 @@ it("does not refund history twice when daily cleanups overlap",async()=>{
 it("normalizes malformed AI JSON while preserving the voice error envelope",async()=>{
  const r=await worker.fetch(new Request("https://cloud.audit.invalid/api/ai/translate",{method:"POST",headers:{authorization:"Bearer audit-alice","content-type":"application/json"},body:"{"}),state.env,ctx);
  expect(r.status).toBe(400);expect(r.headers.get("content-type")).toMatch(/application\/json/);expect(await r.json()).toMatchObject({code:"INVALID",error:{code:"INVALID"}});
+});
+
+it("keeps the AI error envelope for unauthenticated requests and invalid headers",async()=>{
+ const unauthorized=await worker.fetch(new Request("https://cloud.audit.invalid/api/ai/usage"),state.env,ctx);
+ expect(unauthorized.status).toBe(401);expect(await unauthorized.json()).toMatchObject({code:"UNAUTHORIZED",error:{code:"UNAUTHORIZED"}});
+ const invalid=await worker.fetch(new Request("https://cloud.audit.invalid/api/ai/usage",{headers:{authorization:"Bearer audit-alice",origin:"invalid-origin"}}),state.env,ctx);
+ expect(invalid.status).toBe(400);expect(await invalid.json()).toMatchObject({code:"INVALID",error:{code:"INVALID"}});
+ const origin=await request("/ai/translate","POST",{text:"fixture",from:"pt",to:"en"},"alice",{origin:"https://evil.audit.invalid"});
+ expect(origin.status).toBe(403);expect(await origin.json()).toMatchObject({code:"ORIGIN_NOT_ALLOWED",error:{code:"ORIGIN_NOT_ALLOWED"}});
+ Object.assign(state.env,{ABUSE_LIMIT:{limit:async()=>({success:false})}});
+ const limited=await request("/ai/translate","POST",{text:"fixture",from:"pt",to:"en"});
+ expect(limited.status).toBe(429);expect(await limited.json()).toMatchObject({code:"TOO_MANY_REQUESTS",error:{code:"TOO_MANY_REQUESTS"}});
+});
+
+it("refuses checkout when no verified display price exists",async()=>{
+ Object.assign(state.env,{STRIPE_SECRET_KEY:"sk_test_audit_no_verified_catalog"});
+ vi.stubGlobal("fetch",vi.fn(async()=>{throw new Error("fixture Stripe outage");}));
+ const res=await request("/auth/subscription/upgrade","POST",{plan:"pro",annual:true});
+ expect(res.status).toBe(503);expect(await res.json()).toMatchObject({code:"PRICING_UNAVAILABLE"});
+ const foreign=await request("/auth/subscription/upgrade","POST",{plan:"pro",referenceId:"bob"});expect(foreign.status).toBe(403);
+});
+
+it("does not retain an obsolete password wrapping after a key update",async()=>{
+ d1.sqlite.exec("DELETE FROM sync_account WHERE user_id='alice'");
+ const wrapped={params:{time:3,memory_kib:65536,threads:1,salt:"YQ=="},by_password:"b2xk",by_recovery:"cmVjb3Zlcnk="};
+ expect((await request("/sync/key","PUT",{wrapped})).status).toBe(201);
+ expect((await request("/sync/key","PUT",{wrapped:{...wrapped,by_password:"bmV3"}})).status).toBe(200);
+ expect(JSON.stringify(d1.sqlite.prepare("SELECT * FROM sync_account WHERE user_id='alice'").get())).not.toContain("b2xk");
+});
+
+it("reports a conflict instead of accepting two different initial sync keys",async()=>{
+ d1.sqlite.exec("DELETE FROM sync_account WHERE user_id='alice'");
+ const wrapped={params:{time:3,memory_kib:65536,threads:1,salt:"YQ=="},by_password:"b25l",by_recovery:"cmVjb3Zlcnk="};
+ const responses=await Promise.all([request("/sync/key","PUT",{wrapped}),request("/sync/key","PUT",{wrapped:{...wrapped,by_password:"dHdv"}})]);
+ expect(responses.map(r=>r.status).sort()).toEqual([201,409]);
+ const conflict=responses.find(r=>r.status===409);expect(await conflict?.json()).toMatchObject({code:"KEY_EXISTS"});
+});
+
+it("skips passkey-only mail reminders without spending quota or attempts",async()=>{
+ d1.sqlite.exec("UPDATE user SET email='fixture@sem-email.blup.invalid' WHERE id='alice';UPDATE subscription SET plan='max' WHERE reference_id='alice'");
+ d1.sqlite.prepare("INSERT INTO reminder(user_id,id,send_at) VALUES ('alice','no-email',?)").run(Date.now()-1);
+ await sendDue(state.env);await sendDue(state.env);
+ expect(d1.sqlite.prepare("SELECT sent_at,attempts FROM reminder WHERE id='no-email'").get()).toMatchObject({sent_at:0,attempts:0});
+ expect(d1.sqlite.prepare("SELECT count(*) AS n FROM reminder_month WHERE user_id='alice'").get()?.n).toBe(0);expect(state.mailCalls).toBe(0);
+ expect(await(await request("/reminders")).json()).toMatchObject({emailMissing:true});
 });
 
 it("records a narration usage.cost from an invalid JSON audio response",async()=>{

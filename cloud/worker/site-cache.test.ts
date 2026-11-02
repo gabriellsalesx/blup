@@ -11,7 +11,6 @@ import { providerCall } from "./domain-provider";
 
 let db:TestD1,bucket:TestBucket,env:Cloudflare.Env;
 const HASH="8".repeat(64);
-const ctx={waitUntil:()=>{}} as unknown as ExecutionContext;
 beforeEach(()=>{
 	db=new TestD1();bucket=new TestBucket();seedUser(db,"cache-owner","max");
 	env={DB:db.asD1(),SITES:bucket.asR2(),SITES_DOMAIN:"getblup.site",SYNC_LIVE:{getByName:()=>({revoke:async()=>{}})}} as unknown as Cloudflare.Env;

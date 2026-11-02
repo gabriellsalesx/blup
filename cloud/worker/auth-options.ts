@@ -4,7 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP, captcha, deviceAuthorization, bearer } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { stripe } from "@better-auth/stripe";
-import Stripe from "stripe";
+import { createStripe } from "./stripe-client";
 import { PLANS } from "./plans";
 import { v7 as uuidv7 } from "uuid";
 
@@ -16,9 +16,9 @@ import { v7 as uuidv7 } from "uuid";
 // (auth.cli.ts), so neither imports the other's runtime.
 
 // The only client allowed to sign in through the browser.
-export const STUDIO_CLIENT_ID = "blup-studio";
+const STUDIO_CLIENT_ID = "blup-studio";
 
-export type AuthConfig = {
+type AuthConfig = {
 	appUrl: string;
 	rpID: string;
 	secret: string;
@@ -28,10 +28,6 @@ export type AuthConfig = {
 	isBanned: (userId: string) => Promise<boolean>;
 	deviceMark?: (userId:string,body:unknown)=>Promise<boolean>;
 	finishDevice?: (userId:string,body:unknown)=>Promise<void>;
-	planChanged?: (userId:string)=>Promise<void>;
-	// Stripe events Better Auth doesn't act on (payments, refunds, disputes),
-	// kept for the staff.
-	onStripeEvent?: (event: Stripe.Event, stripe: Stripe) => Promise<void>;
 	sendCode: (email: string, code: string, kind: string) => void;
 };
 
@@ -46,11 +42,16 @@ export const hasEmail = (email: string) => !email.endsWith(`@${NO_EMAIL_DOMAIN}`
 
 export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Record<string, unknown>, cfg: AuthConfig) {
 	// Fetch, not Node's http: the Worker's runtime.
-	const stripeClient = new Stripe(cfg.stripeSecret, { httpClient: Stripe.createFetchHttpClient() });
+	const stripeClient = createStripe(cfg.stripeSecret);
 	return {
 		appName: "Blup Cloud",
+		// SDK errors may include customer fields or SQL bindings.
+		logger:{level:"error",log:(_level:unknown,_message:unknown,..._args:unknown[])=>{console.error("[blup] auth_error");}},
 		baseURL: cfg.appUrl,
 		basePath: "/api/auth",
+		// The Worker owns signed webhook reconciliation. The plugin's snapshot
+		// handler must never write an older event after that reconciliation.
+		disabledPaths: ["/stripe/webhook","/subscription/success"],
 		secret: cfg.secret,
 		trustedOrigins: [cfg.appUrl],
 		database: drizzleAdapter(db, { provider: "sqlite", schema }),
@@ -128,12 +129,8 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 				// The Stripe customer is made at the first checkout, not at sign
 				// up: free accounts never reach Stripe.
 				createCustomerOnSignUp: false,
-				onEvent: async (event) => cfg.onStripeEvent?.(event, stripeClient),
 				subscription: {
 					enabled: true,
-					onSubscriptionComplete:async({subscription})=>cfg.planChanged?.(subscription.referenceId),
-					onSubscriptionUpdate:async({subscription})=>cfg.planChanged?.(subscription.referenceId),
-					onSubscriptionDeleted:async({subscription})=>cfg.planChanged?.(subscription.referenceId),
 					plans: PLANS.filter((p) => p.lookupKey).map((p) => ({ name: p.name, lookupKey: p.lookupKey, annualDiscountLookupKey: p.yearlyLookupKey, limits: p.limits })),
 					// Stripe's recommendations: flexible billing mode, and a label to
 					// follow this checkout flow in the Dashboard (8 random letters).

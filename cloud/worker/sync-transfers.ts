@@ -6,12 +6,14 @@ import { hashId,safeInt } from "./validation";
 import type { Plan } from "./plans";
 
 const BLOCK_MAX=4*1024*1024+64,TTL=30*60_000;
+// Small encrypted-manifest growth for a rename, not an arbitrary upload.
+const MANIFEST_ALLOWANCE=4*1024;
 const declaredBlock=z.object({id:hashId,size:z.number().int().min(0).max(BLOCK_MAX)}).strict();
 const blockList=z.string().max(1_900_000).transform((value,ctx):unknown=>{
 	try{return JSON.parse(value);}catch{ctx.addIssue({code:"custom",message:"blocks"});return z.NEVER;}
 }).pipe(z.array(declaredBlock).max(20_000).refine(a=>new Set(a.map(b=>b.id)).size===a.length));
 export const preparationSchema=z.object({parent:safeInt,blocks:blockList,manifest:z.instanceof(File).refine(f=>f.size>0&&f.size<=32*1024*1024)});
-export const transferPlanSchema=z.object({refs:z.array(hashId).max(20_000),cleanup:cleanupSchema,newBytes:z.number().int().min(0)});
+const transferPlanSchema=z.object({refs:z.array(hashId).max(20_000),cleanup:cleanupSchema,newBytes:z.number().int().min(0)});
 type Transfer={id:string;user_id:string;vault_id:string;parent:number;key:string;size:number;reservation_id:string;reserved:number;lease:string;expires_at:number;created_at:number;completed_version:number|null};
 async function owned(env:Cloudflare.Env,userId:string,id:string,allowExpired=false){
 	const row=await env.DB.prepare("SELECT * FROM sync_transfer WHERE id=? AND user_id=?").bind(id,userId).first<Transfer>();
@@ -50,10 +52,19 @@ export async function prepareTransfer(env:Cloudflare.Env,userId:string,vaultId:s
 		const cleanup=await cleanupPlan(env,userId,drop,refs,now);
 		const credit=cleanup.versions.reduce((n,v)=>n+v.size,0)+cleanup.blocks.reduce((n,b)=>n+b.size,0);
 		const newBytes=size+missing.reduce((n,b)=>n+b.size,0);
-		// The owner explicitly permits removal/no-new-block versions even
-		// when another encrypted manifest adds bytes to retained history.
-		const amount=missing.length===0?0:Math.max(0,newBytes-credit);
-		hold=await reserve(env.DB,userId,"storage",amount,await storageLimit(env.DB,userId,plan),undefined,TTL);
+		const limit=await storageLimit(env.DB,userId,plan);
+		const used=await env.DB.prepare("SELECT coalesce((SELECT storage_bytes FROM sync_account WHERE user_id=?),0)+coalesce((SELECT sum(bytes) FROM site WHERE user_id=?),0) AS bytes").bind(userId,userId).first<{bytes:number}>();
+		let amount=Math.max(0,newBytes-credit);
+		if(missing.length===0&&(used?.bytes??0)>limit){
+			const head=versions.find(v=>v.vaultId===vaultId&&v.n===vault.head);
+			const previous=head?await env.NOTES.head(`${head.key}/m`):null;
+			if(vault.head>0&&!previous)throw new SyncError("SYNC_METADATA_UNAVAILABLE",503);
+			// Compare the sealed manifest alone, not combined manifest+refs or
+			// a caller-supplied size. Removing references cannot inflate it.
+			if(input.manifest.size>(previous?.size??0)+MANIFEST_ALLOWANCE)throw new SyncError("QUOTA",413);
+			amount=0;
+		}
+		hold=await reserve(env.DB,userId,"storage",amount,limit,undefined,TTL);
 		if(!hold)throw new SyncError("QUOTA",413);
 		await env.NOTES.put(`${key}/m`,input.manifest.stream());
 		await env.NOTES.put(`${key}/r`,refBytes);

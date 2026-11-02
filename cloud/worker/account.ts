@@ -18,7 +18,7 @@ async function ownerAccount(userId: string) {
 
 // Subscriptions that give the paid plan (past_due keeps it while Stripe
 // retries the card).
-export const PAYING = ["active", "trialing", "past_due"];
+const PAYING = ["active", "trialing", "past_due"];
 
 // The subscription that is paid (or on trial), if any.
 export async function activeSubscription(userId: string) {

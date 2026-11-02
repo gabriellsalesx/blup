@@ -160,7 +160,7 @@ export const subscription = sqliteTable("subscription", {
   seats: integer("seats"),
   billingInterval: text("billing_interval"),
   stripeScheduleId: text("stripe_schedule_id"),
-});
+}, table=>[index("subscription_stripe_id_idx").on(table.stripeSubscriptionId)]);
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),

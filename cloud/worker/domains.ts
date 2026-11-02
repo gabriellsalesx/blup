@@ -7,7 +7,7 @@ import { accountPlan,observePlan } from "./lifecycle";
 import { DomainError,removeDomainProvider,domainInfo,hostnameSchema,providerCall,providerRecords,provesOwnership,type DomainInfo } from "./domain-provider";
 import { idParam,validate } from "./validation";
 type App={Bindings:Cloudflare.Env;Variables:{userId:string}};
-type DomainRow={site_id:string;hostname:string;proof:string;provider_id:string|null;verified_at:number|null;status:string;ssl:string;records:string;checked_at:number|null;disable_at:number|null;disabled_at:number|null};
+type DomainRow={site_id:string;hostname:string;proof:string;provider_id:string|null;verified_at:number|null;status:string;ssl:string;records:string;checked_at:number|null;disable_at:number|null};
 async function read(env:Cloudflare.Env,id:string){return env.DB.prepare("SELECT * FROM site_domain WHERE site_id=?").bind(id).first<DomainRow>();}
 function display(env:Cloudflare.Env,row:DomainRow):DomainInfo {
 	const saved=z.array(z.object({type:z.enum(["TXT","CNAME"]),name:z.string(),value:z.string()})).max(8).safeParse(JSON.parse(row.records));
@@ -23,7 +23,7 @@ async function refresh(env:Cloudflare.Env,row:DomainRow,reenable=false):Promise<
 		if(row.status==="disabled"){
 			if(!reenable)return display(env,row);
 			await removeDomainProvider(env,{hostname:row.hostname,providerId:row.provider_id,verifiedAt:row.verified_at});
-			await env.DB.prepare("UPDATE site_domain SET status='pending_ownership',ssl='pending',proof=?,verified_at=NULL,provider_id=NULL,records='[]',checked_at=NULL,disable_at=NULL,disabled_at=NULL WHERE site_id=?").bind(`blup-verification=${crypto.randomUUID().replaceAll("-","")}${crypto.randomUUID().replaceAll("-","")}`,row.site_id).run();
+			await env.DB.prepare("UPDATE site_domain SET status='pending_ownership',ssl='pending',proof=?,verified_at=NULL,provider_id=NULL,records='[]',checked_at=NULL,disable_at=NULL WHERE site_id=?").bind(`blup-verification=${crypto.randomUUID().replaceAll("-","")}${crypto.randomUUID().replaceAll("-","")}`,row.site_id).run();
 			const reset=await read(env,row.site_id);if(!reset)throw new DomainError("DOMAIN_PROVIDER");return display(env,reset);
 		}
 		if(!row.verified_at && !await provesOwnership(row.hostname,row.proof)){

@@ -1,7 +1,7 @@
 // Browser cookies, including Cloudflare Access cookies, are ambient
 // authority. SameSite alone does not protect against another subdomain.
 // Studio uses Bearer without an Origin; Stripe authenticates its webhook
-// with its signature, inside Better Auth.
+// with its signature in the Worker.
 export function mutationOriginAllowed(req: Request): boolean {
 	const socket = req.headers.get("upgrade")?.toLowerCase() === "websocket";
 	if (["GET", "HEAD", "OPTIONS"].includes(req.method) && !socket) return true;

@@ -1,11 +1,6 @@
 // What an account uses (the API's `usage`) and how to show it.
-export type Usage = {
-	storageBytes: number;
-	vaults: number;
-	sites: number;
-	devices: number;
-	lastSyncAt: string | null;
-};
+import type { Me } from "./api";
+export type Usage = Me["usage"];
 
 export const bytes = (n: number) => {
 	if (n === 0) return "0 MB";

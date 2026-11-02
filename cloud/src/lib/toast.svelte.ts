@@ -1,6 +1,6 @@
 // Short notices at the bottom of the page, the same as Blup Studio's:
 // every screen tells what just happened through toast().
-export type Toast = { id: number; text: string; kind: "ok" | "error" | "info"; action?: { label: string; run: () => void } };
+type Toast = { id: number; text: string; kind: "ok" | "error" | "info"; action?: { label: string; run: () => void } };
 
 export const toasts = $state<Toast[]>([]);
 let next = 0;

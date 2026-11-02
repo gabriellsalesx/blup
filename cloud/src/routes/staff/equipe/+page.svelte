@@ -60,7 +60,7 @@
 				{#each team.staff as m (m.email)}
 					<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2.5 dark:border-neutral-800">
 						<span class="flex-1"><b>{m.email}</b><br /><span class="text-xs text-neutral-500">por {m.addedBy} · {when(m.createdAt)}</span></span>
-						<select class="rounded-md border border-neutral-300 bg-white px-2 py-1 dark:border-neutral-700 dark:bg-neutral-900" value={m.role} aria-label="Papel de {m.email}" disabled={m.email === data.me?.email} onchange={(e) => change(m.email, e.currentTarget.value as Role)}>
+						<select class="rounded-md border border-neutral-300 bg-white px-2 py-1 dark:border-neutral-700 dark:bg-neutral-900" value={m.role} aria-label="Papel de {m.email}" disabled={m.email === data.me?.email} onchange={(e) => {const next=e.currentTarget.value;if(next==="support"||next==="admin")change(m.email,next);}}>
 							<option value="support">{roleLabel("support")}</option>
 							<option value="admin">{roleLabel("admin")}</option>
 						</select>

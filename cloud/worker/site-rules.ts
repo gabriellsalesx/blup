@@ -6,7 +6,7 @@ import { z } from "zod";
 
 // A site's name is its address: <slug>.getblup.site. One DNS label, lower
 // case, 3 to 40 characters, no dash at either end.
-export const SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
+const SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 
 // Names Blup keeps for itself (or that would mislead a visitor).
 const RESERVED = new Set([
@@ -75,7 +75,7 @@ export const deploySchema = z.object({
 		.max(20_000)
 		.refine((files) => new Set(files.map((f) => f.path)).size === files.length, "duplicate path"),
 });
-export type DeployFiles = z.infer<typeof deploySchema>["files"];
+type DeployFiles = z.infer<typeof deploySchema>["files"];
 
 // The manifest kept in R2: path -> [hash, type, gzipped].
 export const manifestSchema=z.record(z.string().refine(pathAllowed),z.tuple([z.string().regex(HASH),z.string().regex(/^[a-z0-9.+-]+\/[a-z0-9.+-]+(?:; ?charset=utf-8)?$/i).max(100),z.union([z.literal(0),z.literal(1)])]));
@@ -86,7 +86,7 @@ export const toManifest = (files: DeployFiles): Manifest =>
 
 // What a request's path serves: the file, a redirect to the folder's
 // address (with the closing slash, as Hugo links it) or nothing.
-export type Resolved = { file: string } | { redirect: string } | null;
+type Resolved = { file: string } | { redirect: string } | null;
 
 export function resolvePath(manifest: Manifest, pathname: string): Resolved {
 	let p: string;

@@ -52,6 +52,13 @@ export const billingEvent = sqliteTable(
 	(t) => [index("billing_event_user_idx").on(t.userId, t.id)],
 );
 
+// Deduplication is separate from staff money events: every reconciled
+// lifecycle event has a receipt, committed with the subscription state.
+export const stripeWebhookEvent = sqliteTable("stripe_webhook_event", {
+	id:text("id").primaryKey().notNull(), type:text("type").notNull(),
+	userId:text("user_id"), processedAt:integer("processed_at").notNull(),
+}, t=>[index("stripe_webhook_event_processed_idx").on(t.processedAt),index("stripe_webhook_event_user_idx").on(t.userId)]);
+
 // Sync of a person's notes (encrypted on their computer: nothing here can
 // read them). One row per account that turned sync on.
 export const syncAccount = sqliteTable("sync_account", {
@@ -59,8 +66,6 @@ export const syncAccount = sqliteTable("sync_account", {
 	// The master key wrapped by the notes password and by the recovery key,
 	// with the Argon2id settings (JSON, as the Studio sends it).
 	wrappedKey: text("wrapped_key").notNull(),
-	// The wrapping before the last password change, in case it must be undone.
-	previousKey: text("previous_key"),
 	// Bytes stored: blocks plus manifests of every version kept. Kept here so
 	// the quota check never adds up rows.
 	storageBytes: integer("storage_bytes").default(0).notNull(),
@@ -212,7 +217,7 @@ export const siteDomain = sqliteTable("site_domain", {
 	proof: text("proof").notNull(), verifiedAt: integer("verified_at"), providerId: text("provider_id"),
 	status: text("status").notNull().default("pending_ownership"), ssl: text("ssl").notNull().default("pending"),
 	records: text("records").notNull().default("[]"), checkedAt: integer("checked_at"),
-	disableAt: integer("disable_at"), disabledAt: integer("disabled_at"),
+	disableAt: integer("disable_at"),
 }, t=>[uniqueIndex("site_domain_verified_unique").on(t.hostname).where(sql`${t.verifiedAt} IS NOT NULL`),index("site_domain_disable_idx").on(t.disableAt).where(sql`${t.status} <> 'disabled' OR ${t.providerId} IS NOT NULL OR ${t.verifiedAt} IS NOT NULL`)]);
 
 export const syncTransfer = sqliteTable("sync_transfer", {

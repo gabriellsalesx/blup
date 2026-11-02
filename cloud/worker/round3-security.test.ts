@@ -9,7 +9,7 @@ vi.mock("./auth",()=>({db:new Proxy({},{get:(_,key)=>{const v=Reflect.get(runtim
 }},handler:async()=>Response.json({ok:true})}}));
 import worker from "./index";
 import sitesEntry from "./sites-entry";
-import { accountPlan,observePlan,DAY,downgradeNotices } from "./lifecycle";
+import { observePlan,DAY,downgradeNotices } from "./lifecycle";
 import { expireDomains,disableExpiredDomain } from "./domain-downgrade";
 import { expireTransfers } from "./sync-transfers";
 import { drainSyncGarbage } from "./sync-storage";
@@ -210,6 +210,21 @@ describe("storage grace and net reservations",()=>{
 		await storedVault(1);db.sqlite.prepare("UPDATE site SET bytes=? WHERE id='s-1'").run(2*1024*MB);await downgrade("pro");vi.setSystemTime(Date.now()+15*DAY);
 		const response=await prepare([],1,"owner","a longer sealed manifest");expect(response.status).toBe(200);const {ticket}=await response.json() as {ticket:string};
 		expect((await request("/sync/vaults/vault-1/commit","POST",{ticket})).status).toBe(200);expect(db.sqlite.prepare("SELECT count(*) AS n FROM vault_version WHERE vault_id='vault-1'").get()?.n).toBe(2);
+	});
+	it("rejects an inflated no-new-block manifest after storage grace",async()=>{
+		const ids=await storedVault(1);db.sqlite.prepare("UPDATE site SET bytes=? WHERE id='s-1'").run(2*1024*MB);await downgrade("pro");vi.setSystemTime(Date.now()+15*DAY);
+		const response=await prepare(ids.map(id=>({id,size:0})),1,"owner","x".repeat(4098));
+		expect(response.status).toBe(413);expect(await response.json()).toMatchObject({code:"QUOTA"});
+		expect(db.sqlite.prepare("SELECT count(*) AS n FROM sync_transfer").get()?.n).toBe(0);
+	});
+	it("permits a rename within the 4 KiB head-manifest allowance above quota",async()=>{
+		const ids=await storedVault(1);db.sqlite.prepare("UPDATE site SET bytes=? WHERE id='s-1'").run(2*1024*MB);await downgrade("pro");vi.setSystemTime(Date.now()+15*DAY);
+		const response=await prepare(ids.map(id=>({id,size:0})),1,"owner","x".repeat(4097));expect(response.status).toBe(200);
+		const {ticket}=await response.json() as {ticket:string};expect((await request("/sync/vaults/vault-1/commit","POST",{ticket})).status).toBe(200);
+	});
+	it("does not let a no-new-block manifest cross the quota from below",async()=>{
+		await storedVault(1);await downgrade("pro");db.sqlite.prepare("UPDATE site SET bytes=? WHERE id='s-1'").run(1024*MB-2*MB-70);
+		expect((await prepare([],1,"owner","x".repeat(8192))).status).toBe(413);
 	});
 });
 describe("manual history purge",()=>{

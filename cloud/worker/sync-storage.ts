@@ -27,16 +27,16 @@ export async function storageLimit(db:D1Database,userId:string,plan:Plan,now=Dat
 	const state=await readPlanState(db,userId),current=plan.limits.storageMB*1024*1024;
 	return state?.graceUntil&&state.graceUntil>now&&state.storageGraceLimit!==null?Math.max(current,state.storageGraceLimit):current;
 }
-export type StoredVersion={vaultId:string;n:number;key:string;size:number;createdAt:number;head:number};
-export type StoredBlock={id:string;size:number;objectKey:string;createdAt:number};
-export const versionSchema=z.object({vaultId:z.string(),n:z.number().int(),key:z.string(),size:z.number().int().min(0),createdAt:z.number(),head:z.number().int()});
-export const blockSchema=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),size:z.number().int().min(0),objectKey:z.string(),createdAt:z.number()});
+type StoredVersion={vaultId:string;n:number;key:string;size:number;createdAt:number;head:number};
+type StoredBlock={id:string;size:number;objectKey:string;createdAt:number};
+const versionSchema=z.object({vaultId:z.string(),n:z.number().int(),key:z.string(),size:z.number().int().min(0),createdAt:z.number(),head:z.number().int()});
+const blockSchema=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),size:z.number().int().min(0),objectKey:z.string(),createdAt:z.number()});
 export const cleanupSchema=z.object({versions:z.array(versionSchema),blocks:z.array(blockSchema)});
-export type CleanupPlan=z.infer<typeof cleanupSchema>;
+type CleanupPlan=z.infer<typeof cleanupSchema>;
 export async function versionsOf(db:D1Database,userId:string){
 	return (await db.prepare("SELECT vv.vault_id AS vaultId,vv.n,vv.key,vv.size,vv.created_at AS createdAt,v.head FROM vault_version vv JOIN vault v ON v.id=vv.vault_id WHERE v.user_id=?").bind(userId).all<StoredVersion>()).results;
 }
-export async function refsOf(env:Cloudflare.Env,key:string):Promise<string[]>{
+async function refsOf(env:Cloudflare.Env,key:string):Promise<string[]>{
 	const obj=await env.NOTES.get(`${key}/r`);
 	if(!obj)throw new SyncError("SYNC_METADATA_UNAVAILABLE",503);
 	const text=await obj.text();

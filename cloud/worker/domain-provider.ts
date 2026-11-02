@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const dnsRecord=z.object({type:z.enum(["TXT","CNAME"]),name:z.string().min(1).max(253),value:z.string().min(1).max(1024)});
+const dnsRecord=z.object({type:z.enum(["TXT","CNAME"]),name:z.string().min(1).max(253),value:z.string().min(1).max(1024)});
 export const domainInfo=z.object({hostname:z.string(),status:z.enum(["pending_ownership","pending","active","error","disabled"]),disableAt:z.iso.datetime().nullable(),ssl:z.enum(["pending","active","error"]),records:z.array(dnsRecord).max(10)});
 export type DomainInfo=z.infer<typeof domainInfo>;
 export const hostnameSchema=z.string().trim().min(3).max(253).transform((raw,ctx)=>{
@@ -18,7 +18,7 @@ const providerHostname=z.object({
 	ssl:z.object({status:z.string().max(64),validation_records:z.array(z.object({txt_name:z.string().max(253).optional(),txt_value:z.string().max(1024).optional(),cname_name:z.string().max(253).optional(),cname_target:z.string().max(253).optional()})).max(20).optional()}).optional(),
 	ownership_verification:z.object({type:z.literal("txt"),name:z.string().max(253),value:z.string().max(1024)}).optional(),
 });
-export type ProviderHostname=z.infer<typeof providerHostname>;
+type ProviderHostname=z.infer<typeof providerHostname>;
 export class DomainError extends Error {
 	constructor(readonly code:"DOMAIN_PROVIDER"|"DOMAIN_UNAVAILABLE"|"DOMAIN_TAKEN"){super(code);}
 }

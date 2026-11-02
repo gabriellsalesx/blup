@@ -112,7 +112,7 @@ function reminderHtml(lead: string, note: string, off: string, logo: string) {
 </body></html>`;
 }
 
-export type DowngradeNotice={sites?:{limit:number;deadline:number};storage?:{usedBytes:number;limitBytes:number;deadline:number};domainDisableAt?:number};
+type DowngradeNotice={sites?:{limit:number;deadline:number};storage?:{usedBytes:number;limitBytes:number;deadline:number};domainDisableAt?:number};
 export async function sendDowngrade(env:Cloudflare.Env,email:string,notice:DowngradeNotice={}){
  if(!hasEmail(email))return true;
  const date=(n:number)=>new Date(n).toLocaleString("pt-BR",{timeZone:"UTC",dateStyle:"long",timeStyle:"short"})+" UTC";

@@ -1,7 +1,7 @@
 import { queueAccountPurge,queueSitePurge } from "./site-cache-purge";
 import { planNamed, ownerMatches } from "./plans";
 import { ensureQuota } from "./quota";
-import Stripe from "stripe";
+import { createStripe } from "./stripe-client";
 import { removeDomainProvider } from "./domain-provider";
 import { sendDowngrade } from "./email";
 
@@ -10,7 +10,7 @@ export async function accountAllowed(db:D1Database,userId:string) {
 	const row=await db.prepare("SELECT u.id FROM user u LEFT JOIN resource_quota q ON q.user_id=u.id WHERE u.id=? AND u.banned=0 AND q.deleted_at IS NULL").bind(userId).first();
 	return !!row;
 }
-export type PlanState={lastPlan:string|null;graceUntil:number|null;storageGraceLimit:number|null;selectedSiteId:string|null;domainGraceUntil:number|null};
+type PlanState={lastPlan:string|null;graceUntil:number|null;storageGraceLimit:number|null;selectedSiteId:string|null;domainGraceUntil:number|null};
 export async function readPlanState(db:D1Database,userId:string){
  return db.prepare("SELECT last_plan AS lastPlan,grace_until AS graceUntil,storage_grace_limit AS storageGraceLimit,selected_site_id AS selectedSiteId,domain_grace_until AS domainGraceUntil FROM resource_quota WHERE user_id=?").bind(userId).first<PlanState>();
 }
@@ -89,7 +89,7 @@ export async function purgeAccounts(env:Cloudflare.Env,now=Date.now()) {
 			env.DB.prepare("DELETE FROM vault_head_block WHERE vault_id IN (SELECT id FROM vault WHERE user_id=?)").bind(id),
 			env.DB.prepare("DELETE FROM sync_transfer_block WHERE ticket_id IN (SELECT id FROM sync_transfer WHERE user_id=?)").bind(id),
 			env.DB.prepare("DELETE FROM vault_version WHERE vault_id IN (SELECT id FROM vault WHERE user_id=?)").bind(id),
-			...["vault","sync_block","sync_account","site","ai_usage","reminder","reminder_month","device_approval","resource_reservation","sync_transfer","sync_garbage"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(id)),
+			...["vault","sync_block","sync_account","site","ai_usage","reminder","reminder_month","device_approval","resource_reservation","sync_transfer","sync_garbage","stripe_webhook_event"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(id)),
 			env.DB.prepare("DELETE FROM subscription WHERE reference_id=?").bind(id),
 			env.DB.prepare("DELETE FROM device_code WHERE user_id=?").bind(id),
 			env.DB.prepare("DELETE FROM billing_event WHERE user_id=?").bind(id),
@@ -108,7 +108,7 @@ export async function cancelDeletedBilling(env:Cloudflare.Env){
 	for(const row of rows.results){
 		try{
 			if(row.customer){
-				const stripe=new Stripe(env.STRIPE_SECRET_KEY,{httpClient:Stripe.createFetchHttpClient()});
+				const stripe=createStripe(env.STRIPE_SECRET_KEY);
 				for await(const sub of stripe.subscriptions.list({customer:row.customer,status:"all"})){
 					if(!["canceled","incomplete_expired"].includes(sub.status))await stripe.subscriptions.cancel(sub.id);
 				}

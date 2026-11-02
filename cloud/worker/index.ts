@@ -1,10 +1,12 @@
+import { stripeWebhook,cleanWebhookReceipts } from "./billing";
+import { publicPlans,purchaseAvailable } from "./pricing";
 import { flushSitePurges } from "./site-cache-purge";
 import { expireTransfers } from "./sync-transfers";
 import { SyncError,drainSyncGarbage } from "./sync-storage";
 import { expireDomains } from "./domain-downgrade";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
-import { boundedStream,idParam,safeInt,validate,opaqueId } from "./validation";
+import { boundedStream,idParam,safeInt,validate,opaqueId,requestError } from "./validation";
 import { accountAllowed,softDelete,purgeAccounts,cancelDeletedBilling,downgradeNotices } from "./lifecycle";
 import { approveDevice,approvalBody } from "./devices";
 import { expireReservations } from "./quota";
@@ -14,14 +16,14 @@ import { createMiddleware } from "hono/factory";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { auth, db, type Session } from "./auth";
 import { activeSubscription, planOf, isOwner, GIFT_PLAN } from "./account";
-import { PLANS, SUGGESTED, planNamed } from "./plans";
+import { planNamed } from "./plans";
 import { staffApi } from "./staff";
 import { syncApi } from "./sync";
 import { sitesApi } from "./sites";
 import { forgetOld, remindersApi, sendDue } from "./reminders";
 import { cleanUp } from "./cleanup";
 import { aiApi, aiUsageOf } from "./ai";
-import { devicesOf, isStudio, usageOf } from "./usage";
+import { isStudio, usageOf } from "./usage";
 import { session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
@@ -31,12 +33,12 @@ type App = { Bindings: Cloudflare.Env; Variables: { session: Session } };
 
 const app = new Hono<App>().basePath("/api");
 
-const headersSchema=z.object({authorization:z.string().max(8192).optional(),cookie:z.string().max(16384).optional(),origin:z.url().max(2048).optional(),"cf-connecting-ip":z.union([z.ipv4(),z.ipv6()]).optional(),"user-agent":z.string().max(1024).optional(),"cf-access-jwt-assertion":z.string().max(16384).optional(),"x-captcha-response":z.string().max(4096).optional(),"x-blup-upload-ticket":opaqueId.optional(),"content-length":safeInt.optional(),upgrade:z.enum(["websocket"]).optional()});
+const headersSchema=z.object({authorization:z.string().max(8192).optional(),cookie:z.string().max(16384).optional(),origin:z.url().max(2048).optional(),"cf-connecting-ip":z.union([z.ipv4(),z.ipv6()]).optional(),"user-agent":z.string().max(1024).optional(),"cf-access-jwt-assertion":z.string().max(16384).optional(),"x-captcha-response":z.string().max(4096).optional(),"x-blup-upload-ticket":opaqueId.optional(),"content-length":safeInt.optional(),"sec-fetch-site":z.enum(["same-origin","same-site","cross-site","none"]).optional(),upgrade:z.enum(["websocket"]).optional()});
 app.use("*",async(c,next)=>{
  const checked=headersSchema.safeParse(Object.fromEntries(c.req.raw.headers));
- if(!checked.success)return c.json({code:"INVALID"},400);
+ if(!checked.success)return c.json(requestError(c.req.path,"INVALID"),400);
  if(c.req.raw.body && !/\/(?:files|blocks)\/[0-9a-f]{64}$/.test(c.req.path)){
-  const max=/\/sync\/vaults\/[^/]+\/(?:versions|prepare)$/.test(c.req.path)?34*1024*1024:/\/sites\/[^/]+\/deploys$/.test(c.req.path)?8*1024*1024:96*1024;
+  const max=c.req.path==="/api/auth/stripe/webhook"?1024*1024:/\/sync\/vaults\/[^/]+\/(?:versions|prepare)$/.test(c.req.path)?34*1024*1024:/\/sites\/[^/]+\/deploys$/.test(c.req.path)?8*1024*1024:96*1024;
   const bounded=boundedStream(c.req.raw.body,max,checked.data["content-length"]);
   const init={body:bounded,duplex:"half"};c.req.raw=new Request(c.req.raw,init);
  }
@@ -44,7 +46,7 @@ app.use("*",async(c,next)=>{
 });
 
 app.use("*", async (c, next) => {
-	if (!mutationOriginAllowed(c.req.raw)) return c.json({ code: "ORIGIN_NOT_ALLOWED" }, 403);
+	if (!mutationOriginAllowed(c.req.raw)) return c.json(requestError(c.req.path,"ORIGIN_NOT_ALLOWED","Origem não permitida."),403);
 	await next();
 	// A WebSocket (101) goes as it is: copying the response would drop the socket.
 	if (c.res.status !== 101 && !c.res.headers.has("cache-control")) c.header("cache-control", "no-store");
@@ -87,6 +89,12 @@ app.on("POST", ["/auth/email-otp/request-email-change", "/auth/email-otp/change-
 app.post("/auth/subscription/upgrade", async (c, next) => {
 	const s = await auth.api.getSession({ headers: c.req.raw.headers });
 	if (s && !hasEmail(s.user.email)) return c.json({ code: "EMAIL_REQUIRED", message: "Vincule um e-mail antes de assinar." }, 403);
+	if(s){
+		const input=z.object({plan:z.enum(["pro","max","ultra"]),annual:z.boolean().optional(),referenceId:opaqueId.optional()}).safeParse(await c.req.raw.clone().json().catch(()=>null));
+		if(!input.success)return c.json({code:"INVALID"},400);
+		if(input.data.referenceId&&input.data.referenceId!==s.user.id)return c.json({code:"FORBIDDEN"},403);
+		if(!await purchaseAvailable(c.env,input.data.plan,input.data.annual??false))return c.json({code:"PRICING_UNAVAILABLE",message:"Preço indisponível agora. Tente novamente em instantes."},503);
+	}
 	await next();
 });
 
@@ -117,8 +125,20 @@ app.use("*",async(c,next)=>{
  const binding=costly?c.env.ABUSE_LIMIT:c.env.BULK_LIMIT;
  const keys=costly?[`account:${s.user.id}`,`ip:${c.req.header("cf-connecting-ip")??"local"}`]:[`account:${s.user.id}`];
  const hits=await Promise.all(keys.map(key=>binding.limit({key})));
- if(hits.some(r=>!r.success)){c.header("Retry-After",costly?"60":"10");return c.json({code:"TOO_MANY_REQUESTS"},429);}
+ if(hits.some(r=>!r.success)){c.header("Retry-After",costly?"60":"10");return c.json(requestError(c.req.path,"TOO_MANY_REQUESTS","Muitos pedidos. Tente novamente em instantes."),429);}
  await next();
+});
+
+app.post("/auth/stripe/webhook",c=>stripeWebhook(c.req.raw,c.env));
+
+// Returning from Checkout never writes entitlement. The signed webhook
+// owns reconciliation; the plugin's success endpoint also writes outside
+// its webhook, so it is disabled and replaced with this local redirect.
+app.get("/auth/subscription/success",validate("query",z.object({callbackURL:z.string().max(2048).optional(),checkoutSessionId:z.string().max(255).optional()})),c=>{
+ let target:URL;
+ try{target=new URL(c.req.valid("query").callbackURL??"/conta/plano",c.env.APP_URL);}catch{return c.json({code:"INVALID"},400);}
+ if(target.origin!==new URL(c.env.APP_URL).origin||target.username||target.password)return c.json({code:"INVALID"},400);
+ return c.redirect(target.href,303);
 });
 
 app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
@@ -133,7 +153,7 @@ const routes = app
 	// What the panel needs before signing in (public keys only).
 	.get("/config", (c) => c.json({ turnstileSiteKey: c.env.TURNSTILE_SITE_KEY }))
 	// The plans, for the panel and the Studio (no Stripe IDs).
-	.get("/plans", (c) => c.json(PLANS.map(({ name, label, priceCents, yearlyCents, currency, limits, perks }) => ({ name, label, priceCents, yearlyCents, currency, limits, perks, suggested: name === SUGGESTED }))))
+	.get("/plans", async c=>c.json(await publicPlans(c.env)))
 	.get("/me", session, async (c) => {
 		const { user } = c.get("session");
 		// The portal cancels by setting cancel_at, not cancel_at_period_end.
@@ -183,12 +203,18 @@ app.onError(async (err, c) => {
 	if(err instanceof SyncError)return c.json({code:err.code,...(err.head===undefined?{}:{head:err.head})},err.status);
 	if(err instanceof HTTPException){
   const response=err.getResponse();
-  if(response.headers.get("content-type")?.includes("application/json"))return response;
+  if(response.headers.get("content-type")?.includes("application/json")){
+   if(c.req.path.startsWith("/api/ai/")){
+    const parsed=z.object({code:z.string()}).safeParse(await response.clone().json().catch(()=>null));
+    if(parsed.success)return c.json(requestError(c.req.path,parsed.data.code),err.status);
+   }
+   return response;
+  }
   return c.req.path.startsWith("/api/ai/")?c.json({code:"INVALID",error:{code:"INVALID",message:"Pedido inválido."}},err.status):c.json({code:err.status===400?"INVALID":err.status===413?"TOO_LARGE":"REQUEST_FAILED"},err.status);
  }
 	// Database/provider errors may contain query bindings or private text.
 	console.error("[blup] request_failed", err.name);
-	return c.json({ code: "INTERNAL" }, 500);
+	return c.json(requestError(c.req.path,"INTERNAL","Não deu para completar o pedido."), 500);
 });
 
 export type AppType = typeof routes;
@@ -236,7 +262,7 @@ export default {
 	// Every 5 minutes, the calendar's reminders by e-mail; once a day, the
 	// clean-up of old versions and unused blocks.
 	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
-		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([cleanUp(env), forgetOld(env),cancelDeletedBilling(env).then(()=>purgeAccounts(env))]));
+		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))]));
 		else ctx.waitUntil(Promise.all([sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)]).then(()=>flushSitePurges(env)));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>;
