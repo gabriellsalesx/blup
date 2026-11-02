@@ -155,6 +155,9 @@ func newSite(ctx context.Context, g *config.Global) error {
 	if err := writeSiteNotes(site); err != nil {
 		return err
 	}
+	if err := WriteAgentGuides(site); err != nil {
+		return err
+	}
 	if err := writeTemplates(site); err != nil {
 		ui.Warn(i18n.T("new.templates_failed", err))
 	}

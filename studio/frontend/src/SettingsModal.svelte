@@ -19,6 +19,7 @@
   import Cloud from "@lucide/svelte/icons/cloud";
   import Info from "@lucide/svelte/icons/info";
   import CloudAccount from "./CloudAccount.svelte";
+  import HistoryPurge from "./HistoryPurge.svelte";
   import { soundOut } from "./audio";
   import { Events } from "@wailsio/runtime";
   import X from "@lucide/svelte/icons/x";
@@ -440,6 +441,7 @@
             <span class:full={pct(account.storageBytes, account.storageMB * 1048576) >= 90} style:width="{Math.max(1, pct(account.storageBytes, account.storageMB * 1048576))}%"></span>
           </div>
         </div>
+        <HistoryPurge bind:account />
         <div class="item column">
           <div class="row"><b>{s.aiUse}</b>{#if quota}<small class="muted">{s.aiUsed.replace("{n}", String(quota.percent))}</small>{/if}</div>
           {#if account.ai && quota}

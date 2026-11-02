@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gabriellsalesx/blup/internal/cloudcrypt"
 	"github.com/gabriellsalesx/blup/internal/deploy/github"
@@ -40,6 +41,10 @@ type Remote struct {
 
 	mu    sync.Mutex
 	known map[string][]string // sha -> blocks already in the vault
+	// held are sealed blocks the cloud refused for the storage limit
+	// (413 QUOTA): they wait for the version to be prepared (see
+	// prepare.go), which only goes up if it doesn't grow the use.
+	held map[string][]byte
 }
 
 type head struct {
@@ -136,14 +141,35 @@ func (r *Remote) Upload(ctx context.Context, path, sha string, data []byte) (not
 		if !need[ids[i]] {
 			continue
 		}
+		delete(need, ids[i]) // a file repeating a piece sends it once
+		r.mu.Lock()
+		over := r.held != nil
+		_, held := r.held[ids[i]]
+		r.mu.Unlock()
+		if held {
+			continue
+		}
 		sealed, err := r.Keys.SealBlock(ids[i], p)
 		if err != nil {
 			return notesync.Change{}, err
 		}
-		if err := r.Client.PutBlock(ctx, ids[i], sealed); err != nil {
+		// Above the storage limit: the block waits for the prepared
+		// version (no more sends that would be refused).
+		if !over {
+			err = r.Client.PutBlock(ctx, ids[i], sealed)
+		}
+		if over || errors.Is(err, ErrQuota) {
+			r.mu.Lock()
+			if r.held == nil {
+				r.held = map[string][]byte{}
+			}
+			r.held[ids[i]] = sealed
+			r.mu.Unlock()
+			continue
+		}
+		if err != nil {
 			return notesync.Change{}, err
 		}
-		delete(need, ids[i]) // a file repeating a piece sends it once
 	}
 	r.mu.Lock()
 	if r.known == nil {
@@ -231,7 +257,15 @@ func (r *Remote) Commit(ctx context.Context, h notesync.Head, changes []notesync
 	if err != nil {
 		return "", err
 	}
-	n, err := r.Client.Commit(ctx, r.Vault, cur.n, blocks, sealed)
+	r.mu.Lock()
+	prepare := r.held != nil
+	r.mu.Unlock()
+	var n int64
+	if prepare {
+		n, err = r.commitPrepared(ctx, cur.n, blocks, sealed)
+	} else {
+		n, err = r.Client.Commit(ctx, r.Vault, cur.n, blocks, sealed)
+	}
 	if errors.Is(err, ErrMoved) {
 		return "", notesync.ErrNotFastForward
 	}
@@ -239,4 +273,51 @@ func (r *Remote) Commit(ctx context.Context, h notesync.Head, changes []notesync
 		return "", err
 	}
 	return strconv.FormatInt(n, 10), nil
+}
+
+// commitPrepared saves version parent+1 through a preparation: every block
+// of the version is listed (the ones the cloud has with size 0, it knows
+// them), the held ones it lacks go up under the ticket, and the ticket
+// saves the version. Any failure lets the ticket go.
+func (r *Remote) commitPrepared(ctx context.Context, parent int64, blocks []string, sealedManifest []byte) (n int64, err error) {
+	r.mu.Lock()
+	list := make([]BlockSize, len(blocks))
+	for i, id := range blocks {
+		list[i] = BlockSize{ID: id, Size: int64(len(r.held[id]))}
+	}
+	r.mu.Unlock()
+	p, err := r.Client.Prepare(ctx, r.Vault, parent, list, sealedManifest)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		if err != nil {
+			// Not with ctx: a cancelled sync still lets the ticket go.
+			c, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			r.Client.CancelPrepared(c, p.Ticket)
+			cancel()
+		}
+	}()
+	for _, id := range p.Missing {
+		r.mu.Lock()
+		sealed, ok := r.held[id]
+		r.mu.Unlock()
+		if !ok {
+			// Listed as there, and gone meanwhile: the next sync sends it.
+			r.mu.Lock()
+			r.known = nil
+			r.mu.Unlock()
+			return 0, fmt.Errorf("blupcloud: block %s is no longer in the cloud", id[:8])
+		}
+		if err := r.Client.PutPreparedBlock(ctx, p.Ticket, id, sealed); err != nil {
+			return 0, err
+		}
+	}
+	if n, err = r.Client.CommitPrepared(ctx, r.Vault, p.Ticket, parent); err != nil {
+		return 0, err
+	}
+	r.mu.Lock()
+	r.held = nil
+	r.mu.Unlock()
+	return n, nil
 }

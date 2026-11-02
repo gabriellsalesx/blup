@@ -9,6 +9,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/cloudcrypt"
 	"github.com/gabriellsalesx/blup/internal/config"
+	"github.com/gabriellsalesx/blup/internal/i18n"
 	"github.com/gabriellsalesx/blup/internal/notesync"
 )
 
@@ -22,6 +23,9 @@ func init() {
 		knownError{blupcloud.ErrNoKey, "blup.err_no_key"},
 		knownError{blupcloud.ErrQuota, "blup.err_quota"},
 		knownError{blupcloud.ErrDevicesLimit, "blup.err_devices"},
+		knownError{blupcloud.ErrSyncBusy, "blup.err_sync_busy"},
+		knownError{blupcloud.ErrVaultMissing, "blup.err_vault_missing"},
+		knownError{blupcloud.ErrTicketExpired, "blup.err_ticket_expired"},
 		knownError{blupcloud.ErrDenied, "blup.err_denied"},
 		knownError{blupcloud.ErrExpired, "blup.err_expired"},
 		knownError{cloudcrypt.ErrWrongPassword, "blup.err_password"},
@@ -50,6 +54,15 @@ type BlupAccount struct {
 	MaxFileMB    int   `json:"maxFileMB"`
 	StorageMB    int   `json:"storageMB"`
 	StorageBytes int64 `json:"storageBytes"`
+	// StorageLimit is the plan's storage in bytes.
+	StorageLimit int64 `json:"storageLimit"`
+	// After a plan with less storage, while the use is above it: until
+	// GraceUntil (ISO 8601) the previous plan's GraceLimit still counts.
+	// Empty and 0 otherwise.
+	GraceUntil string `json:"graceUntil"`
+	GraceLimit int64  `json:"graceLimit"`
+	// HistoryBytes is what the old versions of all the vaults take.
+	HistoryBytes int64 `json:"historyBytes"`
 	// Sites and computers used, and how many the plan allows.
 	Sites      int `json:"sites"`
 	SitesMax   int `json:"sitesMax"`
@@ -103,6 +116,14 @@ func LoadBlupAccount(ctx context.Context) (BlupAccount, error) {
 	}
 	if me.Email != nil {
 		a.Email = *me.Email
+	}
+	u := me.Usage
+	a.StorageLimit, a.HistoryBytes = u.StorageLimitBytes, u.HistoryBytes
+	if a.StorageLimit == 0 { // an older cloud
+		a.StorageLimit = int64(a.StorageMB) << 20
+	}
+	if u.StorageGraceUntil != nil && u.StorageGraceLimitBytes != nil {
+		a.GraceUntil, a.GraceLimit = *u.StorageGraceUntil, *u.StorageGraceLimitBytes
 	}
 	switch _, err := c.Key(ctx); {
 	case errors.Is(err, blupcloud.ErrNoKey):
@@ -298,4 +319,22 @@ func blupSyncer(ctx context.Context, site *config.Site) (*notesync.Syncer, error
 		Dir:       site.ContentDir(),
 		StateFile: filepath.Join(site.Dir(), ".blup", "sync-state.json"),
 	}, nil
+}
+
+// PurgeHistory deletes the old versions of the site's notes on Blup Cloud
+// (the current version stays) and says how much it freed and the
+// account's use after it.
+func PurgeHistory(ctx context.Context, site *config.Site) (blupcloud.HistoryPurge, error) {
+	if site.Sync.Remote != RemoteBlup || site.Sync.Vault == "" {
+		return blupcloud.HistoryPurge{}, errors.New(i18n.T("blup.history_not_synced"))
+	}
+	c, _, err := blupClient()
+	if err != nil {
+		return blupcloud.HistoryPurge{}, errors.New(describe(err))
+	}
+	r, err := c.PurgeHistory(ctx, site.Sync.Vault)
+	if err != nil {
+		return r, errors.New(describe(err))
+	}
+	return r, nil
 }

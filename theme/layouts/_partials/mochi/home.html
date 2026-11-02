@@ -2,7 +2,7 @@
 {{- $featured := index (where $posts "Params.featured" true) 0 | default (index $posts 0) -}}
 {{- $rest := $posts -}}
 {{- with $featured }}{{ $rest = complement (slice .) $posts }}{{ end -}}
-{{- $pager := .Paginate $rest -}}
+{{- $pager := (partial "bento/pager-host.html" .).Paginate $rest -}}
 <main id="main">
   {{- if gt $pager.PageNumber 1 }}
   <h1 class="sr-only">{{ (partialCached "site/settings.html" . "site").name }}</h1>

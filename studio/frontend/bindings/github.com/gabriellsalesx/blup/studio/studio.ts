@@ -872,6 +872,14 @@ export function Publish(): $CancellablePromise<string> {
 }
 
 /**
+ * PurgeHistory deletes the old versions of the open site's notes on Blup
+ * Cloud; the current version stays.
+ */
+export function PurgeHistory(): $CancellablePromise<blupcloud$0.HistoryPurge> {
+    return $Call.ByID(1712059015);
+}
+
+/**
  * ReadBoard returns a canvas's or a drawing's file as it is.
  */
 export function ReadBoard(rel: string): $CancellablePromise<string> {
@@ -1055,6 +1063,14 @@ export function SaveEvent(ev: app$0.Event): $CancellablePromise<string> {
  */
 export function SaveExport(name: string, html: string): $CancellablePromise<string> {
     return $Call.ByID(2637792549, name, html);
+}
+
+/**
+ * SaveHome (Bento) makes the home page lead to a section's folder; ""
+ * shows the sections.
+ */
+export function SaveHome(folder: string): $CancellablePromise<void> {
+    return $Call.ByID(169990492, folder);
 }
 
 /**

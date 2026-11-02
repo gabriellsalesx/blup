@@ -1,0 +1,5 @@
+{{- /* The page that paginates a section's list: the home when the home
+shows that section (its pages are /page/2/...), else the section. */ -}}
+{{- $host := . -}}
+{{- if and .IsSection (eq . (partialCached "bento/home-target.html" . site.Language.Lang)) }}{{ $host = site.Home }}{{ end -}}
+{{- return $host -}}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AddSection, RemoveSection, RestoreSection } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { AddSection, RemoveSection, RestoreSection, SaveHome } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Saved from "./Saved.svelte";
@@ -21,6 +21,12 @@
     asking = "";
     reload();
   }, false); // the notice with Undo above says it
+  // Bento: the section the home page leads to ("" shows the sections).
+  // Follows the settings: a chosen section removed goes back to "".
+  const home = $derived(settings.home ?? "");
+  const homes = $derived((settings.sections ?? []).filter((sec) => sec.present && sec.folder));
+  const saveHome = (folder: string) => s.run(async () => { await SaveHome(folder); reload(); });
+
   const restore = () => s.run(async () => {
     if (!undo) return;
     onTree(await RestoreSection(undo.trash));
@@ -34,6 +40,17 @@
   <p class="lead">{settings.model === "bento" ? t.sec.lead : t.sec.leadBlog}</p>
   {#if undo}
     <div class="undo"><span>{t.sec.removed.replace("{name}", label(undo.kind))}</span><button class="btn ghost" disabled={s.state.busy} onclick={restore}>{t.sec.undo}</button></div>
+  {/if}
+  {#if settings.model === "bento" && homes.length}
+    <section class="card">
+      <label class="field"><span>{t.sec.home}</span>
+        <select value={home} onchange={(e) => saveHome(e.currentTarget.value)} disabled={s.state.busy}>
+          <option value="">{t.sec.homeSections}</option>
+          {#each homes as sec (sec.folder)}<option value={sec.folder}>{sec.folder}</option>{/each}
+        </select>
+        <small>{t.sec.homeHelp}</small>
+      </label>
+    </section>
   {/if}
   {#each settings.sections ?? [] as sec (sec.kind)}
     <section class="card section">

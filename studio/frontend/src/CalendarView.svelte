@@ -12,8 +12,8 @@
   import { toast, toastError } from "./toast.svelte";
 
   // The calendar of a vault: the month on the left, the chosen day and
-  // what is coming up on the right. A click on a day picks it; "Add" (or a
-  // double click on a day) opens the form. Each event is a note in the
+  // what is coming up on the right. A click on a day picks it; "Add on this
+  // day" in its panel (or a double click on a day) opens the form. Each event is a note in the
   // Agenda folder, opened from its form to write in it.
   let { start = "", hasNote, onOpenNote, onDailyNote, onChanged }: {
     start?: string; // a day to show first (a reminder was clicked)
@@ -172,7 +172,6 @@
         <button type="button" class="icon-btn" aria-label={c.next} title={c.next} onclick={() => go(1)}><ChevronRight size={18} /></button>
       </div>
       <label class="hol"><input type="checkbox" checked={showHolidays} onchange={toggleHolidays} />{c.holidays}</label>
-      <button type="button" class="btn" onclick={() => add()}><Plus size={16} />{c.add}</button>
     </header>
 
     <div class="grid" role="grid" aria-label={title}>

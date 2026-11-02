@@ -41,6 +41,18 @@ func (s *Studio) BlupAccount() (app.BlupAccount, error) {
 	return app.LoadBlupAccount(context.Background())
 }
 
+// PurgeHistory deletes the old versions of the open site's notes on Blup
+// Cloud; the current version stays.
+func (s *Studio) PurgeHistory() (blupcloud.HistoryPurge, error) {
+	site, err := s.current()
+	if err != nil {
+		return blupcloud.HistoryPurge{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	return app.PurgeHistory(ctx, site)
+}
+
 // BlupAIUsage is how much of the plan's AI allowance was used this month.
 func (s *Studio) BlupAIUsage() (app.AIQuota, error) {
 	return app.BlupAIUsage(context.Background())

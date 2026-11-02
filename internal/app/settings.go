@@ -22,20 +22,23 @@ import (
 
 // Settings is what the site shows besides the notes.
 type Settings struct {
-	Model           string         `json:"model"`
-	Lang            string         `json:"lang"`
-	Name            string         `json:"name"`
-	Description     string         `json:"description"`
-	Author          string         `json:"author"`
-	Logo            string         `json:"logo"`     // file of the logo, "" for none
-	ShowName        bool           `json:"showName"` // the site's name next to the logo in the header
-	Favicon         string         `json:"favicon"`  // file of the favicon, "" for none
-	Menu            []MenuItem     `json:"menu"`
-	MenuOptions     []MenuItem     `json:"menuOptions"` // pages that can go in the menu
-	ButtonText      string         `json:"buttonText"`
-	ButtonLink      string         `json:"buttonLink"`
-	Social          []string       `json:"social"`
-	Sections        []Section      `json:"sections"` // Bento only
+	Model       string     `json:"model"`
+	Lang        string     `json:"lang"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Author      string     `json:"author"`
+	Logo        string     `json:"logo"`     // file of the logo, "" for none
+	ShowName    bool       `json:"showName"` // the site's name next to the logo in the header
+	Favicon     string     `json:"favicon"`  // file of the favicon, "" for none
+	Menu        []MenuItem `json:"menu"`
+	MenuOptions []MenuItem `json:"menuOptions"` // pages that can go in the menu
+	ButtonText  string     `json:"buttonText"`
+	ButtonLink  string     `json:"buttonLink"`
+	Social      []string   `json:"social"`
+	Sections    []Section  `json:"sections"` // Bento only
+	// Home (Bento): the folder of the section the home leads to, "" for
+	// the home with the sections.
+	Home            string         `json:"home"`
 	Cookies         config.Cookies `json:"cookies"`
 	PrivacyNote     string         `json:"privacyNote"` // the policy note, relative to the notes folder
 	Feedback        bool           `json:"feedback"`
@@ -169,6 +172,9 @@ func LoadSettings(site *config.Site) (Settings, error) {
 				folder = ""
 			}
 			s.Sections = append(s.Sections, Section{Kind: k, Folder: folder, Present: ok})
+		}
+		if site.Model == "bento" && homeSection(site, site.Home) {
+			s.Home = site.Home
 		}
 	}
 	return s, nil
@@ -607,3 +613,31 @@ func DeleteFromTrash(site *config.Site, p string) error {
 
 // EmptyTrash deletes everything in the trash.
 func EmptyTrash(site *config.Site) error { return os.RemoveAll(trashDir(site)) }
+
+// homeSection tells whether folder is a section of a Bento site (a
+// top-level folder whose _index note names its kind): what its home can
+// lead to.
+func homeSection(site *config.Site, folder string) bool {
+	for kind, f := range existingSections(site) {
+		if f == folder && slices.Contains(homeKinds, kind) {
+			return true
+		}
+	}
+	return false
+}
+
+// homeKinds are the sections of a Bento site (theme: bento/kind.html).
+var homeKinds = []string{"docs", "roadmap", "changelog", "help", "blog", "feedback"}
+
+// SaveHome (Bento) makes the home page lead to the section in folder; ""
+// goes back to the home with the sections.
+func SaveHome(site *config.Site, folder string) error {
+	if site.Model != "bento" {
+		return errors.New("only Bento sites choose their home page")
+	}
+	if folder != "" && !homeSection(site, folder) {
+		return errors.New("not a section of the site: " + folder)
+	}
+	site.Home = folder
+	return saved(site)
+}

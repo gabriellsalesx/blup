@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
@@ -21,6 +22,29 @@ func TestDeployBusyMessage(t *testing.T) {
 		i18n.Set(l)
 		if got := describe(fmt.Errorf("deploy: %w", blupcloud.ErrDeployBusy)); got != msg {
 			t.Errorf("%v: %q", l, got)
+		}
+	}
+}
+
+// TestQuotaMessage: a sync refused for the storage says that deleting
+// notes or the old history frees space, in each language, without dashes.
+func TestQuotaMessage(t *testing.T) {
+	defer i18n.Set(i18n.Current())
+	want := map[i18n.Lang][]string{
+		i18n.PT: {"Apagar notas, anexos ou o histórico antigo", "libera espaço", "mude de plano"},
+		i18n.EN: {"Deleting notes, attachments or the old history", "frees space", "change plan"},
+		i18n.ES: {"Borrar notas, adjuntos o el historial antiguo", "libera espacio", "cambia de plan"},
+	}
+	for l, parts := range want {
+		i18n.Set(l)
+		got := describe(fmt.Errorf("sync: %w", blupcloud.ErrQuota))
+		for _, p := range parts {
+			if !strings.Contains(got, p) {
+				t.Errorf("%v: %q lacks %q", l, got, p)
+			}
+		}
+		if strings.ContainsAny(got, "—–") {
+			t.Errorf("%v: a dash in %q", l, got)
 		}
 	}
 }

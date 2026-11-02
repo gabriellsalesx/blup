@@ -40,8 +40,10 @@ the icons of every device from the favicon after the build (internal/pwa). */ -}
 <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-title" content="{{ (partialCached "site/settings.html" . "site").name }}">
 {{- /* A translated page names its versions in the other languages. */ -}}
-{{- if .IsTranslated }}
-{{- range .AllTranslations }}
+{{- $tr := . -}}
+{{- if and .IsSection (eq . (partialCached "bento/home-target.html" . site.Language.Lang)) }}{{ $tr = site.Home }}{{ end }}
+{{- if $tr.IsTranslated }}
+{{- range $tr.AllTranslations }}
 <link rel="alternate" hreflang="{{ .Language.Locale | default .Language.Lang }}" href="{{ .Permalink }}">
 {{- end }}
 {{- end }}

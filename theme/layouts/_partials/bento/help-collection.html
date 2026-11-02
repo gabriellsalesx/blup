@@ -1,6 +1,6 @@
 {{- $root := .FirstSection -}}
 <main id="main" class="help">
-  {{ partial "mochi/breadcrumb.html" (dict "items" (slice (dict "name" ($root.LinkTitle | default (partial "title.html" $root)) "url" $root.RelPermalink) (dict "name" (partial "title.html" .)))) }}
+  {{ partial "mochi/breadcrumb.html" (dict "items" (slice (dict "name" ($root.LinkTitle | default (partial "title.html" $root)) "url" (partial "bento/link.html" $root)) (dict "name" (partial "title.html" .)))) }}
   <h1 class="docs-title">{{ partial "title.html" . }}</h1>
   {{- with .Description }}<p class="help-lead">{{ . }}</p>{{ end }}
   <div class="help-list">

@@ -89,9 +89,10 @@ func deployBlup(ctx context.Context, site *config.Site) (string, error) {
 	if d.URL == "" {
 		return "", errors.New(i18n.T("pub.not_set"))
 	}
-	// Own domains on Blup Cloud come later: the site is built for its
-	// getblup.site address.
-	dir, err := build(ctx, site, d.URL)
+	// Built for its own domain once that is active, else for its
+	// getblup.site address (both serve the same files).
+	base, own := blupBase(ctx, c, site)
+	dir, err := build(ctx, site, base)
 	if err != nil {
 		return "", err
 	}
@@ -109,6 +110,10 @@ func deployBlup(ctx context.Context, site *config.Site) (string, error) {
 	ui.OK(i18n.T("pub.uploaded", res.Uploaded, res.Skipped))
 	if res.URL != "" {
 		d.URL = res.URL
+	}
+	d.Base = base
+	if own {
+		return strings.TrimSuffix(base, "/"), nil
 	}
 	return d.URL, nil
 }

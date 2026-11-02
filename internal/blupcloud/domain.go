@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // A site's own domain on Blup Cloud (Max and Ultra), besides
@@ -57,15 +58,38 @@ type DomainRecord struct {
 
 // DomainInfo is a site's own domain and where it stands. Status:
 // "pending_ownership" (the TXT record is missing), "pending" (being set up),
-// "active" or "error". SSL: "pending", "active" or "error".
+// "active", "error" or "disabled" (turned off when the grace after a plan
+// without own domains ran out; a new link on Max or Ultra opens it again).
+// SSL: "pending", "active" or "error".
 type DomainInfo struct {
 	Hostname string         `json:"hostname"`
 	Status   string         `json:"status"`
 	SSL      string         `json:"ssl"`
 	Records  []DomainRecord `json:"records"`
+	// DisableAt (ISO 8601, UTC) is set while the account's plan no longer
+	// includes own domains: the domain keeps working until then (14 days).
+	// Nil otherwise.
+	DisableAt *string `json:"disableAt"`
 }
 
-var domainStatuses = map[string]bool{"pending_ownership": true, "pending": true, "active": true, "error": true}
+// Official tells whether the domain is the site's address for links
+// (canonical, feeds, sitemap): active with its HTTPS, and the plan
+// includes it or the grace after a downgrade has not run out.
+func (d *DomainInfo) Official(planAllows bool, now time.Time) bool {
+	if d == nil || d.Status != "active" || d.SSL != "active" {
+		return false
+	}
+	if planAllows {
+		return true
+	}
+	if d.DisableAt == nil {
+		return false
+	}
+	at, err := time.Parse(time.RFC3339, *d.DisableAt)
+	return err == nil && at.After(now)
+}
+
+var domainStatuses = map[string]bool{"pending_ownership": true, "pending": true, "active": true, "error": true, "disabled": true}
 var sslStatuses = map[string]bool{"pending": true, "active": true, "error": true}
 
 // blocked are Blup's own domains: a site's own domain is never one of
@@ -169,6 +193,11 @@ func (d *DomainInfo) clean() error {
 		out = append(out, r)
 	}
 	d.Records = out
+	if d.DisableAt != nil {
+		if _, err := time.Parse(time.RFC3339, *d.DisableAt); err != nil {
+			d.DisableAt = nil
+		}
+	}
 	return nil
 }
 

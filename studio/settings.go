@@ -40,6 +40,12 @@ func (s *Studio) SaveMenu(menu []app.MenuItem, buttonText, buttonLink string) er
 	return s.with(func(site *config.Site) error { return app.SaveMenu(site, menu, buttonText, buttonLink) })
 }
 
+// SaveHome (Bento) makes the home page lead to a section's folder; ""
+// shows the sections.
+func (s *Studio) SaveHome(folder string) error {
+	return s.with(func(site *config.Site) error { return app.SaveHome(site, folder) })
+}
+
 // SaveSocial sets the footer's social links.
 func (s *Studio) SaveSocial(links []string) error {
 	return s.with(func(site *config.Site) error { return app.SaveSocial(site, links) })

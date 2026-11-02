@@ -1,0 +1,19 @@
+{{- /* The section a Bento home shows: the one chosen in Blup Studio
+(site.Params.blup.home, its folder), else the only section of the site.
+false for the home with the section cards (several sections and no choice,
+or a choice whose folder is gone). Each language finds its own. */ -}}
+{{- $target := false -}}
+{{- if eq site.Params.model "bento" -}}
+  {{- $secs := partial "bento/sections.html" . -}}
+  {{- with site.Params.blup.home -}}
+    {{- /* By its folder, as the Studio names it (Hugo's paths are in
+    lower case). */ -}}
+    {{- $want := lower (string .) -}}
+    {{- range $secs -}}
+      {{- $s := . -}}
+      {{- with .File }}{{ if eq (lower (strings.TrimSuffix "/" (path.Clean (printf "%s/" .Dir)))) $want }}{{ $target = $s }}{{ end }}{{ end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if and (not $target) (eq (len $secs) 1) }}{{ $target = index $secs 0 }}{{ end -}}
+{{- end -}}
+{{- return $target -}}

@@ -7,7 +7,7 @@
   import Refresh from "@lucide/svelte/icons/refresh-cw";
   import { Clipboard } from "@wailsio/runtime";
   import { t } from "./i18n";
-  import { statusKind, POLL_MS } from "./blupdomain";
+  import { statusKind, polls, graceDate, POLL_MS } from "./blupdomain";
 
   // The site's own domain on Blup Cloud (Max and Ultra). Whether the plan
   // includes it and where the domain stands come from the cloud; the
@@ -39,9 +39,11 @@
 
   const domain = $derived(info?.domain ?? null);
   const kind = $derived(statusKind(domain?.status));
-  // While the domain is not active, the cloud is asked again once a
-  // minute (it checks the DNS); nothing runs once it is active.
-  const waiting = $derived(!!domain && domain.status !== "active");
+  // While the domain is on its way, the cloud is asked again once a
+  // minute (it checks the DNS); nothing runs once it is active or off.
+  const waiting = $derived(polls(domain?.status));
+  // Kept after a downgrade: the day it stops.
+  const grace = $derived(domain?.status === "active" ? graceDate(domain.disableAt, t.locale) : "");
   $effect(() => {
     if (!waiting) return;
     const id = setInterval(() => { if (!busy) LoadDomain().then((r) => (info = r)).catch(() => {}); }, POLL_MS);
@@ -73,7 +75,14 @@
       <span class="spacer"></span>
       <button class="btn ghost" disabled={busy} onclick={load}>{#if busy}<span class="spin"><Loader size={14} /></span>{:else}<Refresh size={14} />{/if}{b.check}</button>
     </div>
-    {#if domain.status !== "active" && domain.records?.length}
+    {#if domain.status === "disabled"}
+      <p class="box">{b.disabledHelp.replace("{domain}", domain.hostname).replace("{slug}", slug)}</p>
+      {#if !info.available}<div class="actions"><button class="btn" onclick={() => OpenBlupCloud("/conta/plano")}>{b.plans}</button></div>{/if}
+    {:else if grace}
+      <p class="box">{b.grace.replace("{domain}", domain.hostname).replace("{date}", grace)}</p>
+      <div class="actions"><button class="btn" onclick={() => OpenBlupCloud("/conta/plano")}>{b.plans}</button></div>
+    {/if}
+    {#if domain.status !== "active" && domain.status !== "disabled" && domain.records?.length}
       <p>{b.records}</p>
       <table class="dns">
         <thead><tr><th>{b.type}</th><th>{b.name}</th><th>{b.value}</th><th></th></tr></thead>

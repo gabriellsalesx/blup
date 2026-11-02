@@ -53,7 +53,7 @@ func Write(s *config.Site) error {
 // AgentGuides are the files at the top of the notes folder that explain
 // Blup to AI agents (Claude Code, Codex, OpenCode, Gemini, Antigravity).
 // They are left out of the site.
-var AgentGuides = []string{"AGENTS.md", "CLAUDE.md", "GEMINI.md"}
+var AgentGuides = []string{"AGENTS.md", "CLAUDE.md", "GEMINI.md", "INSTRUCTIONS.md"}
 
 // PreviewConfig is the config used by the preview server: the same site
 // plus PreviewStatic, where the preview's search index is written.
@@ -372,6 +372,10 @@ func blupParams(s *config.Site, folder, authors string, unpublished []string) ma
 	}
 	if feedbackOn(s) {
 		p["feedback"] = s.Feedback.Owner + "/" + s.Feedback.Repo
+	}
+	if s.Model == "bento" && s.Home != "" {
+		// The section the home leads to (bento/home-target.html).
+		p["home"] = s.Home
 	}
 	if c := cookieParams(s.Cookies); len(c) > 0 {
 		p["cookies"] = c

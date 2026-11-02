@@ -44,6 +44,14 @@ var (
 	ErrDevicesLimit = errors.New("blupcloud: the plan allows no more computers")
 	// ErrDeployBusy: a publish of the same site is already under way.
 	ErrDeployBusy = errors.New("blupcloud: a publish of this site is already under way")
+	// ErrSyncBusy: a sync, a preparation or a cleanup of the account is
+	// under way; try again in a moment.
+	ErrSyncBusy = errors.New("blupcloud: the notes are busy with another sync")
+	// ErrVaultMissing: no such vault on this account.
+	ErrVaultMissing = errors.New("blupcloud: vault not found")
+	// ErrTicketExpired: a prepared version waited too long (or was
+	// cancelled); prepare it again.
+	ErrTicketExpired = errors.New("blupcloud: the prepared version expired")
 	// ErrDenied: the sign in was refused in the browser.
 	ErrDenied = errors.New("blupcloud: sign in refused in the browser")
 	// ErrExpired: the code shown was not approved in time.
@@ -162,6 +170,10 @@ func (c *Client) do(ctx context.Context, method, path string, body any, contentT
 			return ErrDevicesLimit
 		case e.Code == "DEPLOY_BUSY":
 			return ErrDeployBusy
+		case e.Code == "SYNC_BUSY":
+			return ErrSyncBusy
+		case e.Code == "TICKET_EXPIRED":
+			return ErrTicketExpired
 		}
 		return e
 	}
@@ -237,6 +249,9 @@ func (c *Client) send(ctx context.Context, method, path string, data []byte, has
 			req.Header.Set("Authorization", "Bearer "+c.Token)
 		}
 		req.Header.Set("User-Agent", UserAgent())
+		if t, _ := ctx.Value(ticketKey{}).(string); t != "" {
+			req.Header.Set("x-blup-upload-ticket", t)
+		}
 		res, err := c.HTTP.Do(req)
 		if err != nil {
 			return nil, err
@@ -376,10 +391,48 @@ type Account struct {
 	} `json:"plan"`
 	Usage struct {
 		StorageBytes int64 `json:"storageBytes"`
+		// StorageLimitBytes is the plan's storage (0 from an older cloud:
+		// StorageMB then counts).
+		StorageLimitBytes int64 `json:"storageLimitBytes"`
+		// After a plan with less storage, while the use is above it: until
+		// StorageGraceUntil (ISO 8601) the previous plan's
+		// StorageGraceLimitBytes still counts. Nil otherwise.
+		StorageGraceUntil      *string `json:"storageGraceUntil"`
+		StorageGraceLimitBytes *int64  `json:"storageGraceLimitBytes"`
+		// HistoryBytes is what the old versions of all the vaults take.
+		HistoryBytes int64 `json:"historyBytes"`
 		Vaults       int   `json:"vaults"`
 		Sites        int   `json:"sites"`
 		Devices      int   `json:"devices"`
 	} `json:"usage"`
+}
+
+// HistoryPurge is what deleting a vault's old versions freed, and the
+// account's storage use after it.
+type HistoryPurge struct {
+	FreedBytes   int64 `json:"freedBytes"`
+	StorageBytes int64 `json:"storageBytes"`
+}
+
+// PurgeHistory deletes the old versions of a vault on the cloud; the
+// current one stays. Calling it again frees nothing more.
+func (c *Client) PurgeHistory(ctx context.Context, vaultID string) (HistoryPurge, error) {
+	var r HistoryPurge
+	if !ValidVaultID(vaultID) {
+		return r, ErrVaultMissing
+	}
+	err := c.do(ctx, http.MethodDelete, "/sync/vaults/"+url.PathEscape(vaultID)+"/history", nil, "", &r)
+	var e *apiError
+	if errors.As(err, &e) && (e.Code == "NOT_FOUND" || e.Status == http.StatusNotFound) {
+		return HistoryPurge{}, ErrVaultMissing
+	}
+	if err != nil {
+		return HistoryPurge{}, err
+	}
+	if r.FreedBytes < 0 || r.StorageBytes < 0 {
+		return HistoryPurge{}, fmt.Errorf("%w: history purge", ErrBadAnswer)
+	}
+	return r, nil
 }
 
 // Me returns the signed in account.
@@ -387,6 +440,16 @@ func (c *Client) Me(ctx context.Context) (Account, error) {
 	var a Account
 	if err := c.do(ctx, http.MethodGet, "/me", nil, "", &a); err != nil {
 		return Account{}, err
+	}
+	u := &a.Usage
+	// A grace that isn't a date or has no limit is no grace.
+	if u.StorageGraceUntil != nil {
+		if _, err := time.Parse(time.RFC3339, *u.StorageGraceUntil); err != nil || u.StorageGraceLimitBytes == nil || *u.StorageGraceLimitBytes < 0 {
+			u.StorageGraceUntil, u.StorageGraceLimitBytes = nil, nil
+		}
+	}
+	if u.StorageGraceUntil == nil {
+		u.StorageGraceLimitBytes = nil
 	}
 	return a, a.check()
 }

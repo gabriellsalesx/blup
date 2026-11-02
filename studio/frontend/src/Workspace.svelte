@@ -35,6 +35,8 @@
   import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
   import ChevronsDownUp from "@lucide/svelte/icons/chevrons-down-up";
   import { Events } from "@wailsio/runtime";
+  import type { BlupAccount as BlupAccountInfo } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import StorageBanner from "./StorageBanner.svelte";
   import CloudCheck from "@lucide/svelte/icons/cloud-check";
   import CloudAlert from "@lucide/svelte/icons/cloud-alert";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
@@ -408,7 +410,10 @@
   function okTip() { setPref("shortcutTip", true); }
   // The invitation to Blup Cloud: once, to whoever has a site and no account.
   let signedIn = $state(true);
-  BlupAccount().then((a) => (signedIn = a.signedIn)).catch(() => {});
+  // The account, also for the banner when the storage is above the plan's.
+  let account = $state<BlupAccountInfo | null>(null);
+  const loadAccount = () => BlupAccount().then((a) => { account = a; signedIn = a.signedIn; }).catch(() => {});
+  loadAccount();
   const cloudTip = $derived(!look.cloudTip && !signedIn);
   async function cloudYes() {
     setPref("cloudTip", true);
@@ -529,7 +534,12 @@
 
   // Live sync through Blup Cloud (paid plans): its state on the Sync button.
   let cloud = $state<{ state: string; error?: string } | null>(null);
-  const offCloud = Events.On("cloudSync", (ev) => (cloud = ev.data));
+  // After each sync the use may have changed (a refusal for the storage,
+  // or space freed): the banner follows.
+  const offCloud = Events.On("cloudSync", (ev) => {
+    cloud = ev.data;
+    if (ev.data?.state !== "syncing" && signedIn) loadAccount();
+  });
   // The preview started again (a translation brought a new language): its
   // new address, on the open note's page.
   const offPreview = Events.On("previewRestarted", (ev) => {
@@ -550,7 +560,16 @@
     calStart = d.date ?? "";
     screen = "calendar";
   });
-  onDestroy(() => { offCloud(); offPreview(); offRebuilt(); offCal(); });
+  // The Studio published the site again alone (its own domain on Blup
+  // Cloud turned active or stopped being): a quiet notice.
+  const offRepublish = Events.On("republish", (ev) => {
+    const r = ev.data;
+    if (!r || r.dir !== site.dir) return;
+    if (r.state === "start") toast(t.bdom.republishing, { kind: "info" });
+    else if (r.state === "done") toast(t.bdom.republished.replace("{url}", r.url), { kind: "info", ms: 6000 });
+    else if (r.state === "error") toast(t.bdom.republishFailed.replace("{error}", r.error), { kind: "error" });
+  });
+  onDestroy(() => { offCloud(); offPreview(); offRebuilt(); offCal(); offRepublish(); });
   // Earlier versions on Blup Cloud: checked when the site opens and after
   // each live sync (signing in or changing plan turns it on).
   let cloudHistory = $state(false);
@@ -843,6 +862,7 @@
 
   <section class="main" bind:this={mainEl} class:scroll={screen !== "write"} class:full={fullOn}>
     {#if error}<p class="error">{t.error}: {error}</p>{/if}
+    <StorageBanner bind:account />
     {#if outside}<div class="outside"><span>{t.term.outside}</span><button class="btn ghost" onclick={reloadOutside}>{t.term.reload}</button><button class="btn ghost" onclick={() => (outside = false)}>{t.term.keep}</button></div>{/if}
     {#if screen === "write"}
       {#if current}

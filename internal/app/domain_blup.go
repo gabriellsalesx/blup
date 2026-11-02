@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"golang.org/x/net/idna"
 
@@ -33,6 +34,10 @@ func init() {
 
 // BlupDomain is the own domain of a site on Blup Cloud.
 type BlupDomain struct {
+	// Republish: the site was last built for another address than the
+	// one it should have now (its own domain turned active, or stopped
+	// being): publishing again fixes its links. The Studio does it alone.
+	Republish bool `json:"republish"`
 	// Available: the account's plan includes own domains (it comes from
 	// the cloud, never from the window).
 	Available bool `json:"available"`
@@ -83,9 +88,53 @@ func blupDomainClient(ctx context.Context, site *config.Site) (*blupcloud.Client
 	return c, out, nil
 }
 
-func (b *BlupDomain) set(d *blupcloud.DomainInfo) {
+func (b *BlupDomain) set(site *config.Site, d *blupcloud.DomainInfo) {
 	b.Domain = d
 	b.Apex = d != nil && isApex(d.Hostname)
+	bs := site.Deploy.Blup
+	last := bs.Base
+	if last == "" { // published before the base was kept: its getblup.site address
+		last = bs.URL
+	}
+	want, _ := officialBase(bs, d, b.Available, time.Now())
+	b.Republish = site.Deploy.Provider == "blup" && bs.ID != "" && bs.URL != "" && !sameBase(want, last)
+}
+
+// officialBase is the address a site on Blup Cloud is built for:
+// https://<its own domain>/ while the domain is active with its HTTPS and
+// the plan includes it (or the grace after a downgrade still runs), else
+// its getblup.site address. own tells which.
+func officialBase(bs config.BlupSite, d *blupcloud.DomainInfo, planAllows bool, now time.Time) (base string, own bool) {
+	if d.Official(planAllows, now) && blupcloud.ValidHostname(d.Hostname) {
+		return "https://" + d.Hostname + "/", true
+	}
+	return bs.URL, false
+}
+
+// sameBase compares two addresses with or without the final slash.
+func sameBase(a, b string) bool {
+	return strings.TrimSuffix(a, "/") == strings.TrimSuffix(b, "/")
+}
+
+// blupBase is the address to build the site for now, asking the cloud.
+// When the cloud can't tell (offline, own domains unavailable for a
+// moment), the last publish's address stays, so links don't flip back and
+// forth on a hiccup.
+func blupBase(ctx context.Context, c *blupcloud.Client, site *config.Site) (string, bool) {
+	bs := site.Deploy.Blup
+	me, err := c.Me(ctx)
+	var d *blupcloud.DomainInfo
+	if err == nil {
+		d, err = c.Domain(ctx, bs.ID)
+	}
+	if err != nil && !errors.Is(err, blupcloud.ErrDomainSiteMissing) {
+		if bs.Base != "" {
+			return bs.Base, !sameBase(bs.Base, bs.URL)
+		}
+		return bs.URL, false
+	}
+	allows := err == nil && me.Plan.Limits.CustomDomain
+	return officialBase(bs, d, allows, time.Now())
 }
 
 // LoadBlupDomain says where the site's own domain stands (the cloud checks
@@ -103,7 +152,7 @@ func LoadBlupDomain(ctx context.Context, site *config.Site) (BlupDomain, error) 
 	if err != nil {
 		return out, errors.New(describe(err))
 	}
-	out.set(d)
+	out.set(site, d)
 	return out, nil
 }
 
@@ -128,7 +177,7 @@ func SetBlupDomain(ctx context.Context, site *config.Site, hostname string) (Blu
 	if err != nil {
 		return out, errors.New(describe(err))
 	}
-	out.set(&d)
+	out.set(site, &d)
 	return out, nil
 }
 
@@ -142,5 +191,6 @@ func RemoveBlupDomain(ctx context.Context, site *config.Site) (BlupDomain, error
 	if err := c.RemoveDomain(ctx, site.Deploy.Blup.ID); err != nil {
 		return out, errors.New(describe(err))
 	}
+	out.set(site, nil)
 	return out, nil
 }

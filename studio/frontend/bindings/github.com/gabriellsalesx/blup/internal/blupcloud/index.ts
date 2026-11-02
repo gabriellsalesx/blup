@@ -5,6 +5,7 @@ export type {
     DeletedFile,
     DomainInfo,
     DomainRecord,
+    HistoryPurge,
     NoteVersion,
     ReminderUse,
     SlugCheck

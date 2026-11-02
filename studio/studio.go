@@ -46,6 +46,9 @@ type Studio struct {
 	cancel context.CancelFunc
 	// live keeps the open site synced through Blup Cloud (live plans).
 	live *app.Live
+	// republished is when each site was last published alone (its own
+	// domain changed), so a check doesn't do it again at once.
+	republished map[string]time.Time
 }
 
 // SiteInfo describes a site in the list.
@@ -104,6 +107,11 @@ func (s *Studio) Open(dir string) (Node, error) {
 	s.startLive(site)
 	s.remember(dir)
 	s.backupLater(site)
+	// Vaults made before the guides for AI agents get them now; the
+	// ones the person changed stay as they are (a vault that can't be
+	// written still opens).
+	_ = app.WriteAgentGuides(site)
+	go s.checkBase(site)
 	return s.Tree()
 }
 

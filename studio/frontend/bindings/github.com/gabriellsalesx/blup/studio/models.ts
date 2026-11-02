@@ -347,6 +347,19 @@ export interface Removed {
 }
 
 /**
+ * Republish is a publish the Studio does alone, heard by the window as
+ * "republish": the site's own domain on Blup Cloud turned active or
+ * stopped being, so its links (canonical, feed, sitemap) move to the
+ * right address. State: "start", "done" (URL is where it is) or "error".
+ */
+export interface Republish {
+    "dir": string;
+    "state": string;
+    "url": string;
+    "error": string;
+}
+
+/**
  * SiteInfo describes a site in the list.
  */
 export interface SiteInfo {

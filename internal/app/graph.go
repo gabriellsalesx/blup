@@ -98,8 +98,9 @@ func noteGraph(site *config.Site) (Graph, map[string][]resolvedLink, error) {
 		rel, _ := filepath.Rel(root, p)
 		rel = filepath.ToSlash(rel)
 		kind := graphKind(rel)
-		// A section's _index.md is the site's list page, not a note.
-		if kind == "" || strings.EqualFold(d.Name(), "_index.md") {
+		// A section's _index.md is the site's list page, not a note; the
+		// guides for AI agents aren't the person's notes.
+		if kind == "" || strings.EqualFold(d.Name(), "_index.md") || isAgentGuide(rel) {
 			return nil
 		}
 		folder := path.Dir(rel)

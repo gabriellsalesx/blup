@@ -65,6 +65,9 @@ func CreateVault(g *config.Global, title, notes string) (*config.Site, error) {
 			return nil, err
 		}
 	}
+	if err := WriteAgentGuides(site); err != nil {
+		return nil, err
+	}
 	if err := site.Save(); err != nil {
 		return nil, err
 	}

@@ -12,10 +12,18 @@ dicts {name, url, current}. */ -}}
     {{- $out = $out | append (dict "name" .Name "url" $url "current" $cur "external" (hasPrefix $url "http")) -}}
   {{- end -}}
 {{- else -}}
-  {{- $out = $out | append (dict "name" (T "home") "url" site.Home.RelPermalink "current" $page.IsHome) -}}
+  {{- /* A Bento section the home shows leads home: then it stands for
+  Home itself (bento/link.html). */ -}}
+  {{- $home := site.Home.RelPermalink -}}
+  {{- $secs := slice -}}
+  {{- $homeShown := false -}}
   {{- range site.Sections.ByWeight -}}
-    {{- $out = $out | append (dict "name" (.LinkTitle | default (partial "title.html" .)) "url" .RelPermalink "current" (or (eq $page .) ($page.IsDescendant .))) -}}
+    {{- $url := partial "bento/link.html" . -}}
+    {{- if eq $url $home }}{{ $homeShown = true }}{{ end -}}
+    {{- $secs = $secs | append (dict "name" (.LinkTitle | default (partial "title.html" .)) "url" $url "current" (or (eq $page .) ($page.IsDescendant .) (and $page.IsHome (eq $url $home)))) -}}
   {{- end -}}
+  {{- if not $homeShown }}{{ $out = $out | append (dict "name" (T "home") "url" $home "current" $page.IsHome) }}{{ end -}}
+  {{- $out = $out | append $secs -}}
 {{- end -}}
 {{- end }}
 {{- return $out -}}

@@ -23,14 +23,20 @@ export type CEdge = {
   label?: string;
   [k: string]: unknown;
 };
-export type Canvas = { nodes: CNode[]; edges: CEdge[]; rest: Record<string, unknown> };
+// A card of a kind the Blup doesn't know (a plugin's), or an arrow to one:
+// never shown nor read, only kept as it came, with its place in the list,
+// to go back to the file when the canvas is saved.
+export type Hidden = { at: number; item: Record<string, unknown> };
+export type Canvas = { nodes: CNode[]; edges: CEdge[]; rest: Record<string, unknown>; hidden: { nodes: Hidden[]; edges: Hidden[] } };
 
 // A canvas file may come from anywhere (another computer, through sync;
 // another app): nothing in it is trusted. Each card and arrow is checked
 // from scratch: what can be mended is (a size or position that isn't a
-// number), what can't is left out (an unknown kind, a repeated id, an
-// arrow to a card that isn't there). The keys this file doesn't know stay
-// as they are, so writing it back keeps them (Obsidian's or a plugin's).
+// number), what can't is left out (a repeated id, an arrow to a card that
+// isn't there). A card of an unknown kind is set aside untouched, with the
+// arrows to it, and written back as it was. The keys this file doesn't
+// know stay as they are, so writing it back keeps them (Obsidian's or a
+// plugin's).
 export const LIMITS = { nodes: 20000, edges: 40000, coord: 1e7, size: 1e6 } as const;
 const NODE_TYPES: readonly CNode["type"][] = ["text", "file", "link", "group"];
 const SIDES: readonly Side[] = ["top", "right", "bottom", "left"];
@@ -82,34 +88,66 @@ function toEdge(v: unknown, ids: Set<string>): CEdge | null {
   return e;
 }
 
-// Keeps the first item of each id (and no more than max of them).
-function unique<T extends { id: string }>(items: (T | null)[], max: number): T[] {
+// A card of a kind this file doesn't know: an object with an id and a
+// kind that is some other text.
+const unknownKind = (v: unknown): v is Obj =>
+  isObj(v) && typeof v.id === "string" && !!v.id && typeof v.type === "string" && !!v.type && !oneOf(NODE_TYPES, v.type);
+
+// An arrow kept aside: its ends must be cards of the canvas, shown or not.
+const hiddenEdge = (v: unknown, ids: Set<string>): v is Obj =>
+  isObj(v) && typeof v.id === "string" && !!v.id && typeof v.fromNode === "string" && typeof v.toNode === "string" && ids.has(v.fromNode) && ids.has(v.toNode);
+
+type Item<T> = { at: number; shown?: T; hidden?: Obj };
+
+// The first of each id (shown or kept aside), no more than max in all.
+function sort<T extends { id: string }>(items: Item<T>[], max: number) {
   const seen = new Set<string>();
-  const out: T[] = [];
+  const shown: T[] = [];
+  const hidden: Hidden[] = [];
   for (const it of items) {
-    if (!it || seen.has(it.id)) continue;
-    if (out.length >= max) break;
-    seen.add(it.id);
-    out.push(it);
+    const id = it.shown ? it.shown.id : it.hidden ? (it.hidden.id as string) : "";
+    if (!id || seen.has(id)) continue;
+    if (seen.size >= max) break;
+    seen.add(id);
+    if (it.shown) shown.push(it.shown);
+    else hidden.push({ at: it.at, item: it.hidden! });
   }
-  return out;
+  return { shown, hidden };
 }
 
 export function parseCanvas(text: string): Canvas {
   const j: unknown = text.trim() ? JSON.parse(text) : {};
-  if (!isObj(j)) return { nodes: [], edges: [], rest: {} };
+  const empty = (): Canvas => ({ nodes: [], edges: [], rest: {}, hidden: { nodes: [], edges: [] } });
+  if (!isObj(j)) return empty();
   const { nodes, edges, ...rest } = j;
-  const ns = unique((Array.isArray(nodes) ? nodes : []).map(toNode), LIMITS.nodes);
-  const ids = new Set(ns.map((n) => n.id));
-  const es = unique((Array.isArray(edges) ? edges : []).map((e) => toEdge(e, ids)), LIMITS.edges);
-  return { nodes: ns, edges: es, rest };
+  const n = sort<CNode>((Array.isArray(nodes) ? nodes : []).map((v, at) => {
+    const shown = toNode(v);
+    return shown ? { at, shown } : unknownKind(v) ? { at, hidden: v } : { at };
+  }), LIMITS.nodes);
+  const ids = new Set(n.shown.map((x) => x.id));
+  const all = new Set([...ids, ...n.hidden.map((h) => h.item.id as string)]);
+  const e = sort<CEdge>((Array.isArray(edges) ? edges : []).map((v, at) => {
+    const shown = toEdge(v, ids);
+    return shown ? { at, shown } : hiddenEdge(v, all) ? { at, hidden: v } : { at };
+  }), LIMITS.edges);
+  return { nodes: n.shown, edges: e.shown, rest, hidden: { nodes: n.hidden, edges: e.hidden } };
+}
+
+// Puts what was kept aside back in its place in the list.
+function merge(shown: unknown[], hidden: Hidden[]): unknown[] {
+  const out = [...shown];
+  for (const h of [...hidden].sort((a, b) => a.at - b.at)) out.splice(Math.min(h.at, out.length), 0, h.item);
+  return out;
 }
 
 // As Obsidian writes it: tabs, and a line per card and per arrow.
 export function writeCanvas(c: Canvas): string {
   const list = (xs: unknown[]) => (xs.length ? "\n\t\t" + xs.map((x) => JSON.stringify(x)).join(",\n\t\t") + "\n\t" : "");
   const round = (n: CNode) => ({ ...n, x: Math.round(n.x), y: Math.round(n.y), width: Math.round(n.width), height: Math.round(n.height) });
-  let out = "{\n\t\"nodes\":[" + list(c.nodes.map(round)) + "],\n\t\"edges\":[" + list(c.edges) + "]";
+  // An arrow kept aside goes back only while both its cards are there.
+  const ids = new Set([...c.nodes.map((n) => n.id), ...c.hidden.nodes.map((h) => h.item.id)]);
+  const edges = c.hidden.edges.filter((h) => ids.has(h.item.fromNode) && ids.has(h.item.toNode));
+  let out = "{\n\t\"nodes\":[" + list(merge(c.nodes.map(round), c.hidden.nodes)) + "],\n\t\"edges\":[" + list(merge(c.edges, edges)) + "]";
   for (const [k, v] of Object.entries(c.rest)) out += ",\n\t" + JSON.stringify(k) + ":" + JSON.stringify(v);
   return out + "\n}";
 }

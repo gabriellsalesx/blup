@@ -21,13 +21,22 @@ export interface DeletedFile {
 /**
  * DomainInfo is a site's own domain and where it stands. Status:
  * "pending_ownership" (the TXT record is missing), "pending" (being set up),
- * "active" or "error". SSL: "pending", "active" or "error".
+ * "active", "error" or "disabled" (turned off when the grace after a plan
+ * without own domains ran out; a new link on Max or Ultra opens it again).
+ * SSL: "pending", "active" or "error".
  */
 export interface DomainInfo {
     "hostname": string;
     "status": string;
     "ssl": string;
     "records": DomainRecord[] | null;
+
+    /**
+     * DisableAt (ISO 8601, UTC) is set while the account's plan no longer
+     * includes own domains: the domain keeps working until then (14 days).
+     * Nil otherwise.
+     */
+    "disableAt": string | null;
 }
 
 /**
@@ -40,6 +49,15 @@ export interface DomainRecord {
     "type": string;
     "name": string;
     "value": string;
+}
+
+/**
+ * HistoryPurge is what deleting a vault's old versions freed, and the
+ * account's storage use after it.
+ */
+export interface HistoryPurge {
+    "freedBytes": number;
+    "storageBytes": number;
 }
 
 /**

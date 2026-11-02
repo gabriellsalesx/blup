@@ -65,6 +65,10 @@ type Site struct {
 	Vault  string `toml:"vault"`  // absolute path of the Obsidian vault
 	Folder string `toml:"folder"` // folder inside the vault published as the site; "" = whole vault
 	Domain string `toml:"domain,omitempty"`
+	// Home (Bento) is the folder of the section the home page leads to;
+	// "" shows the sections (or leads to the only one). A folder that is
+	// no longer a section counts as "".
+	Home string `toml:"home,omitempty"`
 	// Password is this site's own general password of protected notes
 	// ("password: sim"); without it, the one in the credentials file counts.
 	// It stays on the user's computer and is never published (nor synced).
@@ -124,6 +128,10 @@ type BlupSite struct {
 	ID   string `toml:"id,omitempty"`
 	Slug string `toml:"slug,omitempty"`
 	URL  string `toml:"url,omitempty"`
+	// Base is the address the last publish was built for (its own domain
+	// or URL): when the domain turns active or stops being, the Studio
+	// publishes again so the links follow.
+	Base string `toml:"base,omitempty"`
 }
 
 type Cloudflare struct {

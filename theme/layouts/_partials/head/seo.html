@@ -9,7 +9,10 @@
 {{- with $desc }}
 <meta name="description" content="{{ . }}">
 {{- end }}
-<link rel="canonical" href="{{ .Permalink }}">
+{{- /* The section the Bento home shows has the home's address. */ -}}
+{{- $url := .Permalink -}}
+{{- if and .IsSection (eq . (partialCached "bento/home-target.html" . site.Language.Lang)) }}{{ $url = site.Home.Permalink }}{{ end }}
+<link rel="canonical" href="{{ $url }}">
 {{- if or (eq .Kind "404") .Params.noindex .Params.hidden }}
 <meta name="robots" content="noindex">
 {{- end }}
@@ -19,7 +22,7 @@
 {{- with $desc }}
 <meta property="og:description" content="{{ . }}">
 {{- end }}
-<meta property="og:url" content="{{ .Permalink }}">
+<meta property="og:url" content="{{ $url }}">
 <meta property="og:locale" content="{{ replace (site.Language.Locale | default "en-US") "-" "_" }}">
 {{- with $img }}
 <meta property="og:image" content="{{ . }}">

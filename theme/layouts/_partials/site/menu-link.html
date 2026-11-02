@@ -23,12 +23,12 @@ Params: page (the current page), line. */ -}}
   {{- if not $dest }}{{ warnf "menu: %q is not a folder or note of the site" $target }}{{ end -}}
 {{- end -}}
 {{- with $dest -}}
-  {{- $url = .RelPermalink -}}
+  {{- $url = cond (eq site.Params.model "bento") (partial "bento/link.html" .) .RelPermalink -}}
   {{- if eq $name $target }}{{ $name = cond .IsHome $name (.LinkTitle | default (partial "title.html" .)) }}{{ end -}}
 {{- end -}}
 {{- $out := false -}}
 {{- if $url -}}
-  {{- $cur := and $dest (or (eq $page $dest) (and (not $dest.IsHome) ($page.IsDescendant $dest))) -}}
+  {{- $cur := and $dest (or (eq $page $dest) (and (not $dest.IsHome) ($page.IsDescendant $dest)) (and $page.IsHome (eq $url site.Home.RelPermalink))) -}}
   {{- $out = dict "name" $name "url" $url "current" $cur "external" (hasPrefix $url "http") -}}
 {{- end -}}
 {{- return $out -}}

@@ -3,7 +3,7 @@
 // nothing in it. Run: npm test (node:test, no deps).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseCanvas, writeCanvas } from "../src/canvas.ts";
+import { LIMITS, parseCanvas, writeCanvas } from "../src/canvas.ts";
 import { parseDraw, writeDraw } from "../src/draw.ts";
 
 const node = (o: Record<string, unknown> = {}) => ({ id: "a", type: "text", text: "x", x: 0, y: 0, width: 250, height: 60, ...o });
@@ -12,10 +12,10 @@ const canvas = (nodes: unknown, edges: unknown = []) => parseCanvas(JSON.stringi
 test("canvas: a root that isn't an object is an empty canvas", () => {
   for (const root of ["null", "[]", "[1,2]", "3", '"x"', "true", ""]) {
     const c = parseCanvas(root);
-    assert.deepEqual(c, { nodes: [], edges: [], rest: {} }, root);
+    assert.deepEqual(c, { nodes: [], edges: [], rest: {}, hidden: { nodes: [], edges: [] } }, root);
   }
   // nodes and edges that aren't lists.
-  assert.deepEqual(parseCanvas('{"nodes":{"a":1},"edges":"x"}'), { nodes: [], edges: [], rest: {} });
+  assert.deepEqual(parseCanvas('{"nodes":{"a":1},"edges":"x"}'), { nodes: [], edges: [], rest: {}, hidden: { nodes: [], edges: [] } });
 });
 
 test("canvas: unknown kinds and broken items are left out", () => {
@@ -32,6 +32,57 @@ test("canvas: unknown kinds and broken items are left out", () => {
     node({ id: 5 }),
   ]);
   assert.deepEqual(c.nodes.map((n) => n.id), ["ok"]);
+  // The unknown kind is set aside, not shown; the broken ones are gone.
+  assert.deepEqual(c.hidden.nodes.map((h) => h.item.id), ["k"]);
+});
+
+test("canvas: a plugin's cards and their arrows are kept untouched, never shown", () => {
+  const plugin = { id: "p", type: "mindmap", x: "weird", width: -5, payload: { deep: [1, { a: "<script>" }] } };
+  const src = JSON.stringify({
+    nodes: [node({ id: "a" }), plugin, node({ id: "b" }), { id: "q", type: "excalidraw", x: 1 }],
+    edges: [
+      { id: "e1", fromNode: "a", toNode: "b" },
+      { id: "e2", fromNode: "a", toNode: "p", style: "x" },
+      { id: "e3", fromNode: "p", toNode: "q" },
+      { id: "e4", fromNode: "p", toNode: "gone" },
+    ],
+  });
+  const c = parseCanvas(src);
+  assert.deepEqual(c.nodes.map((n) => n.id), ["a", "b"]);
+  assert.deepEqual(c.edges.map((e) => e.id), ["e1"]);
+  assert.deepEqual(c.hidden.nodes.map((h) => h.item), [plugin, { id: "q", type: "excalidraw", x: 1 }]);
+  assert.deepEqual(c.hidden.edges.map((h) => h.item.id), ["e2", "e3"]);
+  // Saved again: everything in its place, the plugin's cards as they came.
+  const back = JSON.parse(writeCanvas(c));
+  const orig = JSON.parse(src);
+  assert.deepEqual(back.nodes, orig.nodes);
+  assert.deepEqual(back.edges, orig.edges.slice(0, 3));
+  // A card added and one moved don't lose them either.
+  c.nodes.push(node({ id: "c" }));
+  c.nodes[0].x = 40;
+  const again = JSON.parse(writeCanvas(c));
+  assert.deepEqual(again.nodes.map((n: { id: string }) => n.id), ["a", "p", "b", "q", "c"]);
+  assert.deepEqual(again.nodes[1], plugin);
+});
+
+test("canvas: an arrow kept aside goes when its shown card is deleted", () => {
+  const c = canvas([node({ id: "a" }), { id: "p", type: "mindmap" }], [{ id: "e", fromNode: "a", toNode: "p" }]);
+  assert.equal(c.hidden.edges.length, 1);
+  c.nodes = [];
+  const back = JSON.parse(writeCanvas(c));
+  assert.deepEqual(back.nodes, [{ id: "p", type: "mindmap" }]);
+  assert.deepEqual(back.edges, []);
+});
+
+test("canvas: kept cards count toward the limits and share the ids", () => {
+  const many = Array.from({ length: LIMITS.nodes + 5 }, (_, i) => ({ id: "h" + i, type: "plugin" }));
+  const c = canvas([node({ id: "a" }), ...many, node({ id: "z" })]);
+  assert.equal(c.nodes.length + c.hidden.nodes.length, LIMITS.nodes);
+  assert.deepEqual(c.nodes.map((n) => n.id), ["a"]);
+  // A repeated id keeps the first, shown or not.
+  const d = canvas([{ id: "x", type: "plugin" }, node({ id: "x" }), node({ id: "y" }), { id: "y", type: "plugin" }]);
+  assert.deepEqual(d.nodes.map((n) => n.id), ["y"]);
+  assert.deepEqual(d.hidden.nodes.map((h) => h.item.id), ["x"]);
 });
 
 test("canvas: missing, NaN or infinite geometry is mended", () => {

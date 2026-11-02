@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gabriellsalesx/blup/internal/config"
+	"github.com/gabriellsalesx/blup/internal/scaffold"
 )
 
 func TestCreateVault(t *testing.T) {
@@ -22,9 +23,10 @@ func TestCreateVault(t *testing.T) {
 	if !v.IsNotes() || v.ContentDir() == "" {
 		t.Fatalf("vault = %+v", v)
 	}
+	// The welcome note, and the guides for AI agents.
 	notes, _ := os.ReadDir(v.ContentDir())
-	if len(notes) != 1 {
-		t.Fatalf("welcome note: %d files", len(notes))
+	if len(notes) != 1+len(scaffold.AgentGuides) {
+		t.Fatalf("welcome note and guides: %d files", len(notes))
 	}
 	if !slices.Contains(g.Sites, v.Dir()) {
 		t.Fatal("not in the list")
@@ -34,15 +36,19 @@ func TestCreateVault(t *testing.T) {
 		t.Fatalf("reloaded = %+v, %v", again, err)
 	}
 
-	// Over a folder that already has notes: nothing is written there.
+	// Over a folder that already has notes: nothing is written there but
+	// the guides for AI agents.
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "ideia.md"), []byte("# Ideia\n"), 0o644)
 	w, err := CreateVault(&g, "Ideias", dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if entries, _ := os.ReadDir(dir); len(entries) != 1 || w.ContentDir() != dir {
+	if entries, _ := os.ReadDir(dir); len(entries) != 1+len(scaffold.AgentGuides) || w.ContentDir() != dir {
 		t.Fatalf("existing folder changed: %d files, notes in %s", len(entries), w.ContentDir())
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "ideia.md")); string(b) != "# Ideia\n" {
+		t.Fatal("the note changed")
 	}
 	if w.Dir() == v.Dir() {
 		t.Fatal("two vaults share a folder")

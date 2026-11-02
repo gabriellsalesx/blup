@@ -1,3 +1,4 @@
+{{- with partialCached "bento/home-target.html" . site.Language.Lang }}{{ partial "bento/section.html" . }}{{ else -}}
 <main id="main" class="page-wrap">
   <header class="page-intro">
     <h1 class="docs-title">{{ .Title | default (partialCached "site/settings.html" . "site").name }}</h1>
@@ -15,3 +16,4 @@
     {{- end }}
   </nav>
 </main>
+{{- end }}

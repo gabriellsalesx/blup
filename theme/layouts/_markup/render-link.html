@@ -16,8 +16,8 @@ rel="noopener" and open normally. */ -}}
   {{- $main := (index hugo.Sites 0) -}}
   {{- $lang := site.Language.Lang -}}
   {{- with or (.Page.GetPage $target) (.Page.GetPage (strings.TrimSuffix ".md" $target)) ($main.GetPage $target) ($main.GetPage (strings.TrimSuffix ".md" $target)) -}}
-    {{- $href = .RelPermalink -}}
-    {{- range .Translations }}{{ if eq .Language.Lang $lang }}{{ $href = .RelPermalink }}{{ end }}{{ end -}}
+    {{- $href = partial "bento/link.html" . -}}
+    {{- range .Translations }}{{ if eq .Language.Lang $lang }}{{ $href = partial "bento/link.html" . }}{{ end }}{{ end -}}
   {{- else -}}
     {{- with partial "vault-resource.html" (dict "page" .Page "path" $u.Path) -}}
       {{- $href = .RelPermalink -}}

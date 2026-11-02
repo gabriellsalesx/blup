@@ -143,6 +143,9 @@ func CreateSite(g *config.Global, o NewSiteOptions) (*config.Site, error) {
 	if err := writeSiteNotes(site); err != nil {
 		return nil, err
 	}
+	if err := WriteAgentGuides(site); err != nil {
+		return nil, err
+	}
 	// No Obsidian templates folder here: the Studio makes its notes itself,
 	// and the folder only confused the tree (the CLI still writes it).
 	if err := scaffold.Write(site); err != nil {

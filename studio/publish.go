@@ -11,6 +11,7 @@ import (
 
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
+	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/deploy/cfpages"
 	"github.com/gabriellsalesx/blup/internal/ui"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -25,14 +26,31 @@ type Progress struct {
 	Text string `json:"text"`
 }
 
-func init() { application.RegisterEvent[Progress]("progress") }
+// Republish is a publish the Studio does alone, heard by the window as
+// "republish": the site's own domain on Blup Cloud turned active or
+// stopped being, so its links (canonical, feed, sitemap) move to the
+// right address. State: "start", "done" (URL is where it is) or "error".
+type Republish struct {
+	Dir   string `json:"dir"`
+	State string `json:"state"`
+	URL   string `json:"url"`
+	Error string `json:"error"`
+}
+
+func init() {
+	application.RegisterEvent[Progress]("progress")
+	application.RegisterEvent[Republish]("republish")
+}
 
 var busy sync.Mutex
+
+// errBusy: another publish or sync is running.
+var errBusy = errors.New("busy")
 
 // running sends the progress lines of fn to the window. One run at a time.
 func running(fn func() error) error {
 	if !busy.TryLock() {
-		return errors.New("busy")
+		return errBusy
 	}
 	defer busy.Unlock()
 	ui.Report = func(kind, text string) { application.Get().Event.Emit("progress", Progress{kind, text}) }
@@ -228,7 +246,9 @@ func (s *Studio) BlupDomain() (app.BlupDomain, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	return app.LoadBlupDomain(ctx, site)
+	d, err := app.LoadBlupDomain(ctx, site)
+	s.republishIfStale(site, d)
+	return d, err
 }
 
 // SetBlupDomain links a domain to the open site on Blup Cloud, or checks
@@ -240,7 +260,9 @@ func (s *Studio) SetBlupDomain(hostname string) (app.BlupDomain, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	return app.SetBlupDomain(ctx, site, hostname)
+	d, err := app.SetBlupDomain(ctx, site, hostname)
+	s.republishIfStale(site, d)
+	return d, err
 }
 
 // RemoveBlupDomain unlinks the open site's own domain on Blup Cloud.
@@ -251,5 +273,72 @@ func (s *Studio) RemoveBlupDomain() (app.BlupDomain, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	return app.RemoveBlupDomain(ctx, site)
+	d, err := app.RemoveBlupDomain(ctx, site)
+	s.republishIfStale(site, d)
+	return d, err
+}
+
+// republishIfStale publishes the site again in the background when its
+// links point to an address it no longer has (see app.BlupDomain).
+func (s *Studio) republishIfStale(site *config.Site, d app.BlupDomain) {
+	if d.Republish {
+		go s.republish(site)
+	}
+}
+
+// republishWait keeps a failed (or just made) publish from running again
+// on every check of the domain.
+const republishWait = 10 * time.Minute
+
+// republish publishes site again, quietly: one run at a time (a publish
+// already going wins, and a later check tries again) and no more than
+// once in republishWait for the same site.
+func (s *Studio) republish(site *config.Site) {
+	dir := site.Dir()
+	s.mu.Lock()
+	if s.republished == nil {
+		s.republished = map[string]time.Time{}
+	}
+	if time.Since(s.republished[dir]) < republishWait {
+		s.mu.Unlock()
+		return
+	}
+	s.republished[dir] = time.Now()
+	s.mu.Unlock()
+	emit := func(r Republish) {
+		r.Dir = dir
+		if a := application.Get(); a != nil {
+			a.Event.Emit("republish", r)
+		}
+	}
+	var live string
+	err := running(func() (err error) {
+		emit(Republish{State: "start"})
+		live, err = app.PublishNow(context.Background(), site)
+		return err
+	})
+	switch {
+	case errors.Is(err, errBusy):
+		s.mu.Lock()
+		delete(s.republished, dir) // nothing ran: the next check may
+		s.mu.Unlock()
+	case err != nil:
+		emit(Republish{State: "error", Error: err.Error()})
+	default:
+		emit(Republish{State: "done", URL: live})
+	}
+}
+
+// checkBase looks, when a site opens, whether its links follow its own
+// domain on Blup Cloud, and publishes again if they don't. Silent when
+// signed out or offline.
+func (s *Studio) checkBase(site *config.Site) {
+	if site.Deploy.Provider != "blup" || site.Deploy.Blup.ID == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	if d, err := app.LoadBlupDomain(ctx, site); err == nil {
+		s.republishIfStale(site, d)
+	}
 }

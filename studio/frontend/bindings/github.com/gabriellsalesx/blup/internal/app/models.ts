@@ -127,6 +127,24 @@ export interface BlupAccount {
     "storageBytes": number;
 
     /**
+     * StorageLimit is the plan's storage in bytes.
+     */
+    "storageLimit": number;
+
+    /**
+     * After a plan with less storage, while the use is above it: until
+     * GraceUntil (ISO 8601) the previous plan's GraceLimit still counts.
+     * Empty and 0 otherwise.
+     */
+    "graceUntil": string;
+    "graceLimit": number;
+
+    /**
+     * HistoryBytes is what the old versions of all the vaults take.
+     */
+    "historyBytes": number;
+
+    /**
      * Sites and computers used, and how many the plan allows.
      */
     "sites": number;
@@ -151,6 +169,13 @@ export interface BlupAccount {
  * BlupDomain is the own domain of a site on Blup Cloud.
  */
 export interface BlupDomain {
+    /**
+     * Republish: the site was last built for another address than the
+     * one it should have now (its own domain turned active, or stopped
+     * being): publishing again fixes its links. The Studio does it alone.
+     */
+    "republish": boolean;
+
     /**
      * Available: the account's plan includes own domains (it comes from
      * the cloud, never from the window).
@@ -770,6 +795,12 @@ export interface Settings {
      * Bento only
      */
     "sections": Section[] | null;
+
+    /**
+     * Home (Bento): the folder of the section the home leads to, "" for
+     * the home with the sections.
+     */
+    "home": string;
     "cookies": config$0.Cookies;
 
     /**

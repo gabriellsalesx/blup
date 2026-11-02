@@ -1,0 +1,7 @@
+{{- /* A page's address for links: "/" (its language's home) when the page
+is the section the Bento home shows (bento/home-target.html), so the
+section has a single address; else its own. The pages inside the section
+keep theirs. */ -}}
+{{- $u := .RelPermalink -}}
+{{- if and .IsSection (eq . (partialCached "bento/home-target.html" . site.Language.Lang)) }}{{ $u = site.Home.RelPermalink }}{{ end -}}
+{{- return $u -}}

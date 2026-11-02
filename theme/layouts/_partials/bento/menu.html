@@ -10,7 +10,7 @@
 {{- else -}}
   {{- range partial "bento/sections.html" . -}}
     {{- /* linkTitle in the folder's _index gives a short menu name. */}}
-    {{- $out = $out | append (dict "name" (.LinkTitle | default (partial "title.html" .)) "url" .RelPermalink "current" (or (eq $page .) ($page.IsDescendant .))) -}}
+    {{- $out = $out | append (dict "name" (.LinkTitle | default (partial "title.html" .)) "url" (partial "bento/link.html" .) "current" (or (eq $page .) ($page.IsDescendant .) (and $page.IsHome (eq (partial "bento/link.html" .) site.Home.RelPermalink)))) -}}
   {{- end -}}
 {{- end -}}
 {{- end }}

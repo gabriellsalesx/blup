@@ -44,6 +44,11 @@ export const PreviewRestarted = "previewRestarted";
 export const Progress = "progress";
 
 /**
+ * Name of the custom event "republish".
+ */
+export const Republish = "republish";
+
+/**
  * Name of the custom event "term".
  */
 export const Term = "term";

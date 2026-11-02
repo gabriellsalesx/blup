@@ -53,6 +53,9 @@ func SearchNotes(site *config.Site, query string) ([]SearchHit, error) {
 		}
 		rel, _ := filepath.Rel(root, p)
 		rel = filepath.ToSlash(rel)
+		if isAgentGuide(rel) {
+			return nil
+		}
 		name := strings.TrimSuffix(path.Base(rel), path.Ext(rel))
 		folder := path.Dir(rel)
 		if folder == "." {

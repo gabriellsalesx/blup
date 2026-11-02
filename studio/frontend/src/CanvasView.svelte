@@ -45,6 +45,7 @@
   let nodes = $state<CNode[]>([]);
   let edges = $state<CEdge[]>([]);
   let rest: Canvas["rest"] = {};
+  let hidden: Canvas["hidden"] = { nodes: [], edges: [] }; // a plugin's cards, kept as they came
   let loaded = $state(false);
   let board = $state<HTMLDivElement>();
   let pan = $state({ x: 0, y: 0 });
@@ -70,6 +71,7 @@
     nodes = c.nodes;
     edges = c.edges;
     rest = c.rest;
+    hidden = c.hidden;
     loaded = true;
     await tick();
     fit();
@@ -87,7 +89,7 @@
     dirty = false;
     onStatus("saving");
     try {
-      written = writeCanvas({ nodes: $state.snapshot(nodes) as CNode[], edges: $state.snapshot(edges) as CEdge[], rest });
+      written = writeCanvas({ nodes: $state.snapshot(nodes) as CNode[], edges: $state.snapshot(edges) as CEdge[], rest, hidden });
       await SaveBoard(path, written);
       onStatus(dirty ? "unsaved" : "saved");
     } catch (e) {
