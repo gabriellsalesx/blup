@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { site } from "./db/blup-schema";
-import { cacheControl, fileKey, manifestKey, resolvePath, type Manifest } from "./site-rules";
+import { acceptsGzip, cacheControl, fileKey, manifestKey, resolvePath, type Manifest } from "./site-rules";
 
 // Serving <slug>.getblup.site: the live deploy's manifest says which stored
 // file each path is. To spend as little as possible, answers come from the
@@ -11,6 +11,7 @@ import { cacheControl, fileKey, manifestKey, resolvePath, type Manifest } from "
 // lives. Text files are stored gzipped and sent as they are.
 
 const HEAD_TTL = 30_000; // how long a new deploy may take to show (per isolate)
+const MAX_HEADS = 1024;
 const heads = new Map<string, { id: string; deploy: string; at: number }>();
 const manifests = new Map<string, Manifest>(); // by deploy
 const MAX_MANIFESTS = 32;
@@ -23,6 +24,7 @@ async function liveDeploy(env: Cloudflare.Env, slug: string) {
 	if (hit && now - hit.at < HEAD_TTL) return hit;
 	const [row] = await drizzle(env.DB).select({ id: site.id, deploy: site.deploy }).from(site).where(eq(site.slug, slug)).limit(1);
 	const head = { id: row?.id ?? "", deploy: row?.deploy ?? "", at: now };
+	if (heads.size >= MAX_HEADS) heads.delete(heads.keys().next().value!);
 	heads.set(slug, head);
 	return head;
 }
@@ -51,7 +53,7 @@ async function fileResponse(env: Cloudflare.Env, req: Request, siteId: string, p
 	if (!gz) return new Response(head ? null : obj.body, { status, headers });
 	// Almost every client takes gzip; the rare one that doesn't gets it
 	// unpacked here.
-	if (!/\bgzip\b/.test(req.headers.get("accept-encoding") ?? "")) {
+	if (!acceptsGzip(req.headers.get("accept-encoding"))) {
 		return new Response(head ? null : obj.body.pipeThrough(new DecompressionStream("gzip")), { status, headers });
 	}
 	headers.set("content-encoding", "gzip");
@@ -66,7 +68,7 @@ export async function serveSite(req: Request, env: Cloudflare.Env, ctx: Executio
 
 	// The same path of the same deploy is the same answer: kept in this data
 	// center's cache (gzip clients only, which are nearly all).
-	const gzipOK = /\bgzip\b/.test(req.headers.get("accept-encoding") ?? "");
+	const gzipOK = acceptsGzip(req.headers.get("accept-encoding"));
 	const cacheKey = new Request(`https://site-cache.internal/${slug}/${live.deploy}${url.pathname}`);
 	const cache = caches.default;
 	if (gzipOK) {

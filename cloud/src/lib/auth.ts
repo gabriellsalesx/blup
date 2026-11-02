@@ -38,5 +38,9 @@ export const cancelled = (err: object) => "code" in err && err.code === "AUTH_CA
 // (?volta=), only if it is a page of this panel.
 export function afterSignIn(): string {
 	const back = new URLSearchParams(location.search).get("volta") ?? "";
-	return back.startsWith("/") && !back.startsWith("//") && !back.startsWith("/\\") ? back : "/conta";
+	if (!back.startsWith("/") || back.startsWith("//") || /[\u0000-\u001f\u007f\\]/.test(back)) return "/conta";
+	try {
+		const url = new URL(back, location.origin);
+		return url.origin === location.origin ? url.pathname + url.search + url.hash : "/conta";
+	} catch { return "/conta"; }
 }

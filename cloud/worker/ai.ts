@@ -180,7 +180,7 @@ export const aiApi = new Hono<App>()
 			body: JSON.stringify({ model, input, ...(voice ? { voice } : {}), response_format: "mp3" }),
 		});
 		if (!res.ok) {
-			console.error("[blup] narração falhou", res.status, (await res.text()).slice(0, 300));
+			console.error("[blup] narração falhou", res.status);
 			// Busy or failing upstream: the Studio tries again on 429/5xx.
 			return c.json(fail("A narração falhou agora. Tente de novo.", "UPSTREAM"), res.status === 429 ? 429 : 502);
 		}
@@ -192,8 +192,8 @@ export const aiApi = new Hono<App>()
 		const userId = c.get("userId");
 		const body = await c.req.json<{ text?: string; from?: string; to?: string }>().catch(() => null);
 		const text = typeof body?.text === "string" ? body.text : "";
-		const from = body?.from ?? "", to = body?.to ?? "";
-		if (!text.trim() || text.length > MAX_TRANSLATE || !LANG_NAMES[from] || !LANG_NAMES[to] || from === to) {
+		const from = typeof body?.from === "string" ? body.from : "", to = typeof body?.to === "string" ? body.to : "";
+		if (!text.trim() || text.length > MAX_TRANSLATE || !Object.hasOwn(LANG_NAMES, from) || !Object.hasOwn(LANG_NAMES, to) || from === to) {
 			return c.json(fail("Pedido de tradução inválido.", "BAD_REQUEST"), 400);
 		}
 		const estimate = Math.ceil([...text].length * TRANSLATE_CHAR_MICROS);
@@ -220,7 +220,7 @@ export const aiApi = new Hono<App>()
 			}),
 		});
 		if (!res.ok) {
-			console.error("[blup] tradução falhou", res.status, (await res.text()).slice(0, 300));
+			console.error("[blup] tradução falhou", res.status);
 			return c.json(fail("A tradução falhou agora. Tente de novo.", "UPSTREAM"), res.status === 429 ? 429 : 502);
 		}
 		const out = await res.json<{ choices?: { message?: { content?: string }; finish_reason?: string }[]; usage?: { cost?: number } }>();

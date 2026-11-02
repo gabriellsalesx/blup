@@ -54,7 +54,7 @@ export const manifestKey = (siteId: string, deploy: string) => `s/${siteId}/d/${
 // special files.
 const SPECIAL = new Set(["/_headers", "/_redirects", "/_routes.json", "/_worker.js"]);
 export function pathAllowed(p: string): boolean {
-	if (!p.startsWith("/") || p.length > 1024 || SPECIAL.has(p)) return false;
+	if (!p.startsWith("/") || p.startsWith("//") || p.length > 1024 || SPECIAL.has(p)) return false;
 	if (/[\u0000-\u001f\u007f\\]/.test(p)) return false;
 	return !p.split("/").some((seg) => seg === "." || seg === "..");
 }
@@ -111,4 +111,19 @@ export function cacheControl(path: string, type: string): string {
 	}
 	if (FINGERPRINT.test(path)) return "public, max-age=31536000, immutable";
 	return "public, max-age=3600";
+}
+
+// An explicit refusal overrides a wildcard. Do not send gzip when q=0.
+export function acceptsGzip(header: string | null): boolean {
+	let gzip: number | undefined, wildcard = 0;
+	for (const part of (header ?? "").toLowerCase().split(",")) {
+		const [coding, ...params] = part.trim().split(";");
+		if (coding.trim() !== "gzip" && coding.trim() !== "*") continue;
+		const q = params.map(p => p.trim()).find(p => p.startsWith("q="));
+		const value = q ? Number(q.slice(2)) : 1;
+		const weight = Number.isFinite(value) && value >= 0 && value <= 1 ? value : 0;
+		if (coding.trim() === "gzip") gzip = gzip === undefined ? weight : Math.min(gzip, weight);
+		else wildcard = weight;
+	}
+	return (gzip ?? wildcard) > 0;
 }

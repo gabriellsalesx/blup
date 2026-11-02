@@ -133,9 +133,12 @@ export const staffApi = new Hono<App>()
 		}
 		const rows = found.slice(0, size);
 		const nextCursor = found.length > size ? key(rows[rows.length - 1]) : null;
-		const subs = rows.length
-			? await db.select({ ref: subscription.referenceId, plan: subscription.plan }).from(subscription).where(and(inArray(subscription.referenceId, rows.map((r) => r.id)), inArray(subscription.status, ACTIVE)))
-			: [];
+		const subs: { ref: string; plan: string }[] = [];
+		// The statuses consume three of D1's 100 bindings.
+		for (let i = 0; i < rows.length; i += 97) {
+			subs.push(...await db.select({ ref: subscription.referenceId, plan: subscription.plan }).from(subscription)
+				.where(and(inArray(subscription.referenceId, rows.slice(i, i + 97).map((r) => r.id)), inArray(subscription.status, ACTIVE))));
+		}
 		return c.json({ items: rows.map(({ emailVerified, ...r }) => ({ ...r, email: hasEmail(r.email) ? r.email : null, plan: isOwner(r.email, emailVerified) ? `${planNamed(GIFT_PLAN).label} (cortesia)` : planNamed(subs.find((s) => s.ref === r.id)?.plan).label })), nextCursor });
 	})
 

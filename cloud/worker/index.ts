@@ -14,10 +14,17 @@ import { devicesOf, isStudio, usageOf } from "./usage";
 import { session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
+import { mutationOriginAllowed } from "./security";
 
 type App = { Bindings: Cloudflare.Env; Variables: { session: Session | null } };
 
 const app = new Hono<App>().basePath("/api");
+
+app.use("*", async (c, next) => {
+	if (!mutationOriginAllowed(c.req.raw)) return c.json({ code: "ORIGIN_NOT_ALLOWED" }, 403);
+	await next();
+	if (!c.res.headers.has("cache-control")) c.header("cache-control", "no-store");
+});
 
 // Codes by e-mail cost a send each: a few per minute per address.
 app.post(`/auth${SEND_CODE_PATH}`, async (c, next) => {
@@ -133,7 +140,8 @@ app.route("/ai", aiApi);
 
 app.notFound((c) => c.json({ code: "NOT_FOUND" }, 404));
 app.onError((err, c) => {
-	console.error("[blup]", err);
+	// Database/provider errors may contain query bindings or private text.
+	console.error("[blup] request_failed", err.name);
 	return c.json({ code: "INTERNAL" }, 500);
 });
 

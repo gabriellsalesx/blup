@@ -61,7 +61,8 @@ async function account(userId: string) {
 async function dropOldVersions(env: Cloudflare.Env, userId: string, vaultId: string, head: number, historyDays: number) {
 	const cutoff = new Date(Date.now() - historyDays * 86_400_000);
 	const where = historyDays > 0 ? and(eq(vaultVersion.vaultId, vaultId), lt(vaultVersion.n, head), lt(vaultVersion.createdAt, cutoff)) : and(eq(vaultVersion.vaultId, vaultId), lt(vaultVersion.n, head));
-	const old = await db.select({ n: vaultVersion.n, key: vaultVersion.key, size: vaultVersion.size }).from(vaultVersion).where(where).limit(100);
+	// One binding is the vault ID, leaving 99 for version numbers on D1.
+	const old = await db.select({ n: vaultVersion.n, key: vaultVersion.key, size: vaultVersion.size }).from(vaultVersion).where(where).limit(99);
 	if (!old.length) return;
 	await env.NOTES.delete(old.flatMap((o) => [`${o.key}/m`, `${o.key}/r`]));
 	const freed = old.reduce((t, o) => t + o.size, 0);

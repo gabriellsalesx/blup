@@ -75,6 +75,12 @@ export async function sendDue(env: Cloudflare.Env, now = Date.now()) {
 		const limit = plans.get(r.userId)!;
 		const month = monthOf(now);
 		let send = limit > 0 && now - r.sendAt.getTime() <= LATE;
+		// Claim this exact due item before charging its monthly allowance.
+		// Another cron or a replacement from Studio may have changed it.
+		const claimed = await db.update(reminder).set({ sentAt: new Date(now) })
+			.where(and(eq(reminder.userId, r.userId), eq(reminder.id, r.id), eq(reminder.sendAt, r.sendAt), isNull(reminder.sentAt)))
+			.returning({ id: reminder.id });
+		if (!claimed.length) continue;
 		if (send) {
 			// Counted before sending: two runs can't both pass the limit.
 			const [row] = await env.DB.prepare(

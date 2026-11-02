@@ -37,7 +37,7 @@ export async function sendCode(env: Cloudflare.Env, email: string, code: string,
 		// The person sees no difference (the request already answered); the
 		// log keeps the reason.
 		const err = e as Error & { code?: string };
-		console.error("[blup] e-mail não enviado", err.code ?? "", err.message);
+		console.error("[blup] e-mail não enviado", safeMailCode(err.code));
 	}
 }
 
@@ -87,9 +87,12 @@ export async function sendReminder(env: Cloudflare.Env, email: string) {
 		});
 	} catch (e) {
 		const err = e as Error & { code?: string };
-		console.error("[blup] lembrete não enviado", err.code ?? "", err.message);
+		console.error("[blup] lembrete não enviado", safeMailCode(err.code));
 	}
 }
+
+// Provider messages can echo recipients and codes. Keep only a stable code.
+const safeMailCode = (code: unknown) => typeof code === "string" && /^[A-Z0-9_]{1,64}$/.test(code) ? code : "EMAIL_SEND_FAILED";
 
 // The same card as the code's: the logo, the message and a quiet footer.
 function reminderHtml(lead: string, note: string, off: string, logo: string) {
