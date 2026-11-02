@@ -1,3 +1,4 @@
+import { queueAccountPurge } from "./site-cache-purge";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { and, asc, count, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
@@ -193,6 +194,7 @@ export const staffApi = new Hono<App>()
 		const id = c.req.param("id");
 		const { reason } = c.req.valid("json");
 		await db.update(user).set({ banned: true, banReason: reason }).where(eq(user.id, id));
+		await queueAccountPurge(c.env.DB,id).run();
 		await db.delete(session).where(eq(session.userId, id));
 		await log(c.get("staff").email, "user.ban", id, reason);
 		return c.json({ ok: true });
@@ -201,6 +203,7 @@ export const staffApi = new Hono<App>()
 	.post("/users/:id/unban", adminOnly, validate("param",idParam), async (c) => {
 		const id = c.req.param("id");
 		await db.update(user).set({ banned: false, banReason: null }).where(eq(user.id, id));
+		await queueAccountPurge(c.env.DB,id).run();
 		await log(c.get("staff").email, "user.unban", id);
 		return c.json({ ok: true });
 	})

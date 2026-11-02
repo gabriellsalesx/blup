@@ -1,3 +1,4 @@
+import { queueSitePurge } from "./site-cache-purge";
 import { accountAllowed } from "./lifecycle";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -10,6 +11,9 @@ import { site, siteBlob } from "./db/schema";
 import { reserve, release, settle, siteLock, unlockSite } from "./quota";
 import { idParam, hashId, validate, safeInt } from "./validation";
 import { removeDomainProvider,DomainError } from "./domain-provider";
+import { storageLimit } from "./sync-storage";
+import { siteDowngrade } from "./site-entitlement";
+import { opaqueId } from "./validation";
 import { domainsApi } from "./domains";
 import { stageFile } from "./upload";
 import { planOf } from "./account";
@@ -75,10 +79,22 @@ export const sitesApi = new Hono<App>()
 			planOf(userId),
 			db.select({ id: site.id, slug: site.slug, title: site.title, bytes: site.bytes, files: site.files, live: site.deploy, updatedAt: site.updatedAt }).from(site).where(eq(site.userId, userId)).orderBy(desc(site.updatedAt)),
 		]);
+		const downgrade=await siteDowngrade(c.env.DB,userId,plan,rows.length);
+		const expired=downgrade!==null&&Date.parse(downgrade.deadline)<=Date.now();
 		return c.json({
-			limit: plan.limits.sites,
-			sites: rows.map((r) => ({ ...r, live: r.live !== "", url: siteURL(c.env, r.slug) })),
+			limit: plan.limits.sites,downgrade,
+			sites: rows.map((r) => ({ ...r,published:r.live!=="",live:r.live!==""&&(!expired||downgrade.retainedSiteIds.includes(r.id)), url: siteURL(c.env, r.slug) })),
 		});
+	})
+
+	.put("/retained",validate("json",z.object({siteId:opaqueId}).strict()),async c=>{
+		const userId=c.get("userId"),{siteId}=c.req.valid("json");
+		if(!await ownSite(userId,siteId))return c.json({code:"NOT_FOUND"},404);
+		const plan=await planOf(userId);
+		const count=await c.env.DB.prepare("SELECT count(*) AS n FROM site WHERE user_id=?").bind(userId).first<{n:number}>();
+		if(plan.limits.sites!==1||!count||count.n<=1)return c.json({code:"SELECTION_CLOSED"},409);
+		const won=await c.env.DB.prepare("UPDATE resource_quota SET selected_site_id=? WHERE user_id=? AND grace_until>? AND deleted_at IS NULL AND EXISTS(SELECT 1 FROM site WHERE id=? AND user_id=?) RETURNING user_id").bind(siteId,userId,Date.now(),siteId,userId).first();
+		return won?c.json({ok:true}):c.json({code:"SELECTION_CLOSED"},409);
 	})
 
 	// Whether a name can be the address of a new site, while it is typed:
@@ -124,6 +140,7 @@ export const sitesApi = new Hono<App>()
 			const domain=await c.env.DB.prepare("SELECT hostname,provider_id AS providerId,verified_at AS verifiedAt FROM site_domain WHERE site_id=?").bind(s.id).first<{hostname:string;providerId:string|null;verifiedAt:number|null}>();
 			if(domain)await removeDomainProvider(c.env,domain);
 			await c.env.DB.batch([
+				queueSitePurge(c.env.DB,s.id),
 				c.env.DB.prepare("DELETE FROM site WHERE id=?").bind(s.id),
 				c.env.DB.prepare("DELETE FROM site_blob WHERE site_id=?").bind(s.id),
 				c.env.DB.prepare("DELETE FROM site_domain WHERE site_id=?").bind(s.id),
@@ -167,7 +184,7 @@ export const sitesApi = new Hono<App>()
 		// Reserve before receiving a large object. Unknown lengths are bounded
 		// to a single sync-sized chunk and reserve that upper bound.
 		const upper=length?.success?length.data:Math.min(4*MB,plan.limits.maxFileMB*MB);
-		const reservation=await reserve(c.env.DB,userId,"storage",upper,plan.limits.storageMB*MB);
+		const reservation=await reserve(c.env.DB,userId,"storage",upper,await storageLimit(c.env.DB,userId,plan));
 		if(!reservation) return c.json({code:"QUOTA",limitMB:plan.limits.storageMB},413);
 		await c.env.DB.prepare("INSERT OR IGNORE INTO retired_deploy(site_id,deploy,delete_after) VALUES (?,'gc:',?)").bind(s.id,Date.now()+600_000).run();
 		const staging=`s/${s.id}/tmp/${crypto.randomUUID()}`;

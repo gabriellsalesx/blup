@@ -8,6 +8,11 @@
 	"main": "worker/sites-entry.ts",
 	"compatibility_date": "2026-10-28",
 	"observability": { "enabled": true },
+	"cache": { "enabled": false },
+	"exports": {
+		"default": { "type": "worker", "cache": { "enabled": false } },
+		"CachedSite": { "type": "worker", "cache": { "enabled": true } }
+	},
 	// O mesmo banco do painel (troque o ID na hora de publicar, como lá).
 	"d1_databases": [
 		{ "binding": "DB", "database_name": "blup-cloud", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }

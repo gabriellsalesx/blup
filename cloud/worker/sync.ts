@@ -8,8 +8,11 @@ import { v7 as uuidv7 } from "uuid";
 import { auth, db } from "./auth";
 import { syncAccount, syncBlock, vault, vaultVersion } from "./db/schema";
 import { planOf } from "./account";
+import { purgeVaultHistory } from "./sync-history";
+import { prepareTransfer,putPreparedBlock,commitTransfer,cancelTransfer,preparationSchema } from "./sync-transfers";
+import { lockUpload,unlockUpload,uploadGuard,storageLimit,SyncError } from "./sync-storage";
 import { reserve, release, settle } from "./quota";
-import { validate, idParam, hashId, safeInt, boundedBody } from "./validation";
+import { validate, idParam, hashId, safeInt, boundedBody,opaqueId } from "./validation";
 
 // Sync of the notes of each site (a vault), end-to-end encrypted by the
 // Studio (internal/cloudcrypt): this side only ever sees sealed blocks,
@@ -56,21 +59,6 @@ async function ownVault(userId: string, id: string) {
 async function account(userId: string) {
 	const [a] = await db.select().from(syncAccount).where(eq(syncAccount.userId, userId)).limit(1);
 	return a;
-}
-
-// Old versions past the plan's history (all but the head on a plan without
-// history). Their blocks go with the daily clean-up, once nothing uses them.
-async function dropOldVersions(env: Cloudflare.Env, userId: string, vaultId: string, head: number, historyDays: number) {
-	const cutoff = new Date(Date.now() - historyDays * 86_400_000);
-	const where = historyDays > 0 ? and(eq(vaultVersion.vaultId, vaultId), lt(vaultVersion.n, head), lt(vaultVersion.createdAt, cutoff)) : and(eq(vaultVersion.vaultId, vaultId), lt(vaultVersion.n, head));
-	// The decrement binds the vault and account IDs, leaving 98 version numbers.
-	const old = await db.select({ n: vaultVersion.n, key: vaultVersion.key, size: vaultVersion.size }).from(vaultVersion).where(where).limit(98);
-	if (!old.length) return;
-	await env.NOTES.delete(old.flatMap((o) => [`${o.key}/m`, `${o.key}/r`]));
-	await env.DB.batch([
-		env.DB.prepare(`UPDATE sync_account SET storage_bytes=max(0,storage_bytes-(SELECT coalesce(sum(size),0) FROM vault_version WHERE vault_id=? AND n IN (${old.map(()=>"?").join(",")}))) WHERE user_id=?`).bind(vaultId,...old.map(o=>o.n),userId),
-		env.DB.prepare(`DELETE FROM vault_version WHERE vault_id = ? AND n IN (${old.map(() => "?").join(",")})`).bind(vaultId, ...old.map((o) => o.n)),
-	]);
 }
 
 export const syncApi = new Hono<App>()
@@ -160,39 +148,35 @@ export const syncApi = new Hono<App>()
 		if (!v) return c.json({ code: "NOT_FOUND" }, 404);
 		const form=await c.req.formData().catch(()=>null);
 		if(!form) return c.json({code:"INVALID"},400);
-		const parsed=z.object({parent:safeInt,blocks:z.string().max(1_500_000).transform(s=>s.split("\n").filter(Boolean)).pipe(z.array(hashId).max(20_000)),manifest:z.instanceof(File).refine(f=>f.size>0&&f.size<=MAX_MANIFEST)}).safeParse({parent:form.get("parent"),blocks:form.get("blocks"),manifest:form.get("manifest")});
+		const parsed=z.object({parent:safeInt,blocks:z.string().max(1_500_000).transform(s=>s.split("\n").filter(Boolean)).pipe(z.array(hashId).max(20_000).refine(ids=>new Set(ids).size===ids.length)),manifest:z.instanceof(File).refine(f=>f.size>0&&f.size<=MAX_MANIFEST)}).safeParse({parent:form.get("parent"),blocks:form.get("blocks"),manifest:form.get("manifest")});
 		if(!parsed.success || [...form.keys()].some(k=>form.getAll(k).length!==1)) return c.json({code:"INVALID"},400);
 		const {parent,blocks,manifest}=parsed.data;
-		if (parent !== v.head) return c.json({ code: "MOVED", head: v.head }, 409);
-		const [plan, acc] = await Promise.all([planOf(userId), account(userId)]);
-		const refs = new TextEncoder().encode([...new Set(blocks)].join("\n"));
-		const size = manifest.size + refs.byteLength;
-		if (!acc) return c.json({ code: "NO_KEY" }, 409);
-		const hold=await reserve(c.env.DB,userId,"storage",size,plan.limits.storageMB*MB);
-		if(!hold) return c.json({code:"QUOTA",limitMB:plan.limits.storageMB},413);
+		const plan=await planOf(userId);
+		let ticket:string|undefined;
+		try{
+			const prepared=await prepareTransfer(c.env,userId,id,{parent,blocks:blocks.map(id=>({id,size:0})),manifest},plan);ticket=prepared.ticket;
+			const result=await commitTransfer(c.env,userId,id,ticket);
+			if(plan.limits.live)c.executionCtx.waitUntil(c.env.SYNC_LIVE.getByName(userId).notify(id,result.n));
+			return c.json(result,201);
+		}catch(e){if(ticket)await cancelTransfer(c.env,userId,ticket).catch(()=>{});throw e;}
 
-		const n = parent + 1;
-		const key = `u/${userId}/v/${id}/${n}-${uuidv7()}`;
-		try {
-		await Promise.all([c.env.NOTES.put(`${key}/m`, manifest.stream()), c.env.NOTES.put(`${key}/r`, refs)]);
-		const now = Date.now();
-		const res = await c.env.DB.batch([
-			c.env.DB.prepare("INSERT INTO vault_version (vault_id, n, key, size, created_at) SELECT id, ?, ?, ?, ? FROM vault WHERE id = ? AND user_id = ? AND head = ?").bind(n, key, size, now, id, userId, parent),
-			c.env.DB.prepare("UPDATE vault SET head = ?, updated_at = ? WHERE id = ? AND user_id = ? AND head = ?").bind(n, now, id, userId, parent),
-			c.env.DB.prepare("UPDATE sync_account SET storage_bytes=storage_bytes+?,last_sync_at=?,updated_at=? WHERE user_id=? AND changes()>0").bind(size,now,now,userId),
-		]);
-		if (!res[1].meta.changes) {
-			await c.env.NOTES.delete([`${key}/m`, `${key}/r`]);
-			const now = await ownVault(userId, id);
-			return c.json({ code: "MOVED", head: now?.head ?? 0 }, 409);
-		}
+	})
 
-		c.executionCtx.waitUntil(dropOldVersions(c.env, userId, id, n, plan.limits.historyDays));
-		// The account's other computers hear of it at once (live plans).
-		if (plan.limits.live) c.executionCtx.waitUntil(c.env.SYNC_LIVE.getByName(userId).notify(id, n));
-		return c.json({ n }, 201);
-		}catch(e){await c.env.NOTES.delete([`${key}/m`,`${key}/r`]);throw e;}
-		finally{await release(c.env.DB,hold);}
+	.delete("/vaults/:id/history",validate("param",idParam),async c=>c.json(await purgeVaultHistory(c.env,c.get("userId"),c.req.valid("param").id)))
+
+	.post("/vaults/:id/prepare",validate("param",idParam),async c=>{
+		const form=await c.req.formData().catch(()=>null);if(!form)return c.json({code:"INVALID"},400);
+		const parsed=preparationSchema.safeParse({parent:form.get("parent"),blocks:form.get("blocks"),manifest:form.get("manifest")});
+		if(!parsed.success||[...form.keys()].some(k=>form.getAll(k).length!==1))return c.json({code:"INVALID"},400);
+		return c.json(await prepareTransfer(c.env,c.get("userId"),c.req.valid("param").id,parsed.data,await planOf(c.get("userId"))));
+	})
+	.post("/vaults/:id/commit",validate("param",idParam),validate("json",z.object({ticket:opaqueId}).strict()),async c=>{
+		const result=await commitTransfer(c.env,c.get("userId"),c.req.valid("param").id,c.req.valid("json").ticket);
+		if((await planOf(c.get("userId"))).limits.live)c.executionCtx.waitUntil(c.env.SYNC_LIVE.getByName(c.get("userId")).notify(c.req.valid("param").id,result.n));
+		return c.json(result);
+	})
+	.delete("/preparations/:ticket",validate("param",z.object({ticket:opaqueId})),async c=>{
+		await cancelTransfer(c.env,c.get("userId"),c.req.valid("param").ticket);return c.json({ok:true});
 	})
 
 	// Which of these blocks are not stored yet (at most 1000 per call).
@@ -213,26 +197,37 @@ export const syncApi = new Hono<App>()
 		if (!BLOCK_ID.test(id)) return c.json({ code: "BAD_REQUEST" }, 400);
 		const body = await boundedBody(c.req.raw,MAX_BLOCK);
 		if (body.byteLength === 0 || body.byteLength > MAX_BLOCK) return c.json({ code: "BAD_REQUEST" }, 400);
-		const [have] = await db.select({ id: syncBlock.id }).from(syncBlock).where(and(eq(syncBlock.userId, userId), eq(syncBlock.id, id))).limit(1);
-		if (have) return c.json({ ok: true });
-		const [plan, acc] = await Promise.all([planOf(userId), account(userId)]);
-		if (!acc) return c.json({ code: "NO_KEY" }, 409);
-		const hold=await reserve(c.env.DB,userId,"storage",body.byteLength,plan.limits.storageMB*MB);
-		if(!hold) return c.json({code:"QUOTA",limitMB:plan.limits.storageMB},413);
+		const ticket=c.req.header("x-blup-upload-ticket");
+		if(ticket)return c.json(await putPreparedBlock(c.env,userId,ticket,id,body));
+		const [plan,acc]=await Promise.all([planOf(userId),account(userId)]);
+		if(!acc)return c.json({code:"NO_KEY"},409);
+		const lock=await lockUpload(c.env.DB,userId,id);if(!lock)throw new SyncError("SYNC_BUSY",409);
+		let hold:Awaited<ReturnType<typeof reserve>>=null;
+		const physical=`u/${userId}/b/${id}-${uuidv7()}`;
 		try{
-			await c.env.NOTES.put(blockKey(userId,id),body);
+			const have=await c.env.DB.prepare("SELECT id FROM sync_block WHERE user_id=? AND id=?").bind(userId,id).first();
+			if(have)return c.json({ok:true});
+			hold=await reserve(c.env.DB,userId,"storage",body.byteLength,await storageLimit(c.env.DB,userId,plan));
+			if(!hold)return c.json({code:"QUOTA",limitMB:plan.limits.storageMB},413);
+			await c.env.NOTES.put(physical,body);
 			await settle(c.env.DB,hold,[
-				c.env.DB.prepare("INSERT INTO sync_block(user_id,id,size) VALUES (?,?,?) ON CONFLICT DO NOTHING").bind(userId,id,body.byteLength),
-				c.env.DB.prepare("UPDATE sync_account SET storage_bytes=storage_bytes+? WHERE user_id=? AND changes()>0").bind(body.byteLength,userId),
-			]);
-			return c.json({ok:true},201);
-		}finally{await release(c.env.DB,hold);}
+				uploadGuard(c.env.DB,userId,lock),
+				c.env.DB.prepare("INSERT INTO sync_block(user_id,id,size,object_key) VALUES (?,?,?,?)").bind(userId,id,body.byteLength,physical),
+				c.env.DB.prepare("UPDATE sync_account SET storage_bytes=storage_bytes+? WHERE user_id=?").bind(body.byteLength,userId),
+			]);return c.json({ok:true},201);
+		}catch(e){
+   // D1 may have committed before its acknowledgement was lost.
+   try{const adopted=await c.env.DB.prepare("SELECT object_key AS key FROM sync_block WHERE user_id=? AND id=?").bind(userId,id).first<{key:string|null}>();if(adopted?.key!==physical)await c.env.NOTES.delete(physical);}catch{console.error("[blup] upload_cleanup_retry");}
+   throw e;
+  }
+		finally{if(hold)await release(c.env.DB,hold);await unlockUpload(c.env.DB,lock);}
 
 	})
 	.get("/blocks/:id", validate("param",z.object({id:hashId})), async (c) => {
 		const id = c.req.param("id");
 		if (!BLOCK_ID.test(id)) return c.json({ code: "BAD_REQUEST" }, 400);
-		const obj = await c.env.NOTES.get(blockKey(c.get("userId"), id));
+		const stored=await c.env.DB.prepare("SELECT object_key AS key FROM sync_block WHERE user_id=? AND id=?").bind(c.get("userId"),id).first<{key:string|null}>();
+		const obj = stored?await c.env.NOTES.get(stored.key??blockKey(c.get("userId"),id)):null;
 		if (!obj) return c.json({ code: "NOT_FOUND" }, 404);
 		return new Response(obj.body, { headers: { "content-type": "application/octet-stream", "cache-control": "private, max-age=31536000, immutable" } });
 	});

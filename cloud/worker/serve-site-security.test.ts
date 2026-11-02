@@ -6,6 +6,8 @@ import { fileKey, manifestKey, pathAllowed, resolvePath } from "./site-rules";
 import { serveSite } from "./serve-site";
 import entry from "./sites-entry";
 
+vi.mock("cloudflare:workers",()=>({WorkerEntrypoint:class{}}));
+
 let d1:TestD1;let bucket:TestBucket;let env:Cloudflare.Env;let tasks:Promise<unknown>[];let ctx:ExecutionContext;
 const HA="a".repeat(64),HB="b".repeat(64);
 beforeEach(()=>{

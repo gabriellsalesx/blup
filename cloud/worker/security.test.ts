@@ -123,7 +123,8 @@ describe("local attacks on actual Cloud routes", () => {
 	it("prunes old sync versions within D1's 100-parameter limit",async()=>{
 		const old=Date.now()-400*86400000;
 		d1.sqlite.exec("UPDATE vault SET head=100 WHERE id='vault-a'");
-		for(let n=1;n<=100;n++)d1.sqlite.prepare("INSERT INTO vault_version(vault_id,n,key,size,created_at) VALUES ('vault-a',?,?,1,?)").run(n,`old-${n}`,old);
+		for(let n=1;n<=100;n++){d1.sqlite.prepare("INSERT INTO vault_version(vault_id,n,key,size,created_at) VALUES ('vault-a',?,?,1,?)").run(n,`old-${n}`,old);await notes.put(`old-${n}/r`,"");await notes.put(`old-${n}/m`,"x");}
+		d1.sqlite.exec("UPDATE sync_account SET storage_bytes=100 WHERE user_id='alice'");
 		const form=new FormData(); form.set("parent","100");form.set("blocks","");form.set("manifest",new File(["sealed"],"m"));
 		const res=await worker.fetch(new Request("https://cloud.audit.invalid/api/sync/vaults/vault-a/versions",{method:"POST",headers:{authorization:"Bearer audit-alice"},body:form}),state.env,ctx);
 		expect(res.status).toBe(201);
@@ -421,24 +422,27 @@ it("support sees the recovery deadline and can restore without a new subscriptio
 
 it("does not refund the same history bytes from overlapping cleanups",async()=>{
  d1.sqlite.exec("INSERT INTO vault(id,user_id,name,head) VALUES ('free-vault','free','YQ==',1);INSERT INTO vault_version(vault_id,n,key,size,created_at) VALUES ('free-vault',1,'u/free/v/free-vault/1-old',1,1);UPDATE sync_account SET storage_bytes=1 WHERE user_id='free'");
+ await notes.put("u/free/v/free-vault/1-old/r","");await notes.put("u/free/v/free-vault/1-old/m","x");
  let finish!:()=>void;const barrier=new Promise<void>(yes=>{finish=yes;});let deletions=0;
- const original=notes.delete.bind(notes);vi.spyOn(notes,"delete").mockImplementation(async keys=>{deletions++;await barrier;return original(keys);});
+ const original=notes.delete.bind(notes);vi.spyOn(notes,"delete").mockImplementation(async keys=>{if(Array.isArray(keys)&&keys.includes("u/free/v/free-vault/1-old/m")){deletions++;await barrier;}return original(keys);});
  const post=async(parent:number)=>{
   const form=new FormData();form.set("parent",String(parent));form.set("blocks","");form.set("manifest",new File(["x"],"manifest"));
   return worker.fetch(new Request("https://cloud.audit.invalid/api/sync/vaults/free-vault/versions",{method:"POST",headers:{authorization:"Bearer audit-free"},body:form}),state.env,ctx);
  };
- try{expect((await post(1)).status).toBe(201);expect((await post(2)).status).toBe(201);expect(deletions).toBe(2);}
- finally{finish();await Promise.all(pending);}
+ const first=post(1);
+ try{await vi.waitFor(()=>expect(deletions).toBe(1));const second=await post(2);expect(second.status).toBe(409);expect(await second.json()).toMatchObject({code:"SYNC_BUSY"});}
+ finally{finish();expect((await first).status).toBe(201);await Promise.all(pending);}
  expect(d1.sqlite.prepare("SELECT storage_bytes FROM sync_account WHERE user_id='free'").get()?.storage_bytes).toBe(1);
 });
 
 it("does not refund history twice when daily cleanups overlap",async()=>{
  const now=Date.now();d1.sqlite.prepare("INSERT INTO vault_version(vault_id,n,key,size,created_at) VALUES ('vault-a',1,'u/alice/v/old',1,?),('vault-a',2,'u/alice/v/current',1,?)").run(now-400*DAY,now);
  d1.sqlite.exec("UPDATE vault SET head=2 WHERE id='vault-a';UPDATE sync_account SET storage_bytes=2 WHERE user_id='alice'");
+ await notes.put("u/alice/v/current/r","");await notes.put("u/alice/v/old/r","");
  let finish!:()=>void;const barrier=new Promise<void>(yes=>{finish=yes;});let deletions=0;
  const original=notes.delete.bind(notes);vi.spyOn(notes,"delete").mockImplementation(async keys=>{deletions++;await barrier;return original(keys);});
  const tasks=[cleanUp(state.env),cleanUp(state.env)];
- try{await vi.waitFor(()=>expect(deletions).toBe(2));}finally{finish();await Promise.all(tasks);}
+ try{await vi.waitFor(()=>expect(deletions).toBe(1));}finally{finish();await Promise.all(tasks);}
  expect(d1.sqlite.prepare("SELECT storage_bytes FROM sync_account WHERE user_id='alice'").get()?.storage_bytes).toBe(1);
 });
 

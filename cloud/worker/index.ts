@@ -1,6 +1,10 @@
+import { flushSitePurges } from "./site-cache-purge";
+import { expireTransfers } from "./sync-transfers";
+import { SyncError,drainSyncGarbage } from "./sync-storage";
+import { expireDomains } from "./domain-downgrade";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
-import { boundedStream,idParam,safeInt,validate } from "./validation";
+import { boundedStream,idParam,safeInt,validate,opaqueId } from "./validation";
 import { accountAllowed,softDelete,purgeAccounts,cancelDeletedBilling,downgradeNotices } from "./lifecycle";
 import { approveDevice,approvalBody } from "./devices";
 import { expireReservations } from "./quota";
@@ -27,12 +31,12 @@ type App = { Bindings: Cloudflare.Env; Variables: { session: Session } };
 
 const app = new Hono<App>().basePath("/api");
 
-const headersSchema=z.object({authorization:z.string().max(8192).optional(),cookie:z.string().max(16384).optional(),origin:z.url().max(2048).optional(),"cf-connecting-ip":z.union([z.ipv4(),z.ipv6()]).optional(),"user-agent":z.string().max(1024).optional(),"cf-access-jwt-assertion":z.string().max(16384).optional(),"x-captcha-response":z.string().max(4096).optional(),"content-length":safeInt.optional(),upgrade:z.enum(["websocket"]).optional()});
+const headersSchema=z.object({authorization:z.string().max(8192).optional(),cookie:z.string().max(16384).optional(),origin:z.url().max(2048).optional(),"cf-connecting-ip":z.union([z.ipv4(),z.ipv6()]).optional(),"user-agent":z.string().max(1024).optional(),"cf-access-jwt-assertion":z.string().max(16384).optional(),"x-captcha-response":z.string().max(4096).optional(),"x-blup-upload-ticket":opaqueId.optional(),"content-length":safeInt.optional(),upgrade:z.enum(["websocket"]).optional()});
 app.use("*",async(c,next)=>{
  const checked=headersSchema.safeParse(Object.fromEntries(c.req.raw.headers));
  if(!checked.success)return c.json({code:"INVALID"},400);
  if(c.req.raw.body && !/\/(?:files|blocks)\/[0-9a-f]{64}$/.test(c.req.path)){
-  const max=/\/sync\/vaults\/[^/]+\/versions$/.test(c.req.path)?34*1024*1024:/\/sites\/[^/]+\/deploys$/.test(c.req.path)?8*1024*1024:96*1024;
+  const max=/\/sync\/vaults\/[^/]+\/(?:versions|prepare)$/.test(c.req.path)?34*1024*1024:/\/sites\/[^/]+\/deploys$/.test(c.req.path)?8*1024*1024:96*1024;
   const bounded=boundedStream(c.req.raw.body,max,checked.data["content-length"]);
   const init={body:bounded,duplex:"half"};c.req.raw=new Request(c.req.raw,init);
  }
@@ -106,7 +110,7 @@ app.post("/auth/delete-user",validate("json",z.object({}).strict()),async c=>{
 // transfer has storage quotas and a separate 500/10s per-account fuse.
 app.use("*",async(c,next)=>{
  const path=c.req.path,method=c.req.method;
- const costly=(method==="POST"&&/^\/api\/(?:ai\/(?:audio\/speech|translate)|sites\/?|sync\/vaults)$/.test(path)) || /\/api\/sites\/[^/]+\/domain$/.test(path) || method==="GET"&&path==="/api/sites/check" || method==="PUT"&&/^\/api\/reminders\/?$/.test(path) || method==="DELETE"&&/^\/api\/sites\/[^/]+$/.test(path);
+ const costly=(method==="POST"&&/^\/api\/(?:ai\/(?:audio\/speech|translate)|sites\/?|sync\/vaults)$/.test(path)) || /\/api\/sites\/[^/]+\/domain$/.test(path) || method==="GET"&&path==="/api/sites/check" || method==="PUT"&&/^\/api\/reminders\/?$/.test(path) || /\/api\/sync\/vaults\/[^/]+\/(?:prepare|history)$/.test(path) || method==="PUT"&&path==="/api/sites/retained" || method==="DELETE"&&/^\/api\/sites\/[^/]+$/.test(path);
  const bulk=!costly&&(/^\/api\/sync\//.test(path)||/^\/api\/sites\/[^/]+\/(?:files|missing|deploys)(?:\/|$)/.test(path));
  if(!costly&&!bulk)return next();
  const s=await auth.api.getSession({headers:c.req.raw.headers});if(!s)return next();
@@ -176,6 +180,7 @@ const routes = app
 
 app.notFound((c) => c.json({ code: "NOT_FOUND" }, 404));
 app.onError(async (err, c) => {
+	if(err instanceof SyncError)return c.json({code:err.code,...(err.head===undefined?{}:{head:err.head})},err.status);
 	if(err instanceof HTTPException){
   const response=err.getResponse();
   if(response.headers.get("content-type")?.includes("application/json"))return response;
@@ -232,6 +237,6 @@ export default {
 	// clean-up of old versions and unused blocks.
 	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
 		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([cleanUp(env), forgetOld(env),cancelDeletedBilling(env).then(()=>purgeAccounts(env))]));
-		else ctx.waitUntil(Promise.all([sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env)]));
+		else ctx.waitUntil(Promise.all([sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)]).then(()=>flushSitePurges(env)));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>;

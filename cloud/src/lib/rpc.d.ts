@@ -46,6 +46,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 usage: {
                     storageBytes: number;
+                    storageLimitBytes: number;
+                    storageGraceUntil: string | null;
+                    storageGraceLimitBytes: number | null;
+                    historyBytes: number | null;
                     vaults: number;
                     sites: number;
                     devices: number;
@@ -307,6 +311,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
                 usage: {
                     storageBytes: number;
+                    storageLimitBytes: number;
+                    storageGraceUntil: string | null;
+                    storageGraceLimitBytes: number | null;
+                    historyBytes: number | null;
                     vaults: number;
                     sites: number;
                     devices: number;
@@ -1361,10 +1369,29 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
-                code: string;
+                n: number;
             };
             outputFormat: "json";
-            status: 409;
+            status: 201;
+        };
+    };
+} & {
+    "/vaults/:id/history": {
+        $delete: {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
         } | {
             input: {
                 param: {
@@ -1373,21 +1400,208 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             output: {
                 code: string;
-                limitMB: number;
+                fields: string[];
             };
             outputFormat: "json";
-            status: 413;
+            status: 400;
         } | {
             input: {
                 param: {
                     id: string;
+                };
+            };
+            output: {
+                freedBytes: number;
+                storageBytes: number;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/vaults/:id/prepare": {
+        $post: {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
+                ticket: string;
+                expiresAt: string;
+                missing: string[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/vaults/:id/commit": {
+        $post: {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    ticket: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    ticket: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    ticket: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    ticket: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    ticket: string;
                 };
             };
             output: {
                 n: number;
             };
             outputFormat: "json";
-            status: 201;
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/preparations/:ticket": {
+        $delete: {
+            input: {
+                param: {
+                    ticket: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    ticket: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    ticket: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
 } & {
@@ -1479,7 +1693,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
-                ok: true;
+                ok: boolean;
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;
@@ -1548,13 +1762,21 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: 400;
         };
     };
-}, "/api/sync"> | import("hono/types").MergeSchemaPath<(((((({
+}, "/api/sync"> | import("hono/types").MergeSchemaPath<((((((({
     "/": {
         $get: {
             input: {};
             output: {
                 limit: number;
+                downgrade: {
+                    limit: number;
+                    deadline: string;
+                    selectedSiteId: string | null;
+                    retainedSiteIds: string[];
+                    selectionOpen: boolean;
+                } | null;
                 sites: {
+                    published: boolean;
                     live: boolean;
                     url: string;
                     id: string;
@@ -1615,7 +1837,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             output: {
                 hostname: string;
-                status: "error" | "pending_ownership" | "pending" | "active";
+                status: "error" | "pending_ownership" | "pending" | "active" | "disabled";
+                disableAt: string | null;
                 ssl: "error" | "pending" | "active";
                 records: {
                     type: "TXT" | "CNAME";
@@ -1687,7 +1910,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             output: {
                 hostname: string;
-                status: "error" | "pending_ownership" | "pending" | "active";
+                status: "error" | "pending_ownership" | "pending" | "active" | "disabled";
+                disableAt: string | null;
                 ssl: "error" | "pending" | "active";
                 records: {
                     type: "TXT" | "CNAME";
@@ -1879,7 +2103,15 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {};
             output: {
                 limit: number;
+                downgrade: {
+                    limit: number;
+                    deadline: string;
+                    selectedSiteId: string | null;
+                    retainedSiteIds: string[];
+                    selectionOpen: boolean;
+                } | null;
                 sites: {
+                    published: boolean;
                     live: boolean;
                     url: string;
                     id: string;
@@ -1895,6 +2127,70 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 })) & {
+    "/retained": {
+        $put: {
+            input: {
+                json: {
+                    siteId: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    siteId: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    siteId: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                json: {
+                    siteId: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                json: {
+                    siteId: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}) & {
     "/check": {
         $get: {
             input: {

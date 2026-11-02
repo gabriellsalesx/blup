@@ -22,8 +22,8 @@ export async function reserve(db: D1Database, userId: string, kind: Resource, am
 	const monthStart = Date.UTC(month.getUTCFullYear(),month.getUTCMonth(),1);
 	const condition = kind === "ai"
 		? "ai + ? + coalesce((SELECT sum(cost_micros) FROM ai_usage WHERE user_id = resource_quota.user_id AND created_at >= ?),0) <= ? AND ai + ? + coalesce((SELECT sum(cost_micros) FROM ai_usage WHERE user_id = resource_quota.user_id AND created_at >= ?),0) <= ?"
-		: `${column} + ? + ${used[kind]} <= ?`;
-	const values = kind === "ai" ? [amount,monthStart,limit,amount,now-7*86_400_000,weekly ?? limit] : kind === "devices" ? [amount,now,limit] : [amount,limit];
+		: kind === "storage" && amount === 0 ? "1=1" : `${column} + ? + ${used[kind]} <= ?`;
+	const values = kind === "ai" ? [amount,monthStart,limit,amount,now-7*86_400_000,weekly ?? limit] : kind === "storage" && amount === 0 ? [] : kind === "devices" ? [amount,now,limit] : [amount,limit];
 	const result = await db.batch([
 		db.prepare(`UPDATE resource_quota SET ${column} = ${column} + ? WHERE user_id = ? AND deleted_at IS NULL AND ${condition} RETURNING user_id`).bind(amount,userId,...values),
 		db.prepare("INSERT INTO resource_reservation (id,user_id,kind,amount,expires_at) SELECT ?,?,?,?,? WHERE changes() > 0").bind(id,userId,kind,amount,now+ttl),

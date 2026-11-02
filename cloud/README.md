@@ -60,14 +60,14 @@ Cron de cinco minutos processa até 100 lembretes, reservas expiradas, limpeza a
 
 ```sh
 npx tsc -p worker/tsconfig.json --noEmit
-npx vitest run
+npx vitest run --maxWorkers 1 --no-file-parallelism
 npm run check
 npm run build
 ```
 
 Mudança nos plugins de auth pode exigir regenerar `worker/db/auth-schema.ts` com `npm run db:auth-schema`; alterações de esquema geram migração por `npm run db:generate`. Revise os arquivos antes de aplicá-los. Produção usa `--env production` tanto nas migrações quanto na publicação dos dois Workers; os scripts genéricos não o acrescentam. Os passos completos e os nomes de secrets, sem valores, estão em [deploy](../docs/deploy.md).
 
-## Contratos da rodada 2
+## Contratos das rodadas 2 e 3
 
 As cotas de criação de sites/cofres, armazenamento compartilhado e IA usam reservas atômicas no D1 antes da operação externa. Falhas devolvem a reserva; reservas abandonadas expiram. O registro de IA usa `usage.cost` finito e não negativo, inclusive em resposta incompleta, antes de validar a tradução. Sem custo informado, usa a estimativa. Tradução tem teto de saída calculado a partir da entrada. Áudio considera o preço do modelo escolhido e o custo informado em cabeçalho, quando houver.
 
@@ -75,7 +75,28 @@ Uma publicação por site obtém uma trava com expiração; a segunda recebe `40
 
 Excluir a conta revoga sessões, bloqueia login e tira os sites do ar imediatamente. Os dados cifrados e o histórico ficam preservados para recuperação por suporte durante 30 dias, por `POST /api/staff/users/:id/restore`. Isso não reinicia cobrança nem restaura sessões antigas. O cancelamento da assinatura é tentado imediatamente e nas rodadas do cron se o Stripe falhar. A partir de 30 dias, o cron diário apaga os prefixos R2, os Custom Hostnames externos e as linhas D1. Falha na limpeza externa mantém a identificação necessária para repetir a operação. Contas cuja purga já começou não podem ser restauradas.
 
-Ao passar de pago para Grátis, os sites continuam 14 dias e é enviado um aviso genérico com a marca Blup. Depois ficam fora do ar, com os arquivos preservados. Voltar a pagar religa o endereço getblup.site. A redução Max/Ultra para Pro preserva os sites existentes, bloqueia criar além do limite novo e deixa domínio próprio inativo enquanto o plano não o inclui. O prazo de 14 dias aplica-se à passagem para Grátis. A exclusão de conta prevalece sobre qualquer prazo.
+Qualquer redução de plano que deixe sites ou armazenamento acima do novo limite inicia uma carência de 14 dias, sem prolongar um prazo já aberto. Durante a carência, os sites continuam e o armazenamento pode usar até o limite anterior. Depois, Grátis mantém zero sites; Pro mantém um. Os dados e arquivos excedentes são preservados. A exclusão ou o bloqueio de conta prevalecem sobre qualquer prazo.
+
+No downgrade para Pro, o painel e o e-mail pedem qual site deve ficar. `GET /api/sites` inclui `downgrade: null | {limit,deadline,selectedSiteId,retainedSiteIds,selectionOpen}`. `deadline` é ISO UTC. `PUT /api/sites/retained` recebe somente `{siteId}` e responde `{ok:true}`; só o dono pode escolher um site dele, e pode mudar até o fim da carência. Sem escolha, fica o mais antigo, com desempate pelo ID. A política está isolada em `retainedSiteIds`. Fora do prazo retorna `409 SELECTION_CLOSED`; ID de outro dono retorna `404 NOT_FOUND`.
+
+### Armazenamento e preparação da sync
+
+O uso é o total de blocos, manifestos, histórico e sites. `GET /api/me` acrescenta em `usage`: `storageLimitBytes` (novo limite), `storageGraceUntil: string|null` (ISO UTC), `storageGraceLimitBytes: number|null` (limite durante a carência) e `historyBytes: number|null`. Histórico desconhecido por trava ativa ou metadados antigos indisponíveis retorna null, sem inventar zero. O aviso por e-mail informa usado, novo limite e data. Não apagamos dados por excesso de armazenamento.
+
+Depois da carência, uma operação que não aumenta o saldo líquido continua permitida acima da cota. Como exceção aprovada, versão sem blocos novos sempre passa, mesmo se o manifesto cifrado acrescentar alguns bytes; esses bytes continuam registrados no uso real. Crédito de substituição só inclui versões que a política `historyDays` permite remover e blocos que nenhum cofre ou versão retida usa.
+
+O protocolo antigo continua aceito. Para enviar uma substituição acima da cota:
+
+1. `POST /api/sync/vaults/:id/prepare`, multipart com `parent` inteiro em texto, `blocks` JSON `[{id,size}]` com todos os IDs da versão, e `manifest` File cifrado. Retorna `{ticket,expiresAt,missing}`. IDs não podem repetir. Para blocos existentes, o servidor usa o tamanho do D1, ignorando o declarado; `size:0` é permitido só quando o bloco já existe. Bloco ausente com tamanho zero retorna `400 INVALID`.
+2. Enviar os blocos de `missing` por `PUT /api/sync/blocks/:id`, binário, com `x-blup-upload-ticket`. O tamanho recebido precisa coincidir com o preparo.
+3. `POST /api/sync/vaults/:id/commit` com somente `{ticket}` retorna `{n}`. Repetir o commit concluído devolve o mesmo número. Pai alterado retorna `409 MOVED` com `head`; outro sync na conta retorna `409 SYNC_BUSY`.
+4. Em falha, `DELETE /api/sync/preparations/:ticket` cancela de forma idempotente. Ticket encerrado ou expirado do dono retorna `410 TICKET_EXPIRED` ao usar; desconhecido ou de outra conta retorna `404 NOT_FOUND`. A inatividade expira em 30 minutos, com limite total de 24 horas.
+
+O preparo trava a conta e reserva o saldo líquido no D1. O commit une troca de head, referências atuais, remoção lógica e fila de descarte na mesma transação. Objetos têm chaves físicas únicas, para uma limpeza atrasada não apagar reenvios do mesmo hash. Os bytes só são descontados depois de o R2 confirmar a exclusão; a retirada da fila e o desconto são atômicos, impedindo reembolso duplo. O cron repete descartes com falha.
+
+### Apagar histórico antigo
+
+`DELETE /api/sync/vaults/:id/history`, sem corpo, preserva o head atual do cofre e todos os blocos ainda usados por qualquer versão retida. Retorna `{freedBytes,storageBytes}`, com bytes realmente descontados nesta chamada e uso total atualizado da conta. Segunda chamada sem histórico retorna zero. Só o dono pode usar; sem sessão: 401, cofre alheio: `404 NOT_FOUND`, sync/preparo ativo: `409 SYNC_BUSY`, abuso: `429 TOO_MANY_REQUESTS`. O escopo é por cofre. Falha no R2 mantém os bytes cobrados e o descarte pendente, sem duplicar o desconto na repetição.
 
 ### Domínio próprio
 
@@ -84,7 +105,8 @@ Rotas com a sessão do dono: `GET`, `POST` e `DELETE /api/sites/:id/domain`. POS
 ```ts
 type DomainInfo = {
   hostname: string;
-  status: 'pending_ownership' | 'pending' | 'active' | 'error';
+  status: 'pending_ownership' | 'pending' | 'active' | 'error' | 'disabled';
+  disableAt: string | null; // ISO UTC
   ssl: 'pending' | 'active' | 'error';
   records: {type: 'TXT' | 'CNAME'; name: string; value: string}[];
 };
@@ -92,11 +114,23 @@ type DomainInfo = {
 
 No máximo dez registros, com valor de até 1024 caracteres. Hostname é normalizado por IDNA e não aceita esquema, caminho, porta, IP, localhost, .local, .internal nem getblup.io/getblup.site e seus subdomínios. Antes de criar o Custom Hostname na Cloudflare, o dono publica o TXT aleatório `_blup.<hostname>` retornado pelo servidor. Um pedido sem prova não reserva exclusividade sobre o hostname: só a posse comprovada recebe a restrição única do D1. Isso evita reservar domínios de terceiros sem controlar o DNS. Consultas DNS usam um resolvedor HTTPS fixo, sem buscar URLs do visitante. O conteúdo só é servido quando a posse, a ativação e o SSL estiverem confirmados.
 
-O botão Verificar usa GET. Poll de 60 segundos com a tela aberta é suficiente; o servidor limita consultas de verificação. O CNAME vem na resposta, não deve ser fixado na interface. Apex exige flattening/ALIAS no provedor DNS, sem promessa de IP dedicado. A resolução de domínio tem cache de até 30 segundos; a situação da conta e do plano é conferida antes de servir conteúdo. O redirecionamento www só atua em requisições que chegam ao Worker; ele não cria um segundo certificado/hostname por conta própria.
+O botão Verificar usa GET. Poll de 60 segundos com a tela aberta é suficiente; o servidor limita consultas de verificação. O CNAME vem na resposta, não deve ser fixado na interface. Apex exige flattening/ALIAS no provedor DNS, sem promessa de IP dedicado. A resolução de domínio tem cache de até 30 segundos; conta, plano, host exato e prazo são conferidos no D1 antes de servir conteúdo. O redirecionamento www só atua em requisições que chegam ao Worker; ele não cria um segundo certificado/hostname por conta própria.
+
+Sair de Max/Ultra para Pro ou Grátis também dá 14 dias de domínio próprio. Durante o prazo, o GET mantém `active`/SSL `active` com `disableAt` futuro, se a configuração já estava ativa. O cliente pode usá-lo como URL oficial apesar de o novo plano não incluir domínio. Voltar a Max/Ultra antes do fim limpa `disableAt`. Ao vencer, o domínio deixa de servir imediatamente pela verificação do gateway e o cron remove o Custom Hostname. Se a Cloudflare falhar, o servidor mantém os IDs e repete a exclusão; GET já informa `disabled`, SSL `pending`, `records:[]`, hostname e prazo preservados. Voltar a pagar depois de desligado exige POST para configurar de novo. O endereço getblup.site só continua nos sites que cabem no plano. Os dois hosts servem o mesmo deploy, sem redirecionamento para uma URL oficial.
+
+### Workers Cache e Early Hints
+
+`wrangler.sites.jsonc` desliga o cache da entrada default e liga somente `CachedSite`. O gateway resolve o host e consulta autorização no D1 em todo pedido; chama `ctx.exports.CachedSite({props:{siteId,deploy}}).fetch(...)`. Host não integra a chave do Workers Cache. `ctx.props` separa site e deploy; encoding é normalizado e usa `Vary: Accept-Encoding`. Query não altera arquivos estáticos e é removida da chave; redirecionamento de barra final recupera a query no gateway. Cookies e Authorization não são encaminhados ao cache público.
+
+O cache interno usa 600 segundos, tags `site:<id>` e `deploy:<id>:<deploy>`. O navegador mantém Cache-Control e ETag anteriores, inclusive 304 e HEAD. Respostas inexistentes ou bloqueadas usam no-store. A Cache API antiga foi removida. Link preload do CSS Bento/Mochi e da fonte Inter presentes no manifesto acompanha o HTML. A criação de Custom Hostname pede `ssl.settings.early_hints: "on"`; ative Early Hints também na zona dos sites. O envio real de 103 depende da Cloudflare, do cache dos hints e do navegador, e só pode ser conferido em staging/produção.
+
+Bloqueio, desbloqueio, exclusão, restauração, remoção de site, vencimento da carência e desligamento de domínio enfileiram purgas por site. O cron agrupa até 100 tags e faz no máximo uma tentativa por minuto, abaixo do limite Free de cinco por minuto. A chamada parte de `CachedSite.purgePending`, por service binding `SITE_CACHE`, pois a purga pertence ao entrypoint que possui o cache. Falhas e limite da Cloudflare mantêm a fila; eventos concorrentes não são perdidos. O cron atual roda a cada cinco minutos, então a purga pode esperar essa rodada ou mais em uma fila grande. A autorização do gateway impede servir conteúdo revogado durante a espera.
+
+A [documentação Workers Cache](https://developers.cloudflare.com/workers/cache/), [chaves](https://developers.cloudflare.com/workers/cache/cache-keys/), [purga](https://developers.cloudflare.com/workers/cache/purge/) e [limites](https://developers.cloudflare.com/workers/cache/limitations/) confirma que o cache não elimina a cobrança por request. O loopback com cache também é uma invocação cobrada; só a CPU do entrypoint atendido pelo cache deixa de rodar. Gateway e consulta D1 continuam em todos os acessos. O ganho esperado é reduzir R2 e CPU do serving; medir hits, CPU, linhas lidas e custo por visita antes de afirmar economia total. A propagação global de purgas, o hit real da camada gerenciada e o 103 ficam para validação em ambiente Cloudflare. Os testes locais verificam contrato, isolamento e bloqueios com provedores simulados.
 
 ### Limites de abuso e de corpos
 
-`ABUSE_LIMIT`: 120/min por conta e por IP para IA, criação de site/cofre, domínio, check de slug, lembretes PUT e remoção de site. `BULK_LIMIT`: 500/10 s por conta para uploads, missing, deploys, blocos/manifestos e downloads da sync. Ao negar, ambos retornam `429 TOO_MANY_REQUESTS` e `Retry-After` de 60 ou 10 segundos, respectivamente. A Cloudflare aplica esses limitadores por localização; as cotas financeiras e de armazenamento continuam no D1, que é a autoridade global.
+`ABUSE_LIMIT`: 120/min por conta e por IP para IA, criação de site/cofre, domínio, check de slug, lembretes PUT, escolha de site, preparação/purga de histórico e remoção de site. `BULK_LIMIT`: 500/10 s por conta para uploads, missing, deploys, blocos/manifestos e downloads da sync. Ao negar, ambos retornam `429 TOO_MANY_REQUESTS` e `Retry-After` de 60 ou 10 segundos, respectivamente. A Cloudflare aplica esses limitadores por localização; as cotas financeiras e de armazenamento continuam no D1, que é a autoridade global.
 
 JSON geral: 96 KiB. Metadados de publicação: 8 MiB. Multipart de versão: 34 MiB, com manifesto cifrado de até 32 MiB. Bloco: 4 MiB mais 64 bytes. Arquivo de site: até o limite do plano, no máximo 100 MiB. O servidor verifica Content-Length antes de receber e conta os bytes durante a leitura. Upload de arquivo maior que 4 MiB precisa informar Content-Length. Arquivos grandes são processados em fluxo, com digest incremental e staging R2; a validação não carrega o arquivo todo no isolate de 128 MiB. Staging e cópia final acrescentam operações R2, consideradas no orçamento.
 
@@ -104,11 +138,12 @@ O painel usa `hc<AppType>` e `InferResponseType`. `worker/export-rpc.mjs` emite 
 
 ## Antes de publicar
 
-- Aplicar de 0000 até `0010_cotas_retencao_dominios.sql`, gerada com drizzle-kit, antes do novo Worker. As migrações anteriores permanecem intactas. Em atualização de instalação já usada, revogar as sessões antigas do Studio que ainda não receberam marca de aparelho e pedir novo login.
+- Aplicar de 0000 até `0011_carencias_e_sync_transacional.sql`, gerada com drizzle-kit, antes do novo Worker. As migrações anteriores permanecem intactas. Em atualização de instalação já usada, revogar as sessões antigas do Studio que ainda não receberam marca de aparelho e pedir novo login.
 - Substituir o ID de D1 fictício nas duas configurações, preparar R2, Durable Object e crons e conferir todos os segredos do [guia de deploy](../docs/deploy.md). Configurar os bindings `OTP_LIMIT`, `ABUSE_LIMIT` e `BULK_LIMIT` no ambiente de produção.
 - Configurar Access no host inteiro da staff, Turnstile real, Email Service com remetente permitido, Stripe/webhook de produção e chaves de IA. `EMAIL_MODE` de produção deve ser send. Não copiar `.dev.vars` local para produção.
 - Para domínio próprio, habilitar Cloudflare for SaaS na zona dos sites. Cadastrar o secret `CF_API_TOKEN` com permissão SSL and Certificates Write apenas nessa zona e a var `CF_ZONE_ID`. Informar `SITES_CNAME_TARGET` com o CNAME público do serviço. Sem isso, a API retorna `DOMAIN_UNAVAILABLE`.
 - Preparar o fallback origin e o CNAME target com DNS proxied. `wrangler.sites.jsonc` usa a rota `*/*` na zona getblup.site para alcançar também Custom Hostnames, conforme a [documentação Cloudflare](https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/start/advanced-settings/worker-as-origin/). Conferir se algum outro serviço dessa zona precisa de rota de exclusão. Isso não altera a zona getblup.io do painel.
 - Se usar a cortesia do dono sem assinatura Stripe, cadastrar `STAFF_OWNER_EMAIL` como secret também no Worker dos sites. Ambos precisam reconhecer a mesma conta verificada. Nenhum valor de segredo fica neste repositório.
 - Criar alerta de gasto da conta no painel Cloudflare, em Manage Account > Billing > Billable Usage > Create budget alert, escolhendo valor e destinatário aprovados pelo dono. Também é possível abrir esse fluxo pelo resumo de gastos de Workers, D1 e R2. É um aviso por e-mail, sem bloqueio automático de gastos. A [documentação de orçamento](https://developers.cloudflare.com/billing/manage/budget-alerts/) distingue alerta financeiro e notificações por métrica. Acompanhar linhas lidas/escritas D1, operações e armazenamento R2, requests/CPU Workers, e-mails e hostnames provisionados.
+- Provisionar primeiro o Worker dos sites e o binding `SITE_CACHE` para o entrypoint `CachedSite` do Worker correspondente (produção: `blup-sites-production`). Não expor esse entrypoint diretamente por rota pública. Conferir Early Hints da zona, certificado, TXT, CNAME e as purgas em staging.
 - Rodar check, testes e build; testar o fluxo completo em staging com serviços simulados ou sandbox antes de habilitar produção. Esta rodada não publicou nada e não consultou credenciais, DNS ou contas de produção para marcar esses itens como feitos.

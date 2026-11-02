@@ -14,6 +14,7 @@ export const api={
  plans:()=>parseResponse(rpc.plans.$get()),
  devices:()=>parseResponse(rpc.devices.$get()),
  sites:()=>parseResponse(rpc.sites.$get()),
+ selectRetained:(siteId:string)=>parseResponse(rpc.sites.retained.$put({json:{siteId}})),
  takeDown:async(id:string)=>{await parseResponse(rpc.sites[":id"].$delete({param:{id}}));},
  disconnect:async(id:string)=>{await parseResponse(rpc.devices[":id"].$delete({param:{id}}));},
 };

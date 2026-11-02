@@ -1,3 +1,6 @@
+import { WorkerEntrypoint } from "cloudflare:workers";
+import { cachedSiteProps,serveDeploy } from "./serve-site";
+import { drainSitePurges } from "./site-cache-purge";
 import { serveSite } from "./serve-site";
 import { slugOfHost } from "./site-rules";
 
@@ -30,14 +33,14 @@ export default {
 		if (!local && (url.protocol === "http:" || bare !== url.hostname) && slugOfHost(bare, env.SITES_DOMAIN)) {
 			return new Response(null, { status: 301, headers: { location: `https://${bare}${url.pathname}${url.search}` } });
 		}
-		let custom=false;
+		let custom:string|undefined;
 		let slug = slugOfHost(url.hostname, env.SITES_DOMAIN);
 		if(!slug){
 			const host=url.hostname.toLowerCase();
 			const canonical=host.startsWith("www.")?host.slice(4):host;
 			const domain=await resolveDomain(env,url.hostname,canonical);
 			if(domain){
-				custom=true;
+				custom=domain.hostname;
 				if(host!==domain.hostname||url.protocol!=="https:")return new Response(null,{status:301,headers:{location:`https://${domain.hostname}${url.pathname}${url.search}`}});
 				slug=domain.slug;
 			}
@@ -49,3 +52,14 @@ export default {
 		return res;
 	},
 } satisfies ExportedHandler<Cloudflare.Env>;
+
+// RPC maintenance executes in the namespace that owns the cached fetch.
+// There is no public HTTP endpoint for triggering a purge.
+export class CachedSite extends WorkerEntrypoint<Cloudflare.Env,import("./serve-site").CachedSiteProps> {
+ async fetch(req:Request){
+  const props=cachedSiteProps.safeParse(this.ctx.props);
+  if(!props.success)return new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});
+  return serveDeploy(req,this.env,props.data);
+ }
+ async purgePending(){await drainSitePurges(this.env.DB,this.ctx.cache);}
+}

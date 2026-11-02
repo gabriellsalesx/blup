@@ -78,6 +78,13 @@
       "when": 1793600445348,
       "tag": "0010_cotas_retencao_dominios",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1793625145375,
+      "tag": "0011_carencias_e_sync_transacional",
+      "breakpoints": true
     }
   ]
 }

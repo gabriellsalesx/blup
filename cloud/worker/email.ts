@@ -112,11 +112,21 @@ function reminderHtml(lead: string, note: string, off: string, logo: string) {
 </body></html>`;
 }
 
-export async function sendDowngrade(env:Cloudflare.Env,email:string){
+export type DowngradeNotice={sites?:{limit:number;deadline:number};storage?:{usedBytes:number;limitBytes:number;deadline:number};domainDisableAt?:number};
+export async function sendDowngrade(env:Cloudflare.Env,email:string,notice:DowngradeNotice={}){
  if(!hasEmail(email))return true;
- const lead="Seu site no Blup continua no ar por mais 14 dias.";
- const note="Seu plano passou para o Grátis. Depois desse prazo, seus sites ficam fora do ar. Assinar novamente religa os sites sem precisar publicar de novo.";
+ const date=(n:number)=>new Date(n).toLocaleString("pt-BR",{timeZone:"UTC",dateStyle:"long",timeStyle:"short"})+" UTC";
+ const mb=(n:number)=>(n/(1024*1024)).toLocaleString("pt-BR",{maximumFractionDigits:2})+" MiB";
+ const lead="Seu plano no Blup mudou.";
+ const parts:string[]=[];
+ if(notice.sites){const {limit,deadline}=notice.sites;
+  parts.push(limit===0?`Seus sites ficam fora do ar em ${date(deadline)}. O plano Grátis não inclui hospedagem.`:`Escolha na sua conta, até ${date(deadline)}, qual site continua no ar. Você pode mudar a escolha até essa data. Sem escolha, fica o site mais antigo; os demais saem do ar ao terminar o prazo.`);
+ }
+ if(notice.domainDisableAt!==undefined)parts.push(`Seu domínio próprio será desligado em ${date(notice.domainDisableAt)}. Os sites incluídos no novo plano continuam pelo endereço getblup.site.`);
+ if(notice.storage){const {usedBytes,limitBytes,deadline}=notice.storage;parts.push(`Você usa ${mb(usedBytes)} e o novo limite é ${mb(limitBytes)}. Até ${date(deadline)}, a sincronização pode usar o teto anterior. Apagar dados continua permitido depois do prazo; seus dados não são apagados automaticamente por excesso de armazenamento.`);}
+ const note=parts.join(" ")||"Veja os limites do seu plano na sua conta do Blup Cloud.";
+ const off="Abra sua conta no Blup Cloud, em Sites, para escolher o site mantido ou ver seu plano. Seus arquivos são preservados.";
  if(env.EMAIL_MODE==="log"){console.log("[blup] aviso de plano agendado");return true;}
- try{await env.EMAIL.send({to:email,from:sender(env.MAIL_FROM),subject:"Sobre seus sites no Blup",text:`Blup\n\n${lead}\n\n${note}\n\nBlup · getblup.io`,html:reminderHtml(lead,note,"Abra sua conta no Blup Cloud para ver seu plano.",`${env.APP_URL}/email/blup.png`)});return true;}
+ try{await env.EMAIL.send({to:email,from:sender(env.MAIL_FROM),subject:"Sobre a mudança do seu plano no Blup",text:`Blup\n\n${lead}\n\n${note}\n\n${off}\n\nBlup · getblup.io`,html:reminderHtml(lead,note,off,`${env.APP_URL}/email/blup.png`)});return true;}
  catch{console.error("[blup] aviso de plano não enviado");return false;}
 }

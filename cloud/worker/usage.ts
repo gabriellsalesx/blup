@@ -1,3 +1,6 @@
+import { env } from "cloudflare:workers";
+import { accountPlan,observePlan } from "./lifecycle";
+import { historyBytes } from "./sync-history";
 import { and, count, eq, gt, sum } from "drizzle-orm";
 import { db } from "./auth";
 import { session, site, syncAccount, vault } from "./db/schema";
@@ -20,6 +23,10 @@ export async function devicesOf(userId: string): Promise<number> {
 
 export type Usage = {
 	storageBytes: number;
+	storageLimitBytes:number;
+	storageGraceUntil:string|null;
+	storageGraceLimitBytes:number|null;
+	historyBytes:number|null;
 	vaults: number;
 	sites: number;
 	devices: number; // Blup Studio installs signed in
@@ -33,7 +40,13 @@ export async function usageOf(userId: string): Promise<Usage> {
 		db.select({ n: count(), bytes: sum(site.bytes) }).from(site).where(eq(site.userId, userId)),
 		devicesOf(userId),
 	]);
+	const plan=await accountPlan(env,userId);
+	const state=plan?await observePlan(env.DB,userId,plan.name):null;
+	const history=await historyBytes(env,userId);
 	return {
+		storageLimitBytes:(plan?.limits.storageMB??0)*1024*1024,
+		storageGraceUntil:state?.storageGraceLimit!==null&&state?.storageGraceLimit!==undefined&&state.graceUntil?new Date(state.graceUntil).toISOString():null,
+		storageGraceLimitBytes:state?.storageGraceLimit??null,historyBytes:history,
 		// Notes and sites share the plan's storage.
 		storageBytes: (acc?.storageBytes ?? 0) + Number(sites?.bytes ?? 0),
 		vaults: n,

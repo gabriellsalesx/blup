@@ -84,6 +84,7 @@ export const vault = sqliteTable(
 		name: text("name").notNull(),
 		// The current version (0 = nothing saved yet).
 		head: integer("head").default(0).notNull(),
+		headRefsReady:integer("head_refs_ready",{mode:"boolean"}).notNull().default(false),
 		createdAt: integer("created_at", { mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 			.notNull(),
@@ -117,6 +118,7 @@ export const syncBlock = sqliteTable(
 	{
 		userId: text("user_id").notNull(),
 		id: text("id").notNull(),
+		objectKey:text("object_key"),
 		size: integer("size").notNull(),
 		createdAt: integer("created_at", { mode: "timestamp_ms" })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -181,10 +183,15 @@ export const resourceQuota = sqliteTable("resource_quota", {
 	purgeAfter: integer("purge_after"),
 	purgeStarted: integer("purge_started"),
 	graceUntil: integer("grace_until"),
+	storageGraceLimit: integer("storage_grace_limit"),
+	siteCacheGrace: integer("site_cache_grace"),
+	selectedSiteId: text("selected_site_id"),
+	domainGraceUntil: integer("domain_grace_until"),
+	domainDowngradeNotified: integer("domain_downgrade_notified"),
 	downgradeNotified: integer("downgrade_notified"),
 	lastPlan: text("last_plan"),
 	billingCancelPending: integer("billing_cancel_pending").notNull().default(0),
-}, t => [index("resource_purge_idx").on(t.purgeAfter), index("resource_grace_idx").on(t.graceUntil),index("resource_billing_pending_idx").on(t.billingCancelPending),index("resource_notice_idx").on(t.graceUntil).where(sql`${t.downgradeNotified} IS NULL AND ${t.deletedAt} IS NULL`)]);
+}, t => [index("resource_site_cache_expiry_idx").on(t.graceUntil).where(sql`${t.siteCacheGrace} IS NOT ${t.graceUntil} AND ${t.deletedAt} IS NULL`), index("resource_purge_idx").on(t.purgeAfter), index("resource_grace_idx").on(t.graceUntil),index("resource_billing_pending_idx").on(t.billingCancelPending),index("resource_domain_notice_idx").on(t.domainGraceUntil).where(sql`${t.domainDowngradeNotified} IS NULL AND ${t.deletedAt} IS NULL`),index("resource_notice_idx").on(t.graceUntil).where(sql`${t.downgradeNotified} IS NULL AND ${t.deletedAt} IS NULL`)]);
 
 export const resourceReservation = sqliteTable("resource_reservation", {
 	id: text("id").primaryKey(), userId: text("user_id").notNull(),
@@ -205,7 +212,25 @@ export const siteDomain = sqliteTable("site_domain", {
 	proof: text("proof").notNull(), verifiedAt: integer("verified_at"), providerId: text("provider_id"),
 	status: text("status").notNull().default("pending_ownership"), ssl: text("ssl").notNull().default("pending"),
 	records: text("records").notNull().default("[]"), checkedAt: integer("checked_at"),
-}, t=>[uniqueIndex("site_domain_verified_unique").on(t.hostname).where(sql`${t.verifiedAt} IS NOT NULL`)]);
+	disableAt: integer("disable_at"), disabledAt: integer("disabled_at"),
+}, t=>[uniqueIndex("site_domain_verified_unique").on(t.hostname).where(sql`${t.verifiedAt} IS NOT NULL`),index("site_domain_disable_idx").on(t.disableAt).where(sql`${t.status} <> 'disabled' OR ${t.providerId} IS NOT NULL OR ${t.verifiedAt} IS NOT NULL`)]);
+
+export const syncTransfer = sqliteTable("sync_transfer", {
+	id:text("id").primaryKey(), userId:text("user_id").notNull(), vaultId:text("vault_id").notNull(),
+	parent:integer("parent").notNull(), key:text("key").notNull(), size:integer("size").notNull(),
+	reservationId:text("reservation_id").notNull(), reserved:integer("reserved").notNull(),
+	lease:text("lease").notNull(), expiresAt:integer("expires_at").notNull(), createdAt:integer("created_at").notNull(),
+	completedVersion:integer("completed_version"),
+}, t=>[index("sync_transfer_expiry_idx").on(t.expiresAt),index("sync_transfer_user_idx").on(t.userId)]);
+export const syncTransferBlock = sqliteTable("sync_transfer_block", {
+	ticketId:text("ticket_id").notNull(), blockId:text("block_id").notNull(), size:integer("size").notNull(),ready:integer("ready").notNull().default(0),objectKey:text("object_key"),
+}, t=>[primaryKey({columns:[t.ticketId,t.blockId]})]);
+export const vaultHeadBlock = sqliteTable("vault_head_block",{
+	vaultId:text("vault_id").notNull(), blockId:text("block_id").notNull(),
+},t=>[primaryKey({columns:[t.vaultId,t.blockId]}),index("vault_head_block_id_idx").on(t.blockId)]);
+export const syncGarbage = sqliteTable("sync_garbage",{
+	id:text("id").primaryKey(),userId:text("user_id").notNull(),keys:text("keys").notNull(),bytes:integer("bytes").notNull(),createdAt:integer("created_at").notNull(),
+},t=>[index("sync_garbage_user_idx").on(t.userId),index("sync_garbage_created_idx").on(t.createdAt)]);
 
 export const deviceApproval = sqliteTable("device_approval", {
 	codeHash: text("code_hash").primaryKey(), userId: text("user_id").notNull(),
@@ -258,3 +283,12 @@ export const reminderMonth = sqliteTable(
 	},
 	(t) => [primaryKey({ columns: [t.userId, t.month] }), index("reminder_month_cleanup_idx").on(t.month)],
 );
+
+// Persistent/coalesced global cache maintenance, independent of browser
+// traffic. No user content or host names in purge requests.
+export const siteCachePurge=sqliteTable("site_cache_purge",{
+ siteId:text("site_id").primaryKey(),generation:text("generation").notNull(),queuedAt:integer("queued_at").notNull(),
+},t=>[index("site_cache_purge_queued_idx").on(t.queuedAt)]);
+export const siteCachePurgeState=sqliteTable("site_cache_purge_state",{
+ id:text("id").primaryKey(),nextAt:integer("next_at").notNull(),
+});

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const dnsRecord=z.object({type:z.enum(["TXT","CNAME"]),name:z.string().min(1).max(253),value:z.string().min(1).max(1024)});
-export const domainInfo=z.object({hostname:z.string(),status:z.enum(["pending_ownership","pending","active","error"]),ssl:z.enum(["pending","active","error"]),records:z.array(dnsRecord).max(10)});
+export const domainInfo=z.object({hostname:z.string(),status:z.enum(["pending_ownership","pending","active","error","disabled"]),disableAt:z.iso.datetime().nullable(),ssl:z.enum(["pending","active","error"]),records:z.array(dnsRecord).max(10)});
 export type DomainInfo=z.infer<typeof domainInfo>;
 export const hostnameSchema=z.string().trim().min(3).max(253).transform((raw,ctx)=>{
 	let host="";
@@ -27,7 +27,7 @@ export async function providerCall(env:Cloudflare.Env,method:"GET"|"POST"|"DELET
 	if(!zone.success||!env.CF_API_TOKEN||method!=="DELETE"&&!env.SITES_CNAME_TARGET)throw new DomainError("DOMAIN_UNAVAILABLE");
 	const path=`https://api.cloudflare.com/client/v4/zones/${zone.data}/custom_hostnames${id?`/${encodeURIComponent(id)}`:""}`;
 	try{
-		const res=await fetch(path,{method,redirect:"error",signal:AbortSignal.timeout(15_000),headers:{Authorization:`Bearer ${env.CF_API_TOKEN}`,"content-type":"application/json"},...(method==="POST"?{body:JSON.stringify({hostname,ssl:{method:"txt",type:"dv",settings:{min_tls_version:"1.2"}}})}:{})});
+		const res=await fetch(path,{method,redirect:"error",signal:AbortSignal.timeout(15_000),headers:{Authorization:`Bearer ${env.CF_API_TOKEN}`,"content-type":"application/json"},...(method==="POST"?{body:JSON.stringify({hostname,ssl:{method:"txt",type:"dv",settings:{min_tls_version:"1.2",early_hints:"on"}}})}:{})});
 		if(method==="DELETE"&&res.status===404)return null;
 		if(!res.ok){
    // Recover a hostname created before a previous request lost its D1
