@@ -1,3 +1,10 @@
+import { z } from "zod";
+import { HTTPException } from "hono/http-exception";
+import { boundedStream,idParam,safeInt,validate } from "./validation";
+import { accountAllowed,softDelete,purgeAccounts,cancelDeletedBilling,downgradeNotices } from "./lifecycle";
+import { approveDevice,approvalBody } from "./devices";
+import { expireReservations } from "./quota";
+import { cleanSites } from "./sites-cleanup";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { and, desc, eq, gt } from "drizzle-orm";
@@ -16,9 +23,21 @@ import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
 import { mutationOriginAllowed } from "./security";
 
-type App = { Bindings: Cloudflare.Env; Variables: { session: Session | null } };
+type App = { Bindings: Cloudflare.Env; Variables: { session: Session } };
 
 const app = new Hono<App>().basePath("/api");
+
+const headersSchema=z.object({authorization:z.string().max(8192).optional(),cookie:z.string().max(16384).optional(),origin:z.url().max(2048).optional(),"cf-connecting-ip":z.union([z.ipv4(),z.ipv6()]).optional(),"user-agent":z.string().max(1024).optional(),"cf-access-jwt-assertion":z.string().max(16384).optional(),"x-captcha-response":z.string().max(4096).optional(),"content-length":safeInt.optional(),upgrade:z.enum(["websocket"]).optional()});
+app.use("*",async(c,next)=>{
+ const checked=headersSchema.safeParse(Object.fromEntries(c.req.raw.headers));
+ if(!checked.success)return c.json({code:"INVALID"},400);
+ if(c.req.raw.body && !/\/(?:files|blocks)\/[0-9a-f]{64}$/.test(c.req.path)){
+  const max=/\/sync\/vaults\/[^/]+\/versions$/.test(c.req.path)?34*1024*1024:/\/sites\/[^/]+\/deploys$/.test(c.req.path)?8*1024*1024:96*1024;
+  const bounded=boundedStream(c.req.raw.body,max,checked.data["content-length"]);
+  const init={body:bounded,duplex:"half"};c.req.raw=new Request(c.req.raw,init);
+ }
+ await next();
+});
 
 app.use("*", async (c, next) => {
 	if (!mutationOriginAllowed(c.req.raw)) return c.json({ code: "ORIGIN_NOT_ALLOWED" }, 403);
@@ -67,26 +86,43 @@ app.post("/auth/subscription/upgrade", async (c, next) => {
 	await next();
 });
 
-// Each plan lets a number of Blup Studio installs in at once.
-app.post("/auth/device/approve", async (c, next) => {
-	const s = await auth.api.getSession({ headers: c.req.raw.headers });
-	if (s) {
-		const [plan, devices] = await Promise.all([planOf(s.user.id), devicesOf(s.user.id)]);
-		if (plan.limits.devices >= 0 && devices >= plan.limits.devices) return c.json({ code: "DEVICES_LIMIT", limit: plan.limits.devices }, 403);
-	}
-	await next();
+// Approval and the pending slot are committed in one D1 transaction.
+app.post("/auth/device/approve",validate("json",approvalBody),async c=>{
+ const s=await auth.api.getSession({headers:c.req.raw.headers});
+ if(!s||!await accountAllowed(c.env.DB,s.user.id))return c.json({code:"UNAUTHORIZED"},401);
+ const result=await approveDevice(c.env.DB,s.user.id,c.req.valid("json").userCode,(await planOf(s.user.id)).limits.devices);
+ return result==="OK"?c.json({success:true}):c.json({code:result},result==="DEVICES_LIMIT"?403:400);
+});
+app.post("/auth/delete-user",validate("json",z.object({}).strict()),async c=>{
+ const s=await auth.api.getSession({headers:c.req.raw.headers});
+ if(!s||!await accountAllowed(c.env.DB,s.user.id))return c.json({code:"UNAUTHORIZED"},401);
+ if(!Number.isFinite(new Date(s.session.createdAt).getTime())||Date.now()-new Date(s.session.createdAt).getTime()>3600_000)return c.json({code:"SESSION_EXPIRED"},403);
+ await softDelete(c.env,s.user.id);
+ c.executionCtx.waitUntil(cancelDeletedBilling(c.env));
+ return c.json({success:true,message:"Conta excluída."});
+});
+
+// Costly control operations use 120/minute per account and IP. Data
+// transfer has storage quotas and a separate 500/10s per-account fuse.
+app.use("*",async(c,next)=>{
+ const path=c.req.path,method=c.req.method;
+ const costly=(method==="POST"&&/^\/api\/(?:ai\/(?:audio\/speech|translate)|sites\/?|sync\/vaults)$/.test(path)) || /\/api\/sites\/[^/]+\/domain$/.test(path) || method==="GET"&&path==="/api/sites/check" || method==="PUT"&&/^\/api\/reminders\/?$/.test(path) || method==="DELETE"&&/^\/api\/sites\/[^/]+$/.test(path);
+ const bulk=!costly&&(/^\/api\/sync\//.test(path)||/^\/api\/sites\/[^/]+\/(?:files|missing|deploys)(?:\/|$)/.test(path));
+ if(!costly&&!bulk)return next();
+ const s=await auth.api.getSession({headers:c.req.raw.headers});if(!s)return next();
+ const binding=costly?c.env.ABUSE_LIMIT:c.env.BULK_LIMIT;
+ const keys=costly?[`account:${s.user.id}`,`ip:${c.req.header("cf-connecting-ip")??"local"}`]:[`account:${s.user.id}`];
+ const hits=await Promise.all(keys.map(key=>binding.limit({key})));
+ if(hits.some(r=>!r.success)){c.header("Retry-After",costly?"60":"10");return c.json({code:"TOO_MANY_REQUESTS"},429);}
+ await next();
 });
 
 app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
 
-const session = createMiddleware<App>(async (c, next) => {
-	c.set("session", await auth.api.getSession({ headers: c.req.raw.headers }));
-	await next();
-});
-
-const signedIn = createMiddleware<App>(async (c, next) => {
-	if (!c.get("session")) return c.json({ code: "UNAUTHORIZED" }, 401);
-	await next();
+const session = createMiddleware<App>(async(c,next)=>{
+ const s=await auth.api.getSession({headers:c.req.raw.headers});
+ if(!s||!await accountAllowed(c.env.DB,s.user.id))return c.json({code:"UNAUTHORIZED"},401);
+ c.set("session",s);await next();
 });
 
 const routes = app
@@ -94,8 +130,8 @@ const routes = app
 	.get("/config", (c) => c.json({ turnstileSiteKey: c.env.TURNSTILE_SITE_KEY }))
 	// The plans, for the panel and the Studio (no Stripe IDs).
 	.get("/plans", (c) => c.json(PLANS.map(({ name, label, priceCents, yearlyCents, currency, limits, perks }) => ({ name, label, priceCents, yearlyCents, currency, limits, perks, suggested: name === SUGGESTED }))))
-	.get("/me", session, signedIn, async (c) => {
-		const { user } = c.get("session")!;
+	.get("/me", session, async (c) => {
+		const { user } = c.get("session");
 		// The portal cancels by setting cancel_at, not cancel_at_period_end.
 		const sub = await activeSubscription(user.id);
 		const gift = isOwner(user.email, user.emailVerified);
@@ -113,8 +149,8 @@ const routes = app
 	})
 	// The Blup Studio installs signed in (each is a session), to see and
 	// disconnect them.
-	.get("/devices", session, signedIn, async (c) => {
-		const { user } = c.get("session")!;
+	.get("/devices", session, async (c) => {
+		const { user } = c.get("session");
 		const rows = await db
 			.select({ id: sessionTable.id, agent: sessionTable.userAgent, createdAt: sessionTable.createdAt, lastSeen: sessionTable.updatedAt })
 			.from(sessionTable)
@@ -127,20 +163,24 @@ const routes = app
 		};
 		return c.json({ devices: rows.map((r) => ({ id: r.id, name: name(r.agent), createdAt: r.createdAt, lastSeen: r.lastSeen })) });
 	})
-	.delete("/devices/:id", session, signedIn, async (c) => {
-		const { user } = c.get("session")!;
+	.delete("/devices/:id", session, validate("param",idParam), async (c) => {
+		const { user } = c.get("session");
 		await db.delete(sessionTable).where(and(eq(sessionTable.id, c.req.param("id")), eq(sessionTable.userId, user.id), isStudio));
 		return c.json({ ok: true });
-	});
-
-app.route("/staff", staffApi);
-app.route("/sync", syncApi);
-app.route("/sites", sitesApi);
-app.route("/reminders", remindersApi);
-app.route("/ai", aiApi);
+	})
+	.route("/staff",staffApi)
+	.route("/sync",syncApi)
+	.route("/sites",sitesApi)
+	.route("/reminders",remindersApi)
+	.route("/ai",aiApi);
 
 app.notFound((c) => c.json({ code: "NOT_FOUND" }, 404));
-app.onError((err, c) => {
+app.onError(async (err, c) => {
+	if(err instanceof HTTPException){
+  const response=err.getResponse();
+  if(response.headers.get("content-type")?.includes("application/json"))return response;
+  return c.req.path.startsWith("/api/ai/")?c.json({code:"INVALID",error:{code:"INVALID",message:"Pedido inválido."}},err.status):c.json({code:err.status===400?"INVALID":err.status===413?"TOO_LARGE":"REQUEST_FAILED"},err.status);
+ }
 	// Database/provider errors may contain query bindings or private text.
 	console.error("[blup] request_failed", err.name);
 	return c.json({ code: "INTERNAL" }, 500);
@@ -191,7 +231,7 @@ export default {
 	// Every 5 minutes, the calendar's reminders by e-mail; once a day, the
 	// clean-up of old versions and unused blocks.
 	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
-		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([cleanUp(env), forgetOld(env)]));
-		else ctx.waitUntil(sendDue(env));
+		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([cleanUp(env), forgetOld(env),cancelDeletedBilling(env).then(()=>purgeAccounts(env))]));
+		else ctx.waitUntil(Promise.all([sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env)]));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>;

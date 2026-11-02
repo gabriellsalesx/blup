@@ -1,7 +1,9 @@
+import { accountAllowed,accountPlan,observePlan } from "./lifecycle";
+import { deviceMark,finishDevice } from "./devices";
 import { env, waitUntil } from "cloudflare:workers";
 import { betterAuth } from "better-auth";
 import { drizzle } from "drizzle-orm/d1";
-import { eq } from "drizzle-orm";
+
 import { authOptions } from "./auth-options";
 import { sendCode } from "./email";
 import { recordBillingEvent } from "./billing";
@@ -18,10 +20,10 @@ export const auth = betterAuth(
 		stripeSecret: env.STRIPE_SECRET_KEY,
 		stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
 		onStripeEvent: (event, stripe) => recordBillingEvent(event, stripe),
-		isBanned: async (userId) => {
-			const [u] = await db.select({ banned: schema.user.banned }).from(schema.user).where(eq(schema.user.id, userId)).limit(1);
-			return !!u?.banned;
-		},
+		isBanned:async id=>!await accountAllowed(env.DB,id),
+		deviceMark:(id,body)=>deviceMark(env.DB,id,body),
+		finishDevice:(id,body)=>finishDevice(env.DB,id,body),
+		planChanged:async id=>{const plan=await accountPlan(env,id);if(plan)await observePlan(env.DB,id,plan.name);},
 		// The e-mail goes out after the answer.
 		sendCode: (email, code, kind) => waitUntil(sendCode(env, email, code, kind)),
 	}),

@@ -2,11 +2,12 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { and, asc, count, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import Stripe from "stripe";
+
 import { z } from "zod";
-import { zValidator } from "@hono/zod-validator";
+import { idParam,opaqueId,safeInt,validate } from "./validation";
+import { softDelete,restoreAccount,cancelDeletedBilling } from "./lifecycle";
 import { db } from "./auth";
-import { billingEvent, passkey, session, staff, staffLog, subscription, user } from "./db/schema";
+import { billingEvent, passkey, session, staff, staffLog, subscription, user, resourceQuota } from "./db/schema";
 import { planNamed } from "./plans";
 import { GIFT_PLAN, isOwner } from "./account";
 import { hasEmail } from "./auth-options";
@@ -62,6 +63,7 @@ const adminOnly = createMiddleware<App>(async (c, next) => {
 const log = (email: string, action: string, userId: string | null, detail?: string) =>
 	db.insert(staffLog).values({ staffEmail: email, action, userId, detail: detail ?? null });
 
+const statsSchema=z.object({total:z.number().int().min(0),recent:z.number().int().min(0),banned:z.number().int().min(0),plans:z.array(z.object({name:z.string(),label:z.string(),count:z.number().int().min(0)}))});
 const ACTIVE = ["active", "trialing", "past_due"];
 
 // Pages by cursor, not OFFSET: D1 bills every row a query reads, and an
@@ -69,14 +71,13 @@ const ACTIVE = ["active", "trialing", "past_due"];
 // item's key: UUIDv7 account IDs and the log's integer IDs both follow
 // creation order, so "older than the cursor" is a range on the primary key.
 const PAGE = 25;
-const pageSize = (v: string | undefined) => Math.min(100, Math.max(1, Number(v) || PAGE));
+const pageLimit=safeInt.pipe(z.number().min(1).max(100)).default(PAGE);
+const usersQuery=z.object({q:z.string().trim().toLowerCase().max(254).default(""),cursor:z.string().min(1).max(254).optional(),limit:pageLimit});
+const logQuery=z.object({cursor:safeInt.pipe(z.number().positive()).optional(),limit:pageLimit});
 
 // A JSON body checked by a Zod schema; a bad one answers 400 with the
 // fields that failed (not Zod's whole report).
-const body = <T extends z.ZodType>(schema: T) =>
-	zValidator("json", schema, (r, c) => {
-		if (!r.success) return c.json({ code: "INVALID", fields: r.error.issues.map((i) => i.path.join(".")) }, 400);
-	});
+const body=<T extends z.ZodType>(schema:T)=>validate("json",schema);
 
 export const staffApi = new Hono<App>()
 	.use(onStaff)
@@ -87,7 +88,7 @@ export const staffApi = new Hono<App>()
 	.get("/stats", async (c) => {
 		const key = new Request(new URL("/api/staff/stats?cache", c.req.url));
 		const hit = await caches.default.match(key);
-		if (hit) return new Response(hit.body, hit);
+		if (hit) return c.json(statsSchema.parse(await hit.json()),200);
 		const week = new Date(Date.now() - 7 * 24 * 3600 * 1000);
 		const [[{ total }], [{ recent }], [{ banned }], paid] = await Promise.all([
 			db.select({ total: count() }).from(user),
@@ -111,10 +112,8 @@ export const staffApi = new Hono<App>()
 	// EXPLAIN QUERY PLAN): without a search, newest first by ID; an ID finds
 	// that account; anything else is the start of the e-mail, as a range on
 	// the e-mail index (Better Auth stores e-mails in lowercase), A to Z.
-	.get("/users", async (c) => {
-		const q = (c.req.query("q") ?? "").trim().toLowerCase();
-		const cursor = c.req.query("cursor");
-		const size = pageSize(c.req.query("limit"));
+	.get("/users", validate("query",usersQuery), async (c) => {
+		const {q,cursor,limit:size}=c.req.valid("query");
 		const cols = { id: user.id, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt, banned: user.banned };
 		let found;
 		let key: (r: { id: string; email: string }) => string = (r) => r.id;
@@ -142,7 +141,7 @@ export const staffApi = new Hono<App>()
 		return c.json({ items: rows.map(({ emailVerified, ...r }) => ({ ...r, email: hasEmail(r.email) ? r.email : null, plan: isOwner(r.email, emailVerified) ? `${planNamed(GIFT_PLAN).label} (cortesia)` : planNamed(subs.find((s) => s.ref === r.id)?.plan).label })), nextCursor });
 	})
 
-	.get("/users/:id", async (c) => {
+	.get("/users/:id", validate("param",idParam), async (c) => {
 		const id = c.req.param("id");
 		const [u] = await db.select().from(user).where(eq(user.id, id)).limit(1);
 		if (!u) return c.json({ code: "NOT_FOUND" }, 404);
@@ -157,8 +156,10 @@ export const staffApi = new Hono<App>()
 		const gift = isOwner(u.email, u.emailVerified);
 		const plan = planNamed(gift ? GIFT_PLAN : active?.plan);
 		const [usage, ai] = await Promise.all([usageOf(id), aiUsageOf(id, plan)]);
+		const [state]=await db.select({deletedAt:resourceQuota.deletedAt,purgeAfter:resourceQuota.purgeAfter,purgeStarted:resourceQuota.purgeStarted}).from(resourceQuota).where(eq(resourceQuota.userId,id)).limit(1);
 		const stripeMode = /^[rs]k_live_/.test(c.env.STRIPE_SECRET_KEY) ? "" : "test/";
 		return c.json({
+			deletion:{requestedAt:state?.deletedAt?new Date(state.deletedAt).toISOString():null,purgeAfter:state?.purgeAfter?new Date(state.purgeAfter).toISOString():null,restorable:!!state?.deletedAt&&!!state.purgeAfter&&state.purgeAfter>Date.now()&&!state.purgeStarted},
 			user: { id: u.id, email: hasEmail(u.email) ? u.email : null, emailVerified: u.emailVerified, createdAt: u.createdAt, banned: u.banned, banReason: u.banReason },
 			plan: { label: gift ? `${plan.label} (cortesia)` : plan.label, gift, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.cancelAt ?? active?.periodEnd ?? null, cancelAtPeriodEnd: !!(active?.cancelAtPeriodEnd || active?.cancelAt) },
 			usage,
@@ -172,7 +173,7 @@ export const staffApi = new Hono<App>()
 	})
 
 	// "I lost my laptop": every session ends; the person signs in again.
-	.post("/users/:id/sessions/revoke", async (c) => {
+	.post("/users/:id/sessions/revoke", validate("param",idParam), async (c) => {
 		const id = c.req.param("id");
 		const gone = await db.delete(session).where(eq(session.userId, id)).returning({ id: session.id });
 		await log(c.get("staff").email, "sessions.revoke", id, `${gone.length} sessões`);
@@ -180,7 +181,7 @@ export const staffApi = new Hono<App>()
 	})
 
 	// A lost passkey: the person signs in by e-mail code and adds another.
-	.delete("/users/:id/passkeys/:pid", async (c) => {
+	.delete("/users/:id/passkeys/:pid", validate("param",idParam.extend({pid:opaqueId})), async (c) => {
 		const { id, pid } = c.req.param();
 		const gone = await db.delete(passkey).where(and(eq(passkey.id, pid), eq(passkey.userId, id))).returning({ name: passkey.name });
 		if (!gone.length) return c.json({ code: "NOT_FOUND" }, 404);
@@ -188,7 +189,7 @@ export const staffApi = new Hono<App>()
 		return c.json({ ok: true });
 	})
 
-	.post("/users/:id/ban", adminOnly, body(z.object({ reason: z.string().trim().min(3).max(300) })), async (c) => {
+	.post("/users/:id/ban", adminOnly, validate("param",idParam), body(z.object({ reason: z.string().trim().min(3).max(300) })), async (c) => {
 		const id = c.req.param("id");
 		const { reason } = c.req.valid("json");
 		await db.update(user).set({ banned: true, banReason: reason }).where(eq(user.id, id));
@@ -197,27 +198,24 @@ export const staffApi = new Hono<App>()
 		return c.json({ ok: true });
 	})
 
-	.post("/users/:id/unban", adminOnly, async (c) => {
+	.post("/users/:id/unban", adminOnly, validate("param",idParam), async (c) => {
 		const id = c.req.param("id");
 		await db.update(user).set({ banned: false, banReason: null }).where(eq(user.id, id));
 		await log(c.get("staff").email, "user.unban", id);
 		return c.json({ ok: true });
 	})
 
-	// Deleting an account (LGPD): the subscription ends in Stripe, then the
-	// account and everything tied to it (sessions, passkeys) goes.
-	.delete("/users/:id", adminOnly, async (c) => {
-		const id = c.req.param("id");
-		const [u] = await db.select({ email: user.email }).from(user).where(eq(user.id, id)).limit(1);
-		if (!u) return c.json({ code: "NOT_FOUND" }, 404);
-		const subs = await db.select({ sid: subscription.stripeSubscriptionId }).from(subscription).where(and(eq(subscription.referenceId, id), inArray(subscription.status, ACTIVE)));
-		const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, { httpClient: Stripe.createFetchHttpClient() });
-		for (const s of subs) if (s.sid) await stripe.subscriptions.cancel(s.sid);
-		await db.delete(subscription).where(eq(subscription.referenceId, id));
-		await db.delete(user).where(eq(user.id, id));
-		// The account's e-mail stays in the log only as the action's detail.
-		await log(c.get("staff").email, "user.delete", id, hasEmail(u.email) ? u.email : "sem e-mail (só passkey)");
-		return c.json({ ok: true });
+	// Recoverable deletion: no impersonation and no subscription restarted.
+	.delete("/users/:id",adminOnly,validate("param",idParam),async c=>{
+	 const {id}=c.req.valid("param");
+	 if(!await c.env.DB.prepare("SELECT id FROM user WHERE id=?").bind(id).first())return c.json({code:"NOT_FOUND"},404);
+	 await softDelete(c.env,id);c.executionCtx.waitUntil(cancelDeletedBilling(c.env));await log(c.get("staff").email,"user.delete",id);
+	 return c.json({ok:true});
+	})
+	.post("/users/:id/restore",validate("param",idParam),async c=>{
+	 const {id}=c.req.valid("param");
+	 if(!await restoreAccount(c.env.DB,id))return c.json({code:"NOT_FOUND"},404);
+	 await log(c.get("staff").email,"user.restore",id);return c.json({ok:true});
 	})
 
 	// The team (admin only).
@@ -231,7 +229,7 @@ export const staffApi = new Hono<App>()
 		await log(c.get("staff").email, "team.set", null, `${body.email} ${body.role}`);
 		return c.json({ ok: true });
 	})
-	.delete("/team/:email", adminOnly, async (c) => {
+	.delete("/team/:email", adminOnly, validate("param",z.object({email:z.email().max(254).toLowerCase()})), async (c) => {
 		const email = c.req.param("email").toLowerCase();
 		if (email === c.get("staff").email) return c.json({ code: "NOT_YOURSELF" }, 400);
 		await db.delete(staff).where(eq(staff.email, email));
@@ -239,9 +237,8 @@ export const staffApi = new Hono<App>()
 		return c.json({ ok: true });
 	})
 
-	.get("/log", adminOnly, async (c) => {
-		const cursor = Number(c.req.query("cursor")) || 0;
-		const size = pageSize(c.req.query("limit"));
+	.get("/log", adminOnly, validate("query",logQuery), async (c) => {
+		const {cursor,limit:size}=c.req.valid("query");
 		// Each entry with its account's e-mail (null once the account is gone),
 		// by the account's primary key.
 		const found = await db

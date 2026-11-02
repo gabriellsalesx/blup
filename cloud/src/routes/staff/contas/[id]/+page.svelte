@@ -39,7 +39,7 @@
 	async function removeAccount() {
 		const ok = await confirm({
 			title: "Excluir a conta?",
-			message: "Cancela a assinatura no Stripe e apaga a conta, as sessões e as passkeys. Não dá para desfazer.",
+			message: "Encerra as sessões, tira os sites do ar e solicita o cancelamento da assinatura. O suporte pode recuperar os dados por 30 dias; depois, a limpeza apaga tudo de vez.",
 			confirmLabel: "Excluir",
 			danger: true,
 			typeToConfirm: d.user.email ?? d.user.id,
@@ -68,6 +68,14 @@
 	</div>
 	<p class="mt-1 text-sm text-neutral-500">Criada em {when(d.user.createdAt)} · <code class="text-xs">{d.user.id}</code></p>
 	{#if d.user.banned && d.user.banReason}<p class="mt-2 text-sm text-red-600">Motivo do bloqueio: {d.user.banReason}</p>{/if}
+
+	{#if d.deletion.requestedAt}
+		<Row title="Conta excluída" help={d.deletion.restorable ? `Os dados podem ser recuperados até ${when(d.deletion.purgeAfter)}. Recuperar não reinicia assinatura nem sessões antigas.` : "O prazo de recuperação terminou. A limpeza definitiva é processada em lotes."}>
+			{#snippet action()}
+				{#if d.deletion.restorable}<Button variant="secondary" {busy} onclick={() => run(() => staffApi.restore(id), "Conta recuperada")}>Recuperar conta</Button>{/if}
+			{/snippet}
+		</Row>
+	{/if}
 
 	<div class="mt-6">
 		<Row title={`Plano ${d.plan.label}`} help={d.plan.periodEnd ? `${d.plan.cancelAtPeriodEnd ? "Termina" : "Renova"} em ${when(d.plan.periodEnd)}` : "Sem assinatura paga."}>
@@ -142,8 +150,8 @@
 					{#snippet action()}<Button variant="secondary" {busy} onclick={() => { reason = ""; banOpen = true; }}>Bloquear</Button>{/snippet}
 				</Row>
 			{/if}
-			<Row title="Excluir a conta" help="Cancela a assinatura no Stripe e apaga a conta, as sessões e as passkeys. Não dá para desfazer.">
-				{#snippet action()}<Button class="bg-red-700! text-white!" {busy} onclick={removeAccount}>Excluir</Button>{/snippet}
+			<Row title="Excluir a conta" help="Encerra as sessões, tira os sites do ar e solicita o cancelamento da assinatura. O suporte pode recuperar os dados por 30 dias; depois, a limpeza apaga tudo de vez.">
+				{#snippet action()}<Button class="bg-red-700! text-white!" {busy} disabled={!!d.deletion.requestedAt} onclick={removeAccount}>Excluir</Button>{/snippet}
 			</Row>
 		{/if}
 	</div>

@@ -82,7 +82,7 @@
 	async function deleteAccount() {
 		const ok = await confirm({
 			title: "Excluir a conta?",
-			message: "Não dá para desfazer. A assinatura é cancelada na hora e as notas da nuvem são apagadas (as do seu computador continuam lá).",
+			message: "Suas sessões são encerradas, os sites saem do ar e o cancelamento da assinatura é solicitado. O suporte pode recuperar os dados por 30 dias. Depois, a limpeza apaga os dados da nuvem de vez. As notas do computador continuam lá.",
 			confirmLabel: "Excluir",
 			danger: true,
 			typeToConfirm: confirmWord,
@@ -134,7 +134,7 @@
 		{#snippet action()}<Button variant="secondary" {busy} onclick={leaveEverywhere}>Sair</Button>{/snippet}
 	</Row>
 
-	<Row title="Excluir conta" help="Apaga a conta, cancela a assinatura e remove as notas guardadas na nuvem. Pedimos uma confirmação antes.">
+	<Row title="Excluir conta" help="Encerra o acesso agora e solicita o cancelamento da assinatura. O suporte pode recuperar os dados por 30 dias; depois ocorre a exclusão definitiva.">
 		{#snippet action()}<Button class="bg-red-700! text-white!" onclick={deleteAccount}>Excluir</Button>{/snippet}
 	</Row>
 </div>

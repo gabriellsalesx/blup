@@ -20,8 +20,8 @@
 			"workers_dev": false,
 			"preview_urls": false,
 			// Um registro DNS curinga *.getblup.site (AAAA 100::, com proxy) e
-			// esta rota levam todos os sites a este Worker.
-			"routes": [{ "pattern": "*.getblup.site/*", "zone_name": "getblup.site" }],
+			// a rota da zona também recebe os Custom Hostnames do Cloudflare for SaaS.
+			"routes": [{ "pattern": "*/*", "zone_name": "getblup.site" }],
 			"d1_databases": [
 				{ "binding": "DB", "database_name": "blup-cloud", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
 			],

@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
-import { site } from "./db/blup-schema";
+import { observePlan } from "./lifecycle";
+import { planNamed,ownerMatches } from "./plans";
+import { manifestSchema } from "./site-rules";
 import { acceptsGzip, cacheControl, fileKey, manifestKey, resolvePath, type Manifest } from "./site-rules";
 
 // Serving <slug>.getblup.site: the live deploy's manifest says which stored
@@ -10,23 +10,22 @@ import { acceptsGzip, cacheControl, fileKey, manifestKey, resolvePath, type Mani
 // memory for a few seconds and manifests stay in memory while the isolate
 // lives. Text files are stored gzipped and sent as they are.
 
-const HEAD_TTL = 30_000; // how long a new deploy may take to show (per isolate)
-const MAX_HEADS = 1024;
-const heads = new Map<string, { id: string; deploy: string; at: number }>();
 const manifests = new Map<string, Manifest>(); // by deploy
 const MAX_MANIFESTS = 32;
 // The browser's cache rule, kept beside the cache's own in the stored copy.
 const BROWSER_CC = "x-blup-browser-cache";
 
-async function liveDeploy(env: Cloudflare.Env, slug: string) {
-	const now = Date.now();
-	const hit = heads.get(slug);
-	if (hit && now - hit.at < HEAD_TTL) return hit;
-	const [row] = await drizzle(env.DB).select({ id: site.id, deploy: site.deploy }).from(site).where(eq(site.slug, slug)).limit(1);
-	const head = { id: row?.id ?? "", deploy: row?.deploy ?? "", at: now };
-	if (heads.size >= MAX_HEADS) heads.delete(heads.keys().next().value!);
-	heads.set(slug, head);
-	return head;
+async function liveDeploy(env:Cloudflare.Env,slug:string,customDomain:boolean) {
+ const row=await env.DB.prepare("SELECT s.id,s.deploy,s.user_id AS owner,u.email,u.email_verified AS verified,q.grace_until AS grace,q.last_plan AS lastPlan,(SELECT plan FROM subscription WHERE reference_id=u.id AND status IN ('active','trialing','past_due') LIMIT 1) AS plan FROM site s JOIN user u ON u.id=s.user_id LEFT JOIN resource_quota q ON q.user_id=u.id WHERE s.slug=? AND u.banned=0 AND q.deleted_at IS NULL LIMIT 1").bind(slug).first<{id:string;deploy:string;owner:string;email:string;verified:number;grace:number|null;lastPlan:string|null;plan:string|null}>();
+ if(!row)return null;
+ const plan=planNamed(ownerMatches(env.STAFF_OWNER_EMAIL,row.email,!!row.verified)?"ultra":row.plan);
+ if(customDomain&&!plan.limits.customDomain)return null;
+ if(row.lastPlan!==plan.name && (plan.name!=="free"||row.grace===null)){
+  await observePlan(env.DB,row.owner,plan.name);
+  if(plan.name==="free")return {...row,grace:Date.now()+14*86_400_000};
+ }
+ if(plan.limits.sites===0&&(!row.grace||row.grace<=Date.now()))return null;
+ return row;
 }
 
 async function manifestOf(env: Cloudflare.Env, siteId: string, deploy: string): Promise<Manifest | null> {
@@ -34,8 +33,11 @@ async function manifestOf(env: Cloudflare.Env, siteId: string, deploy: string): 
 	if (hit) return hit;
 	const obj = await env.SITES.get(manifestKey(siteId, deploy));
 	if (!obj) return null;
-	const m = (await obj.json()) as Manifest;
-	if (manifests.size >= MAX_MANIFESTS) manifests.delete(manifests.keys().next().value!);
+	const parsed=manifestSchema.safeParse(await obj.json().catch(()=>null));
+	if(!parsed.success)return null;
+	const m=parsed.data;
+	const oldest=manifests.keys().next().value;
+	if (manifests.size >= MAX_MANIFESTS && oldest!==undefined) manifests.delete(oldest);
 	manifests.set(deploy, m);
 	return m;
 }
@@ -60,11 +62,11 @@ async function fileResponse(env: Cloudflare.Env, req: Request, siteId: string, p
 	return new Response(head ? null : obj.body, { status, headers, encodeBody: "manual" });
 }
 
-export async function serveSite(req: Request, env: Cloudflare.Env, ctx: ExecutionContext, slug: string): Promise<Response> {
+export async function serveSite(req: Request, env: Cloudflare.Env, ctx: ExecutionContext, slug: string, customDomain=false): Promise<Response> {
 	if (req.method !== "GET" && req.method !== "HEAD") return new Response(null, { status: 405, headers: { allow: "GET, HEAD" } });
 	const url = new URL(req.url);
-	const live = await liveDeploy(env, slug);
-	if (!live.deploy) return notFound();
+	const live = await liveDeploy(env, slug,customDomain);
+	if (!live?.deploy) return notFound();
 
 	// The same path of the same deploy is the same answer: kept in this data
 	// center's cache (gzip clients only, which are nearly all).

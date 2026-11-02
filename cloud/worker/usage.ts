@@ -1,11 +1,11 @@
-import { and, count, eq, gt, like, sum } from "drizzle-orm";
+import { and, count, eq, gt, sum } from "drizzle-orm";
 import { db } from "./auth";
 import { session, site, syncAccount, vault } from "./db/schema";
 
 // Blup Studio's requests say who they are ("Blup Studio (Linux; my-pc)");
 // its sessions are its devices.
 export const STUDIO_AGENT = "Blup Studio";
-export const isStudio = like(session.userAgent, `${STUDIO_AGENT}%`);
+export const isStudio = eq(session.studioDevice, true);
 
 // Blup Studio installs signed in to an account now.
 export async function devicesOf(userId: string): Promise<number> {

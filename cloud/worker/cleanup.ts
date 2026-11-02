@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gt, isNull, lt, or } from "drizzle-orm";
 import { db } from "./auth";
-import { syncAccount, syncBlock, vault, vaultVersion } from "./db/schema";
+import { syncAccount, syncBlock, vault, vaultVersion, resourceQuota } from "./db/schema";
+import { accountAllowed } from "./lifecycle";
 import { planOf } from "./account";
 import { thin, type Version } from "./history";
 
@@ -18,9 +19,9 @@ const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
 async function cleanAccount(env: Cloudflare.Env, userId: string, now: number, cleanedAt: Date | null) {
+	if(!await accountAllowed(env.DB,userId))return;
 	const plan = await planOf(userId);
 	const vaults = await db.select({ id: vault.id }).from(vault).where(eq(vault.userId, userId));
-	let freed = 0;
 	let changed = false;
 	const used = new Set<string>();
 	const kept: Version[] = [];
@@ -32,8 +33,10 @@ async function cleanAccount(env: Cloudflare.Env, userId: string, now: number, cl
 		for (let i = 0; i < drop.length; i += 50) {
 			const part = drop.slice(i, i + 50);
 			await env.NOTES.delete(part.flatMap((v) => [`${v.key}/m`, `${v.key}/r`]));
-			await env.DB.prepare(`DELETE FROM vault_version WHERE vault_id = ? AND n IN (${part.map(() => "?").join(",")})`).bind(id, ...part.map((v) => v.n)).run();
-			freed += part.reduce((t, v) => t + v.size, 0);
+			await env.DB.batch([
+				env.DB.prepare(`UPDATE sync_account SET storage_bytes=max(0,storage_bytes-(SELECT coalesce(sum(size),0) FROM vault_version WHERE vault_id=? AND n IN (${part.map(()=>"?").join(",")}))) WHERE user_id=?`).bind(id,...part.map(v=>v.n),userId),
+				env.DB.prepare(`DELETE FROM vault_version WHERE vault_id = ? AND n IN (${part.map(() => "?").join(",")})`).bind(id, ...part.map(v=>v.n)),
+			]);
 		}
 		kept.push(...versions.filter((v) => keep.has(v.n)));
 	}
@@ -62,11 +65,13 @@ async function cleanAccount(env: Cloudflare.Env, userId: string, now: number, cl
 		for (let i = 0; i < gone.length; i += 90) {
 			const part = gone.slice(i, i + 90);
 			await env.NOTES.delete(part.map((b) => `u/${userId}/b/${b.id}`));
-			await env.DB.prepare(`DELETE FROM sync_block WHERE user_id = ? AND id IN (${part.map(() => "?").join(",")})`).bind(userId, ...part.map((b) => b.id)).run();
-			freed += part.reduce((t, b) => t + b.size, 0);
+			await env.DB.batch([
+				env.DB.prepare(`UPDATE sync_account SET storage_bytes=max(0,storage_bytes-(SELECT coalesce(sum(size),0) FROM sync_block WHERE user_id=? AND id IN (${part.map(()=>"?").join(",")}))) WHERE user_id=?`).bind(userId,...part.map(b=>b.id),userId),
+				env.DB.prepare(`DELETE FROM sync_block WHERE user_id = ? AND id IN (${part.map(() => "?").join(",")})`).bind(userId, ...part.map(b=>b.id)),
+			]);
 		}
 	}
-	await env.DB.prepare("UPDATE sync_account SET storage_bytes = max(0, storage_bytes - ?), cleaned_at = ? WHERE user_id = ?").bind(freed, now, userId).run();
+	await env.DB.prepare("UPDATE sync_account SET cleaned_at=? WHERE user_id=?").bind(now,userId).run();
 }
 
 // Accounts that synced since their last clean-up, or whose history may have
@@ -79,7 +84,8 @@ export async function cleanUp(env: Cloudflare.Env) {
 		const page = await db
 			.select({ userId: syncAccount.userId, cleanedAt: syncAccount.cleanedAt })
 			.from(syncAccount)
-			.where(and(gt(syncAccount.userId, after), or(isNull(syncAccount.cleanedAt), lt(syncAccount.cleanedAt, stale))))
+			.leftJoin(resourceQuota,eq(resourceQuota.userId,syncAccount.userId))
+			.where(and(isNull(resourceQuota.deletedAt),gt(syncAccount.userId, after), or(isNull(syncAccount.cleanedAt), lt(syncAccount.cleanedAt, stale))))
 			.orderBy(asc(syncAccount.userId))
 			.limit(100);
 		if (!page.length) return;
@@ -88,7 +94,7 @@ export async function cleanUp(env: Cloudflare.Env) {
 			try {
 				await cleanAccount(env, userId, now, cleanedAt);
 			} catch (e) {
-				console.error("[blup] limpeza falhou", userId, (e as Error).message);
+				console.error("[blup] cleanup_failed");
 			}
 		}
 	}

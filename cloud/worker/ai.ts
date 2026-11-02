@@ -1,9 +1,13 @@
+import { accountAllowed } from "./lifecycle";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { and, eq, gte, sum } from "drizzle-orm";
 import { auth, db } from "./auth";
 import { aiUsage } from "./db/schema";
 import { planOf } from "./account";
+import { z } from "zod";
+import { reserve, release, settle } from "./quota";
+import { validate } from "./validation";
 import type { Plan } from "./plans";
 
 // AI through Blup Cloud (narration and translation), paid by the plan instead of the
@@ -27,6 +31,11 @@ const VOICE = /^(pt-BR|en-US|es-MX|es-ES)-[A-Za-z]+:MAI-Voice-2\.1$/;
 // OpenRouter charges (a dearer one uses the allowance faster). The list
 // is read from OpenRouter at most every 6 hours per isolate; without it,
 // only the recommended model.
+const catalogSchema = z.object({ data: z.array(z.object({ id: z.string().min(1).max(200), pricing: z.object({prompt:z.string().max(32)}), supported_voices:z.array(z.string().max(100)).max(1000).optional() })).max(5000) });
+const costSchema = z.number().finite().min(0).max(Number.MAX_SAFE_INTEGER / 1e6);
+const usageSchema = z.object({usage:z.object({cost:costSchema}).optional()});
+const outputSchema = z.object({choices:z.array(z.object({message:z.object({content:z.string().max(256_000).nullable().optional()}).optional(),finish_reason:z.string().nullable().optional()})).max(16).optional()});
+
 type SpeechModel = { perCharMicros: number; voices: string[] };
 let speechCache: { at: number; models: Map<string, SpeechModel> } | null = null;
 // Models that answer only raw audio, or are run on the computer instead.
@@ -37,15 +46,15 @@ async function speechModels(env: Cloudflare.Env): Promise<Map<string, SpeechMode
 	try {
 		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/models?output_modalities=speech`);
 		if (res.ok) {
-			const list = (await res.json()) as { data?: { id?: string; pricing?: { prompt?: string }; supported_voices?: string[] }[] };
+			const list = catalogSchema.parse(await res.json());
 			for (const m of list.data ?? []) {
 				const perChar = Number(m.pricing?.prompt ?? 0) * 1e6;
-				if (!m.id || NOT_OFFERED.test(m.id) || !(perChar > 0)) continue;
+				if (!m.id || NOT_OFFERED.test(m.id) || !(perChar > 0) || !Number.isFinite(perChar)) continue;
 				models.set(m.id, { perCharMicros: perChar, voices: (m.supported_voices ?? []).filter((v) => typeof v === "string") });
 			}
 		}
 	} catch {}
-	if (!models.size) return new Map([[VOICE_MODEL, { perCharMicros: PER_CHAR_MICROS, voices: [] }]]);
+	if (!models.size) models.set(VOICE_MODEL,{perCharMicros:PER_CHAR_MICROS,voices:[]});
 	speechCache = { at: Date.now(), models };
 	return models;
 }
@@ -70,7 +79,7 @@ const MAX_TRANSLATE = 16000;
 // What a character costs to translate, at most, before the real cost is
 // known: Haiku's US$ 0.10 in and US$ 0.50 out per million tokens, about
 // three characters a token, the answer as long as the text.
-const TRANSLATE_CHAR_MICROS = 0.2;
+
 
 // The instruction, the same as internal/translate.Prompt.
 const translatePrompt = (from: string, to: string) => `You translate Markdown notes of a website from ${LANG_NAMES[from]} to ${LANG_NAMES[to]}.
@@ -88,7 +97,7 @@ const MAX_INPUT = 4000;
 
 const signedIn = createMiddleware<App>(async (c, next) => {
 	const s = await auth.api.getSession({ headers: c.req.raw.headers });
-	if (!s) return c.json({ error: { message: "Entre de novo no Blup Cloud." } }, 401);
+	if (!s || !await accountAllowed(c.env.DB,s.user.id)) return c.json({ error: { message: "Entre de novo no Blup Cloud." } }, 401);
 	c.set("userId", s.user.id);
 	await next();
 });
@@ -131,105 +140,69 @@ export async function aiUsageOf(userId: string, plan: Plan): Promise<AIUsage> {
 }
 
 // OpenRouter's error shape, so the Studio's client reads it as usual.
-const fail = (message: string, code: string) => ({ error: { message, code } });
+const fail = (message: string, code: string) => ({ code,error: { message, code } });
 
-// Whether the plan's allowance leaves room for a cost now (an error to
-// answer otherwise).
-async function allowance(userId: string, cost: number) {
-	const plan = await planOf(userId);
-	if (!plan.limits.aiUsage) return { status: 402 as const, body: fail("O seu plano não inclui IA pelo Blup Cloud.", "NO_AI") };
-	const use = await aiUsageOf(userId, plan);
-	if (use.usedMonthMicros + cost > use.monthMicros) return { status: 402 as const, body: fail("O uso de IA deste mês acabou. Ele renova no dia 1.", "AI_MONTH_LIMIT") };
-	if (use.usedWeekMicros + cost > use.weekCapMicros) return { status: 402 as const, body: fail("Você já usou metade do uso de IA do mês nesta semana. Tente de novo em alguns dias.", "AI_WEEK_LIMIT") };
-	return null;
+const speechInput = z.object({model:z.string().min(1).max(200),input:z.string().min(1).max(MAX_INPUT*2).refine(s=>[...s].length<=MAX_INPUT),voice:z.string().max(100).default(""),response_format:z.literal("mp3").optional()}).strict();
+const translationInput = z.object({text:z.string().trim().min(1).max(MAX_TRANSLATE),from:z.enum(["pt","en","es"]),to:z.enum(["pt","en","es"])}).strict().refine(b=>b.from!==b.to);
+async function aiReservation(env:Cloudflare.Env,userId:string,cost:number) {
+ const plan=await planOf(userId);
+ if(!plan.limits.aiUsage) return {error:fail("O seu plano não inclui IA pelo Blup Cloud.","NO_AI")};
+ const month=plan.limits.aiUsage*PRO_MONTH_MICROS;
+ const hold=await reserve(env.DB,userId,"ai",cost,month,Math.floor(month/2));
+ if(hold) return {hold};
+ const use=await aiUsageOf(userId,plan);
+ return {error:fail("O uso de IA disponível acabou. Tente novamente depois.",use.usedMonthMicros+cost>month?"AI_MONTH_LIMIT":"AI_WEEK_LIMIT")};
 }
-
+function providerCost(value:unknown,fallback:number) {
+ const usage=usageSchema.safeParse(value);
+ return usage.success && usage.data.usage?.cost!==undefined ? Math.ceil(usage.data.usage.cost*1e6) : fallback;
+}
 export const aiApi = new Hono<App>()
-	.use(signedIn)
-	.get("/usage", async (c) => {
-		const userId = c.get("userId");
-		return c.json(await aiUsageOf(userId, await planOf(userId)));
-	})
-	.post("/audio/speech", async (c) => {
-		const userId = c.get("userId");
-		const body = await c.req.json<{ model?: string; input?: string; voice?: string }>().catch(() => null);
-		const input = typeof body?.input === "string" ? body.input : "";
-		const chars = [...input].length;
-		const model = typeof body?.model === "string" ? body.model : "";
-		const voice = typeof body?.voice === "string" ? body.voice : "";
-		const perChar = model ? await voicePrice(c.env, model, voice) : null;
-		if (perChar === null || !chars || chars > MAX_INPUT) {
-			return c.json(fail("Pedido de narração inválido.", "BAD_REQUEST"), 400);
-		}
-		const plan = await planOf(userId);
-		if (!plan.limits.aiUsage) return c.json(fail("O seu plano não inclui IA pelo Blup Cloud.", "NO_AI"), 402);
-		const use = await aiUsageOf(userId, plan);
-		const cost = Math.ceil(chars * perChar);
-		if (use.usedMonthMicros + cost > use.monthMicros) return c.json(fail("O uso de IA deste mês acabou. Ele renova no dia 1.", "AI_MONTH_LIMIT"), 402);
-		if (use.usedWeekMicros + cost > use.weekCapMicros) return c.json(fail("Você já usou metade do uso de IA do mês nesta semana. Tente de novo em alguns dias.", "AI_WEEK_LIMIT"), 402);
-		if (!c.env.OPENROUTER_API_KEY) return c.json(fail("A narração pelo Blup Cloud está indisponível agora.", "UNAVAILABLE"), 503);
-
-		const res = await fetch(`${c.env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/audio/speech`, {
-			method: "POST",
-			headers: {
-				Authorization: `Bearer ${c.env.OPENROUTER_API_KEY}`,
-				"Content-Type": "application/json",
-				"HTTP-Referer": "https://getblup.io",
-				"X-Title": "Blup Cloud",
-			},
-			body: JSON.stringify({ model, input, ...(voice ? { voice } : {}), response_format: "mp3" }),
-		});
-		if (!res.ok) {
-			console.error("[blup] narração falhou", res.status);
-			// Busy or failing upstream: the Studio tries again on 429/5xx.
-			return c.json(fail("A narração falhou agora. Tente de novo.", "UPSTREAM"), res.status === 429 ? 429 : 502);
-		}
-		const audio = await res.arrayBuffer();
-		await db.insert(aiUsage).values({ userId, kind: "narration", units: chars, costMicros: cost });
-		return new Response(audio, { headers: { "content-type": "audio/mpeg" } });
-	})
-	.post("/translate", async (c) => {
-		const userId = c.get("userId");
-		const body = await c.req.json<{ text?: string; from?: string; to?: string }>().catch(() => null);
-		const text = typeof body?.text === "string" ? body.text : "";
-		const from = typeof body?.from === "string" ? body.from : "", to = typeof body?.to === "string" ? body.to : "";
-		if (!text.trim() || text.length > MAX_TRANSLATE || !Object.hasOwn(LANG_NAMES, from) || !Object.hasOwn(LANG_NAMES, to) || from === to) {
-			return c.json(fail("Pedido de tradução inválido.", "BAD_REQUEST"), 400);
-		}
-		const estimate = Math.ceil([...text].length * TRANSLATE_CHAR_MICROS);
-		const denied = await allowance(userId, estimate);
-		if (denied) return c.json(denied.body, denied.status);
-		if (!c.env.OPENROUTER_API_KEY) return c.json(fail("A tradução pelo Blup Cloud está indisponível agora.", "UNAVAILABLE"), 503);
-
-		const res = await fetch(`${c.env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, {
-			method: "POST",
-			headers: {
-				Authorization: `Bearer ${c.env.OPENROUTER_API_KEY}`,
-				"Content-Type": "application/json",
-				"HTTP-Referer": "https://getblup.io",
-				"X-Title": "Blup Cloud",
-			},
-			body: JSON.stringify({
-				model: TRANSLATE_MODEL,
-				temperature: 0.2,
-				usage: { include: true },
-				messages: [
-					{ role: "system", content: translatePrompt(from, to) },
-					{ role: "user", content: text },
-				],
-			}),
-		});
-		if (!res.ok) {
-			console.error("[blup] tradução falhou", res.status);
-			return c.json(fail("A tradução falhou agora. Tente de novo.", "UPSTREAM"), res.status === 429 ? 429 : 502);
-		}
-		const out = await res.json<{ choices?: { message?: { content?: string }; finish_reason?: string }[]; usage?: { cost?: number } }>();
-		const answer = out.choices?.[0]?.message?.content ?? "";
-		if (!answer || out.choices?.[0]?.finish_reason === "length") {
-			return c.json(fail("A tradução voltou incompleta. Tente de novo.", "UPSTREAM"), 502);
-		}
-		// What OpenRouter charged (in dollars), else the estimate.
-		const cost = typeof out.usage?.cost === "number" ? Math.ceil(out.usage.cost * 1_000_000) : estimate;
-		await db.insert(aiUsage).values({ userId, kind: "translation", units: [...text].length, costMicros: cost });
-		return c.json({ text: answer });
-	});
+ .use(signedIn)
+ .get("/usage",async c=>c.json(await aiUsageOf(c.get("userId"),await planOf(c.get("userId")))))
+ .post("/audio/speech",validate("json",speechInput),async c=>{
+  const userId=c.get("userId"),{model,input,voice}=c.req.valid("json");
+  const perChar=await voicePrice(c.env,model,voice),chars=[...input].length;
+  if(perChar===null) return c.json(fail("Pedido de narração inválido.","BAD_REQUEST"),400);
+  const cost=Math.ceil(chars*perChar),admission=await aiReservation(c.env,userId,cost);
+  if(!admission.hold) return c.json(admission.error,402);
+  const hold=admission.hold;
+  try {
+   if(!c.env.OPENROUTER_API_KEY) return c.json(fail("A narração está indisponível agora.","UNAVAILABLE"),503);
+   const res=await fetch(`${c.env.OPENROUTER_URL||"https://openrouter.ai/api/v1"}/audio/speech`,{method:"POST",signal:AbortSignal.timeout(120_000),redirect:"error",headers:{Authorization:`Bearer ${c.env.OPENROUTER_API_KEY}`,"Content-Type":"application/json","HTTP-Referer":"https://getblup.io","X-Title":"Blup Cloud"},body:JSON.stringify({model,input,...(voice?{voice}:{}),response_format:"mp3"})});
+   // Audio responses may expose the provider cost as a numeric header.
+   const headerCost=z.coerce.number().pipe(costSchema).safeParse(res.headers.get("x-openrouter-cost")??res.headers.get("x-usage-cost")??undefined);
+   let actual=headerCost.success?Math.ceil(headerCost.data*1e6):cost;
+   if(!res.ok||res.headers.get("content-type")?.includes("application/json")){
+    const errorBody:unknown=await res.json().catch(()=>null);
+    actual=providerCost(errorBody,headerCost.success?actual:0);
+    if(actual) await settle(c.env.DB,hold,[c.env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,'narration',?,?)").bind(userId,chars,actual)]);
+    return c.json(fail("A narração falhou agora. Tente de novo.","UPSTREAM"),res.status===429?429:502);
+   }
+   await settle(c.env.DB,hold,[c.env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,'narration',?,?)").bind(userId,chars,actual)]);
+   return new Response(res.body,{headers:{"content-type":"audio/mpeg"}});
+  }catch{ return c.json(fail("A narração falhou agora. Tente de novo.","UPSTREAM"),502); }
+  finally{await release(c.env.DB,hold);}
+ })
+ .post("/translate",validate("json",translationInput),async c=>{
+  const userId=c.get("userId"),{text,from,to}=c.req.valid("json"),chars=[...text].length;
+  const inputTokens=Math.ceil(new TextEncoder().encode(text).length/3);
+  const maxTokens=Math.max(32,inputTokens*2);
+  // Reserve a conservative input bound and the entire allowed output.
+  const estimate=Math.ceil((new TextEncoder().encode(text+translatePrompt(from,to)).length)*0.1+maxTokens*0.5);
+  const admission=await aiReservation(c.env,userId,estimate);
+  if(!admission.hold) return c.json(admission.error,402);
+  const hold=admission.hold;
+  try{
+   if(!c.env.OPENROUTER_API_KEY) return c.json(fail("A tradução está indisponível agora.","UNAVAILABLE"),503);
+   const res=await fetch(`${c.env.OPENROUTER_URL||"https://openrouter.ai/api/v1"}/chat/completions`,{method:"POST",signal:AbortSignal.timeout(120_000),redirect:"error",headers:{Authorization:`Bearer ${c.env.OPENROUTER_API_KEY}`,"Content-Type":"application/json","HTTP-Referer":"https://getblup.io","X-Title":"Blup Cloud"},body:JSON.stringify({model:TRANSLATE_MODEL,temperature:0.2,max_tokens:maxTokens,usage:{include:true},messages:[{role:"system",content:translatePrompt(from,to)},{role:"user",content:text}]})});
+   const raw:unknown=await res.json().catch(()=>null);
+   const cost=providerCost(raw,res.ok?estimate:0);
+   // Charge before validating content: truncated/malformed answers can cost.
+   if(res.ok||usageSchema.safeParse(raw).success) await settle(c.env.DB,hold,[c.env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,'translation',?,?)").bind(userId,chars,cost)]);
+   const out=outputSchema.safeParse(raw),choice=out.success?out.data.choices?.[0]:undefined;
+   if(!res.ok || !choice?.message?.content || choice.finish_reason==="length") return c.json(fail("A tradução voltou incompleta. Tente de novo.","UPSTREAM"),res.status===429?429:502);
+   return c.json({text:choice.message.content});
+  }catch{return c.json(fail("A tradução falhou agora. Tente de novo.","UPSTREAM"),502);}
+  finally{await release(c.env.DB,hold);}
+ });

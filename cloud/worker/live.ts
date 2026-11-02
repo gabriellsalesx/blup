@@ -20,6 +20,8 @@ export class SyncLive extends DurableObject<Cloudflare.Env> {
 		return new Response(null, { status: 101, webSocket: client });
 	}
 
+	async revoke():Promise<void>{for(const ws of this.ctx.getWebSockets()){try{ws.close(1008,"Session ended");}catch{}}}
+
 	// Called by the Worker after a new version is saved.
 	async notify(vault: string, n: number): Promise<void> {
 		const message = JSON.stringify({ vault, n });

@@ -26,6 +26,9 @@ export type AuthConfig = {
 	stripeSecret: string;
 	stripeWebhookSecret: string;
 	isBanned: (userId: string) => Promise<boolean>;
+	deviceMark?: (userId:string,body:unknown)=>Promise<boolean>;
+	finishDevice?: (userId:string,body:unknown)=>Promise<void>;
+	planChanged?: (userId:string)=>Promise<void>;
 	// Stripe events Better Auth doesn't act on (payments, refunds, disputes),
 	// kept for the staff.
 	onStripeEvent?: (event: Stripe.Event, stripe: Stripe) => Promise<void>;
@@ -62,27 +65,23 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 		user: {
 			// The person deletes the account from the panel (a recent sign in is
 			// required). A paid subscription ends in Stripe first.
-			deleteUser: {
-				enabled: true,
-				beforeDelete: async (user) => {
-					const customer = (user as { stripeCustomerId?: string | null }).stripeCustomerId;
-					if (!customer) return;
-					for await (const sub of stripeClient.subscriptions.list({ customer, status: "all" })) {
-						if (!["canceled", "incomplete_expired"].includes(sub.status)) await stripeClient.subscriptions.cancel(sub.id);
-					}
-				},
-			},
+			deleteUser: { enabled: false },
 			additionalFields: {
 				banned: { type: "boolean", defaultValue: false, input: false },
 				banReason: { type: "string", required: false, input: false },
 			},
 		},
+		session: {additionalFields:{studioDevice:{type:"boolean",defaultValue:false,input:false}}},
 		databaseHooks: {
 			session: {
 				create: {
-					before: async (session) => {
+					before: async (session,ctx) => {
 						if (await cfg.isBanned(session.userId)) throw new APIError("FORBIDDEN", { message: "Esta conta está bloqueada. Fale com o suporte.", code: "BANNED" });
+						const device=ctx?.path==="/device/token";
+						if(device && cfg.deviceMark && !await cfg.deviceMark(session.userId,ctx?.body))throw new APIError("FORBIDDEN",{code:"DEVICES_LIMIT",message:"Aprovação de aparelho inválida ou expirada."});
+						return {data:{...session,studioDevice:device&&!!cfg.deviceMark}};
 					},
+					after: async(session,ctx)=>{if(ctx?.path==="/device/token")await cfg.finishDevice?.(session.userId,ctx.body);},
 				},
 			},
 		},
@@ -132,6 +131,9 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 				onEvent: async (event) => cfg.onStripeEvent?.(event, stripeClient),
 				subscription: {
 					enabled: true,
+					onSubscriptionComplete:async({subscription})=>cfg.planChanged?.(subscription.referenceId),
+					onSubscriptionUpdate:async({subscription})=>cfg.planChanged?.(subscription.referenceId),
+					onSubscriptionDeleted:async({subscription})=>cfg.planChanged?.(subscription.referenceId),
 					plans: PLANS.filter((p) => p.lookupKey).map((p) => ({ name: p.name, lookupKey: p.lookupKey, annualDiscountLookupKey: p.yearlyLookupKey, limits: p.limits })),
 					// Stripe's recommendations: flexible billing mode, and a label to
 					// follow this checkout flow in the Dashboard (8 random letters).

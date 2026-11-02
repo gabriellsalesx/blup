@@ -56,7 +56,8 @@ class TestStatement {
 
 export class TestBucket {
 	readonly objects = new Map<string, Uint8Array>();
-	async put(key: string, body: string | ArrayBuffer | Uint8Array) {
+	async put(key: string, body: string | ArrayBuffer | Uint8Array | ReadableStream) {
+		if(body instanceof ReadableStream){this.objects.set(key,new Uint8Array(await new Response(body).arrayBuffer()));return;}
 		this.objects.set(key, typeof body === "string" ? new TextEncoder().encode(body) : new Uint8Array(body));
 	}
 	async get(key: string) {
@@ -65,7 +66,7 @@ export class TestBucket {
 		return { body: new Blob([bytes as Uint8Array<ArrayBuffer>]).stream(), text: async () => new TextDecoder().decode(bytes), json: async () => JSON.parse(new TextDecoder().decode(bytes)) };
 	}
 	async delete(keys: string | string[]) { for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key); }
-	async list({prefix}: {prefix:string}) { return {objects:[...this.objects.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key})),truncated:false}; }
+	async list({prefix}: {prefix:string}) { return {objects:[...this.objects.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key,uploaded:new Date(0)})),truncated:false}; }
 	asR2() { return this as unknown as R2Bucket; }
 }
 

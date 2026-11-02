@@ -7,6 +7,11 @@ interface __BaseEnv_CloudflareBindings {
 	DB: D1Database;
 	EMAIL: SendEmail;
 	OTP_LIMIT: RateLimit;
+	ABUSE_LIMIT: RateLimit;
+	BULK_LIMIT: RateLimit;
+	CF_API_TOKEN: string;
+	CF_ZONE_ID: string;
+	SITES_CNAME_TARGET: string;
 	ASSETS: Fetcher;
 	APP_URL: "https://cloud.getblup.io" | "http://localhost:8787";
 	PASSKEY_RP_ID: "getblup.io" | "localhost";
@@ -38,6 +43,11 @@ declare namespace Cloudflare {
 		DB: D1Database;
 		EMAIL: SendEmail;
 		OTP_LIMIT: RateLimit;
+	ABUSE_LIMIT: RateLimit;
+	BULK_LIMIT: RateLimit;
+	CF_API_TOKEN: string;
+	CF_ZONE_ID: string;
+	SITES_CNAME_TARGET: string;
 		ASSETS: Fetcher;
 		APP_URL: "https://cloud.getblup.io";
 		PASSKEY_RP_ID: "getblup.io";

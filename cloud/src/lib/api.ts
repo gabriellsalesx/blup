@@ -1,46 +1,21 @@
-// The panel's calls to the Worker's own API (/api), besides Better Auth's.
-
-import type { Usage } from "./usage.ts";
-
-export type Limits = { storageMB: number; maxFileMB: number; sites: number; customDomain: boolean; devices: number; live: boolean; historyDays: number; aiUsage: number };
-export type PlanInfo = { name: string; label: string; priceCents: number; yearlyCents: number; currency: "brl"; limits: Limits; perks: string[]; suggested: boolean };
-export type Me = {
-	id: string;
-	email: string | null; // null: an account made with a passkey, no e-mail linked yet
-	name: string;
-	createdAt: string;
-	usage: Usage;
-	// AI through Blup Cloud: the share of this month's allowance used.
-	ai: AIShare;
-	plan: { name: string; label: string; limits: Limits; gift?: boolean; status: string | null; renewsAt: string | null; cancelsAtPeriodEnd: boolean };
-};
-
-async function get<T>(path: string): Promise<T> {
-	const r = await fetch(`/api${path}`, { credentials: "same-origin" });
-	if (!r.ok) throw new Error(`${path}: ${r.status}`);
-	return r.json() as Promise<T>;
-}
-
-export type AIShare = { percent: number; resetsAt: string; included: boolean };
-
-export type Device = { id: string; name: string; createdAt: string; lastSeen: string };
-
-// A site published through Blup Cloud (live: it has a deploy).
-export type Site = { id: string; slug: string; title: string; url: string; bytes: number; files: number; live: boolean; updatedAt: string };
-
-export const api = {
-	me: () => get<Me>("/me"),
-	plans: () => get<PlanInfo[]>("/plans"),
-	devices: () => get<{ devices: Device[] }>("/devices"),
-	sites: () => get<{ limit: number; sites: Site[] }>("/sites"),
-	takeDown: async (id: string) => {
-		const r = await fetch(`/api/sites/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" });
-		if (!r.ok) throw new Error(`takeDown: ${r.status}`);
-	},
-	disconnect: async (id: string) => {
-		const r = await fetch(`/api/devices/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" });
-		if (!r.ok) throw new Error(`disconnect: ${r.status}`);
-	},
+// The wire types come from the complete Hono route chain. Dates here are
+// JSON strings, rather than the database's internal Date objects.
+import {hc,parseResponse,type InferResponseType} from "hono/client";
+import type {AppType} from "./rpc";
+export const rpc=hc<AppType>("/",{init:{credentials:"same-origin"}}).api;
+export type Me=InferResponseType<typeof rpc.me.$get,200>;
+export type PlanInfo=InferResponseType<typeof rpc.plans.$get,200>[number];
+export type Limits=Me["plan"]["limits"];
+export type AIShare=Me["ai"];
+export type Device=InferResponseType<typeof rpc.devices.$get,200>["devices"][number];
+export type Site=InferResponseType<typeof rpc.sites.$get,200>["sites"][number];
+export const api={
+ me:()=>parseResponse(rpc.me.$get()),
+ plans:()=>parseResponse(rpc.plans.$get()),
+ devices:()=>parseResponse(rpc.devices.$get()),
+ sites:()=>parseResponse(rpc.sites.$get()),
+ takeDown:async(id:string)=>{await parseResponse(rpc.sites[":id"].$delete({param:{id}}));},
+ disconnect:async(id:string)=>{await parseResponse(rpc.devices[":id"].$delete({param:{id}}));},
 };
 
 export const money = (cents: number, currency: string = "brl") => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: currency.toUpperCase() });

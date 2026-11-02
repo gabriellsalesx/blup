@@ -78,7 +78,8 @@ export const deploySchema = z.object({
 export type DeployFiles = z.infer<typeof deploySchema>["files"];
 
 // The manifest kept in R2: path -> [hash, type, gzipped].
-export type Manifest = Record<string, [string, string, 0 | 1]>;
+export const manifestSchema=z.record(z.string().refine(pathAllowed),z.tuple([z.string().regex(HASH),z.string().regex(/^[a-z0-9.+-]+\/[a-z0-9.+-]+(?:; ?charset=utf-8)?$/i).max(100),z.union([z.literal(0),z.literal(1)])]));
+export type Manifest = z.infer<typeof manifestSchema>;
 
 export const toManifest = (files: DeployFiles): Manifest =>
 	Object.fromEntries(files.map((f) => [f.path, [f.hash, f.type, f.gz ? 1 : 0] as [string, string, 0 | 1]]));

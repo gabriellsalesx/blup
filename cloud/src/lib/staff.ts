@@ -1,60 +1,40 @@
-import type { Page } from "./pager.svelte.ts";
-import type { Usage } from "./usage.ts";
-import type { AIShare, Limits } from "./api.ts";
-
-// The staff area's calls (/api/staff). Cloudflare Access is in front in
-// production; on this computer, STAFF_DEV_EMAIL lets you in.
-
-export type Role = "support" | "admin";
-export type StaffMe = { email: string; role: Role };
-export type UserRow = { id: string; email: string | null; createdAt: string; banned: boolean; plan: string };
-export type UserDetail = {
-	user: { id: string; email: string | null; emailVerified: boolean; createdAt: string; banned: boolean; banReason: string | null };
-	plan: { label: string; limits: Limits; status: string | null; periodEnd: string | null; cancelAtPeriodEnd: boolean };
-	usage: Usage;
-	ai: AIShare;
-	billing: { id: number; type: string; amount: number | null; currency: string | null; createdAt: string }[];
-	stripeUrl: string | null;
-	sessions: { id: string; createdAt: string; expiresAt: string; ipAddress: string | null; userAgent: string | null }[];
-	passkeys: { id: string; name: string | null; createdAt: string; deviceType: string }[];
-	history: LogRow[];
-};
-export type LogRow = { id: number; staffEmail: string; action: string; userId: string | null; detail: string | null; createdAt: string; account?: { gone: boolean; email: string | null } | null };
-export type Stats = { total: number; recent: number; banned: number; plans: { name: string; label: string; count: number }[] };
-export type Team = { owner: string | null; staff: { email: string; role: Role; addedBy: string; createdAt: string }[] };
-
+import {parseResponse,type InferResponseType} from "hono/client";
+import {z} from "zod";
+import {rpc} from "./api";
+const client=rpc.staff;
+export type StaffMe=InferResponseType<typeof client.me.$get,200>;
+export type Role=StaffMe["role"];
+export type UserRow=InferResponseType<typeof client.users.$get,200>["items"][number];
+export type UserDetail=InferResponseType<typeof client.users[":id"]["$get"],200>;
+export type LogRow=InferResponseType<typeof client.log.$get,200>["items"][number];
+export type Stats=InferResponseType<typeof client.stats.$get,200>;
+export type Team=InferResponseType<typeof client.team.$get,200>;
 export class StaffError extends Error {
-	constructor(public status: number, public code: string) {
-		super(code);
-	}
+ constructor(public status:number,public code:string){super(code);}
 }
-
-async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
-	const r = await fetch(`/api/staff${path}`, {
-		method,
-		credentials: "same-origin",
-		headers: body ? { "content-type": "application/json" } : undefined,
-		body: body ? JSON.stringify(body) : undefined,
-	});
-	const data = await r.json().catch(() => ({}));
-	if (!r.ok) throw new StaffError(r.status, (data as { code?: string }).code ?? "ERROR");
-	return data as T;
+async function call<T>(request:Promise<T>):Promise<T>{
+ try{return await request;}
+ catch(e){
+  const parsed=z.object({statusCode:z.number().int(),detail:z.object({data:z.object({code:z.string()})})}).safeParse(e);
+  if(parsed.success)throw new StaffError(parsed.data.statusCode,parsed.data.detail.data.code);
+  throw e;
+ }
 }
-
-export const staffApi = {
-	me: () => call<StaffMe>("GET", "/me"),
-	stats: () => call<Stats>("GET", "/stats"),
-	users: (q: string, cursor: string | null) => call<Page<UserRow>>("GET", `/users?q=${encodeURIComponent(q)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`),
-	user: (id: string) => call<UserDetail>("GET", `/users/${encodeURIComponent(id)}`),
-	revokeSessions: (id: string) => call<{ revoked: number }>("POST", `/users/${encodeURIComponent(id)}/sessions/revoke`),
-	removePasskey: (id: string, pid: string) => call("DELETE", `/users/${encodeURIComponent(id)}/passkeys/${encodeURIComponent(pid)}`),
-	ban: (id: string, reason: string) => call("POST", `/users/${encodeURIComponent(id)}/ban`, { reason }),
-	unban: (id: string) => call("POST", `/users/${encodeURIComponent(id)}/unban`),
-	remove: (id: string) => call("DELETE", `/users/${encodeURIComponent(id)}`),
-	team: () => call<Team>("GET", "/team"),
-	setMember: (email: string, role: Role) => call("POST", "/team", { email, role }),
-	removeMember: (email: string) => call("DELETE", `/team/${encodeURIComponent(email)}`),
-	log: (cursor: string | null) => call<Page<LogRow>>("GET", `/log${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
+export const staffApi={
+ me:()=>call(parseResponse(client.me.$get())),
+ stats:()=>call(parseResponse(client.stats.$get())),
+ users:(q:string,cursor:string|null)=>call(parseResponse(client.users.$get({query:{q,...(cursor?{cursor}:{})}}))),
+ user:(id:string)=>call(parseResponse(client.users[":id"].$get({param:{id}}))),
+ revokeSessions:(id:string)=>call(parseResponse(client.users[":id"].sessions.revoke.$post({param:{id}}))),
+ removePasskey:(id:string,pid:string)=>call(parseResponse(client.users[":id"].passkeys[":pid"].$delete({param:{id,pid}}))),
+ ban:(id:string,reason:string)=>call(parseResponse(client.users[":id"].ban.$post({param:{id},json:{reason}}))),
+ unban:(id:string)=>call(parseResponse(client.users[":id"].unban.$post({param:{id}}))),
+ remove:(id:string)=>call(parseResponse(client.users[":id"].$delete({param:{id}}))),
+ restore:(id:string)=>call(parseResponse(client.users[":id"].restore.$post({param:{id}}))),
+ team:()=>call(parseResponse(client.team.$get())),
+ setMember:(email:string,role:Role)=>call(parseResponse(client.team.$post({json:{email,role}}))),
+ removeMember:(email:string)=>call(parseResponse(client.team[":email"].$delete({param:{email}}))),
+ log:(cursor:string|null)=>call(parseResponse(client.log.$get({query:cursor?{cursor}:{}}))),
 };
 
 // A staff page's address: /staff/contas here, /contas on staff.getblup.io
@@ -70,6 +50,7 @@ export const actionLabel: Record<string, string> = {
 	"user.ban": "Bloqueou a conta",
 	"user.unban": "Desbloqueou a conta",
 	"user.delete": "Excluiu a conta",
+	"user.restore": "Recuperou a conta",
 	"team.set": "Mudou a equipe",
 	"team.remove": "Tirou da equipe",
 };
@@ -86,4 +67,4 @@ export const billingLabel: Record<string, { text: string; alert: boolean }> = {
 export const money = (cents: number | null, currency: string | null) =>
 	cents === null ? "" : (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: (currency ?? "brl").toUpperCase() });
 
-export const when = (d: string) => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+export const when = (d: string | null) => d===null?"Sem data":new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });

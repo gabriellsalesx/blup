@@ -1,3 +1,4 @@
+import { observePlan } from "./lifecycle";
 import { env } from "cloudflare:workers";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "./auth";
@@ -33,5 +34,7 @@ export async function activeSubscription(userId: string) {
 // one (free without a paid subscription).
 export async function planOf(userId: string) {
 	const [owner, sub] = await Promise.all([ownerAccount(userId), activeSubscription(userId)]);
-	return planNamed(owner ? GIFT_PLAN : sub?.plan);
+	const plan=planNamed(owner ? GIFT_PLAN : sub?.plan);
+	await observePlan(env.DB,userId,plan.name);
+	return plan;
 }

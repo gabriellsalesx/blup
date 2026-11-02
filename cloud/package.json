@@ -7,8 +7,8 @@
   },
   "scripts": {
     "dev": "vite build && wrangler dev",
-    "build": "vite build",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc -p worker/tsconfig.json --noEmit",
+    "build": "node worker/export-rpc.mjs && vite build",
+    "check": "node worker/export-rpc.mjs && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc -p worker/tsconfig.json --noEmit",
     "test": "vitest run",
     "types": "wrangler types worker/worker-configuration.d.ts --env-interface CloudflareBindings",
     "db:generate": "drizzle-kit generate",

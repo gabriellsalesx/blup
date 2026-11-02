@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index, primaryKey, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // Blup's own tables (Better Auth's are in auth-schema.ts).
 
@@ -168,6 +168,50 @@ export const site = sqliteTable(
 	(t) => [index("site_user_idx").on(t.userId)],
 );
 
+// Reservations count before R2/provider work starts. They are settled in
+// the same D1 transaction as the corresponding usage row.
+export const resourceQuota = sqliteTable("resource_quota", {
+	userId: text("user_id").primaryKey(),
+	storage: integer("storage").notNull().default(0),
+	sites: integer("sites").notNull().default(0),
+	vaults: integer("vaults").notNull().default(0),
+	ai: integer("ai").notNull().default(0),
+	devices: integer("devices").notNull().default(0),
+	deletedAt: integer("deleted_at"),
+	purgeAfter: integer("purge_after"),
+	purgeStarted: integer("purge_started"),
+	graceUntil: integer("grace_until"),
+	downgradeNotified: integer("downgrade_notified"),
+	lastPlan: text("last_plan"),
+	billingCancelPending: integer("billing_cancel_pending").notNull().default(0),
+}, t => [index("resource_purge_idx").on(t.purgeAfter), index("resource_grace_idx").on(t.graceUntil),index("resource_billing_pending_idx").on(t.billingCancelPending),index("resource_notice_idx").on(t.graceUntil).where(sql`${t.downgradeNotified} IS NULL AND ${t.deletedAt} IS NULL`)]);
+
+export const resourceReservation = sqliteTable("resource_reservation", {
+	id: text("id").primaryKey(), userId: text("user_id").notNull(),
+	kind: text("kind").notNull(), amount: integer("amount").notNull(),
+	expiresAt: integer("expires_at").notNull(),
+}, t => [index("reservation_expiry_idx").on(t.expiresAt), index("reservation_user_idx").on(t.userId)]);
+
+export const siteLease = sqliteTable("site_lease", {
+	siteId: text("site_id").primaryKey(), token: text("token").notNull(), expiresAt: integer("expires_at").notNull(),
+}, t => [index("site_lease_expiry_idx").on(t.expiresAt)]);
+
+export const retiredDeploy = sqliteTable("retired_deploy", {
+	siteId: text("site_id").notNull(), deploy: text("deploy").notNull(), deleteAfter: integer("delete_after").notNull(),
+}, t => [primaryKey({ columns: [t.siteId,t.deploy] }), index("retired_deploy_due_idx").on(t.deleteAfter)]);
+
+export const siteDomain = sqliteTable("site_domain", {
+	siteId: text("site_id").primaryKey(), hostname: text("hostname").notNull(),
+	proof: text("proof").notNull(), verifiedAt: integer("verified_at"), providerId: text("provider_id"),
+	status: text("status").notNull().default("pending_ownership"), ssl: text("ssl").notNull().default("pending"),
+	records: text("records").notNull().default("[]"), checkedAt: integer("checked_at"),
+}, t=>[uniqueIndex("site_domain_verified_unique").on(t.hostname).where(sql`${t.verifiedAt} IS NOT NULL`)]);
+
+export const deviceApproval = sqliteTable("device_approval", {
+	codeHash: text("code_hash").primaryKey(), userId: text("user_id").notNull(),
+	reservationId: text("reservation_id").notNull(), expiresAt: integer("expires_at").notNull(),
+}, t => [index("device_approval_expiry_idx").on(t.expiresAt)]);
+
 // A file of a site in R2 (s/<site>/f/<sha256 of what is stored>): the same
 // file is stored once per site, whatever deploy or path uses it.
 export const siteBlob = sqliteTable(
@@ -194,8 +238,12 @@ export const reminder = sqliteTable(
 		id: text("id").notNull(),
 		sendAt: integer("send_at", { mode: "timestamp_ms" }).notNull(),
 		sentAt: integer("sent_at", { mode: "timestamp_ms" }),
+		attempts: integer("attempts").notNull().default(0),
+		nextAttemptAt: integer("next_attempt_at").notNull().default(0),
+		claim: text("claim"),
+		claimUntil: integer("claim_until").notNull().default(0),
 	},
-	(t) => [primaryKey({ columns: [t.userId, t.id] }), index("reminder_due_idx").on(t.sentAt, t.sendAt)],
+	(t) => [primaryKey({ columns: [t.userId, t.id] }), index("reminder_due_idx").on(t.sentAt, t.sendAt), index("reminder_cleanup_idx").on(t.sendAt)],
 );
 
 // Reminder e-mails sent per account and month ("2026-11"), for the plan's
@@ -206,6 +254,7 @@ export const reminderMonth = sqliteTable(
 		userId: text("user_id").notNull(),
 		month: text("month").notNull(),
 		sent: integer("sent").default(0).notNull(),
+		reserved: integer("reserved").default(0).notNull(),
 	},
-	(t) => [primaryKey({ columns: [t.userId, t.month] })],
+	(t) => [primaryKey({ columns: [t.userId, t.month] }), index("reminder_month_cleanup_idx").on(t.month)],
 );

@@ -15,8 +15,7 @@ export async function recordBillingEvent(event: Stripe.Event, stripe: Stripe) {
 	let customer: string | null = null;
 	let amount: number | null = null;
 	let currency: string | null = null;
-	const o = event.data.object as unknown as Record<string, unknown>;
-	const id = (v: unknown) => (typeof v === "string" ? v : v && typeof v === "object" && "id" in v ? String((v as { id: string }).id) : null);
+	const id = (v: unknown) => typeof v === "string" ? v : v && typeof v === "object" && "id" in v && typeof v.id === "string" ? v.id : null;
 	switch (event.type) {
 		case "invoice.paid":
 		case "invoice.payment_failed": {
@@ -33,12 +32,17 @@ export async function recordBillingEvent(event: Stripe.Event, stripe: Stripe) {
 			currency = ch.currency;
 			break;
 		}
-		case "charge.dispute.created":
+		case "charge.dispute.created": {
+			const dispute=event.data.object;
+			const charge=await stripe.charges.retrieve(id(dispute.charge)??"");
+			customer=id(charge.customer);amount=dispute.amount;currency=dispute.currency;
+			break;
+		}
 		case "radar.early_fraud_warning.created": {
 			// These point at the charge; the charge knows the customer.
-			const charge = await stripe.charges.retrieve(id(o.charge) ?? "");
+			const charge = await stripe.charges.retrieve(id(event.data.object.charge) ?? "");
 			customer = id(charge.customer);
-			amount = typeof o.amount === "number" ? o.amount : charge.amount;
+			amount = charge.amount;
 			currency = charge.currency;
 			break;
 		}

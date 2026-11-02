@@ -36,8 +36,8 @@ export async function sendCode(env: Cloudflare.Env, email: string, code: string,
 	} catch (e) {
 		// The person sees no difference (the request already answered); the
 		// log keeps the reason.
-		const err = e as Error & { code?: string };
-		console.error("[blup] e-mail não enviado", safeMailCode(err.code));
+		const code=typeof e==="object"&&e!==null&&"code" in e?e.code:undefined;
+		console.error("[blup] e-mail não enviado", safeMailCode(code));
 	}
 }
 
@@ -69,10 +69,10 @@ function codeHtml(lead: string, code: string, logo: string) {
 // A reminder of the calendar (Max and Ultra), on purpose without what it
 // is about: Blup never knows the event, only that one is due.
 export async function sendReminder(env: Cloudflare.Env, email: string) {
-	if (!hasEmail(email)) return;
+	if (!hasEmail(email)) return false;
 	if (env.EMAIL_MODE === "log") {
 		console.log(`[blup] lembrete da agenda para ${email}`);
-		return;
+		return true;
 	}
 	const lead = "Você tem um lembrete na sua agenda do Blup.";
 	const note = "Abra o Blup Studio para ver o que é. Por segurança, este e-mail não traz os detalhes: eles ficam só no seu computador.";
@@ -85,9 +85,11 @@ export async function sendReminder(env: Cloudflare.Env, email: string) {
 			text: `Blup\n\n${lead}\n\n${note}\n\n${off}\n\nBlup · getblup.io`,
 			html: reminderHtml(lead, note, off, `${env.APP_URL}/email/blup.png`),
 		});
+		return true;
 	} catch (e) {
-		const err = e as Error & { code?: string };
-		console.error("[blup] lembrete não enviado", safeMailCode(err.code));
+		const code=typeof e==="object"&&e!==null&&"code" in e?e.code:undefined;
+		console.error("[blup] lembrete não enviado", safeMailCode(code));
+		return false;
 	}
 }
 
@@ -108,4 +110,13 @@ function reminderHtml(lead: string, note: string, off: string, logo: string) {
 <p style="margin:16px 0 0;font-size:12px;color:#8a94ad">Blup · <a href="https://getblup.io" style="color:#8a94ad">getblup.io</a></p>
 </td></tr></table>
 </body></html>`;
+}
+
+export async function sendDowngrade(env:Cloudflare.Env,email:string){
+ if(!hasEmail(email))return true;
+ const lead="Seu site no Blup continua no ar por mais 14 dias.";
+ const note="Seu plano passou para o Grátis. Depois desse prazo, seus sites ficam fora do ar. Assinar novamente religa os sites sem precisar publicar de novo.";
+ if(env.EMAIL_MODE==="log"){console.log("[blup] aviso de plano agendado");return true;}
+ try{await env.EMAIL.send({to:email,from:sender(env.MAIL_FROM),subject:"Sobre seus sites no Blup",text:`Blup\n\n${lead}\n\n${note}\n\nBlup · getblup.io`,html:reminderHtml(lead,note,"Abra sua conta no Blup Cloud para ver seu plano.",`${env.APP_URL}/email/blup.png`)});return true;}
+ catch{console.error("[blup] aviso de plano não enviado");return false;}
 }

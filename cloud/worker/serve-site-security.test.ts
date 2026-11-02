@@ -57,11 +57,12 @@ describe("published site attacks and response semantics",()=>{
 });
 
 describe("owner decisions: revocation and retention",()=>{
-	it.fails("a downgraded Free account must stop serving a paid site",async()=>{
+	it("a downgraded Free account must stop serving a paid site",async()=>{
 		await fixture("downgrade-fixture");
+		d1.sqlite.prepare("INSERT INTO resource_quota(user_id,last_plan,grace_until) VALUES ('serve-owner','free',?)").run(Date.now()-1);
 		expect((await serveSite(new Request("https://downgrade-fixture.getblup.site/"),env,ctx,"downgrade-fixture")).status).toBe(404);
 	});
-	it.fails("removing the owner must not leave the site online forever",async()=>{
+	it("removing the owner must not leave the site online forever",async()=>{
 		await fixture("deleted-fixture");d1.sqlite.exec("DELETE FROM user WHERE id='serve-owner'");
 		expect((await serveSite(new Request("https://deleted-fixture.getblup.site/"),env,ctx,"deleted-fixture")).status).toBe(404);
 	});

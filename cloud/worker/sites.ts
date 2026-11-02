@@ -1,12 +1,17 @@
+import { accountAllowed } from "./lifecycle";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { zValidator } from "@hono/zod-validator";
+
 import { v7 as uuidv7 } from "uuid";
 import { auth, db } from "./auth";
 import { site, siteBlob } from "./db/schema";
-import { storageUsed } from "./usage";
+import { reserve, release, settle, siteLock, unlockSite } from "./quota";
+import { idParam, hashId, validate, safeInt } from "./validation";
+import { removeDomainProvider,DomainError } from "./domain-provider";
+import { domainsApi } from "./domains";
+import { stageFile } from "./upload";
 import { planOf } from "./account";
 import { HASH, deploySchema, fileKey, manifestKey, slugAllowed, slugCandidates, slugProblem, toManifest } from "./site-rules";
 
@@ -28,7 +33,7 @@ const MB = 1024 * 1024;
 
 const signedIn = createMiddleware<App>(async (c, next) => {
 	const s = await auth.api.getSession({ headers: c.req.raw.headers });
-	if (!s) return c.json({ code: "UNAUTHORIZED" }, 401);
+	if (!s || !await accountAllowed(c.env.DB,s.user.id)) return c.json({ code: "UNAUTHORIZED" }, 401);
 	c.set("userId", s.user.id);
 	await next();
 });
@@ -57,25 +62,11 @@ async function deletePrefix(bucket: R2Bucket, prefix: string) {
 	} while (cursor);
 }
 
-// Files of the site no deploy uses any more (the live one is `keep`).
-async function dropUnused(env: Cloudflare.Env, siteId: string, keep: Set<string>) {
-	const rows = await db.select({ hash: siteBlob.hash, size: siteBlob.size }).from(siteBlob).where(eq(siteBlob.siteId, siteId));
-	const unused = rows.filter((r) => !keep.has(r.hash));
-	for (let i = 0; i < unused.length; i += 1000) await env.SITES.delete(unused.slice(i, i + 1000).map((r) => fileKey(siteId, r.hash)));
-	// D1 takes at most 100 bound values per statement.
-	for (let i = 0; i < unused.length; i += 99) {
-		const part = unused.slice(i, i + 99);
-		await env.DB.batch([
-			env.DB.prepare(`DELETE FROM site_blob WHERE site_id = ? AND hash IN (${part.map(() => "?").join(",")})`).bind(siteId, ...part.map((r) => r.hash)),
-			env.DB.prepare("UPDATE site SET bytes = max(0, bytes - ?) WHERE id = ?").bind(part.reduce((t, r) => t + r.size, 0), siteId),
-		]);
-	}
-}
-
 const created = z.object({ slug: z.string().refine(slugAllowed, "slug"), title: z.string().trim().min(1).max(200) });
 
 export const sitesApi = new Hono<App>()
 	.use(signedIn)
+	.route("/:id/domain",domainsApi)
 
 	// The account's sites and how many the plan allows (0 on Free).
 	.get("/", async (c) => {
@@ -93,7 +84,7 @@ export const sitesApi = new Hono<App>()
 	// Whether a name can be the address of a new site, while it is typed:
 	// free, the person's own, taken (with names close to it that are free),
 	// kept by Blup, or not a valid name.
-	.get("/check", zValidator("query", z.object({ slug: z.string().max(64) })), async (c) => {
+	.get("/check", validate("query", z.object({ slug: z.string().max(64) })), async (c) => {
 		const userId = c.get("userId");
 		const { slug } = c.req.valid("query");
 		const problem = slugProblem(slug);
@@ -106,29 +97,48 @@ export const sitesApi = new Hono<App>()
 		return c.json({ status: "taken", suggestions: candidates.filter((s) => !taken.has(s)).slice(0, 3) });
 	})
 
-	.post("/", zValidator("json", created), async (c) => {
+	.post("/", validate("json", created), async (c) => {
 		const userId = c.get("userId");
 		const { slug, title } = c.req.valid("json");
-		const [plan, [{ n }]] = await Promise.all([planOf(userId), db.select({ n: count() }).from(site).where(eq(site.userId, userId))]);
+		const plan = await planOf(userId);
 		if (plan.limits.sites === 0) return c.json({ code: "PLAN" }, 403);
-		if (plan.limits.sites > 0 && n >= plan.limits.sites) return c.json({ code: "SITES_LIMIT", limit: plan.limits.sites }, 403);
+		const reservation = await reserve(c.env.DB,userId,"sites",1,plan.limits.sites);
+		if (!reservation) return c.json({code:"SITES_LIMIT",limit:plan.limits.sites},403);
 		const id = uuidv7();
-		const added = await db.insert(site).values({ id, userId, slug, title }).onConflictDoNothing().returning({ id: site.id });
-		if (!added.length) return c.json({ code: "SLUG_TAKEN" }, 409);
+		try {
+			await settle(c.env.DB,reservation,[c.env.DB.prepare("INSERT INTO site(id,user_id,slug,title) VALUES (?,?,?,?)").bind(id,userId,slug,title)]);
+		} catch (e) {
+			if (String(e).includes("UNIQUE")) return c.json({code:"SLUG_TAKEN"},409);
+			throw e;
+		} finally {await release(c.env.DB,reservation);}
 		return c.json({ id, slug, title, url: siteURL(c.env, slug) }, 201);
 	})
 
 	// Taking a site down: its address stops answering and its files go.
-	.delete("/:id", async (c) => {
+	.delete("/:id", validate("param",idParam), async (c) => {
 		const s = await ownSite(c.get("userId"), c.req.param("id"));
 		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
-		await c.env.DB.batch([c.env.DB.prepare("DELETE FROM site WHERE id = ?").bind(s.id), c.env.DB.prepare("DELETE FROM site_blob WHERE site_id = ?").bind(s.id)]);
-		c.executionCtx.waitUntil(deletePrefix(c.env.SITES, `s/${s.id}/`));
+		const lock=await siteLock(c.env.DB,s.id),domainLock=await siteLock(c.env.DB,`domain:${s.id}`);
+		if(!lock||!domainLock){if(lock)await unlockSite(c.env.DB,s.id,lock);if(domainLock)await unlockSite(c.env.DB,`domain:${s.id}`,domainLock);return c.json({code:"DEPLOY_BUSY"},409);}
+		try{
+			const domain=await c.env.DB.prepare("SELECT hostname,provider_id AS providerId,verified_at AS verifiedAt FROM site_domain WHERE site_id=?").bind(s.id).first<{hostname:string;providerId:string|null;verifiedAt:number|null}>();
+			if(domain)await removeDomainProvider(c.env,domain);
+			await c.env.DB.batch([
+				c.env.DB.prepare("DELETE FROM site WHERE id=?").bind(s.id),
+				c.env.DB.prepare("DELETE FROM site_blob WHERE site_id=?").bind(s.id),
+				c.env.DB.prepare("DELETE FROM site_domain WHERE site_id=?").bind(s.id),
+				c.env.DB.prepare("DELETE FROM retired_deploy WHERE site_id=?").bind(s.id),
+				c.env.DB.prepare("INSERT INTO retired_deploy(site_id,deploy,delete_after) VALUES (?,'gc:',?)").bind(s.id,Date.now()+600_000),
+			]);
+			c.executionCtx.waitUntil(deletePrefix(c.env.SITES,`s/${s.id}/`));
+		}catch(e){if(e instanceof DomainError)return c.json({code:e.code},e.code==="DOMAIN_UNAVAILABLE"?503:e.code==="DOMAIN_TAKEN"?409:502);throw e;}
+		finally{await unlockSite(c.env.DB,s.id,lock);await unlockSite(c.env.DB,`domain:${s.id}`,domainLock);}
+
 		return c.json({ ok: true });
 	})
 
 	// Which of these files the site doesn't have yet (at most 1000 per call).
-	.post("/:id/missing", zValidator("json", z.object({ hashes: z.array(z.string().regex(HASH)).max(1000) })), async (c) => {
+	.post("/:id/missing", validate("param",idParam), validate("json", z.object({ hashes: z.array(z.string().regex(HASH)).max(1000) })), async (c) => {
 		const s = await ownSite(c.get("userId"), c.req.param("id"));
 		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
 		const hashes = [...new Set(c.req.valid("json").hashes)];
@@ -141,7 +151,7 @@ export const sitesApi = new Hono<App>()
 	})
 
 	// One file, as stored; its name is the SHA-256 of these bytes.
-	.put("/:id/files/:hash", async (c) => {
+	.put("/:id/files/:hash", validate("param",idParam.extend({hash:hashId})), async (c) => {
 		const userId = c.get("userId");
 		const hash = c.req.param("hash");
 		if (!HASH.test(hash)) return c.json({ code: "BAD_REQUEST" }, 400);
@@ -149,26 +159,44 @@ export const sitesApi = new Hono<App>()
 		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
 		const plan = await planOf(userId);
 		if (plan.limits.sites === 0) return c.json({ code: "PLAN" }, 403);
-		const body = await c.req.arrayBuffer();
-		if (body.byteLength === 0) return c.json({ code: "BAD_REQUEST" }, 400);
-		if (body.byteLength > plan.limits.maxFileMB * MB) return c.json({ code: "TOO_LARGE", limitMB: plan.limits.maxFileMB }, 413);
-		const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", body))].map((b) => b.toString(16).padStart(2, "0")).join("");
-		if (digest !== hash) return c.json({ code: "HASH_MISMATCH" }, 400);
-		const [have] = await db.select({ hash: siteBlob.hash }).from(siteBlob).where(and(eq(siteBlob.siteId, s.id), eq(siteBlob.hash, hash))).limit(1);
-		if (have) return c.json({ ok: true });
-		if ((await storageUsed(userId)) + body.byteLength > plan.limits.storageMB * MB) return c.json({ code: "QUOTA", limitMB: plan.limits.storageMB }, 413);
-		await c.env.SITES.put(fileKey(s.id, hash), body);
-		const added = await db.insert(siteBlob).values({ siteId: s.id, hash, size: body.byteLength }).onConflictDoNothing().returning({ hash: siteBlob.hash });
-		if (added.length) await c.env.DB.prepare("UPDATE site SET bytes = bytes + ? WHERE id = ?").bind(body.byteLength, s.id).run();
-		return c.json({ ok: true }, 201);
+		const [have] = await db.select({hash:siteBlob.hash}).from(siteBlob).where(and(eq(siteBlob.siteId,s.id),eq(siteBlob.hash,hash))).limit(1);
+		if(have) return c.json({ok:true});
+		const rawLength=c.req.header("content-length"),length=rawLength===undefined?null:safeInt.safeParse(rawLength);
+		if(length && !length.success) return c.json({code:"INVALID"},400);
+		if(length?.success && length.data>plan.limits.maxFileMB*MB) return c.json({code:"TOO_LARGE",limitMB:plan.limits.maxFileMB},413);
+		// Reserve before receiving a large object. Unknown lengths are bounded
+		// to a single sync-sized chunk and reserve that upper bound.
+		const upper=length?.success?length.data:Math.min(4*MB,plan.limits.maxFileMB*MB);
+		const reservation=await reserve(c.env.DB,userId,"storage",upper,plan.limits.storageMB*MB);
+		if(!reservation) return c.json({code:"QUOTA",limitMB:plan.limits.storageMB},413);
+		await c.env.DB.prepare("INSERT OR IGNORE INTO retired_deploy(site_id,deploy,delete_after) VALUES (?,'gc:',?)").bind(s.id,Date.now()+600_000).run();
+		const staging=`s/${s.id}/tmp/${crypto.randomUUID()}`;
+		const lock=await siteLock(c.env.DB,`blob:${s.id}:${hash}`,180_000);
+		if(!lock){await release(c.env.DB,reservation);return c.json({code:"DEPLOY_BUSY"},409);}
+		try {
+			const stored=await stageFile(c.req.raw,c.env.SITES,staging,plan.limits.maxFileMB*MB);
+			if(stored.hash!==hash) return c.json({code:"HASH_MISMATCH"},400);
+			const obj=await c.env.SITES.get(staging);
+			if(!obj) throw new Error("Staged object missing");
+			await c.env.SITES.put(fileKey(s.id,hash),obj.body.pipeThrough(new FixedLengthStream(stored.size),{signal:AbortSignal.timeout(30_000)}));
+			await settle(c.env.DB,reservation,[
+				c.env.DB.prepare("INSERT INTO site_blob(site_id,hash,size) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM site WHERE id=? AND user_id=?) ON CONFLICT DO NOTHING").bind(s.id,hash,stored.size,s.id,userId),
+				c.env.DB.prepare("UPDATE site SET bytes=bytes+? WHERE id=? AND changes()>0").bind(stored.size,s.id),
+			]);
+			return c.json({ok:true},201);
+		}finally{await Promise.allSettled([c.env.SITES.delete(staging),release(c.env.DB,reservation),unlockSite(c.env.DB,`blob:${s.id}:${hash}`,lock)]);}
+
 	})
 
 	// A deploy: every path and its file. Live as soon as it is saved.
-	.post("/:id/deploys", zValidator("json", deploySchema), async (c) => {
+	.post("/:id/deploys", validate("param",idParam), validate("json", deploySchema), async (c) => {
 		const userId = c.get("userId");
 		const s = await ownSite(userId, c.req.param("id"));
 		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
 		if ((await planOf(userId)).limits.sites === 0) return c.json({ code: "PLAN" }, 403);
+		const lock=await siteLock(c.env.DB,s.id);
+		if(!lock) return c.json({code:"DEPLOY_BUSY"},409);
+		try {
 		const { files } = c.req.valid("json");
 		const hashes = [...new Set(files.map((f) => f.hash))];
 		const have = new Set<string>();
@@ -180,13 +208,15 @@ export const sitesApi = new Hono<App>()
 		if (missing.length) return c.json({ code: "MISSING_FILES", missing: missing.slice(0, 1000) }, 409);
 
 		const deploy = uuidv7();
-		await c.env.SITES.put(manifestKey(s.id, deploy), JSON.stringify(toManifest(files)), { httpMetadata: { contentType: "application/json" } });
-		await db.update(site).set({ deploy, files: files.length, updatedAt: new Date() }).where(eq(site.id, s.id));
-		c.executionCtx.waitUntil(
-			(async () => {
-				if (s.deploy) await c.env.SITES.delete(manifestKey(s.id, s.deploy));
-				await dropUnused(c.env, s.id, new Set(hashes));
-			})(),
-		);
-		return c.json({ deploy, url: siteURL(c.env, s.slug) }, 201);
+		await c.env.SITES.put(manifestKey(s.id,deploy),JSON.stringify(toManifest(files)),{httpMetadata:{contentType:"application/json"}});
+		const now=Date.now();
+		const committed=await c.env.DB.batch([
+			c.env.DB.prepare("INSERT OR IGNORE INTO retired_deploy(site_id,deploy,delete_after) SELECT id,deploy,? FROM site WHERE id=? AND deploy<>'' AND EXISTS(SELECT 1 FROM site_lease WHERE site_id=? AND token=? AND expires_at>?)").bind(now+600_000,s.id,s.id,lock,now),
+			c.env.DB.prepare("UPDATE site SET deploy=?,files=?,updated_at=? WHERE id=? AND EXISTS(SELECT 1 FROM site_lease WHERE site_id=? AND token=? AND expires_at>?) RETURNING id").bind(deploy,files.length,now,s.id,s.id,lock,now),
+			c.env.DB.prepare("DELETE FROM retired_deploy WHERE site_id=? AND deploy LIKE 'gc:%' AND EXISTS(SELECT 1 FROM site_lease WHERE site_id=? AND token=? AND expires_at>?)").bind(s.id,s.id,lock,now),
+			c.env.DB.prepare("INSERT INTO retired_deploy(site_id,deploy,delete_after) SELECT ?,'gc:',? WHERE EXISTS(SELECT 1 FROM site_lease WHERE site_id=? AND token=? AND expires_at>?)").bind(s.id,now+600_000,s.id,lock,now),
+		]);
+		if(!committed[1]?.results.length){await c.env.SITES.delete(manifestKey(s.id,deploy));return c.json({code:"DEPLOY_BUSY"},409);}
+		return c.json({deploy,url:siteURL(c.env,s.slug)},201);
+		} finally {await unlockSite(c.env.DB,s.id,lock);}
 	});
