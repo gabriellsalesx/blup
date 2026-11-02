@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails, SystemSound, PlaySound, StopSound } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, BlupAccount as Account, AIQuota } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import { untrack } from "svelte";
@@ -316,11 +316,22 @@
   // ring turns, so the ▶ doesn't look stuck.
   let sounding = $state(false);
   let frame = 0;
+  // On Linux the system plays it (sound.go: Web Audio sent silence to
+  // Bluetooth headphones); the window only times the ring.
+  let systemSound = false;
+  SystemSound().then((v) => (systemSound = v)).catch(() => {});
+  let systemStart = 0; // performance.now() when the system's player started
+  const offSound = Events.On("soundEnded", () => {
+    if (systemStart && playing) { played = 1; const id = playing; setTimeout(() => { if (playing === id) { playing = ""; played = 0; stopSample(); } }, 250); }
+  });
+  $effect(() => () => offSound());
   const tick = () => {
-    if (source && length > 0) played = Math.min(1, Math.max(0, (soundOut().currentTime - startAt) / length));
+    if (systemStart && length > 0) played = Math.min(1, Math.max(0, (performance.now() - systemStart) / 1000 / length));
+    else if (source && length > 0) played = Math.min(1, Math.max(0, (soundOut().currentTime - startAt) / length));
     frame = requestAnimationFrame(tick);
   };
   const stopSample = () => {
+    if (systemStart) { systemStart = 0; StopSound().catch(() => {}); }
     if (source) {
       source.onended = null;
       try { source.stop(); } catch {}
@@ -338,6 +349,26 @@
     playing = "";
     if (again) return;
     playing = id;
+    if (systemSound) {
+      try {
+        const bytes = await sampleBytes(v, lang);
+        // Decoded off-line only for its length (no sound output opened).
+        const buffer = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(bytes.slice(0));
+        if (playing !== id) return;
+        length = buffer.duration;
+        let bin = "";
+        const u8 = new Uint8Array(bytes);
+        for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+        await PlaySound(btoa(bin));
+        systemStart = performance.now();
+        sounding = true;
+        frame = requestAnimationFrame(tick);
+      } catch (e) {
+        if (playing === id) playing = "";
+        toast(`${lv.noSample} ${String(e).replace(/^(Runtime)?Error: /, "")}`, { kind: "error" });
+      }
+      return;
+    }
     try {
       const audio = soundOut();
       const [bytes] = await Promise.all([sampleBytes(v, lang), audio.resume()]);
