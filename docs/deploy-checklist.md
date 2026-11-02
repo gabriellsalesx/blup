@@ -48,7 +48,7 @@ npx wrangler r2 bucket create blup-cloud-sites
 
 ## 4. Planejar a migração e aplicar o SQL
 
-- [ ] **BLOQUEANTE:** conferir backup e revisar a sequência [migrations/](../cloud/migrations). O handoff local da Fase 3 Pulse inclui os arquivos até `0018_pulse_avisos.sql`; conferir novas migrações das fases seguintes antes da release. Arquivo gerado não comprova aplicação remota.
+- [ ] **BLOQUEANTE:** conferir backup e revisar a sequência [migrations/](../cloud/migrations). O handoff local da Fase 4 Pulse inclui os arquivos até `0019_pulse_cobranca_dominios.sql`; conferir novas migrações das fases seguintes antes da release. Arquivo gerado não comprova aplicação remota.
 - [ ] Em instalação nova, aplicar toda a sequência antes dos Workers. Em instalação existente, **não aplicar `0012` com o código antigo atendendo tráfego ou cron**: ele ainda escrevia os campos removidos. Preparar e ensaiar uma atualização em etapas compatíveis ou uma janela de manutenção, suspendendo tráfego/gravações e crons antigos, aplicando SQL e publicando os dois Workers novos antes de reabrir. A sequência abaixo pressupõe essa condição; rollback de código antigo pode ser incompatível com o schema novo.
 
 ```sh
@@ -58,7 +58,8 @@ npx wrangler d1 migrations list DB --remote --env production
 ```
 
 - [ ] Confirmar que não ficaram migrações pendentes. `0011` prepara carências e sync transacional; `0012` remove `sync_account.previous_key` e `site_domain.disabled_at`, sem consumidor; `0013` cria recibos de webhook e índices; `0014` acrescenta `user.language`, com `pt` nas contas existentes, e precisa vir antes do Worker novo. As migrações anteriores permanecem intactas.
-- [ ] Para um Worker que inclua Pulse, aplicar `0015_pulse_nucleo.sql`, `0016_pulse_monitores_paginas.sql`, `0017_pulse_expiracao_incidentes.sql` e `0018_pulse_avisos.sql` antes do código. Conferir `PULSE_PROJECT`/`PulseProject` e a migração Workers SQLite `v2-pulse`, separada do SQL D1. As Fases 1 a 3 locais não liberam venda nem declaram o produto pronto; acompanhar os [contratos por fase](spec/blup-pulse.md#estado-da-entrega-por-fases).
+- [ ] Para um Worker que inclua Pulse, aplicar `0015_pulse_nucleo.sql`, `0016_pulse_monitores_paginas.sql`, `0017_pulse_expiracao_incidentes.sql`, `0018_pulse_avisos.sql` e `0019_pulse_cobranca_dominios.sql` antes do código. Conferir `PULSE_PROJECT`/`PulseProject` e a migração Workers SQLite `v2-pulse`, separada do SQL D1. Os contratos locais das Fases 1 a 4 não confirmam venda ou homologação de produção; acompanhar os [contratos por fase](spec/blup-pulse.md#estado-da-entrega-por-fases).
+- [x] Fechamento local Pulse Fase 4 informado pela Lupa: `tsc`, 335/335 Vitest em 34 arquivos, checks/builds Cloud/Pulse aprovados, `go vet`/testes raiz e Studio e frontend Studio zero erros/avisos. As 20 migrações `0000..0019` aplicaram em D1 local vazio; integridade e chaves estrangeiras conferidas no arquivo SQLite em modo somente leitura. `SQLITE_AUTH` no PRAGMA via D1 não foi falha de migração. Testes de bootstrap e dry-runs dos três Workers passaram; isso não comprova bindings remotos ou deploy em conta vazia.
 - [x] Validação local da tradução fechada pela Lupa: gates, sequência D1 `0000..0014`, integridade e migração de conta antiga preservando `pt`. A aplicação de `0014` no banco de produção continua obrigatória antes do Worker novo.
 - [ ] Em atualização de instalação anterior à marca de aparelho, planejar revogar sessões Studio antigas e solicitar novo login, conforme [cloud/README.md](../cloud/README.md).
 
@@ -74,22 +75,24 @@ Aplicar SQL versionado é o fluxo de lançamento. Não gerar outro schema Better
 
 ## 6. Configurar catálogo, portal e webhook Stripe
 
-- [ ] **BLOQUEANTE para vender planos:** criar produtos ativos Pro, Max e Ultra no Dashboard de produção. Escolher valor e moeda e criar preço recorrente por unidade, mensal ou anual, com intervalo de uma unidade e uso `licensed`. [Produtos e preços](https://docs.stripe.com/products-prices/manage-prices).
+- [ ] **BLOQUEANTE para vender planos:** criar produtos ativos Pro, Max, Ultra, Max + Pulse e Ultra + Pulse no Dashboard de produção. Escolher valor e moeda e criar preço recorrente por unidade, mensal ou anual, com intervalo de uma unidade e uso `licensed`. [Produtos e preços](https://docs.stripe.com/products-prices/manage-prices).
 
 | Plano | Lookup mensal | Lookup anual |
 | --- | --- | --- |
 | Pro | `blup_pro_mensal` | `blup_pro_anual` |
 | Max | `blup_max_mensal` | `blup_max_anual` |
 | Ultra | `blup_ultra_mensal` | `blup_ultra_anual` |
+| Max + Pulse | `blup_max_pulse_mensal` | `blup_max_pulse_anual` |
+| Ultra + Pulse | `blup_ultra_pulse_mensal` | `blup_ultra_pulse_anual` |
 
 - [ ] Atribuir os lookup keys exatos. `npm run stripe:setup` agora **só confere** o catálogo; não cria produtos/preços nem define valor comercial. Só executá-lo com a chave do ambiente escolhido, recebida pelo gerenciador privado de segredos.
-- [ ] Configurar `metadata.blup_plan` no produto ou Price como `pro`, `max` ou `ultra`. Isso permite reconhecer assinaturas no Price antigo depois de transferir o lookup key; não deduzir o plano do nome comercial.
+- [ ] Configurar `metadata.blup_plan` no produto ou Price como `pro`, `max`, `ultra`, `max_pulse` ou `ultra_pulse`. Isso permite reconhecer assinaturas no Price antigo depois de transferir o lookup key; não deduzir o plano do nome comercial.
 - [ ] Conferir `/api/plans`: cada período pago disponível precisa trazer `prices.monthly` ou `prices.yearly` com `unitAmount` e `currency`. `null` desabilita a compra daquele período; Grátis continua gratuito. O cache é de dez minutos por isolate e mantém o último catálogo válido em falha.
 - [ ] Para mudar valor/moeda, criar outro Price e transferir o lookup key com `transfer_lookup_key`. Assinaturas existentes continuam no Price anterior até migração explícita. Conferir painel e Checkout depois de atualizar o catálogo.
-- [ ] **BLOQUEANTE:** ativar o Customer Portal de produção, conferir faturas, pagamento e cancelamento. Manter quantidade de assinatura sem edição para estes planos; revisar mudança de plano e prorrata conforme a política comercial definida. [Portal](https://docs.stripe.com/customer-management/configure-portal).
+- [ ] **BLOQUEANTE:** ativar o Customer Portal padrão de produção para faturas/meios de pagamento, com atualização de assinatura desabilitada e cancelamento `at_period_end` se habilitado. A API recusa edição de plano ou cancelamento imediato. Mudança de plano usa prévia/confirmar próprios, sem contornar o ticket pelo portal. [Portal](https://docs.stripe.com/customer-management/configure-portal).
 - [ ] **BLOQUEANTE:** criar destino webhook HTTPS em `https://cloud.getblup.io/api/auth/stripe/webhook`, compatível com a API `2026-10-28.endive` usada pelo SDK do projeto. Guardar o signing secret desse endpoint em `STRIPE_WEBHOOK_SECRET`, separado da API key e do listener local.
 
-Selecionar os eventos usados pela reconciliação própria de assinatura e pelo [registro financeiro](../cloud/worker/billing.ts). O plugin continua preparando checkout/portal, com seus handlers webhook/success desativados:
+Selecionar os eventos usados pela reconciliação própria de assinatura e pelo [registro financeiro](../cloud/worker/billing.ts). Checkout/portal e mudança de plano são próprios em `/api/billing`; as rotas financeiras mutáveis, webhook e success do plugin estão desativados:
 
 ```text
 checkout.session.completed
@@ -103,8 +106,8 @@ charge.dispute.created
 radar.early_fraud_warning.created
 ```
 
-- [ ] **BLOQUEANTE para cobrar:** conferir assinatura, duplicação, ordem invertida e falha/repetição no sandbox. O handler próprio [billing.ts](../cloud/worker/billing.ts) busca o estado atual no Stripe sob lease por assinatura, grava estado e recibo no mesmo batch D1 e deduplica `event.id`. Uma lease por conta protege a adoção de referência pendente compartilhada entre assinaturas distintas. Os caminhos webhook/success do plugin estão desativados; success só redireciona para URL local, sem conceder plano. Em produção, monitorar as primeiras entregas no Workbench. [Webhooks Stripe](https://docs.stripe.com/webhooks).
-- [ ] Conferir as permissões da chave server-side: leitura de Prices, Products, Invoices, Charges, Disputes e Early Fraud Warnings, mais as operações usadas de Customers, Checkout Sessions, Portal e Subscriptions. A reconciliação consulta objetos atuais, além de validar a assinatura. Preferir chave restrita; nunca colocar chave server-side no frontend. [Chaves Stripe](https://docs.stripe.com/keys).
+- [ ] **BLOQUEANTE para cobrar:** conferir assinatura, duplicação, ordem invertida e falha/repetição no sandbox. O handler próprio [billing.ts](../cloud/worker/billing.ts) busca o estado atual no Stripe sob lease por assinatura, grava estado e recibo no mesmo batch D1 e deduplica `event.id`. Uma lease por conta protege a adoção de referência pendente compartilhada entre assinaturas distintas. Os caminhos de upgrade/portal/cancelar/restaurar, webhook e success do plugin estão desativados; success só redireciona para URL local, sem conceder plano. Em produção, monitorar as primeiras entregas no Workbench. [Webhooks Stripe](https://docs.stripe.com/webhooks).
+- [ ] Conferir as permissões da chave server-side: leitura de Prices, Products, Invoices, Charges, Disputes e Early Fraud Warnings, mais as operações usadas de Customers, Checkout Sessions, Portal, Subscriptions e Subscription Schedules, incluindo a prévia de Invoices. A reconciliação consulta objetos atuais, além de validar a assinatura. Preferir chave restrita; nunca colocar chave server-side no frontend. [Chaves Stripe](https://docs.stripe.com/keys).
 
 ## 7. Conferir DNS e Cloudflare for SaaS
 
@@ -166,19 +169,30 @@ PULSE_TELEGRAM_WEBHOOK_SECRET
 
 No primeiro lançamento, preparar um arquivo JSON de secrets fora do repositório permite enviá-los junto com o código. Manter um arquivo separado para cada Worker. O Wrangler instalado suporta `--secrets-file`; JSON evita expansão de variáveis do formato dotenv. `wrangler secret put` também existe, mas cria e publica uma versão imediatamente. [Secrets e deploy](https://developers.cloudflare.com/workers/configuration/secrets/).
 
-## 9. Publicar primeiro sites, depois conta
+## 9. Ensaiar o bootstrap e publicar os Workers
 
-- [ ] **BLOQUEANTE:** conferir migrações, vars, secrets e Access antes de executar a publicação.
+- [ ] **BLOQUEANTE de staging para primeira conta vazia:** ensaiar o bootstrap. Sites referencia `PulseProject` no Cloud, e Cloud referencia `CachedSite` em Sites. Publicar Sites primeiro sem namespace Cloud existente não é uma ordem validada. A sequência é bootstrap Cloud, Sites com `PULSE_PROJECT` remoto, Cloud completo e painel Pulse. Os arquivos [wrangler.bootstrap.jsonc](../cloud/wrangler.bootstrap.jsonc) e [bootstrap.ts](../cloud/worker/bootstrap.ts) têm bundle e nomes/tags verificados localmente; os três dry-runs passaram. Nenhum deploy remoto confirmou essa ordem.
+- [ ] **BLOQUEANTE:** conferir migrações, vars, secrets e Access antes da publicação completa.
+- [ ] **Somente instalação vazia:** criar previamente o script `blup-cloud-production` e os namespaces `SyncLive/PulseProject` pelo bootstrap abaixo, depois de preparar D1/R2. O bootstrap não usa D1, assets, `SITE_CACHE`, rotas públicas ou cron; responde 503. Não executar sobre Cloud ativo. Preservar nome e tags `v1/v2-pulse` iguais aos do Cloud completo.
+
+```sh
+npx wrangler deploy -c wrangler.bootstrap.jsonc
+```
+
+O comando é para o operador no ensaio de instalação vazia; não foi executado remotamente nesta revisão. Em atualização de uma instalação ativa, pular o bootstrap. Depois dele, publicar os arquivos completos e o painel Pulse na ordem:
+
 
 ```sh
 npm run build
 npx wrangler deploy -c wrangler.sites.jsonc --env production --secrets-file '<arquivo-privado-dos-sites.json>'
 npx wrangler deploy --env production --secrets-file '<arquivo-privado-da-conta.json>'
+npx wrangler deploy -c wrangler.pulse.jsonc --env production
 ```
 
 Se os secrets dos sites não forem necessários ou já estiverem cadastrados, omitir esse `--secrets-file`. Os comandos acima são para o operador executar no lançamento; não foram executados por esta revisão.
 
-- [ ] Confirmar `SITE_CACHE -> blup-sites-production`, entrypoint `CachedSite`. O Worker alvo precisa existir antes da conta. Não expor esse entrypoint por rota pública.
+- [ ] Confirmar `PULSE_PROJECT` no Worker dos sites apontando para `PulseProject` de `blup-cloud-production`, namespace previamente criado no bootstrap. Preservar o mesmo D1 e `PULSE_PUBLIC_LIMIT`/`PULSE_PUBLIC_HOST`; ajustar `script_name` se o nome Cloud mudar.
+- [ ] Confirmar `SITE_CACHE -> blup-sites-production`, entrypoint `CachedSite`. O entrypoint alvo precisa existir antes do Cloud completo, depois do bootstrap inicial quando necessário. Não expor esse entrypoint por rota pública.
 - [ ] Conferir Custom Domains de cloud/staff, TLS, `workers_dev=false` e `preview_urls=false`. O script genérico `npm run deploy` não escolhe produção sozinho.
 - [ ] Manter o gateway sem cache e somente `CachedSite` com cache habilitado. Ativar Early Hints na zona; verificar headers e 103 real depois, sem deduzir funcionamento externo do teste local. [Cache e limites](https://developers.cloudflare.com/workers/cache/).
 - [ ] Guardar IDs das versões publicadas. Rollback do Worker não desfaz migrações, arquivos R2 ou eventos Stripe.
@@ -187,9 +201,9 @@ Se os secrets dos sites não forem necessários ou já estiverem cadastrados, om
 
 - [ ] **BLOQUEANTE para automações:** confirmar os três Cron Triggers no Worker da conta: `0 4 * * *` para limpeza diária, `*/5 * * * *` para lembretes/manutenção e `* * * * *` para checagens, reconciliação e entrega de avisos Pulse, todos UTC. Conferir execuções e falhas em observabilidade; propagação de cron pode demorar. [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
 - [ ] Antes de liberar monitores Pulse, conferir `global_fetch_strictly_public`, as regras de destino e o ensaio em homologação com DNS/redirecionamentos controlados. A fronteira de rede Cloudflare é uma [premissa operacional](spec/blup-pulse.md#7-monitores-http-e-páginas-de-status); os testes locais não demonstram proteção universal contra DNS rebinding. Preservar a proibição de API/ingestão também para o dono.
-- [ ] No piloto Pulse, conferir login central/CORS, uma página publicada em `pulse.getblup.site/<slug>/`, seu `status.json`, ETag/304 e ausência de URL/DSN/dados privados. Despublicar precisa impedir entrega apesar do cache; perda de direito precisa mostrar indisponibilidade. Ensaiar prazo/purga de leitura em ambiente isolado. Domínio Ultra permanece na Fase 4.
+- [ ] No piloto Pulse, conferir login central/CORS, uma página publicada em `pulse.getblup.site/<slug>/`, seu `status.json`, ETag/304 e ausência de URL/DSN/dados privados. Despublicar precisa impedir entrega apesar do cache; perda de direito precisa mostrar indisponibilidade. Ensaiar prazo/purga de leitura em ambiente isolado. Domínio Ultra + Pulse tem contrato local da Fase 4: ensaiar TXT antes de provisionar, namespace comum com sites, SSL, perda de direito e repetição de exclusão externa preservando ID.
 - [ ] **BLOQUEANTE antes de liberar avisos Telegram:** com a rota HTTPS ativa, registrar `setWebhook` para `https://cloud.getblup.io/api/pulse/telegram/webhook`, `allowed_updates: ["message"]` e `secret_token` igual ao secret privado configurado. Fazer pela sessão operacional sem registrar o token presente na URL da Bot API nem o secret do corpo. Conferir `getWebhookInfo`, URL, fila pendente e último erro. [Webhook oficial](https://core.telegram.org/bots/api#setwebhook).
-- [ ] No piloto controlado, vincular chat privado, conferir candidato no painel e confirmar. Cadastrar um webhook Discord de teste, selecionar os canais por projeto e solicitar teste explícito. `202 {queued:true}` só confirma fila; conferir recebimento e comportamento em erro, sem prometer entrega única. Não liberar contratação Pulse antes do handoff da Fase 4.
+- [ ] No piloto controlado, vincular chat privado, conferir candidato no painel e confirmar. Cadastrar um webhook Discord de teste, selecionar os canais por projeto e solicitar teste explícito. `202 {queued:true}` só confirma fila; conferir recebimento e comportamento em erro, sem prometer entrega única. Não liberar contratação Pulse antes de concluir os ensaios externos e o fechamento de infraestrutura da Fase 4.
 - [ ] Abrir `/api/config` e `/api/plans`; conferir Turnstile e valores/moedas reais ou indisponibilidade explícita, sem preço inventado.
 - [ ] Usar uma conta interna, preferencialmente com destino de e-mail verificado no Email Service: entrar por OTP, cadastrar/usar passkey, aprovar aparelho do Studio e conferir o ID da conta/copiar. Verificar recebimento, não apenas log de envio.
 - [ ] Confirmar que staff exige Access e papel válido e que suas rotas não abrem pelo host público.
@@ -197,6 +211,7 @@ Se os secrets dos sites não forem necessários ou já estiverem cadastrados, om
 - [ ] Publicar um site de teste em `getblup.site`; conferir HTML, arquivos, busca e isolamento entre dois sites no mesmo caminho. Conferir retirada da entrega após excluir o site de teste.
 - [ ] Se oferecer domínio próprio, conferir prova, SSL, baseURL após publicação e canonical/feed/sitemap. O Studio republica em segundo plano ao observar mudança de domínio, com intervalo mínimo de dez minutos por site; não há troca instantânea de URLs absolutas sem build.
 - [ ] Abrir o Checkout de uma conta interna que não use a cortesia do proprietário e conferir plano, período, valor e moeda; cancelar antes de pagar neste teste de abertura. Ciclos completos de cobrança continuam homologados no sandbox.
+- [ ] **BLOQUEANTE para cobrar as variantes Pulse:** no sandbox, validar prévia com crédito/débito, ticket expirado/repetido, ação de pagamento pendente sem novo direito, alteração de um único item, schedules de redução/retirada/anual para mensal, escolha dos recursos retidos e prazo de 14 dias sem renovar por visita tardia. O contrato simples não aceita múltiplos itens, descontos ou ajustes de imposto; não habilitá-los sem nova validação.
 - [ ] Conferir entrada, painel, planos e e-mails em `pt/en/es`: escolha local antes do idioma do navegador, persistência na conta e staff em português. Contas antigas começam em `pt`; novas usam o idioma do pedido ou `en` quando não houver idioma compatível. Conferir que a tradução não muda valores/moedas Stripe.
 - [ ] Conferir os limites anunciados e executados: Max com 5 GiB, arquivos de até 50 MiB e 3 sites; Ultra com 10 GiB, arquivos de até 100 MiB e 10 sites. Grátis e Pro seguem a [tabela dos planos](spec/blup-cloud-sync.md#planos-executados).
 - [ ] Conferir as execuções de lembretes e limpeza. Max permite 50 e Ultra 100 e-mails/mês; carências de 14 dias e retenção de conta por 30 dias precisam corresponder ao produto anunciado.

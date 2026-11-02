@@ -72,6 +72,12 @@ HTML pode incluir Link preload do CSS reconhecido e Inter presentes naquele mani
 
 Hit do cache evita executar o serving interno e reduz leituras R2 esperadas, mas o gateway/D1 continuam por acesso. Requests, inclusive o loopback, continuam sujeitos à cobrança; medir hits, CPU, D1 e R2 antes de afirmar economia total. Os [limites do cache](https://developers.cloudflare.com/workers/cache/limitations/) e a configuração de [produção](../deploy.md) fazem parte da operação. Nenhuma purga ou política do servidor apaga cópias já baixadas pelo navegador/PWA.
 
+## Domínio das páginas Blup Pulse
+
+A Fase 4 local acrescenta `GET/POST/DELETE /api/pulse/pages/:page/domain`, com homologação de infraestrutura pendente e sem confirmação de deploy/venda. A página Pulse não usa build Hugo nem consome um site desse plano. POST aceita só `{hostname}` e exige Ultra + Pulse; GET retorna `DomainInfo` ou `null` e DELETE `{ok:true}`. GET segue disponível após downgrade enquanto houver leitura privada e DELETE permanece disponível ao dono.
+
+O fluxo exige TXT aleatório em `_blup.<hostname>` antes de chamar Cloudflare. `hostname_claim` reivindica o mesmo namespace atômico dos sites Hugo, evitando adotar um hostname para os dois serviços. A entrega exige prova, status/SSL ativos, publicação e página/direito elegíveis. O domínio serve `/` e `/status.json`; o endereço padrão é `pulse.getblup.site/<slug>/`. Na perda do direito Pulse, o domínio para de servir sem a carência adicional dos domínios Hugo. A exclusão externa preserva `provider_id` até concluir e é repetida em falha. Reativar exige novo POST/prova. Os [contratos Pulse](blup-pulse.md#7-monitores-http-e-páginas-de-status) distinguem essa regra dos sites. Fontes: [domínios Pulse](../../cloud/worker/pulse/domains.ts), [retirada](../../cloud/worker/pulse/domain-lifecycle.ts), [namespace](../../cloud/worker/hostname-claim.ts) e [Worker público](../../cloud/worker/sites-entry.ts).
+
 ## Autenticação GitHub
 
 `githubClient` usa `credentials.toml`, verifica `GET /user` e orienta a criação de token pessoal quando necessário. O link abre o formulário fine-grained com Contents, Pages e Issues em escrita, com Metadata em leitura, sem Administration, e duração sugerida de 366 dias. A interface orienta o escopo de repositórios. O cliente usa a API versionada em `2026-03-10` e cabeçalhos de autenticação implementados em `internal/deploy/github/client.go`.

@@ -209,6 +209,12 @@ Os campos `podcast_*`, `outputs` e `audio*` do programa e seus episódios estão
 
 As configurações de servidor, bindings D1/R2, planos e nomes de secrets do Blup Cloud estão em [Blup Cloud](blup-cloud-sync.md) e no [guia de deploy](../deploy.md). Elas pertencem ao operador do serviço e não a `blup.toml`.
 
+## Configuração do serviço Pulse
+
+As configurações de produção do serviço ficam nos Workers, separadas do TOML de site e das credenciais do Studio. `PULSE_APP_URL` define a origem exata do painel, `PULSE_INGEST_HOST` o host de ingestão e `PULSE_PUBLIC_HOST` o host de páginas públicas. `PULSE_PROJECT` é o binding do DO SQLite; o Worker dos sites usa um binding remoto para a classe exportada pelo Worker Cloud. Os limites de tráfego são `PULSE_INGEST_LIMIT` e `PULSE_PUBLIC_LIMIT`.
+
+Os secrets são `PULSE_CHANNEL_KEY` (32 bytes em base64), `PULSE_TELEGRAM_TOKEN` e `PULSE_TELEGRAM_WEBHOOK_SECRET`. A chave de destinos deve persistir entre versões; não há rotação automática sem recifragem. Domínios usam os nomes já existentes `CF_API_TOKEN`, `CF_ZONE_ID` e `SITES_CNAME_TARGET`; cobrança usa as chaves Stripe do Worker, sem segredo no cliente. Os dez lookup keys são referências públicas de catálogo, sem IDs de Price ou valores comerciais fixos no código. O [deploy](../deploy.md) e a [spec Pulse](blup-pulse.md) detalham as rotas e migrações até `0019`. Os contratos da Fase 4 têm gates locais fechados conforme handoff; homologação remota de infraestrutura continua pendente. A primeira instalação vazia usa `wrangler.bootstrap.jsonc`/`worker/bootstrap.ts` sem serviços públicos, antes de Sites, Cloud completo e painel Pulse; nunca sobre instalação ativa.
+
 ## Variáveis de ambiente e flags de processo
 
 | Variável | Leitura ou efeito |

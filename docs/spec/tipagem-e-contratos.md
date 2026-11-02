@@ -18,6 +18,9 @@ Auditoria das rodadas 2, 3 e 4, conferida no código em 02/11/2026. Tipos de com
 | Sync | Parâmetros, cursores, multipart, referências e tamanhos validados antes de persistir |
 | Staff/aparelhos | IDs e queries validados inclusive no unban; autorização e papel são verificações separadas |
 | Catálogo e uso externos | Schemas/ranges para respostas consumidas; preços e custos finitos e não negativos |
+| Plano-base e variante | `/me.plan` mantém `name` base, `limits`, `billingName`, `billingInterval: month/year/null` e `pulse:{enabled,limits}`; `/plans` tem seis variantes e preços anuláveis |
+| Cobrança própria | Bodies estritos e schemas Zod para Prices, assinatura, prévia e ticket; estado alterado invalida a prévia; `keep` aceita IDs do dono dentro dos limites |
+| Pulse e domínio | DTO público separado de eventos privados; POST de domínio só `{hostname}`; TXT e reivindicação atômica de hostname compartilhada com sites |
 | D1 tipado por Drizzle | Tipos ajudam no código; parâmetros genéricos e enums TypeScript não validam por si só valores persistidos |
 
 A validação retorna 400 com `code: INVALID`, podendo incluir `fields`. APIs de produto usam `code`; os handlers IA e as rejeições comuns de origem, headers, limite de tráfego e corpo também mantêm `error: {code, message}` no caminho de IA. Fora dele, o tratamento global preserva `HTTPException` com resposta JSON; texto vira JSON com `INVALID` no 400, `TOO_LARGE` no 413 ou `REQUEST_FAILED` nos demais. No caminho IA, resposta JSON com `code` recebe o envelope próprio e exceção textual usa `INVALID`, conservando o status HTTP. Erros internos registram o nome da falha, sem corpo privado do provedor. Better Auth continua com seu contrato próprio de erros. Não há promessa de um único DTO para respostas binárias, WebSocket, autenticação e APIs de produto.

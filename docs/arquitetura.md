@@ -38,7 +38,7 @@ flowchart LR
 | Identidade e cobrança | [auth-options.ts](../cloud/worker/auth-options.ts): Better Auth, passkeys, OTP, aparelho, Bearer e plugin Stripe |
 | Persistência cloud | [schema](../cloud/worker/db/schema.ts): Drizzle sobre D1; R2 guarda objetos; não há servidor Node persistente |
 | Painel cloud | [cloud/vite.config.ts](../cloud/vite.config.ts): SvelteKit com adapter-static e fallback SPA, assets do Worker, Tailwind e Lucide |
-| Pulse, Fases 1 a 3 locais | [API](../cloud/worker/pulse/api.ts), [DO por projeto](../cloud/worker/pulse/project.ts) e [painel próprio](../cloud/pulse/src/routes/+page.svelte): projetos/chaves, ingestão, problemas/amostras, uso, monitores, páginas/incidentes e avisos Discord/Telegram; domínio Ultra, contratação e aceite Studio ainda pendentes |
+| Pulse, Fases 1 a 4 locais | [API](../cloud/worker/pulse/api.ts), [DO por projeto](../cloud/worker/pulse/project.ts) e [painel próprio](../cloud/pulse/src/routes/+page.svelte): projetos/chaves, ingestão, problemas/amostras, uso, monitores, páginas/incidentes, avisos, seleção e domínio Ultra; cobrança própria; homologação de infraestrutura da Fase 4 e aceite Studio pendentes |
 | Sites públicos | [sites-entry.ts](../cloud/worker/sites-entry.ts), [serve-site.ts](../cloud/worker/serve-site.ts): outro Worker, sem o login ou os assets do painel |
 | Feedback público | [feedback.js](../theme/assets/js/feedback.js) e repositório irmão `blup-api`: issues do GitHub, login e leituras com cache |
 
@@ -167,9 +167,18 @@ sequenceDiagram
   U->>A: Consultar planos e precos disponiveis
   A->>T: Ler precos ativos por lookup key
   A-->>U: Valor e moeda ou periodo indisponivel
-  U->>A: Pedir assinatura com e-mail vinculado
-  A->>T: Criar cliente e Checkout por lookup key
-  T-->>U: Pagina de pagamento
+  alt Conta sem assinatura
+    U->>A: Pedir assinatura com e-mail verificado
+    A->>T: Criar cliente e Checkout idempotente
+    T-->>U: Pagina de pagamento
+  else Conta com assinatura
+    U->>A: Pedir previa de plano e periodo
+    A->>T: Consultar assinatura e previa atual
+    A-->>U: Ticket, valores, moeda e recursos
+    U->>A: Confirmar ticket e recursos mantidos
+    A->>T: Trocar item com pagamento pendente ou agendar
+    A-->>U: Estado sem conceder novos direitos
+  end
   T->>W: Webhook assinado com ID do evento
   W->>D: Lease por evento e assinatura
   W->>T: Consultar estado atual da assinatura
@@ -180,11 +189,13 @@ sequenceDiagram
 
 O plano resulta da assinatura reconhecida, ou cortesia específica do proprietário, e é conferido nas APIs. Stripe cuida do checkout e portal em suas próprias páginas. O código não armazena números de cartão. `/api/plans` lê valor/moeda do catálogo Stripe, com cache por isolate de dez minutos e último catálogo válido em falha. Período indisponível é `null` e bloqueia upgrade também no servidor; não há valor comercial fixo no plano Go/TypeScript. O script `stripe:setup` apenas confere preços. A cota de IA continua definida separadamente em código. A staff usa Cloudflare Access, valida JWT novamente e aplica papéis `support`/`admin`; ações ficam no registro de auditoria. Não há impersonação do usuário ou interface de leitura de notas.
 
-O webhook é atendido antes do handler Better Auth. Os caminhos webhook/success do plugin estão desativados; o success próprio só redireciona para uma URL local validada. A leitura atual da subscription ocorre sob lease, evitando aplicar um snapshot antigo entregue depois de um evento novo. Outra lease, por conta, serializa a adoção de referência pendente entre assinaturas distintas, sem sobrescrever uma com a outra. O batch D1 exige leases válidas e grava recibo único por `event.id`; falha permite repetição. A migração `0013` cria recibos e índices. A política dos preços antigos usa lookup key ou `metadata.blup_plan` no Price/Product; transferir lookup key não migra uma assinatura existente.
+As rotas `/api/billing` fazem checkout/portal, prévia e confirmação de mudança, estado e retirada de intenções. A prévia vincula valor, moeda e recursos ao ticket de dez minutos; a confirmação troca o item com proporcionalidade ou agenda para o fim pago. Pagamento pendente não concede plano. O webhook é atendido antes do handler Better Auth. Os caminhos mutáveis de upgrade/portal/cancelar/restaurar, webhook e success do plugin estão desativados; o success próprio só redireciona para uma URL local validada. A leitura atual da subscription ocorre sob lease, evitando aplicar um snapshot antigo entregue depois de um evento novo. Outra lease, por conta, serializa a adoção de referência pendente entre assinaturas distintas, sem sobrescrever uma com a outra. O batch D1 exige leases válidas e grava recibo único por `event.id`; falha permite repetição. A migração `0013` cria recibos e índices. O catálogo tem seis variantes e dez lookup keys pagos; `/me` conserva `plan.name` base e acrescenta `billingName`, `billingInterval` e `pulse` dentro de `plan`. A política dos preços antigos usa lookup key ou `metadata.blup_plan` no Price/Product; transferir lookup key não migra uma assinatura existente.
 
-O Worker da conta executa limpeza diária às 04:00 UTC, incluindo purga de contas elegíveis após 30 dias e até 500 recibos de webhook com mais de 90 dias. Esse limite permite atraso na remoção quando há acúmulo. A cada cinco minutos processa lembretes, reservas/tickets expirados, limpeza de sites, descarte de sync, cancelamentos financeiros, avisos de downgrade, desligamento de domínios e a fila de purgas do cache. Publicação de código, migração D1, objetos R2, configuração de e-mail e lançamento do Studio são operações diferentes. As tarefas e os limites de rollback estão em [deploy](deploy.md).
+O Worker da conta executa limpeza diária às 04:00 UTC, incluindo purga de contas elegíveis após 30 dias e até 500 recibos de webhook com mais de 90 dias. Esse limite permite atraso na remoção quando há acúmulo. A cada cinco minutos processa lembretes, reservas/tickets expirados, limpeza de sites, descarte de sync, cancelamentos financeiros, avisos de downgrade, desligamento de domínios e a fila de purgas do cache. O cron de minuto executa monitores, reconciliação de sinais e despacho Pulse. A retirada de Pulse usa fim pago mais 14 dias de leitura, sem estender por acesso tardio; na redução com excesso, a pessoa escolhe recursos mantidos e os demais entram em leitura privada por 14 dias antes da purga em lotes. Publicação de código, migração D1, objetos R2, configuração de e-mail e lançamento do Studio são operações diferentes. As tarefas e os limites de rollback estão em [deploy](deploy.md).
 
 ## Domínio, retenção e mudanças de direitos
+
+O primeiro deploy vazio usa [bootstrap Cloud](../cloud/wrangler.bootstrap.jsonc) com exports/namespaces, sem rotas, cron, assets, D1 ou `SITE_CACHE`; depois Sites com namespace remoto, Cloud completo e painel Pulse. Nome `blup-cloud-production` e tags `v1/v2-pulse` precisam ser iguais aos finais. Nunca usar esse bootstrap sobre instalação ativa. A Lupa validou testes e dry-runs locais; o ensaio remoto em conta vazia continua pendente. O [checklist](deploy-checklist.md#9-ensaiar-o-bootstrap-e-publicar-os-workers) separa esse bootstrap da publicação completa e das atualizações posteriores.
 
 ```mermaid
 flowchart TD

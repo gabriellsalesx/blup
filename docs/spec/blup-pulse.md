@@ -1,10 +1,10 @@
 # Blup Pulse
 
-Especificação de produto e proposta técnica, pesquisada e atualizada em 02/11/2026. Nome, preços e decisões comerciais refletem a atualização aprovada pelo dono. O produto ainda está em implementação por fases; este documento não afirma que os contratos já estejam disponíveis em produção. O estado das Fases 1 a 3 abaixo descreve o código local conferido; os recursos restantes continuam como proposta e oferta-alvo. Exemplos usam marcadores, sem credenciais reais.
+Especificação de produto e técnica, pesquisada e atualizada em 02/11/2026. Nome, preços e decisões comerciais refletem a atualização aprovada pelo dono. As Fases 1 a 4 têm código conferido e gates locais informados no fechamento, incluindo bootstrap e integridade do banco local. O ensaio em conta remota vazia e a homologação de infraestrutura permanecem pendentes. Este documento não afirma publicação, contratação liberada ou homologação de provedores externos. Recursos sem entrega confirmada continuam como oferta-alvo. Exemplos usam marcadores, sem credenciais reais.
 
 ## Estado da entrega por fases
 
-**Fases 1 a 3 entregues localmente, sem publicação.** Os contratos desta seção foram conferidos no código e nos handoffs da Lupa. As demais seções distinguem comportamento atual de oferta-alvo; recursos das próximas fases não devem ser apresentados como entregues ou compráveis.
+**Fases 1 a 4 com gates locais fechados; staging pendente.** Os contratos desta seção foram conferidos no código e nos handoffs da Lupa. Nenhum desses handoffs confirma deploy, venda ou integração de aceite no Studio.
 
 ### Núcleo da Fase 1
 
@@ -29,7 +29,7 @@ Todas as rotas abaixo estão no Worker Cloud, sob `/api/pulse`, com sessão e do
 
 | Método e caminho relativo | Contrato atual |
 | --- | --- |
-| `GET /usage` | `{plan, limits, readOnly, readOnlyUntil, month, accepted, reserved, bytes}`; plano/limites/prazo podem ser `null` |
+| `GET /usage` | `{plan, limits, readOnly, readOnlyUntil, month, accepted, reserved, bytes}`; plano/limites/prazo podem ser `null`; Fase 4 acrescenta `selectionRequired` e `resources` |
 | `GET /projects` | `{projects}` com até 10 projetos; sem cursor nesta fase |
 | `POST /projects` | JSON estrito `{name, platform}`; `201 {id, name, platform, key}`; limite de projetos retorna `409 {code: "QUOTA"}` |
 | `PATCH /projects/:project` | JSON estrito com `name` e/ou `active`; retorna `{ok:true}` |
@@ -37,7 +37,7 @@ Todas as rotas abaixo estão no Worker Cloud, sob `/api/pulse`, com sessão e do
 | `GET /projects/:project/keys` | `{keys}` com até 20 entradas `{id, prefix, revokedAt}`; sem devolver DSN completo |
 | `POST /projects/:project/keys` | Rotação; `201 {id, prefix, dsn}` |
 | `DELETE /projects/:project/keys/:key` | Revogação; `{ok:true}` |
-| `GET /projects/:project/issues` | Filtros `state`, `environment`, `release`, `q`, `before` e `limit`; `limit` de 1 a 50, padrão 30; retorna `{issues}` |
+| `GET /projects/:project/issues` | Filtros `state`, `environment`, `release`, `q`, `before`, `beforeId` e `limit`; `limit` de 1 a 50, padrão 30; retorna `{issues}`; o par `before/beforeId` preserva empates na paginação |
 | `PATCH /projects/:project/issues/:issue` | JSON estrito `{state}`, em `open/resolved/ignored`; `{ok:true}` ou 404 |
 | `GET /projects/:project/issues/:issue/events` | `{events}` com até 50 amostras recentes; ainda sem cursor ou parâmetro de paginação |
 
@@ -87,7 +87,7 @@ O gateway relê publicação, conta e direito gravável antes de cada consulta a
 
 ### Banco, retenção e gates da Fase 2
 
-A migração [0016_pulse_monitores_paginas.sql](../../cloud/migrations/0016_pulse_monitores_paginas.sql) cria monitores, páginas, componentes, incidentes/atualizações, estrutura de domínio e índices de agendamento/limpeza. A [0017_pulse_expiracao_incidentes.sql](../../cloud/migrations/0017_pulse_expiracao_incidentes.sql) acrescenta prazos e índices de expiração de incidentes e atualizações. Ambas foram geradas pelo Drizzle e devem anteceder o Worker correspondente. A existência da tabela de domínio ainda não entrega o fluxo de domínio próprio Ultra, previsto para a Fase 4.
+A migração [0016_pulse_monitores_paginas.sql](../../cloud/migrations/0016_pulse_monitores_paginas.sql) cria monitores, páginas, componentes, incidentes/atualizações, estrutura de domínio e índices de agendamento/limpeza. A [0017_pulse_expiracao_incidentes.sql](../../cloud/migrations/0017_pulse_expiracao_incidentes.sql) acrescenta prazos e índices de expiração de incidentes e atualizações. Ambas foram geradas pelo Drizzle e devem anteceder o Worker correspondente. A Fase 2 criou a estrutura; o contrato local de domínio Ultra + Pulse está descrito na Fase 4, ainda com homologação de infraestrutura pendente.
 
 O DO acrescenta `monitor_state`, `monitor_check` e `monitor_day`. Duas falhas confirmam `down` e dois sucessos confirmam `up`; atraso/lacuna reinicia a sequência, sem inventar sucesso ou falha. A seleção/retenção e o agendamento estão detalhados na seção 7. As consultas filtram expirados; limpeza física é em lotes, com reconciliação pelo cron. O fim dos 14 dias de leitura reivindica a purga da conta Pulse; a exclusão da conta Cloud integra essa purga ao prazo de 30 dias. A retirada inclui objetos, monitores, chaves, páginas, incidentes e vínculos de domínio; falha externa pode exigir nova execução.
 
@@ -119,7 +119,28 @@ A tela Avisos cadastra Discord, abre o vínculo Telegram, mostra o candidato par
 
 A Lupa informou 309/309 testes em 31 arquivos, `tsc`, check Cloud/Pulse com zero erros/avisos e builds aprovados para a Fase 3. Os provedores externos foram somente simulados; não há confirmação de bot configurado ou de mensagem entregue por Discord/Telegram reais. Estes gates são da área Cloud e não foram repetidos nesta documentação. Registrar o bot e configurar seu webhook são tarefas operacionais antes de liberar os avisos.
 
-A Fase 4 ainda precisa fechar compra/troca dos planos e domínio próprio Ultra; o aceite/filtro do Studio permanece pendente. Os preços são aprovados comercialmente, mas ainda não representam produtos compráveis ou serviço pronto. A saída pública dos monitores depende da premissa de plataforma descrita na seção 7 e de ensaio em homologação; os testes locais não demonstram proteção universal contra DNS rebinding.
+### Fase 4: contratos e gates locais, infraestrutura pendente
+
+Fontes: [planos](../../cloud/worker/plans.ts), [tipos compartilhados](../../cloud/shared/pulse-plans.ts), [API de cobrança](../../cloud/worker/billing-api.ts), [prévia e operações Stripe](../../cloud/worker/billing-flow.ts), [reconciliador assinado](../../cloud/worker/billing.ts), [seleção de recursos](../../cloud/worker/pulse/entitlements.ts), [domínios Pulse](../../cloud/worker/pulse/domains.ts), [retirada do provedor](../../cloud/worker/pulse/domain-lifecycle.ts) e [namespace de hostname](../../cloud/worker/hostname-claim.ts).
+
+| Contrato | Comportamento conferido |
+| --- | --- |
+| `GET /api/me` | `plan.name` continua `free/pro/max/ultra`; `plan.billingName` identifica a variante completa; `plan.billingInterval` é `month/year/null`; `plan.pulse` contém `{enabled, limits}`, com limites `null` sem Pulse; `plan.limits` continua com os direitos do plano-base |
+| `GET /api/plans` | Seis variantes `free, pro, max, ultra, max_pulse, ultra_pulse`; cada uma inclui `basePlan` e `pulse` além dos campos anteriores; dez lookup keys pagos, com preços buscados no Stripe |
+| `/api/billing/*` | Checkout/portal próprios e mudança por prévia/confirmar, consulta de estado e retirada de intenção futura/checkout; contratos detalhados na seção 11 |
+| `GET /api/pulse/usage` | Acrescenta `selectionRequired` e `resources:{projects, monitors, pages}`; listas de IDs/nomes, com `projectId` nos monitores, para escolha autenticada do que fica |
+| `PUT /api/pulse/selection` | JSON estrito `{projects, monitors, pages}`, listas distintas de IDs dentro do limite; monitor mantido exige manter seu projeto; substitui a escolha e observa os direitos atuais; `{ok:true}` |
+| `GET/POST/DELETE /api/pulse/pages/:page/domain` | Dono da página; POST estrito `{hostname}` só em Ultra + Pulse elegível, GET retorna `DomainInfo` ou `null`, DELETE retorna `{ok:true}`; regras na seção 7 |
+
+A migração [0019_pulse_cobranca_dominios.sql](../../cloud/migrations/0019_pulse_cobranca_dominios.sql), gerada com drizzle-kit, cria `billing_checkout`, `pulse_billing_ticket`, `pulse_selection` e `hostname_claim`. Acrescenta `paid_until`/`resource_plan` à conta Pulse e `plan_disabled`/`retire_at` a projetos, monitores e páginas, com índices. Aplicar a sequência `0000..0019` antes do novo Worker, respeitando a atualização incompatível de `0012` descrita no deploy. Arquivo gerado não comprova aplicação remota.
+
+Na redução com excesso, a confirmação recebe os recursos mantidos. Os demais ficam privados e sem novas escritas/checagens/publicação por 14 dias, depois são elegíveis à purga em lotes. Mudança externa sem seleção pode exigir escolha pelo painel; não se escolhe silenciosamente qual recurso manter. Voltar ao plano maior antes do prazo recupera recursos ainda existentes quando todos cabem. Retirar Pulse inteiro mantém o período pago, depois abre leitura privada por 14 dias; `paid_until` ancora esse prazo, sem reiniciá-lo quando a pessoa volta ao painel. A retenção dos eventos continua vencendo durante a carência.
+
+O handoff informa regressões normais para alarme contínuo, rotação concorrente de DSN, margem do banco e paginação com empate. Node `11.10.0` e Go `0.50.0` persistiram quatro eventos em teste local; isso não homologa plataformas extras ou provedores externos. No fechamento, a Lupa informou `tsc`, 335/335 testes Vitest em 34 arquivos, checks Cloud/Pulse com zero erros/avisos, builds dos dois painéis, `go vet`/testes da raiz e do Studio e frontend Studio zero erros/avisos. As 20 migrações `0000..0019` aplicaram em D1 local vazio; leitura direta do SQLite em modo somente leitura confirmou integridade e ausência de violações de chaves estrangeiras. `PRAGMA integrity_check` via D1 recusado com `SQLITE_AUTH` não foi falha das migrações. Dois testes cobrem configuração/handler do bootstrap e os dry-runs de bootstrap, Sites e Cloud completo passaram. Esses gates são da área Cloud e não foram repetidos nesta documentação; não houve edição de código posterior aos gates segundo o handoff. A integração de aceite/filtro do Studio, a operação real de DNS/Stripe/bot e a liberação comercial permanecem pendentes. A premissa de rede dos monitores continua exigindo homologação em staging, sem Go/sockets e sem afirmar proteção universal contra DNS rebinding com base nos erros 1000/1002.
+
+O primeiro deploy em conta vazia tem dependência circular de bindings: Sites precisa do namespace `PulseProject` do Cloud, enquanto Cloud completo precisa do entrypoint `CachedSite` de Sites. A ordem documentada é bootstrap Cloud só com exports/namespaces, sem `SITE_CACHE`, rotas públicas ou cron; depois Sites com binding remoto, Cloud completo e painel Pulse. Os arquivos concretos são [wrangler.bootstrap.jsonc](../../cloud/wrangler.bootstrap.jsonc) e [bootstrap.ts](../../cloud/worker/bootstrap.ts): nome `blup-cloud-production`, exports `SyncLive/PulseProject`, tags `v1/v2-pulse`, sem assets, D1 ou outros serviços, com handler 503. Os [testes locais](../../cloud/scripts/bootstrap.test.ts) e dry-runs passaram. Usar somente em instalação vazia; sobre instalação ativa substituiria o aplicativo. O ensaio remoto de conta vazia é bloqueio de staging, sem comprovação de que Sites antes de Cloud funcione. Ver [bootstrap no checklist](../deploy-checklist.md#9-ensaiar-o-bootstrap-e-publicar-os-workers).
+
+O banco do projeto recusa nova admissão com `429 CAPACITY` antes do teto, preservando margem de 1 MiB. A listagem de problemas ordena por `lastAt` e ID descendentes e aceita `beforeId` junto com `before`, evitando perder grupos com o mesmo instante. São comportamentos locais conferidos em [project-store.ts](../../cloud/worker/pulse/project-store.ts); não equivalem a teste de escala ou custo real.
 
 ## 1. Produto e MVP
 
@@ -145,7 +166,7 @@ O Pulse não é vendido sozinho. O switch **+ Blup Pulse** escolhe uma variante 
 | Monitores, total da conta | 10 | 50 |
 | Menor intervalo de checagem | 5 minutos | 2 minutos |
 | Páginas públicas de status | 1 | 3 |
-| Domínio próprio nas páginas de status | Não incluído na proposta inicial | Incluído |
+| Domínio próprio nas páginas de status | Não | Incluído, contrato local da Fase 4 |
 | Avisos | Discord e Telegram | Discord e Telegram |
 
 As cotas do Pulse e o mês civil UTC seguem a proposta mantida pelo dono. O anual custa o equivalente a dez mensalidades, cobrado uma vez por ano. Grátis, Pro, Max e Ultra sem o switch não incluem Pulse. Max continua com 5 GiB de notas, arquivos de até 50 MiB, 3 sites, 3 computadores, histórico de 365 dias, tempo real, domínio próprio, IA 2x e 50 lembretes por e-mail. Ultra continua com 10 GiB, arquivos de até 100 MiB e 10 sites, além dos demais direitos atuais. A [spec Cloud](blup-cloud-sync.md#planos-executados) detalha esses direitos.
@@ -295,7 +316,7 @@ As últimas 100 ocorrências completas são o evento permitido pela política de
 
 ## 6. Modelo de dados proposto
 
-As Fases 1 a 3 têm schema D1/SQLite e migrações `0015..0018`, listados no estado da entrega. As tabelas abaixo preservam o desenho-alvo dos demais recursos e podem ter nomes diferentes dos atuais. Migrações posteriores precisam ser geradas e revisadas sem alterar o histórico existente.
+Os schemas D1/SQLite e as migrações `0015..0019` das Fases 1 a 4 estão listados no estado da entrega; homologação de infraestrutura continua pendente. As tabelas abaixo preservam o desenho-alvo dos demais recursos e podem ter nomes diferentes dos atuais. Migrações posteriores precisam ser geradas e revisadas sem alterar o histórico existente.
 
 | D1 geral | Campos e índices principais |
 | --- | --- |
@@ -331,7 +352,11 @@ Contador, deduplicação, grupo e amostra entram na mesma transação SQLite. N�
 
 Usar o horário de recebimento no servidor para expiração, sem permitir que um timestamp futuro do SDK estenda o prazo. Amostras, IDs, contadores, incidentes e resumos operacionais têm expiração compatível com 30/90 dias; não manter histórico de ocorrências em contadores eternos. A contagem exibida representa a janela vigente e desconta os buckets diários expirados. Configuração ativa de projeto/monitor é outra classe de dado, mantida enquanto o recurso existir.
 
-Checagens completas expiram em 7 dias, depois de contabilizadas no resumo diário. O DO agenda limpeza em uma hora e preserva um alarme anterior na ingestão; depois da limpeza, agenda um minuto se ainda houver lote de eventos a retirar ou uma hora nos demais casos. A poda de checagens detalhadas remove até 500 por execução. Há apenas um alarme por DO e ele pode executar mais de uma vez, então o trabalho é idempotente. A manutenção pelo cron revisita projetos para recuperar limpeza interrompida. [Implementação](../../cloud/worker/pulse/project.ts), [alarmes oficiais](https://developers.cloudflare.com/durable-objects/api/alarms/).
+Recibos de admissão e total mensal no D1 são contabilidade técnica sem corpo do erro, com janela separada de 95 dias arredondada ao mês UTC. Não são amostras de eventos de 30/90 dias; sobrevivem à retirada de Pulse para não reiniciar a cota na recontratação e são removidos na purga definitiva da conta. Ver [retirada e excesso](#retirada-de-pulse-e-excesso).
+
+Checagens completas expiram em 7 dias, depois de contabilizadas no resumo diário. O DO agenda limpeza em uma hora e preserva um alarme anterior na ingestão; depois da limpeza, agenda um minuto enquanto houver lote vencido de eventos, checagens ou resumos/estados de monitor a retirar, e uma hora nos demais casos. A poda de checagens detalhadas remove até 500 por execução. Há apenas um alarme por DO e ele pode executar mais de uma vez, então o trabalho é idempotente. A manutenção pelo cron revisita projetos para recuperar limpeza interrompida. [Implementação](../../cloud/worker/pulse/project.ts), [alarmes oficiais](https://developers.cloudflare.com/durable-objects/api/alarms/).
+
+IDs de deduplicação e estados de problemas são consultados dentro do corte de retenção, independentemente da purga física: um ID já vencido não bloqueia evento novo e um estado antigo não mantém o grupo ignorado/resolvido indefinidamente. A rotação de DSN usa batch atômico, para a concorrência não manter duas chaves novas ativas. Guardas SQL de direitos impedem uma leitura antiga de plano de sobrescrever upgrade ou restaurar recursos retirados por downgrade.
 
 Expirados deixam de aparecer nas consultas imediatamente. Atraso na remoção física é uma falha operacional a medir e corrigir, não uma extensão comercial da retenção. O teto de 90 dias não autoriza restaurar dados vencidos por backup: após restauração, reaplicar expiração antes de servir. O dono precisa fechar como o teto será apresentado diante de backups/recuperação do provedor; não afirmar destruição instantânea de todas as cópias.
 
@@ -351,7 +376,13 @@ O estado começa `unknown`, passa a `down` após duas falhas consecutivas e a `u
 
 A página pública mostra componentes escolhidos, estado atual, resumos diários e incidentes escritos manualmente. Estados do incidente: `investigating`, `identified`, `monitoring`, `resolved`; impacto público: operacional, degradado, interrupção parcial ou indisponível. Erros privados nunca viram incidentes públicos automaticamente. URL monitorada, DSN, stack trace, nomes privados e credenciais não entram no HTML/JSON público.
 
-O endereço implementado localmente é `https://pulse.getblup.site/<nome>/`, com nome único por página e sem cookie da conta. O contrato público e seu cache estão no estado da entrega. Domínio próprio Ultra permanece na Fase 4: exige prova de posse, unicidade e TLS ativo pelo fluxo Cloudflare for SaaS, aproveitando o desenho de [domínio Cloud](publicacao.md#domínio-próprio-no-blup-cloud), com vínculo para página Pulse e sem consumir sites Hugo. A zona base é `getblup.site`; reservar `pulse.getblup.site` para esse serviço, sem oferecê-lo como slug de site Hugo. A estrutura D1 e o caminho de entrega por domínio existente não equivalem ao fluxo Ultra entregue ou homologado.
+O endereço local é `https://pulse.getblup.site/<nome>/`, com nome único por página e sem cookie da conta. O contrato público e seu cache estão no estado da entrega. A Fase 4 acrescenta domínio próprio de página somente para Ultra + Pulse, sem consumir site Hugo. A zona base é `getblup.site`; reservar `pulse.getblup.site` para esse serviço, sem oferecê-lo como slug de site Hugo.
+
+`GET/POST/DELETE /api/pulse/pages/:page/domain` validam página e dono. O POST é estrito `{hostname}` e exige direito gravável, domínio incluído no plano e página retida. GET retorna `DomainInfo` ou `null`, com `hostname, status, disableAt, ssl, records`; `disableAt` é `null` nesse fluxo, e os registros são TXT/CNAME. DELETE retorna `{ok:true}`. Outro hostname já vinculado exige primeiro remover o anterior (`409 DOMAIN_EXISTS`). GET continua disponível após downgrade enquanto houver direito de leitura; DELETE permanece disponível ao dono. A API usa o [validador/provedor compartilhado](../../cloud/worker/domain-provider.ts).
+
+O TXT aleatório em `_blup.<hostname>` é obrigatório antes da criação/consulta do Custom Hostname Cloudflare. Prova pendente não reserva o hostname. Após provar posse, `hostname_claim` reivindica atomicamente o mesmo namespace dos sites Hugo; hostname já adotado por outro site/página retorna `409 DOMAIN_TAKEN`. Só serve com prova, status ativo, SSL ativo, publicação, página retida e direito Ultra + Pulse conferidos. No domínio próprio, os caminhos públicos são `/` e `/status.json`; a página padrão continua disponível se ainda couber no plano. O Custom Hostname solicita `early_hints: on`, sem provar resposta 103 real no teste local.
+
+Ao perder o direito de domínio Pulse, o gateway para de servir nesse host, sem a carência adicional de domínio de 14 dias usada pelos sites Hugo. A retirada marca `disabled` antes de apagar no provedor e preserva `provider_id` até a exclusão externa concluir; o cron repete falhas. Reativar exige novo POST e nova prova. A homologação de DNS/TLS/Cloudflare for SaaS continua pendente. Fontes: [domínios](../../cloud/worker/pulse/domains.ts), [retirada](../../cloud/worker/pulse/domain-lifecycle.ts), [entrega pública](../../cloud/worker/pulse/public.ts) e [validação oficial SaaS](https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/domain-support/hostname-validation/).
 
 ## 8. Avisos Discord e Telegram
 
@@ -404,7 +435,7 @@ Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com
 | `PATCH/DELETE /api/pulse/pages/:page` | Configuração, publicação/retirada e componentes; sem GET de detalhe separado na Fase 2 |
 | `GET/POST /api/pulse/pages/:page/incidents` | Histórico limitado e criação de incidente manual |
 | `POST /api/pulse/pages/:page/incidents/:incident/updates` | Atualização pública de texto e estado |
-| `GET/POST/DELETE /api/pulse/pages/:page/domain` | Contrato de domínio no plano elegível; DELETE não tem body |
+| `GET/POST/DELETE /api/pulse/pages/:page/domain` | Contrato local da Fase 4: POST `{hostname}`, GET `DomainInfo/null`, DELETE `{ok:true}` |
 | `GET/POST /api/pulse/channels` | Lista rótulos/estado sem destino; cadastro estrito `{type:"discord", webhook}` |
 | `DELETE /api/pulse/channels/:channel` | Desliga canal e cancela pendências ainda não enviadas |
 | `POST /api/pulse/channels/:channel/test` | JSON estrito `{}`; `202 {queued:true}`, limitado a um teste/minuto/canal |
@@ -423,33 +454,58 @@ Na API-alvo, padronizar datas em ISO UTC; as Fases 1 e 2 ainda têm os timestamp
 | --- | --- |
 | Projetos | Uso/cota, criar projeto, copiar DSN, rotacionar/revogar chave e exemplos de SDK homologado; lista de problemas, filtros, amostras tratadas e resolver/ignorar |
 | Monitores | URL privada, intervalo, estado, última checagem, lacunas e histórico; criar, pausar e apagar |
-| Página de status | Título, endereço, componentes públicos e incidentes manuais na Fase 2; domínio próprio Ultra permanece na Fase 4 |
+| Página de status | Título, endereço, componentes e incidentes; Fase 4 acrescenta domínio Ultra + Pulse e seleção dos recursos mantidos, com homologação pendente |
 | Avisos, Fase 3 local | Cadastro Discord sem recuperar URL, vínculo/confirmar Telegram, canais por projeto, teste enfileirado e estado/erro genérico |
 
 Sem Pulse na assinatura, mostrar explicação e link para a página de planos Cloud; não criar uma segunda área de cobrança. Reaproveitar idioma da conta/navegador, temas claro/escuro e componentes acessíveis do Cloud. Nenhum erro privado aparece na página pública sem ação explícita. O teste de canal nunca é disparado ao apenas abrir a tela.
 
 ## 11. Switch e cobrança Stripe
 
-Catálogo com preços aprovados pelo dono, a criar/conferir no Dashboard Stripe. Os totais são R$ 49,90/mês ou R$ 499/ano no Max + Pulse e R$ 129,90/mês ou R$ 1.299/ano no Ultra + Pulse. Lookup keys seguem a convenção proposta:
+O código local da Fase 4 usa seis variantes, com uma assinatura e um item recorrente por conta. O switch **+ Blup Pulse** seleciona `max_pulse` ou `ultra_pulse`, sem criar segunda assinatura. Totais aprovados: R$ 49,90/mês ou R$ 499/ano no Max + Pulse; R$ 129,90/mês ou R$ 1.299/ano no Ultra + Pulse. A cobrança efetiva usa Prices do Stripe, sem valor/moeda fixos em `plans.ts`. Cadastro e operação reais do catálogo ainda precisam ser conferidos antes de vender.
 
-| Variante | Lookup key mensal | Lookup key anual |
+| Variante paga | Lookup key mensal | Lookup key anual |
 | --- | --- | --- |
-| `max_pulse` | `blup_max_pulse_mensal` | `blup_max_pulse_anual` |
-| `ultra_pulse` | `blup_ultra_pulse_mensal` | `blup_ultra_pulse_anual` |
+| Pro | `blup_pro_mensal` | `blup_pro_anual` |
+| Max | `blup_max_mensal` | `blup_max_anual` |
+| Ultra | `blup_ultra_mensal` | `blup_ultra_anual` |
+| Max + Pulse | `blup_max_pulse_mensal` | `blup_max_pulse_anual` |
+| Ultra + Pulse | `blup_ultra_pulse_mensal` | `blup_ultra_pulse_anual` |
 
-O switch altera a variante no seletor Max/Ultra e exibe o preço total daquela assinatura, não um adicional avulso com cobrança paralela. `max_pulse` herda todos os limites Max; `ultra_pulse`, todos Ultra. Modelar separadamente `basePlan` e direitos `pulse`, mesmo que o identificador comercial seja único. O domínio próprio dos sites Cloud e o das páginas Pulse são direitos distintos: `limits.customDomain` do Max não libera automaticamente `pulse.customDomain`. Adicionar os nomes aos enums, catálogos de idioma, validação de preços, metadados `blup_plan`, reconciliação e cálculos de downgrade, sem deixar variante desconhecida cair no Grátis.
+São dez lookup keys para cinco variantes pagas. `metadata.blup_plan` no Product ou Price deve identificar a variante completa, inclusive nos Prices antigos após transferência de lookup key. `stripe:setup` só confere o catálogo. Período sem preço válido retorna `503 PRICING_UNAVAILABLE`. O armazenamento, sites e IA das variantes continuam sendo os do plano-base.
 
-As variantes precisam estar consistentes em [plans.ts](../../cloud/worker/plans.ts), na reconciliação de lookup keys/metadados de [billing.ts](../../cloud/worker/billing.ts) e no [cliente Stripe](../../cloud/worker/stripe-client.ts), cuja API de referência é `2026-10-28.endive`. Esses pontos devem ser validados juntos na implementação. `/plans` continua localizando textos e obtendo preços reais do Stripe; ausência de preço mantém a compra desabilitada. Não copiar valores de Max/Ultra para inventar o total com Pulse.
+### Rotas próprias de cobrança
 
-Ativar Pulse numa assinatura existente deve substituir o item recorrente da própria assinatura, com idempotência e serialização por conta. Fazer prévia da proporcionalidade com o mesmo instante aplicado na atualização, mostrar crédito/débito e exigir confirmação do total. Proposta: `proration_behavior=always_invoice` e `payment_behavior=pending_if_incomplete`, liberando Pulse somente depois de o Stripe aplicar a mudança paga. Tratar autenticação de pagamento e pendência, sem confiar no retorno visual de sucesso. [Proporcionalidade Stripe](https://docs.stripe.com/billing/subscriptions/prorations), [pending updates](https://docs.stripe.com/billing/subscriptions/pending-updates).
+Todas ficam sob `/api/billing`, com sessão/dono e bodies Zod estritos quando previstos. A cortesia do dono não cria assinatura cobrada. A API valida os URLs de retorno do Stripe por HTTPS/host conhecido; o cliente não fornece preço, Customer ou assinatura como autoridade.
 
-O plugin Better Auth oferece troca proporcional e agendamento no fim do período, mas seus padrões não comprovam a política de liberação condicionada a pagamento. Validar integração com o reconciliador próprio do Blup, mantendo os handlers webhook/success concorrentes do plugin desabilitados. A confirmação vem do webhook assinado e retrieve atual sob lease, como no Cloud. Impedir criar outro Checkout quando já existe assinatura aplicável ou troca pendente. [Stripe no Better Auth](https://better-auth.com/docs/plugins/stripe).
+| Método e caminho | Contrato local |
+| --- | --- |
+| `POST /checkout` | `{plan, annual}`, com variante paga e booleano; cria/reutiliza intenção de até 30 minutos e retorna `{url}`; exige e-mail verificado; assinatura existente exige o fluxo de prévia |
+| `POST /portal` | `{}`; `{url}` para meios de pagamento, recibos e cancelamento ao fim do período; configuração que permita editar a assinatura ou cancelar imediatamente é recusada |
+| `POST /preview` | `{plan, annual}`, incluindo `free` para cancelar; `{ticket, expiresAt, quote}`; ticket válido por dez minutos |
+| `POST /confirm` | `{ticket, keep?}`; `keep` usa `{projects, monitors, pages}`; retorna `{state, effectiveAt, paymentUrl}`; estado `pending/scheduled/restored/awaiting_webhook`, data ISO UTC e URL de pagamento anulável |
+| `GET /state` | `{paymentUrl, change, checkout}`; `change` é `{plan, effectiveAt}` ou `null`; `checkout` é `{plan, url, expiresAt}` ou `null` |
+| `DELETE /pending` | Desfaz schedule futuro criado pelo Blup ou cancelamento ao fim do período; `{ok:true}`; não apaga uma mudança financeira já efetiva |
+| `DELETE /checkout` | Expira a sessão de Checkout ainda aberta e remove a intenção local; `{ok:true}` |
 
-Desligar o switch mantém o Pulse até o fim do período pago, conforme decisão do dono. Reduzir Ultra + Pulse para Max + Pulse segue a proposta de agendar a mudança para o fim do período, preservando o que foi pago. Mudança de plano não reinicia o consumo mensal. Antes de reduzir, mostrar projetos/monitores/páginas excedentes e pedir os recursos retidos; não escolher silenciosamente o projeto com os erros mais recentes.
+A prévia informa `mode`, `target`, `annual`, `currency`, `amountDue`, `total`, `credit`, `debit`, `recurringAmount`, `effectiveAt`, período e itens/preços, `prorationDate`, `selectionRequired`, `resources` e `limits`. Valores monetários são inteiros nas unidades menores da moeda Stripe; `total` pode ter sinal. O cliente mostra crédito/débito, recorrência, vencimento e seleção antes de confirmar. Não apresentar a prévia como fatura paga. [Prévia oficial](https://docs.stripe.com/api/invoices/create_preview).
 
-Ao terminar o período pago sem Pulse, pausar monitores e ingestão, sem novos gastos ou avisos. Os dados privados ficam só para leitura por 14 dias e então são apagados, preservando expirações anteriores e o teto de 90 dias: a carência não renova a retenção dos eventos. Páginas públicas mostram indisponibilidade do serviço, sem estado operacional antigo. Reativar dentro desses 14 dias pode retomar os dados ainda válidos, sem ressuscitar expirados. Essa carência do Pulse é independente dos 30 dias de retenção de conta excluída no Cloud. Exclusão de conta continua bloqueando tudo imediatamente; a purga inclui DOs, canais e domínios Pulse.
+### Aplicação, pendência e agendamento
 
-A cortesia do dono inclui Pulse com os limites de Ultra + Pulse. Modelar esse direito explicitamente ao resolver o plano de cortesia, sem exigir uma assinatura cobrada e sem criar cota ilimitada. O monitoramento dos próprios produtos continua sujeito ao mesmo aceite e à mesma política de privacidade.
+O fluxo toma leases por assinatura e conta, consulta a assinatura atual e usa fingerprint/ticket para detectar prévia vencida ou estado alterado. A confirmação reconfere valores e recursos; repetir um ticket já processado retorna o resultado salvo, com chaves idempotentes nas chamadas Stripe. A troca imediata substitui o item existente, usa o mesmo `proration_date` da prévia, `proration_behavior=always_invoice` e `payment_behavior=pending_if_incomplete`. Pagamento pendente não concede o novo plano. `paymentUrl` pode levar à fatura que exige ação. [Pending updates](https://docs.stripe.com/billing/subscriptions/pending-updates).
+
+Redução do plano-base, retirada de Pulse e anual para mensal são agendadas para o fim do período já pago por Subscription Schedule. Troca para Grátis cancela ao fim do período; restaurar a assinatura atual retira esse cancelamento. A escolha de recursos excedentes é gravada na confirmação, com aplicação quando o novo direito efetivamente chegar. Mudança de plano não reinicia o consumo mensal. [Schedules](https://docs.stripe.com/billing/subscriptions/subscription-schedules).
+
+Fatura atual não paga impede trocar preço e conceder crédito proporcional, mas não impede cancelar ao fim do período. Assinatura com vários itens, descontos, quantidade diferente de um ou ajustes de imposto fora do contrato é recusada com `BILLING_UNSUPPORTED`, em vez de descartar essas condições. O portal padrão deve manter atualização de assinatura desabilitada e cancelamento `at_period_end` quando habilitado. O checkout impede iniciar assinatura paralela ou intenção incompatível ainda aberta.
+
+As rotas mutáveis do plugin Better Auth para upgrade, portal, cancelar/restaurar, webhook e success ficam desabilitadas. O reconciliador próprio em `/api/auth/stripe/webhook`, com assinatura e consulta atual sob lease, continua sendo o único escritor do plano da assinatura no D1. A resposta de confirmação e a página de sucesso não concedem direitos. Fontes: [configuração de autenticação](../../cloud/worker/auth-options.ts), [API](../../cloud/worker/billing-api.ts) e [reconciliador](../../cloud/worker/billing.ts).
+
+### Retirada de Pulse e excesso
+
+Sem Pulse após o fim pago, monitores, ingestão, avisos e publicação param. A leitura privada dura 14 dias, ancorada no fim pago salvo, sem prolongar prazo por visitas posteriores; se já venceu, uma primeira visita tardia não abre outra carência. Retenção de eventos continua vencendo. No downgrade Ultra + Pulse para Max + Pulse, a pessoa seleciona o que fica; excedentes ficam privados por 14 dias e entram na purga em lotes. `PUT /api/pulse/selection` atende seleção necessária após mudança externa. Retorno ao plano maior só recupera recursos ainda existentes e que caibam, sem ressuscitar expirados.
+
+Recibos técnicos de admissão (`pulse_grant`) e totais mensais (`pulse_month`) não contêm o corpo do erro e sobrevivem à retirada/purga do produto Pulse para impedir zerar a cota ao recontratar. A limpeza usa o mês UTC de `agora - 95 dias` como corte, em lotes; o arredondamento por mês pode manter registros por mais de 95 dias. Essa janela é separada da retenção de eventos de 30/90 dias. A purga definitiva da conta Cloud também remove esses recibos.
+
+A carência Pulse é independente dos 30 dias da conta Cloud excluída. Exclusão da conta bloqueia imediatamente e inclui DOs, canais e domínios na purga. A cortesia do dono resolve para Ultra + Pulse, dentro dos mesmos limites de recursos e sem assinatura financeira.
 
 ## 12. Privacidade e aceite no Studio
 
@@ -562,7 +618,7 @@ Fase 2 entregue localmente: monitores/checagens, páginas públicas, incidentes/
 
 Fase 3 entregue localmente: canais Discord/Telegram, vínculo por código com confirmação, fila de referências, cooldown e retentativas. Migração `0018` gerada; 309/309 testes em 31 arquivos, `tsc`, check Cloud/Pulse zero erros/avisos e builds aprovados conforme handoff da Lupa. Provedores externos somente simulados.
 
-Fase 4 pendente: domínio próprio Ultra e contratação, com contratos atualizados a cada handoff; integração de aceite/filtro no Studio ainda pendente. Browser e demais versões de SDK precisam de homologação; React Native/Flutter continuam como em teste. O domínio próprio faz parte da oferta Ultra e deve ter disponibilidade real informada antes de cobrar por ele.
+Fase 4 com código local conferido, gates de tipos/testes/check/build informados e homologação de infraestrutura pendente: variantes completas, cobrança própria com prévia/confirmar, seleção de recursos e domínio de página Ultra + Pulse; migração `0019` gerada. Ainda não há confirmação de deploy, venda ou operação externa homologada. Integração de aceite/filtro no Studio continua pendente. Browser e demais versões de SDK precisam de homologação; React Native/Flutter continuam como em teste. O domínio próprio faz parte da oferta Ultra e deve ter disponibilidade real informada antes de cobrar por ele.
 
 Performance, tracing, replay e source maps não entram automaticamente numa fase posterior: exigem nova decisão de produto, orçamento e spec.
 
