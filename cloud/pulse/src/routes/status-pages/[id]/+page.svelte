@@ -21,6 +21,7 @@
  import List from "#lib/ui/List.svelte";
  import ListItem from "#lib/ui/ListItem.svelte";
  import ActionMenu from "#lib/ui/ActionMenu.svelte";
+ import StateMark from "#lib/ui/StateMark.svelte";
  import Segmented from "#lib/ui/Segmented.svelte";
  import Domain from "../../../lib/Domain.svelte";
  import PageForm from "../../../lib/PageForm.svelte";
@@ -42,7 +43,7 @@
  let tab=$derived<"settings"|"incidents"|"maintenance"|"domain">(data.tab);
  const maintenanceLabel=(s:Maintenance["state"])=>s==="scheduled"?t("pulseMaintenanceScheduled"):s==="active"?t("pulseMaintenanceActive"):t("pulseMaintenanceFinished");
  // The mark of an incident: green once resolved, else by how bad it is.
- const dotOf=(i:Incident)=>i.state==="resolved"?"bg-emerald-500":i.impact==="major_outage"||i.impact==="partial_outage"?"bg-red-500":"bg-amber-500";
+ const toneOf=(i:Incident)=>i.state==="resolved"?"up" as const:i.impact==="major_outage"||i.impact==="partial_outage"?"down" as const:"partial" as const;
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
  async function save(values:{title:string;components:{monitorId:string;name:string}[]}){const current=page;if(!current)return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].$patch({param:{page:current.id},json:{title:values.title,components:values.components,language:language()}}));page=(await getPages()).find(p=>p.id===current.id)??null;toast(()=>t("pulseToastSaved"));});}
  async function removeIncident(item:Incident){const current=page;if(!current||!await confirm({title:t("delete"),message:t("pulseRemoveIncident"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].incidents[":incident"].$delete({param:{page:current.id,incident:item.id}}));incidents=await getIncidents(current.id);toast(()=>t("pulseToastDeleted"));});}
@@ -72,7 +73,7 @@
    {#each maintenance as item(item.id)}
     {@const href=resolve("/status-pages/[id]/maintenance/[maintenance]",{id:pageId,maintenance:item.id})}
     <ListItem href={writable?href:undefined} label={item.title}>
-     <div class="flex items-center gap-4"><span class="size-2.5 shrink-0 rounded-full {item.state==="finished"?"bg-neutral-300 dark:bg-neutral-600":"bg-indigo-500"}" aria-hidden="true"></span><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{item.title}</span><Badge tone={item.state==="active"?"indigo":"neutral"}>{maintenanceLabel(item.state)}</Badge></p><p class="text-sm text-neutral-500">{formatDate(new Date(item.startsAt))} – {formatDate(new Date(item.endsAt))}</p></div></div>
+     <div class="flex items-center gap-4"><StateMark tone={item.state==="finished"?"past":"maint"} label={maintenanceLabel(item.state)}/><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{item.title}</span><Badge tone={item.state==="active"?"indigo":"neutral"}>{maintenanceLabel(item.state)}</Badge></p><p class="text-sm text-neutral-500">{formatDate(new Date(item.startsAt))} – {formatDate(new Date(item.endsAt))}</p></div></div>
      {#snippet actions()}<span class="text-sm text-neutral-500">{item.services.length===1?t("pulseOneService"):t("pulseManyServices",{count:String(item.services.length)})}</span>{/snippet}
      {#snippet menu()}{#if writable}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseEdit"),Icon:Pencil,onselect:()=>void goto(href)},{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void removeMaintenance(item)}]}/>{/if}{/snippet}
     </ListItem>
@@ -83,7 +84,7 @@
    {#each incidents as item(item.id)}
     {@const href=resolve("/status-pages/[id]/incidents/[incident]",{id:page.id,incident:item.id})}
     <ListItem {href} label={item.title}>
-     <div class="flex items-center gap-4"><span class="size-2.5 shrink-0 rounded-full {dotOf(item)}" aria-hidden="true"></span><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{item.title}</span><Badge tone={item.state==="resolved"?"green":"amber"}>{stateLabel(item.state)}</Badge></p><p class="text-sm text-neutral-500" title={formatDate(new Date(item.createdAt))}>{t("pulseIncidentCreated",{time:ago(item.createdAt)})}</p></div></div>
+     <div class="flex items-center gap-4"><StateMark tone={toneOf(item)} label={stateLabel(item.state)}/><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{item.title}</span><Badge tone={item.state==="resolved"?"green":"amber"}>{stateLabel(item.state)}</Badge></p><p class="text-sm text-neutral-500" title={formatDate(new Date(item.createdAt))}>{t("pulseIncidentCreated",{time:ago(item.createdAt)})}</p></div></div>
      {#snippet actions()}<span class="text-sm text-neutral-500">{item.updates===1?t("pulseOneUpdate"):t("pulseManyUpdates",{count:String(item.updates)})}</span>{/snippet}
      {#snippet menu()}{#if writable}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseConfigure"),Icon:Settings,onselect:()=>void goto(resolve("/status-pages/[id]/incidents/[incident]/settings",{id:pageId,incident:item.id}))},{label:t("pulseSeeUpdates"),Icon:FileText,onselect:()=>void goto(href)},{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void removeIncident(item)}]}/>{/if}{/snippet}
     </ListItem>
