@@ -23,6 +23,8 @@ export async function purgePulseAccount(env:Cloudflare.Env,userId:string,keepAdm
   env.DB.prepare("DELETE FROM pulse_incident_update WHERE incident_id IN(SELECT i.id FROM pulse_incident i JOIN pulse_page p ON p.id=i.page_id WHERE p.user_id=?)").bind(userId),
   env.DB.prepare("DELETE FROM pulse_incident_component WHERE incident_id IN(SELECT i.id FROM pulse_incident i JOIN pulse_page p ON p.id=i.page_id WHERE p.user_id=?)").bind(userId),
   env.DB.prepare("DELETE FROM pulse_incident WHERE page_id IN(SELECT id FROM pulse_page WHERE user_id=?)").bind(userId),
+  env.DB.prepare("DELETE FROM pulse_maintenance_component WHERE maintenance_id IN(SELECT m.id FROM pulse_maintenance m JOIN pulse_page p ON p.id=m.page_id WHERE p.user_id=?)").bind(userId),
+  env.DB.prepare("DELETE FROM pulse_maintenance WHERE page_id IN(SELECT id FROM pulse_page WHERE user_id=?)").bind(userId),
   env.DB.prepare("DELETE FROM pulse_component WHERE page_id IN(SELECT id FROM pulse_page WHERE user_id=?)").bind(userId),
   env.DB.prepare("DELETE FROM pulse_page_domain WHERE page_id IN(SELECT id FROM pulse_page WHERE user_id=?)").bind(userId),
   env.DB.prepare("DELETE FROM pulse_cooldown WHERE key IN(SELECT cd.key FROM pulse_cooldown cd JOIN pulse_channel ch ON cd.key LIKE ch.id||':%' WHERE ch.user_id=?)").bind(userId),
@@ -37,7 +39,7 @@ export async function pulseMaintenance(env:Cloudflare.Env,daily=false,now=Date.n
  const retired=await env.DB.prepare("SELECT id,object_name AS objectName FROM pulse_project WHERE retire_at<=? ORDER BY retire_at LIMIT 25").bind(now).all<{id:string;objectName:string}>();
  for(const project of retired.results){await env.DB.prepare("UPDATE pulse_project SET deleted_at=? WHERE id=? AND retire_at<=?").bind(now,project.id,now).run();await purgeProject(env,project.id,project.objectName);}
  const pages=await env.DB.prepare("SELECT id FROM pulse_page WHERE retire_at<=? ORDER BY retire_at LIMIT 25").bind(now).all<{id:string}>();
- for(const page of pages.results){await disablePulseDomain(env,page.id,true);await env.DB.batch([env.DB.prepare("DELETE FROM pulse_incident_update WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(page.id),env.DB.prepare("DELETE FROM pulse_incident_component WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(page.id),...["pulse_incident","pulse_component"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE page_id=?`).bind(page.id)),env.DB.prepare("DELETE FROM pulse_page WHERE id=? AND retire_at<=?").bind(page.id,now)]);}
+ for(const page of pages.results){await disablePulseDomain(env,page.id,true);await env.DB.batch([env.DB.prepare("DELETE FROM pulse_incident_update WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(page.id),env.DB.prepare("DELETE FROM pulse_incident_component WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(page.id),env.DB.prepare("DELETE FROM pulse_maintenance_component WHERE maintenance_id IN(SELECT id FROM pulse_maintenance WHERE page_id=?)").bind(page.id),...["pulse_incident","pulse_maintenance","pulse_component"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE page_id=?`).bind(page.id)),env.DB.prepare("DELETE FROM pulse_page WHERE id=? AND retire_at<=?").bind(page.id,now)]);}
  const monitors=await env.DB.prepare("SELECT id FROM pulse_monitor WHERE retire_at<=? ORDER BY retire_at LIMIT 50").bind(now).all<{id:string}>();
  for(const monitor of monitors.results)await env.DB.batch([env.DB.prepare("DELETE FROM pulse_component WHERE monitor_id=?").bind(monitor.id),env.DB.prepare("DELETE FROM pulse_monitor WHERE id=? AND retire_at<=?").bind(monitor.id,now)]);
  const due=await env.DB.prepare("SELECT user_id AS id FROM pulse_account WHERE read_only_until<=? ORDER BY read_only_until LIMIT 10").bind(now).all<{id:string}>();
@@ -61,6 +63,8 @@ export async function pulseMaintenance(env:Cloudflare.Env,daily=false,now=Date.n
    env.DB.prepare("DELETE FROM pulse_incident_update WHERE id IN(SELECT id FROM pulse_incident_update WHERE expires_at<=? LIMIT 500)").bind(now),
    env.DB.prepare("DELETE FROM pulse_incident_component WHERE incident_id IN(SELECT id FROM pulse_incident WHERE expires_at<=? ORDER BY id LIMIT 500)").bind(now),
    env.DB.prepare("DELETE FROM pulse_incident WHERE id IN(SELECT id FROM pulse_incident WHERE expires_at<=? ORDER BY id LIMIT 500)").bind(now),
+   env.DB.prepare("DELETE FROM pulse_maintenance_component WHERE maintenance_id IN(SELECT id FROM pulse_maintenance WHERE expires_at<=? ORDER BY id LIMIT 500)").bind(now),
+   env.DB.prepare("DELETE FROM pulse_maintenance WHERE id IN(SELECT id FROM pulse_maintenance WHERE expires_at<=? ORDER BY id LIMIT 500)").bind(now),
   ]);
  }
 }

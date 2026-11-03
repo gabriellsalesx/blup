@@ -15,7 +15,7 @@ const services=z.array(z.object({monitorId:opaqueId,status:serviceStatus}).stric
 type Services=z.infer<typeof services>;
 function impactOf(list:Services,total:number):z.infer<typeof impact>{const down=list.filter(s=>s.status==="downtime").length;return down?(down===total?"major_outage":"partial_outage"):list.some(s=>s.status==="degraded")?"degraded":"operational";}
 // Only services shown on this page.
-async function pageServices(db:D1Database,page:string){return new Set((await db.prepare("SELECT monitor_id AS id FROM pulse_component WHERE page_id=?").bind(page).all<{id:string}>()).results.map(r=>r.id));}
+export async function pageServices(db:D1Database,page:string){return new Set((await db.prepare("SELECT monitor_id AS id FROM pulse_component WHERE page_id=?").bind(page).all<{id:string}>()).results.map(r=>r.id));}
 function setServices(db:D1Database,incident:string,list:Services){return [db.prepare("DELETE FROM pulse_incident_component WHERE incident_id=?").bind(incident),...list.filter(s=>s.status!=="none").map(s=>db.prepare("INSERT INTO pulse_incident_component(incident_id,monitor_id,status) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM pulse_incident WHERE id=?)").bind(incident,s.monitorId,s.status,incident))];}
 const DAY=86_400_000;
 const incidentParam=z.object({page:opaqueId,incident:opaqueId});
@@ -59,7 +59,7 @@ export const pagesApi=new Hono<PulseApp>()
   // the row is lost. Keep the tombstone unpublished until it succeeds.
   await c.env.DB.prepare("UPDATE pulse_page SET published=0 WHERE id=?").bind(id).run();
   if(await c.env.DB.prepare("SELECT page_id FROM pulse_page_domain WHERE page_id=?").bind(id).first())return c.json({code:"DOMAIN_EXISTS"},409);
-  await c.env.DB.batch([c.env.DB.prepare("DELETE FROM pulse_incident_update WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(id),c.env.DB.prepare("DELETE FROM pulse_incident_component WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(id),c.env.DB.prepare("DELETE FROM pulse_incident WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_component WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_page WHERE id=?").bind(id)]);return c.json({ok:true});
+  await c.env.DB.batch([c.env.DB.prepare("DELETE FROM pulse_incident_update WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(id),c.env.DB.prepare("DELETE FROM pulse_incident_component WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(id),c.env.DB.prepare("DELETE FROM pulse_incident WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_maintenance_component WHERE maintenance_id IN(SELECT id FROM pulse_maintenance WHERE page_id=?)").bind(id),c.env.DB.prepare("DELETE FROM pulse_maintenance WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_component WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_page WHERE id=?").bind(id)]);return c.json({ok:true});
  })
  .get("/:page/incidents",validate("param",pageParam),async c=>{
   const page=c.req.valid("param").page;

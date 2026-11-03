@@ -12,3 +12,6 @@ export type ServiceStatus=Incident["services"][number]["status"]|"none";
 export const getPages=async()=>(await parseResponse(pulseApi.pages.$get())).pages;
 export const getMonitors=async()=>(await parseResponse(pulseApi.monitors.$get())).monitors;
 export const getIncidents=async(page:string)=>(await parseResponse(incidentsGET({param:{page}}))).incidents;
+export const maintenanceGET=pulseApi.pages[":page"].maintenance.$get;
+export type Maintenance=InferResponseType<typeof maintenanceGET,200>["maintenance"][number];
+export const getMaintenance=async(page:string)=>(await parseResponse(maintenanceGET({param:{page}}))).maintenance;

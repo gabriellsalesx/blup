@@ -104,3 +104,31 @@ it("keeps how an incident leaves each service and when it was published",async()
  expect((await request(`/pages/${id}/incidents/${incident}`,"DELETE",undefined,"bob")).status).toBe(404);expect((await request(`/pages/${id}/incidents/${incident}`,"DELETE")).status).toBe(200);
  for(const table of ["pulse_incident","pulse_incident_update","pulse_incident_component"])expect(db.sqlite.prepare(`SELECT count(*) AS n FROM ${table}`).get()?.n).toBe(0);
 });
+it("keeps checks during a maintenance apart: no state change, no alert, not in the uptime",()=>{
+ const now=Date.UTC(2026,10,15,12),check=(id:string,at:number,outcome:"up"|"down")=>({id,monitor:"m",revision:1,scheduledAt:at,checkedAt:at,intervalMinutes:5,result:{outcome,status:outcome==="up"?200:500,durationMs:1,reason:"http" as const}});
+ store.record(check("a",now,"up"));expect(store.record(check("b",now+300_000,"up")).state).toBe("up");
+ expect(store.record(check("c",now+600_000,"down"),true).state).toBe("up");expect(store.record(check("d",now+900_000,"down"),true).state).toBe("up");
+ expect(storage.sqlite.prepare("SELECT count(*) AS n FROM pending_alert WHERE kind='monitor_down'").get()?.n).toBe(0);
+ expect(store.history("m",30,now+900_000).days[0]).toMatchObject({up:2,down:0,maintenance:2});
+ store.record(check("e",now+1_200_000,"down"));expect(store.record(check("f",now+1_500_000,"down")).state).toBe("down");
+});
+it("schedules maintenance on a page's services and shows it while it lasts",async()=>{
+ const monitor=await(await request("/monitors","POST",{projectId:"1",name:"API",url:"https://example.com/",intervalMinutes:5})).json() as {id:string};
+ const other=await(await request("/monitors","POST",{projectId:"1",name:"Off page",url:"https://example.com/other",intervalMinutes:5})).json() as {id:string};
+ const {id}=await(await request("/pages","POST",{title:"Status",slug:"status-maintenance",language:"en",components:[{monitorId:monitor.id,name:"Public API"}]})).json() as {id:string};
+ await request(`/pages/${id}`,"PATCH",{published:true});
+ const now=Date.now(),at=(ms:number)=>new Date(ms).toISOString(),body={title:"Database upgrade",body:"Short downtime expected.",services:[monitor.id]};
+ for(const bad of [{...body,startsAt:at(now+7_200_000),endsAt:at(now+3_600_000)},{...body,startsAt:at(now),endsAt:at(now+31*86_400_000)},{...body,startsAt:at(now),endsAt:at(now+3_600_000),services:[other.id]},{...body,startsAt:at(now),endsAt:at(now+3_600_000),services:[]},{...body,startsAt:at(now),endsAt:at(now+3_600_000),extra:true}])expect((await request(`/pages/${id}/maintenance`,"POST",bad)).status).toBe(400);
+ expect((await request(`/pages/${id}/maintenance`,"POST",{...body,startsAt:at(now),endsAt:at(now+3_600_000)},"bob")).status).toBe(404);
+ const later=await request(`/pages/${id}/maintenance`,"POST",{...body,title:"Later",startsAt:at(now+86_400_000),endsAt:at(now+90_000_000)});expect(later.status).toBe(201);
+ const made=await request(`/pages/${id}/maintenance`,"POST",{...body,startsAt:at(now-60_000),endsAt:at(now+3_600_000)});expect(made.status).toBe(201);const maintenance=(await made.json() as {id:string}).id;
+ const listed=(await(await request(`/pages/${id}/maintenance`)).json() as {maintenance:{id:string;state:string;services:string[]}[]}).maintenance;
+ expect(listed.map(m=>[m.state,m.services])).toEqual([["scheduled",[monitor.id]],["active",[monitor.id]]]);
+ let page=await publicPage(state.env,"status-maintenance");if(!page||page.unavailable)throw new Error("page");
+ expect(page.components[0].maintenance).toBe(true);expect(page.maintenance.map(m=>[m.title,m.state,m.services])).toEqual([["Database upgrade","active",["Public API"]],["Later","scheduled",["Public API"]]]);
+ const html=await(await servePulsePage(new Request("https://pulse.audit.invalid/status-maintenance/"),state.env))?.text();expect(html).toContain("Database upgrade");
+ expect((await request(`/pages/${id}/maintenance/${maintenance}`,"PUT",{...body,startsAt:at(now-3_600_000),endsAt:at(now-60_000)})).status).toBe(200);
+ page=await publicPage(state.env,"status-maintenance");if(!page||page.unavailable)throw new Error("page");expect(page.components[0].maintenance).toBe(false);expect(page.maintenance.map(m=>m.title)).toEqual(["Later"]);
+ expect((await request(`/pages/${id}/maintenance/${maintenance}`,"DELETE",undefined,"bob")).status).toBe(404);expect((await request(`/pages/${id}/maintenance/${maintenance}`,"DELETE")).status).toBe(200);
+ expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_maintenance_component WHERE maintenance_id=?").get(maintenance)?.n).toBe(0);
+});

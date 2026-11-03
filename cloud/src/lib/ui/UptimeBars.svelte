@@ -2,13 +2,14 @@
 	import Tooltip from "./Tooltip.svelte";
 
 	// Days as bars, oldest first: green all up, amber mostly up, red mostly
-	// down and gray without checks. Each bar shows its tip on hover.
-	type Day = { key: number; tip: string; up: number; down: number };
+	// down, indigo for a day with scheduled maintenance (unless it went down
+	// outside it) and gray without checks. Each bar shows its tip on hover.
+	type Day = { key: number; tip: string; up: number; down: number; maintenance?: number };
 	let { days, label }: { days: Day[]; label: string } = $props();
 	const tone = (d: Day) => {
 		const total = d.up + d.down;
-		if (!total) return "bg-neutral-200 dark:bg-neutral-700";
-		return d.up === total ? "bg-emerald-500" : d.up / total >= 0.9 ? "bg-amber-500" : "bg-red-500";
+		if (!total) return d.maintenance ? "bg-indigo-500" : "bg-neutral-200 dark:bg-neutral-700";
+		return d.up === total ? (d.maintenance ? "bg-indigo-500" : "bg-emerald-500") : d.up / total >= 0.9 ? "bg-amber-500" : "bg-red-500";
 	};
 </script>
 

@@ -42,6 +42,15 @@ export const pulseIncidentUpdate=sqliteTable("pulse_incident_update",{
 export const pulseIncidentComponent=sqliteTable("pulse_incident_component",{
  incidentId:text("incident_id").notNull(),monitorId:text("monitor_id").notNull(),status:text("status").notNull(),
 },t=>[primaryKey({columns:[t.incidentId,t.monitorId]})]);
+// A scheduled maintenance of a status page: while it lasts, its services
+// show "maintenance", their failed checks do not count against the uptime
+// and send no alerts. Kept until the history after its end.
+export const pulseMaintenance=sqliteTable("pulse_maintenance",{
+ id:text("id").primaryKey(),pageId:text("page_id").notNull(),title:text("title").notNull(),body:text("body").notNull(),startsAt:integer("starts_at").notNull(),endsAt:integer("ends_at").notNull(),createdAt:integer("created_at").notNull(),updatedAt:integer("updated_at").notNull(),expiresAt:integer("expires_at").notNull(),
+},t=>[index("pulse_maintenance_page_idx").on(t.pageId,t.startsAt),index("pulse_maintenance_expiry_idx").on(t.expiresAt)]);
+export const pulseMaintenanceComponent=sqliteTable("pulse_maintenance_component",{
+ maintenanceId:text("maintenance_id").notNull(),monitorId:text("monitor_id").notNull(),
+},t=>[primaryKey({columns:[t.maintenanceId,t.monitorId]}),index("pulse_maintenance_component_monitor_idx").on(t.monitorId)]);
 export const pulsePageDomain=sqliteTable("pulse_page_domain",{
  pageId:text("page_id").primaryKey(),hostname:text("hostname").notNull(),proof:text("proof").notNull(),providerId:text("provider_id"),verifiedAt:integer("verified_at"),status:text("status").notNull().default("pending_ownership"),ssl:text("ssl").notNull().default("pending"),records:text("records").notNull().default("[]"),checkedAt:integer("checked_at"),
 },t=>[index("pulse_domain_host_idx").on(t.hostname,t.verifiedAt)]);

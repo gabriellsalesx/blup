@@ -5,21 +5,23 @@ import type {Language,TranslationArgs} from "../../shared/language";
 // Lucide icons (the CSP allows nothing else). It only reads the closed
 // public DTO, so private names, URLs and DSNs never reach it.
 
-export type PublicDay={date:string;up:number;down:number;unknown:number};
-export type PublicComponent={name:string;state:"up"|"down"|"unknown";incident:"downtime"|"degraded"|null;lastCheckedAt:string|null;days:PublicDay[]};
+export type PublicDay={date:string;up:number;down:number;unknown:number;maintenance:number};
+export type PublicComponent={name:string;state:"up"|"down"|"unknown";incident:"downtime"|"degraded"|null;maintenance:boolean;lastCheckedAt:string|null;days:PublicDay[]};
+export type PublicMaintenance={title:string;body:string;state:"scheduled"|"active";startsAt:string;endsAt:string;services:string[]};
 export type PublicUpdate={body:string;state:string;createdAt:string};
 export type PublicService={name:string;status:"downtime"|"degraded"|"resolved"};
 export type PublicIncident={title:string;state:string;impact:string;createdAt:string;updatedAt:string;services:PublicService[];updates:PublicUpdate[]};
-export type PublicStatus={title:string;language:Language;historyDays:number;components:PublicComponent[];incidents:PublicIncident[]};
+export type PublicStatus={title:string;language:Language;historyDays:number;components:PublicComponent[];incidents:PublicIncident[];maintenance:PublicMaintenance[]};
 
 const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]??""));
 const DAY=86_400_000;
 
-// Lucide icons (check, triangle-alert, x, circle-help), copied as paths.
+// Lucide icons (check, triangle-alert, x, wrench, circle-help), copied as paths.
 const icon={
  up:'<path d="M20 6 9 17l-5-5"/>',
  partial:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
  down:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+ maint:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/>',
  unknown:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
 } as const;
 type Tone=keyof typeof icon;
@@ -54,9 +56,9 @@ h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spaci
 .state{font-size:14px;white-space:nowrap}.pct{color:var(--muted);font-size:14px;white-space:nowrap}
 .bars{display:flex;gap:2px;height:36px;margin-top:12px}.bars i{flex:1;min-width:2px;border-radius:999px;background:var(--none)}
 .from-short{display:none}.scale{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:6px}
-.up,.bars i.up{background:var(--up)}.partial,.bars i.partial{background:var(--partial)}.down,.bars i.down{background:var(--down)}.bars i.none{background:var(--none)}
+.up,.bars i.up{background:var(--up)}.partial,.bars i.partial{background:var(--partial)}.down,.bars i.down{background:var(--down)}.maint,.bars i.maint{background:var(--maint)}.bars i.none{background:var(--none)}
 
-.t-up{color:var(--up)}.t-partial{color:var(--partial)}.t-down{color:var(--down)}.t-unknown{color:var(--muted)}
+.t-up{color:var(--up)}.t-partial{color:var(--partial)}.t-down{color:var(--down)}.t-maint{color:var(--maint)}.t-unknown{color:var(--muted)}
 .b-unknown{background:var(--muted)}
 [data-tip]{position:relative}[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);z-index:10;background:var(--tip);color:var(--tip-text);padding:4px 8px;border-radius:6px;font:500 13px/1.4 Inter,ui-sans-serif,system-ui,sans-serif;white-space:pre;text-align:center;pointer-events:none}
 [data-tip]:hover::before{content:"";position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);z-index:10;border:5px solid transparent;border-top-color:var(--tip);border-bottom:0;pointer-events:none}
@@ -74,10 +76,12 @@ const dayOf=(ms:number)=>Math.floor(ms/DAY);
 const iso=(day:number)=>new Date(day*DAY).toISOString().slice(0,10);
 
 function dayTone(d:PublicDay|undefined):Tone|"none"{
+ // Checks during a maintenance count apart: a day with one shows it,
+ // unless the other checks of the day found the service down.
  const total=d?d.up+d.down:0;
- if(!d||total===0)return "none";
- const ratio=d.up/total;
- return ratio===1?"up":ratio>=0.9?"partial":"down";
+ if(!d||total===0)return d?.maintenance?"maint":"none";
+ const ratio=d.up/total,tone=ratio===1?"up":ratio>=0.9?"partial":"down";
+ return tone==="up"&&d.maintenance?"maint":tone;
 }
 
 export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
@@ -90,16 +94,17 @@ export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
  const today=dayOf(now),range=Math.min(Math.max(page.historyDays,1),90);
  const days=Array.from({length:range},(_,i)=>today-range+1+i);
 
- // A service's state: its monitor's, unless an open incident says it is
- // down or slow.
- const toneOf=(c:PublicComponent):Tone=>c.state==="down"||c.incident==="downtime"?"down":c.incident==="degraded"?"partial":c.state==="up"?"up":"unknown";
+ // A service's state: maintenance while one lasts, else its monitor's,
+ // unless an open incident says it is down or slow.
+ const toneOf=(c:PublicComponent):Tone=>c.maintenance?"maint":c.state==="down"||c.incident==="downtime"?"down":c.incident==="degraded"?"partial":c.state==="up"?"up":"unknown";
  // The overall state, from the components (and an open incident).
- const states=page.components.map(c=>{const tone=toneOf(c);return tone==="partial"?"up":tone;}),open=page.incidents.filter(i=>i.state!=="resolved");
+ const states=page.components.map(c=>{const tone=toneOf(c);return tone==="partial"||tone==="maint"?"up":tone;}),open=page.incidents.filter(i=>i.state!=="resolved");
  const down=states.filter(s=>s==="down").length,known=states.filter(s=>s!=="unknown").length;
  const overall:{tone:Tone;label:string}=
   !page.components.length||known===0?{tone:"unknown",label:t("pulseWaiting")}:
   down&&down===known?{tone:"down",label:t("pulseAllDown")}:
   down||open.length?{tone:"partial",label:t("pulseSomeDown")}:
+  page.components.some(c=>c.maintenance)?{tone:"maint",label:t("pulseMaintenanceNow")}:
   {tone:"up",label:t("pulseAllUp")};
  const lastCheck=Math.max(0,...page.components.map(c=>c.lastCheckedAt?Date.parse(c.lastCheckedAt):0));
  const updated=lastCheck?`<p class="updated">${escape(t("pulseUpdatedAt",{date:stamp.format(new Date(lastCheck))+" UTC"}))}</p>`:"";
@@ -113,11 +118,11 @@ export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
    // The tip of a day: its date, its state and, when not all up, how much.
    const date=shortDate.format(new Date(day*DAY));
    const share=d&&d.up+d.down?t("pulseUptime",{value:number.format(d.up/(d.up+d.down)*100)}):"";
-   const tip=tone==="none"?[date,t("pulseNotMonitored")]:tone==="up"?[date,t("pulseOperational")]:[date,tone==="partial"?t("pulseDegraded"):t("pulseDown"),share];
+   const tip=tone==="none"?[date,t("pulseNotMonitored")]:tone==="up"?[date,t("pulseOperational")]:tone==="maint"?[date,t("pulseMaintenance")]:[date,tone==="partial"?t("pulseDegraded"):t("pulseDown"),share];
    return `<i class="${tone}" data-tip="${escape(tip.join("\n")).replace(/\n/g,"&#10;")}"></i>`;
   }).join("");
   const tone=toneOf(c);
-  const stateLabel=tone==="up"?t("pulseOperational"):tone==="down"?t("pulseDown"):tone==="partial"?t("pulseDegraded"):t("pulseUnknown");
+  const stateLabel=tone==="up"?t("pulseOperational"):tone==="down"?t("pulseDown"):tone==="partial"?t("pulseDegraded"):tone==="maint"?t("pulseInMaintenance"):t("pulseUnknown");
   const pct=total?t("pulseUptime",{value:number.format(up/total*100)}):t("pulseNoData");
   return `<div class="row"><div class="line"><span class="name"><span class="dot ${tone==="unknown"?"b-unknown":tone}">${svg(tone,12,3)}</span>${escape(c.name)}</span><span class="state t-${tone}">${escape(stateLabel)}</span></div><div class="bars" role="img" aria-label="${escape(pct)}">${bars}</div><div class="scale"><span><span class="from-long">${escape(t("pulseDaysAgo",{days:range}))}</span><span class="from-short">${escape(t("pulseDaysAgo",{days:Math.min(range,30)}))}</span></span><span class="pct">${escape(pct)}</span><span>${escape(t("pulseToday"))}</span></div></div>`;
  };
@@ -133,12 +138,17 @@ export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
   const list=page.incidents.filter(i=>dayOf(Date.parse(i.createdAt))===day&&(day>today-7||i.state!=="resolved"));
   return `<div class="day"><h3>${escape(longDate.format(new Date(day*DAY)))}</h3>${list.length?list.map(incident).join(""):`<p>${escape(t("pulseNoIncidentsDay"))}</p>`}</div>`;
  }).join("");
+ // Maintenance now and coming, soonest first: its window, what it is about
+ // and the services in it.
+ const windowOf=(m:PublicMaintenance)=>`${stamp.format(new Date(m.startsAt))} – ${stamp.format(new Date(m.endsAt))} UTC`;
+ const maintenance=page.maintenance.length?`<section class="card"><div class="head"><h2>${escape(t("pulseScheduledMaintenance"))}</h2></div>${page.maintenance.map(m=>`<div class="day"><div class="incident"><h4>${escape(m.title)}<span class="tag t-maint">${escape(m.state==="active"?t("pulseMaintenanceActive"):t("pulseMaintenanceScheduled"))}</span></h4><p class="services"><span>${escape(windowOf(m))}</span>${m.services.map(name=>`<span>${escape(name)}</span>`).join("")}</p>${m.body?`<div class="update"><p>${escape(m.body)}</p></div>`:""}</div></div>`).join("")}</section>`:"";
  const year=new Date(now).getUTCFullYear();
 
  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(page.title)}</title><meta name="description" content="${escape(overall.label)}"><style>${css}</style></head><body><div class="wrap">
 <header>${blup}<strong>${escape(page.title)}</strong><span>Status</span></header>
 <section class="hero"><span class="badge ${overall.tone==="unknown"?"b-unknown":overall.tone}">${svg(overall.tone,40,2.5)}</span><h1>${escape(overall.label)}</h1>${updated}</section>
 <section class="card"><div class="head"><h2>${escape(t("pulseServices"))}</h2><div class="legend">${([["up","pulseOperational"],["partial","pulseDegraded"],["down","pulseDown"],["maint","pulseMaintenance"],["none","pulseNotMonitored"]] as const).map(([k,key])=>`<span class="l-${k}" data-tip="${escape(t(key))}" role="img" aria-label="${escape(t(key))}">${legendSvg(k)}</span>`).join("")}</div></div>${page.components.map(component).join("")||`<div class="row"><p class="updated">${escape(t("pulseNoData"))}</p></div>`}</section>
+${maintenance}
 <section class="card"><div class="head"><h2>${escape(t("pulseIncidents"))}</h2></div>${history}</section>
 <footer><span>© ${year} ${escape(page.title)}</span><span>${escape(t("pulseMadeWith"))} <a href="https://getblup.io/blup-pulse/" rel="noopener">Blup Pulse</a></span></footer>
 </div></body></html>`;

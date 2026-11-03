@@ -3151,12 +3151,22 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     state: "unknown" | "up" | "down";
                     lastCheckedAt: string | null;
                     incident: "downtime" | "degraded" | null;
+                    maintenance: boolean;
                     days: {
                         date: string;
                         up: number;
                         down: number;
                         unknown: number;
+                        maintenance: number;
                     }[];
+                }[];
+                maintenance: {
+                    title: string;
+                    body: string;
+                    state: "active" | "scheduled";
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
                 }[];
                 incidents: {
                     title: string;
@@ -3354,12 +3364,22 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     state: "unknown" | "up" | "down";
                     lastCheckedAt: string | null;
                     incident: "downtime" | "degraded" | null;
+                    maintenance: boolean;
                     days: {
                         date: string;
                         up: number;
                         down: number;
                         unknown: number;
+                        maintenance: number;
                     }[];
+                }[];
+                maintenance: {
+                    title: string;
+                    body: string;
+                    state: "active" | "scheduled";
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
                 }[];
                 incidents: {
                     title: string;
@@ -4804,6 +4824,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     up: number;
                     down: number;
                     unknown: number;
+                    maintenance: number;
                     durationMs: number;
                 }[];
             };
@@ -6230,6 +6251,485 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 param: {
                     page: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/pages"> | import("hono/types").MergeSchemaPath<{
+    "/:page/maintenance": {
+        $get: {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            };
+            output: {
+                maintenance: {
+                    state: "active" | "scheduled" | "finished";
+                    services: string[];
+                    id: string;
+                    title: string;
+                    body: string;
+                    startsAt: number;
+                    endsAt: number;
+                    createdAt: number;
+                    updatedAt: number;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:page/maintenance": {
+        $post: {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                id: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        };
+    };
+} & {
+    "/:page/maintenance/:maintenance": {
+        $put: {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    startsAt: string;
+                    endsAt: string;
+                    services: string[];
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:page/maintenance/:maintenance": {
+        $delete: {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    maintenance: string;
                 };
             };
             output: {

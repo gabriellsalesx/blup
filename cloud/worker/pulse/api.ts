@@ -13,6 +13,7 @@ import {publicPage} from "./public";
 import {pageSlug} from "./page-rules";
 import {monitorsApi} from "./monitors";
 import {setupApi} from "./setup";
+import {maintenanceApi} from "./maintenance";
 import {z} from "zod";
 import {validate,hashId,opaqueId} from "../validation";
 import {pulseIdParam,projectId,issueState,numericId,publicKey,sha256,monthOf} from "./limits";
@@ -90,6 +91,7 @@ export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi)
  .route("/setup",setupApi)
  .route("/pages",pagesApi)
  .route("/pages",pulseDomainsApi)
+ .route("/pages",maintenanceApi)
  .route("/channels",channelsApi)
  .route("/telegram",telegramApi)
  .route("/projects",projectChannelsApi);

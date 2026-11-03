@@ -155,6 +155,13 @@
       "when": 1793716379425,
       "tag": "0021_pulse_servicos_do_incidente",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1793719986194,
+      "tag": "0022_pulse_manutencao",
+      "breakpoints": true
     }
   ]
 }
