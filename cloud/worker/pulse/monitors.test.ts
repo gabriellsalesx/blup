@@ -75,6 +75,11 @@ it("publishes only explicit component names and incident text, escapes attacks a
  const cache=new Map<string,Response>();vi.stubGlobal("caches",{default:{match:async(key:Request)=>cache.get(key.url)?.clone(),put:async(key:Request,response:Response)=>{cache.set(key.url,response);}}});
  const page=await publicPage(state.env,"public-page"),data=JSON.stringify(page);for(const privateValue of ["PRIVATE_MONITOR_NAME","private-secret","object1","alice","Private project"])expect(data).not.toContain(privateValue);
  const html=await(await servePulsePage(new Request("https://pulse.audit.invalid/public-page/"),state.env))?.text();expect(html).toContain("&lt;script&gt;");expect(html).not.toContain("<script>attack");expect(html?.match(/<script>/g)).toHaveLength(1);expect(html).not.toContain("<img");
+ // The list links each incident to its own page, with every update.
+ const incidentId=(page as {incidents:{id:string}[]}).incidents[0].id;expect(html).toContain(`href="incidents/${incidentId}?lang=en"`);
+ const own=await servePulsePage(new Request(`https://pulse.audit.invalid/public-page/incidents/${incidentId}`),state.env),ownHtml=await own?.text()??"";
+ expect(own?.status).toBe(200);expect(ownHtml).toContain("&lt;img src=x");expect(ownHtml).not.toContain("<img src=x");expect(ownHtml).toContain('href="../?lang=en"');expect(ownHtml).toContain("Public service");
+ expect((await servePulsePage(new Request(`https://pulse.audit.invalid/public-page/incidents/${crypto.randomUUID()}`),state.env))?.status).toBe(404);
  db.sqlite.exec("UPDATE subscription SET status='canceled' WHERE reference_id='alice'");expect(await publicPage(state.env,"public-page")).toEqual({unavailable:true});expect((await servePulsePage(new Request("https://pulse.audit.invalid/public-page/"),state.env))?.status).toBe(503);
 });
 it("keeps how an incident leaves each service and when it was published",async()=>{

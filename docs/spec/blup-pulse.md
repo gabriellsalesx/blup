@@ -773,3 +773,18 @@ O cabeçalho público segue o dos temas Nori, Bento e Mochi: uma barra fixa no t
 O tema é o único script da página: um script embutido, aplicado antes de desenhar a página para não piscar. A CSP só permite esse script, pelo hash (`script-src 'sha256-…'`, calculado uma vez). Sem script, o seletor de tema some e a página segue o sistema.
 
 Abaixo de 768 px, o botão de menu abre um painel com os links. Esse menu e os dois seletores usam a Popover API. O estado geral (`overallOf` em `public-html.ts`) é um só para o topo, o favicon e o selo. Como a página pública guarda o resultado por 15 segundos, as mudanças de aparência aparecem em até 15 segundos.
+
+## Incidentes na página pública
+
+Na lista de Incidentes (os últimos sete dias, por dia, e os abertos de antes), cada incidente é um card clicável:
+- **Título e etiqueta:** a etiqueta é verde "Resolvido" quando resolvido. Aberto, segue o impacto: vermelho "Indisponível" (interrupção parcial ou total), âmbar "Degradado", ou a etapa em cinza quando não há impacto.
+- **Atualização mais recente:** num card, com a etapa e a data UTC, ao lado de uma marca de linha do tempo. A marca é o círculo com check verde quando resolvido; nos outros casos, o círculo tracejado (Lucide `circle-check` e `circle-dashed`).
+- **Atualizações anteriores:** quando há, o card ganha duas camadas empilhadas embaixo e aparece a linha "N atualizações anteriores".
+
+O card abre `incidents/<id>` (o DTO público passou a levar o `id` do incidente; o domínio próprio aceita `/incidents/<id>`). Essa página usa o mesmo cabeçalho, rodapé, idioma e tema da página de status e mostra:
+- "Voltar à visão geral";
+- um card com a etiqueta, o título e o início;
+- os serviços afetados, com o estado de cada um;
+- todas as atualizações, da mais nova para a mais antiga, ligadas por uma linha do tempo.
+
+Um id que não está na página responde 404.

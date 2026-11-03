@@ -3178,6 +3178,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     services: string[];
                 }[];
                 incidents: {
+                    id: string;
                     title: string;
                     state: string;
                     impact: string;
@@ -3400,6 +3401,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     services: string[];
                 }[];
                 incidents: {
+                    id: string;
                     title: string;
                     state: string;
                     impact: string;
