@@ -13,7 +13,7 @@
  import Select from "#lib/ui/Select.svelte";
  import Badge from "#lib/ui/Badge.svelte";
  import TextArea from "#lib/ui/TextArea.svelte";
- import Tabs from "#lib/ui/Tabs.svelte";
+ import Segmented from "#lib/ui/Segmented.svelte";
  import Domain from "../../../lib/Domain.svelte";
  import PageForm from "../../../lib/PageForm.svelte";
  import {pulseApi,parseResponse} from "../../../lib/api";
@@ -48,7 +48,7 @@
   {#if writable}<div class="shrink-0"><Button variant="secondary" {busy} onclick={publish}>{#if page.published}<EyeOff class="size-4"/>{t("pulseUnpublish")}{:else}<Eye class="size-4"/>{t("pulsePublish")}{/if}</Button></div>{/if}
  </header>
 
- <div class="mt-8"><Tabs label={t("pulsePages")} tabs={tabs} bind:value={tab}/></div>
+ <div class="mt-8"><Segmented label={t("pulsePages")} options={tabs} bind:value={tab}/></div>
 
  {#if tab==="settings"}
   <div class="mt-8">{#key page.id}{#if writable}<PageForm monitors={data.monitors} initial={page} editing {busy} onsave={save} oncancel={()=>goto("/paginas")}/>{:else}<p class="text-neutral-500">{t("pulseReadOnlyPage")}</p>{/if}{/key}</div>
