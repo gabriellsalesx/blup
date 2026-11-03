@@ -194,7 +194,7 @@ it("shows the page's logo, links and title choice, and a badge and favicon with 
  const listed=await(await request("/pages")).json() as {pages:{showTitle:boolean;links:unknown[];logos:{light:string|null;dark:string|null}}[]};
  expect(listed.pages[0]).toMatchObject({showTitle:false,links:[{label:"Site <b>",url:"https://acme.example/"}],logos:{light:null,dark:version}});
  const served=await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/"),state.env),html=await served?.text()??"";
- expect(html).toContain(`src="logo-dark?v=${version}"`);expect(html).toContain('alt="Acme"');expect(html).not.toContain("<strong>Acme</strong>");
+ expect(html).toContain(`src="logo-dark?v=${version}"`);expect(html).toContain('alt="Acme"');expect(html).not.toContain("<span>Acme</span>");expect(html).toContain(`class="site-header"`);expect(html).toContain(`popovertarget="mobile-menu"`);
  expect(html).toContain('<a href="https://acme.example/" rel="noopener nofollow">Site &lt;b&gt;</a>');expect(html).toContain('rel="icon" type="image/svg+xml" href="data:image/svg+xml,');
  expect(served?.headers.get("content-security-policy")).toContain("img-src 'self' data:");
  const logo=await servePulsePage(new Request(`https://pulse.audit.invalid/acme-status/logo-dark?v=${version}`),state.env);expect(logo?.headers.get("content-type")).toBe("image/webp");expect(logo?.headers.get("cache-control")).toContain("immutable");

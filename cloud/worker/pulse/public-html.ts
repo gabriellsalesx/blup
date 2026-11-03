@@ -44,9 +44,16 @@ const blup='<svg width="34" height="34" viewBox="0 0 64 64" fill="none" stroke="
 const css=`:root{color-scheme:light dark;--bg:#fafafa;--card:#fff;--head:#fafafa;--line:#e5e5e5;--text:#171717;--muted:#737373;--up:#10b981;--partial:#f59e0b;--down:#ef4444;--maint:#6366f1;--none:#e5e5e5;--legend:#d4d4d4;--tip:#262626;--tip-text:#fff}
 @media (prefers-color-scheme:dark){:root{--bg:#0a0a0a;--card:#171717;--head:#1c1c1c;--line:#262626;--text:#f5f5f5;--muted:#a3a3a3;--none:#303030;--legend:#525252;--tip:#f5f5f5;--tip-text:#171717}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-.wrap{max-width:780px;margin:0 auto;padding:40px 20px 32px}
-header{display:flex;align-items:center;flex-wrap:wrap;gap:12px 24px;margin-bottom:56px}.brand{display:flex;align-items:center;gap:12px;min-width:0}header strong{font-size:18px;font-weight:700;overflow-wrap:anywhere}.brand>span{color:var(--muted);padding-left:12px;border-left:1px solid var(--line)}
-.logo{display:block;height:36px;width:auto;max-width:220px;object-fit:contain}nav{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px 20px}nav a{color:var(--muted);font-size:14px;font-weight:500;text-decoration:none}nav a:hover{color:var(--text)}
+.wrap{max-width:780px;margin:0 auto;padding:56px 20px 32px}
+.site-header{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:saturate(1.4) blur(8px);box-shadow:0 1px 2px 0 rgb(0 0 0/.05)}
+.bar{display:flex;align-items:center;gap:8px;max-width:80rem;height:64px;margin:0 auto;padding:0 24px}
+.brand{display:flex;align-items:center;gap:8px;flex-shrink:1;min-width:0;font-size:17px;font-weight:600;letter-spacing:-.01em;color:var(--text);text-decoration:none}.brand span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logo{display:block;height:32px;width:auto;max-width:220px;object-fit:contain;margin-bottom:3px}
+.nav{display:none;flex:1;justify-content:center;gap:20px;padding:0 20px}.nav a{font-weight:500;color:var(--muted);padding:8px 12px;border-radius:8px;text-decoration:none;transition:background-color .3s}.nav a:hover{background:color-mix(in srgb,var(--line) 60%,transparent);color:var(--text)}
+.menu-toggle{display:inline-flex;margin-left:auto;padding:8px;border:0;border-radius:4px;background:none;color:var(--muted);cursor:pointer}.menu-toggle:hover{background:color-mix(in srgb,var(--line) 60%,transparent);color:var(--text)}.menu-toggle .close{display:none}
+body:has(.mobile-menu:popover-open) .menu-toggle .open{display:none}body:has(.mobile-menu:popover-open) .menu-toggle .close{display:block}
+.mobile-menu{position:fixed;inset:64px 0 auto 0;margin:0;width:100%;max-width:none;border:0;border-bottom:1px solid var(--line);padding:8px 20px;background:var(--card);color:var(--text);box-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1)}.mobile-menu a{display:block;padding:12px 0;font-weight:500;color:var(--text);text-decoration:none}
+@media (min-width:768px){.nav{display:flex}.menu-toggle{display:none}}
 .hero{text-align:center;margin-bottom:48px}.badge{display:inline-grid;place-items:center;width:80px;height:80px;border-radius:999px;color:#fff}.badge svg{color:#fff}
 h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spacing:-.02em}.updated{color:var(--muted);font-size:14px;margin:0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:28px}
@@ -70,7 +77,7 @@ h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spaci
 .update{margin:6px 0 0}.update p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.update small{color:var(--muted)}
 
 footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:13px;padding:8px 2px}footer a{color:inherit;font-weight:600;text-decoration:none}footer a:hover{text-decoration:underline}
-@media (max-width:640px){.wrap{padding-top:28px}header{margin-bottom:36px}nav{margin-left:0;width:100%}h1{font-size:24px}.bars i:nth-last-child(n+31){display:none}.bars i:nth-last-child(30):hover::after{left:0;transform:none}.from-long{display:none}.from-short{display:inline}}
+@media (max-width:640px){.wrap{padding-top:36px}.bar{padding:0 16px}h1{font-size:24px}.bars i:nth-last-child(n+31){display:none}.bars i:nth-last-child(30):hover::after{left:0;transform:none}.from-long{display:none}.from-short{display:inline}}
 `;
 
 // Day key (UTC) of a date, as days since the epoch.
@@ -107,14 +114,19 @@ export function faviconOf(tone:Tone){
  const mark=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="${toneColor[tone]}"/><g transform="translate(6 6) scale(.8333)" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${icon[tone]}</g></svg>`;
  return `data:image/svg+xml,${encodeURIComponent(mark)}`;
 }
-// The header: the logos (the dark one on a dark screen, when there is
-// one), else the Blup; the title unless hidden; and the page's links.
+// The header, as in the Blup themes (Nori, Bento, Mochi): a bar across the
+// top with the logos (the dark one on a dark screen, when there is one, else
+// the Blup) and the title unless hidden on the left, the page's links in
+// the middle and, on a small screen, a menu with them (a popover: the page
+// runs no script).
+const menuIcon=(name:"open"|"close",paths:string)=>`<svg class="${name}" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 function headerOf(page:PublicStatus){
  const {light,dark}=page.logos,alt=page.showTitle?"":escape(page.title);
  const img=(file:string,version:string)=>`<img class="logo" src="${file}?v=${version}" alt="${alt}">`;
  const logo=light&&dark?`<picture><source srcset="logo-dark?v=${dark}" media="(prefers-color-scheme: dark)">${img("logo-light",light)}</picture>`:light?img("logo-light",light):dark?img("logo-dark",dark):blup;
- const links=page.links.length?`<nav>${page.links.map(l=>`<a href="${escape(l.url)}" rel="noopener nofollow">${escape(l.label)}</a>`).join("")}</nav>`:"";
- return `<header><div class="brand">${logo}${page.showTitle?`<strong>${escape(page.title)}</strong>`:""}<span>Status</span></div>${links}</header>`;
+ const links=page.links.map(l=>`<a href="${escape(l.url)}" rel="noopener nofollow">${escape(l.label)}</a>`).join("");
+ const menu=page.links.length?`<nav class="nav" aria-label="Menu">${links}</nav><button class="menu-toggle" type="button" popovertarget="mobile-menu" aria-label="Menu">${menuIcon("open",'<path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/>')}${menuIcon("close",'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>')}</button><nav id="mobile-menu" class="mobile-menu" popover aria-label="Menu">${links}</nav>`:"";
+ return `<header class="site-header"><div class="bar"><a class="brand" href="./"${page.showTitle?"":` aria-label="${escape(page.title)}"`}>${logo}${page.showTitle?`<span>${escape(page.title)}</span>`:""}</a>${menu}</div></header>`;
 }
 // The badge for another site (in an iframe): the state's mark and words,
 // linking to the page. Light, dark or following the visitor's screen.
@@ -173,8 +185,7 @@ export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
  const maintenance=page.maintenance.length?`<section class="card"><div class="head"><h2>${escape(t("pulseScheduledMaintenance"))}</h2></div>${page.maintenance.map(m=>`<div class="day"><div class="incident"><h4>${escape(m.title)}<span class="tag t-maint">${escape(m.state==="active"?t("pulseMaintenanceActive"):t("pulseMaintenanceScheduled"))}</span></h4><p class="services"><span>${escape(windowOf(m))}</span>${m.services.map(name=>`<span>${escape(name)}</span>`).join("")}</p>${m.body?`<div class="update"><p>${escape(m.body)}</p></div>`:""}</div></div>`).join("")}</section>`:"";
  const year=new Date(now).getUTCFullYear();
 
- return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(page.title)}</title><link rel="icon" type="image/svg+xml" href="${faviconOf(overall.tone)}"><meta name="description" content="${escape(overall.label)}"><style>${css}</style></head><body><div class="wrap">
-${headerOf(page)}
+ return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(page.title)}</title><link rel="icon" type="image/svg+xml" href="${faviconOf(overall.tone)}"><meta name="description" content="${escape(overall.label)}"><style>${css}</style></head><body>${headerOf(page)}<div class="wrap">
 <section class="hero"><span class="badge ${overall.tone==="unknown"?"b-unknown":overall.tone}">${svg(overall.tone,40,2.5)}</span><h1>${escape(overall.label)}</h1>${updated}</section>
 <section class="card"><div class="head"><h2>${escape(t("pulseServices"))}</h2><div class="legend">${([["up","pulseOperational"],["partial","pulseDegraded"],["down","pulseDown"],["maint","pulseMaintenance"],["none","pulseNotMonitored"]] as const).map(([k,key])=>`<span class="l-${k}" data-tip="${escape(t(key))}" role="img" aria-label="${escape(t(key))}">${legendSvg(k)}</span>`).join("")}</div></div>${page.components.map(component).join("")||`<div class="row"><p class="updated">${escape(t("pulseNoData"))}</p></div>`}</section>
 ${maintenance}
