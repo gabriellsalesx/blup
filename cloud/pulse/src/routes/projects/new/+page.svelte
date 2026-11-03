@@ -1,6 +1,7 @@
 <script lang="ts">
  import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
+ import {refreshSetup} from "../../../lib/setup";
  import Copy from "@lucide/svelte/icons/copy";
  import Plus from "@lucide/svelte/icons/plus";
  import {t} from "#lib/i18n.svelte.ts";
@@ -17,7 +18,7 @@
  // A new project: its platform and name, then the DSN to paste in the SDK
  // (shown once, so it waits here to be copied).
  let platform=$state<PlatformId>("javascript"),name=$state(""),busy=$state(false),dsn=$state("");
- async function create(e:SubmitEvent){e.preventDefault();busy=true;try{dsn=(await parseResponse(pulseApi.projects.$post({json:{name:name.trim(),platform}}))).key.dsn;toast(()=>t("pulseProjectReady"));}catch(err){toast(errorMessage(err),{kind:"error"});}finally{busy=false;}}
+ async function create(e:SubmitEvent){e.preventDefault();busy=true;try{dsn=(await parseResponse(pulseApi.projects.$post({json:{name:name.trim(),platform}}))).key.dsn;refreshSetup();toast(()=>t("pulseProjectReady"));}catch(err){toast(errorMessage(err),{kind:"error"});}finally{busy=false;}}
  async function copy(){try{await navigator.clipboard.writeText(dsn);toast(()=>t("copied"));}catch{toast(()=>t("copyFailed"),{kind:"error"});}}
 </script>
 

@@ -12,6 +12,7 @@ import {pulseDomainsApi} from "./domains";
 import {publicPage} from "./public";
 import {pageSlug} from "./page-rules";
 import {monitorsApi} from "./monitors";
+import {setupApi} from "./setup";
 import {z} from "zod";
 import {validate,hashId,opaqueId} from "../validation";
 import {pulseIdParam,projectId,issueState,numericId,publicKey,sha256,monthOf} from "./limits";
@@ -86,6 +87,7 @@ export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi)
   const changed=await c.env.PULSE_PROJECT.getByName(p.objectName).setState(c.req.valid("param").issue,c.req.valid("json").state,Date.now()-(c.get("access").limits?.retentionDays??30)*86_400_000);return changed?c.json({ok:true},200):c.json({code:"NOT_FOUND"},404);
  })
  .route("/monitors",monitorsApi)
+ .route("/setup",setupApi)
  .route("/pages",pagesApi)
  .route("/pages",pulseDomainsApi)
  .route("/channels",channelsApi)

@@ -4,6 +4,9 @@ import {sqliteTable,text,integer,index,primaryKey} from "drizzle-orm/sqlite-core
 export const pulseProject=sqliteTable("pulse_project",{
  id:text("id").primaryKey(),userId:text("user_id").notNull(),name:text("name").notNull(),platform:text("platform").notNull(),objectName:text("object_name").notNull().unique(),active:integer("active").notNull().default(1),deletedAt:integer("deleted_at"),createdAt:integer("created_at").notNull(),cleanedAt:integer("cleaned_at").notNull().default(0),alertCheckedAt:integer("alert_checked_at").notNull().default(0),
  planDisabled:integer("plan_disabled").notNull().default(0),retireAt:integer("retire_at"),
+ // When the first error reached the project (the setup steps); events
+ // themselves stay in the project DO.
+ firstEventAt:integer("first_event_at"),
 },t=>[index("pulse_project_owner_idx").on(t.userId,t.id),index("pulse_project_deleted_idx").on(t.deletedAt),index("pulse_project_retire_idx").on(t.retireAt),index("pulse_project_cleaned_idx").on(t.cleanedAt),index("pulse_project_alert_idx").on(t.alertCheckedAt)]);
 export const pulseKey=sqliteTable("pulse_key",{
  id:text("id").primaryKey(),projectId:text("project_id").notNull(),hash:text("hash").notNull().unique(),prefix:text("prefix").notNull(),revokedAt:integer("revoked_at"),createdAt:integer("created_at").notNull(),

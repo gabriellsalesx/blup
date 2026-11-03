@@ -1,0 +1,1 @@
+ALTER TABLE `pulse_project` ADD `first_event_at` integer;

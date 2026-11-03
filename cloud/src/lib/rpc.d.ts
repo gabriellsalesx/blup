@@ -4806,6 +4806,20 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $get: {
             input: {};
             output: {
+                steps: {
+                    id: "project" | "plan" | "page" | "event" | "monitor" | "alert";
+                    done: boolean;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/setup"> | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
                 pages: {
                     published: boolean;
                     writable: boolean;

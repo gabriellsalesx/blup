@@ -21,6 +21,8 @@
  import {cloudURL,rpc,pulseApi,parseResponse} from "../lib/api";
  import {cloudPaths} from "../../../shared/panel-paths";
  import {panel} from "../lib/panel.svelte";
+ import {setupDone} from "../lib/setup";
+ import SetupGuide from "../lib/SetupGuide.svelte";
  let {children}:LayoutProps=$props();
  const links=$derived([{href:resolve("/"),label:t("pulseProjects"),Icon:Folder,match:(path:string)=>path===resolve("/")||path===resolve("/projects/new")},{href:resolve("/issues"),label:t("pulseIssues"),Icon:Bug},{href:resolve("/monitors"),label:t("pulseMonitors"),Icon:Activity,match:(path:string)=>path.startsWith(resolve("/monitors"))},{href:resolve("/status-pages"),label:t("pulsePages"),Icon:Globe,match:(path:string)=>path.startsWith(resolve("/status-pages"))},{href:resolve("/alerts"),label:t("pulseAlerts"),Icon:Bell,match:(path:string)=>path.startsWith(resolve("/alerts"))}]);
  let selectionBusy=$state(false),keep=$state({projects:[] as string[],monitors:[] as string[],pages:[] as string[]});
@@ -40,7 +42,8 @@
 {:else if !panel.me}<main class="mx-auto max-w-xl p-10"><p>{t("errorGeneric")}</p><Button class="mt-4" onclick={()=>location.reload()}>{t("retry")}</Button></main>
 {:else}<PanelShell {links} home={resolve("/")} app={{current:"pulse",links:{cloud:`${cloudURL}${cloudPaths.account}`,pulse:resolve("/")}}} languages wide>
  {#snippet foot()}<SignOutButton onclick={signOut}/>{/snippet}
- {#if !panel.usage?.plan}<p class="mb-6 rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950">{t("pulseNeedPlan")} <a href={`${cloudURL}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>{/if}
+ {#if panel.setup&&!setupDone(panel.setup)}<SetupGuide steps={panel.setup.steps}/>
+ {:else if !panel.usage?.plan}<p class="mb-6 rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950">{t("pulseNeedPlan")} <a href={`${cloudURL}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>{/if}
  {#if panel.usage?.readOnlyUntil}<p class="mb-6 rounded-lg bg-amber-50 p-4 dark:bg-amber-950">{t("pulseReadOnly",{date:new Intl.DateTimeFormat(intlLocale(),{dateStyle:"long"}).format(new Date(panel.usage.readOnlyUntil))})}</p>{/if}
  {#if panel.usage?.selectionRequired&&panel.usage.limits}<PulseSelection resources={panel.usage.resources} limits={panel.usage.limits} bind:keep/><Button busy={selectionBusy} onclick={saveSelection}>{t("save")}</Button>{/if}
  {@render children()}

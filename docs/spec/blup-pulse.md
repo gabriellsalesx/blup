@@ -665,3 +665,11 @@ O Pulse tem o próprio `/sign-in` (`pulse.getblup.io/sign-in`), sem passar pelo 
 - A CSP do Pulse libera `https://challenges.cloudflare.com` em `script-src`, `frame-src` e `connect-src`, igual ao Cloud.
 - Operacional: o widget Turnstile de produção precisa ter `pulse.getblup.io` na lista de hostnames.
 
+
+## Primeiros passos
+
+Até a conta completar tudo, o painel do Pulse mostra no topo de todas as páginas o cartão "Primeiros passos no Blup Pulse" (`pulse/src/lib/SetupGuide.svelte`). Os passos, em ordem: plano com o Pulse ativo, primeiro projeto, primeiro erro recebido, primeiro monitor, destino de aviso ligado a um projeto e página de status. Sem plano ativo, os demais ficam travados com o aviso para ativar um plano.
+
+- `GET /api/pulse/setup` devolve `{steps:[{id,done}]}` na ordem acima, calculado do que a conta já tem (nada é marcado à mão), com uma consulta só no D1.
+- O primeiro erro fica em `pulse_project.first_event_at` (migração `0020`): enquanto ele não existe, a rota pergunta ao objeto de cada projeto (até 10) se há algum problema guardado e anota a data na primeira vez; depois não pergunta mais.
+- O painel busca os passos a cada página, sem segurar a navegação, só enquanto falta algum; quando todos terminam, o cartão some. A pessoa pode recolher o cartão, lembrado só neste aparelho (`localStorage`).
