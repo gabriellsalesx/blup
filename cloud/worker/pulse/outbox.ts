@@ -41,8 +41,11 @@ async function deliverySlot(db:D1Database,type:string,target:string){
 }
 type BudgetScope={key:string;spacing:number};
 const labels={issue:"pulseAlertIssue",regression:"pulseAlertRegression",monitor_up:"pulseAlertUp",monitor_down:"pulseAlertDown",test:"pulseAlertTest"} as const;
-type Kind=keyof typeof labels;
-function isKind(v:string):v is Kind{return Object.hasOwn(labels,v);}
+// A destination's test can ask for an example of each real kind.
+const samples={sample_issue:"issue",sample_regression:"regression",sample_monitor_down:"monitor_down",sample_monitor_up:"monitor_up"} as const;
+type Kind=keyof typeof labels|keyof typeof samples;
+function isKind(v:string):v is Kind{return Object.hasOwn(labels,v)||Object.hasOwn(samples,v);}
+const isSample=(v:Kind):v is keyof typeof samples=>Object.hasOwn(samples,v);
 // Each kind of destination by its own transport.
 function deliver(env:Cloudflare.Env,type:ChannelType,target:string,message:AlertMessage):Promise<Delivery>{
  switch(type){case "discord":return deliverDiscord(target,message);case "telegram":return deliverTelegram(env,target,message);case "slack":return deliverSlack(target,message);case "webhook":return deliverWebhook(target,message);}
@@ -62,7 +65,13 @@ export async function dispatchAlerts(env:Cloudflare.Env,now=Date.now()){
    if(item.projectId&&!project){await discard();continue;}
    const projectField=project?[{name:say("pulseFieldProject"),value:cleanText(project.name,80)}]:[];
    let message:AlertMessage;
-   if(item.kind==="test"&&!item.projectId)message={event:"test",label:say("pulseAlertTestLabel"),title:say("pulseAlertTest"),url:panelLink("/alerts"),tone:"brand",fields:[]};
+   if(isSample(item.kind)){
+    // An example, with made-up details, that says it is a test.
+    if(!project){await discard();continue;}
+    const real=samples[item.kind],monitor=real==="monitor_down"||real==="monitor_up";
+    message={event:real,test:true,label:translate(lang,"pulseAlertSampleLabel",{kind:say(labels[real])}),title:say(monitor?"pulseSampleMonitor":"pulseSampleIssue"),url:panelLink(`/alerts/${item.projectId}`),tone:real==="regression"?"amber":real==="monitor_up"?"green":"red",description:say("pulseSampleNote"),
+     fields:monitor?[...projectField,{name:say("pulseFieldAddress"),value:"https://example.com"}]:[...projectField,{name:say("pulseFieldEnvironment"),value:"production"},{name:say("pulseFieldRelease"),value:"1.0.0"}]};
+   }else if(item.kind==="test"&&!item.projectId)message={event:"test",label:say("pulseAlertTestLabel"),title:say("pulseAlertTest"),url:panelLink("/alerts"),tone:"brand",fields:[]};
    else if(item.kind==="test"||item.kind==="monitor_up"||item.kind==="monitor_down"){
     const monitor=await env.DB.prepare("SELECT name,state,url FROM pulse_monitor WHERE id=? AND project_id=? AND user_id=?"+(item.kind==="test"?"":" AND active=1")).bind(item.refId,item.projectId,item.userId).first<{name:string;state:string;url:string}>();
     if(!monitor||item.kind!=="test"&&`monitor_${monitor.state}`!==item.kind){await discard();continue;}

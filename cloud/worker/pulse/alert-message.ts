@@ -10,7 +10,8 @@ export type AlertTone="red"|"amber"|"green"|"brand";
 export type AlertField={name:string;value:string};
 // What happened, for systems that read the generic webhook.
 export type AlertEvent="issue"|"regression"|"monitor_down"|"monitor_up"|"test";
-export type AlertMessage={event:AlertEvent;label:string;title:string;url:string;tone:AlertTone;description?:string;fields:AlertField[]};
+// `test` marks an example of a real kind, sent by a destination's test.
+export type AlertMessage={event:AlertEvent;test?:true;label:string;title:string;url:string;tone:AlertTone;description?:string;fields:AlertField[]};
 
 const colors:Record<AlertTone,number>={red:0xef4444,amber:0xf59e0b,green:0x10b981,brand:0x16846b};
 const cut=(value:string,max:number)=>{const text=value.trim()||"-";return text.length>max?`${text.slice(0,max-1)}…`:text;};
@@ -65,9 +66,10 @@ export function slackPayload(message:AlertMessage){
  };
 }
 
-// A generic webhook: the alert as JSON, versioned, for the person's system.
+// A generic webhook: the alert as JSON, versioned, for the person's system;
+// `test` is true for a test or an example of a kind.
 export function webhookPayload(message:AlertMessage,sentAt:number){
- return {version:1 as const,source:"blup-pulse" as const,event:message.event,label:message.label,title:message.title,url:message.url,tone:message.tone,description:message.description??null,fields:message.fields.slice(0,10),sentAt:new Date(sentAt).toISOString()};
+ return {version:1 as const,source:"blup-pulse" as const,event:message.event,test:message.test===true||message.event==="test",label:message.label,title:message.title,url:message.url,tone:message.tone,description:message.description??null,fields:message.fields.slice(0,10),sentAt:new Date(sentAt).toISOString()};
 }
 // Its signature header: "t=<unix seconds>,v1=<hex HMAC-SHA256 of
 // `${t}.${body}` with the webhook's secret>" (the receiver recomputes it

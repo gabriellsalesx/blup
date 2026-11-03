@@ -446,7 +446,7 @@ Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com
 | `GET/POST/DELETE /api/pulse/pages/:page/domain` | Contrato local da Fase 4: POST `{hostname}`, GET `DomainInfo/null`, DELETE `{ok:true}` |
 | `GET/POST /api/pulse/channels` | Lista rótulos/estado sem destino; cadastro estrito `{projectId, type:"discord"|"slack", webhook}` ou `{projectId, type:"webhook", url}` (devolve o segredo uma vez) |
 | `DELETE /api/pulse/channels/:channel` | Desliga canal e cancela pendências ainda não enviadas |
-| `POST /api/pulse/channels/:channel/test` | JSON estrito `{}`; `202 {queued:true}`, limitado a um teste/minuto/canal |
+| `POST /api/pulse/channels/:channel/test` | JSON estrito `{}` (teste simples) ou `{projectId, kinds}` (exemplos); `202 {queued, sendsAt, testAgainAt}`, limitado a um teste/minuto/canal |
 | `POST /api/pulse/monitors/:monitor/test` | JSON estrito `{}`; `202 {queued:n}`, mesmo limite por destino do teste de canal |
 | `PUT /api/pulse/projects/:project/channels` | Substitui `{channelIds}` com até quatro canais ativos do mesmo dono, um por tipo |
 | `POST /api/pulse/telegram/link` | JSON estrito `{}`; emite `{id, url, expiresAt}` com dez minutos de validade |
@@ -744,3 +744,11 @@ No Slack, o aviso vai como attachment com a cor do tipo, o título com link para
 ## Filtros dos Problemas
 
 A lista de Problemas busca pelo título (o pedido sai 300 ms depois de parar de digitar) e filtra por ambiente e versão, com as opções vindas de `GET /projects/:project/issue-facets`; "Limpar filtros" volta tudo. Os filtros valem também para a paginação e para a troca entre Em aberto, Resolvido e Ignorado; trocar de projeto limpa ambiente e versão e busca as opções do novo projeto.
+
+## Página de Avisos
+
+A lista `/alerts` mostra um card por projeto, como o do monitor: os ícones dos destinos ativos do projeto lado a lado, sobrepostos, e a borda na situação (verde quando entregam, âmbar quando algum está falhando, cinza sem destino). O card abre `/alerts/[project]`; o menu tem Ver detalhes e Adicionar destino. Destinos que nenhum projeto usa aparecem embaixo, em "Destinos sem projeto", só para excluir.
+
+Em `/alerts/[project]` ficam os destinos ativos do projeto, escolhidos como numa lista de opções (o primeiro já vem escolhido), cada um com Tirar deste projeto e Excluir. Para o destino escolhido, a pessoa marca quais avisos quer receber de teste: teste simples, novo problema, um problema voltou, indisponibilidade confirmada e serviço disponível. O texto explica que os avisos saem na rodada de envio, que acontece a cada minuto, e que cada destino pode ser testado uma vez por minuto. Depois de enviar, um cronômetro conta até a rodada ("Saindo na próxima rodada", com barra), depois diz que o aviso deve ter chegado, e o botão mostra "Testar de novo em 0:42" até liberar. Embaixo, "Outros destinos da conta" liga um destino existente ao projeto, no lugar do destino do mesmo tipo. Adicionar destino a partir daqui volta para a página do projeto.
+
+`POST /channels/:channel/test` aceita `{projectId, kinds}`, com `kinds` sem repetição entre `test`, `issue`, `regression`, `monitor_down` e `monitor_up`, só para um projeto que tem esse destino (senão 404). Cada tipo vira uma entrada da fila (`sample_issue`, `sample_regression`, `sample_monitor_down`, `sample_monitor_up`; o teste simples continua `test`). O despachante monta cada exemplo como o aviso real, com a mesma cor e campos, título e dados de exemplo, rótulo "(teste)" e a linha "Este é um aviso de teste. Nada aconteceu de verdade."; no webhook, `event` é o tipo real e `test` vem `true`. A resposta traz `sendsAt` (o próximo minuto cheio, quando a rodada envia) e `testAgainAt`; `GET /channels` traz `testAgainAt` de cada destino, para o cronômetro continuar depois de recarregar.

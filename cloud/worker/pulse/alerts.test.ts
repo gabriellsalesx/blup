@@ -104,3 +104,20 @@ it("connects Slack and signed generic webhooks, refusing other or private addres
  const [t,v1]=(headers.get("x-blup-signature")??"").split(",").map(p=>p.split("=")[1]);expect(v1).toBe(await webhookSignature(secret,body,Number(t)*1000).then(s=>s.split("v1=")[1]));
  expect(toHook?.init?.redirect).toBe("manual");expect(headers.get("x-blup-event")).toBe("issue");
 });
+it("tests a destination with an example of each chosen kind, only for its own projects",async()=>{
+ const made=await request("/channels","POST",{projectId:"1",type:"webhook",url:"https://hooks.example.com/blup"});const {id}=await made.json() as {id:string};
+ expect((await request(`/channels/${id}/test`,"POST",{projectId:"1",kinds:["issue","issue"]})).status).toBe(400);
+ expect((await request(`/channels/${id}/test`,"POST",{projectId:"1",kinds:["other"]})).status).toBe(400);
+ expect((await request(`/channels/${id}/test`,"POST",{projectId:"2",kinds:["issue"]})).status).toBe(404);
+ const asked=await request(`/channels/${id}/test`,"POST",{projectId:"1",kinds:["test","issue","regression","monitor_down","monitor_up"]});expect(asked.status).toBe(202);
+ const result=await asked.json() as {queued:number;sendsAt:number;testAgainAt:number};expect(result.queued).toBe(5);expect(result.sendsAt%60_000).toBe(0);expect(result.sendsAt).toBeGreaterThan(Date.now());
+ expect((await request(`/channels/${id}/test`,"POST",{projectId:"1",kinds:["issue"]})).status).toBe(429);
+ const listed=await(await request("/channels")).json() as {channels:{id:string;testAgainAt:number}[]};expect(listed.channels.find(c=>c.id===id)?.testAgainAt).toBe(result.testAgainAt);
+ const bodies:Record<string,unknown>[]=[];
+ vi.stubGlobal("fetch",vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{const url=String(input);if(url.startsWith("https://cloudflare-dns.com/"))return Response.json({Status:0,Answer:[{type:1,data:"93.184.216.34"}]});bodies.push(JSON.parse(String(init?.body)));return new Response("ok");}));
+ // The clock is still here; each round moves it past the 100 ms spacing.
+ for(let i=0;i<5;i++){vi.setSystemTime(Date.now()+200);await dispatchAlerts(state.env);}
+ expect(bodies.map(b=>b.event).sort()).toEqual(["issue","monitor_down","monitor_up","regression","test"]);expect(bodies.every(b=>b.test===true)).toBe(true);
+ expect(bodies.find(b=>b.event==="monitor_down")).toMatchObject({tone:"red",label:"Indisponibilidade confirmada (teste)",description:"Este é um aviso de teste. Nada aconteceu de verdade."});
+ expect(bodies.find(b=>b.event==="regression")).toMatchObject({tone:"amber",fields:[{name:"Projeto",value:"App"},{name:"Ambiente",value:"production"},{name:"Versão",value:"1.0.0"}]});
+});

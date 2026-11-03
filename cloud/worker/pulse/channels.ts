@@ -9,13 +9,20 @@ const channelParam=z.object({channel:opaqueId});
 // destination of its type, in the same batch that creates it, taking the
 // place of the one it had.
 export const projectChoice=z.object({projectId}).strict();
+// The alerts a destination can be tested with: a plain test, or an example
+// of each kind it sends for a project (marked as a test).
+export const testKinds=["test","issue","regression","monitor_down","monitor_up"] as const;
+const testRequest=z.union([z.object({}).strict(),z.object({projectId,kinds:z.array(z.enum(testKinds)).min(1).max(testKinds.length).refine(v=>new Set(v).size===v.length)}).strict()]);
+// One test per destination a minute; the dispatcher sends at each minute.
+export const TEST_SPACING_MS=60_000;
+const nextRound=(now:number)=>Math.floor(now/60_000)*60_000+60_000;
 export async function usableProject(env:Cloudflare.Env,owner:string,id:string){const project=await ownedProject(env,owner,id);return project&&project.active&&!project.planDisabled?project:null;}
 export const bindToProject=(db:D1Database,owner:string,project:string,channel:string,type:z.infer<typeof channelType>)=>db.prepare("INSERT INTO pulse_project_channel(project_id,channel_id,type) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM pulse_channel WHERE id=? AND user_id=? AND type=?) ON CONFLICT(project_id,type) DO UPDATE SET channel_id=excluded.channel_id").bind(project,channel,type,channel,owner,type);
 export const channelsApi=new Hono<PulseApp>()
  .get("/",async c=>{
-  const channels=await c.env.DB.prepare("SELECT id,type,label,active,last_error AS lastError FROM pulse_channel WHERE user_id=? ORDER BY created_at LIMIT 20").bind(c.get("session").user.id).all<{id:string;type:string;label:string;active:number;lastError:string|null}>();
+  const channels=await c.env.DB.prepare("SELECT id,type,label,active,last_error AS lastError,test_at AS testAt FROM pulse_channel WHERE user_id=? ORDER BY created_at LIMIT 20").bind(c.get("session").user.id).all<{id:string;type:string;label:string;active:number;lastError:string|null;testAt:number}>();
   const bindings=await c.env.DB.prepare("SELECT p.project_id AS projectId,p.channel_id AS channelId FROM pulse_project_channel p JOIN pulse_channel c ON c.id=p.channel_id WHERE c.user_id=?").bind(c.get("session").user.id).all<{projectId:string;channelId:string}>();
-  return c.json({channels:c.get("access").readable?channels.results.map(row=>({...row,type:channelType.parse(row.type),active:!!row.active})):[],bindings:c.get("access").readable?bindings.results:[]});
+  return c.json({channels:c.get("access").readable?channels.results.map(({testAt,...row})=>({...row,type:channelType.parse(row.type),active:!!row.active,testAgainAt:testAt>0?testAt+TEST_SPACING_MS:0})):[],bindings:c.get("access").readable?bindings.results:[]});
  })
  // A destination by an address the person pastes: a Discord or Slack
  // webhook, or a webhook of their own system (whose signing secret is
@@ -33,11 +40,15 @@ export const channelsApi=new Hono<PulseApp>()
   if(!await c.env.DB.prepare("SELECT id FROM pulse_channel WHERE id=? AND user_id=?").bind(id,owner).first())return c.json({code:"NOT_FOUND"},404);
   await c.env.DB.batch([c.env.DB.prepare("DELETE FROM pulse_outbox WHERE channel_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_project_channel WHERE channel_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_cooldown WHERE key LIKE ?").bind(`${id}:%`),c.env.DB.prepare("DELETE FROM pulse_channel WHERE id=? AND user_id=?").bind(id,owner)]);return c.json({ok:true});
  })
- .post("/:channel/test",pulseWrite,validate("param",channelParam),validate("json",z.object({}).strict()),async c=>{
-  const owner=c.get("session").user.id,id=c.req.valid("param").channel,now=Date.now();
+ .post("/:channel/test",pulseWrite,validate("param",channelParam),validate("json",testRequest),async c=>{
+  const owner=c.get("session").user.id,id=c.req.valid("param").channel,body=c.req.valid("json"),now=Date.now();
   const current=await c.env.DB.prepare("SELECT id FROM pulse_channel WHERE id=? AND user_id=? AND active=1").bind(id,owner).first();if(!current)return c.json({code:"NOT_FOUND"},404);
-  const claim=await c.env.DB.prepare("UPDATE pulse_channel SET test_at=? WHERE id=? AND user_id=? AND test_at<=? RETURNING id").bind(now,id,owner,now-60_000).first();if(!claim){c.header("Retry-After","60");return c.json({code:"TOO_MANY_REQUESTS"},429);}
-  const event=crypto.randomUUID();await c.env.DB.prepare("INSERT INTO pulse_outbox(id,user_id,channel_id,ref_id,kind,created_at,expires_at,next_at) VALUES(?,?,?,?,'test',?,?,?)").bind(event,owner,id,event,now,now+86_400_000,now).run();return c.json({queued:true},202);
+  // Examples are for a project this destination is a destination of.
+  const project="projectId" in body?body.projectId:null,kinds="kinds" in body?body.kinds:["test" as const];
+  if(project&&!await c.env.DB.prepare("SELECT 1 FROM pulse_project_channel pc JOIN pulse_project p ON p.id=pc.project_id WHERE pc.project_id=? AND pc.channel_id=? AND p.user_id=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL").bind(project,id,owner).first())return c.json({code:"NOT_FOUND"},404);
+  const claim=await c.env.DB.prepare("UPDATE pulse_channel SET test_at=? WHERE id=? AND user_id=? AND test_at<=? RETURNING id").bind(now,id,owner,now-TEST_SPACING_MS).first();if(!claim){c.header("Retry-After","60");return c.json({code:"TOO_MANY_REQUESTS"},429);}
+  await c.env.DB.batch(kinds.map(kind=>{const event=crypto.randomUUID();return c.env.DB.prepare("INSERT INTO pulse_outbox(id,user_id,project_id,channel_id,ref_id,kind,created_at,expires_at,next_at) VALUES(?,?,?,?,?,?,?,?,?)").bind(event,owner,kind==="test"?null:project,id,event,kind==="test"?"test":`sample_${kind}`,now,now+86_400_000,now);}));
+  return c.json({queued:kinds.length,sendsAt:nextRound(now),testAgainAt:now+TEST_SPACING_MS},202);
  });
 export const projectChannelsApi=new Hono<PulseApp>()
  .put("/:project/channels",pulseWrite,validate("param",z.object({project:projectId})),validate("json",z.object({channelIds:z.array(opaqueId).max(4).refine(v=>new Set(v).size===v.length)}).strict()),async c=>{

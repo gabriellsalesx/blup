@@ -7419,6 +7419,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 channels: {
                     type: "webhook" | "discord" | "slack" | "telegram";
                     active: boolean;
+                    testAgainAt: number;
                     id: string;
                     label: string;
                     lastError: string | null;
@@ -7630,7 +7631,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: Record<string, never> | {
+                    projectId: string;
+                    kinds: ("issue" | "test" | "regression" | "monitor_down" | "monitor_up")[];
+                };
             };
             output: {
                 code: string;
@@ -7647,7 +7651,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: Record<string, never> | {
+                    projectId: string;
+                    kinds: ("issue" | "test" | "regression" | "monitor_down" | "monitor_up")[];
+                };
             };
             output: {
                 code: string;
@@ -7661,7 +7668,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: Record<string, never> | {
+                    projectId: string;
+                    kinds: ("issue" | "test" | "regression" | "monitor_down" | "monitor_up")[];
+                };
             };
             output: {
                 code: string;
@@ -7678,7 +7688,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: Record<string, never> | {
+                    projectId: string;
+                    kinds: ("issue" | "test" | "regression" | "monitor_down" | "monitor_up")[];
+                };
             };
             output: {
                 code: string;
@@ -7692,7 +7705,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: Record<string, never> | {
+                    projectId: string;
+                    kinds: ("issue" | "test" | "regression" | "monitor_down" | "monitor_up")[];
+                };
             };
             output: {
                 code: string;
@@ -7705,7 +7721,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: Record<string, never> | {
+                    projectId: string;
+                    kinds: ("issue" | "test" | "regression" | "monitor_down" | "monitor_up")[];
+                };
             };
             output: {
                 code: string;
@@ -7718,10 +7737,15 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: Record<string, never> | {
+                    projectId: string;
+                    kinds: ("issue" | "test" | "regression" | "monitor_down" | "monitor_up")[];
+                };
             };
             output: {
-                queued: true;
+                queued: number;
+                sendsAt: number;
+                testAgainAt: number;
             };
             outputFormat: "json";
             status: 202;

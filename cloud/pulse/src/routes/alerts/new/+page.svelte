@@ -20,7 +20,7 @@
  // A new alert destination: pick the project it is for and the kind, then
  // paste the Discord or Slack webhook, give a webhook address (its signing
  // secret is shown once) or link a Telegram chat through the bot. Once
- // added, back to the list.
+ // added, to the project's alerts.
  let {data}:PageProps=$props();
  const projectOptions=$derived(data.projects.map(p=>({value:p.id,label:p.name})));
  // Starts on the project asked for in the address, else the first one;
@@ -39,7 +39,10 @@ const [t, v1] = header.split(",").map((p) => p.split("=")[1]);
 const mac = crypto.createHmac("sha256", process.env.PULSE_WEBHOOK_SECRET).update(\`\${t}.\${rawBody}\`).digest("hex");
 const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now() / 1000 - Number(t) < 300;`;
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
- async function done(){toast(()=>t("pulseToastLinked"));await goto(resolve("/alerts"));}
+ // Back to where the destination is: the project's alerts (or, before one
+ // is made, where the page was opened from).
+ const back=$derived(data.wanted?resolve("/alerts/[project]",{project:data.wanted}):resolve("/alerts"));
+ async function done(){toast(()=>t("pulseToastLinked"));await goto(resolve("/alerts/[project]",{project:projectId}));}
  // A destination by a pasted address; a webhook stays on this page to show
  // its secret once.
  async function pasted(e:SubmitEvent){e.preventDefault();await run(async()=>{
@@ -64,7 +67,7 @@ const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now
  function choose(next:Kind){if(next===kind)return;kind=next;webhook="";stopPolling();link=null;linkStatus=null;}
 </script>
 
-<div class="mb-4"><BackLink href={resolve("/alerts")} label={t("pulseAlerts")}/></div>
+<div class="mb-4"><BackLink href={back} label={t("pulseAlerts")}/></div>
 <PageHeader title={t("pulseNewChannelTitle")} lead={t("pulseChannelPrivacy")}/>
 
 <div class="mt-8"><Card title={t("pulseChannelProject")} help={t("pulseChannelProjectHelp")}>
@@ -88,19 +91,19 @@ const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now
     <p class="text-sm text-neutral-500">{t("pulseWebhookSecretOnce")}</p>
     <p class="text-sm">{t("pulseWebhookVerify")}</p>
     <CodeBlock code={verifySample}/>
-    <div class="flex justify-end"><Button onclick={()=>goto(resolve("/alerts"))}>{t("pulseDone")}</Button></div>
+    <div class="flex justify-end"><Button onclick={()=>goto(resolve("/alerts/[project]",{project:projectId}))}>{t("pulseDone")}</Button></div>
    </div>
   {:else if kind==="discord"||kind==="slack"}
    <form class="grid grid-cols-[minmax(0,1fr)] gap-4" onsubmit={pasted}>
     <p class="text-sm text-neutral-500">{kind==="discord"?t("pulseDiscordHelp"):t("pulseSlackHelp")}</p>
     <FloatField id="channel-webhook" surface="bg-white dark:bg-neutral-900" label={kind==="discord"?t("pulseDiscordWebhook"):t("pulseSlackWebhook")} type="password" autocomplete="off" maxlength={2048} required bind:value={webhook}/>
-    <div class="flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto(resolve("/alerts"))}>{t("cancel")}</Button><Button {busy} disabled={!projectId}>{kind==="discord"?t("pulseAddDiscord"):t("pulseAddSlack")}</Button></div>
+    <div class="flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto(back)}>{t("cancel")}</Button><Button {busy} disabled={!projectId}>{kind==="discord"?t("pulseAddDiscord"):t("pulseAddSlack")}</Button></div>
    </form>
   {:else if kind==="webhook"}
    <form class="grid grid-cols-[minmax(0,1fr)] gap-4" onsubmit={pasted}>
     <p class="text-sm text-neutral-500">{t("pulseWebhookHelp")}</p>
     <FloatField id="channel-webhook" surface="bg-white dark:bg-neutral-900" label={t("pulseWebhookURL")} type="url" autocomplete="off" maxlength={2048} required bind:value={webhook}/>
-    <div class="flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto(resolve("/alerts"))}>{t("cancel")}</Button><Button {busy} disabled={!projectId}>{t("pulseAddWebhook")}</Button></div>
+    <div class="flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto(back)}>{t("cancel")}</Button><Button {busy} disabled={!projectId}>{t("pulseAddWebhook")}</Button></div>
    </form>
   {:else}
    <p class="text-sm text-neutral-500">{t("pulseLinkHelp")}</p>
@@ -108,7 +111,7 @@ const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now
     <div class="mt-4"><a class="inline-flex items-center gap-2 font-semibold text-blup underline" href={link.url} target="_blank" rel="noopener noreferrer"><BrandIcon name="telegram" class="size-4"/>{t("pulseOpenBot")}</a><p class="mt-2 text-xs text-neutral-500">{t("pulseLinkDeadline",{date:formatDate(link.expiresAt)})}</p>
      {#if linkStatus?.candidate}<p class="my-3 break-all text-sm">{linkStatus.candidate.label} · ID: {linkStatus.candidate.id}</p><Button onclick={confirmChat} {busy}>{t("pulseConfirmChat")}</Button>{:else if linkStatus?.state==="expired"}<p class="mt-3 text-sm">{t("pulseLinkExpired")}</p>{:else}<p class="mt-3 text-sm text-neutral-500">{t("pulseWaitingChat")}</p>{/if}
     </div>
-   {:else}<div class="mt-4 flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto(resolve("/alerts"))}>{t("cancel")}</Button><Button type="button" onclick={telegram} {busy} disabled={!projectId}>{t("pulseLinkTelegram")}</Button></div>{/if}
+   {:else}<div class="mt-4 flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto(back)}>{t("cancel")}</Button><Button type="button" onclick={telegram} {busy} disabled={!projectId}>{t("pulseLinkTelegram")}</Button></div>{/if}
   {/if}
  </div>
 </Card></div>

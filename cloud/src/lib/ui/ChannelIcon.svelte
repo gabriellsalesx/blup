@@ -8,4 +8,4 @@
 </script>
 
 {#if type !== "webhook"}<BrandIcon name={type} class={extra} />
-{:else}<Webhook class="{extra} text-neutral-700 dark:text-neutral-300" aria-label="Webhook" />{/if}
+{:else}<Webhook class="shrink-0 {extra} text-neutral-700 dark:text-neutral-300" aria-label="Webhook" />{/if}
