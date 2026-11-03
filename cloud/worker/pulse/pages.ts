@@ -69,6 +69,14 @@ export const pagesApi=new Hono<PulseApp>()
   ]) as [D1Result<{id:string;title:string;state:string;impact:string;createdAt:number;updatedAt:number;updates:number}>,D1Result<{incidentId:string;monitorId:string;status:string}>];
   return c.json({incidents:incidents.results.map(i=>({...i,state:incidentState.parse(i.state),impact:impact.parse(i.impact),services:affected.results.filter(a=>a.incidentId===i.id).map(a=>({monitorId:a.monitorId,status:serviceStatus.parse(a.status)}))}))});
  })
+ // The updates of one incident, newest first (what the public page shows).
+ .get("/:page/incidents/:incident/updates",validate("param",z.object({page:opaqueId,incident:opaqueId})),async c=>{
+  const {page,incident}=c.req.valid("param");
+  if(!await ownedPage(c.env,c.get("session").user.id,page)||!c.get("access").readable)return c.json({code:"NOT_FOUND"},404);
+  if(!await c.env.DB.prepare("SELECT id FROM pulse_incident WHERE id=? AND page_id=?").bind(incident,page).first())return c.json({code:"NOT_FOUND"},404);
+  const updates=await c.env.DB.prepare("SELECT id,body,state,created_at AS createdAt FROM pulse_incident_update WHERE incident_id=? AND created_at>? ORDER BY created_at DESC,id DESC LIMIT 100").bind(incident,Date.now()-(c.get("access").limits?.retentionDays??30)*DAY).all<{id:string;body:string;state:string;createdAt:number}>();
+  return c.json({updates:updates.results.map(u=>({...u,state:incidentState.parse(u.state)}))});
+ })
  // A new incident: what happened, since when (publishedAt: up to the kept
  // history ago, not later than now) and how each service is left.
  .post("/:page/incidents",pulseWrite,validate("param",pageParam),validate("json",z.object({title:z.string().trim().min(1).max(120),body:z.string().trim().min(1).max(2000),state:incidentState,publishedAt:z.iso.datetime({offset:true}),services}).strict()),async c=>{

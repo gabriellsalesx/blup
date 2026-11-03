@@ -24,8 +24,8 @@
  import {getPages,type Incident} from "../../../lib/status-pages";
  import {ago} from "../../../lib/monitor";
  // One status page: its title and monitors, its own domain and the
- // incidents told to visitors (each opens its own page to update it; a
- // button on top reports a new one).
+ // incidents told to visitors (each opens its own page, with its updates;
+ // a button on top reports a new one).
  let {data}:PageProps=$props();
  let page=$derived(data.page),incidents=$derived<Incident[]>(data.incidents),busy=$state(false);
  const writable=$derived(panel.usage?.readOnly===false&&!!page?.writable);
@@ -63,10 +63,10 @@
   <div class="mt-8"><List empty={t("pulseNoIncidents")}>
    {#each incidents as item(item.id)}
     {@const href=resolve("/status-pages/[id]/incidents/[incident]",{id:page.id,incident:item.id})}
-    <ListItem href={writable&&item.state!=="resolved"?href:undefined} label={item.title}>
+    <ListItem {href} label={item.title}>
      <div class="flex items-center gap-4"><span class="size-2.5 shrink-0 rounded-full {dotOf(item)}" aria-hidden="true"></span><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{item.title}</span><Badge tone={item.state==="resolved"?"green":"amber"}>{stateLabel(item.state)}</Badge></p><p class="text-sm text-neutral-500" title={formatDate(new Date(item.createdAt))}>{t("pulseIncidentCreated",{time:ago(item.createdAt)})}</p></div></div>
      {#snippet actions()}<span class="text-sm text-neutral-500">{item.updates===1?t("pulseOneUpdate"):t("pulseManyUpdates",{count:String(item.updates)})}</span>{/snippet}
-     {#snippet menu()}{#if writable&&item.state!=="resolved"}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseUpdateIncident"),Icon:MessageSquarePlus,onselect:()=>void goto(href)}]}/>{/if}{/snippet}
+     {#snippet menu()}{#if writable&&item.state!=="resolved"}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseCreateUpdate"),Icon:MessageSquarePlus,onselect:()=>void goto(resolve("/status-pages/[id]/incidents/[incident]/update",{id:pageId,incident:item.id}))}]}/>{/if}{/snippet}
     </ListItem>
    {/each}
   </List></div>

@@ -5,10 +5,6 @@
 
 <script lang="ts">
  import {untrack} from "svelte";
- import Circle from "@lucide/svelte/icons/circle";
- import CircleMinus from "@lucide/svelte/icons/circle-minus";
- import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
- import CircleCheck from "@lucide/svelte/icons/circle-check";
  import {t} from "#lib/i18n.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
  import FloatField from "#lib/ui/FloatField.svelte";
@@ -17,6 +13,7 @@
  import FormSection from "#lib/ui/FormSection.svelte";
  import DateTimeField from "#lib/ui/DateTimeField.svelte";
  import type {Incident} from "./status-pages";
+ import {serviceIcon,serviceName,serviceStatuses} from "./service-status";
  // A new incident, or an update of an open one: what is going on, its
  // state, since when (new ones only, up to `keepDays` back) and how it
  // leaves each service of the page. An update starts from how the
@@ -27,12 +24,7 @@
  let statuses=$state<Record<string,ServiceStatus>>(Object.fromEntries(untrack(()=>components).map(c=>[c.monitorId,start?.services.find(s=>s.monitorId===c.monitorId)?.status??"none"])));
  const now=Date.now(),oldest=now-untrack(()=>keepDays)*86_400_000;
  const states=$derived([{value:"investigating",label:t("pulseInvestigating")},{value:"identified",label:t("pulseIdentified")},{value:"monitoring",label:t("pulseMonitoring")},{value:"resolved",label:t("pulseResolved")}] as const);
- const serviceOptions=$derived([
-  {value:"none",label:t("pulseNotAffected"),icon:{Icon:Circle,class:"text-neutral-400"}},
-  {value:"downtime",label:t("pulseDown"),icon:{Icon:CircleMinus,class:"text-red-500"}},
-  {value:"degraded",label:t("pulseDegraded"),icon:{Icon:TriangleAlert,class:"text-amber-500"}},
-  {value:"resolved",label:t("pulseResolved"),icon:{Icon:CircleCheck,class:"text-emerald-500"}},
- ] as const);
+ const serviceOptions=$derived(serviceStatuses.map(value=>({value,label:serviceName(value),icon:serviceIcon[value]})));
  function submit(e:SubmitEvent){e.preventDefault();onsave({title:title.trim(),body:body.trim(),state:situation,publishedAt,services:components.map(c=>({monitorId:c.monitorId,status:statuses[c.monitorId]??"none"}))});}
 </script>
 

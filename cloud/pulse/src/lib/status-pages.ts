@@ -7,6 +7,7 @@ export type Monitor=InferResponseType<typeof pulseApi.monitors.$get,200>["monito
 export const incidentsGET=pulseApi.pages[":page"].incidents.$get;
 export type Incident=InferResponseType<typeof incidentsGET,200>["incidents"][number];
 export type IncidentState=Incident["state"];
+export type IncidentUpdate=InferResponseType<typeof pulseApi.pages[":page"]["incidents"][":incident"]["updates"]["$get"],200>["updates"][number];
 export type ServiceStatus=Incident["services"][number]["status"]|"none";
 export const getPages=async()=>(await parseResponse(pulseApi.pages.$get())).pages;
 export const getMonitors=async()=>(await parseResponse(pulseApi.monitors.$get())).monitors;

@@ -96,4 +96,7 @@ it("keeps how an incident leaves each service and when it was published",async()
  page=await publicPage(state.env,"status-services");if(!page||page.unavailable)throw new Error("page");
  expect(page.components[0].incident).toBeNull();expect(page.incidents[0].services).toEqual([{name:"Public API",status:"resolved"}]);
  expect(db.sqlite.prepare("SELECT impact FROM pulse_incident WHERE id=?").get(incident)?.impact).toBe("operational");
+ const updates=(await(await request(`/pages/${id}/incidents/${incident}/updates`)).json() as {updates:{body:string;state:string}[]}).updates;
+ expect(updates.map(u=>[u.body,u.state])).toEqual([["Fixed","resolved"],["Looking into it","investigating"]]);
+ expect((await request(`/pages/${id}/incidents/${incident}/updates`,"GET",undefined,"bob")).status).toBe(404);
 });

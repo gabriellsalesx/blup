@@ -5300,6 +5300,68 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 } & {
+    "/:page/incidents/:incident/updates": {
+        $get: {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            };
+            output: {
+                updates: {
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    id: string;
+                    body: string;
+                    createdAt: number;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
     "/:page/incidents": {
         $post: {
             input: {
