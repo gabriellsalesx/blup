@@ -1,6 +1,7 @@
 <script lang="ts" generics="T extends string">
 	// Tabs with an underline under the chosen one, scrolling sideways when
-	// they don't fit (narrow screens). Arrows move between them.
+	// they don't fit (narrow screens), by swipe, with no scrollbar. Arrows
+	// move between them.
 	let { label, tabs, value = $bindable() }: { label: string; tabs: readonly { value: T; label: string }[]; value: T } = $props();
 	function keys(event: KeyboardEvent, index: number) {
 		if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
@@ -13,7 +14,7 @@
 	}
 </script>
 
-<div class="flex overflow-x-auto border-b border-neutral-200 dark:border-neutral-800" role="tablist" aria-label={label}>
+<div class="flex overflow-x-auto overflow-y-hidden [scrollbar-width:none] border-b border-neutral-200 dark:border-neutral-800" role="tablist" aria-label={label}>
 	{#each tabs as tab, index (tab.value)}
 		<button
 			type="button"
