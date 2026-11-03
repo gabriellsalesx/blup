@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
+	import ChevronsDownUp from "@lucide/svelte/icons/chevrons-down-up";
 	import Check from "@lucide/svelte/icons/check";
 	import { t } from "#lib/i18n.svelte.ts";
 	import BlupLogo from "./BlupLogo.svelte";
@@ -30,7 +31,7 @@
 		<BlupLogo mint={here.mint} class="h-8 w-auto text-[#0e1b45] dark:text-white" />
 		<span class="text-xs font-bold tracking-wider uppercase {here.color}">{here.tag}</span>
 	</span>
-	<ChevronsUpDown class="size-4 shrink-0 text-neutral-400" />
+	{#if open}<ChevronsDownUp class="size-4 shrink-0 text-neutral-400" />{:else}<ChevronsUpDown class="size-4 shrink-0 text-neutral-400" />{/if}
 </button>
 <div
 	id="{id}-apps"

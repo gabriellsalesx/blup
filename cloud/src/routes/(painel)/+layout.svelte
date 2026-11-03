@@ -10,9 +10,9 @@
 	import CreditCard from "@lucide/svelte/icons/credit-card";
 	import RefreshCw from "@lucide/svelte/icons/refresh-cw";
 	import Globe from "@lucide/svelte/icons/globe";
-	import Power from "@lucide/svelte/icons/power";
 	import { authClient } from "#lib/auth.ts";
 	import PanelShell from "#lib/ui/PanelShell.svelte";
+	import SignOutButton from "#lib/ui/SignOutButton.svelte";
 
 	// The account panel.
 	let { children,data } = $props();
@@ -43,7 +43,7 @@
 <!-- The plans side by side need the wide page. -->
 <PanelShell languages {links} home="/conta" app={{ current: "cloud", links: { cloud: "/conta", pulse: "https://pulse.getblup.io/" } }} wide={page.url.pathname === "/conta/plano"}>
 	{#snippet foot()}
-		<button class="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 font-medium text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white" onclick={signOut}><Power class="size-[18px]" />{t("signOut")}</button>
+		<SignOutButton onclick={signOut} />
 	{/snippet}
 	{@render children()}
 </PanelShell>
