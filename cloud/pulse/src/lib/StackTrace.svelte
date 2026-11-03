@@ -28,9 +28,10 @@
  const linesOf=(f:Frame)=>{const c=f.context;if(!c)return [];const start=(f.line??c.pre.length+1)-c.pre.length;return [...c.pre.map((text,i)=>({n:start+i,text,error:false})),{n:start+c.pre.length,text:c.line,error:true},...c.post.map((text,i)=>({n:start+c.pre.length+1+i,text,error:false}))];};
 </script>
 
-<div class="grid gap-6">
+<!-- One column that never grows past the card: long code scrolls sideways. -->
+<div class="grid grid-cols-[minmax(0,1fr)] gap-6">
  {#each list as exception,e(e)}
-  <div>
+  <div class="min-w-0">
    <p class="font-mono text-sm break-words"><span class="font-bold text-red-600 dark:text-red-400">{exception.type}</span>{#if exception.value}<span class="text-neutral-700 dark:text-neutral-300">: {exception.value}</span>{/if}</p>
    {#if exception.frames.length}
     <ol class="mt-3 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
