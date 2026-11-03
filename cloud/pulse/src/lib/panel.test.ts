@@ -9,5 +9,5 @@ it.each([['pt','Projetos','Monitores','Página de status'],['en','Projects','Mon
  setLanguage(language);
  const base={signedIn:false};
  expect(render(Alerts,{props:{data:{...base,projects:[],channels:null}}}).body).toContain(language==="en"?"Alerts":"Avisos");
- expect(render(Projects,{props:{data:{...base,projects:[]}}}).body).toContain(projects);expect(render(Monitors,{props:{data:{...base,monitors:[],histories:{}}}}).body).toContain(monitors);expect(render(Pages,{props:{data:{...base,pages:[],monitors:[]}}}).body).toContain(pages);
+ expect(render(Projects,{props:{data:{...base,projects:[]}}}).body).toContain(projects);expect(render(Monitors,{props:{data:{...base,monitors:[],histories:{}}}}).body).toContain(monitors);expect(render(Pages,{props:{data:{...base,pages:[]}}}).body).toContain(pages);
 });
