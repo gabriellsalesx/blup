@@ -16,6 +16,7 @@
  import List from "#lib/ui/List.svelte";
  import ListItem from "#lib/ui/ListItem.svelte";
  import StatusDot from "#lib/ui/StatusDot.svelte";
+ import UsageMeter from "../lib/UsageMeter.svelte";
  import {confirm} from "#lib/confirm.svelte.ts";
  import {toast} from "#lib/toast.svelte.ts";
  import {platforms} from "../../../shared/pulse-platforms";
@@ -24,7 +25,8 @@
  let {data}:PageProps=$props();
  let projects=$derived<Project[]>(data.projects),dsn=$state(""),busy=$state(false);
  const writable=$derived(panel.usage?.readOnly===false);
- const usage=$derived(panel.usage?.limits?{used:panel.usage.accepted,limit:panel.usage.limits.events}:null);
+ // The plan's projects and this month's problems, used and allowed.
+ const usage=$derived(panel.usage?.limits?{used:panel.usage.accepted,limit:panel.usage.limits.events,projects:data.projects.length,projectLimit:panel.usage.limits.projects}:null);
  // The issues of one project: /issues?project=<id>.
  const issuesOf=(id:string)=>resolve(`/issues?${new URLSearchParams({project:id})}`);
  const platformName=(id:string)=>id==="other"?t("pulseOther"):platforms.find(p=>p.id===id)?.label??id;
@@ -38,7 +40,10 @@
  {#snippet aside()}{#if writable}<Button onclick={()=>goto(resolve("/projects/new"))}><Plus class="size-4"/>{t("pulseCreateNewProject")}</Button>{/if}{/snippet}
 </PageHeader>
 
-{#if usage}<div class="mt-6 max-w-sm"><p class="text-sm text-neutral-500">{t("pulseMonthUsage",{accepted:usage.used.toLocaleString(intlLocale()),limit:usage.limit.toLocaleString(intlLocale())})}</p><div class="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"><div class="h-full rounded-full bg-blup" style:width="{Math.min(100,usage.used/Math.max(1,usage.limit)*100)}%"></div></div></div>{/if}
+{#if usage}<div class="mt-6 grid max-w-2xl gap-6 sm:grid-cols-2">
+ <UsageMeter text={t("pulseProjectsUsage",{used:usage.projects.toLocaleString(intlLocale()),limit:usage.projectLimit.toLocaleString(intlLocale())})} used={usage.projects} limit={usage.projectLimit}/>
+ <UsageMeter text={t("pulseMonthUsage",{accepted:usage.used.toLocaleString(intlLocale()),limit:usage.limit.toLocaleString(intlLocale())})} used={usage.used} limit={usage.limit}/>
+</div>{/if}
 
 {#if dsn}<div class="mt-6 rounded-xl border border-blup bg-white p-5 dark:bg-neutral-900"><p class="font-semibold">{t("pulseSDK")}</p><div class="mt-3"><CodeBlock code={dsn}/></div><p class="mt-3 text-sm text-neutral-500">{t("pulseDSNOnce")}</p></div>{/if}
 

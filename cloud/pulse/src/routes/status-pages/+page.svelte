@@ -19,6 +19,7 @@
  import Badge from "#lib/ui/Badge.svelte";
  import {pulseApi,parseResponse} from "../../lib/api";
  import {panel} from "../../lib/panel.svelte";
+ import UsageMeter from "../../lib/UsageMeter.svelte";
  import {getPages,type StatusPage} from "../../lib/status-pages";
  // The status pages: a button on top makes a new one; each card opens,
  // goes live or offline, or is deleted.
@@ -37,6 +38,8 @@
 <PageHeader title={t("pulsePages")} lead={t("pulsePublicPrivacy")}>
  {#snippet aside()}{#if writable}<Button onclick={()=>goto(resolve("/status-pages/new"))}><Plus class="size-4"/>{t("pulseNewPage")}</Button>{/if}{/snippet}
 </PageHeader>
+
+{#if panel.usage?.limits}<div class="mt-6 max-w-sm"><UsageMeter text={t("pulsePagesUsage",{used:String(pages.length),limit:String(panel.usage.limits.pages)})} used={pages.length} limit={panel.usage.limits.pages}/></div>{/if}
 
 <div class="mt-8 grid gap-3">
  {#each pages as page(page.id)}

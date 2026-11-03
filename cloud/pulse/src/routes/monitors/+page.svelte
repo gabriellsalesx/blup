@@ -7,7 +7,7 @@
  import Play from "@lucide/svelte/icons/play";
  import Pencil from "@lucide/svelte/icons/pencil";
  import Trash2 from "@lucide/svelte/icons/trash-2";
- import {t} from "#lib/i18n.svelte.ts";
+ import {t,intlLocale} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import {confirm} from "#lib/confirm.svelte.ts";
  import {toast} from "#lib/toast.svelte.ts";
@@ -18,6 +18,7 @@
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import UptimeBars from "#lib/ui/UptimeBars.svelte";
  import {panel} from "../../lib/panel.svelte";
+ import UsageMeter from "../../lib/UsageMeter.svelte";
  import {stateOf,stateName,stateColor,since,bars,type Monitor} from "../../lib/monitor";
  // Each monitor is one row: its state as the color of its edge and address,
  // its name,
@@ -37,6 +38,8 @@
 <PageHeader title={t("pulseMonitors")} lead={t("pulseCheckLead")}>
  {#snippet aside()}{#if writable}<Button onclick={()=>goto(resolve("/monitors/new"))}><Plus class="size-4"/>{t("pulseAddMonitor")}</Button>{/if}{/snippet}
 </PageHeader>
+
+{#if panel.usage?.limits}<div class="mt-6 max-w-sm"><UsageMeter text={t("pulseMonitorsUsage",{used:monitors.length.toLocaleString(intlLocale()),limit:panel.usage.limits.monitors.toLocaleString(intlLocale())})} used={monitors.length} limit={panel.usage.limits.monitors}/></div>{/if}
 
 <div class="mt-8 grid gap-3">
  {#each monitors as monitor(monitor.id)}
