@@ -5,7 +5,7 @@ import {purgeProject} from "./cleanup";
 import {Hono} from "hono";
 import {HTTPException} from "hono/http-exception";
 import {pulseSession,pulseWrite,projectWrite,ownedProject,type PulseApp} from "./access";
-import {channelsApi,projectChannelsApi} from "./channels";
+import {channelsApi} from "./channels";
 import {telegramApi,telegramWebhookApi} from "./telegram";
 import {pagesApi} from "./pages";
 import {pulseDomainsApi} from "./domains";
@@ -109,5 +109,5 @@ export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi)
  .route("/pages",maintenanceApi)
  .route("/",sourcemapPanelApi)
  .route("/channels",channelsApi)
- .route("/telegram",telegramApi)
- .route("/projects",projectChannelsApi);
+ .route("/telegram",telegramApi);
+

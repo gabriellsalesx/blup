@@ -7,6 +7,7 @@ vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})
 import {pulseApi} from "./api";
 import {deliverDiscord,deliverTelegram} from "./transports";
 import {enqueueSignals,dispatchAlerts} from "./outbox";
+import {purgeProject} from "./cleanup";
 import {discordPayload,telegramPayload,slackPayload,webhookSignature,type AlertMessage} from "./alert-message";
 const note=(title:string):AlertMessage=>({event:"issue",label:"New issue",title,url:"https://pulse.getblup.io/issues",tone:"red",fields:[]});
 let db:TestD1;
@@ -43,7 +44,7 @@ it("links Telegram only through a signed update, expiring code and authenticated
  const expired=await(await request("/telegram/link","POST",{})).json() as {id:string};db.sqlite.exec("UPDATE pulse_telegram_link SET state='candidate',chat_id='12345',expires_at=0");expect((await request(`/telegram/link/${expired.id}/confirm`,"POST",{projectId:"1"})).status).toBe(409);
 });
 it("suppresses duplicates/cooldown and rechecks bindings and entitlement before delivery",async()=>{
- const created=await channel();await request("/projects/1/channels","PUT",{channelIds:[created.id]});
+ const created=await channel();
  const signal={id:"event-1",refId:"group",kind:"issue" as const,createdAt:Date.now()};await enqueueSignals(state.env,"1",[signal]);await enqueueSignals(state.env,"1",[signal,{...signal,id:"event-2"}]);expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_outbox").get()?.n).toBe(1);
  db.sqlite.exec("DELETE FROM pulse_project_channel");await dispatchAlerts(state.env);expect(fetch).not.toHaveBeenCalled();expect(db.sqlite.prepare("SELECT state FROM pulse_outbox").get()?.state).toBe("discarded");
  await request(`/channels/${created.id}/test`,"POST",{});db.sqlite.exec("UPDATE subscription SET status='canceled' WHERE reference_id='alice'");await dispatchAlerts(state.env);expect(fetch).not.toHaveBeenCalled();
@@ -62,7 +63,7 @@ it("persists retries without exceeding five attempts or leaking provider content
 it("sends a monitor test alert to the project's destinations with the monitor name",async()=>{
  db.sqlite.exec("INSERT INTO pulse_monitor(id,user_id,project_id,name,url,interval_minutes,next_at,created_at) VALUES('m1','alice','1','Checkout API','https://example.com',5,0,0),('m2','bob','2','Other','https://example.com',5,0,0)");
  expect((await request("/monitors/m1/test","POST",{})).status).toBe(409);
- const created=await channel();await request("/projects/1/channels","PUT",{channelIds:[created.id]});
+ await channel();
  expect((await request("/monitors/m2/test","POST",{})).status).toBe(404);expect((await request("/monitors/m1/test","POST",{extra:1})).status).toBe(400);
  expect((await request("/monitors/m1/test","POST",{})).status).toBe(202);expect((await request("/monitors/m1/test","POST",{})).status).toBe(429);
  const send=vi.fn(async(_input:RequestInfo|URL,_init?:RequestInit)=>new Response(null,{status:204}));vi.stubGlobal("fetch",send);await dispatchAlerts(state.env);
@@ -135,4 +136,18 @@ it("changes a destination's address and a webhook's secret, never showing the ol
  const kept=JSON.parse(await openTarget(state.env,"alice",id,"webhook",(db.sqlite.prepare("SELECT target FROM pulse_channel WHERE id=?").get(id) as {target:string}).target)) as {url:string;secret:string};expect(kept).toEqual({url:"https://hooks.example.com/other",secret});
  const rotated=await(await request(`/channels/${id}/secret`,"POST",{})).json() as {secret:string};expect(rotated.secret).toMatch(/^[a-f0-9]{64}$/);expect(rotated.secret).not.toBe(secret);
  expect(JSON.parse(await openTarget(state.env,"alice",id,"webhook",(db.sqlite.prepare("SELECT target FROM pulse_channel WHERE id=?").get(id) as {target:string}).target))).toEqual({url:"https://hooks.example.com/other",secret:rotated.secret});
+});
+it("keeps every destination in a project: a replaced one and a removed project's leave",async()=>{
+ db.sqlite.exec("INSERT INTO pulse_project(id,user_id,name,platform,object_name,created_at) VALUES('3','alice','Site','go','three',0),('4','alice','Api','go','four',0)");
+ const first=await channel();await request(`/channels/${first.id}/test`,"POST",{});
+ for(const project of ["3","4"])expect((await request("/channels","POST",{projectId:project,type:"discord",webhook:WEBHOOK})).status).toBe(201);
+ // At the plan's three Discord destinations, replacing one still fits.
+ const replaced=await request("/channels","POST",{projectId:"1",type:"discord",webhook:WEBHOOK});expect(replaced.status).toBe(201);const second=await replaced.json() as {id:string};
+ const ids=()=>(db.sqlite.prepare("SELECT id FROM pulse_channel ORDER BY id").all() as {id:string}[]).map(r=>r.id);
+ expect(ids()).not.toContain(first.id);expect(ids()).toContain(second.id);expect(ids()).toHaveLength(3);
+ expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_outbox WHERE channel_id=?").get(first.id)?.n).toBe(0);
+ expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_channel c WHERE NOT EXISTS(SELECT 1 FROM pulse_project_channel pc WHERE pc.channel_id=c.id)").get()?.n).toBe(0);
+ expect((await request("/projects/1/channels","PUT",{channelIds:[second.id]})).status).toBe(404);
+ state.env.PULSE_PROJECT={getByName:()=>({purge:async()=>{}})} as unknown as Cloudflare.Env["PULSE_PROJECT"];Object.assign(state.env,{PULSE_SOURCEMAPS:{list:async()=>({objects:[],truncated:false}),delete:async()=>{}}});
+ await purgeProject(state.env,"1","one");expect(ids()).not.toContain(second.id);expect(ids()).toHaveLength(2);
 });

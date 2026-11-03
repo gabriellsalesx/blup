@@ -10,7 +10,10 @@ export async function purgeProject(env:Cloudflare.Env,id:string,objectName:strin
  await env.DB.batch([
   env.DB.prepare("DELETE FROM pulse_component WHERE monitor_id IN(SELECT id FROM pulse_monitor WHERE project_id=?)").bind(id),
   env.DB.prepare("DELETE FROM pulse_monitor WHERE project_id=?").bind(id),
-  env.DB.prepare("DELETE FROM pulse_outbox WHERE project_id=?").bind(id),
+  env.DB.prepare("DELETE FROM pulse_outbox WHERE project_id=? OR channel_id IN(SELECT channel_id FROM pulse_project_channel WHERE project_id=?)").bind(id,id),
+  // The project's destinations leave with it (each belongs to one project).
+  env.DB.prepare("DELETE FROM pulse_cooldown WHERE substr(key,1,instr(key,':')-1) IN(SELECT channel_id FROM pulse_project_channel WHERE project_id=?)").bind(id),
+  env.DB.prepare("DELETE FROM pulse_channel WHERE id IN(SELECT channel_id FROM pulse_project_channel WHERE project_id=?)").bind(id),
   env.DB.prepare("DELETE FROM pulse_project_channel WHERE project_id=?").bind(id),
   env.DB.prepare("DELETE FROM pulse_key WHERE project_id=?").bind(id),
   env.DB.prepare("DELETE FROM pulse_upload_token WHERE project_id=?").bind(id),

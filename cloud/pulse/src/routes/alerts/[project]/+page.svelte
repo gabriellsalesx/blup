@@ -13,7 +13,6 @@
  import Check from "@lucide/svelte/icons/check";
  import Clock from "@lucide/svelte/icons/clock";
  import Settings from "@lucide/svelte/icons/settings";
- import Unlink from "@lucide/svelte/icons/unlink";
  import Trash2 from "@lucide/svelte/icons/trash-2";
  import {t} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
@@ -34,7 +33,7 @@
  // they take, and once sent a countdown to the round that sends them and
  // to when it can be tested again. Nothing is picked to start with, so
  // the send button waits for a choice. The three dots configure the
- // destination (its address), take it off the project or delete it.
+ // destination (its address) or delete it.
  let {data}:PageProps=$props();
  const project=$derived(data.project);
  const writable=$derived(panel.usage?.readOnly===false&&!!project?.writable);
@@ -71,12 +70,9 @@
   const at=Date.now(),result=await parseResponse(pulseApi.channels[":channel"].test.$post({param:{channel:channel.id},json:{projectId:current.id,kinds:testOptions.map(o=>o.value).filter(k=>kinds.includes(k))}}));
   tests[channel.id]={at,sendsAt:result.sendsAt,againAt:result.testAgainAt};toast(()=>t("pulseTestQueued"));
  });}
- // The project's destinations become `ids` (at most one of each kind).
- async function bindings(ids:string[]){const current=project;if(!current)return;await run(async()=>{await parseResponse(pulseApi.projects[":project"].channels.$put({param:{project:current.id},json:{channelIds:ids}}));await invalidateAll();toast(()=>t("pulseToastSaved"));});}
- async function unbind(channel:Channel){if(!await confirm({title:t("pulseUnbind"),message:t("pulseUnbindConfirm")}))return;await bindings(channels.filter(c=>c.id!==channel.id).map(c=>c.id));}
  async function remove(channel:Channel){if(!await confirm({title:t("delete"),message:t("pulseRemoveChannel"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.channels[":channel"].$delete({param:{channel:channel.id}}));await invalidateAll();toast(()=>t("pulseToastDeleted"));});}
  const settingsHref=(channel:Channel)=>resolve("/alerts/[project]/[channel]/settings",{project:project?.id??"",channel:channel.id});
- const menu=(channel:Channel)=>[...(writable?[{label:t("pulseConfigure"),Icon:Settings,onselect:()=>void goto(settingsHref(channel))},{label:t("pulseUnbind"),Icon:Unlink,onselect:()=>void unbind(channel)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(channel)}];
+ const menu=(channel:Channel)=>[...(writable?[{label:t("pulseConfigure"),Icon:Settings,onselect:()=>void goto(settingsHref(channel))}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(channel)}];
  const addHref=$derived(project?`${resolve("/alerts/new")}?${new URLSearchParams({project:project.id})}`:resolve("/alerts/new"));
 </script>
 

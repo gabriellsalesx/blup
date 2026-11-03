@@ -5,7 +5,7 @@ import {pulseWrite,type PulseApp} from "./access";
 import {publicKey,sha256} from "./limits";
 import {sameSecret,sealTarget,chatIdSchema} from "./channel-crypto";
 import {cleanText} from "./event";
-import {projectChoice,usableProject,bindToProject} from "./channels";
+import {projectChoice,usableProject,bindToProject,typeRoom,dropUnbound} from "./channels";
 const params=z.object({link:opaqueId});
 const botReady=(env:Cloudflare.Env)=>!!env.PULSE_TELEGRAM_TOKEN&&!!env.PULSE_TELEGRAM_WEBHOOK_SECRET&&!!env.PULSE_CHANNEL_KEY;
 export const telegramApi=new Hono<PulseApp>()
@@ -24,9 +24,10 @@ export const telegramApi=new Hono<PulseApp>()
   if(link.expiresAt<=now||link.state!=="candidate"||!chatIdSchema.safeParse(link.chatId).success||!link.chatId)return c.json({code:"LINK_EXPIRED"},409);
   const channel=id;let target:string;try{target=await sealTarget(c.env,owner,channel,"telegram",link.chatId);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
   const result=await c.env.DB.batch([
-   c.env.DB.prepare("INSERT OR IGNORE INTO pulse_channel(id,user_id,type,target,label,created_at) SELECT ?,?,'telegram',?,?,? WHERE EXISTS(SELECT 1 FROM pulse_telegram_link WHERE id=? AND user_id=? AND state='candidate' AND expires_at>?) AND (SELECT count(*) FROM pulse_channel WHERE user_id=? AND type='telegram')<? RETURNING id").bind(channel,owner,target,link.label??"Telegram",now,id,owner,now,owner,c.get("access").limits?.projects??0),
+   c.env.DB.prepare(`INSERT OR IGNORE INTO pulse_channel(id,user_id,type,target,label,created_at) SELECT ?,?,'telegram',?,?,? WHERE EXISTS(SELECT 1 FROM pulse_telegram_link WHERE id=? AND user_id=? AND state='candidate' AND expires_at>?) AND ${typeRoom} RETURNING id`).bind(channel,owner,target,link.label??"Telegram",now,id,owner,now,owner,"telegram",project,"telegram",c.get("access").limits?.projects??0),
    c.env.DB.prepare("UPDATE pulse_telegram_link SET state='confirmed',channel_id=? WHERE id=? AND user_id=? AND EXISTS(SELECT 1 FROM pulse_channel WHERE id=? AND user_id=?)").bind(channel,id,owner,channel,owner),
    bindToProject(c.env.DB,owner,project,channel,"telegram"),
+   ...dropUnbound(c.env.DB,owner),
   ]);if(result[0].results.length)return c.json({id:channel},201);
   const existing=await c.env.DB.prepare("SELECT id FROM pulse_channel WHERE id=? AND user_id=?").bind(channel,owner).first();return existing?c.json({id:channel},200):c.json({code:"QUOTA"},409);
  });

@@ -5,9 +5,10 @@ import {discordWebhook,slackWebhook,customWebhook,sealTarget,openTarget,webhookT
 import {pulseWrite,ownedProject,type PulseApp} from "./access";
 import {projectId} from "./limits";
 const channelParam=z.object({channel:opaqueId});
-// A new destination is made for one project: it becomes that project's
-// destination of its type, in the same batch that creates it, taking the
-// place of the one it had.
+// Every destination belongs to one project. A new one is made for a project
+// and becomes its destination of that type, in the same batch that creates
+// it; the one it replaces is deleted with its queue, so no destination is
+// ever left without a project.
 export const projectChoice=z.object({projectId}).strict();
 // The alerts a destination can be tested with: a plain test, or an example
 // of each kind it sends for a project (marked as a test).
@@ -25,6 +26,16 @@ const ownChannel=(db:D1Database,id:string,owner:string)=>db.prepare("SELECT type
 // and free to send at once.
 const resave=(db:D1Database,id:string,owner:string,target:string,label:string)=>db.prepare("UPDATE pulse_channel SET target=?,label=?,active=1,last_error=NULL,next_at=0 WHERE id=? AND user_id=?").bind(target,label,id,owner).run();
 export async function usableProject(env:Cloudflare.Env,owner:string,id:string){const project=await ownedProject(env,owner,id);return project&&project.active&&!project.planDisabled?project:null;}
+// A project's quota counts the destinations of a type, without the one
+// being replaced: SQL for the check, with the binds that follow it.
+export const typeRoom="(SELECT count(*) FROM pulse_channel WHERE user_id=? AND type=? AND id NOT IN(SELECT channel_id FROM pulse_project_channel WHERE project_id=? AND type=?))<?";
+// Deletes the owner's destinations no project sends to (the ones just
+// replaced), with their queue and cooldowns.
+export const dropUnbound=(db:D1Database,owner:string)=>{const unbound="SELECT id FROM pulse_channel WHERE user_id=? AND id NOT IN(SELECT channel_id FROM pulse_project_channel)";return [
+ db.prepare(`DELETE FROM pulse_outbox WHERE channel_id IN(${unbound})`).bind(owner),
+ db.prepare(`DELETE FROM pulse_cooldown WHERE substr(key,1,instr(key,':')-1) IN(${unbound})`).bind(owner),
+ db.prepare(`DELETE FROM pulse_channel WHERE id IN(${unbound})`).bind(owner),
+];};
 export const bindToProject=(db:D1Database,owner:string,project:string,channel:string,type:z.infer<typeof channelType>)=>db.prepare("INSERT INTO pulse_project_channel(project_id,channel_id,type) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM pulse_channel WHERE id=? AND user_id=? AND type=?) ON CONFLICT(project_id,type) DO UPDATE SET channel_id=excluded.channel_id").bind(project,channel,type,channel,owner,type);
 export const channelsApi=new Hono<PulseApp>()
  .get("/",async c=>{
@@ -40,7 +51,7 @@ export const channelsApi=new Hono<PulseApp>()
   const secret=input.type==="webhook"?newSecret():null;
   const destination=input.type==="webhook"?{target:JSON.stringify({url:input.url.url,secret}),label:input.url.label}:{target:input.webhook.url,label:input.webhook.label};
   let target:string;try{target=await sealTarget(c.env,owner,id,input.type,destination.target);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
-  const [made]=await c.env.DB.batch([c.env.DB.prepare("INSERT INTO pulse_channel(id,user_id,type,target,label,created_at) SELECT ?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_channel WHERE user_id=? AND type=?)<? RETURNING id").bind(id,owner,input.type,target,destination.label,Date.now(),owner,input.type,c.get("access").limits?.projects??0),bindToProject(c.env.DB,owner,input.projectId,id,input.type)]);
+  const [made]=await c.env.DB.batch([c.env.DB.prepare(`INSERT INTO pulse_channel(id,user_id,type,target,label,created_at) SELECT ?,?,?,?,?,? WHERE ${typeRoom} RETURNING id`).bind(id,owner,input.type,target,destination.label,Date.now(),owner,input.type,input.projectId,input.type,c.get("access").limits?.projects??0),bindToProject(c.env.DB,owner,input.projectId,id,input.type),...dropUnbound(c.env.DB,owner)]);
   return made.results.length?c.json({id,label:destination.label,secret},201):c.json({code:"QUOTA"},409);
  })
  // A new address for a Discord, Slack or webhook destination (a webhook
@@ -77,12 +88,4 @@ export const channelsApi=new Hono<PulseApp>()
   const claim=await c.env.DB.prepare("UPDATE pulse_channel SET test_at=? WHERE id=? AND user_id=? AND test_at<=? RETURNING id").bind(now,id,owner,now-TEST_SPACING_MS).first();if(!claim){c.header("Retry-After","60");return c.json({code:"TOO_MANY_REQUESTS"},429);}
   await c.env.DB.batch(kinds.map(kind=>{const event=crypto.randomUUID();return c.env.DB.prepare("INSERT INTO pulse_outbox(id,user_id,project_id,channel_id,ref_id,kind,created_at,expires_at,next_at) VALUES(?,?,?,?,?,?,?,?,?)").bind(event,owner,kind==="test"?null:project,id,event,kind==="test"?"test":`sample_${kind}`,now,now+86_400_000,now);}));
   return c.json({queued:kinds.length,sendsAt:nextRound(now),testAgainAt:now+TEST_SPACING_MS},202);
- });
-export const projectChannelsApi=new Hono<PulseApp>()
- .put("/:project/channels",pulseWrite,validate("param",z.object({project:projectId})),validate("json",z.object({channelIds:z.array(opaqueId).max(4).refine(v=>new Set(v).size===v.length)}).strict()),async c=>{
-  const owner=c.get("session").user.id,project=c.req.valid("param").project;if(!await ownedProject(c.env,owner,project))return c.json({code:"NOT_FOUND"},404);
-  const selected:{id:string;type:string}[]=[];
-  for(const id of c.req.valid("json").channelIds){const row=await c.env.DB.prepare("SELECT id,type FROM pulse_channel WHERE id=? AND user_id=? AND active=1").bind(id,owner).first<{id:string;type:string}>();if(!row)return c.json({code:"NOT_FOUND"},404);selected.push(row);}
-  if(new Set(selected.map(r=>r.type)).size!==selected.length)return c.json({code:"INVALID"},400);
-  await c.env.DB.batch([c.env.DB.prepare("DELETE FROM pulse_project_channel WHERE project_id=?").bind(project),...selected.map(row=>c.env.DB.prepare("INSERT INTO pulse_project_channel VALUES(?,?,?)").bind(project,row.id,row.type))]);return c.json({ok:true});
  });

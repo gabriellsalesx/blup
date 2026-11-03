@@ -20,8 +20,6 @@ export function projectChannels(all:Channels,project:string):Channel[]{
  const ids=new Set(all.bindings.filter(b=>b.projectId===project).map(b=>b.channelId));
  return all.channels.filter(c=>ids.has(c.id)).sort((a,b)=>channelKinds.indexOf(a.type)-channelKinds.indexOf(b.type));
 }
-// Destinations no project sends to.
-export const unboundChannels=(all:Channels)=>all.channels.filter(c=>!all.bindings.some(b=>b.channelId===c.id));
 
 // The dispatcher sends at each minute: a test made at `at` leaves at the
 // next one.
