@@ -12,24 +12,26 @@
  import {pulseApi,parseResponse} from "./api";
  import type {Monitor} from "./status-pages";
  // A status page's title and address, the monitors it shows (each with
- // the name visitors see), then its header: the title shown or not, its
+ // the name visitors see and, if wanted, what it is: a help icon on the
+ // public page), then its header: the title shown or not, its
  // logos (once the page exists: each is sent as it is picked) and up to
  // five links. While the page is new the address follows the title until
  // it is typed, and is checked as it changes; once the page exists it is
  // fixed.
  type Link={label:string;url:string};
- type Values={title:string;slug:string;components:{monitorId:string;name:string}[];showTitle:boolean;links:Link[]};
+ type Component={monitorId:string;name:string;description:string};
+ type Values={title:string;slug:string;components:Component[];showTitle:boolean;links:Link[]};
  type Logos={page:string;light:string|null;dark:string|null};
  let {monitors,initial,logos,editing=false,busy=false,onsave,oncancel}:{monitors:Monitor[];initial?:Values;logos?:Logos;editing?:boolean;busy?:boolean;onsave:(values:Values)=>void;oncancel:()=>void}=$props();
  // The fields start from `initial` and are the form's own from then on;
  // a different page remounts the form ({#key} in the page).
  const start=untrack(()=>initial);
  let showTitle=$state(start?.showTitle??true),links=$state<Link[]>(start?.links.map(l=>({...l}))??[]);
- let title=$state(start?.title??""),slug=$state(start?.slug??""),chosen=$state<Record<string,string>>(Object.fromEntries((start?.components??[]).map(c=>[c.monitorId,c.name])));
+ let title=$state(start?.title??""),slug=$state(start?.slug??""),chosen=$state<Record<string,{name:string;description:string}>>(Object.fromEntries((start?.components??[]).map(c=>[c.monitorId,{name:c.name,description:c.description}])));
  let slugState=$state<SlugState>("idle"),slugTyped=$state(false);
  // A link needs a name and a full https address.
  const linkOk=(l:Link)=>{if(!l.label.trim())return false;try{const u=new URL(l.url.trim());return u.protocol==="https:"&&u.hostname.includes(".")&&!u.username&&!u.password;}catch{return false;}};
- const valid=$derived(Object.values(chosen).every(v=>v.trim().length>0)&&links.every(linkOk)&&(editing||slugState==="available"));
+ const valid=$derived(Object.values(chosen).every(v=>v.name.trim().length>0)&&links.every(linkOk)&&(editing||slugState==="available"));
  const slugify=(text:string)=>text.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40).replace(/-+$/,"");
  let timer:ReturnType<typeof setTimeout>|undefined,asked=0;
  // Asks the server a moment after typing stops; only the latest answer counts.
@@ -42,8 +44,8 @@
  }
  function titled(){if(!editing&&!slugTyped){slug=slugify(title);check();}}
  function typed(){slugTyped=slug.length>0;check();}
- function toggle(id:string,on:boolean){if(on)chosen[id]="";else delete chosen[id];}
- function submit(e:SubmitEvent){e.preventDefault();onsave({title,slug,components:Object.entries(chosen).map(([monitorId,name])=>({monitorId,name:name.trim()})),showTitle,links:links.map(l=>({label:l.label.trim(),url:l.url.trim()}))});}
+ function toggle(id:string,on:boolean){if(on)chosen[id]={name:"",description:""};else delete chosen[id];}
+ function submit(e:SubmitEvent){e.preventDefault();onsave({title,slug,components:Object.entries(chosen).map(([monitorId,c])=>({monitorId,name:c.name.trim(),description:c.description.trim()})),showTitle,links:links.map(l=>({label:l.label.trim(),url:l.url.trim()}))});}
 </script>
 
 <form class="grid grid-cols-[minmax(0,1fr)] gap-10" onsubmit={submit}>
@@ -51,7 +53,19 @@
   <div class="grid grid-cols-[minmax(0,1fr)] gap-6"><FloatField id="page-title" surface="bg-white dark:bg-neutral-900" label={t("pulsePageTitle")} required maxlength={100} bind:value={title} oninput={titled}/><SlugField bind:value={slug} state={slugState} fixed={editing} oninput={typed}/></div>
  </FormSection>
  <FormSection title={t("pulseComponents")} help={t("pulseComponentsHelp")}>
-  <div class="-my-1 grid grid-cols-[minmax(0,1fr)]">{#each monitors as monitor(monitor.id)}<div class="grid gap-3 border-b border-neutral-200 py-3 last:border-b-0 sm:grid-cols-[1fr_minmax(0,16rem)] sm:items-center dark:border-neutral-800"><Switch tone="mint" label={monitor.name} checked={Object.hasOwn(chosen,monitor.id)} onchange={on=>toggle(monitor.id,on)}/>{#if Object.hasOwn(chosen,monitor.id)}<FloatField id={`public-${monitor.id}`} surface="bg-white dark:bg-neutral-900" label={t("pulsePublicName")} maxlength={80} required bind:value={chosen[monitor.id]}/>{/if}</div>{:else}<p class="py-4 text-center text-sm text-neutral-500">{t("pulseNoMonitors")}</p>{/each}</div>
+  <div class="-my-1 grid grid-cols-[minmax(0,1fr)]">
+   {#each monitors as monitor(monitor.id)}
+    <div class="border-b border-neutral-200 py-4 last:border-b-0 dark:border-neutral-800">
+     <Switch tone="mint" label={monitor.name} checked={Object.hasOwn(chosen,monitor.id)} onchange={on=>toggle(monitor.id,on)}/>
+     {#if chosen[monitor.id]}
+      <div class="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 sm:pl-14">
+       <FloatField id={`public-${monitor.id}`} surface="bg-white dark:bg-neutral-900" label={t("pulsePublicName")} maxlength={80} required bind:value={chosen[monitor.id].name}/>
+       <div><FloatField id={`explain-${monitor.id}`} surface="bg-white dark:bg-neutral-900" label={t("pulseExplanation")} maxlength={200} bind:value={chosen[monitor.id].description}/><p class="mt-2 px-3 text-sm text-neutral-500">{t("pulseExplanationHelp")}</p></div>
+      </div>
+     {/if}
+    </div>
+   {:else}<p class="py-4 text-center text-sm text-neutral-500">{t("pulseNoMonitors")}</p>{/each}
+  </div>
  </FormSection>
  <FormSection title={t("pulsePageHeader")} help={t("pulsePageHeaderHelp")}>
   <div class="grid grid-cols-[minmax(0,1fr)] gap-6">

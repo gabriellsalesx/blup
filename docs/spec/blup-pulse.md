@@ -819,3 +819,11 @@ Passar o mouse numa barra de dia abre um pequeno card, sem script:
 - **Embaixo:** a data, depois de uma linha.
 
 As dicas das barras das pontas se alinham à borda, para não sair do card; no celular, isso vale para as pontas dos 30 dias que aparecem. Cada barra recebe foco (`tabindex`), então no celular a dica abre com um toque e fecha com um toque fora; pelo teclado, abre com Tab.
+
+## Explicação dos serviços
+
+Cada serviço de uma página de status pode ter uma explicação opcional: o que ele é, como "a API", "o site" ou "a CDN".
+- **Onde se preenche:** nos Componentes públicos, abaixo do Nome público.
+- **Regras:** até 200 caracteres, numa linha só. A coluna é `pulse_component.description` (migração `0027`, vazia por padrão), e as páginas a aceitam em `components[].description` ao criar e editar.
+- **Na página pública:** quando preenchida, aparece um ícone de informação (Lucide `info`) ao lado do nome do serviço. Ele abre um card com o texto ao passar o mouse, pelo teclado e, no celular, com um toque.
+- **Posição do card:** fica preso à linha do serviço, alinhado à esquerda, para não sair da tela. O texto vai escapado, no card e no `aria-label`.

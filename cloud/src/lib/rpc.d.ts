@@ -3158,6 +3158,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 historyDays: number;
                 components: {
                     name: string;
+                    description: string;
                     state: "unknown" | "up" | "down";
                     lastCheckedAt: string | null;
                     incident: "downtime" | "degraded" | null;
@@ -3382,6 +3383,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 historyDays: number;
                 components: {
                     name: string;
+                    description: string;
                     state: "unknown" | "up" | "down";
                     lastCheckedAt: string | null;
                     incident: "downtime" | "degraded" | null;
@@ -5520,6 +5522,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components: {
                         monitorId: string;
                         name: string;
+                        description: string;
                     }[];
                     id: string;
                     title: string;
@@ -5607,6 +5610,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[];
                     language: "pt" | "en" | "es";
                     showTitle?: boolean | undefined;
@@ -5633,6 +5637,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[];
                     language: "pt" | "en" | "es";
                     showTitle?: boolean | undefined;
@@ -5656,6 +5661,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[];
                     language: "pt" | "en" | "es";
                     showTitle?: boolean | undefined;
@@ -5678,6 +5684,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[];
                     language: "pt" | "en" | "es";
                     showTitle?: boolean | undefined;
@@ -5701,6 +5708,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[];
                     language: "pt" | "en" | "es";
                     showTitle?: boolean | undefined;
@@ -5735,6 +5743,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components?: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[] | undefined;
                     published?: boolean | undefined;
                     language?: "pt" | "en" | "es" | undefined;
@@ -5765,6 +5774,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components?: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[] | undefined;
                     published?: boolean | undefined;
                     language?: "pt" | "en" | "es" | undefined;
@@ -5792,6 +5802,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components?: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[] | undefined;
                     published?: boolean | undefined;
                     language?: "pt" | "en" | "es" | undefined;
@@ -5822,6 +5833,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components?: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[] | undefined;
                     published?: boolean | undefined;
                     language?: "pt" | "en" | "es" | undefined;
@@ -5849,6 +5861,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components?: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[] | undefined;
                     published?: boolean | undefined;
                     language?: "pt" | "en" | "es" | undefined;
@@ -5875,6 +5888,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components?: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[] | undefined;
                     published?: boolean | undefined;
                     language?: "pt" | "en" | "es" | undefined;
@@ -5901,6 +5915,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     components?: {
                         monitorId: string;
                         name: string;
+                        description?: string | undefined;
                     }[] | undefined;
                     published?: boolean | undefined;
                     language?: "pt" | "en" | "es" | undefined;

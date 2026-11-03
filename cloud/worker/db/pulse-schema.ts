@@ -38,6 +38,8 @@ export const pulsePage=sqliteTable("pulse_page",{
 },t=>[index("pulse_page_owner_idx").on(t.userId,t.id),index("pulse_page_retire_idx").on(t.retireAt)]);
 export const pulseComponent=sqliteTable("pulse_component",{
  pageId:text("page_id").notNull(),monitorId:text("monitor_id").notNull(),name:text("name").notNull(),position:integer("position").notNull(),
+ // What the service is, shown by a help icon on the public page ('' none).
+ description:text("description").notNull().default(""),
 },t=>[primaryKey({columns:[t.pageId,t.monitorId]})]);
 export const pulseIncident=sqliteTable("pulse_incident",{
  id:text("id").primaryKey(),pageId:text("page_id").notNull(),title:text("title").notNull(),state:text("state").notNull(),impact:text("impact").notNull(),createdAt:integer("created_at").notNull(),updatedAt:integer("updated_at").notNull(),expiresAt:integer("expires_at").notNull().default(0),

@@ -195,7 +195,8 @@ function webp(width:number,height:number,extra=16){
 }
 it("shows the page's logo, links and title choice, and a badge and favicon with its state",async()=>{
  const monitor=await(await request("/monitors","POST",{projectId:"1",name:"Api",url:"https://example.com/",intervalMinutes:5})).json() as {id:string};
- const {id}=await(await request("/pages","POST",{title:"Acme",slug:"acme-status",language:"en",components:[{monitorId:monitor.id,name:"Api"}]})).json() as {id:string};
+ expect((await request("/pages","POST",{title:"Acme",slug:"acme-bad",language:"en",components:[{monitorId:monitor.id,name:"Api",description:"line\nbreak"}]})).status).toBe(400);
+ const {id}=await(await request("/pages","POST",{title:"Acme",slug:"acme-status",language:"en",components:[{monitorId:monitor.id,name:"Api",description:"Our <b>REST</b> API"}]})).json() as {id:string};
  expect((await request(`/pages/${id}`,"PATCH",{links:[{label:"Site",url:"http://acme.example/"}]})).status).toBe(400);
  expect((await request(`/pages/${id}`,"PATCH",{links:Array.from({length:6},(_,i)=>({label:`L${i}`,url:"https://acme.example/"}))})).status).toBe(400);
  expect((await request(`/pages/${id}`,"PATCH",{published:true,showTitle:false,links:[{label:"Site <b>",url:"https://acme.example/"}]})).status).toBe(200);
@@ -206,8 +207,11 @@ it("shows the page's logo, links and title choice, and a badge and favicon with 
  expect((await upload(webp(120,40),"bob")).status).toBe(404);
  const sent=await upload(webp(120,40));expect(sent.status).toBe(201);const {version}=await sent.json() as {version:string};expect(version).toMatch(/^[a-f0-9]{16}$/);
  const listed=await(await request("/pages")).json() as {pages:{showTitle:boolean;links:unknown[];logos:{light:string|null;dark:string|null}}[]};
+ expect((listed.pages[0] as unknown as {components:{description:string}[]}).components[0].description).toBe("Our <b>REST</b> API");
  expect(listed.pages[0]).toMatchObject({showTitle:false,links:[{label:"Site <b>",url:"https://acme.example/"}],logos:{light:null,dark:version}});
  const served=await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/"),state.env),html=await served?.text()??"";
+ // A service's explanation is a help icon with its text in a card.
+ expect(html).toContain('<span class="help" tabindex="0" role="button" aria-label="Our &lt;b&gt;REST&lt;/b&gt; API">');expect(html).not.toContain("<b>REST</b>");
  expect(html).toContain(`src="logo-dark?v=${version}"`);expect(html).toContain('alt="Acme"');expect(html).not.toContain("<span>Acme</span>");expect(html).toContain(`class="site-header"`);expect(html).toContain(`popovertarget="mobile-menu"`);
  expect(html).toContain('<a href="https://acme.example/" rel="noopener nofollow">Site &lt;b&gt;</a>');expect(html).toContain('rel="icon" type="image/svg+xml" href="data:image/svg+xml,');
  const csp=served?.headers.get("content-security-policy")??"";expect(csp).toContain("img-src 'self' data:");

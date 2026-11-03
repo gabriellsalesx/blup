@@ -12,7 +12,7 @@
  // A new status page; once made it opens, to add a domain or incidents.
  let {data}:PageProps=$props();
  let busy=$state(false);
- async function save(values:{title:string;slug:string;components:{monitorId:string;name:string}[];showTitle:boolean;links:{label:string;url:string}[]}){busy=true;try{const made=await parseResponse(pulseApi.pages.$post({json:{...values,language:language()}}));toast(()=>t("pulseToastPage"));await goto(resolve("/status-pages/[id]",{id:made.id}));}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
+ async function save(values:{title:string;slug:string;components:{monitorId:string;name:string;description:string}[];showTitle:boolean;links:{label:string;url:string}[]}){busy=true;try{const made=await parseResponse(pulseApi.pages.$post({json:{...values,language:language()}}));toast(()=>t("pulseToastPage"));await goto(resolve("/status-pages/[id]",{id:made.id}));}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
 </script>
 
 <div class="mb-4"><BackLink href={resolve("/status-pages")} label={t("pulsePages")}/></div>

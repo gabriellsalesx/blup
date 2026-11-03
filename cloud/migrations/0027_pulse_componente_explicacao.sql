@@ -1,0 +1,1 @@
+ALTER TABLE `pulse_component` ADD `description` text DEFAULT '' NOT NULL;

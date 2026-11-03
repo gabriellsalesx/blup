@@ -6,7 +6,7 @@ import type {Language,TranslationArgs} from "../../shared/language";
 // public DTO, so private names, URLs and DSNs never reach it.
 
 export type PublicDay={date:string;up:number;down:number;unknown:number;maintenance:number};
-export type PublicComponent={name:string;state:"up"|"down"|"unknown";incident:"downtime"|"degraded"|null;maintenance:boolean;lastCheckedAt:string|null;days:PublicDay[]};
+export type PublicComponent={name:string;description:string;state:"up"|"down"|"unknown";incident:"downtime"|"degraded"|null;maintenance:boolean;lastCheckedAt:string|null;days:PublicDay[]};
 export type PublicMaintenance={title:string;body:string;state:"scheduled"|"active";startsAt:string;endsAt:string;services:string[]};
 export type PublicUpdate={body:string;state:string;createdAt:string};
 export type PublicService={name:string;status:"downtime"|"degraded"|"resolved"};
@@ -86,6 +86,7 @@ h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spaci
 .bars i{position:relative}
 .tip{display:none;position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);z-index:20;width:max-content;min-width:190px;max-width:260px;padding:12px 14px 10px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);box-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1);font:500 14px/1.4 Inter,ui-sans-serif,system-ui,sans-serif;text-align:left;white-space:normal;pointer-events:none}
 .bars i{cursor:pointer;outline:none}.bars i:hover .tip,.bars i:focus .tip{display:block}.bars i:focus-visible{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--muted)}.bars i:nth-child(-n+6) .tip{left:0;transform:none}.bars i:nth-last-child(-n+6) .tip{left:auto;right:0;transform:none}
+.line{position:relative}.help{position:static;display:inline-grid;place-items:center;flex:none;color:var(--muted);cursor:pointer;outline:none;border-radius:999px}.help:hover,.help:focus{color:var(--text)}.help:focus-visible{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--muted)}.help .tip{left:0;transform:none;font-weight:400;color:var(--text)}.help:hover .tip,.help:focus .tip{display:block}
 .tip-head{display:flex;align-items:center;gap:8px;font-weight:600;overflow-wrap:anywhere}.tip-head .dot{flex:none}.tip-none{display:inline-grid;color:var(--muted)}.tip-body{display:block;margin-top:6px;color:var(--muted);font-weight:400}.tip-date{display:block;margin-top:10px;padding-top:8px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;font-weight:400;text-align:center}
 .day{padding:18px 20px 4px}.day h3{margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line);font-size:15px;font-weight:600}.day>p{color:var(--muted);margin:0 0 14px}
 .incident{margin:0 0 16px}
@@ -162,6 +163,7 @@ const marks={
  done:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
  dashed:'<path d="M10.1 2.182a10 10 0 0 1 3.8 0"/><path d="M13.9 21.818a10 10 0 0 1-3.8 0"/><path d="M17.609 3.721a10 10 0 0 1 2.69 2.7"/><path d="M2.182 13.9a10 10 0 0 1 0-3.8"/><path d="M20.279 17.609a10 10 0 0 1-2.7 2.69"/><path d="M21.818 10.1a10 10 0 0 1 0 3.8"/><path d="M3.721 6.391a10 10 0 0 1 2.7-2.69"/><path d="M6.391 20.279a10 10 0 0 1-2.69-2.7"/>',
  back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+ info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
  left:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',
 } as const;
 const languageNames:Record<Language,string>={pt:"Português",en:"English",es:"Español"};
@@ -288,7 +290,7 @@ export function renderStatusPage(page:PublicStatus,now=Date.now(),language:Langu
   const tone=toneOf(c);
   const stateLabel=tone==="up"?t("pulseOperational"):tone==="down"?t("pulseDown"):tone==="partial"?t("pulseDegraded"):tone==="maint"?t("pulseInMaintenance"):t("pulseUnknown");
   const pct=total?t("pulseUptime",{value:number.format(up/total*100)}):t("pulseNoData");
-  return `<div class="row"><div class="line"><span class="name"><span class="dot ${tone==="unknown"?"b-unknown":tone}">${svg(tone,12,3)}</span>${escape(c.name)}</span><span class="state t-${tone}">${escape(stateLabel)}</span></div><div class="bars" role="img" aria-label="${escape(pct)}">${bars}</div><div class="scale"><span><span class="from-long">${escape(t("pulseDaysAgo",{days:range}))}</span><span class="from-short">${escape(t("pulseDaysAgo",{days:Math.min(range,30)}))}</span></span><span class="pct">${escape(pct)}</span><span>${escape(t("pulseToday"))}</span></div></div>`;
+  return `<div class="row"><div class="line"><span class="name"><span class="dot ${tone==="unknown"?"b-unknown":tone}">${svg(tone,12,3)}</span>${escape(c.name)}${c.description?`<span class="help" tabindex="0" role="button" aria-label="${escape(c.description)}">${lucide(marks.info,"",16)}<span class="tip" role="tooltip">${escape(c.description)}</span></span>`:""}</span><span class="state t-${tone}">${escape(stateLabel)}</span></div><div class="bars" role="img" aria-label="${escape(pct)}">${bars}</div><div class="scale"><span><span class="from-long">${escape(t("pulseDaysAgo",{days:range}))}</span><span class="from-short">${escape(t("pulseDaysAgo",{days:Math.min(range,30)}))}</span></span><span class="pct">${escape(pct)}</span><span>${escape(t("pulseToday"))}</span></div></div>`;
  };
 
  const {incidentCard}=incidentParts(lang,stamp);
