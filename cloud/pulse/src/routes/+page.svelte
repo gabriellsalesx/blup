@@ -8,6 +8,7 @@
  import {t,intlLocale} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import Button from "#lib/ui/Button.svelte";
+ import ActionMenu from "#lib/ui/ActionMenu.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import List from "#lib/ui/List.svelte";
  import ListItem from "#lib/ui/ListItem.svelte";
@@ -39,9 +40,9 @@
 
 <div class="mt-6"><List empty={t("pulseEmpty")}>
  {#each projects as project(project.id)}
-  <ListItem>
+  <ListItem href={`/problemas?projeto=${encodeURIComponent(project.id)}`} label={project.name}>
    <div class="flex items-center gap-3"><StatusDot state={project.active?"up":"unknown"}/><div class="min-w-0"><p class="truncate font-semibold">{project.name}</p><p class="text-sm text-neutral-500">{platformName(project.platform)} · {project.active?t("pulseActive"):t("pulsePaused")}</p></div></div>
-   {#snippet actions()}<Button small variant="secondary" onclick={()=>goto(`/problemas?projeto=${encodeURIComponent(project.id)}`)}><Bug class="size-4"/>{t("pulseSeeIssues")}</Button>{#if project.writable}<Button small variant="secondary" onclick={()=>rotate(project)}><RefreshCw class="size-4"/>{t("pulseRotate")}</Button>{/if}<Button small variant="secondary" onclick={()=>remove(project)}><Trash2 class="size-4"/>{t("delete")}</Button>{/snippet}
+   {#snippet menu()}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseSeeIssues"),Icon:Bug,onselect:()=>void goto(`/problemas?projeto=${encodeURIComponent(project.id)}`)},...(project.writable?[{label:t("pulseRotate"),Icon:RefreshCw,onselect:()=>void rotate(project)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(project)}]}/>{/snippet}
   </ListItem>
  {/each}
 </List></div>

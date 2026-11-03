@@ -11,6 +11,7 @@
  import {confirm} from "#lib/confirm.svelte.ts";
  import {toast} from "#lib/toast.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
+ import ActionMenu from "#lib/ui/ActionMenu.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import List from "#lib/ui/List.svelte";
  import ListItem from "#lib/ui/ListItem.svelte";
@@ -34,9 +35,9 @@
 
 <div class="mt-8"><List empty={t("pulseNoPages")}>
  {#each pages as page(page.id)}
-  <ListItem>
-   <p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{page.title}</span><Badge tone={page.published?"green":"neutral"}>{page.published?t("pulsePublished"):t("pulseDraft")}</Badge></p><a class="mt-0.5 inline-flex items-center gap-1 text-sm text-blup hover:underline" href={`https://pulse.getblup.site/${page.slug}/`} target="_blank" rel="noopener noreferrer">pulse.getblup.site/{page.slug}/<ExternalLink class="size-3.5"/></a>
-   {#snippet actions()}<Button small variant="secondary" onclick={()=>goto(`/paginas/${encodeURIComponent(page.id)}`)}><Pencil class="size-4"/>{t("pulseEdit")}</Button>{#if page.writable}<Button small variant="secondary" {busy} onclick={()=>publish(page)}>{#if page.published}<EyeOff class="size-4"/>{t("pulseUnpublish")}{:else}<Eye class="size-4"/>{t("pulsePublish")}{/if}</Button>{/if}<Button small variant="secondary" {busy} onclick={()=>remove(page)}><Trash2 class="size-4"/>{t("delete")}</Button>{/snippet}
+  <ListItem href={`/paginas/${encodeURIComponent(page.id)}`} label={page.title}>
+   <p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{page.title}</span><Badge tone={page.published?"green":"neutral"}>{page.published?t("pulsePublished"):t("pulseDraft")}</Badge></p><a class="relative z-10 mt-0.5 inline-flex items-center gap-1 text-sm text-blup hover:underline" href={`https://pulse.getblup.site/${page.slug}/`} target="_blank" rel="noopener noreferrer">pulse.getblup.site/{page.slug}/<ExternalLink class="size-3.5"/></a>
+   {#snippet menu()}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseEdit"),Icon:Pencil,onselect:()=>void goto(`/paginas/${encodeURIComponent(page.id)}`)},...(page.writable?[{label:page.published?t("pulseUnpublish"):t("pulsePublish"),Icon:page.published?EyeOff:Eye,onselect:()=>void publish(page)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(page)}]}/>{/snippet}
   </ListItem>
  {/each}
 </List></div>

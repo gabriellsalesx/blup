@@ -1,19 +1,32 @@
 <script lang="ts">
- import {goto} from "$app/navigation";
+ import {goto,refreshAll} from "$app/navigation";
  import Plus from "@lucide/svelte/icons/plus";
- import ChevronRight from "@lucide/svelte/icons/chevron-right";
+ import Pause from "@lucide/svelte/icons/pause";
+ import Play from "@lucide/svelte/icons/play";
+ import Pencil from "@lucide/svelte/icons/pencil";
+ import Trash2 from "@lucide/svelte/icons/trash-2";
  import {t} from "#lib/i18n.svelte.ts";
+ import {errorMessage} from "#lib/i18n/errors.ts";
+ import {confirm} from "#lib/confirm.svelte.ts";
+ import {toast} from "#lib/toast.svelte.ts";
+ import ActionMenu from "#lib/ui/ActionMenu.svelte";
+ import {openCard,cardLink} from "#lib/card.ts";
+ import {pulseApi,parseResponse} from "../../lib/api";
  import Button from "#lib/ui/Button.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import UptimeBars from "#lib/ui/UptimeBars.svelte";
  import {panel} from "../../lib/panel.svelte";
- import {stateOf,stateName,stateColor,since,bars} from "../../lib/monitor";
+ import {stateOf,stateName,stateColor,since,bars,type Monitor} from "../../lib/monitor";
  // Each monitor is one row: its state as a colored edge, name and address,
  // the last days as bars and how long it has been like this. A click opens
- // its own page with the details.
+ // its own page with the details; the three dots pause, edit or delete it.
  let {data}=$props();
  const monitors=$derived(data.monitors),histories=$derived(data.histories);
  const writable=$derived(panel.usage?.readOnly===false);
+ async function act(fn:()=>Promise<void>){try{await fn();await refreshAll();}catch(e){toast(errorMessage(e),{kind:"error"});}}
+ const toggle=(m:Monitor)=>act(async()=>{await parseResponse(pulseApi.monitors[":monitor"].$patch({param:{monitor:m.id},json:{active:!m.active}}));toast(()=>m.active?t("pulseToastPaused"):t("pulseToastResumed"));});
+ async function remove(m:Monitor){if(!await confirm({title:t("delete"),message:t("pulseRemoveMonitor"),danger:true}))return;await act(async()=>{await parseResponse(pulseApi.monitors[":monitor"].$delete({param:{monitor:m.id}}));toast(()=>t("pulseToastDeleted"));});}
+ const menu=(m:Monitor)=>[...(m.writable?[{label:m.active?t("pulsePause"):t("pulseResume"),Icon:m.active?Pause:Play,onselect:()=>void toggle(m)},{label:t("pulseEdit"),Icon:Pencil,onselect:()=>void goto(`/monitores/${encodeURIComponent(m.id)}/editar`)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(m)}];
  const edge={up:"border-l-emerald-500",down:"border-l-red-500",unknown:"border-l-neutral-300 dark:border-l-neutral-700",paused:"border-l-neutral-300 dark:border-l-neutral-700"};
 </script>
 
@@ -25,11 +38,14 @@
  {#each monitors as monitor(monitor.id)}
   {@const s=stateOf(monitor)}
   {@const changed=since(monitor,histories[monitor.id])}
-  <a class="grid items-center gap-x-6 gap-y-3 rounded-xl border border-l-4 border-neutral-200 bg-white px-5 py-4 transition-colors hover:bg-neutral-50 sm:grid-cols-[minmax(0,1fr)_minmax(0,22rem)_10rem] dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60 {edge[s]}" href={`/monitores/${encodeURIComponent(monitor.id)}`}>
+  {@const href=`/monitores/${encodeURIComponent(monitor.id)}`}
+  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+  <div onclick={(event)=>openCard(event,href)} onauxclick={(event)=>openCard(event,href)} class="relative grid cursor-pointer items-center gap-x-6 gap-y-3 rounded-xl border border-l-4 border-neutral-200 bg-white px-5 py-4 transition-colors hover:bg-neutral-50 sm:grid-cols-[minmax(0,1fr)_minmax(0,22rem)_12rem] dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60 {edge[s]}">
+   <a class={cardLink} {href} aria-label={monitor.name}></a>
    <span class="min-w-0"><span class="block truncate font-semibold">{monitor.name}</span><span class="block truncate text-sm text-neutral-500 underline">{monitor.url}</span></span>
    <span class="hidden sm:block"><UptimeBars days={bars(histories[monitor.id],30)} label={t("pulseHistory")}/></span>
    <span class="sm:hidden"><UptimeBars days={bars(histories[monitor.id],14)} label={t("pulseHistory")}/></span>
-   <span class="flex items-center justify-between gap-2 sm:justify-end sm:text-right"><span><span class="block text-sm font-semibold {stateColor[s]}">{stateName(s)}</span>{#if changed}<span class="block text-xs text-neutral-500">{changed}</span>{/if}</span><ChevronRight class="size-4 shrink-0 text-neutral-400"/></span>
-  </a>
+   <span class="flex items-center justify-between gap-2 sm:justify-end sm:text-right"><span><span class="block text-sm font-semibold {stateColor[s]}">{stateName(s)}</span>{#if changed}<span class="block text-xs text-neutral-500">{changed}</span>{/if}</span><ActionMenu label={t("pulseActions")} items={menu(monitor)}/></span>
+  </div>
  {:else}<div class="rounded-xl border border-neutral-200 bg-white px-5 py-10 text-center text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">{t("pulseNoMonitors")}</div>{/each}
 </div>

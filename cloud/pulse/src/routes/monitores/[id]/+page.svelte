@@ -5,6 +5,7 @@
  import Pause from "@lucide/svelte/icons/pause";
  import Play from "@lucide/svelte/icons/play";
  import Trash2 from "@lucide/svelte/icons/trash-2";
+ import Pencil from "@lucide/svelte/icons/pencil";
  import Bell from "@lucide/svelte/icons/bell";
  import {t,intlLocale,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
@@ -48,7 +49,7 @@
  {@const m=monitor}
  {@const changed=since(m,history)}
  <DetailHeader title={m.name} url={m.url}>
-  {#snippet actions()}{#if m.writable}<Button small variant="secondary" {busy} onclick={()=>toggle(m)}>{#if m.active}<Pause class="size-4"/>{t("pulsePause")}{:else}<Play class="size-4"/>{t("pulseResume")}{/if}</Button>{/if}<Button small variant="secondary" {busy} onclick={()=>remove(m)}><Trash2 class="size-4"/>{t("delete")}</Button>{/snippet}
+  {#snippet actions()}{#if m.writable}<Button small variant="secondary" onclick={()=>goto(`/monitores/${encodeURIComponent(m.id)}/editar`)}><Pencil class="size-4"/>{t("pulseEdit")}</Button><Button small variant="secondary" {busy} onclick={()=>toggle(m)}>{#if m.active}<Pause class="size-4"/>{t("pulsePause")}{:else}<Play class="size-4"/>{t("pulseResume")}{/if}</Button>{/if}<Button small variant="secondary" {busy} onclick={()=>remove(m)}><Trash2 class="size-4"/>{t("delete")}</Button>{/snippet}
  </DetailHeader>
 
  <div class="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6">
