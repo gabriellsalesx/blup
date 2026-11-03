@@ -169,7 +169,7 @@ export const aiApi = new Hono<App>()
   const hold=admission.hold;
   try {
    if(!c.env.OPENROUTER_API_KEY) return c.json(fail("A narração está indisponível agora.","UNAVAILABLE"),503);
-   const res=await fetch(`${c.env.OPENROUTER_URL||"https://openrouter.ai/api/v1"}/audio/speech`,{method:"POST",signal:AbortSignal.timeout(120_000),redirect:"error",headers:{Authorization:`Bearer ${c.env.OPENROUTER_API_KEY}`,"Content-Type":"application/json","HTTP-Referer":"https://getblup.io","X-Title":"Blup Cloud"},body:JSON.stringify({model,input,...(voice?{voice}:{}),response_format:"mp3"})});
+   const res=await fetch(`${c.env.OPENROUTER_URL||"https://openrouter.ai/api/v1"}/audio/speech`,{method:"POST",signal:AbortSignal.timeout(120_000),redirect:"manual",headers:{Authorization:`Bearer ${c.env.OPENROUTER_API_KEY}`,"Content-Type":"application/json","HTTP-Referer":"https://getblup.io","X-Title":"Blup Cloud"},body:JSON.stringify({model,input,...(voice?{voice}:{}),response_format:"mp3"})});
    // Audio responses may expose the provider cost as a numeric header.
    const headerCost=z.coerce.number().pipe(costSchema).safeParse(res.headers.get("x-openrouter-cost")??res.headers.get("x-usage-cost")??undefined);
    let actual=headerCost.success?Math.ceil(headerCost.data*1e6):cost;
@@ -195,7 +195,7 @@ export const aiApi = new Hono<App>()
   const hold=admission.hold;
   try{
    if(!c.env.OPENROUTER_API_KEY) return c.json(fail("A tradução está indisponível agora.","UNAVAILABLE"),503);
-   const res=await fetch(`${c.env.OPENROUTER_URL||"https://openrouter.ai/api/v1"}/chat/completions`,{method:"POST",signal:AbortSignal.timeout(120_000),redirect:"error",headers:{Authorization:`Bearer ${c.env.OPENROUTER_API_KEY}`,"Content-Type":"application/json","HTTP-Referer":"https://getblup.io","X-Title":"Blup Cloud"},body:JSON.stringify({model:TRANSLATE_MODEL,temperature:0.2,max_tokens:maxTokens,usage:{include:true},messages:[{role:"system",content:translatePrompt(from,to)},{role:"user",content:text}]})});
+   const res=await fetch(`${c.env.OPENROUTER_URL||"https://openrouter.ai/api/v1"}/chat/completions`,{method:"POST",signal:AbortSignal.timeout(120_000),redirect:"manual",headers:{Authorization:`Bearer ${c.env.OPENROUTER_API_KEY}`,"Content-Type":"application/json","HTTP-Referer":"https://getblup.io","X-Title":"Blup Cloud"},body:JSON.stringify({model:TRANSLATE_MODEL,temperature:0.2,max_tokens:maxTokens,usage:{include:true},messages:[{role:"system",content:translatePrompt(from,to)},{role:"user",content:text}]})});
    const raw:unknown=await res.json().catch(()=>null);
    const cost=providerCost(raw,res.ok?estimate:0);
    // Charge before validating content: truncated/malformed answers can cost.

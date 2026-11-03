@@ -27,14 +27,14 @@ export async function providerCall(env:Cloudflare.Env,method:"GET"|"POST"|"DELET
 	if(!zone.success||!env.CF_API_TOKEN||method!=="DELETE"&&!env.SITES_CNAME_TARGET)throw new DomainError("DOMAIN_UNAVAILABLE");
 	const path=`https://api.cloudflare.com/client/v4/zones/${zone.data}/custom_hostnames${id?`/${encodeURIComponent(id)}`:""}`;
 	try{
-		const res=await fetch(path,{method,redirect:"error",signal:AbortSignal.timeout(15_000),headers:{Authorization:`Bearer ${env.CF_API_TOKEN}`,"content-type":"application/json"},...(method==="POST"?{body:JSON.stringify({hostname,ssl:{method:"txt",type:"dv",settings:{min_tls_version:"1.2",early_hints:"on"}}})}:{})});
+		const res=await fetch(path,{method,redirect:"manual",signal:AbortSignal.timeout(15_000),headers:{Authorization:`Bearer ${env.CF_API_TOKEN}`,"content-type":"application/json"},...(method==="POST"?{body:JSON.stringify({hostname,ssl:{method:"txt",type:"dv",settings:{min_tls_version:"1.2",early_hints:"on"}}})}:{})});
 		if(method==="DELETE"&&res.status===404)return null;
 		if(!res.ok){
    // Recover a hostname created before a previous request lost its D1
    // acknowledgement. This path runs only after our TXT proof succeeded.
    if(method==="POST"&&hostname){
     const lookup=new URL(path);lookup.searchParams.set("hostname.exact",hostname);lookup.searchParams.set("per_page","1");
-    const found=await fetch(lookup,{headers:{Authorization:`Bearer ${env.CF_API_TOKEN}`},redirect:"error",signal:AbortSignal.timeout(15_000)});
+    const found=await fetch(lookup,{headers:{Authorization:`Bearer ${env.CF_API_TOKEN}`},redirect:"manual",signal:AbortSignal.timeout(15_000)});
     const existing=z.object({success:z.literal(true),result:z.array(providerHostname).max(1)}).safeParse(found.ok?await found.json():null);
     const match=existing.success?existing.data.result[0]:undefined;
     if(match?.hostname===hostname)return match;
@@ -64,7 +64,7 @@ export async function provesOwnership(hostname:string,proof:string) {
 	try{
 		const name=`_blup.${hostname}`;
 		const url=new URL("https://cloudflare-dns.com/dns-query");url.searchParams.set("name",name);url.searchParams.set("type","TXT");
-		const res=await fetch(url,{headers:{accept:"application/dns-json"},redirect:"error",signal:AbortSignal.timeout(5000)});
+		const res=await fetch(url,{headers:{accept:"application/dns-json"},redirect:"manual",signal:AbortSignal.timeout(5000)});
 		if(!res.ok)return false;
 		const dns=z.object({Status:z.literal(0),Answer:z.array(z.object({name:z.string().max(254),type:z.number().int(),data:z.string().max(4096)})).max(100).optional()}).safeParse(await res.json());
 		if(!dns.success)return false;
@@ -82,7 +82,7 @@ export async function removeDomainProvider(env:Cloudflare.Env,row:{hostname:stri
 		const url=new URL(`https://api.cloudflare.com/client/v4/zones/${zone.data}/custom_hostnames`);
 		url.searchParams.set("hostname.exact",row.hostname);url.searchParams.set("per_page","1");
 		try{
-			const res=await fetch(url,{headers:{Authorization:`Bearer ${env.CF_API_TOKEN}`},redirect:"error",signal:AbortSignal.timeout(15_000)});
+			const res=await fetch(url,{headers:{Authorization:`Bearer ${env.CF_API_TOKEN}`},redirect:"manual",signal:AbortSignal.timeout(15_000)});
 			const parsed=z.object({success:z.literal(true),result:z.array(providerHostname).max(1)}).safeParse(res.ok?await res.json():null);
 			if(!parsed.success)throw new DomainError("DOMAIN_PROVIDER");
 			const match=parsed.data.result[0];

@@ -8,7 +8,7 @@ export async function turnstileOk(secret: string, token: string | undefined, ip:
 	form.append("response", token);
 	if (ip) form.append("remoteip", ip);
 	try {
-	const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: form,signal:AbortSignal.timeout(5000),redirect:"error" });
+	const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: form,signal:AbortSignal.timeout(5000),redirect:"manual" });
 	if (!r.ok) return false;
 	const data = z.object({success:z.literal(true)}).safeParse(await r.json());
 	return data.success;
