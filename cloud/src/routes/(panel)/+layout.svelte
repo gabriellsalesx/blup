@@ -45,8 +45,8 @@
 
 <!-- The plans side by side need the wide page. -->
 <PanelShell languages {links} home={resolve("/(panel)/account")} app={{ current: "cloud", links: { cloud: resolve("/(panel)/account"), pulse: pulseAppURL } }} wide={page.url.pathname === resolve("/(panel)/account/plan")}>
-	{#snippet foot()}
-		<SignOutButton onclick={signOut} />
+	{#snippet foot(compact)}
+		<SignOutButton onclick={signOut} {compact} />
 	{/snippet}
 	{@render children()}
 </PanelShell>

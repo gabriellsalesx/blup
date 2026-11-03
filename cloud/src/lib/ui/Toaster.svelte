@@ -7,7 +7,8 @@
 	import { toasts, dismiss } from "#lib/toast.svelte.ts";
 </script>
 
-<div class="pointer-events-none fixed inset-x-0 bottom-5 z-50 grid justify-items-center gap-2" aria-live="polite">
+<!-- Above the phone's bottom tabs (and its home bar); near the edge on a computer. -->
+<div class="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 grid justify-items-center gap-2 md:bottom-5" aria-live="polite">
 	{#each toasts as n (n.id)}
 		<div
 			class="toast pointer-events-auto flex max-w-[min(34rem,calc(100%-2rem))] items-center gap-2.5 rounded-xl border border-neutral-200 bg-white py-2.5 pr-2.5 pl-3.5 text-sm shadow-[0_14px_40px_rgb(0_0_0/0.18)] dark:border-neutral-800 dark:bg-neutral-900"
