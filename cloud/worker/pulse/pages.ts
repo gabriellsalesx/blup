@@ -64,10 +64,10 @@ export const pagesApi=new Hono<PulseApp>()
   if(!await ownedPage(c.env,c.get("session").user.id,page)||!c.get("access").readable)return c.json({code:"NOT_FOUND"},404);
   const cutoff=Date.now()-(c.get("access").limits?.retentionDays??30)*DAY;
   const [incidents,affected]=await c.env.DB.batch([
-   c.env.DB.prepare("SELECT id,title,state,impact,created_at AS createdAt,updated_at AS updatedAt FROM pulse_incident WHERE page_id=? AND updated_at>? ORDER BY created_at DESC LIMIT 50").bind(page,cutoff),
+   c.env.DB.prepare("SELECT i.id,i.title,i.state,i.impact,i.created_at AS createdAt,i.updated_at AS updatedAt,(SELECT count(*) FROM pulse_incident_update u WHERE u.incident_id=i.id) AS updates FROM pulse_incident i WHERE i.page_id=? AND i.updated_at>? ORDER BY i.created_at DESC LIMIT 50").bind(page,cutoff),
    c.env.DB.prepare("SELECT ic.incident_id AS incidentId,ic.monitor_id AS monitorId,ic.status FROM pulse_incident_component ic JOIN pulse_incident i ON i.id=ic.incident_id WHERE i.page_id=? AND i.updated_at>?").bind(page,cutoff),
-  ]) as [D1Result<{id:string;title:string;state:string;impact:string;createdAt:number;updatedAt:number}>,D1Result<{incidentId:string;monitorId:string;status:string}>];
-  return c.json({incidents:incidents.results.map(i=>({...i,state:incidentState.parse(i.state),services:affected.results.filter(a=>a.incidentId===i.id).map(a=>({monitorId:a.monitorId,status:serviceStatus.parse(a.status)}))}))});
+  ]) as [D1Result<{id:string;title:string;state:string;impact:string;createdAt:number;updatedAt:number;updates:number}>,D1Result<{incidentId:string;monitorId:string;status:string}>];
+  return c.json({incidents:incidents.results.map(i=>({...i,state:incidentState.parse(i.state),impact:impact.parse(i.impact),services:affected.results.filter(a=>a.incidentId===i.id).map(a=>({monitorId:a.monitorId,status:serviceStatus.parse(a.status)}))}))});
  })
  // A new incident: what happened, since when (publishedAt: up to the kept
  // history ago, not later than now) and how each service is left.

@@ -5283,15 +5283,16 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 incidents: {
                     state: "resolved" | "investigating" | "identified" | "monitoring";
+                    impact: "degraded" | "operational" | "partial_outage" | "major_outage";
                     services: {
                         monitorId: string;
                         status: "resolved" | "none" | "downtime" | "degraded";
                     }[];
                     id: string;
                     title: string;
-                    impact: string;
                     createdAt: number;
                     updatedAt: number;
+                    updates: number;
                 }[];
             };
             outputFormat: "json";

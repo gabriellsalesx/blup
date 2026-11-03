@@ -1,3 +1,8 @@
+<script module lang="ts">
+ import type {IncidentState,ServiceStatus} from "./status-pages";
+ export type IncidentValues={title:string;body:string;state:IncidentState;publishedAt:number;services:{monitorId:string;status:ServiceStatus}[]};
+</script>
+
 <script lang="ts">
  import {untrack} from "svelte";
  import Plus from "@lucide/svelte/icons/plus";
@@ -12,13 +17,12 @@
  import Select from "#lib/ui/Select.svelte";
  import FormSection from "#lib/ui/FormSection.svelte";
  import DateTimeField from "#lib/ui/DateTimeField.svelte";
- import type {Incident,IncidentState,ServiceStatus} from "./status-pages";
+ import type {Incident} from "./status-pages";
  // A new incident, or an update of an open one: what is going on, its
  // state, since when (new ones only, up to `keepDays` back) and how it
  // leaves each service of the page. An update starts from how the
  // incident left them.
- type Values={title:string;body:string;state:IncidentState;publishedAt:number;services:{monitorId:string;status:ServiceStatus}[]};
- let {components,incident=null,keepDays,busy=false,onsave,oncancel}:{components:{monitorId:string;name:string}[];incident?:Incident|null;keepDays:number;busy?:boolean;onsave:(values:Values)=>void;oncancel?:()=>void}=$props();
+ let {components,incident=null,keepDays,busy=false,onsave,oncancel}:{components:{monitorId:string;name:string}[];incident?:Incident|null;keepDays:number;busy?:boolean;onsave:(values:IncidentValues)=>void;oncancel?:()=>void}=$props();
  const start=untrack(()=>incident);
  let title=$state(start?.title??""),body=$state(""),situation=$state<IncidentState>(start?.state??"investigating"),publishedAt=$state(Date.now());
  let statuses=$state<Record<string,ServiceStatus>>(Object.fromEntries(untrack(()=>components).map(c=>[c.monitorId,start?.services.find(s=>s.monitorId===c.monitorId)?.status??"none"])));

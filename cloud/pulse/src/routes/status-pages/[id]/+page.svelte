@@ -4,38 +4,42 @@
  import {goto} from "$app/navigation";
  import Eye from "@lucide/svelte/icons/eye";
  import EyeOff from "@lucide/svelte/icons/eye-off";
+ import Plus from "@lucide/svelte/icons/plus";
+ import MessageSquarePlus from "@lucide/svelte/icons/message-square-plus";
  import {t,language,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import {toast} from "#lib/toast.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
  import BackLink from "#lib/ui/BackLink.svelte";
  import DetailHeader from "#lib/ui/DetailHeader.svelte";
- import Card from "#lib/ui/Card.svelte";
  import Badge from "#lib/ui/Badge.svelte";
+ import List from "#lib/ui/List.svelte";
+ import ListItem from "#lib/ui/ListItem.svelte";
+ import ActionMenu from "#lib/ui/ActionMenu.svelte";
  import Segmented from "#lib/ui/Segmented.svelte";
  import Domain from "../../../lib/Domain.svelte";
  import PageForm from "../../../lib/PageForm.svelte";
- import IncidentForm from "../../../lib/IncidentForm.svelte";
  import {pulseApi,parseResponse} from "../../../lib/api";
  import {panel} from "../../../lib/panel.svelte";
- import {getPages,getIncidents,type Incident,type IncidentState,type ServiceStatus} from "../../../lib/status-pages";
+ import {getPages,type Incident} from "../../../lib/status-pages";
+ import {ago} from "../../../lib/monitor";
  // One status page: its title and monitors, its own domain and the
- // incidents told to visitors.
+ // incidents told to visitors (each opens its own page to update it; a
+ // button on top reports a new one).
  let {data}:PageProps=$props();
  let page=$derived(data.page),incidents=$derived<Incident[]>(data.incidents),busy=$state(false);
- // The open incident being updated, else a new one; the form starts over
- // after each save.
- let updating=$state<Incident|null>(null),formRun=$state(0);
  const writable=$derived(panel.usage?.readOnly===false&&!!page?.writable);
  const states=$derived([{value:"investigating",label:t("pulseInvestigating")},{value:"identified",label:t("pulseIdentified")},{value:"monitoring",label:t("pulseMonitoring")},{value:"resolved",label:t("pulseResolved")}] as const);
  const stateLabel=(s:string)=>states.find(o=>o.value===s)?.label??s;
- // Settings, incidents and domain, one at a time; another page starts on settings.
+ // Settings, incidents and domain, one at a time; another page starts on
+ // settings, or on the tab in the address (?tab=incidents).
  const tabs=$derived([{value:"settings",label:t("pulseSettings")},{value:"incidents",label:t("pulseIncidents")},{value:"domain",label:t("pulseDomainTab")}] as const);
- let tab=$derived.by<"settings"|"incidents"|"domain">(()=>{void data;return "settings";});
+ let tab=$derived<"settings"|"incidents"|"domain">(data.tab);
+ // The mark of an incident: green once resolved, else by how bad it is.
+ const dotOf=(i:Incident)=>i.state==="resolved"?"bg-emerald-500":i.impact==="major_outage"||i.impact==="partial_outage"?"bg-red-500":"bg-amber-500";
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
  async function save(values:{title:string;components:{monitorId:string;name:string}[]}){const current=page;if(!current)return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].$patch({param:{page:current.id},json:{title:values.title,components:values.components,language:language()}}));page=(await getPages()).find(p=>p.id===current.id)??null;toast(()=>t("pulseToastSaved"));});}
  async function publish(){const current=page;if(!current)return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].$patch({param:{page:current.id},json:{published:!current.published}}));page=(await getPages()).find(p=>p.id===current.id)??null;toast(()=>current.published?t("pulseToastOffline"):t("pulseToastLive"));});}
- async function incident(values:{title:string;body:string;state:IncidentState;publishedAt:number;services:{monitorId:string;status:ServiceStatus}[]}){const current=page,editing=updating;if(!current)return;await run(async()=>{if(editing)await parseResponse(pulseApi.pages[":page"].incidents[":incident"].updates.$post({param:{page:current.id,incident:editing.id},json:{body:values.body,state:values.state,services:values.services}}));else await parseResponse(pulseApi.pages[":page"].incidents.$post({param:{page:current.id},json:{title:values.title,body:values.body,state:values.state,publishedAt:new Date(values.publishedAt).toISOString(),services:values.services}}));updating=null;formRun++;incidents=await getIncidents(current.id);toast(()=>t("pulseToastIncident"));});}
 </script>
 
 <BackLink href={resolve("/status-pages")} label={t("pulsePages")}/>
@@ -43,9 +47,10 @@
 {#if !page}<p class="mt-4 rounded-xl border border-neutral-200 bg-white px-5 py-10 text-center text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">{t("pulsePageNotFound")}</p>
 {:else}
  {@const live=page.published}
+ {@const pageId=page.id}
  <DetailHeader title={page.title} url={`https://pulse.getblup.site/${page.slug}/`}>
   {#snippet badge()}<Badge tone={live?"green":"neutral"}>{live?t("pulsePublished"):t("pulseDraft")}</Badge>{/snippet}
-  {#snippet actions()}{#if writable}<Button small variant="secondary" {busy} onclick={publish}>{#if live}<EyeOff class="size-4"/>{t("pulseUnpublish")}{:else}<Eye class="size-4"/>{t("pulsePublish")}{/if}</Button>{/if}{/snippet}
+  {#snippet actions()}{#if writable}<Button small onclick={()=>goto(resolve("/status-pages/[id]/incidents/new",{id:pageId}))}><Plus class="size-4"/>{t("pulseReportIncident")}</Button><Button small variant="secondary" {busy} onclick={publish}>{#if live}<EyeOff class="size-4"/>{t("pulseUnpublish")}{:else}<Eye class="size-4"/>{t("pulsePublish")}{/if}</Button>{/if}{/snippet}
  </DetailHeader>
 
  <div class="mt-8"><Segmented label={t("pulsePages")} options={tabs} bind:value={tab}/></div>
@@ -55,9 +60,15 @@
  {:else if tab==="domain"}
   <Domain page={page.id} eligible={writable&&!!panel.usage?.limits?.customDomain}/>
  {:else}
- {#if writable}<div class="mt-8">{#key `${updating?.id??"new"}-${formRun}`}<IncidentForm components={page.components} incident={updating} keepDays={panel.usage?.limits?.retentionDays??30} {busy} onsave={incident} oncancel={updating?()=>{updating=null;}:undefined}/>{/key}</div>{/if}
- <section class="mt-10"><Card title={t("pulseIncidents")}>
-  <div class="mt-5 grid">{#each incidents as item(item.id)}<div class="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 py-3 dark:border-neutral-800"><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span>{item.title}</span><Badge tone={item.state==="resolved"?"green":"amber"}>{stateLabel(item.state)}</Badge></p><p class="text-xs text-neutral-500">{formatDate(new Date(item.createdAt))}</p></div>{#if writable&&item.state!=="resolved"}<Button small variant="secondary" onclick={()=>{updating=item;scrollTo({top:0,behavior:"smooth"});}}>{t("pulseUpdateIncident")}</Button>{/if}</div>{:else}<p class="text-sm text-neutral-500">{t("pulseNoIncidents")}</p>{/each}</div>
- </Card></section>
+  <div class="mt-8"><List empty={t("pulseNoIncidents")}>
+   {#each incidents as item(item.id)}
+    {@const href=resolve("/status-pages/[id]/incidents/[incident]",{id:page.id,incident:item.id})}
+    <ListItem href={writable&&item.state!=="resolved"?href:undefined} label={item.title}>
+     <div class="flex items-center gap-4"><span class="size-2.5 shrink-0 rounded-full {dotOf(item)}" aria-hidden="true"></span><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{item.title}</span><Badge tone={item.state==="resolved"?"green":"amber"}>{stateLabel(item.state)}</Badge></p><p class="text-sm text-neutral-500" title={formatDate(new Date(item.createdAt))}>{t("pulseIncidentCreated",{time:ago(item.createdAt)})}</p></div></div>
+     {#snippet actions()}<span class="text-sm text-neutral-500">{item.updates===1?t("pulseOneUpdate"):t("pulseManyUpdates",{count:String(item.updates)})}</span>{/snippet}
+     {#snippet menu()}{#if writable&&item.state!=="resolved"}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseUpdateIncident"),Icon:MessageSquarePlus,onselect:()=>void goto(href)}]}/>{/if}{/snippet}
+    </ListItem>
+   {/each}
+  </List></div>
  {/if}
 {/if}

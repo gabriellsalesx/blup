@@ -12,7 +12,8 @@ const DAY=86_400_000;
 export const stateOf=(m:Monitor):MonitorState=>!m.active?"paused":m.state==="up"?"up":m.state==="down"?"down":"unknown";
 export const stateName=(s:string)=>s==="paused"?t("pulsePaused"):t(s==="up"?"pulseOperational":s==="down"?"pulseDown":"pulseUnknown");
 export const stateColor:Record<MonitorState,string>={up:"text-emerald-600 dark:text-emerald-400",down:"text-red-600 dark:text-red-400",unknown:"text-neutral-500",paused:"text-neutral-500"};
-const ago=(ms:number)=>{const rtf=new Intl.RelativeTimeFormat(intlLocale(),{numeric:"always"}),m=Math.round((Date.now()-ms)/60000);return m<60?rtf.format(-Math.max(1,m),"minute"):m<1440?rtf.format(-Math.round(m/60),"hour"):rtf.format(-Math.round(m/1440),"day");};
+// How long ago, in words ("3 minutes ago").
+export const ago=(ms:number)=>{const rtf=new Intl.RelativeTimeFormat(intlLocale(),{numeric:"always"}),m=Math.round((Date.now()-ms)/60000);return m<60?rtf.format(-Math.max(1,m),"minute"):m<1440?rtf.format(-Math.round(m/60),"hour"):rtf.format(-Math.round(m/1440),"day");};
 // When the state last changed, from the detailed checks (newest first,
 // kept a few days).
 export function since(m:Monitor,history?:History){const checks=history?.checks??[],current=m.state;if(!checks.length||!m.active||(current!=="up"&&current!=="down"))return "";let first=checks[0];for(const c of checks){if(c.outcome!==current)return t("pulseChangedAt",{time:ago(first.checkedAt)});first=c;}return t("pulseStableFor",{days:7});}

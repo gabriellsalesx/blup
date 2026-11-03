@@ -89,7 +89,7 @@ it("keeps how an incident leaves each service and when it was published",async()
  expect((await request(`/pages/${id}/incidents`,"POST",{...base,publishedAt:new Date(now).toISOString(),impact:"degraded",services:[]})).status).toBe(400);
  const earlier=now-2*3_600_000,made=await request(`/pages/${id}/incidents`,"POST",{...base,publishedAt:new Date(earlier).toISOString(),services:[{monitorId:monitor.id,status:"downtime"}]});expect(made.status).toBe(201);const incident=(await made.json() as {id:string}).id;
  const listed=(await(await request(`/pages/${id}/incidents`)).json() as {incidents:{createdAt:number;impact:string;services:unknown[]}[]}).incidents[0];
- expect(listed).toMatchObject({createdAt:earlier,impact:"major_outage",services:[{monitorId:monitor.id,status:"downtime"}]});
+ expect(listed).toMatchObject({createdAt:earlier,impact:"major_outage",updates:1,services:[{monitorId:monitor.id,status:"downtime"}]});
  let page=await publicPage(state.env,"status-services");if(!page||page.unavailable)throw new Error("page");
  expect(page.components[0]).toMatchObject({name:"Public API",incident:"downtime"});expect(page.incidents[0].services).toEqual([{name:"Public API",status:"downtime"}]);
  expect((await request(`/pages/${id}/incidents/${incident}/updates`,"POST",{body:"Fixed",state:"resolved",services:[{monitorId:monitor.id,status:"resolved"}]})).status).toBe(201);
