@@ -1,5 +1,6 @@
 import {language} from "./i18n.svelte";
 import {errorMessage} from "./i18n/errors";
+import {cloudPaths,nextParam} from "../../shared/panel-paths";
 import { createAuthClient } from "better-auth/svelte";
 import { emailOTPClient, deviceAuthorizationClient } from "better-auth/client/plugins";
 import { passkeyClient } from "@better-auth/passkey/client";
@@ -17,13 +18,13 @@ export const message=errorMessage;
 // The person closed the passkey prompt: not an error to show.
 export const cancelled = (err: object) => "code" in err && err.code === "AUTH_CANCELLED";
 
-// Where to go after signing in: the page that sent the person to /entrar
-// (?volta=), only if it is a page of this panel.
+// Where to go after signing in: the page that sent the person to /sign-in
+// (?next=), only if it is a page of this panel.
 export function afterSignIn(): string {
-	const back = new URLSearchParams(location.search).get("volta") ?? "";
-	if (!back.startsWith("/") || back.startsWith("//") || /[\u0000-\u001f\u007f\\]/.test(back)) return "/conta";
+	const back = new URLSearchParams(location.search).get(nextParam) ?? "";
+	if (!back.startsWith("/") || back.startsWith("//") || /[\u0000-\u001f\u007f\\]/.test(back)) return cloudPaths.account;
 	try {
 		const url = new URL(back, location.origin);
-		return url.origin === location.origin ? url.pathname + url.search + url.hash : "/conta";
-	} catch { return "/conta"; }
+		return url.origin === location.origin ? url.pathname + url.search + url.hash : cloudPaths.account;
+	} catch { return cloudPaths.account; }
 }

@@ -157,7 +157,7 @@ describe("Better Auth 1.7.14, actual plugins and endpoints",()=>{
 	it("rejects unsigned Stripe events and reference IDs of another account",async()=>{
 		const {cookie}=await login();
 		expect((await call("/stripe/webhook",{type:"customer.subscription.updated",data:{object:{status:"active"}}})).ok).toBe(false);
-		expect((await call("/subscription/upgrade",{plan:"ultra",referenceId:"another-account",successUrl:ORIGIN+"/conta",cancelUrl:ORIGIN+"/conta"},cookie)).ok).toBe(false);
+		expect((await call("/subscription/upgrade",{plan:"ultra",referenceId:"another-account",successUrl:ORIGIN+"/account",cancelUrl:ORIGIN+"/account"},cookie)).ok).toBe(false);
 		expect(fetch).toHaveBeenCalledTimes(1); // Turnstile only
 	});
 	it.each(["/passkey/verify-registration/","/passkey//verify-registration","/passkey/%76erify-registration"])("cannot bypass registration captcha using an alternate path %s",async path=>{

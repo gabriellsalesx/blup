@@ -88,8 +88,8 @@ describe("local attacks on actual Cloud routes", () => {
 		const hit=await staffApi.fetch(req(),state.env,ctx);expect(hit.headers.get("cache-control")).toBe("no-store");
 	});
 	it("returns from Checkout locally without letting the plugin write subscription state",async()=>{
-		const result=await request("/auth/subscription/success?callbackURL="+encodeURIComponent("https://cloud.audit.invalid/conta/plano?assinatura=ok"),"GET",undefined,"");
-		expect(result.status).toBe(303);expect(result.headers.get("location")).toBe("https://cloud.audit.invalid/conta/plano?assinatura=ok");
+		const result=await request("/auth/subscription/success?callbackURL="+encodeURIComponent("https://cloud.audit.invalid/account/plan?checkout=success"),"GET",undefined,"");
+		expect(result.status).toBe(303);expect(result.headers.get("location")).toBe("https://cloud.audit.invalid/account/plan?checkout=success");
 		expect((await request("/auth/subscription/success?callbackURL="+encodeURIComponent("https://evil.invalid/"))).status).toBe(400);
 	});
 	it.each(["/me","/devices","/sync/key","/sync/vaults","/sync/blocks/"+HASH,"/sites","/sites/check?slug=alice-site","/reminders","/ai/usage"])("requires a session at %s",async path => {

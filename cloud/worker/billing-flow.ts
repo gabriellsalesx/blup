@@ -9,6 +9,7 @@ import {hasEmail} from "./auth-options";
 import {sha256} from "./pulse/limits";
 import {stripeLocale,languageOf} from "../shared/language";
 import {planNameSchema} from "../shared/pulse-plans";
+import {cloudPaths,checkoutParam} from "../shared/panel-paths";
 export const stripeOptions={timeout:5000,maxNetworkRetries:0} as const;
 const id=z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/).max(255),meta=z.record(z.string(),z.string()).default({}),money=z.number().int().safe(),seconds=z.number().int().nonnegative().max(8_640_000_000_000);
 const product=z.object({id:id.startsWith("prod_"),metadata:meta,active:z.boolean().optional()});
@@ -102,7 +103,7 @@ export async function checkout(env:Cloudflare.Env,userId:string,plan:Plan,annual
   if(!saved){
    const open=z.object({has_more:z.literal(false),data:z.array(z.object({id,mode:z.string(),url:z.string().nullable(),expires_at:seconds})).max(10)}).parse(await stripe.checkout.sessions.list({customer:owner.customer,status:"open",limit:10},stripeOptions));if(open.data.some(s=>s.mode==="subscription"))throw new BillingFlowError("BILLING_CHECKOUT_PENDING");
    const price=await selectedPrice(stripe,plan,annual),intent=crypto.randomUUID(),expires=Math.floor(Date.now()/1000)+1800;
-   const params=checkoutParamsSchema.parse({mode:"subscription",customer:owner.customer,client_reference_id:userId,line_items:[{price:price.id,quantity:1}],success_url:`${env.APP_URL}/conta/plano?assinatura=ok`,cancel_url:`${env.APP_URL}/conta/plano`,locale:stripeLocale[languageOf(owner.language)??"en"],expires_at:expires,metadata:{blup_plan:plan.name},subscription_data:{metadata:{userId,referenceId:userId,blup_plan:plan.name},billing_mode:{type:"flexible"}}});
+   const params=checkoutParamsSchema.parse({mode:"subscription",customer:owner.customer,client_reference_id:userId,line_items:[{price:price.id,quantity:1}],success_url:`${env.APP_URL}${cloudPaths.plan}?${checkoutParam}=success`,cancel_url:`${env.APP_URL}${cloudPaths.plan}`,locale:stripeLocale[languageOf(owner.language)??"en"],expires_at:expires,metadata:{blup_plan:plan.name},subscription_data:{metadata:{userId,referenceId:userId,blup_plan:plan.name},billing_mode:{type:"flexible"}}});
    await env.DB.prepare("INSERT INTO billing_checkout(user_id,id,plan,annual,params,expires_at) VALUES(?,?,?,?,?,?)").bind(userId,intent,plan.name,annual?1:0,JSON.stringify(params),expires*1000).run();saved={id:intent,plan:plan.name,annual:annual?1:0,params:JSON.stringify(params),sessionId:null,url:null,expiresAt:expires*1000};
   }
   const session=z.object({id:id.startsWith("cs_"),url:z.string().nullable(),status:z.string(),customer:z.string(),mode:z.literal("subscription")}).parse(await stripe.checkout.sessions.create(checkoutParamsSchema.parse(JSON.parse(saved.params)),{...stripeOptions,idempotencyKey:`blup-checkout:${saved.id}`}));
@@ -114,5 +115,5 @@ export async function portal(env:Cloudflare.Env,userId:string){
  const owner=await billingOwner(env,userId);if(!owner.customer)throw new BillingFlowError("BILLING_NO_SUBSCRIPTION");const stripe=createStripe(env.STRIPE_SECRET_KEY);
  const config=z.object({has_more:z.literal(false),data:z.array(z.object({id,active:z.literal(true),is_default:z.literal(true),features:z.object({subscription_update:z.object({enabled:z.literal(false)}),subscription_cancel:z.object({enabled:z.boolean(),mode:z.string()})})})).length(1)}).parse(await stripe.billingPortal.configurations.list({active:true,is_default:true,limit:2},stripeOptions));
  const current=config.data[0];if(current.features.subscription_cancel.enabled&&current.features.subscription_cancel.mode!=="at_period_end")throw new BillingFlowError("BILLING_PORTAL_UNSAFE");
- const session=z.object({url:z.string()}).parse(await stripe.billingPortal.sessions.create({customer:owner.customer,configuration:current.id,return_url:`${env.APP_URL}/conta/plano`,locale:stripeLocale[languageOf(owner.language)??"en"]},stripeOptions));return {url:stripeURL(session.url,["billing.stripe.com"])};
+ const session=z.object({url:z.string()}).parse(await stripe.billingPortal.sessions.create({customer:owner.customer,configuration:current.id,return_url:`${env.APP_URL}${cloudPaths.plan}`,locale:stripeLocale[languageOf(owner.language)??"en"]},stripeOptions));return {url:stripeURL(session.url,["billing.stripe.com"])};
 }

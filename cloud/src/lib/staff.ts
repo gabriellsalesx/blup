@@ -35,7 +35,7 @@ export const staffApi={
  log:(cursor:string|null)=>call(parseResponse(client.log.$get({query:cursor?{cursor}:{}}))),
 };
 
-// A staff page's address: /staff/contas here, /contas on staff.getblup.io
+// A staff page's address: /staff/accounts here, /accounts on staff.getblup.io
 // (hooks.ts maps it back).
 export const staffHref = (path: string) =>
 	typeof location !== "undefined" && location.hostname.startsWith("staff.") ? path.replace(/^\/staff/, "") || "/" : path;

@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
  import Copy from "@lucide/svelte/icons/copy";
  import Plus from "@lucide/svelte/icons/plus";
@@ -22,6 +23,8 @@
  let projects=$derived<Project[]>(data.projects),dsn=$state(""),busy=$state(false);
  const writable=$derived(panel.usage?.readOnly===false);
  const usage=$derived(panel.usage?.limits?{used:panel.usage.accepted,limit:panel.usage.limits.events}:null);
+ // The issues of one project: /issues?project=<id>.
+ const issuesOf=(id:string)=>`${resolve("/issues")}?${new URLSearchParams({project:id})}`;
  const platformName=(id:string)=>id==="other"?t("pulseOther"):platforms.find(p=>p.id===id)?.label??id;
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
  async function refresh(){projects=(await parseResponse(pulseApi.projects.$get())).projects;}
@@ -31,7 +34,7 @@
 </script>
 
 <PageHeader title={t("pulseProjects")} lead={t("pulseScope")}>
- {#snippet aside()}{#if writable}<Button onclick={()=>goto("/projetos/novo")}><Plus class="size-4"/>{t("pulseCreateNewProject")}</Button>{/if}{/snippet}
+ {#snippet aside()}{#if writable}<Button onclick={()=>goto(resolve("/projects/new"))}><Plus class="size-4"/>{t("pulseCreateNewProject")}</Button>{/if}{/snippet}
 </PageHeader>
 
 {#if usage}<div class="mt-6 max-w-sm"><p class="text-sm text-neutral-500">{t("pulseMonthUsage",{accepted:usage.used.toLocaleString(intlLocale()),limit:usage.limit.toLocaleString(intlLocale())})}</p><div class="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"><div class="h-full rounded-full bg-blup" style:width="{Math.min(100,usage.used/Math.max(1,usage.limit)*100)}%"></div></div></div>{/if}
@@ -40,9 +43,9 @@
 
 <div class="mt-6"><List empty={t("pulseEmpty")}>
  {#each projects as project(project.id)}
-  <ListItem href={`/problemas?projeto=${encodeURIComponent(project.id)}`} label={project.name}>
+  <ListItem href={issuesOf(project.id)} label={project.name}>
    <div class="flex items-center gap-3"><StatusDot state={project.active?"up":"unknown"}/><div class="min-w-0"><p class="truncate font-semibold">{project.name}</p><p class="text-sm text-neutral-500">{platformName(project.platform)} · {project.active?t("pulseActive"):t("pulsePaused")}</p></div></div>
-   {#snippet menu()}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseSeeIssues"),Icon:Bug,onselect:()=>void goto(`/problemas?projeto=${encodeURIComponent(project.id)}`)},...(project.writable?[{label:t("pulseRotate"),Icon:RefreshCw,onselect:()=>void rotate(project)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(project)}]}/>{/snippet}
+   {#snippet menu()}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseSeeIssues"),Icon:Bug,onselect:()=>void goto(issuesOf(project.id))},...(project.writable?[{label:t("pulseRotate"),Icon:RefreshCw,onselect:()=>void rotate(project)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(project)}]}/>{/snippet}
   </ListItem>
  {/each}
 </List></div>

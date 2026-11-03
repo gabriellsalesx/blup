@@ -1,4 +1,5 @@
 import {requestLanguage,type Language} from "../shared/language";
+import {cloudPaths} from "../shared/panel-paths";
 import type { BetterAuthOptions } from "better-auth";
 import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -118,10 +119,10 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 					},
 				},
 			}),
-			// The Studio shows a code and opens /aparelho, where the signed in
+			// The Studio shows a code and opens /device, where the signed in
 			// person confirms it is the same code and approves.
 			deviceAuthorization({
-				verificationUri: `${cfg.appUrl}/aparelho`,
+				verificationUri: `${cfg.appUrl}${cloudPaths.device}`,
 				expiresIn: "15m",
 				validateClient: (clientId) => clientId === STUDIO_CLIENT_ID,
 			}),

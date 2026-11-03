@@ -1,6 +1,7 @@
 import {billingApi} from "./billing-api";
 import {languageSchema,languageOf,requestLanguage} from "../shared/language";
 import {planLabel} from "../shared/plan-i18n";
+import {cloudPaths} from "../shared/panel-paths";
 import { stripeWebhook,cleanWebhookReceipts } from "./billing";
 import { publicPlans } from "./pricing";
 import { flushSitePurges } from "./site-cache-purge";
@@ -135,7 +136,7 @@ app.post("/auth/stripe/webhook",c=>stripeWebhook(c.req.raw,c.env));
 // its webhook, so it is disabled and replaced with this local redirect.
 app.get("/auth/subscription/success",validate("query",z.object({callbackURL:z.string().max(2048).optional(),checkoutSessionId:z.string().max(255).optional()})),c=>{
  let target:URL;
- try{target=new URL(c.req.valid("query").callbackURL??"/conta/plano",c.env.APP_URL);}catch{return c.json({code:"INVALID"},400);}
+ try{target=new URL(c.req.valid("query").callbackURL??cloudPaths.plan,c.env.APP_URL);}catch{return c.json({code:"INVALID"},400);}
  if(target.origin!==new URL(c.env.APP_URL).origin||target.username||target.password)return c.json({code:"INVALID"},400);
  return c.redirect(target.href,303);
 });

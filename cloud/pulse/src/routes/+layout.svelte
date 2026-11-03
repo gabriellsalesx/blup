@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {resolve} from "$app/paths";
  import "../app.css";
  import {onDestroy} from "svelte";
  import {toast} from "#lib/toast.svelte.ts";
@@ -18,13 +19,14 @@
  import ThemePicker from "#lib/ui/ThemePicker.svelte";
  import SignOutButton from "#lib/ui/SignOutButton.svelte";
  import {cloudURL,rpc,pulseApi,parseResponse} from "../lib/api";
+ import {cloudPaths,signInFor} from "../../../shared/panel-paths";
  import {panel} from "../lib/panel.svelte";
  let {children}=$props();
- const links=$derived([{href:"/",label:t("pulseProjects"),Icon:Folder},{href:"/problemas",label:t("pulseIssues"),Icon:Bug},{href:"/monitores",label:t("pulseMonitors"),Icon:Activity},{href:"/paginas",label:t("pulsePages"),Icon:Globe},{href:"/avisos",label:t("pulseAlerts"),Icon:Bell}]);
+ const links=$derived([{href:resolve("/"),label:t("pulseProjects"),Icon:Folder,match:(path:string)=>path===resolve("/")||path===resolve("/projects/new")},{href:resolve("/issues"),label:t("pulseIssues"),Icon:Bug},{href:resolve("/monitors"),label:t("pulseMonitors"),Icon:Activity,match:(path:string)=>path.startsWith(resolve("/monitors"))},{href:resolve("/status-pages"),label:t("pulsePages"),Icon:Globe,match:(path:string)=>path.startsWith(resolve("/status-pages"))},{href:resolve("/alerts"),label:t("pulseAlerts"),Icon:Bell,match:(path:string)=>path.startsWith(resolve("/alerts"))}]);
  let selectionBusy=$state(false),keep=$state({projects:[] as string[],monitors:[] as string[],pages:[] as string[]});
  async function saveSelection(){selectionBusy=true;try{await parseResponse(pulseApi.selection.$put({json:keep}));panel.usage=await parseResponse(pulseApi.usage.$get());location.reload();}catch{toast(()=>t("errorInvalid"),{kind:"error"});}finally{selectionBusy=false;}}
  // Signing out ends the Blup session on the Cloud, then goes to its sign-in.
- async function signOut(){try{await fetch(`${cloudURL}/api/auth/sign-out`,{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:"{}"});}finally{location.href=`${cloudURL}/entrar`;}}
+ async function signOut(){try{await fetch(`${cloudURL}/api/auth/sign-out`,{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:"{}"});}finally{location.href=`${cloudURL}${cloudPaths.signIn}`;}}
  let alive=true;onDestroy(()=>{alive=false;});
  const saver=createLanguageSaver((language)=>parseResponse(rpc.me.language.$put({json:{language}})),id=>alive&&panel.me?.id===id,()=>toast(()=>t("errorGeneric"),{kind:"error"}));
  $effect(()=>{document.documentElement.lang=intlLocale();});
@@ -32,10 +34,10 @@
 </script>
 <svelte:head><title>Blup Pulse</title><meta name="robots" content="noindex,nofollow" /></svelte:head>
 {#if !panel.ready}<main class="p-10"><p>{t("loading")}</p></main>
-{:else if !panel.me}<main class="mx-auto max-w-xl p-10"><img src="/mascot.svg" alt="" class="mb-6 size-24" /><h1 class="text-3xl font-bold">Blup Pulse</h1><h2 class="mt-5 text-xl font-semibold">{t("pulseWelcome")}</h2><p class="my-4">{t("pulseLead")}</p><a class="font-semibold text-blup underline" href={`${cloudURL}/entrar?volta=/conta/pulse`}>{t("pulseLogin")}</a><div class="mt-6 flex gap-2"><LanguagePicker /><ThemePicker /></div></main>
-{:else}<PanelShell {links} home="/" app={{current:"pulse",links:{cloud:`${cloudURL}/conta`,pulse:"/"}}} languages wide>
+{:else if !panel.me}<main class="mx-auto max-w-xl p-10"><img src="/mascot.svg" alt="" class="mb-6 size-24" /><h1 class="text-3xl font-bold">Blup Pulse</h1><h2 class="mt-5 text-xl font-semibold">{t("pulseWelcome")}</h2><p class="my-4">{t("pulseLead")}</p><a class="font-semibold text-blup underline" href={`${cloudURL}${signInFor(cloudPaths.pulse)}`}>{t("pulseLogin")}</a><div class="mt-6 flex gap-2"><LanguagePicker /><ThemePicker /></div></main>
+{:else}<PanelShell {links} home={resolve("/")} app={{current:"pulse",links:{cloud:`${cloudURL}${cloudPaths.account}`,pulse:resolve("/")}}} languages wide>
  {#snippet foot()}<SignOutButton onclick={signOut}/>{/snippet}
- {#if !panel.usage?.plan}<p class="mb-6 rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950">{t("pulseNeedPlan")} <a href={`${cloudURL}/conta/plano`} class="underline">{t("subscription")}</a></p>{/if}
+ {#if !panel.usage?.plan}<p class="mb-6 rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950">{t("pulseNeedPlan")} <a href={`${cloudURL}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>{/if}
  {#if panel.usage?.readOnlyUntil}<p class="mb-6 rounded-lg bg-amber-50 p-4 dark:bg-amber-950">{t("pulseReadOnly",{date:new Intl.DateTimeFormat(intlLocale(),{dateStyle:"long"}).format(new Date(panel.usage.readOnlyUntil))})}</p>{/if}
  {#if panel.usage?.selectionRequired&&panel.usage.limits}<PulseSelection resources={panel.usage.resources} limits={panel.usage.limits} bind:keep/><Button busy={selectionBusy} onclick={saveSelection}>{t("save")}</Button>{/if}
  {@render children()}
