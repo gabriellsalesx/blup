@@ -1,5 +1,4 @@
 <script lang="ts">
- import {onMount} from "svelte";
  import {goto} from "$app/navigation";
  import Plus from "@lucide/svelte/icons/plus";
  import ArrowLeft from "@lucide/svelte/icons/arrow-left";
@@ -16,12 +15,12 @@
  import {panel} from "../../../lib/panel.svelte";
  // A new monitor: its name, the address to check, the project whose
  // destinations get its alerts and how often it is checked.
- let projects=$state<Project[]>([]),name=$state(""),url=$state("https://"),projectId=$state(""),intervalMinutes=$state(5),busy=$state(false);
- const minInterval=$derived(panel.usage?.limits?.intervalMinutes??5);
+ let {data}=$props();
+ const projects=$derived<Project[]>(data.projects),minInterval=$derived(panel.usage?.limits?.intervalMinutes??5);
+ let name=$state(""),url=$state("https://"),projectId=$derived(data.projects[0]?.id??""),intervalMinutes=$derived(Math.max(5,minInterval)),busy=$state(false);
  const intervals=$derived([1,2,5,10,15,30,60].filter(m=>m>=minInterval).map(m=>({value:m,label:t("pulseEvery",{minutes:m})})));
  const projectOptions=$derived(projects.map(p=>({value:p.id,label:p.name})));
  async function create(e:SubmitEvent){e.preventDefault();busy=true;try{await parseResponse(pulseApi.monitors.$post({json:{name:name.trim(),url:url.trim(),projectId,intervalMinutes}}));toast(()=>t("pulseToastMonitor"));await goto("/monitores");}catch(err){toast(errorMessage(err),{kind:"error"});}finally{busy=false;}}
- onMount(()=>{void parseResponse(pulseApi.projects.$get()).then(r=>{projects=r.projects.filter(p=>p.writable);projectId=projects[0]?.id??"";intervalMinutes=Math.max(5,minInterval);}).catch(e=>toast(errorMessage(e),{kind:"error"}));});
 </script>
 
 <a href="/monitores" class="mb-4 inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white"><ArrowLeft class="size-4"/>{t("pulseMonitors")}</a>

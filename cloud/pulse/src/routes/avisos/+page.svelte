@@ -1,5 +1,5 @@
 <script lang="ts">
- import {onMount,onDestroy} from "svelte";
+ import {onDestroy} from "svelte";
  import {type InferResponseType} from "hono/client";
  import {t,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
@@ -21,17 +21,21 @@
  type Channel=InferResponseType<typeof pulseApi.channels.$get,200>["channels"][number];
  const linkGET=pulseApi.telegram.link[":link"].$get;
  type LinkStatus=InferResponseType<typeof linkGET,200>;
- let channels=$state<Channel[]>([]),projects=$state<Project[]>([]),webhook=$state(""),busy=$state(false),link=$state<{id:string;url:string;expiresAt:string}|null>(null),linkStatus=$state<LinkStatus|null>(null),bindings=$state<Record<string,{discord:string;telegram:string}>>({});
+ type Channels=InferResponseType<typeof pulseApi.channels.$get,200>;
+ let {data}=$props();
+ const projects=$derived<Project[]>(data.projects);
+ let channels=$derived<Channel[]>(data.channels?.channels??[]),bindings=$derived(toBindings(data.projects,data.channels)),webhook=$state(""),busy=$state(false),link=$state<{id:string;url:string;expiresAt:string}|null>(null),linkStatus=$state<LinkStatus|null>(null);
  const writable=$derived(panel.usage?.readOnly===false);
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
- async function refresh(){const result=await parseResponse(pulseApi.channels.$get());channels=result.channels;const next:typeof bindings={};for(const p of projects)next[p.id]={discord:"",telegram:""};for(const b of result.bindings){const channel=channels.find(c=>c.id===b.channelId),project=next[b.projectId];if(channel&&project)project[channel.type]=channel.id;}bindings=next;}
+ // Which Discord and Telegram destination each project sends to.
+ function toBindings(list:Project[],result:Channels|null){const next:Record<string,{discord:string;telegram:string}>={};for(const p of list)next[p.id]={discord:"",telegram:""};for(const b of result?.bindings??[]){const channel=result?.channels.find(c=>c.id===b.channelId),project=next[b.projectId];if(channel&&project)project[channel.type]=channel.id;}return next;}
+ async function refresh(){const result=await parseResponse(pulseApi.channels.$get());channels=result.channels;bindings=toBindings(projects,result);}
  async function discord(e:SubmitEvent){e.preventDefault();await run(async()=>{await parseResponse(pulseApi.channels.$post({json:{type:"discord",webhook}}));webhook="";await refresh();toast(()=>t("pulseToastLinked"));});}
  async function telegram(){await run(async()=>{link=await parseResponse(pulseApi.telegram.link.$post({json:{}}));linkStatus=null;if(link)startPolling(link);});}
  async function confirmChat(){const current=link;if(!current)return;await run(async()=>{await parseResponse(pulseApi.telegram.link[":link"].confirm.$post({param:{link:current.id},json:{}}));stopPolling();link=null;linkStatus=null;await refresh();toast(()=>t("pulseToastLinked"));});}
  async function remove(channel:Channel){if(!await confirm({title:t("delete"),message:t("pulseRemoveChannel"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.channels[":channel"].$delete({param:{channel:channel.id}}));await refresh();toast(()=>t("pulseToastDeleted"));});}
  async function test(channel:Channel){await run(async()=>{await parseResponse(pulseApi.channels[":channel"].test.$post({param:{channel:channel.id},json:{}}));toast(()=>t("pulseTestQueued"));});}
  async function saveBindings(project:Project){await run(async()=>{const b=bindings[project.id];await parseResponse(pulseApi.projects[":project"].channels.$put({param:{project:project.id},json:{channelIds:[b?.discord,b?.telegram].filter((v):v is string=>!!v)}}));await refresh();toast(()=>t("pulseToastSaved"));});}
- onMount(()=>{void run(async()=>{projects=(await parseResponse(pulseApi.projects.$get())).projects;await refresh();});});
  let pollTimer:ReturnType<typeof setInterval>|undefined,pollEpoch=0;
  function stopPolling(){pollEpoch++;if(pollTimer!==undefined){clearInterval(pollTimer);pollTimer=undefined;}}
  function startPolling(current:{id:string}){

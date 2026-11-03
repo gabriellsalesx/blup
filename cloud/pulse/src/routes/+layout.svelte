@@ -1,6 +1,6 @@
 <script lang="ts">
  import "../app.css";
- import {onMount,onDestroy} from "svelte";
+ import {onDestroy} from "svelte";
  import {toast} from "#lib/toast.svelte.ts";
  import PulseSelection from "#lib/ui/PulseSelection.svelte";
  import Button from "#lib/ui/Button.svelte";
@@ -27,7 +27,6 @@
  async function signOut(){try{await fetch(`${cloudURL}/api/auth/sign-out`,{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:"{}"});}finally{location.href=`${cloudURL}/entrar`;}}
  let alive=true;onDestroy(()=>{alive=false;});
  const saver=createLanguageSaver((language)=>parseResponse(rpc.me.language.$put({json:{language}})),id=>alive&&panel.me?.id===id,()=>toast(()=>t("errorGeneric"),{kind:"error"}));
- onMount(()=>{void Promise.all([parseResponse(rpc.me.$get()),parseResponse(pulseApi.usage.$get())]).then(([me,usage])=>{panel.me=me;panel.usage=usage;}).catch(()=>{panel.error=true;}).finally(()=>{panel.ready=true;});});
  $effect(()=>{document.documentElement.lang=intlLocale();});
  $effect(()=>{const me=panel.me,selected=language(),revision=i18n.revision;void revision;if(me)void saver.schedule(me.id,selected,me.language);});
 </script>

@@ -1,6 +1,6 @@
 import {type InferResponseType} from "hono/client";
 import {t,intlLocale} from "#lib/i18n.svelte.ts";
-import {pulseApi} from "./api";
+import {pulseApi,parseResponse} from "./api";
 // What the monitor list and a monitor's own page share: its state, its days
 // as bars with their tips and how long it has been like this.
 export type Monitor=InferResponseType<typeof pulseApi.monitors.$get,200>["monitors"][number];
@@ -18,3 +18,10 @@ const ago=(ms:number)=>{const rtf=new Intl.RelativeTimeFormat(intlLocale(),{nume
 export function since(m:Monitor,history?:History){const checks=history?.checks??[],current=m.state;if(!checks.length||!m.active||(current!=="up"&&current!=="down"))return "";let first=checks[0];for(const c of checks){if(c.outcome!==current)return t("pulseChangedAt",{time:ago(first.checkedAt)});first=c;}return t("pulseStableFor",{days:7});}
 export function bars(history:History|undefined,count:number){const day=new Intl.DateTimeFormat(intlLocale(),{day:"numeric",month:"short",timeZone:"UTC"}),byDay=new Map((history?.days??[]).map(d=>[d.day,d])),today=Math.floor(Date.now()/DAY);return Array.from({length:count},(_,i)=>{const key=today-count+1+i,d=byDay.get(key);const up=d?.up??0,down=d?.down??0,total=up+down,date=day.format(new Date(key*DAY));const tip=!total?[date,t("pulseNotMonitored")]:up===total?[date,t("pulseOperational")]:[date,up/total>=0.9?t("pulseDegraded"):t("pulseDown"),t("pulseUptime",{value:(up/total*100).toLocaleString(intlLocale(),{maximumFractionDigits:1})})];return {key,tip:tip.join("\n"),up,down};});}
 export const reasonName=(c:Check)=>c.reason==="http"?t("pulseReasonHttp",{status:String(c.status??"-")}):c.reason==="timeout"?t("pulseReasonTimeout"):c.reason==="network"?t("pulseReasonNetwork"):c.reason==="blocked"?t("pulseReasonBlocked"):t("pulseReasonGap");
+// A monitor's page: the monitor, its checks, its project and how many
+// destinations get its alerts, together.
+export async function loadMonitor(id:string){
+ const [monitors,history,projects,channels]=await Promise.all([parseResponse(pulseApi.monitors.$get()),parseResponse(checksGET({param:{monitor:id}})).catch(()=>undefined),parseResponse(pulseApi.projects.$get()),parseResponse(pulseApi.channels.$get())]);
+ const monitor=monitors.monitors.find(m=>m.id===id)??null;
+ return {monitor,history:monitor?history:undefined,project:monitor?projects.projects.find(p=>p.id===monitor.projectId)??null:null,destinations:monitor?channels.bindings.filter(b=>b.projectId===monitor.projectId).length:0};
+}

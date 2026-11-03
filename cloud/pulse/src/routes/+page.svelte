@@ -1,5 +1,4 @@
 <script lang="ts">
- import {onMount} from "svelte";
  import {goto} from "$app/navigation";
  import Copy from "@lucide/svelte/icons/copy";
  import Plus from "@lucide/svelte/icons/plus";
@@ -18,7 +17,8 @@
  import {platforms} from "../../../shared/pulse-platforms";
  import {pulseApi,parseResponse,type Project} from "../lib/api";
  import {panel} from "../lib/panel.svelte";
- let projects=$state<Project[]>([]),dsn=$state(""),busy=$state(false);
+ let {data}=$props();
+ let projects=$derived<Project[]>(data.projects),dsn=$state(""),busy=$state(false);
  const writable=$derived(panel.usage?.readOnly===false);
  const usage=$derived(panel.usage?.limits?{used:panel.usage.accepted,limit:panel.usage.limits.events}:null);
  const platformName=(id:string)=>id==="other"?t("pulseOther"):platforms.find(p=>p.id===id)?.label??id;
@@ -27,7 +27,6 @@
  async function copy(){try{await navigator.clipboard.writeText(dsn);toast(()=>t("copied"));}catch{toast(()=>t("copyFailed"),{kind:"error"});}}
  async function rotate(p:Project){if(!await confirm({title:t("pulseRotate"),message:t("pulseRotateAsk")}))return;await run(async()=>{dsn=(await parseResponse(pulseApi.projects[":project"].keys.$post({param:{project:p.id}}))).dsn;toast(()=>t("pulseToastRotated"));});}
  async function remove(p:Project){if(!await confirm({title:t("delete"),message:t("pulseDeleteProject"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.projects[":project"].$delete({param:{project:p.id}}));dsn="";await refresh();toast(()=>t("pulseToastDeleted"));});}
- onMount(()=>{void run(refresh);});
 </script>
 
 <PageHeader title={t("pulseProjects")} lead={t("pulseScope")}>

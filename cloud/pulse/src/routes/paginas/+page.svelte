@@ -1,6 +1,5 @@
 <script lang="ts">
  import Domain from "../../lib/Domain.svelte";
- import {onMount} from "svelte";
  import {type InferResponseType} from "hono/client";
  import Plus from "@lucide/svelte/icons/plus";
  import Pencil from "@lucide/svelte/icons/pencil";
@@ -30,7 +29,10 @@
  type Incident=InferResponseType<typeof incidentsGET,200>["incidents"][number];
  type IncidentState="investigating"|"identified"|"monitoring"|"resolved";
  type Impact="operational"|"degraded"|"partial_outage"|"major_outage";
- let pages=$state<Page[]>([]),monitors=$state<Monitor[]>([]),incidents=$state<Incident[]>([]),editing=$state<Page|null>(null),chosen=$state<Record<string,string>>({}),title=$state(""),slug=$state(""),busy=$state(false);
+ let {data}=$props();
+ let pages=$derived<Page[]>(data.pages);
+ const monitors=$derived<Monitor[]>(data.monitors);
+ let incidents=$state<Incident[]>([]),editing=$state<Page|null>(null),chosen=$state<Record<string,string>>({}),title=$state(""),slug=$state(""),busy=$state(false);
  let incidentTitle=$state(""),text=$state(""),incidentId=$state<string|null>(null),incidentStateValue=$state<IncidentState>("investigating"),impact=$state<Impact>("degraded");
  const writable=$derived(panel.usage?.readOnly===false);
  const validComponents=$derived(Object.values(chosen).every(v=>v.trim().length>0));
@@ -46,7 +48,6 @@
  async function remove(page:Page){if(!await confirm({title:t("delete"),message:t("pulseDeletePage"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].$delete({param:{page:page.id}}));await refresh();clear();toast(()=>t("pulseToastDeleted"));});}
  async function incident(e:SubmitEvent){e.preventDefault();const page=editing;if(!page)return;await run(async()=>{if(incidentId)await parseResponse(pulseApi.pages[":page"].incidents[":incident"].updates.$post({param:{page:page.id,incident:incidentId},json:{body:text,state:incidentStateValue}}));else await parseResponse(pulseApi.pages[":page"].incidents.$post({param:{page:page.id},json:{title:incidentTitle,body:text,state:incidentStateValue,impact}}));incidentId=null;incidentTitle="";text="";incidents=(await parseResponse(incidentsGET({param:{page:page.id}}))).incidents;toast(()=>t("pulseToastIncident"));});}
  function toggleMonitor(id:string,checked:boolean){if(checked)chosen[id]="";else{const copy={...chosen};delete copy[id];chosen=copy;}}
- onMount(()=>{void run(async()=>{await refresh();monitors=(await parseResponse(pulseApi.monitors.$get())).monitors;});});
 </script>
 
 <PageHeader title={t("pulsePages")} lead={t("pulsePublicPrivacy")}/>

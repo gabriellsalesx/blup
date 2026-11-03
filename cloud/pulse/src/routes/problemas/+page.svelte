@@ -1,6 +1,4 @@
 <script lang="ts">
- import {onMount} from "svelte";
- import {page} from "$app/state";
  import {goto} from "$app/navigation";
  import {t,intlLocale,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
@@ -14,7 +12,8 @@
  import {pulseApi,parseResponse,type Project,type Issue} from "../../lib/api";
  // The issues of one project at a time (chosen at the top, kept in the
  // address), open, resolved or ignored; a click shows the latest events.
- let projects=$state<Project[]>([]),projectId=$state(""),issues=$state<Issue[]>([]),busy=$state(false),filter=$state<"open"|"resolved"|"ignored">("open");
+ let {data}=$props();
+ let projects=$derived<Project[]>(data.projects),projectId=$derived(data.projectId),issues=$derived<Issue[]>(data.issues),busy=$state(false),filter=$state<"open"|"resolved"|"ignored">("open");
  let events=$state<Awaited<ReturnType<typeof getEvents>>>([]),openIssue=$state<string|null>(null);
  const project=$derived(projects.find(p=>p.id===projectId)??null);
  const projectOptions=$derived(projects.map(p=>({value:p.id,label:p.name})));
@@ -25,7 +24,6 @@
  async function change(issue:Issue,state:Issue["state"]){await run(async()=>{await parseResponse(pulseApi.projects[":project"].issues[":issue"].$patch({param:{project:projectId,issue:issue.id},json:{state}}));await load();toast(()=>t("pulseToastIssue"));});}
  async function toggleEvents(issue:Issue){if(openIssue===issue.id){openIssue=null;events=[];return;}await run(async()=>{events=await getEvents(projectId,issue.id);openIssue=issue.id;});}
  async function getEvents(projectKey:string,issue:string){return (await parseResponse(pulseApi.projects[":project"].issues[":issue"].events.$get({param:{project:projectKey,issue}}))).events;}
- onMount(()=>{void run(async()=>{projects=(await parseResponse(pulseApi.projects.$get())).projects;const wanted=page.url.searchParams.get("projeto");projectId=projects.find(p=>p.id===wanted)?.id??projects[0]?.id??"";await load();});});
 </script>
 
 <PageHeader title={t("pulseIssues")}/>

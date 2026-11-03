@@ -1,7 +1,5 @@
 <script lang="ts">
- import {onMount} from "svelte";
  import {goto} from "$app/navigation";
- import {page} from "$app/state";
  import ArrowLeft from "@lucide/svelte/icons/arrow-left";
  import ChevronLeft from "@lucide/svelte/icons/chevron-left";
  import ChevronRight from "@lucide/svelte/icons/chevron-right";
@@ -20,15 +18,17 @@
  import StatusDot from "#lib/ui/StatusDot.svelte";
  import UptimeBars from "#lib/ui/UptimeBars.svelte";
  import ResponseChart from "../../../lib/ResponseChart.svelte";
- import {pulseApi,parseResponse,type Project} from "../../../lib/api";
+ import {pulseApi,parseResponse} from "../../../lib/api";
  import {panel} from "../../../lib/panel.svelte";
- import {checksGET,stateOf,stateName,stateColor,since,bars,reasonName,type Monitor,type History} from "../../../lib/monitor";
+ import {stateOf,stateName,stateColor,since,bars,reasonName,loadMonitor,type Monitor} from "../../../lib/monitor";
  // One monitor in full: its days as bars, the response time of the latest
  // checks, where its alerts go and every check, a page at a time.
  const PAGE=20;
- let monitor=$state<Monitor|null>(null),history=$state<History|undefined>(),project=$state<Project|null>(null),destinations=$state(0),missing=$state(false),busy=$state(false);
- let filter=$state<"all"|"down">("all"),pageIndex=$state(0);
- const id=$derived(page.params.id??"");
+ let {data}=$props();
+ let loaded=$derived(data),busy=$state(false);
+ const monitor=$derived(loaded.monitor),history=$derived(loaded.history),project=$derived(loaded.project),destinations=$derived(loaded.destinations),missing=$derived(!loaded.monitor);
+ // Another monitor starts again from all checks, on the first page.
+ let filter=$derived.by<"all"|"down">(()=>{void data;return "all";}),pageIndex=$derived.by(()=>{void data;return 0;});
  const s=$derived(monitor?stateOf(monitor):"unknown");
  const days=$derived(Math.min(90,panel.usage?.limits?.retentionDays??30));
  const listed=$derived((history?.checks??[]).filter(c=>filter==="all"||c.outcome==="down"));
@@ -37,14 +37,8 @@
  const alerts=$derived(project?destinations===0?t("pulseAlertsNone",{project:project.name}):destinations===1?t("pulseAlertsOne",{project:project.name}):t("pulseAlertsMany",{project:project.name,count:String(destinations)}):"");
  const filters=$derived([{value:"all",label:t("pulseAllChecks")},{value:"down",label:t("pulseIncidents")}] as const);
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
- async function load(){
-  const found=(await parseResponse(pulseApi.monitors.$get())).monitors.find(m=>m.id===id)??null;monitor=found;missing=!found;if(!found)return;
-  const [checks,projects,channels]=await Promise.all([parseResponse(checksGET({param:{monitor:found.id}})),parseResponse(pulseApi.projects.$get()),parseResponse(pulseApi.channels.$get())]);
-  history=checks;project=projects.projects.find(p=>p.id===found.projectId)??null;destinations=channels.bindings.filter(b=>b.projectId===found.projectId).length;
- }
- async function toggle(m:Monitor){await run(async()=>{await parseResponse(pulseApi.monitors[":monitor"].$patch({param:{monitor:m.id},json:{active:!m.active}}));await load();toast(()=>m.active?t("pulseToastPaused"):t("pulseToastResumed"));});}
+ async function toggle(m:Monitor){await run(async()=>{await parseResponse(pulseApi.monitors[":monitor"].$patch({param:{monitor:m.id},json:{active:!m.active}}));loaded={...loaded,...await loadMonitor(m.id)};toast(()=>m.active?t("pulseToastPaused"):t("pulseToastResumed"));});}
  async function remove(m:Monitor){if(!await confirm({title:t("delete"),message:t("pulseRemoveMonitor"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.monitors[":monitor"].$delete({param:{monitor:m.id}}));toast(()=>t("pulseToastDeleted"));await goto("/monitores");});}
- onMount(()=>{void run(load);});
 </script>
 
 <a class="inline-flex items-center gap-1.5 text-sm font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white" href="/monitores"><ArrowLeft class="size-4"/>{t("pulseBackToMonitors")}</a>

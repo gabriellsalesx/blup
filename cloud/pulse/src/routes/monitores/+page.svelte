@@ -1,25 +1,20 @@
 <script lang="ts">
- import {onMount} from "svelte";
  import {goto} from "$app/navigation";
  import Plus from "@lucide/svelte/icons/plus";
  import ChevronRight from "@lucide/svelte/icons/chevron-right";
  import {t} from "#lib/i18n.svelte.ts";
- import {errorMessage} from "#lib/i18n/errors.ts";
- import {toast} from "#lib/toast.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import UptimeBars from "#lib/ui/UptimeBars.svelte";
- import {pulseApi,parseResponse} from "../../lib/api";
  import {panel} from "../../lib/panel.svelte";
- import {checksGET,stateOf,stateName,stateColor,since,bars,type Monitor,type History} from "../../lib/monitor";
+ import {stateOf,stateName,stateColor,since,bars} from "../../lib/monitor";
  // Each monitor is one row: its state as a colored edge, name and address,
  // the last days as bars and how long it has been like this. A click opens
  // its own page with the details.
- let monitors=$state<Monitor[]>([]),histories=$state<Record<string,History>>({});
+ let {data}=$props();
+ const monitors=$derived(data.monitors),histories=$derived(data.histories);
  const writable=$derived(panel.usage?.readOnly===false);
  const edge={up:"border-l-emerald-500",down:"border-l-red-500",unknown:"border-l-neutral-300 dark:border-l-neutral-700",paused:"border-l-neutral-300 dark:border-l-neutral-700"};
- async function refresh(){monitors=(await parseResponse(pulseApi.monitors.$get())).monitors;const loaded=await Promise.all(monitors.map(async m=>[m.id,await parseResponse(checksGET({param:{monitor:m.id}}))] as const));histories=Object.fromEntries(loaded);}
- onMount(()=>{refresh().catch(e=>toast(errorMessage(e),{kind:"error"}));});
 </script>
 
 <PageHeader title={t("pulseMonitors")} lead={t("pulseCheckLead")}>
