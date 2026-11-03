@@ -10,7 +10,7 @@
 	const color: Record<DayState, string> = { up: "bg-emerald-500", partial: "bg-amber-500", down: "bg-red-500", maint: "bg-indigo-500", none: "bg-neutral-200 dark:bg-neutral-700" };
 </script>
 
-<div class="flex h-9 gap-[3px]" role="group" aria-label={label}>
+<div class="flex h-9 gap-[2px] sm:gap-[3px]" role="group" aria-label={label}>
 	{#each days as day, index (day.key)}
 		<BarTip class="flex-1" label={`${day.date}: ${day.name}`} align={index < 5 ? "start" : index >= days.length - 5 ? "end" : "center"}>
 			<span class="w-full rounded-full {color[day.state]}"></span>

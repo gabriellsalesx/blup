@@ -36,8 +36,8 @@
   {@const live=channels.filter(c=>c.active)}
   {@const failing=live.some(c=>c.lastError)}
   <ListItem {href} label={project.name}>
-   <div class="flex items-center gap-3"><Folder class="size-5 shrink-0 text-neutral-500"/><div class="min-w-0"><p class="truncate font-semibold">{project.name}</p><p class="text-sm {failing?"text-amber-700 dark:text-amber-300":"text-neutral-500"}">{failing?t("pulseDeliveryFailed"):count(live.length)}</p></div></div>
-   {#snippet actions()}{#if live.length}<span class="flex items-center" aria-label={live.map(c=>kindName[c.type]).join(", ")}>{#each live as channel,i(channel.id)}<span class="grid size-10 place-items-center rounded-full border border-neutral-200 bg-white ring-4 ring-white dark:border-neutral-700 dark:bg-neutral-900 dark:ring-neutral-900 {i?"-ml-2":""}" title={kindName[channel.type]}><ChannelIcon type={channel.type} class="size-[18px]"/></span>{/each}</span>{/if}{/snippet}
+   <!-- The marks of its destinations stay on the project's line, on a phone too. -->
+   <div class="flex items-center gap-3"><Folder class="size-5 shrink-0 text-neutral-500"/><div class="min-w-0 flex-1"><p class="truncate font-semibold">{project.name}</p><p class="text-sm {failing?"text-amber-700 dark:text-amber-300":"text-neutral-500"}">{failing?t("pulseDeliveryFailed"):count(live.length)}</p></div>{#if live.length}<span class="flex shrink-0 items-center" aria-label={live.map(c=>kindName[c.type]).join(", ")}>{#each live as channel,i(channel.id)}<span class="grid size-8 place-items-center sm:size-10 rounded-full border border-neutral-200 bg-white ring-4 ring-white dark:border-neutral-700 dark:bg-neutral-900 dark:ring-neutral-900 {i?"-ml-2":""}" title={kindName[channel.type]}><ChannelIcon type={channel.type} class="size-4 sm:size-[18px]"/></span>{/each}</span>{/if}</div>
    {#snippet menu()}<ActionMenu label={t("pulseActions")} items={menuItems(project,href)}/>{/snippet}
   </ListItem>
  {/each}

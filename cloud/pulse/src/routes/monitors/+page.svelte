@@ -50,8 +50,7 @@
   <div onclick={(event)=>openCard(event,href)} onauxclick={(event)=>openCard(event,href)} class="relative grid cursor-pointer items-center gap-x-6 gap-y-3 rounded-xl border border-l-4 border-neutral-200 bg-white px-5 py-4 transition-colors hover:bg-neutral-50 sm:grid-cols-[minmax(0,1fr)_minmax(0,22rem)_12rem] dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60 {edge[s]}">
    <a class={cardLink} {href} aria-label={monitor.name}></a>
    <span class="min-w-0"><span class="block truncate font-semibold">{monitor.name}</span><span class="block truncate text-sm underline {stateColor[s]}">{monitor.url}</span></span>
-   <span class="hidden sm:block"><UptimeBars days={bars(histories[monitor.id],30)} label={t("pulseHistory")}/></span>
-   <span class="sm:hidden"><UptimeBars days={bars(histories[monitor.id],14)} label={t("pulseHistory")}/></span>
+   <span><UptimeBars days={bars(histories[monitor.id],30)} label={t("pulseHistory")}/></span>
    <span class="flex items-center justify-between gap-2 sm:justify-end sm:text-right"><span><span class="block text-sm font-semibold {stateColor[s]}">{stateName(s)}</span>{#if changed}<span class="block text-xs text-neutral-500">{changed}</span>{/if}</span><ActionMenu label={t("pulseActions")} items={menu(monitor)}/></span>
   </div>
  {:else}<div class="rounded-xl border border-neutral-200 bg-white px-5 py-10 text-center text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">{t("pulseNoMonitors")}</div>{/each}
