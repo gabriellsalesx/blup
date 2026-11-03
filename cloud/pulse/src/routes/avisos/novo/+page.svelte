@@ -57,7 +57,7 @@
    <form class="grid gap-4" onsubmit={discord}>
     <p class="text-sm text-neutral-500">{t("pulseDiscordHelp")}</p>
     <FloatField id="discord-webhook" surface="bg-white dark:bg-neutral-900" label={t("pulseDiscordWebhook")} type="password" autocomplete="off" maxlength={2048} required bind:value={webhook}/>
-    <div class="flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto("/avisos")}>{t("cancel")}</Button><Button {busy}><BrandIcon name="discord" class="size-4"/>{t("pulseAddDiscord")}</Button></div>
+    <div class="flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto("/avisos")}>{t("cancel")}</Button><Button {busy}>{t("pulseAddDiscord")}</Button></div>
    </form>
   {:else}
    <p class="text-sm text-neutral-500">{t("pulseLinkHelp")}</p>
@@ -65,7 +65,7 @@
     <div class="mt-4"><a class="inline-flex items-center gap-2 font-semibold text-blup underline" href={link.url} target="_blank" rel="noopener noreferrer"><BrandIcon name="telegram" class="size-4"/>{t("pulseOpenBot")}</a><p class="mt-2 text-xs text-neutral-500">{t("pulseLinkDeadline",{date:formatDate(link.expiresAt)})}</p>
      {#if linkStatus?.candidate}<p class="my-3 break-all text-sm">{linkStatus.candidate.label} · ID: {linkStatus.candidate.id}</p><Button onclick={confirmChat} {busy}>{t("pulseConfirmChat")}</Button>{:else if linkStatus?.state==="expired"}<p class="mt-3 text-sm">{t("pulseLinkExpired")}</p>{:else}<p class="mt-3 text-sm text-neutral-500">{t("pulseWaitingChat")}</p>{/if}
     </div>
-   {:else}<div class="mt-4 flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto("/avisos")}>{t("cancel")}</Button><Button type="button" onclick={telegram} {busy}><BrandIcon name="telegram" class="size-4"/>{t("pulseLinkTelegram")}</Button></div>{/if}
+   {:else}<div class="mt-4 flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto("/avisos")}>{t("cancel")}</Button><Button type="button" onclick={telegram} {busy}>{t("pulseLinkTelegram")}</Button></div>{/if}
   {/if}
  </div>
 </Card></div>
