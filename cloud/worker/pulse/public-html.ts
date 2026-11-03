@@ -23,11 +23,12 @@ const icon={
 } as const;
 type Tone=keyof typeof icon;
 // The legend of the services card (Lucide circle-check, triangle-alert,
-// circle-minus, wrench and circle), gray until hovered.
+// circle-x, wrench and circle), gray until hovered: the same marks as the
+// services' own state.
 const legendIcon={
  up:'<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>',
  partial:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
- down:'<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>',
+ down:'<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
  maint:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/>',
  none:'<circle cx="12" cy="12" r="10"/>',
 } as const;
