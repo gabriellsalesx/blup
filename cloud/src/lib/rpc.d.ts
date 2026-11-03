@@ -3094,7 +3094,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-}, "/api/ai"> | import("hono/types").MergeSchemaPath<((((((((((((({
+}, "/api/ai"> | import("hono/types").MergeSchemaPath<(((((((((((((({
     "/public/:slug": {
         $get: {
             input: {
@@ -4104,6 +4104,77 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     count: number;
                     environment: string;
                     release: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}) & {
+    "/projects/:project/issues/:issue": {
+        $get: {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                    issue: string;
+                };
+            };
+            output: {
+                issue: {
+                    state: "open" | "resolved" | "ignored";
+                    id: string;
+                    title: string;
+                    level: string;
+                    firstAt: number;
+                    lastAt: number;
+                    count: number;
+                    environment: string;
+                    release: string;
+                };
+                days: {
+                    day: number;
+                    count: number;
                 }[];
             };
             outputFormat: "json";

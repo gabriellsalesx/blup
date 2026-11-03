@@ -80,6 +80,11 @@ describe("Pulse atomic admission and retention",()=>{
  it("paginates issues sharing the same timestamp without skipping IDs",async()=>{
   const now=Date.now();store.importGrant({id:"pagination",amount:32},new Date(now).toISOString().slice(0,7));for(let i=1;i<=3;i++)store.accept(await safeEvent(raw(i.toString().repeat(32),["alpha failure","beta failure","gamma failure"][i-1]),i.toString().repeat(32)),"max_pulse",now);const first=store.issues(0,{limit:2}),last=first[1];const next=store.issues(0,{limit:2,before:last.lastAt,beforeId:last.id});expect(new Set([...first,...next].map(i=>i.id)).size).toBe(3);
  });
+ it("gives one issue with its occurrences per day, and nothing for an unknown or old one",async()=>{
+  const now=Date.now();store.importGrant({id:"detail",amount:32},new Date(now).toISOString().slice(0,7));const event=await safeEvent(raw("d".repeat(32),"detail failure"),"d".repeat(32));store.accept(event,"max_pulse",now);store.accept(await safeEvent(raw("e".repeat(32),"detail failure"),"e".repeat(32)),"max_pulse",now);
+  const found=store.issue(event.group,0);expect(found?.issue).toMatchObject({id:event.group,title:"detail failure",count:2,state:"open"});expect(found?.days).toEqual([{day:Math.floor(now/86_400_000),count:2}]);
+  expect(store.issue("f".repeat(64),0)).toBeNull();expect(store.issue(event.group,now+1)).toBeNull();
+ });
  it("serializes grants across projects, imports once and never refunds uncertain grants",async()=>{
   const attempts=await Promise.allSettled([reserveGrant(d1.asD1(),"alice","1",0,32),reserveGrant(d1.asD1(),"alice","2",0,32)]);expect(attempts.filter(a=>a.status==="fulfilled")).toHaveLength(1);
   const grant=await reserveGrant(d1.asD1(),"alice","1",0,32);store.importGrant(grant,new Date().toISOString().slice(0,7));store.importGrant(grant,new Date().toISOString().slice(0,7));expect(store.slots(new Date().toISOString().slice(0,7))).toBe(32);

@@ -703,3 +703,10 @@ Cada aviso é montado uma vez (`worker/pulse/alert-message.ts`), na língua da c
 | Aviso de teste do destino | Texto do teste (`/alerts`) | Verde do Pulse | Nenhum |
 
 No Discord vai como embed (`username: "Blup Pulse"`, autor = rótulo, barra na cor, campos lado a lado, `allowed_mentions` vazio). No Telegram vai como texto com negrito e link por `entities`, sem `parse_mode`, para que nada no título do erro vire formatação. Campo vazio aparece como "-"; textos longos são cortados nos limites de cada serviço.
+
+## Página do problema
+
+Na lista de Problemas, cada problema é um cartão como o do monitor, com a barra da situação ao lado (vermelha em aberto, verde resolvido, cinza ignorado), nível, ambiente, versão, "Visto há…" e o total de ocorrências; o cartão abre a página do problema e o menu de três pontos tem Ver detalhes, Resolver, Ignorar ou Reabrir.
+
+A página `/issues/[project]/[issue]` (`GET /projects/:project/issues/:issue`, que devolve o problema e as ocorrências por dia dentro do histórico guardado) mostra: título completo com nível e situação e as ações no topo; ocorrências, primeira e última vez, ambiente e versão; as ocorrências por dia dos últimos 30 dias; a exceção de uma ocorrência (a mais recente ou a escolhida na tabela) com a pilha de chamadas da chamada mais nova para a mais antiga, só os quadros do app até pedir todos; e a tabela das ocorrências recentes. Tudo vem do evento já tratado na chegada (sem pedidos HTTP, usuários, contextos ou anexos).
+

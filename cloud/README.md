@@ -57,6 +57,7 @@ As rotas são em inglês, como o código; as páginas continuam traduzidas (pt, 
 | Pulse | `/sign-in` | Entrar no Pulse, com a mesma conta e o mesmo formulário do Cloud, em verde (`?next=` volta à página do Pulse que pediu o login) |
 | Pulse | `/` e `/projects/new` | Projetos e novo projeto |
 | Pulse | `/issues` | Problemas (`?project=`) |
+| Pulse | `/issues/[project]/[issue]` | Um problema: números, ocorrências por dia, exceção com a pilha de chamadas e ocorrências recentes |
 | Pulse | `/monitors`, `/monitors/new`, `/monitors/[id]`, `/monitors/[id]/edit` | Monitores |
 | Pulse | `/status-pages`, `/status-pages/new`, `/status-pages/[id]` | Páginas de status (`?tab=incidents` ou `?tab=maintenance` abre essa aba) |
 | Pulse | `/status-pages/[id]/maintenance/new`, `/status-pages/[id]/maintenance/[maintenance]` | Agendar manutenção e editar ou excluir uma manutenção |

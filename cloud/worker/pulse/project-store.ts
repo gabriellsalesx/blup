@@ -56,6 +56,14 @@ INSERT OR IGNORE INTO meta VALUES('schema','1');`);
  issues(cutoff:number,filter:{state?:string;environment?:string;release?:string;q?:string;before?:number;beforeId?:string;limit:number}){
   return this.sql.exec<Issue>(`SELECT i.id,i.state,i.title,i.level,i.first_at AS firstAt,i.last_at AS lastAt,(SELECT coalesce(sum(count),0) FROM issue_day WHERE issue_id=i.id AND day>=?) AS count,i.environment,i.release FROM issue i WHERE last_at>? AND (? IS NULL OR state=?) AND (? IS NULL OR environment=?) AND (? IS NULL OR release=?) AND (? IS NULL OR instr(lower(title),lower(?))>0) AND (? IS NULL OR last_at<? OR (last_at=? AND ? IS NOT NULL AND i.id<?)) ORDER BY last_at DESC,id DESC LIMIT ?`,Math.floor(cutoff/86_400_000),cutoff,filter.state??null,filter.state??null,filter.environment??null,filter.environment??null,filter.release??null,filter.release??null,filter.q??null,filter.q??null,filter.before??null,filter.before??null,filter.before??null,filter.beforeId??null,filter.beforeId??null,filter.limit).toArray();
  }
+ // One issue with its occurrences per day (UTC days since the epoch), for
+ // its own page.
+ issue(id:string,cutoff:number){
+  const day=Math.floor(cutoff/86_400_000);
+  const issue=this.sql.exec<Issue>("SELECT i.id,i.state,i.title,i.level,i.first_at AS firstAt,i.last_at AS lastAt,(SELECT coalesce(sum(count),0) FROM issue_day WHERE issue_id=i.id AND day>=?) AS count,i.environment,i.release FROM issue i WHERE i.id=? AND i.last_at>?",day,id,cutoff).toArray()[0];
+  if(!issue)return null;
+  return {issue,days:this.sql.exec<{day:number;count:number}>("SELECT day,count FROM issue_day WHERE issue_id=? AND day>=? ORDER BY day",id,day).toArray()};
+ }
  samples(id:string,cutoff:number,limit=50){return this.sql.exec<{id:string;receivedAt:number;event:string}>("SELECT id,received_at AS receivedAt,event FROM sample WHERE issue_id=? AND received_at>? ORDER BY received_at DESC,id DESC LIMIT ?",id,cutoff,limit).toArray().flatMap(row=>{const event=storedSample(row.event);return event?[{...row,event}]:[];});}
  setState(id:string,state:Issue["state"],cutoff:number){return this.sql.exec("UPDATE issue SET state=? WHERE id=? AND last_at>? RETURNING id",state,id,cutoff).toArray().length>0;}
  usage(month:string){return {accepted:this.sql.exec<{n:number}>("SELECT coalesce(sum(used),0) AS n FROM grant_slot WHERE month=?",month).toArray()[0].n,bytes:this.sql.databaseSize};}
