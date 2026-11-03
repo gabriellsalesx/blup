@@ -37,6 +37,11 @@
   {label:t("pulseLastSeen"),value:ago(issue.lastAt),hint:formatDate(new Date(issue.lastAt))},
   {label:t("pulseFieldEnvironment"),value:issue.environment||"-",hint:`${t("pulseFieldRelease")}: ${issue.release||"-"}`},
  ]:[]);
+ // The context of the occurrence shown (route, browser, system, runtime)
+ // and its trail of actions before the error.
+ const details=$derived.by(()=>{const c=shown?.event.context;if(!c)return [];return [{label:t("pulseRoute"),value:[c.method,c.route].filter(Boolean).join(" ")},{label:t("pulseBrowser"),value:c.browser??""},{label:t("pulseSystem"),value:c.os??""},{label:t("pulseRuntime"),value:c.runtime??""}].filter(d=>d.value);});
+ const trail=$derived(shown?.event.breadcrumbs??[]);
+ const clock=$derived(new Intl.DateTimeFormat(intlLocale(),{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
  async function change(state:IssueState){const project=data.project,current=issue;if(!project||!current)return;busy=true;try{await parseResponse(pulseApi.projects[":project"].issues[":issue"].$patch({param:{project:project.id,issue:current.id},json:{state}}));toast(()=>t("pulseToastIssue"));await refreshAll();}catch(err){toast(errorMessage(err),{kind:"error"});}finally{busy=false;}}
 </script>
 
@@ -59,8 +64,27 @@
   </Card>
 
   <Card title={t("pulseException")} help={shown?t("pulseOccurrenceAt",{date:formatDate(new Date(shown.receivedAt))}):undefined}>
-   <div class="mt-4">{#if shown}<StackTrace exceptions={shown.event.exceptions}/>{#if shown.event.message&&!shown.event.exceptions.length}<p class="font-mono text-sm break-words">{shown.event.message}</p>{/if}{:else}<p class="text-sm text-neutral-500">{t("pulseNoEvents")}</p>{/if}</div>
+   <div class="mt-4">{#if shown}{#key shown.id}<StackTrace exceptions={shown.event.exceptions}/>{/key}{#if shown.event.message&&!shown.event.exceptions.length}<p class="font-mono text-sm break-words">{shown.event.message}</p>{/if}{:else}<p class="text-sm text-neutral-500">{t("pulseNoEvents")}</p>{/if}</div>
   </Card>
+
+  {#if shown&&(details.length||trail.length)}
+   <div class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+    <Card title={t("pulseContext")}>
+     {#if details.length}<dl class="mt-3 grid">{#each details as item(item.label)}<div class="flex items-baseline justify-between gap-4 border-t border-neutral-200 py-2.5 first:border-t-0 dark:border-neutral-800"><dt class="shrink-0 text-sm text-neutral-500">{item.label}</dt><dd class="min-w-0 text-right font-mono text-sm break-all">{item.value}</dd></div>{/each}</dl>
+     {:else}<p class="mt-3 text-sm text-neutral-500">{t("pulseNoContext")}</p>{/if}
+    </Card>
+    <Card title={t("pulseTrail")} help={t("pulseTrailHelp")}>
+     {#if trail.length}
+      <ol class="mt-4">
+       {#each trail as crumb,i(i)}
+        <li class="relative grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3 border-l-2 border-neutral-200 pb-3 pl-4 dark:border-neutral-800"><span class="absolute top-1.5 -left-[5px] size-2 rounded-full {crumb.level==="error"||crumb.level==="fatal"?"bg-red-500":crumb.level==="warning"?"bg-amber-500":"bg-neutral-400"}" aria-hidden="true"></span><span class="font-mono text-xs leading-5 text-neutral-500">{crumb.at?clock.format(crumb.at):""}</span><span class="min-w-0 text-sm"><span class="mr-2 rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">{crumb.category||crumb.type}</span><span class="break-words">{crumb.message}</span></span></li>
+       {/each}
+       <li class="relative grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3 border-l-2 border-transparent pl-4"><span class="absolute top-1.5 -left-[5px] size-2 rounded-full bg-red-500 ring-4 ring-red-500/20" aria-hidden="true"></span><span class="font-mono text-xs leading-5 text-neutral-500">{clock.format(shown.receivedAt)}</span><span class="text-sm font-semibold text-red-600 dark:text-red-400">{t("pulseTrailError")}</span></li>
+      </ol>
+     {:else}<p class="mt-3 text-sm text-neutral-500">{t("pulseNoTrail")}</p>{/if}
+    </Card>
+   </div>
+  {/if}
 
   <section class="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
    <h2 class="px-5 pt-5 font-bold">{t("pulseEvents")}</h2>

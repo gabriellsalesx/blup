@@ -56,7 +56,7 @@ describe("Pulse protocol and privacy",()=>{
   await expect(ingestBytes(new Request("https://ingest.audit.invalid",{method:"POST",body:"x",headers:{"content-encoding":"zstd"}}))).rejects.toMatchObject({status:415});
  });
  it("drops private structures and groups only sanitized bounded data",async()=>{
-  const value=await safeEvent({...raw(),request:{data:"PRIVATE_NOTE",headers:{authorization:"PRIVATE_TOKEN"}},user:{email:"PRIVATE_EMAIL"},extra:{note:"PRIVATE_EXTRA"},contexts:{note:"PRIVATE_CONTEXT"},breadcrumbs:[{message:"PRIVATE_CRUMB"}],message:"token=unsafe person@example.com /home/person/private.md",exception:undefined},"a".repeat(32));
+  const value=await safeEvent({...raw(),request:{data:"PRIVATE_NOTE",headers:{authorization:"PRIVATE_TOKEN"}},user:{email:"PRIVATE_EMAIL"},extra:{note:"PRIVATE_EXTRA"},contexts:{note:"PRIVATE_CONTEXT"},breadcrumbs:[{message:"clicked",data:{note:"PRIVATE_CRUMB"}}],message:"token=unsafe person@example.com /home/person/private.md",exception:undefined},"a".repeat(32));
   const encoded=JSON.stringify(value);for(const forbidden of ["PRIVATE_","unsafe","person@example.com","/home/person"])expect(encoded).not.toContain(forbidden);
   expect((await safeEvent({...raw(),fingerprint:["bucket","{{ default }}"]},"b".repeat(32))).group).toBe((await safeEvent({...raw(),fingerprint:["bucket","{{ default }}"]},"c".repeat(32))).group);
   expect((await safeEvent({...raw(),fingerprint:["ab","c"]},"b".repeat(32))).group).not.toBe((await safeEvent({...raw(),fingerprint:["a","bc"]},"c".repeat(32))).group);
@@ -147,5 +147,34 @@ describe("Pulse actual routes and DO",()=>{
   expect((await send()).status).toBe(200);expect((await send()).status).toBe(200);expect(store.usage(new Date().toISOString().slice(0,7)).accepted).toBe(1);
   Object.assign(state.env,{PULSE_INGEST_LIMIT:{limit:async()=>({success:false})}});const limited=await send();expect(limited.status).toBe(429);expect(limited.headers.get("retry-after")).toBe("10");expect(limited.headers.get("x-sentry-rate-limits")).toContain("error;default");expect(limited.headers.get("access-control-allow-origin")).toBe("*");
   Object.assign(state.env,{PULSE_INGEST_LIMIT:{limit:async()=>({success:true})}});d1.sqlite.prepare("UPDATE pulse_key SET revoked_at=1 WHERE hash=?").run(await sha256(key));expect((await send()).status).toBe(403);
+ });
+});
+describe("what an occurrence keeps beyond the error",()=>{
+ const frames=[{filename:"/home/dev/app/node_modules/lib.js",function:"lib",lineno:1,in_app:false,pre_context:["library code"],context_line:"throw e",post_context:[]},{filename:"/home/dev/app/src/checkout.js",function:"pay",lineno:42,colno:7,in_app:true,pre_context:["a","b","c","d","e","f","const key='sk_live_abcdefghijklmnop';"],context_line:"return order.customer.id; // mail me at dev@example.com",post_context:["}","x".repeat(400),"3","4","5","6"]}];
+ const full={event_id:"c".repeat(32),platform:"javascript",exception:{values:[{type:"TypeError",value:"x is undefined",stacktrace:{frames}}]},
+  request:{url:"https://shop.example.com/orders/12345/items/550e8400-e29b-41d4-a716-446655440000?token=secret&email=a@b.co",method:"post",headers:{cookie:"session=1"},data:{card:"4242"}},
+  contexts:{browser:{name:"Chrome",version:"131.0.6778.86"},os:{name:"Windows",version:"10.0.19045"},runtime:{name:"node",version:"v22.11.0"},device:{model:"secret"}},
+  user:{email:"a@b.co",ip_address:"1.2.3.4"},
+  breadcrumbs:{values:[{timestamp:1793710000.5,category:"ui.click",message:"button#pay"},{type:"http",category:"fetch",data:{method:"post",url:"https://api.example.com/charge/99?card=4242",status_code:402}},{category:"navigation",data:{from:"/cart?ref=x",to:"/checkout/7"}},{category:"console",message:"token=abc123 failed"},"not a crumb"]}};
+ it("keeps code only of app frames, cleaned and bounded",async()=>{
+  const event=await safeEvent(full,"c".repeat(32)),[lib,own]=event.exceptions[0].frames;
+  expect(lib.context).toBeUndefined();
+  expect(own.context?.pre).toEqual(["c","d","e","f","const key='[secret]';"]);
+  expect(own.context?.line).toBe("return order.customer.id; // mail me at [email]");
+  expect(own.context?.post).toHaveLength(5);expect(own.context?.post[1]).toHaveLength(200);
+ });
+ it("keeps the route without query or ids and only names of the browser, system and runtime",async()=>{
+  const event=await safeEvent(full,"c".repeat(32));
+  expect(event.context).toEqual({method:"POST",route:"/orders/:id/items/:id",browser:"Chrome 131",os:"Windows 10",runtime:"node 22"});
+  const stored=JSON.stringify(event);for(const leaked of ["token=secret","sk_live","a@b.co","1.2.3.4","4242","session=1","shop.example.com","6778"])expect(stored).not.toContain(leaked);
+ });
+ it("keeps the trail of actions, with HTTP calls and page changes as method, route and status",async()=>{
+  const event=await safeEvent(full,"c".repeat(32));
+  expect(event.breadcrumbs?.map(b=>[b.category,b.message])).toEqual([["ui.click","button#pay"],["fetch","POST /charge/:id 402"],["navigation","/cart → /checkout/:id"],["console","token=[secret] failed"]]);
+  expect(event.breadcrumbs?.[0].at).toBe(1793710000500);
+ });
+ it("drops odd shapes of these parts without losing the error",async()=>{
+  const event=await safeEvent({...full,request:"x",contexts:[1],breadcrumbs:{values:"nope"},exception:{values:[{type:"E",stacktrace:{frames:[{function:"f",in_app:true,pre_context:"bad",context_line:5}]}}]}},"c".repeat(32));
+  expect(event.context).toBeUndefined();expect(event.breadcrumbs).toBeUndefined();expect(event.exceptions[0].frames[0].context).toBeUndefined();expect(event.title).toBe("E");
  });
 });

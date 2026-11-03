@@ -4252,8 +4252,27 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                                 line: number | null;
                                 column: number | null;
                                 inApp: boolean;
+                                context?: {
+                                    pre: string[];
+                                    line: string;
+                                    post: string[];
+                                } | undefined;
                             }[];
                         }[];
+                        context?: {
+                            method?: string | undefined;
+                            route?: string | undefined;
+                            browser?: string | undefined;
+                            os?: string | undefined;
+                            runtime?: string | undefined;
+                        } | undefined;
+                        breadcrumbs?: {
+                            at: number | null;
+                            type: string;
+                            category: string;
+                            level: string;
+                            message: string;
+                        }[] | undefined;
                     };
                     id: string;
                     receivedAt: number;
