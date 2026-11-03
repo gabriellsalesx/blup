@@ -4615,6 +4615,124 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 } & {
+    "/:monitor/test": {
+        $post: {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 429;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                queued: number;
+            };
+            outputFormat: "json";
+            status: 202;
+        };
+    };
+} & {
     "/:monitor/checks": {
         $get: {
             input: {

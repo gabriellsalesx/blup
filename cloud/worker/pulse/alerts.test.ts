@@ -57,3 +57,12 @@ it("persists retries without exceeding five attempts or leaking provider content
  for(let i=0;i<6;i++){clock.mockReturnValue(initial+i*400_000);await dispatchAlerts(state.env,initial+i*400_000);}
  expect(fetch).toHaveBeenCalledTimes(5);expect(db.sqlite.prepare("SELECT state,attempts FROM pulse_outbox").get()).toMatchObject({state:"discarded",attempts:5});expect(JSON.stringify(db.sqlite.prepare("SELECT * FROM pulse_channel").all())).not.toContain("private provider error");
 });
+it("sends a monitor test alert to the project's destinations with the monitor name",async()=>{
+ db.sqlite.exec("INSERT INTO pulse_monitor(id,user_id,project_id,name,url,interval_minutes,next_at,created_at) VALUES('m1','alice','1','Checkout API','https://example.com',5,0,0),('m2','bob','2','Other','https://example.com',5,0,0)");
+ expect((await request("/monitors/m1/test","POST",{})).status).toBe(409);
+ const created=await channel();await request("/projects/1/channels","PUT",{channelIds:[created.id]});
+ expect((await request("/monitors/m2/test","POST",{})).status).toBe(404);expect((await request("/monitors/m1/test","POST",{extra:1})).status).toBe(400);
+ expect((await request("/monitors/m1/test","POST",{})).status).toBe(202);expect((await request("/monitors/m1/test","POST",{})).status).toBe(429);
+ const send=vi.fn(async(_input:RequestInfo|URL,_init?:RequestInit)=>new Response(null,{status:204}));vi.stubGlobal("fetch",send);await dispatchAlerts(state.env);
+ expect(send).toHaveBeenCalledTimes(1);expect(String(JSON.parse(String(send.mock.calls[0][1]?.body)).content)).toContain("Checkout API");
+});

@@ -29,6 +29,19 @@ export const monitorsApi=new Hono<PulseApp>()
   await c.env.DB.prepare("UPDATE pulse_monitor SET name=?,url=?,interval_minutes=?,active=?,claim=NULL,claim_until=0,next_at=?,state='unknown',last_at=NULL,revision=revision+1 WHERE id=? AND user_id=?").bind(input.name??current.name,url.href,input.intervalMinutes??current.intervalMinutes,input.active===undefined?current.active:Number(input.active),Date.now(),id,user.id).run();return c.json({ok:true});
  })
  .delete("/:monitor",validate("param",params),async c=>{const deleted=await c.env.DB.prepare("DELETE FROM pulse_monitor WHERE id=? AND user_id=? RETURNING id").bind(c.req.valid("param").monitor,c.get("session").user.id).first();return deleted?c.json({ok:true},200):c.json({code:"NOT_FOUND"},404);})
+ // A test alert to every destination of the monitor's project, telling it
+ // apart by its name. Each destination takes one test a minute, like the
+ // destination's own test.
+ .post("/:monitor/test",pulseWrite,validate("param",params),validate("json",z.object({}).strict()),async c=>{
+  const owner=c.get("session").user.id,id=c.req.valid("param").monitor,now=Date.now();
+  const monitor=await c.env.DB.prepare("SELECT m.project_id AS projectId FROM pulse_monitor m JOIN pulse_project p ON p.id=m.project_id WHERE m.id=? AND m.user_id=? AND m.plan_disabled=0 AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL").bind(id,owner).first<{projectId:string}>();if(!monitor)return c.json({code:"NOT_FOUND"},404);
+  const channels=await c.env.DB.prepare("SELECT c.id FROM pulse_project_channel pc JOIN pulse_channel c ON c.id=pc.channel_id WHERE pc.project_id=? AND c.user_id=? AND c.active=1 LIMIT 2").bind(monitor.projectId,owner).all<{id:string}>();if(!channels.results.length)return c.json({code:"NO_CHANNELS"},409);
+  const claimed:string[]=[];
+  for(const channel of channels.results)if(await c.env.DB.prepare("UPDATE pulse_channel SET test_at=? WHERE id=? AND user_id=? AND test_at<=? RETURNING id").bind(now,channel.id,owner,now-60_000).first())claimed.push(channel.id);
+  if(!claimed.length){c.header("Retry-After","60");return c.json({code:"TOO_MANY_REQUESTS"},429);}
+  await c.env.DB.batch(claimed.map(channel=>c.env.DB.prepare("INSERT INTO pulse_outbox(id,user_id,project_id,channel_id,ref_id,kind,created_at,expires_at,next_at) VALUES(?,?,?,?,?,'test',?,?,?)").bind(crypto.randomUUID(),owner,monitor.projectId,channel,id,now,now+86_400_000,now)));
+  return c.json({queued:claimed.length},202);
+ })
  .get("/:monitor/checks",validate("param",params),async c=>{
   const row=await c.env.DB.prepare("SELECT p.object_name AS objectName FROM pulse_monitor m JOIN pulse_project p ON p.id=m.project_id WHERE m.id=? AND m.user_id=? AND p.deleted_at IS NULL AND (m.retire_at IS NULL OR m.retire_at>?)").bind(c.req.valid("param").monitor,c.get("session").user.id,Date.now()).first<{objectName:string}>();if(!row||!c.get("access").readable)return c.json({code:"NOT_FOUND"},404);
   return c.json(await c.env.PULSE_PROJECT.getByName(row.objectName).monitorHistory(c.req.valid("param").monitor,c.get("access").limits?.retentionDays??30));

@@ -9,6 +9,7 @@
  import Trash2 from "@lucide/svelte/icons/trash-2";
  import Pencil from "@lucide/svelte/icons/pencil";
  import Bell from "@lucide/svelte/icons/bell";
+ import Send from "@lucide/svelte/icons/send";
  import {t,intlLocale,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import {confirm} from "#lib/confirm.svelte.ts";
@@ -41,6 +42,7 @@
  const filters=$derived([{value:"all",label:t("pulseAllChecks")},{value:"down",label:t("pulseIncidents")}] as const);
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
  async function toggle(m:Monitor){await run(async()=>{await parseResponse(pulseApi.monitors[":monitor"].$patch({param:{monitor:m.id},json:{active:!m.active}}));loaded={...loaded,...await loadMonitor(m.id)};toast(()=>m.active?t("pulseToastPaused"):t("pulseToastResumed"));});}
+ async function testAlert(m:Monitor){await run(async()=>{await parseResponse(pulseApi.monitors[":monitor"].test.$post({param:{monitor:m.id},json:{}}));toast(()=>t("pulseTestQueued"));});}
  async function remove(m:Monitor){if(!await confirm({title:t("delete"),message:t("pulseRemoveMonitor"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.monitors[":monitor"].$delete({param:{monitor:m.id}}));toast(()=>t("pulseToastDeleted"));await goto(resolve("/monitors"));});}
 </script>
 
@@ -65,7 +67,7 @@
   <Card title={t("pulseDuration")}><ResponseChart checks={history?.checks??[]}/></Card>
 
   <Card title={t("pulseAlertsTitle")}>
-   {#snippet action()}<Button small variant="secondary" onclick={()=>goto(resolve("/alerts"))}><Bell class="size-4"/>{t("pulseEditAlerts")}</Button>{/snippet}
+   {#snippet action()}<div class="flex flex-wrap justify-end gap-2">{#if m.writable&&destinations>0}<Button small variant="secondary" {busy} onclick={()=>testAlert(m)}><Send class="size-4"/>{t("pulseSendTestAlert")}</Button>{/if}<Button small variant="secondary" onclick={()=>goto(resolve("/alerts"))}><Bell class="size-4"/>{t("pulseEditAlerts")}</Button></div>{/snippet}
    <p class="mt-3 text-sm">{alerts}</p>
   </Card>
 

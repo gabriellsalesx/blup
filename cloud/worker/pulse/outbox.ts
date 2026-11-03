@@ -3,7 +3,7 @@ import {pulseAccess,sha256} from "./limits";
 import {openTarget} from "./channel-crypto";
 import {deliverDiscord,deliverTelegram} from "./transports";
 import {languageOf} from "../../shared/language";
-import {translate} from "../../src/lib/i18n/catalog";
+import {translate,type PlainMessageKey} from "../../src/lib/i18n/catalog";
 import {cleanText} from "./event";
 export type AlertSignal={id:string;refId:string;kind:"issue"|"regression"|"monitor_up"|"monitor_down";createdAt:number};
 export async function enqueueSignals(env:Cloudflare.Env,project:string,signals:AlertSignal[],now=Date.now()){
@@ -49,8 +49,11 @@ export async function dispatchAlerts(env:Cloudflare.Env,now=Date.now()){
    if(Date.now()-now>45_000)break;
    const access=await pulseAccess(env,item.userId),discard=async()=>{await env.DB.prepare("UPDATE pulse_outbox SET state='discarded',claim=NULL,claim_until=0 WHERE id=?").bind(item.id).run();};
    if(item.expiresAt<=Date.now()||item.attempts>=5||!item.active||!access.writable||!isKind(item.kind)){await discard();continue;}
-   let title="";
-   if(item.kind!=="test"){
+   let title="",label:PlainMessageKey=labels[item.kind];
+   if(item.kind==="test"&&item.projectId){
+    const monitor=await env.DB.prepare("SELECT name FROM pulse_monitor WHERE id=? AND project_id=? AND user_id=?").bind(item.refId,item.projectId,item.userId).first<{name:string}>();if(!monitor){await discard();continue;}
+    title=cleanText(monitor.name,160);label="pulseAlertMonitorTest";
+   }else if(item.kind!=="test"){
     const project=await env.DB.prepare("SELECT object_name AS objectName FROM pulse_project p WHERE p.id=? AND p.user_id=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL AND EXISTS(SELECT 1 FROM pulse_project_channel pc WHERE pc.project_id=p.id AND pc.channel_id=?)").bind(item.projectId,item.userId,item.channelId).first<{objectName:string}>();if(!project){await discard();continue;}
     if(item.kind.startsWith("monitor_")){
      const monitor=await env.DB.prepare("SELECT name,state FROM pulse_monitor WHERE id=? AND project_id=? AND user_id=? AND active=1").bind(item.refId,item.projectId,item.userId).first<{name:string;state:string}>();if(!monitor||`monitor_${monitor.state}`!==item.kind){await discard();continue;}title=cleanText(monitor.name,160);
@@ -64,7 +67,7 @@ export async function dispatchAlerts(env:Cloudflare.Env,now=Date.now()){
    let target:string;
    try{target=await openTarget(env,item.userId,item.channelId,item.type,item.target);}catch{await env.DB.batch([env.DB.prepare("UPDATE pulse_channel SET last_error='CHANNEL_UNAVAILABLE' WHERE id=?").bind(item.channelId),env.DB.prepare("UPDATE pulse_outbox SET next_at=?,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(Date.now()+300_000,item.id,claim)]);continue;}
    const slot=await deliverySlot(env.DB,item.type,target);if(!slot.ready){await env.DB.prepare("UPDATE pulse_outbox SET next_at=?,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(slot.nextAt,item.id,claim).run();continue;}
-   const text=`Blup Pulse\n${translate(languageOf(item.language)??"en",labels[item.kind])}${title?`\n${title}`:""}\nhttps://pulse.getblup.io/`;
+   const text=`Blup Pulse\n${translate(languageOf(item.language)??"en",label)}${title?`\n${title}`:""}\nhttps://pulse.getblup.io/`;
    const result=item.type==="discord"?await deliverDiscord(target,text):await deliverTelegram(env,target,text),at=Date.now(),retry=Math.max(result.waitMs,Math.min(300_000,15_000*2**item.attempts)+Math.floor(Math.random()*1000));
    await env.DB.batch([
     env.DB.prepare("UPDATE pulse_outbox SET state=?,attempts=attempts+1,next_at=?,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(result.sent?"sent":result.permanent||item.attempts>=4?"discarded":"pending",at+retry,item.id,claim),

@@ -105,6 +105,7 @@ As rotas privadas exigem sessão/dono; criar, vincular, confirmar e testar exige
 | `POST /channels` | JSON estrito `{type:"discord", webhook}`; webhook é string HTTPS validada; `201 {id, label}`; cota por tipo equivale ao número de projetos do plano |
 | `DELETE /channels/:channel` | Remove canal, vínculos, cooldowns e entregas na fila; `{ok:true}` ou 404 |
 | `POST /channels/:channel/test` | JSON estrito `{}`; `202 {queued:true}`; no máximo um teste por minuto por canal, com 429 e `Retry-After: 60` no excesso |
+| `POST /monitors/:monitor/test` | JSON estrito `{}`; envia um aviso de teste com o nome do monitor a cada destino ativo do projeto; `202 {queued:n}`, `409 NO_CHANNELS` sem destino, 429 e `Retry-After: 60` quando todos os destinos já testaram no último minuto |
 | `PUT /projects/:project/channels` | JSON estrito `{channelIds}`; lista distinta de até dois IDs ativos do mesmo dono, no máximo um de cada tipo; substitui todos os vínculos; `[]` retira todos; `{ok:true}` |
 | `POST /telegram/link` | JSON estrito `{}`; `201 {id, url, expiresAt}`; cria código de 48 caracteres hexadecimais com dez minutos de validade e substitui o registro de vínculo anterior da conta |
 | `GET /telegram/link/:link` | `{id, state, expiresAt, candidate, channelId}`; `candidate` é `{id, label}` ou `null`, `channelId` é string ou `null`; `expiresAt` em ISO UTC |
@@ -441,6 +442,7 @@ Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com
 | `GET/POST /api/pulse/channels` | Lista rótulos/estado sem destino; cadastro estrito `{type:"discord", webhook}` |
 | `DELETE /api/pulse/channels/:channel` | Desliga canal e cancela pendências ainda não enviadas |
 | `POST /api/pulse/channels/:channel/test` | JSON estrito `{}`; `202 {queued:true}`, limitado a um teste/minuto/canal |
+| `POST /api/pulse/monitors/:monitor/test` | JSON estrito `{}`; `202 {queued:n}`, mesmo limite por destino do teste de canal |
 | `PUT /api/pulse/projects/:project/channels` | Substitui `{channelIds}` com até dois canais ativos do mesmo dono, um por tipo |
 | `POST /api/pulse/telegram/link` | JSON estrito `{}`; emite `{id, url, expiresAt}` com dez minutos de validade |
 | `GET /api/pulse/telegram/link/:link` | `{id, state, expiresAt, candidate, channelId}`, sem expor código novamente |
