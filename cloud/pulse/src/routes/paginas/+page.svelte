@@ -11,6 +11,7 @@
  import {t,language,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import {confirm} from "#lib/confirm.svelte.ts";
+ import {toast} from "#lib/toast.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
  import Card from "#lib/ui/Card.svelte";
  import FloatField from "#lib/ui/FloatField.svelte";
@@ -29,27 +30,26 @@
  type Incident=InferResponseType<typeof incidentsGET,200>["incidents"][number];
  type IncidentState="investigating"|"identified"|"monitoring"|"resolved";
  type Impact="operational"|"degraded"|"partial_outage"|"major_outage";
- let pages=$state<Page[]>([]),monitors=$state<Monitor[]>([]),incidents=$state<Incident[]>([]),editing=$state<Page|null>(null),chosen=$state<Record<string,string>>({}),title=$state(""),slug=$state(""),busy=$state(false),error=$state<unknown>(null);
+ let pages=$state<Page[]>([]),monitors=$state<Monitor[]>([]),incidents=$state<Incident[]>([]),editing=$state<Page|null>(null),chosen=$state<Record<string,string>>({}),title=$state(""),slug=$state(""),busy=$state(false);
  let incidentTitle=$state(""),text=$state(""),incidentId=$state<string|null>(null),incidentStateValue=$state<IncidentState>("investigating"),impact=$state<Impact>("degraded");
  const writable=$derived(panel.usage?.readOnly===false);
  const validComponents=$derived(Object.values(chosen).every(v=>v.trim().length>0));
  const states=$derived([{value:"investigating",label:t("pulseInvestigating")},{value:"identified",label:t("pulseIdentified")},{value:"monitoring",label:t("pulseMonitoring")},{value:"resolved",label:t("pulseResolved")}] as const);
  const impacts=$derived([{value:"operational",label:t("pulseOperational")},{value:"degraded",label:t("pulseDegraded")},{value:"partial_outage",label:t("pulsePartial")},{value:"major_outage",label:t("pulseMajor")}] as const);
  const stateLabel=(s:string)=>states.find(o=>o.value===s)?.label??s;
- async function run(fn:()=>Promise<void>){busy=true;error=null;try{await fn();}catch(e){error=e;}finally{busy=false;}}
+ async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
  async function refresh(){pages=(await parseResponse(pulseApi.pages.$get())).pages;}
  async function edit(page:Page){editing=page;title=page.title;slug=page.slug;chosen=Object.fromEntries(page.components.map(c=>[c.monitorId,c.name]));incidents=(await parseResponse(incidentsGET({param:{page:page.id}}))).incidents;}
  function clear(){editing=null;title="";slug="";chosen={};incidents=[];incidentId=null;text="";}
- async function save(e:SubmitEvent){e.preventDefault();await run(async()=>{const components=Object.entries(chosen).map(([monitorId,name])=>({monitorId,name:name.trim()}));if(editing)await parseResponse(pulseApi.pages[":page"].$patch({param:{page:editing.id},json:{title,components,language:language()}}));else await parseResponse(pulseApi.pages.$post({json:{title,slug,components,language:language()}}));await refresh();clear();});}
- async function publish(page:Page){await run(async()=>{await parseResponse(pulseApi.pages[":page"].$patch({param:{page:page.id},json:{published:!page.published}}));await refresh();});}
- async function remove(page:Page){if(!await confirm({title:t("delete"),message:t("pulseDeletePage"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].$delete({param:{page:page.id}}));await refresh();clear();});}
- async function incident(e:SubmitEvent){e.preventDefault();const page=editing;if(!page)return;await run(async()=>{if(incidentId)await parseResponse(pulseApi.pages[":page"].incidents[":incident"].updates.$post({param:{page:page.id,incident:incidentId},json:{body:text,state:incidentStateValue}}));else await parseResponse(pulseApi.pages[":page"].incidents.$post({param:{page:page.id},json:{title:incidentTitle,body:text,state:incidentStateValue,impact}}));incidentId=null;incidentTitle="";text="";incidents=(await parseResponse(incidentsGET({param:{page:page.id}}))).incidents;});}
+ async function save(e:SubmitEvent){e.preventDefault();await run(async()=>{const components=Object.entries(chosen).map(([monitorId,name])=>({monitorId,name:name.trim()}));if(editing)await parseResponse(pulseApi.pages[":page"].$patch({param:{page:editing.id},json:{title,components,language:language()}}));else await parseResponse(pulseApi.pages.$post({json:{title,slug,components,language:language()}}));const wasEditing=!!editing;await refresh();clear();toast(()=>wasEditing?t("pulseToastSaved"):t("pulseToastPage"));});}
+ async function publish(page:Page){await run(async()=>{await parseResponse(pulseApi.pages[":page"].$patch({param:{page:page.id},json:{published:!page.published}}));await refresh();toast(()=>page.published?t("pulseToastOffline"):t("pulseToastLive"));});}
+ async function remove(page:Page){if(!await confirm({title:t("delete"),message:t("pulseDeletePage"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].$delete({param:{page:page.id}}));await refresh();clear();toast(()=>t("pulseToastDeleted"));});}
+ async function incident(e:SubmitEvent){e.preventDefault();const page=editing;if(!page)return;await run(async()=>{if(incidentId)await parseResponse(pulseApi.pages[":page"].incidents[":incident"].updates.$post({param:{page:page.id,incident:incidentId},json:{body:text,state:incidentStateValue}}));else await parseResponse(pulseApi.pages[":page"].incidents.$post({param:{page:page.id},json:{title:incidentTitle,body:text,state:incidentStateValue,impact}}));incidentId=null;incidentTitle="";text="";incidents=(await parseResponse(incidentsGET({param:{page:page.id}}))).incidents;toast(()=>t("pulseToastIncident"));});}
  function toggleMonitor(id:string,checked:boolean){if(checked)chosen[id]="";else{const copy={...chosen};delete copy[id];chosen=copy;}}
  onMount(()=>{void run(async()=>{await refresh();monitors=(await parseResponse(pulseApi.monitors.$get())).monitors;});});
 </script>
 
 <PageHeader title={t("pulsePages")} lead={t("pulsePublicPrivacy")}/>
-{#if error}<p class="mt-6 text-red-600" role="alert">{errorMessage(error)}</p>{/if}
 
 {#if writable&&(!editing||editing.writable)}<div class="mt-8"><Card title={editing?`${t("pulseEdit")}: ${editing.title}`:t("pulseNewPage")}><form class="mt-5 grid gap-5" onsubmit={save}>
  <div class="grid gap-4 sm:grid-cols-2"><FloatField id="page-title" surface="bg-white dark:bg-neutral-900" label={t("pulsePageTitle")} required maxlength={100} bind:value={title}/><FloatField id="page-slug" surface="bg-white dark:bg-neutral-900" label={t("pulseSlug")} required disabled={!!editing} maxlength={40} pattern="[a-z0-9]+(-[a-z0-9]+)*" bind:value={slug}/></div>

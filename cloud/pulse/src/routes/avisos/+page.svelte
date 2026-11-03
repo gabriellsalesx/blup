@@ -21,16 +21,16 @@
  type Channel=InferResponseType<typeof pulseApi.channels.$get,200>["channels"][number];
  const linkGET=pulseApi.telegram.link[":link"].$get;
  type LinkStatus=InferResponseType<typeof linkGET,200>;
- let channels=$state<Channel[]>([]),projects=$state<Project[]>([]),webhook=$state(""),busy=$state(false),error=$state<unknown>(null),link=$state<{id:string;url:string;expiresAt:string}|null>(null),linkStatus=$state<LinkStatus|null>(null),bindings=$state<Record<string,{discord:string;telegram:string}>>({});
+ let channels=$state<Channel[]>([]),projects=$state<Project[]>([]),webhook=$state(""),busy=$state(false),link=$state<{id:string;url:string;expiresAt:string}|null>(null),linkStatus=$state<LinkStatus|null>(null),bindings=$state<Record<string,{discord:string;telegram:string}>>({});
  const writable=$derived(panel.usage?.readOnly===false);
- async function run(fn:()=>Promise<void>){busy=true;error=null;try{await fn();}catch(e){error=e;}finally{busy=false;}}
+ async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
  async function refresh(){const result=await parseResponse(pulseApi.channels.$get());channels=result.channels;const next:typeof bindings={};for(const p of projects)next[p.id]={discord:"",telegram:""};for(const b of result.bindings){const channel=channels.find(c=>c.id===b.channelId),project=next[b.projectId];if(channel&&project)project[channel.type]=channel.id;}bindings=next;}
- async function discord(e:SubmitEvent){e.preventDefault();await run(async()=>{await parseResponse(pulseApi.channels.$post({json:{type:"discord",webhook}}));webhook="";await refresh();});}
+ async function discord(e:SubmitEvent){e.preventDefault();await run(async()=>{await parseResponse(pulseApi.channels.$post({json:{type:"discord",webhook}}));webhook="";await refresh();toast(()=>t("pulseToastLinked"));});}
  async function telegram(){await run(async()=>{link=await parseResponse(pulseApi.telegram.link.$post({json:{}}));linkStatus=null;if(link)startPolling(link);});}
- async function confirmChat(){const current=link;if(!current)return;await run(async()=>{await parseResponse(pulseApi.telegram.link[":link"].confirm.$post({param:{link:current.id},json:{}}));stopPolling();link=null;linkStatus=null;await refresh();});}
- async function remove(channel:Channel){if(!await confirm({title:t("delete"),message:t("pulseRemoveChannel"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.channels[":channel"].$delete({param:{channel:channel.id}}));await refresh();});}
+ async function confirmChat(){const current=link;if(!current)return;await run(async()=>{await parseResponse(pulseApi.telegram.link[":link"].confirm.$post({param:{link:current.id},json:{}}));stopPolling();link=null;linkStatus=null;await refresh();toast(()=>t("pulseToastLinked"));});}
+ async function remove(channel:Channel){if(!await confirm({title:t("delete"),message:t("pulseRemoveChannel"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.channels[":channel"].$delete({param:{channel:channel.id}}));await refresh();toast(()=>t("pulseToastDeleted"));});}
  async function test(channel:Channel){await run(async()=>{await parseResponse(pulseApi.channels[":channel"].test.$post({param:{channel:channel.id},json:{}}));toast(()=>t("pulseTestQueued"));});}
- async function saveBindings(project:Project){await run(async()=>{const b=bindings[project.id];await parseResponse(pulseApi.projects[":project"].channels.$put({param:{project:project.id},json:{channelIds:[b?.discord,b?.telegram].filter((v):v is string=>!!v)}}));await refresh();});}
+ async function saveBindings(project:Project){await run(async()=>{const b=bindings[project.id];await parseResponse(pulseApi.projects[":project"].channels.$put({param:{project:project.id},json:{channelIds:[b?.discord,b?.telegram].filter((v):v is string=>!!v)}}));await refresh();toast(()=>t("pulseToastSaved"));});}
  onMount(()=>{void run(async()=>{projects=(await parseResponse(pulseApi.projects.$get())).projects;await refresh();});});
  let pollTimer:ReturnType<typeof setInterval>|undefined,pollEpoch=0;
  function stopPolling(){pollEpoch++;if(pollTimer!==undefined){clearInterval(pollTimer);pollTimer=undefined;}}
@@ -38,7 +38,7 @@
   stopPolling();const epoch=pollEpoch;let inFlight=false,attempts=0;
   const poll=async()=>{if(inFlight||epoch!==pollEpoch)return;if(++attempts>120){stopPolling();return;}inFlight=true;
    try{const value=await parseResponse(linkGET({param:{link:current.id}},{init:{signal:AbortSignal.timeout(15000)}}));if(epoch===pollEpoch&&link?.id===current.id){linkStatus=value;if(value.state!=="pending")stopPolling();}}
-   catch(e){if(epoch===pollEpoch)error=e;}finally{inFlight=false;}
+   catch(e){if(epoch===pollEpoch)toast(errorMessage(e),{kind:"error"});}finally{inFlight=false;}
   };
   void poll();pollTimer=setInterval(()=>{void poll();},5000);
  }
@@ -47,7 +47,6 @@
 </script>
 
 <PageHeader title={t("pulseAlerts")} lead={t("pulseAlertsLead")}/>
-{#if error}<p class="mt-6 text-red-600" role="alert">{errorMessage(error)}</p>{/if}
 
 {#if writable}<div class="mt-8 grid gap-4 lg:grid-cols-2">
  <Card title="Discord"><form class="mt-5 grid gap-3" onsubmit={discord}><FloatField id="discord-webhook" surface="bg-white dark:bg-neutral-900" label={t("pulseDiscordWebhook")} type="password" autocomplete="off" maxlength={2048} required bind:value={webhook}/><div class="flex justify-end"><Button {busy}>{t("pulseAddDiscord")}</Button></div></form></Card>

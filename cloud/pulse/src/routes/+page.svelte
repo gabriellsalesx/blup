@@ -1,77 +1,50 @@
 <script lang="ts">
  import {onMount} from "svelte";
+ import {goto} from "$app/navigation";
  import Copy from "@lucide/svelte/icons/copy";
  import Plus from "@lucide/svelte/icons/plus";
  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
  import Trash2 from "@lucide/svelte/icons/trash-2";
- import ChevronRight from "@lucide/svelte/icons/chevron-right";
+ import Bug from "@lucide/svelte/icons/bug";
+ import {t,intlLocale} from "#lib/i18n.svelte.ts";
+ import {errorMessage} from "#lib/i18n/errors.ts";
+ import Button from "#lib/ui/Button.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import List from "#lib/ui/List.svelte";
  import ListItem from "#lib/ui/ListItem.svelte";
  import StatusDot from "#lib/ui/StatusDot.svelte";
- import {t,intlLocale,formatDate} from "#lib/i18n.svelte.ts";
- import {errorMessage} from "#lib/i18n/errors.ts";
- import Button from "#lib/ui/Button.svelte";
- import Card from "#lib/ui/Card.svelte";
- import FloatField from "#lib/ui/FloatField.svelte";
- import Select from "#lib/ui/Select.svelte";
- import Segmented from "#lib/ui/Segmented.svelte";
  import {confirm} from "#lib/confirm.svelte.ts";
  import {toast} from "#lib/toast.svelte.ts";
- import {pulseApi,parseResponse,type Project,type Issue} from "../lib/api";
+ import {platforms} from "../../../shared/pulse-platforms";
+ import {pulseApi,parseResponse,type Project} from "../lib/api";
  import {panel} from "../lib/panel.svelte";
- type Platform="javascript"|"node"|"go"|"other";
- let projects=$state<Project[]>([]),selected=$state<Project|null>(null),issues=$state<Issue[]>([]),name=$state(""),platform=$state<Platform>("javascript"),dsn=$state(""),busy=$state(false),error=$state<unknown>(null),filter=$state<"open"|"resolved"|"ignored">("open");
- let events=$state<Awaited<ReturnType<typeof getEvents>>>([]),openIssue=$state<string|null>(null);
+ let projects=$state<Project[]>([]),dsn=$state(""),busy=$state(false);
  const writable=$derived(panel.usage?.readOnly===false);
- const platforms=$derived([{value:"javascript",label:"JavaScript"},{value:"node",label:"Node.js"},{value:"go",label:"Go"},{value:"other",label:t("pulseOther")}] as const);
- const platformName=(p:string)=>platforms.find(o=>o.value===p)?.label??p;
  const usage=$derived(panel.usage?.limits?{used:panel.usage.accepted,limit:panel.usage.limits.events}:null);
- async function refresh(){projects=(await parseResponse(pulseApi.projects.$get())).projects;if(!selected&&projects[0])await select(projects[0]);}
- async function select(p:Project){selected=p;events=[];openIssue=null;issues=(await parseResponse(pulseApi.projects[":project"].issues.$get({param:{project:p.id},query:{state:filter}}))).issues;}
- async function more(){const project=selected,last=issues.at(-1);if(!project||!last)return;await run(async()=>{const next=(await parseResponse(pulseApi.projects[":project"].issues.$get({param:{project:project.id},query:{state:filter,before:String(last.lastAt),beforeId:last.id}}))).issues;issues=[...issues,...next];});}
- async function run(fn:()=>Promise<void>){busy=true;error=null;try{await fn();}catch(e){error=e;}finally{busy=false;}}
- async function create(e:SubmitEvent){e.preventDefault();await run(async()=>{const result=await parseResponse(pulseApi.projects.$post({json:{name:name.trim(),platform}}));dsn=result.key.dsn;name="";await refresh();});}
- async function copy(){try{await navigator.clipboard.writeText(dsn);toast(()=>t("copied"));}catch{toast(()=>t("copyFailed"));}}
- async function rotate(p:Project){if(!await confirm({title:t("pulseRotate"),message:t("pulseRotateAsk")}))return;await run(async()=>{dsn=(await parseResponse(pulseApi.projects[":project"].keys.$post({param:{project:p.id}}))).dsn;});}
- async function remove(p:Project){if(!await confirm({title:t("delete"),message:t("pulseDeleteProject")}))return;await run(async()=>{await parseResponse(pulseApi.projects[":project"].$delete({param:{project:p.id}}));selected=null;dsn="";await refresh();});}
- async function change(issue:Issue,state:Issue["state"]){if(!selected)return;const project=selected;await run(async()=>{await parseResponse(pulseApi.projects[":project"].issues[":issue"].$patch({param:{project:project.id,issue:issue.id},json:{state}}));await select(project);});}
- async function toggleEvents(issue:Issue){const project=selected;if(!project)return;if(openIssue===issue.id){openIssue=null;events=[];return;}await run(async()=>{events=await getEvents(project.id,issue.id);openIssue=issue.id;});}
- async function getEvents(project:string,issue:string){return (await parseResponse(pulseApi.projects[":project"].issues[":issue"].events.$get({param:{project,issue}}))).events;}
+ const platformName=(id:string)=>id==="other"?t("pulseOther"):platforms.find(p=>p.id===id)?.label??id;
+ async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
+ async function refresh(){projects=(await parseResponse(pulseApi.projects.$get())).projects;}
+ async function copy(){try{await navigator.clipboard.writeText(dsn);toast(()=>t("copied"));}catch{toast(()=>t("copyFailed"),{kind:"error"});}}
+ async function rotate(p:Project){if(!await confirm({title:t("pulseRotate"),message:t("pulseRotateAsk")}))return;await run(async()=>{dsn=(await parseResponse(pulseApi.projects[":project"].keys.$post({param:{project:p.id}}))).dsn;toast(()=>t("pulseToastRotated"));});}
+ async function remove(p:Project){if(!await confirm({title:t("delete"),message:t("pulseDeleteProject"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.projects[":project"].$delete({param:{project:p.id}}));dsn="";await refresh();toast(()=>t("pulseToastDeleted"));});}
  onMount(()=>{void run(refresh);});
 </script>
 
 <PageHeader title={t("pulseProjects")} lead={t("pulseScope")}>
- {#snippet aside()}{#if usage}<div class="w-full max-w-xs"><p class="text-sm text-neutral-500">{t("pulseMonthUsage",{accepted:usage.used.toLocaleString(intlLocale()),limit:usage.limit.toLocaleString(intlLocale())})}</p><div class="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"><div class="h-full rounded-full bg-blup" style:width="{Math.min(100,usage.used/Math.max(1,usage.limit)*100)}%"></div></div></div>{/if}{/snippet}
+ {#snippet aside()}{#if writable}<Button onclick={()=>goto("/projetos/novo")}><Plus class="size-4"/>{t("pulseCreateNewProject")}</Button>{/if}{/snippet}
 </PageHeader>
 
-{#if error}<p role="alert" class="mt-6 text-red-600">{errorMessage(error)}</p>{/if}
+{#if usage}<div class="mt-6 max-w-sm"><p class="text-sm text-neutral-500">{t("pulseMonthUsage",{accepted:usage.used.toLocaleString(intlLocale()),limit:usage.limit.toLocaleString(intlLocale())})}</p><div class="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"><div class="h-full rounded-full bg-blup" style:width="{Math.min(100,usage.used/Math.max(1,usage.limit)*100)}%"></div></div></div>{/if}
 
-{#if writable}<div class="mt-8"><Card title={t("pulseNewProject")}><form class="mt-5 grid gap-4 sm:grid-cols-[1fr_12rem_auto] sm:items-center" onsubmit={create}><FloatField id="project-name" surface="bg-white dark:bg-neutral-900" label={t("pulseProjectName")} required maxlength={80} bind:value={name}/><Select surface="bg-white dark:bg-neutral-900" label={t("pulsePlatform")} options={platforms} bind:value={platform}/><Button {busy} class="h-14"><Plus class="size-4"/>{t("pulseCreateProject")}</Button></form></Card></div>{/if}
-
-{#if dsn}<div class="mt-4 rounded-xl border border-blup bg-white p-5 dark:bg-neutral-900"><p class="font-semibold">{t("pulseSDK")}</p><div class="mt-3 flex items-center gap-2 rounded-lg bg-neutral-100 p-3 dark:bg-neutral-800"><code class="min-w-0 flex-1 break-all text-sm">{dsn}</code><Button small variant="secondary" onclick={copy}><Copy class="size-4"/>{t("copy")}</Button></div><p class="mt-3 text-sm text-neutral-500">{t("pulseDSNOnce")}</p></div>{/if}
+{#if dsn}<div class="mt-6 rounded-xl border border-blup bg-white p-5 dark:bg-neutral-900"><p class="font-semibold">{t("pulseSDK")}</p><div class="mt-3 flex items-center gap-2 rounded-lg bg-neutral-100 p-3 dark:bg-neutral-800"><code class="min-w-0 flex-1 break-all text-sm">{dsn}</code><Button small variant="secondary" onclick={copy}><Copy class="size-4"/>{t("copy")}</Button></div><p class="mt-3 text-sm text-neutral-500">{t("pulseDSNOnce")}</p></div>{/if}
 
 <div class="mt-6"><List empty={t("pulseEmpty")}>
  {#each projects as project(project.id)}
-  <ListItem selected={selected?.id===project.id}>
-   <button class="flex w-full items-center gap-3 text-left" onclick={()=>run(()=>select(project))}><StatusDot state={project.active?"up":"unknown"}/><span class="min-w-0"><span class="block truncate font-semibold">{project.name}</span><span class="block text-sm text-neutral-500">{platformName(project.platform)} · {project.active?t("pulseActive"):t("pulsePaused")}</span></span><ChevronRight class="ml-auto size-4 shrink-0 text-neutral-400"/></button>
-   {#snippet actions()}{#if project.writable}<Button small variant="secondary" onclick={()=>rotate(project)}><RefreshCw class="size-4"/>{t("pulseRotate")}</Button>{/if}<Button small variant="secondary" onclick={()=>remove(project)}><Trash2 class="size-4"/>{t("delete")}</Button>{/snippet}
+  <ListItem>
+   <div class="flex items-center gap-3"><StatusDot state={project.active?"up":"unknown"}/><div class="min-w-0"><p class="truncate font-semibold">{project.name}</p><p class="text-sm text-neutral-500">{platformName(project.platform)} · {project.active?t("pulseActive"):t("pulsePaused")}</p></div></div>
+   {#snippet actions()}<Button small variant="secondary" onclick={()=>goto(`/problemas?projeto=${encodeURIComponent(project.id)}`)}><Bug class="size-4"/>{t("pulseSeeIssues")}</Button>{#if project.writable}<Button small variant="secondary" onclick={()=>rotate(project)}><RefreshCw class="size-4"/>{t("pulseRotate")}</Button>{/if}<Button small variant="secondary" onclick={()=>remove(project)}><Trash2 class="size-4"/>{t("delete")}</Button>{/snippet}
   </ListItem>
  {/each}
 </List></div>
-
-{#if selected}<section class="mt-10">
- <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 class="text-xl font-bold">{t("pulseIssuesOf",{name:selected.name})}</h2><Segmented label={t("pulseIssues")} options={[{value:"open",label:t("pulseOpen")},{value:"resolved",label:t("pulseResolved")},{value:"ignored",label:t("pulseIgnored")}]} bind:value={filter} onchange={()=>{const project=selected;if(project)void run(()=>select(project));}}/></div>
- <List empty={t("pulseNoIssues")}>
-  {#each issues as issue(issue.id)}
-   <ListItem>
-    <button class="w-full text-left" onclick={()=>toggleEvents(issue)} aria-expanded={openIssue===issue.id}><span class="line-clamp-2 font-semibold break-words">{issue.title}</span><span class="mt-1 block text-sm text-neutral-500">{t("pulseCount",{count:issue.count.toLocaleString(intlLocale())})} · {formatDate(new Date(issue.lastAt))}</span></button>
-    {#snippet actions()}{#if selected?.writable}{#if issue.state==="open"}<Button small variant="secondary" onclick={()=>change(issue,"resolved")}>{t("pulseResolve")}</Button><Button small variant="secondary" onclick={()=>change(issue,"ignored")}>{t("pulseIgnore")}</Button>{:else}<Button small variant="secondary" onclick={()=>change(issue,"open")}>{t("pulseReopen")}</Button>{/if}{/if}{/snippet}
-    {#snippet extra()}{#if openIssue===issue.id}<div class="mt-4 grid gap-2"><p class="text-sm font-semibold">{t("pulseEvents")}</p>{#each events as event(event.id)}<details class="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800"><summary class="cursor-pointer text-sm">{formatDate(new Date(event.receivedAt))}</summary><pre class="mt-3 overflow-auto whitespace-pre-wrap break-words text-xs">{JSON.stringify(event.event,null,2)}</pre></details>{/each}</div>{/if}{/snippet}
-   </ListItem>
-  {/each}
- </List>
- {#if issues.length>=30}<div class="mt-4"><Button variant="secondary" {busy} onclick={more}>{t("next")}</Button></div>{/if}
-</section>{/if}
 
 <p class="mt-10 text-xs text-neutral-500">{t("pulsePrivacy")}</p>

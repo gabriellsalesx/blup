@@ -8,6 +8,7 @@
  import Activity from "@lucide/svelte/icons/activity";
  import Globe from "@lucide/svelte/icons/globe";
  import Folder from "@lucide/svelte/icons/folder";
+ import Bug from "@lucide/svelte/icons/bug";
  import {intlLocale,language,i18n,t} from "#lib/i18n.svelte.ts";
  import {createLanguageSaver} from "#lib/language-save.ts";
  import PanelShell from "#lib/ui/PanelShell.svelte";
@@ -18,7 +19,7 @@
  import {cloudURL,rpc,pulseApi,parseResponse} from "../lib/api";
  import {panel} from "../lib/panel.svelte";
  let {children}=$props();
- const links=$derived([{href:"/",label:t("pulseProjects"),Icon:Folder},{href:"/monitores",label:t("pulseMonitors"),Icon:Activity},{href:"/paginas",label:t("pulsePages"),Icon:Globe},{href:"/avisos",label:t("pulseAlerts"),Icon:Bell}]);
+ const links=$derived([{href:"/",label:t("pulseProjects"),Icon:Folder},{href:"/problemas",label:t("pulseIssues"),Icon:Bug},{href:"/monitores",label:t("pulseMonitors"),Icon:Activity},{href:"/paginas",label:t("pulsePages"),Icon:Globe},{href:"/avisos",label:t("pulseAlerts"),Icon:Bell}]);
  let selectionBusy=$state(false),keep=$state({projects:[] as string[],monitors:[] as string[],pages:[] as string[]});
  async function saveSelection(){selectionBusy=true;try{await parseResponse(pulseApi.selection.$put({json:keep}));panel.usage=await parseResponse(pulseApi.usage.$get());location.reload();}catch{toast(()=>t("errorInvalid"),{kind:"error"});}finally{selectionBusy=false;}}
  let alive=true;onDestroy(()=>{alive=false;});

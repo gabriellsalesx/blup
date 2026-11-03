@@ -1,4 +1,5 @@
 import {resourceChoices} from "../billing-flow";
+import {platformIds} from "../../shared/pulse-platforms";
 import {selectionBody,observePulseEntitlements} from "./entitlements";
 import {purgeProject} from "./cleanup";
 import {Hono} from "hono";
@@ -15,7 +16,7 @@ import {z} from "zod";
 import {validate,hashId,opaqueId} from "../validation";
 import {pulseIdParam,projectId,issueState,numericId,publicKey,sha256,monthOf} from "./limits";
 
-const projectBody=z.object({name:z.string().trim().min(1).max(80),platform:z.enum(["javascript","node","go","other"])}).strict();
+const projectBody=z.object({name:z.string().trim().min(1).max(80),platform:z.enum(platformIds)}).strict();
 const filters=z.object({state:issueState.optional(),environment:z.string().max(80).optional(),release:z.string().max(128).optional(),q:z.string().max(128).optional(),beforeId:hashId.optional(),before:z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),limit:z.coerce.number().int().min(1).max(50).default(30)});
 const issuesParam=z.object({project:projectId,issue:hashId});
 async function newKey(env:Cloudflare.Env,project:string,rotate=false){

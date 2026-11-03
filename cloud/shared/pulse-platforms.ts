@@ -1,0 +1,48 @@
+// The platforms a Pulse project can be made for. The platform only picks
+// how the panel explains the setup: every SDK sends the same envelopes.
+// `tested` marks the SDKs already checked against Blup Pulse; the others
+// use the same protocol and are shown as being tested.
+export const platformGroups = ["popular", "browser", "server", "mobile", "desktop"] as const;
+export type PlatformGroup = (typeof platformGroups)[number];
+
+export const platforms = [
+	{ id: "javascript", label: "JavaScript", groups: ["popular", "browser"], tested: true },
+	{ id: "react", label: "React", groups: ["popular", "browser"], tested: false },
+	{ id: "nextjs", label: "Next.js", groups: ["popular", "browser", "server"], tested: false },
+	{ id: "vue", label: "Vue", groups: ["browser"], tested: false },
+	{ id: "nuxt", label: "Nuxt", groups: ["browser", "server"], tested: false },
+	{ id: "angular", label: "Angular", groups: ["browser"], tested: false },
+	{ id: "svelte", label: "Svelte", groups: ["browser"], tested: false },
+	{ id: "sveltekit", label: "SvelteKit", groups: ["browser", "server"], tested: false },
+	{ id: "astro", label: "Astro", groups: ["browser"], tested: false },
+	{ id: "node", label: "Node.js", groups: ["popular", "server"], tested: true },
+	{ id: "express", label: "Express", groups: ["popular", "server"], tested: false },
+	{ id: "nestjs", label: "NestJS", groups: ["server"], tested: false },
+	{ id: "hono", label: "Hono", groups: ["server"], tested: false },
+	{ id: "bun", label: "Bun", groups: ["server"], tested: false },
+	{ id: "deno", label: "Deno", groups: ["server"], tested: false },
+	{ id: "python", label: "Python", groups: ["popular", "server"], tested: false },
+	{ id: "django", label: "Django", groups: ["popular", "server"], tested: false },
+	{ id: "flask", label: "Flask", groups: ["server"], tested: false },
+	{ id: "fastapi", label: "FastAPI", groups: ["server"], tested: false },
+	{ id: "go", label: "Go", groups: ["popular", "server", "desktop"], tested: true },
+	{ id: "php", label: "PHP", groups: ["popular", "server"], tested: false },
+	{ id: "laravel", label: "Laravel", groups: ["popular", "server"], tested: false },
+	{ id: "symfony", label: "Symfony", groups: ["server"], tested: false },
+	{ id: "ruby", label: "Ruby", groups: ["server"], tested: false },
+	{ id: "rails", label: "Rails", groups: ["server"], tested: false },
+	{ id: "java", label: "Java", groups: ["popular", "server"], tested: false },
+	{ id: "spring", label: "Spring Boot", groups: ["server"], tested: false },
+	{ id: "dotnet", label: "C# / .NET", groups: ["server", "desktop"], tested: false },
+	{ id: "elixir", label: "Elixir", groups: ["server"], tested: false },
+	{ id: "rust", label: "Rust", groups: ["server", "desktop"], tested: false },
+	{ id: "react-native", label: "React Native", groups: ["popular", "mobile"], tested: false },
+	{ id: "flutter", label: "Flutter", groups: ["mobile", "desktop"], tested: false },
+	{ id: "android", label: "Android", groups: ["mobile"], tested: false },
+	{ id: "ios", label: "iOS", groups: ["mobile"], tested: false },
+	{ id: "electron", label: "Electron", groups: ["desktop"], tested: false },
+	{ id: "other", label: "Other", groups: [], tested: false },
+] as const satisfies readonly { id: string; label: string; groups: readonly PlatformGroup[]; tested: boolean }[];
+
+export type PlatformId = (typeof platforms)[number]["id"];
+export const platformIds = platforms.map((p) => p.id) as [PlatformId, ...PlatformId[]];

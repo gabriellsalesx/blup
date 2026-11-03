@@ -3540,7 +3540,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     name: string;
-                    platform: "other" | "javascript" | "node" | "go";
+                    platform: "other" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "android" | "ios" | "electron";
                 };
             };
             output: {
@@ -3556,7 +3556,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     name: string;
-                    platform: "other" | "javascript" | "node" | "go";
+                    platform: "other" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "android" | "ios" | "electron";
                 };
             };
             output: {
@@ -3569,7 +3569,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     name: string;
-                    platform: "other" | "javascript" | "node" | "go";
+                    platform: "other" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "android" | "ios" | "electron";
                 };
             };
             output: {
@@ -3581,13 +3581,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     name: string;
-                    platform: "other" | "javascript" | "node" | "go";
+                    platform: "other" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "android" | "ios" | "electron";
                 };
             };
             output: {
                 id: string;
                 name: string;
-                platform: "other" | "javascript" | "node" | "go";
+                platform: "other" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "android" | "ios" | "electron";
                 key: {
                     id: string;
                     prefix: string;
