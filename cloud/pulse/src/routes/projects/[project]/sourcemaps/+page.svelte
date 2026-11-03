@@ -12,11 +12,14 @@
  import Card from "#lib/ui/Card.svelte";
  import Button from "#lib/ui/Button.svelte";
  import CodeBlock from "#lib/ui/CodeBlock.svelte";
+ import InlineCode from "#lib/ui/InlineCode.svelte";
  import {cloudURL,pulseApi,parseResponse} from "../../../../lib/api";
  import {panel} from "../../../../lib/panel.svelte";
  // The source maps of a project's browser code: the upload token its build
  // sends them with (a new one replaces the old and is shown only now), the
- // command to send each map and the maps already sent.
+ // command to send each map and the maps already sent. The sentence about
+ // the active token marks its start as code (split around a placeholder,
+ // so it stays in place in every language).
  let {data}:PageProps=$props();
  let busy=$state(false),token=$state("");
  const writable=$derived(panel.usage?.readOnly===false&&!!data.project?.writable);
@@ -37,7 +40,7 @@
   <Card title={t("pulseUploadToken")} help={t("pulseUploadTokenHelp")}>
    {#snippet action()}{#if writable}<Button small variant={maps.token?"secondary":"primary"} {busy} onclick={mint}><KeyRound class="size-4"/>{maps.token?t("pulseNewUploadToken"):t("pulseCreateUploadToken")}</Button>{/if}{/snippet}
    {#if token}<div class="mt-4"><CodeBlock code={token}/><p class="mt-2 text-xs text-neutral-500">{t("pulseUploadTokenOnce")}</p></div>
-   {:else if maps.token}<p class="mt-4 text-sm">{t("pulseUploadTokenActive",{prefix:maps.token.prefix,date:formatDate(new Date(maps.token.createdAt))})}</p>
+   {:else if maps.token}{@const [before,after]=t("pulseUploadTokenActive",{prefix:"\u0000",date:formatDate(new Date(maps.token.createdAt))}).split("\u0000")}<p class="mt-4 text-sm leading-7">{before}<InlineCode>{maps.token.prefix}</InlineCode>{after}</p>
    {:else}<p class="mt-4 text-sm text-neutral-500">{t("pulseUploadTokenNone")}</p>{/if}
   </Card>
 
