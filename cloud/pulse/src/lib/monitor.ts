@@ -1,3 +1,4 @@
+import type {DayState} from "#lib/ui/DayTip.svelte";
 import {type InferResponseType} from "hono/client";
 import {t,intlLocale} from "#lib/i18n.svelte.ts";
 import {pulseApi,parseResponse} from "./api";
@@ -17,7 +18,18 @@ export const ago=(ms:number)=>{const rtf=new Intl.RelativeTimeFormat(intlLocale(
 // When the state last changed, from the detailed checks (newest first,
 // kept a few days).
 export function since(m:Monitor,history?:History){const checks=history?.checks??[],current=m.state;if(!checks.length||!m.active||(current!=="up"&&current!=="down"))return "";let first=checks[0];for(const c of checks){if(c.outcome!==current)return t("pulseChangedAt",{time:ago(first.checkedAt)});first=c;}return t("pulseStableFor",{days:7});}
-export function bars(history:History|undefined,count:number){const day=new Intl.DateTimeFormat(intlLocale(),{day:"numeric",month:"short",timeZone:"UTC"}),byDay=new Map((history?.days??[]).map(d=>[d.day,d])),today=Math.floor(Date.now()/DAY);return Array.from({length:count},(_,i)=>{const key=today-count+1+i,d=byDay.get(key);const up=d?.up??0,down=d?.down??0,maintenance=d?.maintenance??0,total=up+down,date=day.format(new Date(key*DAY));const tip=!total?[date,maintenance?t("pulseMaintenance"):t("pulseNotMonitored")]:up===total?[date,maintenance?t("pulseMaintenance"):t("pulseOperational")]:[date,up/total>=0.9?t("pulseDegraded"):t("pulseDown"),t("pulseUptime",{value:(up/total*100).toLocaleString(intlLocale(),{maximumFractionDigits:1})})];return {key,tip:tip.join("\n"),up,down,maintenance};});}
+// A monitor's last days as bars: each day's state and what its card says
+// (name, how much it was up when not all up, date).
+export function bars(history:History|undefined,count:number){
+ const day=new Intl.DateTimeFormat(intlLocale(),{dateStyle:"medium",timeZone:"UTC"}),byDay=new Map((history?.days??[]).map(d=>[d.day,d])),today=Math.floor(Date.now()/DAY);
+ return Array.from({length:count},(_,i)=>{
+  const key=today-count+1+i,d=byDay.get(key),up=d?.up??0,down=d?.down??0,maintenance=d?.maintenance??0,total=up+down,date=day.format(new Date(key*DAY));
+  const state:DayState=!total?(maintenance?"maint":"none"):up===total?(maintenance?"maint":"up"):up/total>=0.9?"partial":"down";
+  const name=state==="none"?t("pulseNotMonitored"):state==="maint"?t("pulseMaintenance"):state==="up"?t("pulseOperational"):state==="partial"?t("pulseDegraded"):t("pulseDown");
+  const detail=state==="partial"||state==="down"?t("pulseUptime",{value:(up/total*100).toLocaleString(intlLocale(),{maximumFractionDigits:1})}):"";
+  return {key,state,name,detail,date};
+ });
+}
 export const reasonName=(c:Check)=>c.reason==="http"?t("pulseReasonHttp",{status:String(c.status??"-")}):c.reason==="timeout"?t("pulseReasonTimeout"):c.reason==="network"?t("pulseReasonNetwork"):c.reason==="blocked"?t("pulseReasonBlocked"):c.reason==="keyword"?t("pulseReasonKeyword"):t("pulseReasonGap");
 // A monitor's page: the monitor, its checks, its project and how many
 // destinations get its alerts, together.
