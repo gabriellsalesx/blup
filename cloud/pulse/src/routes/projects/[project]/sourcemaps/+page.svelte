@@ -2,7 +2,6 @@
  import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {refreshAll} from "$app/navigation";
- import Copy from "@lucide/svelte/icons/copy";
  import KeyRound from "@lucide/svelte/icons/key-round";
  import {t,intlLocale,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
@@ -12,6 +11,7 @@
  import BackLink from "#lib/ui/BackLink.svelte";
  import Card from "#lib/ui/Card.svelte";
  import Button from "#lib/ui/Button.svelte";
+ import CopyButton from "#lib/ui/CopyButton.svelte";
  import {cloudURL,pulseApi,parseResponse} from "../../../../lib/api";
  import {panel} from "../../../../lib/panel.svelte";
  // The source maps of a project's browser code: the upload token its build
@@ -24,7 +24,6 @@
  // The token goes in from the build's secret, never written in the command.
  const command=`curl -X POST "${endpoint}?release=1.4.2&file=app.min.js" \\\n  -H "Authorization: Bearer $PULSE_UPLOAD_TOKEN" \\\n  --data-binary @dist/assets/app.min.js.map`;
  const size=(bytes:number)=>bytes<1024*1024?`${Math.max(1,Math.round(bytes/1024)).toLocaleString(intlLocale())} KB`:`${(bytes/1024/1024).toLocaleString(intlLocale(),{maximumFractionDigits:1})} MB`;
- async function copy(text:string){try{await navigator.clipboard.writeText(text);toast(()=>t("copied"));}catch{toast(()=>t("copyFailed"),{kind:"error"});}}
  async function mint(){const project=data.project;if(!project)return;if(data.sourcemaps?.token&&!await confirm({title:t("pulseNewUploadToken"),message:t("pulseNewUploadTokenAsk")}))return;busy=true;try{token=(await parseResponse(pulseApi.projects[":project"]["upload-token"].$post({param:{project:project.id},json:{}}))).token;toast(()=>t("pulseToastUploadToken"));await refreshAll();}catch(err){toast(errorMessage(err),{kind:"error"});}finally{busy=false;}}
 </script>
 
@@ -37,7 +36,7 @@
  <div class="mt-8 grid grid-cols-[minmax(0,1fr)] gap-6">
   <Card title={t("pulseUploadToken")} help={t("pulseUploadTokenHelp")}>
    {#snippet action()}{#if writable}<Button small variant={maps.token?"secondary":"primary"} {busy} onclick={mint}><KeyRound class="size-4"/>{maps.token?t("pulseNewUploadToken"):t("pulseCreateUploadToken")}</Button>{/if}{/snippet}
-   {#if token}<div class="mt-4 rounded-lg border border-blup p-3"><div class="flex items-center gap-2"><code class="min-w-0 flex-1 font-mono text-sm break-all">{token}</code><Button small variant="secondary" onclick={()=>copy(token)}><Copy class="size-4"/>{t("copy")}</Button></div><p class="mt-2 text-xs text-neutral-500">{t("pulseUploadTokenOnce")}</p></div>
+   {#if token}<div class="mt-4 rounded-lg border border-blup p-3"><div class="flex items-center gap-2"><code class="min-w-0 flex-1 font-mono text-sm break-all">{token}</code><CopyButton text={token}/></div><p class="mt-2 text-xs text-neutral-500">{t("pulseUploadTokenOnce")}</p></div>
    {:else if maps.token}<p class="mt-4 text-sm">{t("pulseUploadTokenActive",{prefix:maps.token.prefix,date:formatDate(new Date(maps.token.createdAt))})}</p>
    {:else}<p class="mt-4 text-sm text-neutral-500">{t("pulseUploadTokenNone")}</p>{/if}
   </Card>
@@ -48,7 +47,7 @@
     <li>{t("pulseSourcemapsStep2")}</li>
     <li>{t("pulseSourcemapsStep3")}</li>
    </ol>
-   <div class="relative mt-4"><pre class="overflow-x-auto rounded-lg bg-neutral-100 p-4 pr-24 font-mono text-[13px] leading-6 dark:bg-neutral-950">{command}</pre><div class="absolute top-2 right-2"><Button small variant="secondary" onclick={()=>copy(command)}><Copy class="size-4"/>{t("copy")}</Button></div></div>
+   <div class="relative mt-4"><pre class="overflow-x-auto rounded-lg bg-neutral-100 p-4 pr-24 font-mono text-[13px] leading-6 dark:bg-neutral-950">{command}</pre><div class="absolute top-2 right-2"><CopyButton text={command}/></div></div>
    <p class="mt-3 text-xs text-neutral-500">{t("pulseSourcemapsNote",{days:"90",limit:String(maps.limit)})}</p>
   </Card>
 
