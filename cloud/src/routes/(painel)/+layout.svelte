@@ -41,7 +41,7 @@
 </script>
 
 <!-- The plans side by side need the wide page. -->
-<PanelShell languages {links} home="/conta" wide={page.url.pathname === "/conta/plano"}>
+<PanelShell languages {links} home="/conta" app={{ current: "cloud", links: { cloud: "/conta", pulse: "https://pulse.getblup.io/" } }} wide={page.url.pathname === "/conta/plano"}>
 	{#snippet foot()}
 		<button class="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 font-medium text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white" onclick={signOut}><Power class="size-[18px]" />{t("signOut")}</button>
 	{/snippet}
