@@ -28,7 +28,12 @@ INSERT INTO meta VALUES('schema','2') ON CONFLICT(key) DO UPDATE SET value=exclu
   this.sql.exec("INSERT INTO monitor_state VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,failures=excluded.failures,successes=excluded.successes,last_at=excluded.last_at",stateId,state,failures,successes,checkedAt);
   this.sql.exec("INSERT INTO monitor_check VALUES(?,?,?,?,?,?,?,?,?)",id,monitor,scheduledAt,checkedAt,result.outcome,state,result.status,result.durationMs,result.reason);
   this.sql.exec("INSERT INTO monitor_day(monitor_id,day,up,down,unknown,duration_ms,maintenance) VALUES(?,?,?,?,?,?,?) ON CONFLICT(monitor_id,day) DO UPDATE SET up=up+excluded.up,down=down+excluded.down,unknown=unknown+excluded.unknown,duration_ms=duration_ms+excluded.duration_ms,maintenance=maintenance+excluded.maintenance",monitor,Math.floor(checkedAt/86_400_000),Number(!maintenance&&result.outcome==="up"),Number(!maintenance&&result.outcome==="down"),Number(!maintenance&&result.outcome==="unknown"),result.durationMs,Number(maintenance));
-  if(!maintenance&&previous?.state!==state&&(state==="up"||state==="down"))this.sql.exec("INSERT OR IGNORE INTO pending_alert VALUES(?,?,?,?)",id,monitor,`monitor_${state}`,checkedAt);
+  // Alerts: a confirmed fall (red), and the return of one that had fallen
+  // (green), against the last confirmed state (a check without an answer
+  // in between does not count); a new monitor that is simply up sends
+  // nothing.
+  const confirmed=previous?.state==="up"||previous?.state==="down"?previous.state:this.sql.exec<{state:string}>("SELECT state FROM monitor_check WHERE monitor_id=? AND id<>? AND state IN('up','down') ORDER BY checked_at DESC LIMIT 1",monitor,id).toArray()[0]?.state;
+  if(!maintenance&&(state==="down"&&confirmed!=="down"||state==="up"&&confirmed==="down"))this.sql.exec("INSERT OR IGNORE INTO pending_alert VALUES(?,?,?,?)",id,monitor,`monitor_${state}`,checkedAt);
   return {state,duplicate:false};
  });}
  history(monitor:string,retentionDays:number,now=Date.now()){

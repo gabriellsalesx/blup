@@ -132,3 +132,13 @@ it("schedules maintenance on a page's services and shows it while it lasts",asyn
  expect((await request(`/pages/${id}/maintenance/${maintenance}`,"DELETE",undefined,"bob")).status).toBe(404);expect((await request(`/pages/${id}/maintenance/${maintenance}`,"DELETE")).status).toBe(200);
  expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_maintenance_component WHERE maintenance_id=?").get(maintenance)?.n).toBe(0);
 });
+it("alerts a confirmed fall and its return, not a new monitor that is up",()=>{
+ const now=Date.UTC(2026,10,15,12),check=(id:string,step:number,outcome:"up"|"down")=>({id,monitor:"alerted",revision:1,scheduledAt:now+step*300_000,checkedAt:now+step*300_000,intervalMinutes:5,result:{outcome,status:outcome==="up"?200:500,durationMs:1,reason:"http" as const}});
+ const kinds=()=>storage.sqlite.prepare("SELECT kind FROM pending_alert WHERE issue_id='alerted' ORDER BY created_at").all().map(r=>r.kind);
+ store.record(check("a",0,"up"));store.record(check("b",1,"up"));expect(kinds()).toEqual([]);
+ store.record(check("c",2,"down"));store.record(check("d",3,"down"));store.record(check("e",4,"down"));expect(kinds()).toEqual(["monitor_down"]);
+ store.record(check("f",5,"up"));store.record(check("g",6,"up"));store.record(check("h",7,"up"));expect(kinds()).toEqual(["monitor_down","monitor_up"]);
+ // Down again, then a check without an answer, then back: still one green.
+ store.record(check("i",8,"down"));store.record(check("j",9,"down"));store.record({...check("k",10,"up"),result:{outcome:"unknown",status:null,durationMs:1,reason:"network"}});
+ store.record(check("l",11,"up"));store.record(check("m",12,"up"));expect(kinds()).toEqual(["monitor_down","monitor_up","monitor_down","monitor_up"]);
+});
