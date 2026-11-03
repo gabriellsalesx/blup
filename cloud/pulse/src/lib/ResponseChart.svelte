@@ -19,7 +19,7 @@
  const xTicks=$derived.by(()=>{const count=Math.max(2,Math.min(6,Math.floor(width/120)));return points.length<2?[]:Array.from({length:count},(_,i)=>start+(end-start)*i/(count-1));});
  const average=$derived(points.length?Math.round(points.reduce((sum,p)=>sum+p.durationMs,0)/points.length):0);
  const ms=(v:number)=>`${v.toLocaleString(intlLocale())} ms`;
- function move(e:PointerEvent){const rect=(e.currentTarget as SVGElement).getBoundingClientRect(),px=e.clientX-rect.left;let best=0;for(let i=1;i<points.length;i++)if(Math.abs(x(points[i].checkedAt)-px)<Math.abs(x(points[best].checkedAt)-px))best=i;hover=points.length?best:null;}
+ function move(e:PointerEvent&{currentTarget:SVGSVGElement}){const rect=e.currentTarget.getBoundingClientRect(),px=e.clientX-rect.left;let best=0;for(let i=1;i<points.length;i++)if(Math.abs(x(points[i].checkedAt)-px)<Math.abs(x(points[best].checkedAt)-px))best=i;hover=points.length?best:null;}
  const current=$derived(hover===null?null:points[hover]??null);
 </script>
 

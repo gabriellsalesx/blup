@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import { resolve } from "$app/paths";
  import {t,formatDate} from "#lib/i18n.svelte.ts";
  import { goto } from "$app/navigation";
@@ -11,7 +12,7 @@
  import { confirm } from "#lib/confirm.svelte.ts";
  import { toast } from "#lib/toast.svelte.ts";
  import { bytes } from "#lib/usage.ts";
- let {data}=$props();
+ let {data}:PageProps=$props();
  let result=$derived(data.sites);
  let busy=$state("");
  const limit=$derived(result?.limit??data.me.plan.limits.sites);

@@ -5,7 +5,7 @@ import { goto } from "$app/navigation";
 // tips inside still work; clicks on links, buttons and menus inside do
 // their own thing. Ctrl/⌘ or the middle button open a new tab.
 export function openCard(event: MouseEvent, href: string) {
-	if ((event.target as Element).closest("a,button,input,select,textarea,[popover]")) return;
+	if (event.target instanceof Element && event.target.closest("a,button,input,select,textarea,[popover]")) return;
 	if (window.getSelection()?.toString()) return;
 	if (event.ctrlKey || event.metaKey || event.button === 1) {
 		window.open(href, "_blank", "noopener");

@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {goto,refreshAll} from "$app/navigation";
  import Plus from "@lucide/svelte/icons/plus";
@@ -22,7 +23,7 @@
  // its name,
  // the last days as bars and how long it has been like this. A click opens
  // its own page with the details; the three dots pause, edit or delete it.
- let {data}=$props();
+ let {data}:PageProps=$props();
  const monitors=$derived(data.monitors),histories=$derived(data.histories);
  const writable=$derived(panel.usage?.readOnly===false);
  async function act(fn:()=>Promise<void>){try{await fn();await refreshAll();}catch(e){toast(errorMessage(e),{kind:"error"});}}

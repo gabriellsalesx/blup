@@ -18,8 +18,9 @@
  // back to the list.
  const linkGET=pulseApi.telegram.link[":link"].$get;
  type LinkStatus=InferResponseType<typeof linkGET,200>;
+ type Link=InferResponseType<typeof pulseApi.telegram.link.$post,201>;
  type Kind="discord"|"telegram";
- let kind=$state<Kind>("discord"),webhook=$state(""),busy=$state(false),link=$state<{id:string;url:string;expiresAt:string}|null>(null),linkStatus=$state<LinkStatus|null>(null);
+ let kind=$state<Kind>("discord"),webhook=$state(""),busy=$state(false),link=$state<Link|null>(null),linkStatus=$state<LinkStatus|null>(null);
  const kinds=$derived([{value:"discord" as const,label:"Discord",help:t("pulseDiscordHow")},{value:"telegram" as const,label:"Telegram",help:t("pulseTelegramHow")}]);
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
  async function done(){toast(()=>t("pulseToastLinked"));await goto(resolve("/alerts"));}

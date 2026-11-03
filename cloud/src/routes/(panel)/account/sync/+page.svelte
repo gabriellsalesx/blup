@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import {planLabel} from "../../../../../shared/plan-i18n";
  import {t,formatDate,language} from "#lib/i18n.svelte.ts";
 	import Lock from "@lucide/svelte/icons/lock";
@@ -14,7 +15,7 @@
 
 	// Sync: the space the notes use in the cloud and the computers with Blup
 	// Studio signed in (each can be disconnected).
-	let { data } = $props();
+	let { data }: PageProps = $props();
 
 	const limit = $derived(data.me.plan.limits.storageMB);
 	const used = $derived(data.me.usage.storageBytes);
@@ -59,9 +60,9 @@
 	</Row>
 	<Row
 		title={t("connectedDevices")}
-		help={devices === null ? t("loading") : t("deviceCount",{used:maxDevices>=0?t("ofLimit",{used:devices.length,limit:maxDevices}):devices.length,plan:planLabel(data.me.plan.name,language())})+(devices.length?"":". "+t("signInStudio"))}
+		help={t("deviceCount",{used:maxDevices>=0?t("ofLimit",{used:devices.length,limit:maxDevices}):devices.length,plan:planLabel(data.me.plan.name,language())})+(devices.length?"":". "+t("signInStudio"))}
 	/>
-	{#each devices ?? [] as d (d.id)}
+	{#each devices as d (d.id)}
 		<Row title={d.name} help={t("deviceDates",{created:when(d.createdAt),seen:when(d.lastSeen)})}>
 			{#snippet action()}
 				<div class="flex items-center gap-3">

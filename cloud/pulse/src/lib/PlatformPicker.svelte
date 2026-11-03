@@ -10,7 +10,7 @@
 	let group=$state<PlatformGroup>("popular"),filter=$state("");
 	const tabs=$derived([{value:"popular",label:t("pulseGroupPopular")},{value:"browser",label:t("pulseGroupBrowser")},{value:"server",label:t("pulseGroupServer")},{value:"mobile",label:t("pulseGroupMobile")},{value:"desktop",label:t("pulseGroupDesktop")}] as const);
 	const label=(p:(typeof platforms)[number])=>p.id==="other"?t("pulseOther"):p.label;
-	const shown=$derived.by(()=>{const q=filter.trim().toLowerCase();const list=q?platforms.filter(p=>label(p).toLowerCase().includes(q)):platforms.filter(p=>(p.groups as readonly string[]).includes(group));return q?list:[...list,platforms.find(p=>p.id==="other")!];});
+	const shown=$derived.by(()=>{const q=filter.trim().toLowerCase();const list=q?platforms.filter(p=>label(p).toLowerCase().includes(q)):platforms.filter(p=>p.groups.some(g=>g===group));return q?list:[...list,...platforms.filter(p=>p.id==="other")];});
 </script>
 
 <div class="flex flex-wrap items-start justify-between gap-4">

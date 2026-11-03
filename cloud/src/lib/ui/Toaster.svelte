@@ -18,7 +18,8 @@
 			</span>
 			<span class="flex-1">{typeof n.text==="function"?n.text():n.text}</span>
 			{#if n.action}
-				<button class="shrink-0 rounded-md px-2.5 py-1 font-bold text-blup hover:bg-neutral-100 dark:hover:bg-neutral-800" onclick={() => { n.action!.run(); dismiss(n.id); }}>{n.action.label}</button>
+				{@const action = n.action}
+				<button class="shrink-0 rounded-md px-2.5 py-1 font-bold text-blup hover:bg-neutral-100 dark:hover:bg-neutral-800" onclick={() => { action.run(); dismiss(n.id); }}>{action.label}</button>
 			{/if}
 			<button class="grid shrink-0 place-items-center rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" title={t("close")} aria-label={t("close")} onclick={() => dismiss(n.id)}>
 				<X class="size-3.5" />

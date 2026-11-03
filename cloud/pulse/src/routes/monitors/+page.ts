@@ -7,6 +7,6 @@ export async function load({parent}){
  return attempt(async()=>{
   const monitors=(await parseResponse(pulseApi.monitors.$get())).monitors;
   const loaded=await Promise.all(monitors.map(async m=>[m.id,await parseResponse(checksGET({param:{monitor:m.id}}))] as const));
-  return {monitors,histories:Object.fromEntries(loaded) as Record<string,History>};
+  return {monitors,histories:Object.fromEntries(loaded)};
  },empty);
 }

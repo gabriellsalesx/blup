@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageProps } from "./$types";
 	import { resolve } from "$app/paths";
 	import AccountId from "#lib/ui/AccountId.svelte";
 	import PageHeader from "#lib/ui/PageHeader.svelte";
@@ -10,7 +11,7 @@
 
 	// Accounts: how many there are (per plan), then the list, newest first,
 	// found by the start of the e-mail or the ID, a page at a time.
-	let { data } = $props();
+	let { data }: PageProps = $props();
 	let q = $state("");
 	const stats = $derived<Stats | null>(data.stats);
 	// A fresh list whenever the route loads its first page again.

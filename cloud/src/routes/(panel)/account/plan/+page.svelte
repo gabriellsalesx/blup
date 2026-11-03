@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {refreshAll} from "$app/navigation";
  import type {InferResponseType} from "hono/client";
@@ -15,7 +16,7 @@
  import Segmented from "#lib/ui/Segmented.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import Check from "@lucide/svelte/icons/check";
- let {data}=$props();
+ let {data}:PageProps=$props();
  type Preview=InferResponseType<typeof rpc.billing.preview.$post,200>;
  type BillingState=InferResponseType<typeof rpc.billing.state.$get,200>;
  type Result=InferResponseType<typeof rpc.billing.confirm.$post,200>;

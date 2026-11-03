@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
  import Copy from "@lucide/svelte/icons/copy";
@@ -19,12 +20,12 @@
  import {platforms} from "../../../shared/pulse-platforms";
  import {pulseApi,parseResponse,type Project} from "../lib/api";
  import {panel} from "../lib/panel.svelte";
- let {data}=$props();
+ let {data}:PageProps=$props();
  let projects=$derived<Project[]>(data.projects),dsn=$state(""),busy=$state(false);
  const writable=$derived(panel.usage?.readOnly===false);
  const usage=$derived(panel.usage?.limits?{used:panel.usage.accepted,limit:panel.usage.limits.events}:null);
  // The issues of one project: /issues?project=<id>.
- const issuesOf=(id:string)=>`${resolve("/issues")}?${new URLSearchParams({project:id})}`;
+ const issuesOf=(id:string)=>resolve(`/issues?${new URLSearchParams({project:id})}`);
  const platformName=(id:string)=>id==="other"?t("pulseOther"):platforms.find(p=>p.id===id)?.label??id;
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
  async function refresh(){projects=(await parseResponse(pulseApi.projects.$get())).projects;}

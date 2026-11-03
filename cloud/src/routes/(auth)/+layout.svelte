@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {LayoutProps} from "./$types";
  import LanguagePicker from "#lib/ui/LanguagePicker.svelte";
  import {t} from "#lib/i18n.svelte.ts";
 	import Check from "@lucide/svelte/icons/check";
@@ -9,7 +10,7 @@
 	// Signing in. On a phone: a blue band with the logo, the phrase and the
 	// gang, and the form on a sheet that covers its bottom edge. From medium
 	// screens on: a card split in two, the pitch on the left.
-	let { children } = $props();
+	let { children }: LayoutProps = $props();
 
 	const perks = $derived([t("accessFree"), t("accessPrivate"), t("accessSites")]);
 </script>

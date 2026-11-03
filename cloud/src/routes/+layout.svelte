@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { LayoutProps } from "./$types";
 	import "../app.css";
 	import {afterNavigate} from "$app/navigation";
 	import {page} from "$app/state";
@@ -6,7 +7,7 @@
 	import Toaster from "#lib/ui/Toaster.svelte";
 	import ConfirmHost from "#lib/ui/ConfirmHost.svelte";
 
-	let { children } = $props();
+	let { children }: LayoutProps = $props();
 	const isStaff=(url:Readonly<Pick<URL,"hostname"|"pathname">>)=>url.hostname.startsWith("staff.")||url.pathname==="/staff"||url.pathname.startsWith("/staff/");
 	i18n.staff=isStaff(page.url);
 	afterNavigate(({to})=>{i18n.staff=isStaff(to?.url??page.url);});

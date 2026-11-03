@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
  import {type InferResponseType} from "hono/client";
@@ -24,7 +25,7 @@
  // top adds one), then which of them each project sends to.
  type Channels=InferResponseType<typeof pulseApi.channels.$get,200>;
  type Channel=Channels["channels"][number];
- let {data}=$props();
+ let {data}:PageProps=$props();
  const projects=$derived<Project[]>(data.projects);
  let channels=$derived<Channel[]>(data.channels?.channels??[]),busy=$state(false);
  // Which Discord and Telegram destination each project sends to, editable

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageProps } from "./$types";
 	import Trash from "@lucide/svelte/icons/trash-2";
 	import { staffApi, roleLabel, when, type Role, type Team } from "#lib/staff.ts";
 	import { toast } from "#lib/toast.svelte.ts";
@@ -11,7 +12,7 @@
 
 	// Who is on the staff. Each one also needs to be allowed in Cloudflare
 	// Access (the door); this list is the role inside.
-	let { data } = $props();
+	let { data }: PageProps = $props();
 	let team = $derived<Team | null>(data.team);
 	let email = $state("");
 	let role = $state<Role>("support");

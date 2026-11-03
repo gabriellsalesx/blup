@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
  import {t,intlLocale,formatDate} from "#lib/i18n.svelte.ts";
@@ -13,14 +14,14 @@
  import {pulseApi,parseResponse,type Project,type Issue} from "../../lib/api";
  // The issues of one project at a time (chosen at the top, kept in the
  // address), open, resolved or ignored; a click shows the latest events.
- let {data}=$props();
+ let {data}:PageProps=$props();
  let projects=$derived<Project[]>(data.projects),projectId=$derived(data.projectId),issues=$derived<Issue[]>(data.issues),busy=$state(false),filter=$state<"open"|"resolved"|"ignored">("open");
  let events=$state<Awaited<ReturnType<typeof getEvents>>>([]),openIssue=$state<string|null>(null);
  const project=$derived(projects.find(p=>p.id===projectId)??null);
  const projectOptions=$derived(projects.map(p=>({value:p.id,label:p.name})));
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
  async function load(){events=[];openIssue=null;issues=projectId?(await parseResponse(pulseApi.projects[":project"].issues.$get({param:{project:projectId},query:{state:filter}}))).issues:[];}
- function choose(id:string){projectId=id;void goto(`${resolve("/issues")}?${new URLSearchParams({project:id})}`,{replace:true,shallow:true});void run(load);}
+ function choose(id:string){projectId=id;void goto(resolve(`/issues?${new URLSearchParams({project:id})}`),{replace:true,shallow:true});void run(load);}
  async function more(){const last=issues.at(-1);if(!projectId||!last)return;await run(async()=>{const next=(await parseResponse(pulseApi.projects[":project"].issues.$get({param:{project:projectId},query:{state:filter,before:String(last.lastAt),beforeId:last.id}}))).issues;issues=[...issues,...next];});}
  async function change(issue:Issue,state:Issue["state"]){await run(async()=>{await parseResponse(pulseApi.projects[":project"].issues[":issue"].$patch({param:{project:projectId,issue:issue.id},json:{state}}));await load();toast(()=>t("pulseToastIssue"));});}
  async function toggleEvents(issue:Issue){if(openIssue===issue.id){openIssue=null;events=[];return;}await run(async()=>{events=await getEvents(projectId,issue.id);openIssue=issue.id;});}

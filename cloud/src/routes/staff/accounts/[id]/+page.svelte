@@ -1,9 +1,9 @@
 <script lang="ts">
+	import type { PageProps } from "./$types";
 	import { resolve } from "$app/paths";
 	import AccountId from "#lib/ui/AccountId.svelte";
 	import { accountIdHelp } from "#lib/account-id.ts";
 	import { goto, refreshAll } from "$app/navigation";
-	import { page } from "$app/state";
 	import ArrowLeft from "@lucide/svelte/icons/arrow-left";
 	import External from "@lucide/svelte/icons/external-link";
 	import KeyRound from "@lucide/svelte/icons/key-round";
@@ -19,9 +19,9 @@
 
 	// One account: plan, sessions, passkeys, what the staff did to it, and the
 	// support actions (blocking and deleting are for admins).
-	let { data } = $props();
+	let { data, params }: PageProps = $props();
 	const admin = $derived(data.me?.role === "admin");
-	const id = $derived(page.params.id ?? "");
+	const id = $derived(params.id);
 
 	const d = $derived(data.detail);
 	let busy = $state(false);

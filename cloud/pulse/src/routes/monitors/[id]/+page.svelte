@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
  import ChevronLeft from "@lucide/svelte/icons/chevron-left";
@@ -26,7 +27,7 @@
  // One monitor in full: its days as bars, the response time of the latest
  // checks, where its alerts go and every check, a page at a time.
  const PAGE=20;
- let {data}=$props();
+ let {data}:PageProps=$props();
  let loaded=$derived(data),busy=$state(false);
  const monitor=$derived(loaded.monitor),history=$derived(loaded.history),project=$derived(loaded.project),destinations=$derived(loaded.destinations),missing=$derived(!loaded.monitor);
  // Another monitor starts again from all checks, on the first page.

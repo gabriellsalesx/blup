@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import {planLabel} from "../../../../shared/plan-i18n";
  import {t,language} from "#lib/i18n.svelte.ts";
 	import MonitorSmartphone from "@lucide/svelte/icons/monitor-smartphone";
@@ -12,7 +13,7 @@
 	// and opens this page; the person checks it is the same code and
 	// approves. Checking the code claims it for this session, so only this
 	// person can approve it.
-	let { data } = $props();
+	let { data }: PageProps = $props();
 
 	type Step = "type" | "confirm" | "approved" | "denied";
 	let step = $derived<Step>(data.checked ? "confirm" : "type");

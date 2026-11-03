@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
  import Eye from "@lucide/svelte/icons/eye";
@@ -24,7 +25,7 @@
  // incidents told to visitors.
  type IncidentState="investigating"|"identified"|"monitoring"|"resolved";
  type Impact="operational"|"degraded"|"partial_outage"|"major_outage";
- let {data}=$props();
+ let {data}:PageProps=$props();
  let page=$derived(data.page),incidents=$derived<Incident[]>(data.incidents),busy=$state(false);
  let incidentTitle=$state(""),text=$state(""),incidentId=$state<string|null>(null),incidentStateValue=$state<IncidentState>("investigating"),impact=$state<Impact>("degraded");
  const writable=$derived(panel.usage?.readOnly===false&&!!page?.writable);

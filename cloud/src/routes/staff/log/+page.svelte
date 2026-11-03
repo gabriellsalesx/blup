@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageProps } from "./$types";
 	import { resolve } from "$app/paths";
 	import { staffApi, staffHref, actionLabel, when } from "#lib/staff.ts";
 	import { createPager } from "#lib/pager.svelte.ts";
@@ -6,7 +7,7 @@
 	import PageHeader from "#lib/ui/PageHeader.svelte";
 
 	// Every staff action, newest first, a page at a time.
-	let { data } = $props();
+	let { data }: PageProps = $props();
 	// A fresh list whenever the route loads its first page again.
 	const pager = $derived(createPager((cursor) => staffApi.log(cursor), data.first));
 </script>

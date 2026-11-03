@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
  import {t} from "#lib/i18n.svelte.ts";
@@ -10,7 +11,7 @@
  import {pulseApi,parseResponse} from "../../../../lib/api";
  // Changing a monitor's name, address or interval; it is checked again
  // from scratch after saving.
- let {data}=$props();
+ let {data}:PageProps=$props();
  let busy=$state(false);
  const back=$derived(data.monitor?resolve("/monitors/[id]",{id:data.monitor.id}):resolve("/monitors"));
  async function save(values:{name:string;url:string;intervalMinutes:number}){const monitor=data.monitor;if(!monitor)return;busy=true;try{await parseResponse(pulseApi.monitors[":monitor"].$patch({param:{monitor:monitor.id},json:{name:values.name,url:values.url,intervalMinutes:values.intervalMinutes}}));toast(()=>t("pulseToastSaved"));await goto(back);}catch(err){toast(errorMessage(err),{kind:"error"});}finally{busy=false;}}

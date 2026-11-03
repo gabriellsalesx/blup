@@ -2,6 +2,7 @@
  import {resolve} from "$app/paths";
  import {page} from "$app/state";
  import {t} from "#lib/i18n.svelte.ts";
+ import {staffHref} from "#lib/staff.ts";
  import BlupLogo from "#lib/ui/BlupLogo.svelte";
  import Scene from "#lib/ui/Scene.svelte";
  import ThemePicker from "#lib/ui/ThemePicker.svelte";
@@ -22,7 +23,7 @@
  const offline=typeof navigator!=="undefined"&&!navigator.onLine;
  const kind=$derived(offline?kinds.offline:kinds[page.status]??kinds[500]);
  const onStaff=typeof location!=="undefined"&&location.hostname.startsWith("staff.");
- const home=onStaff?"/":page.status===401?resolve("/(auth)/sign-in"):resolve("/(panel)/account");
+ const home=onStaff?staffHref(resolve("/staff")):page.status===401?resolve("/(auth)/sign-in"):resolve("/(panel)/account");
 </script>
 <svelte:head><title>{t(kind.title)} · Blup</title></svelte:head>
 <main class="grid min-h-dvh place-items-center px-6 py-16">

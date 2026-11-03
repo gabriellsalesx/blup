@@ -8,17 +8,18 @@
 	type Item = { label: string; Icon: Component; onselect: () => void; danger?: boolean };
 	let { label, items }: { label: string; items: Item[] } = $props();
 	const id = $props.id();
-	let open = $state(false), menu = $state<HTMLElement>();
+	let open = $state(false);
 
-	function pick(item: Item) {
-		menu?.hidePopover();
+	// Each item sits right in the menu (its parent).
+	function pick(item: Item, event: MouseEvent & { currentTarget: HTMLButtonElement }) {
+		event.currentTarget.parentElement?.hidePopover();
 		item.onselect();
 	}
-	function keys(event: KeyboardEvent) {
+	function keys(event: KeyboardEvent & { currentTarget: HTMLDivElement }) {
 		if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
 		event.preventDefault();
-		const buttons = [...(menu?.querySelectorAll<HTMLButtonElement>("[role=menuitem]") ?? [])];
-		const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+		const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("[role=menuitem]")];
+		const at = buttons.findIndex((button) => button === document.activeElement);
 		buttons[(at + (event.key === "ArrowDown" ? 1 : buttons.length - 1)) % buttons.length]?.focus();
 	}
 </script>
@@ -33,7 +34,6 @@
 	class="relative z-10 grid size-9 shrink-0 place-items-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white {open ? 'bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' : ''}"
 ><EllipsisVertical class="size-5" /></button>
 <div
-	bind:this={menu}
 	id="{id}-menu"
 	popover
 	role="menu"
@@ -41,11 +41,11 @@
 	tabindex="-1"
 	style:position-anchor="--menu-{id}"
 	class="action-menu rounded-xl border border-neutral-200 bg-white p-1.5 text-sm shadow-lg dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
-	ontoggle={(event) => { open = event.newState === "open"; if (open) menu?.querySelector<HTMLButtonElement>("[role=menuitem]")?.focus(); }}
+	ontoggle={(event) => { open = event.newState === "open"; if (open) event.currentTarget.querySelector<HTMLButtonElement>("[role=menuitem]")?.focus(); }}
 	onkeydown={keys}
 >
 	{#each items as item (item.label)}
-		<button type="button" role="menuitem" class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left font-medium hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:outline-none dark:hover:bg-neutral-800 dark:focus-visible:bg-neutral-800 {item.danger ? 'text-red-600 dark:text-red-400' : ''}" onclick={() => pick(item)}><item.Icon class="size-4 shrink-0" />{item.label}</button>
+		<button type="button" role="menuitem" class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left font-medium hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:outline-none dark:hover:bg-neutral-800 dark:focus-visible:bg-neutral-800 {item.danger ? 'text-red-600 dark:text-red-400' : ''}" onclick={(event) => pick(item, event)}><item.Icon class="size-4 shrink-0" />{item.label}</button>
 	{/each}
 </div>
 

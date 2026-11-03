@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {LayoutProps} from "./$types";
  import {resolve} from "$app/paths";
  import "../app.css";
  import {onDestroy} from "svelte";
@@ -21,7 +22,7 @@
  import {cloudURL,rpc,pulseApi,parseResponse} from "../lib/api";
  import {cloudPaths,signInFor} from "../../../shared/panel-paths";
  import {panel} from "../lib/panel.svelte";
- let {children}=$props();
+ let {children}:LayoutProps=$props();
  const links=$derived([{href:resolve("/"),label:t("pulseProjects"),Icon:Folder,match:(path:string)=>path===resolve("/")||path===resolve("/projects/new")},{href:resolve("/issues"),label:t("pulseIssues"),Icon:Bug},{href:resolve("/monitors"),label:t("pulseMonitors"),Icon:Activity,match:(path:string)=>path.startsWith(resolve("/monitors"))},{href:resolve("/status-pages"),label:t("pulsePages"),Icon:Globe,match:(path:string)=>path.startsWith(resolve("/status-pages"))},{href:resolve("/alerts"),label:t("pulseAlerts"),Icon:Bell,match:(path:string)=>path.startsWith(resolve("/alerts"))}]);
  let selectionBusy=$state(false),keep=$state({projects:[] as string[],monitors:[] as string[],pages:[] as string[]});
  async function saveSelection(){selectionBusy=true;try{await parseResponse(pulseApi.selection.$put({json:keep}));panel.usage=await parseResponse(pulseApi.usage.$get());location.reload();}catch{toast(()=>t("errorInvalid"),{kind:"error"});}finally{selectionBusy=false;}}

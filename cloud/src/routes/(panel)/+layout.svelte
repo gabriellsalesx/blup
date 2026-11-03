@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { LayoutProps } from "./$types";
 	import { resolve } from "$app/paths";
  import {i18n,t} from "#lib/i18n.svelte.ts";
  import {api} from "#lib/api.ts";
@@ -17,7 +18,7 @@
 	import SignOutButton from "#lib/ui/SignOutButton.svelte";
 
 	// The account panel.
-	let { children,data } = $props();
+	let { children,data }: LayoutProps = $props();
  let alive=true;
  onDestroy(()=>{alive=false;});
  const saver=createLanguageSaver(language=>api.setLanguage(language),id=>alive&&data.me.id===id,()=>toast(()=>t("languageSaveError"),{kind:"error"}));

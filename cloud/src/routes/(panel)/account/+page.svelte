@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageProps } from "./$types";
 	import { resolve } from "$app/paths";
  import {t,language,intlLocale} from "#lib/i18n.svelte.ts";
 	import AccountId from "#lib/ui/AccountId.svelte";
@@ -16,7 +17,7 @@
 	import Row from "#lib/ui/Row.svelte";
 
 	// The profile: name, e-mail, passkeys, leaving every device, deleting.
-	let { data } = $props();
+	let { data }: PageProps = $props();
 	let busy = $state(false);
 	let nameOpen = $state(false);
 	let name = $state("");

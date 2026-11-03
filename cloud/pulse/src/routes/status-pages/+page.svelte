@@ -1,4 +1,5 @@
 <script lang="ts">
+ import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
  import Plus from "@lucide/svelte/icons/plus";
@@ -21,7 +22,7 @@
  import {getPages,type StatusPage} from "../../lib/status-pages";
  // The status pages: a button on top makes a new one; each card opens,
  // goes live or offline, or is deleted.
- let {data}=$props();
+ let {data}:PageProps=$props();
  let pages=$derived<StatusPage[]>(data.pages),busy=$state(false);
  const writable=$derived(panel.usage?.readOnly===false);
  // Live pages are green on the edge and address, the others gray; both
