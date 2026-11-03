@@ -1,7 +1,9 @@
 <script lang="ts">
+	import Tooltip from "./Tooltip.svelte";
+
 	// Days as bars, oldest first: green all up, amber mostly up, red mostly
-	// down and gray without checks. Each bar says its day and share on hover.
-	type Day = { key: number; label: string; up: number; down: number };
+	// down and gray without checks. Each bar shows its tip on hover.
+	type Day = { key: number; tip: string; up: number; down: number };
 	let { days, label }: { days: Day[]; label: string } = $props();
 	const tone = (d: Day) => {
 		const total = d.up + d.down;
@@ -11,5 +13,7 @@
 </script>
 
 <div class="flex h-9 gap-[3px]" role="img" aria-label={label}>
-	{#each days as day (day.key)}<span class="flex-1 rounded-full {tone(day)}" title={day.label}></span>{/each}
+	{#each days as day, index (day.key)}
+		<Tooltip class="flex flex-1" text={day.tip} align={index < 5 ? "start" : index >= days.length - 5 ? "end" : "center"}><span class="w-full rounded-full {tone(day)}"></span></Tooltip>
+	{/each}
 </div>
