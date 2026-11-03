@@ -37,6 +37,11 @@ export const pulseIncident=sqliteTable("pulse_incident",{
 export const pulseIncidentUpdate=sqliteTable("pulse_incident_update",{
  id:text("id").primaryKey(),incidentId:text("incident_id").notNull(),body:text("body").notNull(),state:text("state").notNull(),createdAt:integer("created_at").notNull(),expiresAt:integer("expires_at").notNull().default(0),
 },t=>[index("pulse_incident_update_expiry_idx").on(t.expiresAt),index("pulse_incident_update_idx").on(t.incidentId,t.createdAt)]);
+// How an incident leaves each service (a component of its page): only the
+// affected ones are kept; the others are "not affected".
+export const pulseIncidentComponent=sqliteTable("pulse_incident_component",{
+ incidentId:text("incident_id").notNull(),monitorId:text("monitor_id").notNull(),status:text("status").notNull(),
+},t=>[primaryKey({columns:[t.incidentId,t.monitorId]})]);
 export const pulsePageDomain=sqliteTable("pulse_page_domain",{
  pageId:text("page_id").primaryKey(),hostname:text("hostname").notNull(),proof:text("proof").notNull(),providerId:text("provider_id"),verifiedAt:integer("verified_at"),status:text("status").notNull().default("pending_ownership"),ssl:text("ssl").notNull().default("pending"),records:text("records").notNull().default("[]"),checkedAt:integer("checked_at"),
 },t=>[index("pulse_domain_host_idx").on(t.hostname,t.verifiedAt)]);

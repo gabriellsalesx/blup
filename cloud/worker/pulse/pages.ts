@@ -3,12 +3,21 @@ import {z} from "zod";
 import {validate,opaqueId} from "../validation";
 import {languageSchema} from "../../shared/language";
 import {pulseWrite,type PulseApp} from "./access";
-import {pageSlug,slugShape,reservedSlugs} from "./page-rules";
+import {pageSlug,slugShape,reservedSlugs,serviceStatus} from "./page-rules";
 const component=z.object({monitorId:opaqueId,name:z.string().trim().min(1).max(80)}).strict();
 const components=z.array(component).max(50).refine(v=>new Set(v.map(c=>c.monitorId)).size===v.length);
 const pageBody=z.object({title:z.string().trim().min(1).max(100),slug:pageSlug,components,language:languageSchema}).strict();
 export const incidentState=z.enum(["investigating","identified","monitoring","resolved"]);
 export const impact=z.enum(["operational","degraded","partial_outage","major_outage"]);
+// "none" (not affected) is not stored; the page's impact follows the
+// worst of the services.
+const services=z.array(z.object({monitorId:opaqueId,status:serviceStatus}).strict()).max(50).refine(v=>new Set(v.map(s=>s.monitorId)).size===v.length);
+type Services=z.infer<typeof services>;
+function impactOf(list:Services,total:number):z.infer<typeof impact>{const down=list.filter(s=>s.status==="downtime").length;return down?(down===total?"major_outage":"partial_outage"):list.some(s=>s.status==="degraded")?"degraded":"operational";}
+// Only services shown on this page.
+async function pageServices(db:D1Database,page:string){return new Set((await db.prepare("SELECT monitor_id AS id FROM pulse_component WHERE page_id=?").bind(page).all<{id:string}>()).results.map(r=>r.id));}
+function setServices(db:D1Database,incident:string,list:Services){return [db.prepare("DELETE FROM pulse_incident_component WHERE incident_id=?").bind(incident),...list.filter(s=>s.status!=="none").map(s=>db.prepare("INSERT INTO pulse_incident_component(incident_id,monitor_id,status) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM pulse_incident WHERE id=?)").bind(incident,s.monitorId,s.status,incident))];}
+const DAY=86_400_000;
 export const pageParam=z.object({page:opaqueId});
 export async function ownedPage(env:Cloudflare.Env,owner:string,id:string){return env.DB.prepare("SELECT id,title,slug,published,language,plan_disabled AS planDisabled FROM pulse_page WHERE id=? AND user_id=? AND (retire_at IS NULL OR retire_at>?)").bind(id,owner,Date.now()).first<{id:string;title:string;slug:string;published:number;language:string;planDisabled:number}>();}
 async function validComponents(db:D1Database,owner:string,list:z.infer<typeof components>){
@@ -48,17 +57,33 @@ export const pagesApi=new Hono<PulseApp>()
   // the row is lost. Keep the tombstone unpublished until it succeeds.
   await c.env.DB.prepare("UPDATE pulse_page SET published=0 WHERE id=?").bind(id).run();
   if(await c.env.DB.prepare("SELECT page_id FROM pulse_page_domain WHERE page_id=?").bind(id).first())return c.json({code:"DOMAIN_EXISTS"},409);
-  await c.env.DB.batch([c.env.DB.prepare("DELETE FROM pulse_incident_update WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(id),c.env.DB.prepare("DELETE FROM pulse_incident WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_component WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_page WHERE id=?").bind(id)]);return c.json({ok:true});
+  await c.env.DB.batch([c.env.DB.prepare("DELETE FROM pulse_incident_update WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(id),c.env.DB.prepare("DELETE FROM pulse_incident_component WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(id),c.env.DB.prepare("DELETE FROM pulse_incident WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_component WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_page WHERE id=?").bind(id)]);return c.json({ok:true});
  })
  .get("/:page/incidents",validate("param",pageParam),async c=>{
-  if(!await ownedPage(c.env,c.get("session").user.id,c.req.valid("param").page)||!c.get("access").readable)return c.json({code:"NOT_FOUND"},404);
-  const incidents=await c.env.DB.prepare("SELECT id,title,state,impact,created_at AS createdAt,updated_at AS updatedAt FROM pulse_incident WHERE page_id=? AND updated_at>? ORDER BY created_at DESC LIMIT 50").bind(c.req.valid("param").page,Date.now()-(c.get("access").limits?.retentionDays??30)*86_400_000).all<{id:string;title:string;state:string;impact:string;createdAt:number;updatedAt:number}>();return c.json({incidents:incidents.results});
+  const page=c.req.valid("param").page;
+  if(!await ownedPage(c.env,c.get("session").user.id,page)||!c.get("access").readable)return c.json({code:"NOT_FOUND"},404);
+  const cutoff=Date.now()-(c.get("access").limits?.retentionDays??30)*DAY;
+  const [incidents,affected]=await c.env.DB.batch([
+   c.env.DB.prepare("SELECT id,title,state,impact,created_at AS createdAt,updated_at AS updatedAt FROM pulse_incident WHERE page_id=? AND updated_at>? ORDER BY created_at DESC LIMIT 50").bind(page,cutoff),
+   c.env.DB.prepare("SELECT ic.incident_id AS incidentId,ic.monitor_id AS monitorId,ic.status FROM pulse_incident_component ic JOIN pulse_incident i ON i.id=ic.incident_id WHERE i.page_id=? AND i.updated_at>?").bind(page,cutoff),
+  ]) as [D1Result<{id:string;title:string;state:string;impact:string;createdAt:number;updatedAt:number}>,D1Result<{incidentId:string;monitorId:string;status:string}>];
+  return c.json({incidents:incidents.results.map(i=>({...i,state:incidentState.parse(i.state),services:affected.results.filter(a=>a.incidentId===i.id).map(a=>({monitorId:a.monitorId,status:serviceStatus.parse(a.status)}))}))});
  })
- .post("/:page/incidents",pulseWrite,validate("param",pageParam),validate("json",z.object({title:z.string().trim().min(1).max(120),body:z.string().trim().min(1).max(2000),state:incidentState,impact}).strict()),async c=>{
-  const page=c.req.valid("param").page;const owned=await ownedPage(c.env,c.get("session").user.id,page);if(!owned)return c.json({code:"NOT_FOUND"},404);if(owned.planDisabled)return c.json({code:"PLAN"},403);const input=c.req.valid("json"),id=crypto.randomUUID(),now=Date.now();
-  const made=await c.env.DB.batch([c.env.DB.prepare("INSERT INTO pulse_incident(id,page_id,title,state,impact,created_at,updated_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_incident WHERE page_id=?)<200 RETURNING id").bind(id,page,input.title,input.state,input.impact,now,now,now+(c.get("access").limits?.retentionDays??30)*86_400_000,page),c.env.DB.prepare("INSERT INTO pulse_incident_update(id,incident_id,body,state,created_at,expires_at) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM pulse_incident WHERE id=?)").bind(crypto.randomUUID(),id,input.body,input.state,now,now+(c.get("access").limits?.retentionDays??30)*86_400_000,id)]);return made[0].results.length?c.json({id},201):c.json({code:"QUOTA"},409);
+ // A new incident: what happened, since when (publishedAt: up to the kept
+ // history ago, not later than now) and how each service is left.
+ .post("/:page/incidents",pulseWrite,validate("param",pageParam),validate("json",z.object({title:z.string().trim().min(1).max(120),body:z.string().trim().min(1).max(2000),state:incidentState,publishedAt:z.iso.datetime({offset:true}),services}).strict()),async c=>{
+  const page=c.req.valid("param").page;const owned=await ownedPage(c.env,c.get("session").user.id,page);if(!owned)return c.json({code:"NOT_FOUND"},404);if(owned.planDisabled)return c.json({code:"PLAN"},403);
+  const input=c.req.valid("json"),id=crypto.randomUUID(),now=Date.now(),keep=(c.get("access").limits?.retentionDays??30)*DAY,published=Date.parse(input.publishedAt);
+  if(published>now+60_000||published<now-keep)return c.json({code:"INVALID"},400);
+  const shown=await pageServices(c.env.DB,page);if(input.services.some(s=>!shown.has(s.monitorId)))return c.json({code:"INVALID"},400);
+  const made=await c.env.DB.batch([
+   c.env.DB.prepare("INSERT INTO pulse_incident(id,page_id,title,state,impact,created_at,updated_at,expires_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_incident WHERE page_id=?)<200 RETURNING id").bind(id,page,input.title,input.state,impactOf(input.services,shown.size),Math.min(published,now),now,now+keep,page),
+   c.env.DB.prepare("INSERT INTO pulse_incident_update(id,incident_id,body,state,created_at,expires_at) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM pulse_incident WHERE id=?)").bind(crypto.randomUUID(),id,input.body,input.state,Math.min(published,now),now+keep,id),
+   ...setServices(c.env.DB,id,input.services),
+  ]);return made[0].results.length?c.json({id},201):c.json({code:"QUOTA"},409);
  })
- .post("/:page/incidents/:incident/updates",pulseWrite,validate("param",z.object({page:opaqueId,incident:opaqueId})),validate("json",z.object({body:z.string().trim().min(1).max(2000),state:incidentState}).strict()),async c=>{
+ .post("/:page/incidents/:incident/updates",pulseWrite,validate("param",z.object({page:opaqueId,incident:opaqueId})),validate("json",z.object({body:z.string().trim().min(1).max(2000),state:incidentState,services}).strict()),async c=>{
   const {page,incident}=c.req.valid("param");const owned=await ownedPage(c.env,c.get("session").user.id,page);if(!owned)return c.json({code:"NOT_FOUND"},404);if(owned.planDisabled)return c.json({code:"PLAN"},403);const current=await c.env.DB.prepare("SELECT id FROM pulse_incident WHERE id=? AND page_id=?").bind(incident,page).first();if(!current)return c.json({code:"NOT_FOUND"},404);const input=c.req.valid("json"),now=Date.now(),updateId=crypto.randomUUID();
-  const made=await c.env.DB.batch([c.env.DB.prepare("INSERT INTO pulse_incident_update(id,incident_id,body,state,created_at,expires_at) SELECT ?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_incident_update WHERE incident_id=?)<100 RETURNING id").bind(updateId,incident,input.body,input.state,now,now+(c.get("access").limits?.retentionDays??30)*86_400_000,incident),c.env.DB.prepare("UPDATE pulse_incident SET state=?,updated_at=?,expires_at=? WHERE id=? AND EXISTS(SELECT 1 FROM pulse_incident_update WHERE id=?)").bind(input.state,now,now+(c.get("access").limits?.retentionDays??30)*86_400_000,incident,updateId)]);return made[0].results.length?c.json({ok:true},201):c.json({code:"QUOTA"},409);
+  const shown=await pageServices(c.env.DB,page);if(input.services.some(s=>!shown.has(s.monitorId)))return c.json({code:"INVALID"},400);
+  const made=await c.env.DB.batch([c.env.DB.prepare("INSERT INTO pulse_incident_update(id,incident_id,body,state,created_at,expires_at) SELECT ?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_incident_update WHERE incident_id=?)<100 RETURNING id").bind(updateId,incident,input.body,input.state,now,now+(c.get("access").limits?.retentionDays??30)*86_400_000,incident),c.env.DB.prepare("UPDATE pulse_incident SET state=?,impact=?,updated_at=?,expires_at=? WHERE id=? AND EXISTS(SELECT 1 FROM pulse_incident_update WHERE id=?)").bind(input.state,impactOf(input.services,shown.size),now,now+(c.get("access").limits?.retentionDays??30)*86_400_000,incident,updateId),...setServices(c.env.DB,incident,input.services)]);return made[0].results.length?c.json({ok:true},201):c.json({code:"QUOTA"},409);
  });

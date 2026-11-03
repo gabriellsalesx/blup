@@ -3150,6 +3150,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     name: string;
                     state: "unknown" | "up" | "down";
                     lastCheckedAt: string | null;
+                    incident: "downtime" | "degraded" | null;
                     days: {
                         date: string;
                         up: number;
@@ -3163,6 +3164,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     impact: string;
                     createdAt: string;
                     updatedAt: string;
+                    services: {
+                        name: string;
+                        status: "resolved" | "downtime" | "degraded";
+                    }[];
                     updates: {
                         body: string;
                         state: string;
@@ -3348,6 +3353,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     name: string;
                     state: "unknown" | "up" | "down";
                     lastCheckedAt: string | null;
+                    incident: "downtime" | "degraded" | null;
                     days: {
                         date: string;
                         up: number;
@@ -3361,6 +3367,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     impact: string;
                     createdAt: string;
                     updatedAt: string;
+                    services: {
+                        name: string;
+                        status: "resolved" | "downtime" | "degraded";
+                    }[];
                     updates: {
                         body: string;
                         state: string;
@@ -5272,9 +5282,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             output: {
                 incidents: {
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                     id: string;
                     title: string;
-                    state: string;
                     impact: string;
                     createdAt: number;
                     updatedAt: number;
@@ -5296,7 +5310,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     title: string;
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
-                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                    publishedAt: string;
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5318,7 +5336,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     title: string;
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
-                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                    publishedAt: string;
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5337,7 +5359,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     title: string;
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
-                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                    publishedAt: string;
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5359,7 +5385,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     title: string;
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
-                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                    publishedAt: string;
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5378,7 +5408,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     title: string;
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
-                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                    publishedAt: string;
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5396,7 +5430,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     title: string;
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
-                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                    publishedAt: string;
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5414,7 +5452,33 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     title: string;
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
-                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                    publishedAt: string;
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                };
+            } & {
+                json: {
+                    title: string;
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    publishedAt: string;
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5432,7 +5496,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     title: string;
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
-                    impact: "operational" | "degraded" | "partial_outage" | "major_outage";
+                    publishedAt: string;
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5454,6 +5522,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5475,6 +5547,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5493,6 +5569,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5514,6 +5594,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5532,6 +5616,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5549,6 +5637,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5566,6 +5658,31 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    incident: string;
+                };
+            } & {
+                json: {
+                    body: string;
+                    state: "resolved" | "investigating" | "identified" | "monitoring";
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {
@@ -5583,6 +5700,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     body: string;
                     state: "resolved" | "investigating" | "identified" | "monitoring";
+                    services: {
+                        monitorId: string;
+                        status: "resolved" | "none" | "downtime" | "degraded";
+                    }[];
                 };
             };
             output: {

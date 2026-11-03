@@ -6,9 +6,10 @@ import type {Language,TranslationArgs} from "../../shared/language";
 // public DTO, so private names, URLs and DSNs never reach it.
 
 export type PublicDay={date:string;up:number;down:number;unknown:number};
-export type PublicComponent={name:string;state:"up"|"down"|"unknown";lastCheckedAt:string|null;days:PublicDay[]};
+export type PublicComponent={name:string;state:"up"|"down"|"unknown";incident:"downtime"|"degraded"|null;lastCheckedAt:string|null;days:PublicDay[]};
 export type PublicUpdate={body:string;state:string;createdAt:string};
-export type PublicIncident={title:string;state:string;impact:string;createdAt:string;updatedAt:string;updates:PublicUpdate[]};
+export type PublicService={name:string;status:"downtime"|"degraded"|"resolved"};
+export type PublicIncident={title:string;state:string;impact:string;createdAt:string;updatedAt:string;services:PublicService[];updates:PublicUpdate[]};
 export type PublicStatus={title:string;language:Language;historyDays:number;components:PublicComponent[];incidents:PublicIncident[]};
 
 const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]??""));
@@ -61,7 +62,7 @@ h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spaci
 [data-tip]:hover::before{content:"";position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);z-index:10;border:5px solid transparent;border-top-color:var(--tip);border-bottom:0;pointer-events:none}
 .bars i:nth-child(-n+6):hover::after{left:0;transform:none}.bars i:nth-last-child(-n+6):hover::after{left:auto;right:0;transform:none}
 .day{padding:18px 20px 4px}.day h3{margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line);font-size:15px;font-weight:600}.day>p{color:var(--muted);margin:0 0 14px}
-.incident{margin:0 0 16px}.incident h4{margin:0 0 6px;font-size:15px}.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:1px;background:var(--head);border:1px solid var(--line)}
+.incident{margin:0 0 16px}.services{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 8px;font-size:13px;color:var(--muted)}.incident h4{margin:0 0 6px;font-size:15px}.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:1px;background:var(--head);border:1px solid var(--line)}
 .update{margin:6px 0 0}.update p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.update small{color:var(--muted)}
 
 footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:13px;padding:8px 2px}footer a{color:inherit;font-weight:600;text-decoration:none}footer a:hover{text-decoration:underline}
@@ -89,8 +90,11 @@ export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
  const today=dayOf(now),range=Math.min(Math.max(page.historyDays,1),90);
  const days=Array.from({length:range},(_,i)=>today-range+1+i);
 
+ // A service's state: its monitor's, unless an open incident says it is
+ // down or slow.
+ const toneOf=(c:PublicComponent):Tone=>c.state==="down"||c.incident==="downtime"?"down":c.incident==="degraded"?"partial":c.state==="up"?"up":"unknown";
  // The overall state, from the components (and an open incident).
- const states=page.components.map(c=>c.state),open=page.incidents.filter(i=>i.state!=="resolved");
+ const states=page.components.map(c=>{const tone=toneOf(c);return tone==="partial"?"up":tone;}),open=page.incidents.filter(i=>i.state!=="resolved");
  const down=states.filter(s=>s==="down").length,known=states.filter(s=>s!=="unknown").length;
  const overall:{tone:Tone;label:string}=
   !page.components.length||known===0?{tone:"unknown",label:t("pulseWaiting")}:
@@ -112,14 +116,16 @@ export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
    const tip=tone==="none"?[date,t("pulseNotMonitored")]:tone==="up"?[date,t("pulseOperational")]:[date,tone==="partial"?t("pulseDegraded"):t("pulseDown"),share];
    return `<i class="${tone}" data-tip="${escape(tip.join("\n")).replace(/\n/g,"&#10;")}"></i>`;
   }).join("");
-  const tone:Tone=c.state==="up"?"up":c.state==="down"?"down":"unknown";
-  const stateLabel=c.state==="up"?t("pulseOperational"):c.state==="down"?t("pulseDown"):t("pulseUnknown");
+  const tone=toneOf(c);
+  const stateLabel=tone==="up"?t("pulseOperational"):tone==="down"?t("pulseDown"):tone==="partial"?t("pulseDegraded"):t("pulseUnknown");
   const pct=total?t("pulseUptime",{value:number.format(up/total*100)}):t("pulseNoData");
   return `<div class="row"><div class="line"><span class="name"><span class="dot ${tone==="unknown"?"b-unknown":tone}">${svg(tone,12,3)}</span>${escape(c.name)}</span><span class="state t-${tone}">${escape(stateLabel)}</span></div><div class="bars" role="img" aria-label="${escape(pct)}">${bars}</div><div class="scale"><span><span class="from-long">${escape(t("pulseDaysAgo",{days:range}))}</span><span class="from-short">${escape(t("pulseDaysAgo",{days:Math.min(range,30)}))}</span></span><span class="pct">${escape(pct)}</span><span>${escape(t("pulseToday"))}</span></div></div>`;
  };
 
  const stateName=(s:string)=>s==="investigating"?t("pulseInvestigating"):s==="identified"?t("pulseIdentified"):s==="monitoring"?t("pulseMonitoring"):t("pulseResolved");
- const incident=(i:PublicIncident)=>`<div class="incident"><h4>${escape(i.title)}<span class="tag">${escape(stateName(i.state))}</span></h4>${i.updates.map(u=>`<div class="update"><p>${escape(u.body)}</p><small>${escape(stateName(u.state))} · ${escape(stamp.format(new Date(u.createdAt)))} UTC</small></div>`).join("")}</div>`;
+ const serviceName=(s:PublicService["status"])=>s==="downtime"?t("pulseDown"):s==="degraded"?t("pulseDegraded"):t("pulseResolved");
+ const serviceTone=(s:PublicService["status"])=>s==="downtime"?"down":s==="degraded"?"partial":"up";
+ const incident=(i:PublicIncident)=>`<div class="incident"><h4>${escape(i.title)}<span class="tag">${escape(stateName(i.state))}</span></h4>${i.services.length?`<p class="services">${i.services.map(s=>`<span>${escape(s.name)} · <span class="t-${serviceTone(s.status)}">${escape(serviceName(s.status))}</span></span>`).join("")}</p>`:""}${i.updates.map(u=>`<div class="update"><p>${escape(u.body)}</p><small>${escape(stateName(u.state))} · ${escape(stamp.format(new Date(u.createdAt)))} UTC</small></div>`).join("")}</div>`;
  // The last seven days, newest first, each with its incidents; an
  // incident still open from before them shows on its own day after them.
  const older=[...new Set(open.map(i=>dayOf(Date.parse(i.createdAt))).filter(day=>day<=today-7))].sort((a,b)=>b-a);

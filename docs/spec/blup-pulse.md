@@ -69,8 +69,8 @@ As rotas privadas abaixo usam a sessão Cloud e verificam o dono. Criar, editar,
 | `PATCH /pages/:page` | Um ou mais de `title, language, components, published`; o slug não muda; `{ok:true}` |
 | `DELETE /pages/:page` | Despublica e remove componentes/incidentes/atualizações; com domínio vinculado, fica despublicada e responde `409 DOMAIN_EXISTS` até retirar o vínculo |
 | `GET /pages/:page/incidents` | `{incidents}`, até 50 dentro da retenção; `id, title, state, impact, createdAt, updatedAt`; datas privadas em milissegundos |
-| `POST /pages/:page/incidents` | `{title, body, state, impact}`; título até 120, texto até 2.000, máximo de 200 incidentes por página; cria a primeira atualização; `201 {id}` |
-| `POST /pages/:page/incidents/:incident/updates` | `{body, state}`, até 100 atualizações por incidente; atualiza estado/prazo do incidente, sem renovar os textos anteriores; `201 {ok:true}` |
+| `POST /pages/:page/incidents` | `{title, body, state, publishedAt, services}`; título até 120, texto até 2.000, máximo de 200 incidentes por página; `publishedAt` (ISO) vai do início do histórico guardado até agora; `services` diz como cada serviço da página fica (`none`, `downtime`, `degraded`, `resolved`), só serviços da própria página; o `impact` sai do pior serviço; cria a primeira atualização na data publicada; `201 {id}` |
+| `POST /pages/:page/incidents/:incident/updates` | `{body, state, services}`, até 100 atualizações por incidente; troca o estado dos serviços e recalcula o `impact`; atualiza estado/prazo do incidente, sem renovar os textos anteriores; `201 {ok:true}` |
 | `GET /public/:slug` | Sem sessão; projeção pública fechada ou `404 NOT_FOUND`; sem direito gravável retorna `200 {unavailable:true}` |
 
 O slug tem de 3 a 40 caracteres minúsculos, números e hífens internos, é único e não aceita nomes reservados. Os estados de incidente são `investigating`, `identified`, `monitoring`, `resolved`; os impactos são `operational`, `degraded`, `partial_outage`, `major_outage`. Limite de quantidade retorna `409 QUOTA`, slug ocupado retorna `409 SLUG_TAKEN` e intervalo abaixo do plano retorna `403 PLAN`. As checagens privadas usam milissegundos em `scheduledAt`/`checkedAt`; resumos privados usam número de dia UTC e contagens `up/down/unknown`, além de `durationMs` acumulado.
@@ -673,3 +673,8 @@ Até a conta completar tudo, o painel do Pulse mostra no fim das páginas princi
 - `GET /api/pulse/setup` devolve `{steps:[{id,done}]}` na ordem acima, calculado do que a conta já tem (nada é marcado à mão), com uma consulta só no D1.
 - O primeiro erro fica em `pulse_project.first_event_at` (migração `0020`): enquanto ele não existe, a rota pergunta ao objeto de cada projeto (até 10) se há algum problema guardado e anota a data na primeira vez; depois não pergunta mais.
 - O painel busca os passos a cada página, sem segurar a navegação, só enquanto falta algum; quando todos terminam, o cartão some. A pessoa pode recolher o cartão, lembrado só neste aparelho (`localStorage`).
+
+## Incidentes por serviço
+
+Cada incidente guarda como deixa cada serviço da página em `pulse_incident_component` (migração `0021`; só os afetados, sem linha para "sem impacto"). No painel, o formulário de incidente tem dois blocos: informações básicas (título, texto público, situação e "Publicado em", com o calendário próprio `src/lib/ui/DateTimeField.svelte`, no fuso do navegador) e serviços afetados, com um seletor por serviço (Sem impacto, Indisponível, Degradado, Resolvido). Uma atualização começa do estado em que o incidente deixou os serviços. Na página pública, o incidente lista os serviços afetados, e um serviço marcado como indisponível ou degradado num incidente aberto aparece assim, mesmo que o monitor diga que está no ar. O gráfico de tempo de resposta continua em SVG próprio, sem biblioteca de gráficos.
+
