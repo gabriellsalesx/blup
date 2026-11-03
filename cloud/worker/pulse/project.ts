@@ -43,7 +43,7 @@ export class PulseProject extends DurableObject<Cloudflare.Env>{
   await enqueueSignals(this.env,project,pending);
   for(const signal of pending)this.ctx.storage.sql.exec("DELETE FROM pending_alert WHERE id=?",signal.id);
  }
- async notification(id:string,cutoff:number){return this.ctx.storage.sql.exec<{title:string;state:string}>("SELECT title,state FROM issue WHERE id=? AND last_at>?",id,cutoff).toArray()[0]??null;}
+ async notification(id:string,cutoff:number){return this.ctx.storage.sql.exec<{title:string;state:string;environment:string;release:string}>("SELECT title,state,environment,release FROM issue WHERE id=? AND last_at>?",id,cutoff).toArray()[0]??null;}
  async usage(month:string){return this.store.usage(month);}
  // Whether any error reached this project (still kept).
  async hasIssues(){return this.ctx.storage.sql.exec("SELECT 1 FROM issue LIMIT 1").toArray().length>0;}

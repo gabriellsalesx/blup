@@ -690,3 +690,16 @@ Uma página de status agenda manutenções (`pulse_maintenance` e `pulse_mainten
 - Na página pública, o serviço aparece "Em manutenção" (roxo, chave) enquanto a janela dura; o dia com manutenção fica roxo, a menos que tenha caído fora dela; o "% no ar" ignora as checagens da janela; a seção "Manutenção programada" mostra as em andamento e as próximas (até 10). Sem queda nem incidente aberto, o topo diz "Manutenção em andamento".
 - No painel, a aba Manutenção lista as manutenções (situação, janela, número de serviços, menu Editar e Excluir); "Agendar manutenção" fica no topo da página enquanto essa aba está aberta. As barras do monitor também mostram o dia de manutenção.
 
+
+## Formato dos avisos
+
+Cada aviso é montado uma vez (`worker/pulse/alert-message.ts`), na língua da conta, com o que é verdade no envio: rótulo do tipo, título com link para o painel, uma linha opcional e campos.
+
+| Tipo | Título (link) | Cor | Campos |
+|---|---|---|---|
+| Novo problema / Um problema voltou | Título tratado do erro (`/issues?project=`) | Vermelho / âmbar | Projeto, Ambiente, Versão |
+| Indisponibilidade confirmada / Serviço disponível | Nome do monitor (`/monitors/[id]`) | Vermelho / verde | Projeto, Endereço |
+| Aviso de teste do monitor | Nome do monitor | Verde do Pulse | Projeto, Endereço, com a linha do teste |
+| Aviso de teste do destino | Texto do teste (`/alerts`) | Verde do Pulse | Nenhum |
+
+No Discord vai como embed (`username: "Blup Pulse"`, autor = rótulo, barra na cor, campos lado a lado, `allowed_mentions` vazio). No Telegram vai como texto com negrito e link por `entities`, sem `parse_mode`, para que nada no título do erro vire formatação. Campo vazio aparece como "-"; textos longos são cortados nos limites de cada serviço.

@@ -5,6 +5,7 @@ import {deliverDiscord,deliverTelegram} from "./transports";
 import {languageOf} from "../../shared/language";
 import {translate,type PlainMessageKey} from "../../src/lib/i18n/catalog";
 import {cleanText} from "./event";
+import {panelLink,type AlertMessage} from "./alert-message";
 export type AlertSignal={id:string;refId:string;kind:"issue"|"regression"|"monitor_up"|"monitor_down";createdAt:number};
 export async function enqueueSignals(env:Cloudflare.Env,project:string,signals:AlertSignal[],now=Date.now()){
  if(!signals.length)return;
@@ -49,15 +50,23 @@ export async function dispatchAlerts(env:Cloudflare.Env,now=Date.now()){
    if(Date.now()-now>45_000)break;
    const access=await pulseAccess(env,item.userId),discard=async()=>{await env.DB.prepare("UPDATE pulse_outbox SET state='discarded',claim=NULL,claim_until=0 WHERE id=?").bind(item.id).run();};
    if(item.expiresAt<=Date.now()||item.attempts>=5||!item.active||!access.writable||!isKind(item.kind)){await discard();continue;}
-   let title="",label:PlainMessageKey=labels[item.kind];
-   if(item.kind==="test"&&item.projectId){
-    const monitor=await env.DB.prepare("SELECT name FROM pulse_monitor WHERE id=? AND project_id=? AND user_id=?").bind(item.refId,item.projectId,item.userId).first<{name:string}>();if(!monitor){await discard();continue;}
-    title=cleanText(monitor.name,160);label="pulseAlertMonitorTest";
-   }else if(item.kind!=="test"){
-    const project=await env.DB.prepare("SELECT object_name AS objectName FROM pulse_project p WHERE p.id=? AND p.user_id=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL AND EXISTS(SELECT 1 FROM pulse_project_channel pc WHERE pc.project_id=p.id AND pc.channel_id=?)").bind(item.projectId,item.userId,item.channelId).first<{objectName:string}>();if(!project){await discard();continue;}
-    if(item.kind.startsWith("monitor_")){
-     const monitor=await env.DB.prepare("SELECT name,state FROM pulse_monitor WHERE id=? AND project_id=? AND user_id=? AND active=1").bind(item.refId,item.projectId,item.userId).first<{name:string;state:string}>();if(!monitor||`monitor_${monitor.state}`!==item.kind){await discard();continue;}title=cleanText(monitor.name,160);
-    }else{const issue=await env.PULSE_PROJECT.getByName(project.objectName).notification(item.refId,Date.now()-(access.limits?.retentionDays??30)*86_400_000);if(!issue||issue.state!=="open"){await discard();continue;}title=issue.title;}
+   // What the alert says, in the owner's language, from what is true now
+   // (an issue still open, a monitor still in that state).
+   const lang=languageOf(item.language)??"en",say=(key:PlainMessageKey)=>translate(lang,key);
+   const project=item.projectId?await env.DB.prepare("SELECT name,object_name AS objectName FROM pulse_project p WHERE p.id=? AND p.user_id=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL AND EXISTS(SELECT 1 FROM pulse_project_channel pc WHERE pc.project_id=p.id AND pc.channel_id=?)").bind(item.projectId,item.userId,item.channelId).first<{name:string;objectName:string}>():null;
+   if(item.projectId&&!project){await discard();continue;}
+   const projectField=project?[{name:say("pulseFieldProject"),value:cleanText(project.name,80)}]:[];
+   let message:AlertMessage;
+   if(item.kind==="test"&&!item.projectId)message={label:say("pulseAlertTestLabel"),title:say("pulseAlertTest"),url:panelLink("/alerts"),tone:"brand",fields:[]};
+   else if(item.kind==="test"||item.kind==="monitor_up"||item.kind==="monitor_down"){
+    const monitor=await env.DB.prepare("SELECT name,state,url FROM pulse_monitor WHERE id=? AND project_id=? AND user_id=?"+(item.kind==="test"?"":" AND active=1")).bind(item.refId,item.projectId,item.userId).first<{name:string;state:string;url:string}>();
+    if(!monitor||item.kind!=="test"&&`monitor_${monitor.state}`!==item.kind){await discard();continue;}
+    const fields=[...projectField,{name:say("pulseFieldAddress"),value:cleanText(monitor.url,300)}];
+    message=item.kind==="test"?{label:say("pulseAlertTestLabel"),title:cleanText(monitor.name,160),url:panelLink(`/monitors/${item.refId}`),tone:"brand",description:say("pulseAlertMonitorTest"),fields}:{label:say(labels[item.kind]),title:cleanText(monitor.name,160),url:panelLink(`/monitors/${item.refId}`),tone:item.kind==="monitor_down"?"red":"green",fields};
+   }else{
+    if(!project){await discard();continue;}
+    const issue=await env.PULSE_PROJECT.getByName(project.objectName).notification(item.refId,Date.now()-(access.limits?.retentionDays??30)*86_400_000);if(!issue||issue.state!=="open"){await discard();continue;}
+    message={label:say(labels[item.kind]),title:issue.title,url:panelLink(`/issues?${new URLSearchParams({project:item.projectId??""})}`),tone:item.kind==="regression"?"amber":"red",fields:[...projectField,{name:say("pulseFieldEnvironment"),value:cleanText(issue.environment,80)},{name:say("pulseFieldRelease"),value:cleanText(issue.release,80)}]};
    }
    if(!["discord","telegram"].includes(item.type)){await discard();continue;}
    if(item.channelNext>Date.now()){
@@ -67,8 +76,7 @@ export async function dispatchAlerts(env:Cloudflare.Env,now=Date.now()){
    let target:string;
    try{target=await openTarget(env,item.userId,item.channelId,item.type,item.target);}catch{await env.DB.batch([env.DB.prepare("UPDATE pulse_channel SET last_error='CHANNEL_UNAVAILABLE' WHERE id=?").bind(item.channelId),env.DB.prepare("UPDATE pulse_outbox SET next_at=?,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(Date.now()+300_000,item.id,claim)]);continue;}
    const slot=await deliverySlot(env.DB,item.type,target);if(!slot.ready){await env.DB.prepare("UPDATE pulse_outbox SET next_at=?,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(slot.nextAt,item.id,claim).run();continue;}
-   const text=`Blup Pulse\n${translate(languageOf(item.language)??"en",label)}${title?`\n${title}`:""}\nhttps://pulse.getblup.io/`;
-   const result=item.type==="discord"?await deliverDiscord(target,text):await deliverTelegram(env,target,text),at=Date.now(),retry=Math.max(result.waitMs,Math.min(300_000,15_000*2**item.attempts)+Math.floor(Math.random()*1000));
+   const result=item.type==="discord"?await deliverDiscord(target,message):await deliverTelegram(env,target,message),at=Date.now(),retry=Math.max(result.waitMs,Math.min(300_000,15_000*2**item.attempts)+Math.floor(Math.random()*1000));
    await env.DB.batch([
     env.DB.prepare("UPDATE pulse_outbox SET state=?,attempts=attempts+1,next_at=?,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(result.sent?"sent":result.permanent||item.attempts>=4?"discarded":"pending",at+retry,item.id,claim),
     env.DB.prepare("UPDATE pulse_channel SET last_error=?,active=CASE WHEN ? THEN 0 ELSE active END,next_at=max(next_at,?) WHERE id=?").bind(result.code,result.permanent?1:0,at+result.waitMs,item.channelId),

@@ -7,6 +7,8 @@ vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})
 import {pulseApi} from "./api";
 import {deliverDiscord,deliverTelegram} from "./transports";
 import {enqueueSignals,dispatchAlerts} from "./outbox";
+import {discordPayload,telegramPayload,type AlertMessage} from "./alert-message";
+const note=(title:string):AlertMessage=>({label:"New issue",title,url:"https://pulse.getblup.io/issues",tone:"red",fields:[]});
 let db:TestD1;
 const WEBHOOK=`https://discord.com/api/webhooks/123456789012345678/${"test_fixture_".repeat(6)}`;
 beforeEach(()=>{
@@ -47,9 +49,9 @@ it("suppresses duplicates/cooldown and rechecks bindings and entitlement before 
  await request(`/channels/${created.id}/test`,"POST",{});db.sqlite.exec("UPDATE subscription SET status='canceled' WHERE reference_id='alice'");await dispatchAlerts(state.env);expect(fetch).not.toHaveBeenCalled();
 });
 it("obeys fractional Discord retry, disables invalid destinations and strips mentions",async()=>{
- const send=vi.fn(async(_input:RequestInfo|URL,init?:RequestInit)=>{expect(JSON.parse(String(init?.body))).toMatchObject({allowed_mentions:{parse:[]}});return Response.json({retry_after:2.25,global:true},{status:429});});vi.stubGlobal("fetch",send);expect(await deliverDiscord(WEBHOOK,"@everyone notice")).toMatchObject({sent:false,waitMs:2250,global:true});
- vi.stubGlobal("fetch",vi.fn(async()=>new Response(null,{status:404})));expect(await deliverDiscord(WEBHOOK,"test")).toMatchObject({permanent:true});
- vi.stubGlobal("fetch",vi.fn(async(_input:RequestInfo|URL,init?:RequestInit)=>{const body=JSON.parse(String(init?.body));expect(body).not.toHaveProperty("parse_mode");expect(body).not.toHaveProperty("allow_paid_broadcast");return Response.json({ok:false,error_code:429,parameters:{retry_after:7}});}));expect(await deliverTelegram(state.env,"12345","test")).toMatchObject({waitMs:7000,global:true});
+ const send=vi.fn(async(_input:RequestInfo|URL,init?:RequestInit)=>{expect(JSON.parse(String(init?.body))).toMatchObject({allowed_mentions:{parse:[]}});return Response.json({retry_after:2.25,global:true},{status:429});});vi.stubGlobal("fetch",send);expect(await deliverDiscord(WEBHOOK,note("@everyone notice"))).toMatchObject({sent:false,waitMs:2250,global:true});
+ vi.stubGlobal("fetch",vi.fn(async()=>new Response(null,{status:404})));expect(await deliverDiscord(WEBHOOK,note("test"))).toMatchObject({permanent:true});
+ vi.stubGlobal("fetch",vi.fn(async(_input:RequestInfo|URL,init?:RequestInit)=>{const body=JSON.parse(String(init?.body));expect(body).not.toHaveProperty("parse_mode");expect(body).not.toHaveProperty("allow_paid_broadcast");return Response.json({ok:false,error_code:429,parameters:{retry_after:7}});}));expect(await deliverTelegram(state.env,"12345",note("test"))).toMatchObject({waitMs:7000,global:true});
 });
 it("persists retries without exceeding five attempts or leaking provider content",async()=>{
  const created=await channel();await request(`/channels/${created.id}/test`,"POST",{});
@@ -64,7 +66,7 @@ it("sends a monitor test alert to the project's destinations with the monitor na
  expect((await request("/monitors/m2/test","POST",{})).status).toBe(404);expect((await request("/monitors/m1/test","POST",{extra:1})).status).toBe(400);
  expect((await request("/monitors/m1/test","POST",{})).status).toBe(202);expect((await request("/monitors/m1/test","POST",{})).status).toBe(429);
  const send=vi.fn(async(_input:RequestInfo|URL,_init?:RequestInit)=>new Response(null,{status:204}));vi.stubGlobal("fetch",send);await dispatchAlerts(state.env);
- expect(send).toHaveBeenCalledTimes(1);expect(String(JSON.parse(String(send.mock.calls[0][1]?.body)).content)).toContain("Checkout API");
+ expect(send).toHaveBeenCalledTimes(1);const sent=JSON.parse(String(send.mock.calls[0][1]?.body)) as ReturnType<typeof discordPayload>;expect(sent).toMatchObject({username:"Blup Pulse",allowed_mentions:{parse:[]},embeds:[{title:"Checkout API",url:"https://pulse.getblup.io/monitors/m1",fields:[{name:"Projeto",value:"App"},{name:"Endereço",value:"https://example.com/"}]}]});
 });
 it("binds a new destination to the chosen project, in place of the one it had",async()=>{
  expect((await request("/channels","POST",{type:"discord",webhook:WEBHOOK})).status).toBe(400);expect((await request("/channels","POST",{projectId:"2",type:"discord",webhook:WEBHOOK})).status).toBe(404);
@@ -73,4 +75,13 @@ it("binds a new destination to the chosen project, in place of the one it had",a
  const link=await(await request("/telegram/link","POST",{})).json() as {id:string};db.sqlite.prepare("UPDATE pulse_telegram_link SET state='candidate',chat_id='12345' WHERE id=?").run(link.id);
  expect((await request(`/telegram/link/${link.id}/confirm`,"POST",{projectId:"2"})).status).toBe(404);expect((await request(`/telegram/link/${link.id}/confirm`,"POST",{projectId:"1"})).status).toBe(201);
  expect(db.sqlite.prepare("SELECT type FROM pulse_project_channel WHERE project_id='1' ORDER BY type").all()).toEqual([{type:"discord"},{type:"telegram"}]);
+});
+it("shapes one alert as a Discord embed and as Telegram text with entities",()=>{
+ const message:AlertMessage={label:"New issue",title:"TypeError: <b>x</b> is undefined",url:"https://pulse.getblup.io/issues?project=1",tone:"red",fields:[{name:"Project",value:"Tiro Seguro"},{name:"Environment",value:"development"},{name:"Release",value:""}]};
+ expect(discordPayload(message).embeds[0]).toEqual({author:{name:"New issue"},title:"TypeError: <b>x</b> is undefined",url:"https://pulse.getblup.io/issues?project=1",color:0xef4444,fields:[{name:"Project",value:"Tiro Seguro",inline:true},{name:"Environment",value:"development",inline:true},{name:"Release",value:"-",inline:true}]});
+ const tg=telegramPayload(message);
+ expect(tg.text).toBe("Blup Pulse · New issue\nTypeError: <b>x</b> is undefined\n\nProject: Tiro Seguro\nEnvironment: development\nRelease: -");
+ const at=(e:{offset:number;length:number})=>tg.text.slice(e.offset,e.offset+e.length);
+ expect(tg.entities.map(e=>[e.type,at(e)])).toEqual([["bold","Blup Pulse · New issue"],["bold","TypeError: <b>x</b> is undefined"],["text_link","TypeError: <b>x</b> is undefined"],["bold","Project: "],["bold","Environment: "],["bold","Release: "]]);
+ expect(discordPayload({...message,title:"x".repeat(400)}).embeds[0].title).toHaveLength(256);
 });
