@@ -67,7 +67,7 @@
   <Card title={t("pulseDuration")}><ResponseChart checks={history?.checks??[]}/></Card>
 
   <Card title={t("pulseAlertsTitle")}>
-   {#snippet action()}<div class="flex flex-wrap justify-end gap-2">{#if m.writable&&destinations>0}<Button small variant="secondary" {busy} onclick={()=>testAlert(m)}><Send class="size-4"/>{t("pulseSendTestAlert")}</Button>{/if}<Button small variant="secondary" onclick={()=>goto(resolve("/alerts"))}><Bell class="size-4"/>{t("pulseEditAlerts")}</Button></div>{/snippet}
+   {#snippet action()}<div class="flex flex-wrap justify-end gap-2">{#if m.writable}<Button small variant="secondary" {busy} onclick={()=>testAlert(m)}><Send class="size-4"/>{t("pulseSendTestAlert")}</Button>{/if}<Button small variant="secondary" onclick={()=>goto(resolve("/alerts"))}><Bell class="size-4"/>{t("pulseEditAlerts")}</Button></div>{/snippet}
    <p class="mt-3 text-sm">{alerts}</p>
   </Card>
 
