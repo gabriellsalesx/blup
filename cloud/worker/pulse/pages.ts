@@ -3,7 +3,7 @@ import {z} from "zod";
 import {validate,opaqueId} from "../validation";
 import {languageSchema} from "../../shared/language";
 import {pulseWrite,type PulseApp} from "./access";
-import {pageSlug} from "./page-rules";
+import {pageSlug,slugShape,reservedSlugs} from "./page-rules";
 const component=z.object({monitorId:opaqueId,name:z.string().trim().min(1).max(80)}).strict();
 const components=z.array(component).max(50).refine(v=>new Set(v.map(c=>c.monitorId)).size===v.length);
 const pageBody=z.object({title:z.string().trim().min(1).max(100),slug:pageSlug,components,language:languageSchema}).strict();
@@ -19,6 +19,15 @@ export const pagesApi=new Hono<PulseApp>()
  .get("/",async c=>{
   const pages=await c.env.DB.prepare("SELECT id,title,slug,published,language,plan_disabled AS planDisabled,retire_at AS retireAt FROM pulse_page WHERE user_id=? AND (retire_at IS NULL OR retire_at>?) ORDER BY created_at,id LIMIT 3").bind(c.get("session").user.id,Date.now()).all<{id:string;title:string;slug:string;published:number;language:string;planDisabled:number;retireAt:number|null}>();
   const rows=c.get("access").readable?await Promise.all(pages.results.map(async p=>({...p,published:!!p.published&&!p.planDisabled,writable:!p.planDisabled&&c.get("access").writable,readOnlyUntil:p.retireAt===null?null:new Date(p.retireAt).toISOString(),components:(await c.env.DB.prepare("SELECT monitor_id AS monitorId,name FROM pulse_component WHERE page_id=? ORDER BY position").bind(p.id).all<{monitorId:string;name:string}>()).results}))):[];return c.json({pages:rows});
+ })
+ // Whether an address can be used, while the new page is being typed.
+ // Addresses are public, so this tells nothing that visiting would not.
+ .get("/slug",validate("query",z.object({slug:z.string().max(80)})),async c=>{
+  const slug=c.req.valid("query").slug;
+  if(!slugShape.safeParse(slug).success)return c.json({state:"invalid" as const});
+  if(reservedSlugs.includes(slug))return c.json({state:"reserved" as const});
+  const used=await c.env.DB.prepare("SELECT 1 FROM pulse_page WHERE slug=?").bind(slug).first();
+  return c.json({state:used?"taken" as const:"available" as const});
  })
  .post("/",pulseWrite,validate("json",pageBody),async c=>{
   const input=c.req.valid("json"),owner=c.get("session").user.id;if(!await validComponents(c.env.DB,owner,input.components))return c.json({code:"NOT_FOUND"},404);

@@ -45,3 +45,11 @@ it("physically purges retired resources in bounded maintenance after their read-
 it("keeps monthly admission receipts after Pulse expiry so resubscribing cannot reset the quota",async()=>{
  const now=Date.now(),month=new Date(now).toISOString().slice(0,7);db.sqlite.prepare("INSERT INTO pulse_account(user_id,last_plan,read_only_until) VALUES('alice','ultra_pulse',?)").run(now-1);db.sqlite.prepare("INSERT INTO pulse_month VALUES('alice',?,32)").run(month);db.sqlite.prepare("INSERT INTO pulse_grant VALUES('receipt','alice','retired-project',?,32,?)").run(month,now);await pulseMaintenance(state.env,false,now);expect(db.sqlite.prepare("SELECT reserved FROM pulse_month WHERE user_id='alice'").get()?.reserved).toBe(32);expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_grant").get()?.n).toBe(1);await purgePulseAccount(state.env,"alice");expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_month").get()?.n).toBe(0);
 });
+it("tells whether a status page address is free, taken, reserved or malformed",async()=>{
+ const check=async(slug:string,user:string|null="bob")=>pulseApi.fetch(new Request(`https://cloud.audit.invalid/pages/slug?slug=${encodeURIComponent(slug)}`,{headers:user?{authorization:`Bearer ${user}`}:{}}),state.env);
+ expect(await (await check("nova-pagina")).json()).toEqual({state:"available"});
+ expect(await (await check("public-page")).json()).toEqual({state:"taken"});
+ expect(await (await check("status")).json()).toEqual({state:"reserved"});
+ expect(await (await check("Com Espaco")).json()).toEqual({state:"invalid"});
+ expect((await check("nova-pagina",null)).status).toBe(401);
+});
