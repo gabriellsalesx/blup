@@ -97,13 +97,13 @@ const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now
    <form class="grid grid-cols-[minmax(0,1fr)] gap-4" onsubmit={pasted}>
     <p class="text-sm text-neutral-500">{kind==="discord"?t("pulseDiscordHelp"):t("pulseSlackHelp")}</p>
     <FloatField id="channel-webhook" surface="bg-white dark:bg-neutral-900" label={kind==="discord"?t("pulseDiscordWebhook"):t("pulseSlackWebhook")} type="password" autocomplete="off" maxlength={2048} required bind:value={webhook}/>
-    <div class="flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto(back)}>{t("cancel")}</Button><Button {busy} disabled={!projectId}>{kind==="discord"?t("pulseAddDiscord"):t("pulseAddSlack")}</Button></div>
+    <div class="flex justify-end gap-2"><Button {busy} disabled={!projectId}>{kind==="discord"?t("pulseAddDiscord"):t("pulseAddSlack")}</Button></div>
    </form>
   {:else if kind==="webhook"}
    <form class="grid grid-cols-[minmax(0,1fr)] gap-4" onsubmit={pasted}>
     <p class="text-sm text-neutral-500">{t("pulseWebhookHelp")}</p>
     <FloatField id="channel-webhook" surface="bg-white dark:bg-neutral-900" label={t("pulseWebhookURL")} type="url" autocomplete="off" maxlength={2048} required bind:value={webhook}/>
-    <div class="flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto(back)}>{t("cancel")}</Button><Button {busy} disabled={!projectId}>{t("pulseAddWebhook")}</Button></div>
+    <div class="flex justify-end gap-2"><Button {busy} disabled={!projectId}>{t("pulseAddWebhook")}</Button></div>
    </form>
   {:else}
    <p class="text-sm text-neutral-500">{t("pulseLinkHelp")}</p>
@@ -111,7 +111,7 @@ const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now
     <div class="mt-4"><a class="inline-flex items-center gap-2 font-semibold text-blup underline" href={link.url} target="_blank" rel="noopener noreferrer"><BrandIcon name="telegram" class="size-4"/>{t("pulseOpenBot")}</a><p class="mt-2 text-xs text-neutral-500">{t("pulseLinkDeadline",{date:formatDate(link.expiresAt)})}</p>
      {#if linkStatus?.candidate}<p class="my-3 break-all text-sm">{linkStatus.candidate.label} · ID: {linkStatus.candidate.id}</p><Button onclick={confirmChat} {busy}>{t("pulseConfirmChat")}</Button>{:else if linkStatus?.state==="expired"}<p class="mt-3 text-sm">{t("pulseLinkExpired")}</p>{:else}<p class="mt-3 text-sm text-neutral-500">{t("pulseWaitingChat")}</p>{/if}
     </div>
-   {:else}<div class="mt-4 flex justify-end gap-2"><Button type="button" variant="secondary" onclick={()=>goto(back)}>{t("cancel")}</Button><Button type="button" onclick={telegram} {busy} disabled={!projectId}>{t("pulseLinkTelegram")}</Button></div>{/if}
+   {:else}<div class="mt-4 flex justify-end gap-2"><Button type="button" onclick={telegram} {busy} disabled={!projectId}>{t("pulseLinkTelegram")}</Button></div>{/if}
   {/if}
  </div>
 </Card></div>
