@@ -231,7 +231,7 @@ func (c *Client) Apply(ctx context.Context, rel Release, exe string) error {
 	}
 	sig, err := c.get(ctx, sigURL, maxSmall)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrSignature, err)
+		return fmt.Errorf("%w: %w", ErrSignature, err)
 	}
 	if err := VerifyChecksums(sums, sig, c.keys()); err != nil {
 		return err
@@ -315,7 +315,7 @@ func replace(exe string, bin []byte) error {
 	dir := filepath.Dir(exe)
 	tmp, err := os.CreateTemp(dir, ".blup-new-*")
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrNotWritable, err)
+		return fmt.Errorf("%w: %w", ErrNotWritable, err)
 	}
 	defer os.Remove(tmp.Name())
 	if _, err := tmp.Write(bin); err != nil {
@@ -332,11 +332,14 @@ func replace(exe string, bin []byte) error {
 	old := exe + ".old"
 	os.Remove(old)
 	if err := os.Rename(exe, old); err != nil {
-		return fmt.Errorf("%w: %v", ErrNotWritable, err)
+		return fmt.Errorf("%w: %w", ErrNotWritable, err)
 	}
 	if err := os.Rename(tmp.Name(), exe); err != nil {
-		os.Rename(old, exe) // put the original back
-		return fmt.Errorf("%w: %v", ErrNotWritable, err)
+		// Put the original back; if even that fails, say so (exe is missing).
+		if rerr := os.Rename(old, exe); rerr != nil {
+			return fmt.Errorf("%w: %w (restoring %s: %w)", ErrNotWritable, err, filepath.Base(exe), rerr)
+		}
+		return fmt.Errorf("%w: %w", ErrNotWritable, err)
 	}
 	return nil
 }
@@ -370,7 +373,7 @@ func extract(name string, data []byte) ([]byte, error) {
 	tr := tar.NewReader(gz)
 	for {
 		h, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("%s not found in %s", want, name)
 		}
 		if err != nil {

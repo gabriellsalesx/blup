@@ -34,19 +34,22 @@ type PublishOptions struct {
 	Message string // commit message; default "Publish site"
 }
 
+// Phase is a step of Publish, reported through Progress.
+type Phase string
+
 // Phase names reported through Progress.
 const (
-	PhaseScan    = "scan"    // hashing local files
-	PhaseCompare = "compare" // reading the remote tree
-	PhaseUpload  = "upload"  // uploading changed files
-	PhaseTree    = "tree"    // creating the tree
-	PhaseCommit  = "commit"  // creating the commit and moving the branch
-	PhaseDone    = "done"
+	PhaseScan    Phase = "scan"    // hashing local files
+	PhaseCompare Phase = "compare" // reading the remote tree
+	PhaseUpload  Phase = "upload"  // uploading changed files
+	PhaseTree    Phase = "tree"    // creating the tree
+	PhaseCommit  Phase = "commit"  // creating the commit and moving the branch
+	PhaseDone    Phase = "done"
 )
 
 // Progress is reported during Publish. Calls are serialized.
 type Progress struct {
-	Phase      string
+	Phase      Phase
 	Done       int   // items done in this phase
 	Total      int   // items in this phase
 	BytesDone  int64 // upload phase only

@@ -116,7 +116,7 @@ func extract(data []byte) ([]byte, error) {
 	tr := tar.NewReader(gz)
 	for {
 		h, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil, errors.New("pagefind not found in archive")
 		}
 		if err != nil {

@@ -47,8 +47,8 @@ func (s *Studio) LocalTranslate() LocalTranslateState {
 
 // InstallLocalTranslate downloads, checks and unpacks the local
 // translation; progress goes out as "translateInstall" events.
-func (s *Studio) InstallLocalTranslate() error {
-	return localtr.Install(context.Background(), localTranslateDir(), func(done, total int64) {
+func (s *Studio) InstallLocalTranslate(ctx context.Context) error {
+	return localtr.Install(ctx, localTranslateDir(), func(done, total int64) {
 		application.Get().Event.Emit("translateInstall", TranslateInstallProgress{done, total})
 	})
 }

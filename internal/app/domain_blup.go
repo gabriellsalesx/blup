@@ -97,7 +97,7 @@ func (b *BlupDomain) set(site *config.Site, d *blupcloud.DomainInfo) {
 		last = bs.URL
 	}
 	want, _ := officialBase(bs, d, b.Available, time.Now())
-	b.Republish = site.Deploy.Provider == "blup" && bs.ID != "" && bs.URL != "" && !sameBase(want, last)
+	b.Republish = site.Deploy.Provider == config.ProviderBlup && bs.ID != "" && bs.URL != "" && !sameBase(want, last)
 }
 
 // officialBase is the address a site on Blup Cloud is built for:

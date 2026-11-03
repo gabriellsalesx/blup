@@ -56,11 +56,11 @@ func PartsOf(dir string) (SiteParts, error) {
 	// Blup's own notes folder: the whole vault, made in Documents/Blup.
 	p.NotesOwned = site.Folder == "" && filepath.Dir(filepath.Clean(site.Vault)) == filepath.Dir(DefaultNotesDir("x"))
 	switch site.Deploy.Provider {
-	case "cloudflare":
+	case config.ProviderCloudflare:
 		if site.Deploy.Cloudflare.Project != "" {
 			p.Published = "Cloudflare Pages: " + site.Deploy.Cloudflare.Project
 		}
-	case "github":
+	case config.ProviderGitHub:
 		if site.Deploy.GitHub.Repo != "" {
 			p.Published = "GitHub Pages: " + site.Deploy.GitHub.Owner + "/" + site.Deploy.GitHub.Repo
 		}
@@ -101,7 +101,7 @@ func DeleteSite(ctx context.Context, dir string, c DeleteChoice) ([]DeleteProble
 	}
 	if c.Published {
 		switch site.Deploy.Provider {
-		case "cloudflare":
+		case config.ProviderCloudflare:
 			d := site.Deploy.Cloudflare
 			if d.Project != "" {
 				if cf, err := cloudflareClient(ctx); err != nil {
@@ -110,7 +110,7 @@ func DeleteSite(ctx context.Context, dir string, c DeleteChoice) ([]DeleteProble
 					fail("published", err, "https://dash.cloudflare.com/"+d.Account+"/pages/view/"+d.Project+"/settings/production")
 				}
 			}
-		case "github":
+		case config.ProviderGitHub:
 			d := site.Deploy.GitHub
 			if d.Repo != "" {
 				deleteRepo(ctx, d.Owner, d.Repo, "published", fail)
@@ -120,7 +120,7 @@ func DeleteSite(ctx context.Context, dir string, c DeleteChoice) ([]DeleteProble
 	if c.BlupSite && site.Deploy.Blup.ID != "" && deleteBlupSite(ctx, site.Deploy.Blup.ID, fail) && !c.Site {
 		// The folder stays: it no longer points at the address taken down.
 		site.Deploy.Blup = config.BlupSite{}
-		if site.Deploy.Provider == "blup" {
+		if site.Deploy.Provider == config.ProviderBlup {
 			site.Deploy.Provider = ""
 		}
 		if err := site.Save(); err != nil {

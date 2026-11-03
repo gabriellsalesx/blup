@@ -59,8 +59,8 @@ func running(fn func() error) error {
 }
 
 // Connections tells which accounts are connected.
-func (s *Studio) Connections() (app.Connections, error) {
-	return app.LoadConnections(context.Background())
+func (s *Studio) Connections(ctx context.Context) (app.Connections, error) {
+	return app.LoadConnections(ctx)
 }
 
 // OpenKeyPage opens, in the browser, the form for a new key of "github" or
@@ -85,32 +85,32 @@ func (s *Studio) OpenURL(link string) {
 }
 
 // ConnectGitHub checks and saves a GitHub key; it returns the login.
-func (s *Studio) ConnectGitHub(token string) (string, error) {
-	return app.ConnectGitHub(context.Background(), token)
+func (s *Studio) ConnectGitHub(ctx context.Context, token string) (string, error) {
+	return app.ConnectGitHub(ctx, token)
 }
 
 // ConnectCloudflare checks and saves a Cloudflare key; it returns the
 // accounts it can publish to.
-func (s *Studio) ConnectCloudflare(token string) ([]cfpages.Account, error) {
-	return app.ConnectCloudflare(context.Background(), token)
+func (s *Studio) ConnectCloudflare(ctx context.Context, token string) ([]cfpages.Account, error) {
+	return app.ConnectCloudflare(ctx, token)
 }
 
 // Disconnect forgets the key of "github" or "cloudflare".
 func (s *Studio) Disconnect(account string) error { return app.Disconnect(account) }
 
 // CloudflareAccounts lists the accounts of the saved Cloudflare key.
-func (s *Studio) CloudflareAccounts() ([]cfpages.Account, error) {
-	return app.CloudflareAccounts(context.Background())
+func (s *Studio) CloudflareAccounts(ctx context.Context) ([]cfpages.Account, error) {
+	return app.CloudflareAccounts(ctx)
 }
 
 // CheckSiteSlug says whether an address on Blup Cloud is free (while it is
 // typed on the Publish screen).
-func (s *Studio) CheckSiteSlug(slug string) (blupcloud.SlugCheck, error) {
+func (s *Studio) CheckSiteSlug(ctx context.Context, slug string) (blupcloud.SlugCheck, error) {
 	site, err := s.current()
 	if err != nil {
 		return blupcloud.SlugCheck{}, err
 	}
-	return app.CheckBlupSlug(context.Background(), site, slug)
+	return app.CheckBlupSlug(ctx, site, slug)
 }
 
 // Target is where the open site is published.
@@ -149,12 +149,12 @@ func (s *Studio) Publish() (string, error) {
 }
 
 // SyncStatus tells what syncing the notes would send and receive.
-func (s *Studio) SyncStatus() (app.SyncInfo, error) {
+func (s *Studio) SyncStatus(ctx context.Context) (app.SyncInfo, error) {
 	site, err := s.current()
 	if err != nil {
 		return app.SyncInfo{}, err
 	}
-	return app.SyncStatus(context.Background(), site)
+	return app.SyncStatus(ctx, site)
 }
 
 // Sync sends and receives the notes (private GitHub repository).
@@ -200,12 +200,12 @@ func (s *Studio) SetDomain(value string) (app.DomainStatus, error) {
 }
 
 // CheckDomain connects the domain again and says where it stands.
-func (s *Studio) CheckDomain() (app.DomainStatus, error) {
+func (s *Studio) CheckDomain(ctx context.Context) (app.DomainStatus, error) {
 	site, err := s.current()
 	if err != nil {
 		return app.DomainStatus{}, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
 	return app.CheckDomain(ctx, site)
 }
@@ -239,12 +239,12 @@ func (s *Studio) OpenNewGitHubRepo(kind, name string) error {
 
 // BlupDomain is the own domain of the open site on Blup Cloud (the cloud
 // checks the DNS again) and whether the plan includes it.
-func (s *Studio) BlupDomain() (app.BlupDomain, error) {
+func (s *Studio) BlupDomain(ctx context.Context) (app.BlupDomain, error) {
 	site, err := s.current()
 	if err != nil {
 		return app.BlupDomain{}, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	d, err := app.LoadBlupDomain(ctx, site)
 	s.republishIfStale(site, d)
@@ -333,7 +333,7 @@ func (s *Studio) republish(site *config.Site) {
 // domain on Blup Cloud, and publishes again if they don't. Silent when
 // signed out or offline.
 func (s *Studio) checkBase(site *config.Site) {
-	if site.Deploy.Provider != "blup" || site.Deploy.Blup.ID == "" {
+	if site.Deploy.Provider != config.ProviderBlup || site.Deploy.Blup.ID == "" {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)

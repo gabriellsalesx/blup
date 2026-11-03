@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -363,7 +364,7 @@ func TestEndToEnd(t *testing.T) {
 	cssHash := HashFile("css/site.css", []byte("body{}"))
 	f.stored[cssHash] = true
 
-	var stages []string
+	var stages []Stage
 	res, err := c.Deploy(ctx, "acc1", "blog", dir, func(p Progress) {
 		if len(stages) == 0 || stages[len(stages)-1] != p.Stage {
 			stages = append(stages, p.Stage)
@@ -415,8 +416,8 @@ func TestEndToEnd(t *testing.T) {
 	if res.Uploaded != 6 || res.Skipped != 1 {
 		t.Errorf("uploaded/skipped = %d/%d, want 6/1", res.Uploaded, res.Skipped)
 	}
-	want := []string{StageScanning, StageChecking, StageUploading, StageFinishing, StageDeploying, StageDone}
-	if strings.Join(stages, ",") != strings.Join(want, ",") {
+	want := []Stage{StageScanning, StageChecking, StageUploading, StageFinishing, StageDeploying, StageDone}
+	if !slices.Equal(stages, want) {
 		t.Errorf("stages = %v", stages)
 	}
 

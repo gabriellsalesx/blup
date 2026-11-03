@@ -109,7 +109,7 @@ func parseManifest(plain []byte) (manifest, error) {
 			return manifest{}, fmt.Errorf("%w: manifest path %q", ErrBadAnswer, p)
 		}
 		if err := f.check(); err != nil {
-			return manifest{}, fmt.Errorf("%w: manifest file %q: %v", ErrBadAnswer, p, err)
+			return manifest{}, fmt.Errorf("%w: manifest file %q: %w", ErrBadAnswer, p, err)
 		}
 	}
 	return m, nil

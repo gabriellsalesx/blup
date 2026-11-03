@@ -179,7 +179,7 @@ func fetch(ctx context.Context, f File, progress func(int64)) ([]byte, error) {
 				progress(n)
 			}
 		}
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

@@ -188,7 +188,7 @@ type Target struct {
 // for a site never published.
 func LoadTarget(site *config.Site) Target {
 	d := site.Deploy
-	t := Target{Provider: d.Provider, Account: d.Cloudflare.Account, Project: d.Cloudflare.Project, Repo: d.GitHub.Repo, Slug: d.Blup.Slug, SlugFixed: d.Blup.ID != ""}
+	t := Target{Provider: string(d.Provider), Account: d.Cloudflare.Account, Project: d.Cloudflare.Project, Repo: d.GitHub.Repo, Slug: d.Blup.Slug, SlugFixed: d.Blup.ID != ""}
 	if t.Slug == "" {
 		t.Slug = blupSlug(site.Title)
 	}
@@ -199,11 +199,11 @@ func LoadTarget(site *config.Site) Target {
 		t.Repo = Slug(site.Title)
 	}
 	switch {
-	case d.Provider == "blup" && d.Blup.URL != "":
+	case d.Provider == config.ProviderBlup && d.Blup.URL != "":
 		t.URL = d.Blup.URL
-	case d.Provider == "cloudflare" && d.Cloudflare.Subdomain != "":
+	case d.Provider == config.ProviderCloudflare && d.Cloudflare.Subdomain != "":
 		t.URL = siteURL(site, "https://"+d.Cloudflare.Subdomain+"/")
-	case d.Provider == "github" && d.GitHub.Owner != "" && d.GitHub.Repo != "":
+	case d.Provider == config.ProviderGitHub && d.GitHub.Owner != "" && d.GitHub.Repo != "":
 		t.URL = siteURL(site, github.ExpectedURL(d.GitHub.Owner, d.GitHub.Repo))
 	}
 	return t
@@ -211,8 +211,8 @@ func LoadTarget(site *config.Site) Target {
 
 // SetTarget saves where the site is published.
 func SetTarget(site *config.Site, t Target) error {
-	switch t.Provider {
-	case "blup":
+	switch config.Provider(t.Provider) {
+	case config.ProviderBlup:
 		// The address can change only before the first publish.
 		if site.Deploy.Blup.ID == "" {
 			slug := strings.TrimSpace(t.Slug)
@@ -221,7 +221,7 @@ func SetTarget(site *config.Site, t Target) error {
 			}
 			site.Deploy.Blup.Slug = slug
 		}
-	case "cloudflare":
+	case config.ProviderCloudflare:
 		if t.Account == "" {
 			return errors.New(i18n.T("pub.pick_account"))
 		}
@@ -232,7 +232,7 @@ func SetTarget(site *config.Site, t Target) error {
 			site.Deploy.Cloudflare.Subdomain = ""
 		}
 		site.Deploy.Cloudflare.Account, site.Deploy.Cloudflare.Project = t.Account, t.Project
-	case "github":
+	case config.ProviderGitHub:
 		if strings.TrimSpace(t.Repo) == "" {
 			return errors.New(i18n.T("required"))
 		}
@@ -243,7 +243,7 @@ func SetTarget(site *config.Site, t Target) error {
 	default:
 		return errors.New("unknown provider " + t.Provider)
 	}
-	site.Deploy.Provider = t.Provider
+	site.Deploy.Provider = config.Provider(t.Provider)
 	return site.Save()
 }
 
@@ -252,14 +252,14 @@ func PublishNow(ctx context.Context, site *config.Site) (string, error) {
 	var live string
 	var err error
 	switch site.Deploy.Provider {
-	case "blup":
+	case config.ProviderBlup:
 		live, err = deployBlup(ctx, site)
-	case "cloudflare":
+	case config.ProviderCloudflare:
 		var c *cfpages.Client
 		if c, err = savedCloudflare(); err == nil {
 			live, err = deployCloudflare(ctx, site, c)
 		}
-	case "github":
+	case config.ProviderGitHub:
 		var c *github.Client
 		var login string
 		if c, login, err = savedGitHub(ctx); err == nil {

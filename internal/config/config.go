@@ -120,9 +120,18 @@ func (c Cookies) Tools() bool {
 	return c.GoogleAnalytics != "" || c.TagManager != "" || c.MetaPixel != "" || c.Umami != "" || c.Plausible != ""
 }
 
+// Provider is where a site is published ("" before the first time).
+type Provider string
+
+const (
+	ProviderBlup       Provider = "blup"
+	ProviderCloudflare Provider = "cloudflare"
+	ProviderGitHub     Provider = "github"
+)
+
 // Deploy remembers where the site was published.
 type Deploy struct {
-	Provider   string     `toml:"provider,omitempty"` // "blup", "cloudflare" or "github"
+	Provider   Provider   `toml:"provider,omitempty"`
 	Cloudflare Cloudflare `toml:"cloudflare,omitempty"`
 	GitHub     GitHub     `toml:"github,omitempty"`
 	Blup       BlupSite   `toml:"blup,omitempty"`
@@ -184,13 +193,21 @@ func (f Feedback) AppSlug() string {
 	return FeedbackApp
 }
 
+// SyncRemote is where the notes go: "" or SyncGitHub (a private
+// repository), or SyncBlup (Blup Cloud, end-to-end encrypted).
+type SyncRemote string
+
+const (
+	SyncGitHub SyncRemote = "github"
+	SyncBlup   SyncRemote = "blup"
+)
+
 // NoteSync is where "blup sync" keeps a copy of the notes.
 type NoteSync struct {
-	// Remote is where the notes go: "" or "github" (a private repository),
-	// or "blup" (Blup Cloud, end-to-end encrypted).
-	Remote string `toml:"remote,omitempty"`
-	Owner  string `toml:"owner,omitempty"`
-	Repo   string `toml:"repo,omitempty"`
+	// Remote is where the notes go (see SyncRemote).
+	Remote SyncRemote `toml:"remote,omitempty"`
+	Owner  string     `toml:"owner,omitempty"`
+	Repo   string     `toml:"repo,omitempty"`
 	// Vault is the folder's id on Blup Cloud.
 	Vault string `toml:"vault,omitempty"`
 }

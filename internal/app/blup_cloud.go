@@ -39,7 +39,7 @@ func init() {
 var errNotesLocked = errors.New("app: the notes are locked on this computer")
 
 // RemoteBlup is NoteSync.Remote for Blup Cloud.
-const RemoteBlup = "blup"
+const RemoteBlup = config.SyncBlup
 
 // BlupAccount is the signed in account as Blup Studio shows it.
 type BlupAccount struct {
@@ -253,10 +253,10 @@ func UnlockNotes(ctx context.Context, secret string) error {
 	return creds.Save()
 }
 
-// SetSyncRemote picks where the site's notes are synced: "blup" or
-// "github". Changing it starts over (the next sync compares without a
-// base, so nothing is deleted on either side).
-func SetSyncRemote(site *config.Site, remote string) error {
+// SetSyncRemote picks where the site's notes are synced: RemoteBlup or
+// GitHub (any other value). Changing it starts over (the next sync compares
+// without a base, so nothing is deleted on either side).
+func SetSyncRemote(site *config.Site, remote config.SyncRemote) error {
 	if remote != RemoteBlup {
 		remote = ""
 	}

@@ -155,7 +155,7 @@ func TestPublishOrphanThenIncremental(t *testing.T) {
 	})
 
 	var mu sync.Mutex
-	var phases []string
+	var phases []Phase
 	res, err := c.Publish(ctx, "Maria", "blog", dir, PublishOptions{CNAME: "blog.example.com"}, func(p Progress) {
 		mu.Lock()
 		phases = append(phases, p.Phase)

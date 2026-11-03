@@ -366,8 +366,9 @@ func PreviewVoice(ctx context.Context, lang, choice string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Only a cache: without it the sample is made again next time.
 	if os.MkdirAll(filepath.Dir(path), 0o755) == nil {
-		os.WriteFile(path, b, 0o644)
+		_ = os.WriteFile(path, b, 0o644)
 	}
 	return b, nil
 }

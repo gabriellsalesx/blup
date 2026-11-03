@@ -200,9 +200,9 @@ func privacyBody(site *config.Site, contact string, now time.Time) string {
 	fmt.Fprintf(&b, "## %s\n\n%s\n\n", t.browser, t.browserText)
 	hosting := t.hostingOther
 	switch site.Deploy.Provider {
-	case "cloudflare":
+	case config.ProviderCloudflare:
 		hosting = t.hostingCloudflare
-	case "github":
+	case config.ProviderGitHub:
 		hosting = t.hostingGitHub
 	}
 	fmt.Fprintf(&b, "## %s\n\n%s\n\n", t.hosting, hosting)

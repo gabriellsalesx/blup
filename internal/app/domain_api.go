@@ -68,7 +68,7 @@ func CheckDomain(ctx context.Context, site *config.Site) (DomainStatus, error) {
 		return st, nil
 	}
 	switch site.Deploy.Provider {
-	case "cloudflare":
+	case config.ProviderCloudflare:
 		d := site.Deploy.Cloudflare
 		if d.Account == "" || d.Project == "" {
 			st.State = "unpublished"
@@ -100,7 +100,7 @@ func CheckDomain(ctx context.Context, site *config.Site) (DomainStatus, error) {
 			st.Records = append(st.Records, DNSRecord{"CNAME", subLabel(site.Domain), pagesDev})
 		}
 		return st, nil
-	case "github":
+	case config.ProviderGitHub:
 		d := site.Deploy.GitHub
 		if d.Owner == "" || d.Repo == "" {
 			st.State = "unpublished"
@@ -158,7 +158,7 @@ func CheckDomain(ctx context.Context, site *config.Site) (DomainStatus, error) {
 // disconnectDomainQuiet removes domain from the host, without spinners.
 func disconnectDomainQuiet(ctx context.Context, site *config.Site, domain string) error {
 	switch site.Deploy.Provider {
-	case "cloudflare":
+	case config.ProviderCloudflare:
 		d := site.Deploy.Cloudflare
 		if d.Account == "" || d.Project == "" {
 			return nil
@@ -168,7 +168,7 @@ func disconnectDomainQuiet(ctx context.Context, site *config.Site, domain string
 			return err
 		}
 		return c.RemoveDomain(ctx, d.Account, d.Project, domain)
-	case "github":
+	case config.ProviderGitHub:
 		d := site.Deploy.GitHub
 		if d.Owner == "" || d.Repo == "" {
 			return nil

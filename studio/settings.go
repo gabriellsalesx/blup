@@ -199,12 +199,12 @@ func (s *Studio) SetupFeedback() (app.FeedbackSetup, error) {
 }
 
 // FeedbackState says whether the comments login app is installed.
-func (s *Studio) FeedbackState() (app.FeedbackSetup, error) {
+func (s *Studio) FeedbackState(ctx context.Context) (app.FeedbackSetup, error) {
 	site, err := s.current()
 	if err != nil {
 		return app.FeedbackSetup{}, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	return app.FeedbackState(ctx, site)
 }

@@ -27,10 +27,10 @@ func init() {
 func publish(ctx context.Context, g *config.Global, site *config.Site) error {
 	ui.Step(i18n.T("pub.title", site.Title))
 	if site.Deploy.Provider == "" {
-		p := "github"
+		p := config.ProviderGitHub
 		if err := ui.Choose(i18n.T("pub.where"), i18n.T("pub.where_help"), &p,
-			ui.Option(i18n.T("pub.github"), "github"),
-			ui.Option(i18n.T("pub.cloudflare"), "cloudflare"),
+			ui.Option(i18n.T("pub.github"), config.ProviderGitHub),
+			ui.Option(i18n.T("pub.cloudflare"), config.ProviderCloudflare),
 		); err != nil {
 			return err
 		}
@@ -39,9 +39,9 @@ func publish(ctx context.Context, g *config.Global, site *config.Site) error {
 	var live string
 	var err error
 	switch site.Deploy.Provider {
-	case "blup":
+	case config.ProviderBlup:
 		live, err = deployBlup(ctx, site)
-	case "cloudflare":
+	case config.ProviderCloudflare:
 		live, err = publishCloudflare(ctx, site)
 	default:
 		live, err = publishGitHub(ctx, site)

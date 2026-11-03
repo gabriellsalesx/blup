@@ -33,19 +33,22 @@ const (
 	maxDeploymentAttempts = 3        // MAX_DEPLOYMENT_ATTEMPTS
 )
 
+// Stage is a step of Deploy, reported to the callback.
+type Stage string
+
 // Progress stages reported to the callback.
 const (
-	StageScanning  = "scanning"  // walking and hashing files (Done/Total = files hashed)
-	StageChecking  = "checking"  // asking which files Cloudflare already has
-	StageUploading = "uploading" // Done/Total = files present remotely
-	StageFinishing = "finishing" // upsert hashes
-	StageDeploying = "deploying" // creating the deployment
-	StageDone      = "done"
+	StageScanning  Stage = "scanning"  // walking and hashing files (Done/Total = files hashed)
+	StageChecking  Stage = "checking"  // asking which files Cloudflare already has
+	StageUploading Stage = "uploading" // Done/Total = files present remotely
+	StageFinishing Stage = "finishing" // upsert hashes
+	StageDeploying Stage = "deploying" // creating the deployment
+	StageDone      Stage = "done"
 )
 
 // Progress is reported during Deploy.
 type Progress struct {
-	Stage       string
+	Stage       Stage
 	Done, Total int
 }
 

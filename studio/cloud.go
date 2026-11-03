@@ -14,13 +14,13 @@ import (
 
 // CloudSites lists the Blup sites found on the user's GitHub (their notes
 // synced to a private repository).
-func (s *Studio) CloudSites() ([]app.CloudSite, error) {
-	return app.FindCloudSites(context.Background())
+func (s *Studio) CloudSites(ctx context.Context) ([]app.CloudSite, error) {
+	return app.FindCloudSites(ctx)
 }
 
 // BringSite makes a site found on GitHub on this computer and opens it.
-func (s *Studio) BringSite(owner, repo string) (SiteInfo, error) {
-	site, err := app.BringSite(context.Background(), owner, repo)
+func (s *Studio) BringSite(ctx context.Context, owner, repo string) (SiteInfo, error) {
+	site, err := app.BringSite(ctx, owner, repo)
 	if err != nil {
 		return SiteInfo{}, err
 	}
@@ -37,25 +37,25 @@ func (s *Studio) SetGeneralPassword(password string) error { return app.SetGener
 
 // BlupAccount is the Blup Cloud account signed in here (SignedIn false
 // when none).
-func (s *Studio) BlupAccount() (app.BlupAccount, error) {
-	return app.LoadBlupAccount(context.Background())
+func (s *Studio) BlupAccount(ctx context.Context) (app.BlupAccount, error) {
+	return app.LoadBlupAccount(ctx)
 }
 
 // PurgeHistory deletes the old versions of the open site's notes on Blup
 // Cloud; the current version stays.
-func (s *Studio) PurgeHistory() (blupcloud.HistoryPurge, error) {
+func (s *Studio) PurgeHistory(ctx context.Context) (blupcloud.HistoryPurge, error) {
 	site, err := s.current()
 	if err != nil {
 		return blupcloud.HistoryPurge{}, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	return app.PurgeHistory(ctx, site)
 }
 
 // BlupAIUsage is how much of the plan's AI allowance was used this month.
-func (s *Studio) BlupAIUsage() (app.AIQuota, error) {
-	return app.BlupAIUsage(context.Background())
+func (s *Studio) BlupAIUsage(ctx context.Context) (app.AIQuota, error) {
+	return app.BlupAIUsage(ctx)
 }
 
 // BlupLoginCode is what the person checks in the browser.
@@ -66,8 +66,8 @@ type BlupLoginCode struct {
 
 // BlupLogin starts signing in: it opens Blup Cloud in the browser, where
 // the person checks the code and approves. Then call BlupLoginWait.
-func (s *Studio) BlupLogin() (BlupLoginCode, error) {
-	l, err := app.StartBlupLogin(context.Background())
+func (s *Studio) BlupLogin(ctx context.Context) (BlupLoginCode, error) {
+	l, err := app.StartBlupLogin(ctx)
 	if err != nil {
 		return BlupLoginCode{}, err
 	}
@@ -83,8 +83,8 @@ func (s *Studio) BlupLogin() (BlupLoginCode, error) {
 
 // BlupLoginWait waits for the approval in the browser (BlupLoginCancel stops
 // it) and returns the account.
-func (s *Studio) BlupLoginWait() (app.BlupAccount, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (s *Studio) BlupLoginWait(ctx context.Context) (app.BlupAccount, error) {
+	ctx, cancel := context.WithCancel(ctx)
 	s.mu.Lock()
 	l := s.login
 	s.cancel = cancel
@@ -204,8 +204,8 @@ func (s *Studio) OpenBlupCloud(page blupcloud.Page) {
 }
 
 // CreateNotesPassword turns sync on and returns the recovery key (shown once).
-func (s *Studio) CreateNotesPassword(password string) (string, error) {
-	r, err := app.CreateNotesPassword(context.Background(), password)
+func (s *Studio) CreateNotesPassword(ctx context.Context, password string) (string, error) {
+	r, err := app.CreateNotesPassword(ctx, password)
 	if err == nil {
 		s.restartLive()
 	}
@@ -213,8 +213,8 @@ func (s *Studio) CreateNotesPassword(password string) (string, error) {
 }
 
 // UnlockNotes opens the notes here with the notes password or the recovery key.
-func (s *Studio) UnlockNotes(secret string) error {
-	if err := app.UnlockNotes(context.Background(), secret); err != nil {
+func (s *Studio) UnlockNotes(ctx context.Context, secret string) error {
+	if err := app.UnlockNotes(ctx, secret); err != nil {
 		return err
 	}
 	s.restartLive()
@@ -225,9 +225,9 @@ func (s *Studio) UnlockNotes(secret string) error {
 func (s *Studio) SyncRemote() string {
 	site, err := s.current()
 	if err != nil || site.Sync.Remote == "" {
-		return "github"
+		return string(config.SyncGitHub)
 	}
-	return site.Sync.Remote
+	return string(site.Sync.Remote)
 }
 
 // SetSyncRemote picks where the open site's notes are synced.
@@ -236,7 +236,7 @@ func (s *Studio) SetSyncRemote(remote string) error {
 	if err != nil {
 		return err
 	}
-	if err := app.SetSyncRemote(site, remote); err != nil {
+	if err := app.SetSyncRemote(site, config.SyncRemote(remote)); err != nil {
 		return err
 	}
 	s.startLive(site)
@@ -261,22 +261,22 @@ func (s *Studio) startLive(site *config.Site) {
 
 // CloudHistory tells whether the open site keeps old versions on Blup
 // Cloud (synced there, on a plan with history, notes opened here).
-func (s *Studio) CloudHistory() bool {
+func (s *Studio) CloudHistory(ctx context.Context) bool {
 	site, err := s.current()
 	if err != nil || site.Sync.Remote != app.RemoteBlup || site.Sync.Vault == "" {
 		return false
 	}
-	a, err := app.LoadBlupAccount(context.Background())
+	a, err := app.LoadBlupAccount(ctx)
 	return err == nil && a.Notes == "ready" && a.HistoryDays > 0
 }
 
 // NoteHistory lists the earlier contents of a note, newest first.
-func (s *Studio) NoteHistory(path string) ([]blupcloud.NoteVersion, error) {
+func (s *Studio) NoteHistory(ctx context.Context, path string) ([]blupcloud.NoteVersion, error) {
 	site, err := s.current()
 	if err != nil {
 		return nil, err
 	}
-	return app.NoteHistory(context.Background(), site, path)
+	return app.NoteHistory(ctx, site, path)
 }
 
 // VersionText is a note's text in an earlier version (IsText false for
@@ -287,42 +287,42 @@ type VersionText struct {
 }
 
 // NoteVersionText reads a note as it was in version n.
-func (s *Studio) NoteVersionText(path string, n int64) (VersionText, error) {
+func (s *Studio) NoteVersionText(ctx context.Context, path string, n int64) (VersionText, error) {
 	site, err := s.current()
 	if err != nil {
 		return VersionText{}, err
 	}
-	text, ok, err := app.NoteVersionText(context.Background(), site, path, n)
+	text, ok, err := app.NoteVersionText(ctx, site, path, n)
 	return VersionText{Text: text, IsText: ok}, err
 }
 
 // RestoreNoteVersion puts a note back as it was in version n (the current
 // one stays in the history).
-func (s *Studio) RestoreNoteVersion(path string, n int64) error {
+func (s *Studio) RestoreNoteVersion(ctx context.Context, path string, n int64) error {
 	site, err := s.current()
 	if err != nil {
 		return err
 	}
-	return app.RestoreNoteVersion(context.Background(), site, path, n)
+	return app.RestoreNoteVersion(ctx, site, path, n)
 }
 
 // DeletedNotes lists notes deleted that Blup Cloud still keeps.
-func (s *Studio) DeletedNotes() ([]blupcloud.DeletedFile, error) {
+func (s *Studio) DeletedNotes(ctx context.Context) ([]blupcloud.DeletedFile, error) {
 	site, err := s.current()
 	if err != nil {
 		return nil, err
 	}
-	return app.DeletedNotes(context.Background(), site)
+	return app.DeletedNotes(ctx, site)
 }
 
 // BlupSites lists the sites kept on Blup Cloud (to bring them here).
-func (s *Studio) BlupSites() ([]app.BlupSite, error) {
-	return app.BlupSites(context.Background())
+func (s *Studio) BlupSites(ctx context.Context) ([]app.BlupSite, error) {
+	return app.BlupSites(ctx)
 }
 
 // BringBlupSite makes a site kept on Blup Cloud on this computer and opens it.
-func (s *Studio) BringBlupSite(vault string) (SiteInfo, error) {
-	site, err := app.BringBlupSite(context.Background(), vault)
+func (s *Studio) BringBlupSite(ctx context.Context, vault string) (SiteInfo, error) {
+	site, err := app.BringBlupSite(ctx, vault)
 	if err != nil {
 		return SiteInfo{}, err
 	}

@@ -116,9 +116,9 @@ func connectDomain(ctx context.Context, site *config.Site) error {
 		return nil
 	}
 	switch site.Deploy.Provider {
-	case "cloudflare":
+	case config.ProviderCloudflare:
 		return connectCloudflareDomain(ctx, site)
-	case "github":
+	case config.ProviderGitHub:
 		return connectGitHubDomain(ctx, site)
 	}
 	ui.OK(i18n.T("domain.saved_unpublished", site.Domain))
@@ -232,7 +232,7 @@ func connectGitHubDomain(ctx context.Context, site *config.Site) error {
 // disconnectDomain removes domain from where the site is published.
 func disconnectDomain(ctx context.Context, site *config.Site, domain string) error {
 	switch site.Deploy.Provider {
-	case "cloudflare":
+	case config.ProviderCloudflare:
 		d := site.Deploy.Cloudflare
 		if d.Account == "" || d.Project == "" {
 			return nil
@@ -244,7 +244,7 @@ func disconnectDomain(ctx context.Context, site *config.Site, domain string) err
 		return ui.Spin(ctx, i18n.T("domain.removing"), func(ctx context.Context) error {
 			return c.RemoveDomain(ctx, d.Account, d.Project, domain)
 		})
-	case "github":
+	case config.ProviderGitHub:
 		d := site.Deploy.GitHub
 		if d.Owner == "" || d.Repo == "" {
 			return nil

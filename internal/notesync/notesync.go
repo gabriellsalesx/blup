@@ -112,20 +112,23 @@ func (s *Syncer) remote() Remote {
 	return s.gh
 }
 
+// Phase is a step of Sync and Status, reported through Progress.
+type Phase string
+
 // Phase names reported through Progress.
 const (
-	PhaseScan     = "scan"     // hashing local files (Done grows, Total 0)
-	PhaseCompare  = "compare"  // reading the list of files on GitHub
-	PhaseUpload   = "upload"   // sending files
-	PhaseCommit   = "commit"   // saving the new version on GitHub
-	PhaseDownload = "download" // receiving files and applying deletions
-	PhaseRetry    = "retry"    // someone else synced meanwhile; starting over
-	PhaseDone     = "done"
+	PhaseScan     Phase = "scan"     // hashing local files (Done grows, Total 0)
+	PhaseCompare  Phase = "compare"  // reading the list of files on GitHub
+	PhaseUpload   Phase = "upload"   // sending files
+	PhaseCommit   Phase = "commit"   // saving the new version on GitHub
+	PhaseDownload Phase = "download" // receiving files and applying deletions
+	PhaseRetry    Phase = "retry"    // someone else synced meanwhile; starting over
+	PhaseDone     Phase = "done"
 )
 
 // Progress is reported during Sync and Status. Calls are serialized.
 type Progress struct {
-	Phase string
+	Phase Phase
 	Done  int
 	Total int
 	Path  string // file just processed, when meaningful

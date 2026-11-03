@@ -7,12 +7,12 @@ import (
 )
 
 // FeedbackPosts lists the requests of the open site's feedback board.
-func (s *Studio) FeedbackPosts() ([]app.FeedbackPost, error) {
+func (s *Studio) FeedbackPosts(ctx context.Context) ([]app.FeedbackPost, error) {
 	site, err := s.current()
 	if err != nil {
 		return nil, err
 	}
-	return app.FeedbackPosts(context.Background(), site)
+	return app.FeedbackPosts(ctx, site)
 }
 
 // SetFeedbackStatus sets a request's status (new, planned, progress, done,

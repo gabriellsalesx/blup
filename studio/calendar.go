@@ -193,8 +193,8 @@ func pushMail(list []blupcloud.Reminder, now time.Time) {
 
 // ReminderEmails is the month's use of reminder e-mails (zero signed out
 // or on a plan without them).
-func (s *Studio) ReminderEmails() blupcloud.ReminderUse {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (s *Studio) ReminderEmails(ctx context.Context) blupcloud.ReminderUse {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	u, _ := app.ReminderEmails(ctx)
 	return u
@@ -323,9 +323,8 @@ func saveSent(now time.Time) {
 	}
 	b, err := json.Marshal(reminders.sent)
 	reminders.mu.Unlock()
-	if err == nil {
-		os.MkdirAll(filepath.Dir(f), 0o755)
-		os.WriteFile(f, b, 0o600)
+	if err == nil && os.MkdirAll(filepath.Dir(f), 0o755) == nil {
+		_ = os.WriteFile(f, b, 0o600) // best effort: lost, a reminder may come twice
 	}
 }
 

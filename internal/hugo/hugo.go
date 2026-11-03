@@ -170,7 +170,7 @@ func extract(asset string, data []byte) ([]byte, error) {
 	tr := tar.NewReader(gz)
 	for {
 		h, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil, errors.New("hugo not found in archive")
 		}
 		if err != nil {
@@ -204,7 +204,7 @@ func get(ctx context.Context, url string, progress func(done, total int64)) ([]b
 		n, err := resp.Body.Read(chunk)
 		buf.Write(chunk[:n])
 		progress(int64(buf.Len()), resp.ContentLength)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return buf.Bytes(), nil
 		}
 		if err != nil {

@@ -75,7 +75,7 @@ func (c *computer) files(t *testing.T) map[string]string {
 
 func (c *computer) sync(t *testing.T) Report {
 	t.Helper()
-	var phases []string
+	var phases []Phase
 	rep, err := c.s.Sync(context.Background(), func(p Progress) {
 		if len(phases) == 0 || phases[len(phases)-1] != p.Phase {
 			phases = append(phases, p.Phase)

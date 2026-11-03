@@ -272,7 +272,7 @@ func fetch(ctx context.Context, d download, progress func(int64)) ([]byte, error
 				progress(n)
 			}
 		}
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -341,7 +341,7 @@ func extract(data []byte, name string, want map[string]string) error {
 	tr := tar.NewReader(gz)
 	for {
 		h, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

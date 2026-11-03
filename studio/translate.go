@@ -39,12 +39,12 @@ func (s *Studio) NoteLangs(rel string) ([]app.NoteLang, error) {
 
 // TranslateNote translates the note (or the original of a translation)
 // into lang with AI and returns the translation's path.
-func (s *Studio) TranslateNote(rel, lang string) (string, error) {
+func (s *Studio) TranslateNote(ctx context.Context, rel, lang string) (string, error) {
 	site, err := s.current()
 	if err != nil {
 		return "", err
 	}
-	out, err := app.TranslateNote(context.Background(), site, rel, lang, translateProvider(s.Prefs()), func(done, total int) {
+	out, err := app.TranslateNote(ctx, site, rel, lang, translateProvider(s.Prefs()), func(done, total int) {
 		application.Get().Event.Emit("translate", TranslateProgress{rel, lang, done, total})
 	})
 	if err == nil {
@@ -139,12 +139,12 @@ func (s *Studio) SiteLangs() ([]app.SiteLangState, error) {
 // into lang (or have an out of date one) with the AI in the cloud chosen,
 // and tells how many it did and how many password protected posts it left
 // out.
-func (s *Studio) TranslateSite(lang string) (app.SiteTranslation, error) {
+func (s *Studio) TranslateSite(ctx context.Context, lang string) (app.SiteTranslation, error) {
 	site, err := s.current()
 	if err != nil {
 		return app.SiteTranslation{}, err
 	}
-	n, err := app.TranslateSite(context.Background(), site, lang, translateProvider(s.Prefs()), func(done, total int, note string) {
+	n, err := app.TranslateSite(ctx, site, lang, translateProvider(s.Prefs()), func(done, total int, note string) {
 		application.Get().Event.Emit("translateSite", TranslateSiteProgress{lang, done, total, note})
 	})
 	s.previewFollows(site)
