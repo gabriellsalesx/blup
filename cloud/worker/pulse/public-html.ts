@@ -83,7 +83,10 @@ h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spaci
 .b-unknown{background:var(--muted)}
 [data-tip]{position:relative}[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);z-index:10;background:var(--tip);color:var(--tip-text);padding:4px 8px;border-radius:6px;font:500 13px/1.4 Inter,ui-sans-serif,system-ui,sans-serif;white-space:pre;text-align:center;pointer-events:none}
 [data-tip]:hover::before{content:"";position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);z-index:10;border:5px solid transparent;border-top-color:var(--tip);border-bottom:0;pointer-events:none}
-.bars i:nth-child(-n+6):hover::after{left:0;transform:none}.bars i:nth-last-child(-n+6):hover::after{left:auto;right:0;transform:none}
+.bars i{position:relative}
+.tip{display:none;position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);z-index:20;width:max-content;min-width:190px;max-width:260px;padding:12px 14px 10px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);box-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1);font:500 14px/1.4 Inter,ui-sans-serif,system-ui,sans-serif;text-align:left;white-space:normal;pointer-events:none}
+.bars i:hover .tip{display:block}.bars i:nth-child(-n+6) .tip{left:0;transform:none}.bars i:nth-last-child(-n+6) .tip{left:auto;right:0;transform:none}
+.tip-head{display:flex;align-items:center;gap:8px;font-weight:600;overflow-wrap:anywhere}.tip-head .dot{flex:none}.tip-none{display:inline-grid;color:var(--muted)}.tip-body{display:block;margin-top:6px;color:var(--muted);font-weight:400}.tip-date{display:block;margin-top:10px;padding-top:8px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;font-weight:400;text-align:center}
 .day{padding:18px 20px 4px}.day h3{margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line);font-size:15px;font-weight:600}.day>p{color:var(--muted);margin:0 0 14px}
 .incident{margin:0 0 16px}
 .inc{display:block;margin:0 -12px 8px;padding:12px;border-radius:10px;color:inherit;text-decoration:none;transition:background-color .2s}.inc:hover{background:var(--head)}
@@ -104,7 +107,7 @@ h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spaci
 .update{margin:6px 0 0}.update p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.update small{color:var(--muted)}
 
 footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:13px;padding:8px 2px}footer a{color:inherit;font-weight:600;text-decoration:none}footer a:hover{text-decoration:underline}
-@media (max-width:640px){.wrap{padding-top:36px}.bar{padding:0 16px}h1{font-size:24px}.bars i:nth-last-child(n+31){display:none}.bars i:nth-last-child(30):hover::after{left:0;transform:none}.from-long{display:none}.from-short{display:inline}}
+@media (max-width:640px){.wrap{padding-top:36px}.bar{padding:0 16px}h1{font-size:24px}.bars i:nth-last-child(n+31){display:none}.bars i:nth-last-child(30) .tip{left:0;transform:none}.from-long{display:none}.from-short{display:inline}}
 `;
 
 // Day key (UTC) of a date, as days since the epoch.
@@ -252,7 +255,6 @@ export function renderStatusPage(page:PublicStatus,now=Date.now(),language:Langu
  const t=<K extends MessageKey>(key:K,...args:TranslationArgs<(typeof messages)[K][0]>)=>translate(lang,key,...args);
  const number=new Intl.NumberFormat(lang,{maximumFractionDigits:2});
  const longDate=new Intl.DateTimeFormat(lang,{dateStyle:"long",timeZone:"UTC"});
- const shortDate=new Intl.DateTimeFormat(lang,{day:"numeric",month:"short",timeZone:"UTC"});
  const stamp=new Intl.DateTimeFormat(lang,{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"});
  const today=dayOf(now),range=Math.min(Math.max(page.historyDays,1),90);
  const days=Array.from({length:range},(_,i)=>today-range+1+i);
@@ -261,17 +263,26 @@ export function renderStatusPage(page:PublicStatus,now=Date.now(),language:Langu
  const lastCheck=Math.max(0,...page.components.map(c=>c.lastCheckedAt?Date.parse(c.lastCheckedAt):0));
  const updated=lastCheck?`<p class="updated">${escape(t("pulseUpdatedAt",{date:stamp.format(new Date(lastCheck))+" UTC"}))}</p>`:"";
 
+ const dayDate=new Intl.DateTimeFormat(lang,{dateStyle:"medium",timeZone:"UTC"});
+ // An incident that touched a service (by its public name) on a day:
+ // started by then and not resolved before it.
+ const incidentOn=(service:string,day:number)=>page.incidents.find(i=>i.services.some(s=>s.name===service)&&dayOf(Date.parse(i.createdAt))<=day&&(i.state!=="resolved"||dayOf(Date.parse(i.updatedAt))>=day));
  const component=(c:PublicComponent)=>{
   const byDay=new Map(c.days.map(d=>[d.date,d]));
   let up=0,total=0;
   const bars=days.map(day=>{
    const d=byDay.get(iso(day)),tone=dayTone(d);
    if(d){up+=d.up;total+=d.up+d.down;}
-   // The tip of a day: its date, its state and, when not all up, how much.
-   const date=shortDate.format(new Date(day*DAY));
+   // The tip of a day, a small card: the state's mark with its name (or
+   // the title of an incident on this service that day), how it went
+   // when not all up, and the date.
+   const date=dayDate.format(new Date(day*DAY));
    const share=d&&d.up+d.down?t("pulseUptime",{value:number.format(d.up/(d.up+d.down)*100)}):"";
-   const tip=tone==="none"?[date,t("pulseNotMonitored")]:tone==="up"?[date,t("pulseOperational")]:tone==="maint"?[date,t("pulseMaintenance")]:[date,tone==="partial"?t("pulseDegraded"):t("pulseDown"),share];
-   return `<i class="${tone}" data-tip="${escape(tip.join("\n")).replace(/\n/g,"&#10;")}"></i>`;
+   const incident=tone==="partial"||tone==="down"?incidentOn(c.name,day):undefined;
+   const name=tone==="none"?t("pulseNotMonitored"):tone==="up"?t("pulseOperational"):tone==="maint"?t("pulseMaintenance"):incident?.title??(tone==="partial"?t("pulseDegraded"):t("pulseDown"));
+   const detail=tone==="partial"||tone==="down"?[incident?(tone==="partial"?t("pulseDegraded"):t("pulseDown")):"",share].filter(Boolean).join(" · "):"";
+   const mark=tone==="none"?`<span class="tip-none">${legendSvg("none")}</span>`:`<span class="dot ${tone}">${svg(tone,11,3)}</span>`;
+   return `<i class="${tone}"><span class="tip" role="tooltip"><span class="tip-head">${mark}${escape(name)}</span>${detail?`<span class="tip-body">${escape(detail)}</span>`:""}<span class="tip-date">${escape(date)}</span></span></i>`;
   }).join("");
   const tone=toneOf(c);
   const stateLabel=tone==="up"?t("pulseOperational"):tone==="down"?t("pulseDown"):tone==="partial"?t("pulseDegraded"):tone==="maint"?t("pulseInMaintenance"):t("pulseUnknown");

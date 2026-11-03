@@ -800,3 +800,13 @@ A página `incidents` (`/<slug>/incidents`, ou `/incidents` no domínio próprio
 O histórico e a página de um incidente consultam os incidentes no D1 (`public-incidents.ts`), dentro do que o plano guarda e com a mesma projeção fechada, sem o limite dos 20 da página principal. O histórico mostra até 200 incidentes por janela e até 50 atualizações por incidente.
 
 A logo e o título do cabeçalho levam à página de status. Quando ela tem domínio próprio ativo, e o plano permite, levam ao domínio, mesmo a partir do endereço compartilhado; sem domínio, levam ao próprio endereço da página. O DTO público passou a ter `domain`.
+
+## Dica das barras dos serviços
+
+Passar o mouse numa barra de dia abre um pequeno card, sem script:
+- **Topo:** a marca do estado. São os mesmos círculos coloridos com ícone Lucide dos serviços: verde com check, âmbar com alerta, vermelho com X e roxo com chave; o dia sem dados usa o círculo vazio da legenda.
+- **Nome:** "Operacional", "Manutenção" ou "Sem monitoramento". Num dia de queda ou lentidão, aparece o título do incidente que atingiu esse serviço naquele dia, se houver: um incidente aberto até então, ou resolvido nesse dia ou depois. Sem incidente, aparece "Indisponível" ou "Degradado".
+- **Detalhe (só em dia de queda ou lentidão):** a situação e o quanto ficou no ar ("Indisponível · 87,43% no ar").
+- **Embaixo:** a data, depois de uma linha.
+
+As dicas das barras das pontas se alinham à borda, para não sair do card.

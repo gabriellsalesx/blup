@@ -75,6 +75,8 @@ it("publishes only explicit component names and incident text, escapes attacks a
  const cache=new Map<string,Response>();vi.stubGlobal("caches",{default:{match:async(key:Request)=>cache.get(key.url)?.clone(),put:async(key:Request,response:Response)=>{cache.set(key.url,response);}}});
  const page=await publicPage(state.env,"public-page"),data=JSON.stringify(page);for(const privateValue of ["PRIVATE_MONITOR_NAME","private-secret","object1","alice","Private project"])expect(data).not.toContain(privateValue);
  const html=await(await servePulsePage(new Request("https://pulse.audit.invalid/public-page/"),state.env))?.text();expect(html).toContain("&lt;script&gt;");expect(html).not.toContain("<script>attack");expect(html?.match(/<script>/g)).toHaveLength(1);
+ // Each day's tip is a small card: the mark, the state and the date.
+ expect(html).toMatch(/<span class="tip" role="tooltip"><span class="tip-head"><span class="tip-none">.*?Not monitored<\/span><span class="tip-date">/);
  // The bars' "none" day keeps its own look: no page-wide rule for that name.
  expect(html).not.toMatch(/[}\n]\.none\{/);expect(html).not.toContain("<img");
  // The list links each incident to its own page, with every update.
