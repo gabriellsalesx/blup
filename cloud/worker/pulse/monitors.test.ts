@@ -74,7 +74,9 @@ it("publishes only explicit component names and incident text, escapes attacks a
  await request(`/pages/${id}`,"PATCH",{published:true});expect((await request(`/pages/${id}/incidents`,"POST",{title:"Incident",body:'<img src=x onerror="attack()">',state:"investigating",publishedAt:new Date().toISOString(),services:[{monitorId:monitor.id,status:"degraded"}]})).status).toBe(201);
  const cache=new Map<string,Response>();vi.stubGlobal("caches",{default:{match:async(key:Request)=>cache.get(key.url)?.clone(),put:async(key:Request,response:Response)=>{cache.set(key.url,response);}}});
  const page=await publicPage(state.env,"public-page"),data=JSON.stringify(page);for(const privateValue of ["PRIVATE_MONITOR_NAME","private-secret","object1","alice","Private project"])expect(data).not.toContain(privateValue);
- const html=await(await servePulsePage(new Request("https://pulse.audit.invalid/public-page/"),state.env))?.text();expect(html).toContain("&lt;script&gt;");expect(html).not.toContain("<script>attack");expect(html?.match(/<script>/g)).toHaveLength(1);expect(html).not.toContain("<img");
+ const html=await(await servePulsePage(new Request("https://pulse.audit.invalid/public-page/"),state.env))?.text();expect(html).toContain("&lt;script&gt;");expect(html).not.toContain("<script>attack");expect(html?.match(/<script>/g)).toHaveLength(1);
+ // The bars' "none" day keeps its own look: no page-wide rule for that name.
+ expect(html).not.toMatch(/[}\n]\.none\{/);expect(html).not.toContain("<img");
  // The list links each incident to its own page, with every update.
  const incidentId=(page as {incidents:{id:string}[]}).incidents[0].id;expect(html).toContain(`href="incidents/${incidentId}?lang=en"`);
  const own=await servePulsePage(new Request(`https://pulse.audit.invalid/public-page/incidents/${incidentId}`),state.env),ownHtml=await own?.text()??"";
