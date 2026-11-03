@@ -785,6 +785,8 @@ Abaixo de 768 px, o botão de menu abre um painel com os links. Esse menu e os d
 
 ## Incidentes na página pública
 
+O card de Incidentes da página de status só aparece quando a página teve algum incidente dentro do que o plano guarda; antes disso, a página mostra apenas os serviços (e a manutenção, se houver).
+
 Na lista de Incidentes (os últimos sete dias, por dia, e os abertos de antes), cada incidente é um card clicável:
 - **Título e etiqueta:** a etiqueta é verde "Resolvido" quando resolvido. Aberto, segue o impacto: vermelho "Indisponível" (interrupção parcial ou total), âmbar "Degradado", ou a etapa em cinza quando não há impacto.
 - **Atualização mais recente:** num card, com a etapa e a data UTC, ao lado de uma marca de linha do tempo. A marca é o círculo com check verde quando resolvido; nos outros casos, o círculo tracejado (Lucide `circle-check` e `circle-dashed`).
@@ -823,7 +825,7 @@ As dicas das barras das pontas se alinham à borda, para não sair do card; no c
 ## Explicação dos serviços
 
 Cada serviço de uma página de status pode ter uma explicação opcional: o que ele é, como "a API", "o site" ou "a CDN".
-- **Onde se preenche:** nos Componentes públicos, abaixo do Nome público.
+- **Onde se preenche:** nos Componentes públicos, abaixo do Nome público. Cada serviço escolhido fica fechado numa linha (switch, nome do monitor e, no computador, o nome público e "com explicação"), e a seta abre os campos. Um serviço recém-ligado, ou ainda sem nome público, já vem aberto.
 - **Regras:** até 200 caracteres, numa linha só. A coluna é `pulse_component.description` (migração `0027`, vazia por padrão), e as páginas a aceitam em `components[].description` ao criar e editar.
 - **Na página pública:** quando preenchida, aparece um ícone de informação (Lucide `info`) ao lado do nome do serviço. Ele abre um card com o texto ao passar o mouse, pelo teclado e, no celular, com um toque.
 - **Posição do card:** fica preso à linha do serviço, alinhado à esquerda, para não sair da tela. O texto vai escapado, no card e no `aria-label`.

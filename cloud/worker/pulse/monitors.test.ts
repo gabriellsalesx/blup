@@ -80,7 +80,7 @@ it("publishes only explicit component names and incident text, escapes attacks a
  // The bars' "none" day keeps its own look: no page-wide rule for that name.
  expect(html).not.toMatch(/[}\n]\.none\{/);expect(html).not.toContain("<img");
  // The list links each incident to its own page, with every update.
- const incidentId=(page as {incidents:{id:string}[]}).incidents[0].id;expect(html).toContain(`href="incidents/${incidentId}?lang=en"`);
+ const incidentId=(page as {incidents:{id:string}[]}).incidents[0].id;expect(html).toContain(`href="incidents/${incidentId}?lang=en"`);expect(html).toContain('<a class="head-link" href="incidents?lang=en">');
  const own=await servePulsePage(new Request(`https://pulse.audit.invalid/public-page/incidents/${incidentId}`),state.env),ownHtml=await own?.text()??"";
  expect(own?.status).toBe(200);expect(ownHtml).toContain("&lt;img src=x");expect(ownHtml).not.toContain("<img src=x");expect(ownHtml).toContain('href="../incidents?lang=en"');expect(ownHtml).toContain('class="brand" href="../"');
  // The previous incidents, three months at a time.
@@ -210,6 +210,8 @@ it("shows the page's logo, links and title choice, and a badge and favicon with 
  expect((listed.pages[0] as unknown as {components:{description:string}[]}).components[0].description).toBe("Our <b>REST</b> API");
  expect(listed.pages[0]).toMatchObject({showTitle:false,links:[{label:"Site <b>",url:"https://acme.example/"}],logos:{light:null,dark:version}});
  const served=await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/"),state.env),html=await served?.text()??"";
+ // No incident yet: no incidents card at all.
+ expect(html).not.toContain('class="head-link"');
  // A service's explanation is a help icon with its text in a card.
  expect(html).toContain('<span class="help" tabindex="0" role="button" aria-label="Our &lt;b&gt;REST&lt;/b&gt; API">');expect(html).not.toContain("<b>REST</b>");
  expect(html).toContain(`src="logo-dark?v=${version}"`);expect(html).toContain('alt="Acme"');expect(html).not.toContain("<span>Acme</span>");expect(html).toContain(`class="site-header"`);expect(html).toContain(`popovertarget="mobile-menu"`);

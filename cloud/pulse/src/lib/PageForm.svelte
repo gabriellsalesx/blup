@@ -2,6 +2,7 @@
  import {untrack} from "svelte";
  import Plus from "@lucide/svelte/icons/plus";
  import X from "@lucide/svelte/icons/x";
+ import ChevronDown from "@lucide/svelte/icons/chevron-down";
  import {t} from "#lib/i18n.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
  import FloatField from "#lib/ui/FloatField.svelte";
@@ -44,7 +45,11 @@
  }
  function titled(){if(!editing&&!slugTyped){slug=slugify(title);check();}}
  function typed(){slugTyped=slug.length>0;check();}
- function toggle(id:string,on:boolean){if(on)chosen[id]={name:"",description:""};else delete chosen[id];}
+ // Each chosen service folds to one line; one just switched on opens to be
+ // filled, and one without its public name stays open.
+ let opened=$state<Record<string,boolean>>({});
+ const isOpen=(id:string)=>opened[id]??!chosen[id]?.name.trim();
+ function toggle(id:string,on:boolean){if(on){chosen[id]={name:"",description:""};opened[id]=true;}else{delete chosen[id];delete opened[id];}}
  function submit(e:SubmitEvent){e.preventDefault();onsave({title,slug,components:Object.entries(chosen).map(([monitorId,c])=>({monitorId,name:c.name.trim(),description:c.description.trim()})),showTitle,links:links.map(l=>({label:l.label.trim(),url:l.url.trim()}))});}
 </script>
 
@@ -55,10 +60,14 @@
  <FormSection title={t("pulseComponents")} help={t("pulseComponentsHelp")}>
   <div class="-my-1 grid grid-cols-[minmax(0,1fr)]">
    {#each monitors as monitor(monitor.id)}
+    {@const item=chosen[monitor.id]}
     <div class="border-b border-neutral-200 py-4 last:border-b-0 dark:border-neutral-800">
-     <Switch tone="mint" label={monitor.name} checked={Object.hasOwn(chosen,monitor.id)} onchange={on=>toggle(monitor.id,on)}/>
-     {#if chosen[monitor.id]}
-      <div class="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 sm:pl-14">
+     <div class="flex items-center gap-3">
+      <div class="min-w-0 flex-1"><Switch tone="mint" label={monitor.name} checked={!!item} onchange={on=>toggle(monitor.id,on)}/></div>
+      {#if item}<button type="button" class="flex min-w-0 shrink items-center gap-2 rounded-md px-2 py-1 text-sm text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-expanded={isOpen(monitor.id)} aria-controls={`service-${monitor.id}`} aria-label={isOpen(monitor.id)?t("pulseCollapse"):t("pulseExpand")} onclick={()=>opened[monitor.id]=!isOpen(monitor.id)}><span class="hidden truncate sm:inline">{item.name.trim()||t("pulsePublicName")}</span>{#if item.description.trim()}<span class="hidden text-xs sm:inline">· {t("pulseHasExplanation")}</span>{/if}<ChevronDown class="size-4 shrink-0 transition-transform {isOpen(monitor.id)?"rotate-180":""}"/></button>{/if}
+     </div>
+     {#if item&&isOpen(monitor.id)}
+      <div id={`service-${monitor.id}`} class="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 sm:pl-14">
        <FloatField id={`public-${monitor.id}`} surface="bg-white dark:bg-neutral-900" label={t("pulsePublicName")} maxlength={80} required bind:value={chosen[monitor.id].name}/>
        <div><FloatField id={`explain-${monitor.id}`} surface="bg-white dark:bg-neutral-900" label={t("pulseExplanation")} maxlength={200} bind:value={chosen[monitor.id].description}/><p class="mt-2 px-3 text-sm text-neutral-500">{t("pulseExplanationHelp")}</p></div>
       </div>

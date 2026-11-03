@@ -295,7 +295,8 @@ export function renderStatusPage(page:PublicStatus,now=Date.now(),language:Langu
 
  const {incidentCard}=incidentParts(lang,stamp);
  const incident=incidentCard;
- // The last seven days, newest first, each with its incidents; an
+ // The last seven days, newest first, each with its incidents (the card
+ // shows only once the page has had an incident within what is kept); an
  // incident still open from before them shows on its own day after them.
  const older=[...new Set(open.map(i=>dayOf(Date.parse(i.createdAt))).filter(day=>day<=today-7))].sort((a,b)=>b-a);
  const history=[...Array.from({length:7},(_,i)=>today-i),...older].map(day=>{
@@ -310,5 +311,5 @@ export function renderStatusPage(page:PublicStatus,now=Date.now(),language:Langu
  return shell(page,lang,page.title,`<section class="hero"><span class="badge ${overall.tone==="unknown"?"b-unknown":overall.tone}">${svg(overall.tone,40,2.5)}</span><h1>${escape(overall.label)}</h1>${updated}</section>
 <section class="card"><div class="head"><h2>${escape(t("pulseServices"))}</h2><div class="legend">${([["up","pulseOperational"],["partial","pulseDegraded"],["down","pulseDown"],["maint","pulseMaintenance"],["none","pulseNotMonitored"]] as const).map(([k,key])=>`<span class="l-${k}" data-tip="${escape(t(key))}" role="img" aria-label="${escape(t(key))}">${legendSvg(k)}</span>`).join("")}</div></div>${page.components.map(component).join("")||`<div class="row"><p class="updated">${escape(t("pulseNoData"))}</p></div>`}</section>
 ${maintenance}
-<section class="card"><div class="head"><h2>${escape(t("pulseIncidents"))}</h2><a class="head-link" href="incidents?lang=${lang}">${escape(t("pulsePreviousIncidents"))}</a></div>${history}</section>`,now);
+${page.incidents.length?`<section class="card"><div class="head"><h2>${escape(t("pulseIncidents"))}</h2><a class="head-link" href="incidents?lang=${lang}">${escape(t("pulsePreviousIncidents"))}</a></div>${history}</section>`:""}`,now);
 }
