@@ -121,3 +121,18 @@ it("tests a destination with an example of each chosen kind, only for its own pr
  expect(bodies.find(b=>b.event==="monitor_down")).toMatchObject({tone:"red",label:"Indisponibilidade confirmada (teste)",description:"Este é um aviso de teste. Nada aconteceu de verdade."});
  expect(bodies.find(b=>b.event==="regression")).toMatchObject({tone:"amber",fields:[{name:"Projeto",value:"App"},{name:"Ambiente",value:"production"},{name:"Versão",value:"1.0.0"}]});
 });
+it("changes a destination's address and a webhook's secret, never showing the old one",async()=>{
+ const discord=await channel(),NEXT=`https://discord.com/api/webhooks/223456789012345678/${"next_fixture_".repeat(6)}`;
+ db.sqlite.exec(`UPDATE pulse_channel SET active=0,last_error='DESTINATION_DISABLED' WHERE id='${discord.id}'`);
+ expect((await request(`/channels/${discord.id}`,"PATCH",{address:"https://evil.example/api/webhooks/1/x"})).status).toBe(400);
+ expect((await request(`/channels/${discord.id}`,"PATCH",{address:NEXT},"bob")).status).toBe(404);
+ const changed=await request(`/channels/${discord.id}`,"PATCH",{address:NEXT});expect(changed.status).toBe(200);expect(await changed.text()).not.toContain("next_fixture_");
+ const row=db.sqlite.prepare("SELECT target,active,last_error AS lastError FROM pulse_channel WHERE id=?").get(discord.id) as {target:string;active:number;lastError:string|null};
+ expect(row).toMatchObject({active:1,lastError:null});expect(row.target).not.toContain("next_fixture_");expect(await openTarget(state.env,"alice",discord.id,"discord",row.target)).toBe(NEXT);
+ const made=await request("/channels","POST",{projectId:"1",type:"webhook",url:"https://hooks.example.com/blup"});const {id,secret}=await made.json() as {id:string;secret:string};
+ expect((await request(`/channels/${discord.id}/secret`,"POST",{})).status).toBe(404);
+ const moved=await request(`/channels/${id}`,"PATCH",{address:"https://hooks.example.com/other"});expect(moved.status).toBe(200);expect((await moved.json() as {label:string}).label).toBe("Webhook · hooks.example.com");
+ const kept=JSON.parse(await openTarget(state.env,"alice",id,"webhook",(db.sqlite.prepare("SELECT target FROM pulse_channel WHERE id=?").get(id) as {target:string}).target)) as {url:string;secret:string};expect(kept).toEqual({url:"https://hooks.example.com/other",secret});
+ const rotated=await(await request(`/channels/${id}/secret`,"POST",{})).json() as {secret:string};expect(rotated.secret).toMatch(/^[a-f0-9]{64}$/);expect(rotated.secret).not.toBe(secret);
+ expect(JSON.parse(await openTarget(state.env,"alice",id,"webhook",(db.sqlite.prepare("SELECT target FROM pulse_channel WHERE id=?").get(id) as {target:string}).target))).toEqual({url:"https://hooks.example.com/other",secret:rotated.secret});
+});

@@ -1,7 +1,7 @@
 import {Hono} from "hono";
 import {z} from "zod";
 import {validate,opaqueId} from "../validation";
-import {discordWebhook,slackWebhook,customWebhook,sealTarget,channelType} from "./channel-crypto";
+import {discordWebhook,slackWebhook,customWebhook,sealTarget,openTarget,webhookTarget,channelType} from "./channel-crypto";
 import {pulseWrite,ownedProject,type PulseApp} from "./access";
 import {projectId} from "./limits";
 const channelParam=z.object({channel:opaqueId});
@@ -16,6 +16,14 @@ const testRequest=z.union([z.object({}).strict(),z.object({projectId,kinds:z.arr
 // One test per destination a minute; the dispatcher sends at each minute.
 export const TEST_SPACING_MS=60_000;
 const nextRound=(now:number)=>Math.floor(now/60_000)*60_000+60_000;
+const newSecret=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,"0")).join("");
+// A destination's new address, read by its own kind's rules.
+const addressOf={discord:discordWebhook,slack:slackWebhook,webhook:customWebhook} as const;
+type Stored={type:string;target:string};
+const ownChannel=(db:D1Database,id:string,owner:string)=>db.prepare("SELECT type,target FROM pulse_channel WHERE id=? AND user_id=?").bind(id,owner).first<Stored>();
+// Saving a destination again: sealed anew, active, without the last error,
+// and free to send at once.
+const resave=(db:D1Database,id:string,owner:string,target:string,label:string)=>db.prepare("UPDATE pulse_channel SET target=?,label=?,active=1,last_error=NULL,next_at=0 WHERE id=? AND user_id=?").bind(target,label,id,owner).run();
 export async function usableProject(env:Cloudflare.Env,owner:string,id:string){const project=await ownedProject(env,owner,id);return project&&project.active&&!project.planDisabled?project:null;}
 export const bindToProject=(db:D1Database,owner:string,project:string,channel:string,type:z.infer<typeof channelType>)=>db.prepare("INSERT INTO pulse_project_channel(project_id,channel_id,type) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM pulse_channel WHERE id=? AND user_id=? AND type=?) ON CONFLICT(project_id,type) DO UPDATE SET channel_id=excluded.channel_id").bind(project,channel,type,channel,owner,type);
 export const channelsApi=new Hono<PulseApp>()
@@ -29,11 +37,31 @@ export const channelsApi=new Hono<PulseApp>()
  // made here and shown in this answer only).
  .post("/",pulseWrite,validate("json",z.discriminatedUnion("type",[projectChoice.extend({type:z.literal("discord"),webhook:discordWebhook}).strict(),projectChoice.extend({type:z.literal("slack"),webhook:slackWebhook}).strict(),projectChoice.extend({type:z.literal("webhook"),url:customWebhook}).strict()])),async c=>{
   const input=c.req.valid("json"),owner=c.get("session").user.id,id=crypto.randomUUID();if(!await usableProject(c.env,owner,input.projectId))return c.json({code:"NOT_FOUND"},404);
-  const secret=input.type==="webhook"?Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,"0")).join(""):null;
+  const secret=input.type==="webhook"?newSecret():null;
   const destination=input.type==="webhook"?{target:JSON.stringify({url:input.url.url,secret}),label:input.url.label}:{target:input.webhook.url,label:input.webhook.label};
   let target:string;try{target=await sealTarget(c.env,owner,id,input.type,destination.target);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
   const [made]=await c.env.DB.batch([c.env.DB.prepare("INSERT INTO pulse_channel(id,user_id,type,target,label,created_at) SELECT ?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_channel WHERE user_id=? AND type=?)<? RETURNING id").bind(id,owner,input.type,target,destination.label,Date.now(),owner,input.type,c.get("access").limits?.projects??0),bindToProject(c.env.DB,owner,input.projectId,id,input.type)]);
   return made.results.length?c.json({id,label:destination.label,secret},201):c.json({code:"QUOTA"},409);
+ })
+ // A new address for a Discord, Slack or webhook destination (a webhook
+ // keeps its signing secret). Telegram is linked again instead.
+ .patch("/:channel",pulseWrite,validate("param",channelParam),validate("json",z.object({address:z.string().max(2048)}).strict()),async c=>{
+  const id=c.req.valid("param").channel,owner=c.get("session").user.id,stored=await ownChannel(c.env.DB,id,owner);if(!stored)return c.json({code:"NOT_FOUND"},404);
+  const type=channelType.parse(stored.type);if(type==="telegram")return c.json({code:"INVALID"},400);
+  const parsed=addressOf[type].safeParse(c.req.valid("json").address);if(!parsed.success)return c.json({code:"INVALID"},400);
+  let target:string;
+  try{
+   const value=type==="webhook"?JSON.stringify({url:parsed.data.url,secret:webhookTarget.parse(JSON.parse(await openTarget(c.env,owner,id,type,stored.target))).secret}):parsed.data.url;
+   target=await sealTarget(c.env,owner,id,type,value);
+  }catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
+  await resave(c.env.DB,id,owner,target,parsed.data.label);return c.json({label:parsed.data.label});
+ })
+ // A webhook's new signing secret, shown once; the old one stops at once.
+ .post("/:channel/secret",pulseWrite,validate("param",channelParam),validate("json",z.object({}).strict()),async c=>{
+  const id=c.req.valid("param").channel,owner=c.get("session").user.id,stored=await ownChannel(c.env.DB,id,owner);if(!stored||stored.type!=="webhook")return c.json({code:"NOT_FOUND"},404);
+  const secret=newSecret();let target:string,label:string;
+  try{const current=webhookTarget.parse(JSON.parse(await openTarget(c.env,owner,id,"webhook",stored.target)));label=`Webhook · ${new URL(current.url).hostname}`.slice(0,80);target=await sealTarget(c.env,owner,id,"webhook",JSON.stringify({url:current.url,secret}));}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
+  await resave(c.env.DB,id,owner,target,label);return c.json({secret});
  })
  .delete("/:channel",validate("param",channelParam),async c=>{
   const id=c.req.valid("param").channel,owner=c.get("session").user.id;

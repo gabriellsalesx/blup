@@ -7572,6 +7572,245 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
     };
 } & {
     "/:channel": {
+        $patch: {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    address: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    address: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    address: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    address: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    address: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    address: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    address: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    address: string;
+                };
+            };
+            output: {
+                label: string;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:channel/secret": {
+        $post: {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                secret: string;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:channel": {
         $delete: {
             input: {
                 param: {

@@ -12,7 +12,7 @@
  import ArrowUp from "@lucide/svelte/icons/arrow-up";
  import Check from "@lucide/svelte/icons/check";
  import Clock from "@lucide/svelte/icons/clock";
- import Link from "@lucide/svelte/icons/link";
+ import Settings from "@lucide/svelte/icons/settings";
  import Unlink from "@lucide/svelte/icons/unlink";
  import Trash2 from "@lucide/svelte/icons/trash-2";
  import {t} from "#lib/i18n.svelte.ts";
@@ -23,8 +23,6 @@
  import Card from "#lib/ui/Card.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import BackLink from "#lib/ui/BackLink.svelte";
- import List from "#lib/ui/List.svelte";
- import ListItem from "#lib/ui/ListItem.svelte";
  import Badge from "#lib/ui/Badge.svelte";
  import ChannelIcon from "#lib/ui/ChannelIcon.svelte";
  import ActionMenu from "#lib/ui/ActionMenu.svelte";
@@ -34,17 +32,19 @@
  // One project's alert destinations. Picking one shows the alerts it can
  // be tested with (an example of each kind, or a plain test), how long
  // they take, and once sent a countdown to the round that sends them and
- // to when it can be tested again. Other destinations of the account can
- // be connected here, taking the place of the one of their kind.
+ // to when it can be tested again. Nothing is picked to start with, so
+ // the send button waits for a choice. The three dots configure the
+ // destination (its address), take it off the project or delete it.
  let {data}:PageProps=$props();
  const project=$derived(data.project);
  const writable=$derived(panel.usage?.readOnly===false&&!!project?.writable);
- const channels=$derived(project?projectChannels(data.channels,project.id).filter(c=>c.active):[]);
- const others=$derived(data.channels.channels.filter(c=>c.active&&!channels.some(own=>own.id===c.id)));
+ // Switched off ones too (a provider refused them): configuring a new
+ // address switches them on again.
+ const channels=$derived(project?projectChannels(data.channels,project.id):[]);
  // The destination being tested: the first one until another is picked.
  let selectedId=$derived(channels[0]?.id??"");
  const selected=$derived(channels.find(c=>c.id===selectedId)??null);
- let kinds=$state<TestKind[]>(["test"]),busy=$state(false);
+ let kinds=$state<TestKind[]>([]),busy=$state(false);
  // The last test of each destination: when it was asked for, the round
  // that sends it and when another can be asked for; from the server after
  // a reload.
@@ -74,9 +74,9 @@
  // The project's destinations become `ids` (at most one of each kind).
  async function bindings(ids:string[]){const current=project;if(!current)return;await run(async()=>{await parseResponse(pulseApi.projects[":project"].channels.$put({param:{project:current.id},json:{channelIds:ids}}));await invalidateAll();toast(()=>t("pulseToastSaved"));});}
  async function unbind(channel:Channel){if(!await confirm({title:t("pulseUnbind"),message:t("pulseUnbindConfirm")}))return;await bindings(channels.filter(c=>c.id!==channel.id).map(c=>c.id));}
- const bind=(channel:Channel)=>bindings([...channels.filter(c=>c.type!==channel.type).map(c=>c.id),channel.id]);
  async function remove(channel:Channel){if(!await confirm({title:t("delete"),message:t("pulseRemoveChannel"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.channels[":channel"].$delete({param:{channel:channel.id}}));await invalidateAll();toast(()=>t("pulseToastDeleted"));});}
- const menu=(channel:Channel)=>[...(writable?[{label:t("pulseUnbind"),Icon:Unlink,onselect:()=>void unbind(channel)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(channel)}];
+ const settingsHref=(channel:Channel)=>resolve("/alerts/[project]/[channel]/settings",{project:project?.id??"",channel:channel.id});
+ const menu=(channel:Channel)=>[...(writable?[{label:t("pulseConfigure"),Icon:Settings,onselect:()=>void goto(settingsHref(channel))},{label:t("pulseUnbind"),Icon:Unlink,onselect:()=>void unbind(channel)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(channel)}];
  const addHref=$derived(project?`${resolve("/alerts/new")}?${new URLSearchParams({project:project.id})}`:resolve("/alerts/new"));
 </script>
 
@@ -92,7 +92,7 @@
    <div class="relative flex items-center gap-4 rounded-xl border p-4 transition-colors {channel.id===selectedId?"border-blup bg-emerald-50/60 dark:bg-emerald-950/30":"border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700"}">
     <button type="button" role="radio" aria-checked={channel.id===selectedId} aria-label={channel.label} class="absolute inset-0 rounded-xl" onclick={()=>selectedId=channel.id}></button>
     <ChannelIcon type={channel.type} class="size-8"/>
-    <span class="min-w-0 flex-1"><span class="flex flex-wrap items-center gap-2"><span class="truncate font-semibold">{channel.label}</span><Badge>{kindName[channel.type]}</Badge></span><span class="block text-sm {channel.lastError?"text-amber-700 dark:text-amber-300":"text-neutral-500"}">{channel.lastError?t("pulseDeliveryFailed"):t("pulseActive")}</span></span>
+    <span class="min-w-0 flex-1"><span class="flex flex-wrap items-center gap-2"><span class="truncate font-semibold">{channel.label}</span><Badge>{kindName[channel.type]}</Badge></span><span class="block text-sm {channel.lastError?"text-amber-700 dark:text-amber-300":"text-neutral-500"}">{!channel.active?t("pulseChannelOff"):channel.lastError?t("pulseDeliveryFailed"):t("pulseActive")}</span></span>
     <span class="relative"><ActionMenu label={t("pulseActions")} items={menu(channel)}/></span>
    </div>
   {/each}
@@ -112,6 +112,7 @@
    {/each}
   </div>
   <p class="mt-5 flex items-start gap-2 text-sm text-neutral-500"><Clock class="mt-0.5 size-4 shrink-0"/>{t("pulseTestTiming")}</p>
+  {#if !selected.active}<p class="mt-3 text-sm text-amber-700 dark:text-amber-300">{t("pulseChannelOffHelp")}</p>{/if}
 
   {#if sent&&now<sent.againAt}
    <div class="mt-5 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800" aria-live="polite">
@@ -124,20 +125,9 @@
    </div>
   {/if}
 
-  <div class="mt-5 flex justify-end"><Button onclick={send} {busy} disabled={!kinds.length||waiting}>{#if waiting&&sent}<Clock class="size-4"/>{t("pulseTestAgainIn",{time:clock(sent.againAt-now)})}{:else}<Send class="size-4"/>{t("pulseSendTests")}{/if}</Button></div>
+  <div class="mt-5 flex justify-end"><Button onclick={send} {busy} disabled={!kinds.length||waiting||!selected.active}>{#if waiting&&sent}<Clock class="size-4"/>{t("pulseTestAgainIn",{time:clock(sent.againAt-now)})}{:else}<Send class="size-4"/>{t("pulseSendTests")}{/if}</Button></div>
  </Card></div>
 {/if}
 
-{#if writable&&others.length}
- <h2 class="mt-10 text-xl font-bold">{t("pulseOtherChannels")}</h2><p class="mt-1 mb-4 text-sm text-neutral-500">{t("pulseOtherChannelsHelp")}</p>
- <List>
-  {#each others as channel(channel.id)}
-   <ListItem>
-    <div class="flex items-center gap-3"><ChannelIcon type={channel.type} class="size-6"/><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{channel.label}</span><Badge>{kindName[channel.type]}</Badge></p></div></div>
-    {#snippet menu()}<Button small variant="secondary" {busy} onclick={()=>bind(channel)}><Link class="size-4"/>{t("pulseBindHere")}</Button>{/snippet}
-   </ListItem>
-  {/each}
- </List>
-{/if}
 
 <p class="mt-10 text-xs text-neutral-500">{t("pulseChannelPrivacy")}</p>
