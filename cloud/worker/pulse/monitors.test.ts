@@ -99,4 +99,8 @@ it("keeps how an incident leaves each service and when it was published",async()
  const updates=(await(await request(`/pages/${id}/incidents/${incident}/updates`)).json() as {updates:{body:string;state:string}[]}).updates;
  expect(updates.map(u=>[u.body,u.state])).toEqual([["Fixed","resolved"],["Looking into it","investigating"]]);
  expect((await request(`/pages/${id}/incidents/${incident}/updates`,"GET",undefined,"bob")).status).toBe(404);
+ expect((await request(`/pages/${id}/incidents/${incident}`,"PATCH",{title:"Renamed"},"bob")).status).toBe(404);expect((await request(`/pages/${id}/incidents/${incident}`,"PATCH",{title:"",state:"x"})).status).toBe(400);
+ expect((await request(`/pages/${id}/incidents/${incident}`,"PATCH",{title:"Renamed"})).status).toBe(200);expect(db.sqlite.prepare("SELECT title FROM pulse_incident WHERE id=?").get(incident)?.title).toBe("Renamed");
+ expect((await request(`/pages/${id}/incidents/${incident}`,"DELETE",undefined,"bob")).status).toBe(404);expect((await request(`/pages/${id}/incidents/${incident}`,"DELETE")).status).toBe(200);
+ for(const table of ["pulse_incident","pulse_incident_update","pulse_incident_component"])expect(db.sqlite.prepare(`SELECT count(*) AS n FROM ${table}`).get()?.n).toBe(0);
 });

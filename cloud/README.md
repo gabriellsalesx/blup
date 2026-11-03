@@ -59,7 +59,7 @@ As rotas são em inglês, como o código; as páginas continuam traduzidas (pt, 
 | Pulse | `/issues` | Problemas (`?project=`) |
 | Pulse | `/monitors`, `/monitors/new`, `/monitors/[id]`, `/monitors/[id]/edit` | Monitores |
 | Pulse | `/status-pages`, `/status-pages/new`, `/status-pages/[id]` | Páginas de status (`?tab=incidents` abre a aba de incidentes) |
-| Pulse | `/status-pages/[id]/incidents/new`, `/status-pages/[id]/incidents/[incident]`, `/status-pages/[id]/incidents/[incident]/update` | Registrar incidente, a página do incidente (serviços afetados e todas as atualizações) e criar atualização de um incidente aberto |
+| Pulse | `/status-pages/[id]/incidents/new`, `/status-pages/[id]/incidents/[incident]`, `/status-pages/[id]/incidents/[incident]/update`, `/status-pages/[id]/incidents/[incident]/settings` | Registrar incidente, a página do incidente (serviços afetados, todas as atualizações e Resolver incidente), criar atualização e configurar (título e excluir) |
 | Pulse | `/alerts`, `/alerts/new` | Avisos (destinos Discord e Telegram) |
 
 ## Conta, planos e dados

@@ -5,10 +5,13 @@
  import Eye from "@lucide/svelte/icons/eye";
  import EyeOff from "@lucide/svelte/icons/eye-off";
  import Plus from "@lucide/svelte/icons/plus";
- import MessageSquarePlus from "@lucide/svelte/icons/message-square-plus";
+ import Settings from "@lucide/svelte/icons/settings";
+ import FileText from "@lucide/svelte/icons/file-text";
+ import Trash2 from "@lucide/svelte/icons/trash-2";
  import {t,language,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import {toast} from "#lib/toast.svelte.ts";
+ import {confirm} from "#lib/confirm.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
  import BackLink from "#lib/ui/BackLink.svelte";
  import DetailHeader from "#lib/ui/DetailHeader.svelte";
@@ -21,7 +24,7 @@
  import PageForm from "../../../lib/PageForm.svelte";
  import {pulseApi,parseResponse} from "../../../lib/api";
  import {panel} from "../../../lib/panel.svelte";
- import {getPages,type Incident} from "../../../lib/status-pages";
+ import {getPages,getIncidents,type Incident} from "../../../lib/status-pages";
  import {ago} from "../../../lib/monitor";
  // One status page: its title and monitors, its own domain and the
  // incidents told to visitors (each opens its own page, with its updates;
@@ -39,6 +42,7 @@
  const dotOf=(i:Incident)=>i.state==="resolved"?"bg-emerald-500":i.impact==="major_outage"||i.impact==="partial_outage"?"bg-red-500":"bg-amber-500";
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
  async function save(values:{title:string;components:{monitorId:string;name:string}[]}){const current=page;if(!current)return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].$patch({param:{page:current.id},json:{title:values.title,components:values.components,language:language()}}));page=(await getPages()).find(p=>p.id===current.id)??null;toast(()=>t("pulseToastSaved"));});}
+ async function removeIncident(item:Incident){const current=page;if(!current||!await confirm({title:t("delete"),message:t("pulseRemoveIncident"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].incidents[":incident"].$delete({param:{page:current.id,incident:item.id}}));incidents=await getIncidents(current.id);toast(()=>t("pulseToastDeleted"));});}
  async function publish(){const current=page;if(!current)return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].$patch({param:{page:current.id},json:{published:!current.published}}));page=(await getPages()).find(p=>p.id===current.id)??null;toast(()=>current.published?t("pulseToastOffline"):t("pulseToastLive"));});}
 </script>
 
@@ -66,7 +70,7 @@
     <ListItem {href} label={item.title}>
      <div class="flex items-center gap-4"><span class="size-2.5 shrink-0 rounded-full {dotOf(item)}" aria-hidden="true"></span><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{item.title}</span><Badge tone={item.state==="resolved"?"green":"amber"}>{stateLabel(item.state)}</Badge></p><p class="text-sm text-neutral-500" title={formatDate(new Date(item.createdAt))}>{t("pulseIncidentCreated",{time:ago(item.createdAt)})}</p></div></div>
      {#snippet actions()}<span class="text-sm text-neutral-500">{item.updates===1?t("pulseOneUpdate"):t("pulseManyUpdates",{count:String(item.updates)})}</span>{/snippet}
-     {#snippet menu()}{#if writable&&item.state!=="resolved"}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseCreateUpdate"),Icon:MessageSquarePlus,onselect:()=>void goto(resolve("/status-pages/[id]/incidents/[incident]/update",{id:pageId,incident:item.id}))}]}/>{/if}{/snippet}
+     {#snippet menu()}{#if writable}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseConfigure"),Icon:Settings,onselect:()=>void goto(resolve("/status-pages/[id]/incidents/[incident]/settings",{id:pageId,incident:item.id}))},{label:t("pulseSeeUpdates"),Icon:FileText,onselect:()=>void goto(href)},{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void removeIncident(item)}]}/>{/if}{/snippet}
     </ListItem>
    {/each}
   </List></div>

@@ -18,6 +18,8 @@ function impactOf(list:Services,total:number):z.infer<typeof impact>{const down=
 async function pageServices(db:D1Database,page:string){return new Set((await db.prepare("SELECT monitor_id AS id FROM pulse_component WHERE page_id=?").bind(page).all<{id:string}>()).results.map(r=>r.id));}
 function setServices(db:D1Database,incident:string,list:Services){return [db.prepare("DELETE FROM pulse_incident_component WHERE incident_id=?").bind(incident),...list.filter(s=>s.status!=="none").map(s=>db.prepare("INSERT INTO pulse_incident_component(incident_id,monitor_id,status) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM pulse_incident WHERE id=?)").bind(incident,s.monitorId,s.status,incident))];}
 const DAY=86_400_000;
+const incidentParam=z.object({page:opaqueId,incident:opaqueId});
+const incidentTitle=z.string().trim().min(1).max(120);
 export const pageParam=z.object({page:opaqueId});
 export async function ownedPage(env:Cloudflare.Env,owner:string,id:string){return env.DB.prepare("SELECT id,title,slug,published,language,plan_disabled AS planDisabled FROM pulse_page WHERE id=? AND user_id=? AND (retire_at IS NULL OR retire_at>?)").bind(id,owner,Date.now()).first<{id:string;title:string;slug:string;published:number;language:string;planDisabled:number}>();}
 async function validComponents(db:D1Database,owner:string,list:z.infer<typeof components>){
@@ -69,6 +71,16 @@ export const pagesApi=new Hono<PulseApp>()
   ]) as [D1Result<{id:string;title:string;state:string;impact:string;createdAt:number;updatedAt:number;updates:number}>,D1Result<{incidentId:string;monitorId:string;status:string}>];
   return c.json({incidents:incidents.results.map(i=>({...i,state:incidentState.parse(i.state),impact:impact.parse(i.impact),services:affected.results.filter(a=>a.incidentId===i.id).map(a=>({monitorId:a.monitorId,status:serviceStatus.parse(a.status)}))}))});
  })
+ // An incident's title, and removing it with all its updates.
+ .patch("/:page/incidents/:incident",pulseWrite,validate("param",incidentParam),validate("json",z.object({title:incidentTitle}).strict()),async c=>{
+  const {page,incident}=c.req.valid("param"),owned=await ownedPage(c.env,c.get("session").user.id,page);if(!owned)return c.json({code:"NOT_FOUND"},404);if(owned.planDisabled)return c.json({code:"PLAN"},403);
+  const done=await c.env.DB.prepare("UPDATE pulse_incident SET title=? WHERE id=? AND page_id=? RETURNING id").bind(c.req.valid("json").title,incident,page).first();return done?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
+ })
+ .delete("/:page/incidents/:incident",validate("param",incidentParam),async c=>{
+  const {page,incident}=c.req.valid("param");if(!await ownedPage(c.env,c.get("session").user.id,page))return c.json({code:"NOT_FOUND"},404);
+  if(!await c.env.DB.prepare("SELECT id FROM pulse_incident WHERE id=? AND page_id=?").bind(incident,page).first())return c.json({code:"NOT_FOUND"},404);
+  await c.env.DB.batch([c.env.DB.prepare("DELETE FROM pulse_incident_update WHERE incident_id=?").bind(incident),c.env.DB.prepare("DELETE FROM pulse_incident_component WHERE incident_id=?").bind(incident),c.env.DB.prepare("DELETE FROM pulse_incident WHERE id=? AND page_id=?").bind(incident,page)]);return c.json({ok:true});
+ })
  // The updates of one incident, newest first (what the public page shows).
  .get("/:page/incidents/:incident/updates",validate("param",z.object({page:opaqueId,incident:opaqueId})),async c=>{
   const {page,incident}=c.req.valid("param");
@@ -79,7 +91,7 @@ export const pagesApi=new Hono<PulseApp>()
  })
  // A new incident: what happened, since when (publishedAt: up to the kept
  // history ago, not later than now) and how each service is left.
- .post("/:page/incidents",pulseWrite,validate("param",pageParam),validate("json",z.object({title:z.string().trim().min(1).max(120),body:z.string().trim().min(1).max(2000),state:incidentState,publishedAt:z.iso.datetime({offset:true}),services}).strict()),async c=>{
+ .post("/:page/incidents",pulseWrite,validate("param",pageParam),validate("json",z.object({title:incidentTitle,body:z.string().trim().min(1).max(2000),state:incidentState,publishedAt:z.iso.datetime({offset:true}),services}).strict()),async c=>{
   const page=c.req.valid("param").page;const owned=await ownedPage(c.env,c.get("session").user.id,page);if(!owned)return c.json({code:"NOT_FOUND"},404);if(owned.planDisabled)return c.json({code:"PLAN"},403);
   const input=c.req.valid("json"),id=crypto.randomUUID(),now=Date.now(),keep=(c.get("access").limits?.retentionDays??30)*DAY,published=Date.parse(input.publishedAt);
   if(published>now+60_000||published<now-keep)return c.json({code:"INVALID"},400);

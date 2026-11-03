@@ -4,7 +4,7 @@
 
 	// The three dots of a row or card: a click opens its actions in a small
 	// menu under them. Arrows move, Enter picks, Escape or a click outside
-	// closes. `danger` paints the item red (deleting).
+	// closes. `danger` paints the item red (deleting), set apart by a line.
 	type Item = { label: string; Icon: Component; onselect: () => void; danger?: boolean };
 	let { label, items }: { label: string; items: Item[] } = $props();
 	const id = $props.id();
@@ -44,7 +44,8 @@
 	ontoggle={(event) => { open = event.newState === "open"; if (open) event.currentTarget.querySelector<HTMLButtonElement>("[role=menuitem]")?.focus(); }}
 	onkeydown={keys}
 >
-	{#each items as item (item.label)}
+	{#each items as item, index (item.label)}
+		{#if item.danger && index > 0 && !items[index - 1]?.danger}<div role="separator" class="mx-1.5 my-1.5 border-t border-neutral-200 dark:border-neutral-800"></div>{/if}
 		<button type="button" role="menuitem" class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left font-medium hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:outline-none dark:hover:bg-neutral-800 dark:focus-visible:bg-neutral-800 {item.danger ? 'text-red-600 dark:text-red-400' : ''}" onclick={(event) => pick(item, event)}><item.Icon class="size-4 shrink-0" />{item.label}</button>
 	{/each}
 </div>
