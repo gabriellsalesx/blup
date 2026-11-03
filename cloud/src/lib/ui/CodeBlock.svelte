@@ -2,12 +2,13 @@
 	import CopyButton from "./CopyButton.svelte";
 
 	// A piece of code or a key to copy: monospace on the code background,
-	// with the copy button in its corner. A command keeps its lines (and
-	// scrolls sideways); a key breaks anywhere to fit.
-	let { code, label, wrap = false }: { code: string; label?: string; wrap?: boolean } = $props();
+	// its lines kept as they are (a long one scrolls sideways, also on a
+	// phone) and the copy button in its own column, so the code never runs
+	// under it.
+	let { code, label }: { code: string; label?: string } = $props();
 </script>
 
-<div class="relative">
-	<pre class="rounded-lg bg-neutral-100 p-4 pr-28 font-mono text-[13px] leading-6 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 {wrap ? 'break-all whitespace-pre-wrap' : 'overflow-x-auto'}">{code}</pre>
-	<div class="absolute top-2.5 right-2.5"><CopyButton text={code} {label} /></div>
+<div class="flex items-start gap-2 rounded-lg bg-neutral-100 dark:bg-neutral-950">
+	<pre class="min-w-0 flex-1 overflow-x-auto py-4 pl-4 font-mono text-[13px] leading-6 whitespace-pre text-neutral-900 dark:text-neutral-100">{code}</pre>
+	<div class="shrink-0 py-2.5 pr-2.5"><CopyButton text={code} {label} /></div>
 </div>

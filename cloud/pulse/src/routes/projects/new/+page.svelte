@@ -28,7 +28,7 @@
  <div class="mt-8 rounded-xl border border-blup bg-white p-6 dark:bg-neutral-900">
   <h2 class="text-lg font-bold">{t("pulseProjectReady")}: {name}</h2>
   <p class="mt-2 text-neutral-500">{t("pulseSDK")}</p>
-  <div class="mt-4"><CodeBlock code={dsn} wrap/></div>
+  <div class="mt-4"><CodeBlock code={dsn}/></div>
   <p class="mt-3 text-sm text-neutral-500">{t("pulseDSNOnce")}</p>
   <div class="mt-5 flex justify-end"><Button onclick={()=>goto(resolve("/"))}>{t("pulseBackToProjects")}</Button></div>
  </div>

@@ -36,7 +36,7 @@
  <div class="mt-8 grid grid-cols-[minmax(0,1fr)] gap-6">
   <Card title={t("pulseUploadToken")} help={t("pulseUploadTokenHelp")}>
    {#snippet action()}{#if writable}<Button small variant={maps.token?"secondary":"primary"} {busy} onclick={mint}><KeyRound class="size-4"/>{maps.token?t("pulseNewUploadToken"):t("pulseCreateUploadToken")}</Button>{/if}{/snippet}
-   {#if token}<div class="mt-4"><CodeBlock code={token} wrap/><p class="mt-2 text-xs text-neutral-500">{t("pulseUploadTokenOnce")}</p></div>
+   {#if token}<div class="mt-4"><CodeBlock code={token}/><p class="mt-2 text-xs text-neutral-500">{t("pulseUploadTokenOnce")}</p></div>
    {:else if maps.token}<p class="mt-4 text-sm">{t("pulseUploadTokenActive",{prefix:maps.token.prefix,date:formatDate(new Date(maps.token.createdAt))})}</p>
    {:else}<p class="mt-4 text-sm text-neutral-500">{t("pulseUploadTokenNone")}</p>{/if}
   </Card>
