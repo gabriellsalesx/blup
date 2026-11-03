@@ -4709,6 +4709,70 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 } & {
+    "/slug": {
+        $get: {
+            input: {
+                query: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                query: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                query: {
+                    slug: string;
+                };
+            };
+            output: {
+                state: "invalid";
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                query: {
+                    slug: string;
+                };
+            };
+            output: {
+                state: "reserved";
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                query: {
+                    slug: string;
+                };
+            };
+            output: {
+                state: "taken" | "available";
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
     "/": {
         $post: {
             input: {
