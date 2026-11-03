@@ -75,6 +75,21 @@ export interface NoteVersion {
 }
 
 /**
+ * Page is an address of the Blup Cloud panel that the CLI and the Studio
+ * open in the browser. Only these exist; the panel's own routes are English
+ * (its pages are translated) and must match cloud/shared/panel-paths.ts.
+ */
+export enum Page {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    PageAccount = "/account",
+    PagePlan = "/account/plan",
+};
+
+/**
  * ReminderUse is how many reminder e-mails the plan has this month (0:
  * none) and how many went.
  */

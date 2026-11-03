@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { OpenBlupCloud } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { BlupAccount as Account } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import HardDrive from "@lucide/svelte/icons/hard-drive";
@@ -27,7 +28,7 @@
         {q.free}</span>
     </div>
     <div class="actions">
-      <button class="btn" onclick={() => OpenBlupCloud("/conta/plano")}>{q.plans}</button>
+      <button class="btn" onclick={() => OpenBlupCloud(Page.PagePlan)}>{q.plans}</button>
       <HistoryPurge bind:account compact />
     </div>
     <button class="close" title={q.close} aria-label={q.close} onclick={() => (closed = true)}><X size={16} /></button>

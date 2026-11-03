@@ -195,8 +195,13 @@ func (s *Studio) AIConsent() app.AIConsent { return app.LoadAIConsent() }
 // dest" ("openrouter" or "blup").
 func (s *Studio) SetAIConsent(dest string, ok bool) error { return app.SetAIConsent(dest, ok) }
 
-// OpenBlupCloud opens the account panel in the browser.
-func (s *Studio) OpenBlupCloud(page string) { s.OpenURL(blupcloud.BaseURL() + page) }
+// OpenBlupCloud opens a page of the account panel in the browser; any
+// other value is ignored.
+func (s *Studio) OpenBlupCloud(page blupcloud.Page) {
+	if page.Valid() {
+		s.OpenURL(page.URL())
+	}
+}
 
 // CreateNotesPassword turns sync on and returns the recovery key (shown once).
 func (s *Studio) CreateNotesPassword(password string) (string, error) {

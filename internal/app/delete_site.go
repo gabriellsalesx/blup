@@ -164,7 +164,7 @@ func deleteRepo(ctx context.Context, owner, repo, part string, fail func(string,
 // deleteBlupSite takes the site down from Blup Cloud. One already gone
 // (deleted in the panel) is fine.
 func deleteBlupSite(ctx context.Context, id string, fail func(string, error, string)) bool {
-	link := blupcloud.BaseURL() + "/conta"
+	link := blupcloud.PageAccount.URL()
 	c, _, err := blupClient()
 	if err != nil {
 		fail("blupSite", errors.New(describe(err)), link)

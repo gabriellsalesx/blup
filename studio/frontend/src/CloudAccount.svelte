@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { BlupAccount, BlupLogin, BlupLoginWait, BlupLoginCancel, BlupSignOut, CreateNotesPassword, UnlockNotes, OpenBlupCloud, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { BlupAccount as Account } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import { Clipboard } from "@wailsio/runtime";
@@ -129,7 +130,7 @@
     <p class="muted">
       {account.live ? c.live : c.manual}
       {#if !brief}{c.storage.replace("{used}", size(account.storageBytes)).replace("{total}", size(account.storageMB * 1048576))}.{/if}
-      {#if !account.live}<button class="link" onclick={() => OpenBlupCloud("/conta/plano")}>{c.upgrade}</button>{/if}
+      {#if !account.live}<button class="link" onclick={() => OpenBlupCloud(Page.PagePlan)}>{c.upgrade}</button>{/if}
     </p>
   {/if}
 {/if}

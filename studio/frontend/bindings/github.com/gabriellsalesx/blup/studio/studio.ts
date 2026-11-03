@@ -717,9 +717,10 @@ export function OpenAttachment(name: string, confirmed: boolean): $CancellablePr
 }
 
 /**
- * OpenBlupCloud opens the account panel in the browser.
+ * OpenBlupCloud opens a page of the account panel in the browser; any
+ * other value is ignored.
  */
-export function OpenBlupCloud(page: string): $CancellablePromise<void> {
+export function OpenBlupCloud(page: blupcloud$0.Page): $CancellablePromise<void> {
     return $Call.ByID(2160663514, page);
 }
 

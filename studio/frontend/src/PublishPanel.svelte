@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { onDestroy, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
   import { CurrentDomain, SetDomain, CheckDomain, RemoveDomain, Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, CheckSiteSlug, SyncStatus, Sync, SyncRemote, SetSyncRemote, OpenNewGitHubRepo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
@@ -219,7 +220,7 @@
         <CloudAccount bind:account={cloud} notes={false} />
         {#if cloud?.signedIn && cloud.sitesMax === 0}
           <p class="box">{p.blupPaid}</p>
-          <div class="actions"><button class="btn" onclick={() => OpenBlupCloud("/conta/plano")}>{p.blupPlans}</button></div>
+          <div class="actions"><button class="btn" onclick={() => OpenBlupCloud(Page.PagePlan)}>{p.blupPlans}</button></div>
         {:else if cloud?.signedIn}
           <label class="field"><span>{p.blupAddress}</span>
             <div class="row addr">

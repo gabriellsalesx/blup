@@ -3,6 +3,7 @@
 </script>
 
 <script lang="ts">
+  import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails, AIConsent, SetAIConsent } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, BlupAccount as Account, AIQuota, AIConsent as Consent, UpdateInfo } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
@@ -481,8 +482,8 @@
         <div class="item">
           <span></span>
           <span class="keyrow">
-            <button class="btn ghost" onclick={() => OpenBlupCloud("/conta/plano")}>{s.plans}</button>
-            <button class="btn ghost" onclick={() => OpenBlupCloud("/conta")}>{s.manage}</button>
+            <button class="btn ghost" onclick={() => OpenBlupCloud(Page.PagePlan)}>{s.plans}</button>
+            <button class="btn ghost" onclick={() => OpenBlupCloud(Page.PageAccount)}>{s.manage}</button>
           </span>
         </div>
       {/if}

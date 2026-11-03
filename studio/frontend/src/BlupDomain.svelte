@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { BlupDomain as LoadDomain, SetBlupDomain, RemoveBlupDomain, OpenBlupCloud } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { BlupDomain } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Check from "@lucide/svelte/icons/check";
@@ -58,7 +59,7 @@
     {#if error}<p class="bad">{error}</p>{:else}<p class="muted"><span class="spin"><Loader size={14} /></span> {b.checking}</p>{/if}
   {:else if !info.available && !domain}
     <p class="box">{b.paid}</p>
-    <div class="actions"><button class="btn" onclick={() => OpenBlupCloud("/conta/plano")}>{b.plans}</button></div>
+    <div class="actions"><button class="btn" onclick={() => OpenBlupCloud(Page.PagePlan)}>{b.plans}</button></div>
   {:else if !info.published}
     <p class="muted">{b.unpublished}</p>
   {:else if !domain}
@@ -77,10 +78,10 @@
     </div>
     {#if domain.status === "disabled"}
       <p class="box">{b.disabledHelp.replace("{domain}", domain.hostname).replace("{slug}", slug)}</p>
-      {#if !info.available}<div class="actions"><button class="btn" onclick={() => OpenBlupCloud("/conta/plano")}>{b.plans}</button></div>{/if}
+      {#if !info.available}<div class="actions"><button class="btn" onclick={() => OpenBlupCloud(Page.PagePlan)}>{b.plans}</button></div>{/if}
     {:else if grace}
       <p class="box">{b.grace.replace("{domain}", domain.hostname).replace("{date}", grace)}</p>
-      <div class="actions"><button class="btn" onclick={() => OpenBlupCloud("/conta/plano")}>{b.plans}</button></div>
+      <div class="actions"><button class="btn" onclick={() => OpenBlupCloud(Page.PagePlan)}>{b.plans}</button></div>
     {/if}
     {#if domain.status !== "active" && domain.status !== "disabled" && domain.records?.length}
       <p>{b.records}</p>
