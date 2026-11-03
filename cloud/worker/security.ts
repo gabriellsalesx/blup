@@ -14,3 +14,8 @@ export function mutationOriginAllowed(req: Request,trustedOrigins:readonly strin
 	if (req.headers.has("cookie") && !req.headers.get("authorization")?.startsWith("Bearer ") && site !== "same-origin") return false;
 	return true;
 }
+
+// What the Pulse panel (another subdomain) may call with its cookies: its
+// own API, who is signed in, and the sign-in itself (code or passkey).
+const pulseCorsPaths=/^\/api\/(?:pulse(?:\/|$)|me(?:\/language)?$|config$|auth\/(?:get-session|sign-out|email-otp\/send-verification-otp|sign-in\/email-otp|passkey\/(?:generate-authenticate-options|verify-authentication|generate-register-options|verify-registration))$)/;
+export const pulseCorsPath=(pathname:string)=>pulseCorsPaths.test(pathname);

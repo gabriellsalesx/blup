@@ -70,7 +70,7 @@ Aplicar SQL versionado é o fluxo de lançamento. Não gerar outro schema Better
 
 - [ ] **BLOQUEANTE para login por e-mail:** em **Compute > Email Service > Email Sending**, fazer **Onboard Domain** de `getblup.io`. Conferir os registros SPF, DKIM, DMARC e de retorno propostos, sua verificação e o remetente `no-reply@getblup.io`. Preservar o serviço de e-mail já usado pelo domínio. [Configuração oficial](https://developers.cloudflare.com/email-service/get-started/send-emails/).
 - [ ] Conferir o binding `EMAIL` de produção com `allowed_sender_addresses` limitado ao remetente do produto, `MAIL_FROM` correspondente e `EMAIL_MODE=send`.
-- [ ] **BLOQUEANTE para login público:** criar widget Turnstile para `cloud.getblup.io`, trocar a site key de teste e guardar o secret correspondente. [Widget e validação](https://developers.cloudflare.com/turnstile/get-started/).
+- [ ] **BLOQUEANTE para login público:** criar widget Turnstile para `cloud.getblup.io` e `pulse.getblup.io` (o Pulse tem o próprio `/sign-in`, com a mesma conta), trocar a site key de teste e guardar o secret correspondente. [Widget e validação](https://developers.cloudflare.com/turnstile/get-started/).
 - [ ] **BLOQUEANTE para staff:** criar aplicação Access para o hostname inteiro `staff.getblup.io`, incluindo assets e `/api/staff/*`. Permitir somente identidades da equipe. Guardar URL HTTPS do time e audience em `ACCESS_TEAM_DOMAIN` e `ACCESS_AUD`. [JWT Access](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/).
 - [ ] Definir `STAFF_OWNER_EMAIL` como secret para o administrador inicial. Conferir que sua identidade no Access corresponde; o valor não vai para os docs ou vars públicas.
 

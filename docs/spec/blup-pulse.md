@@ -654,3 +654,14 @@ As pendências restantes são operacionais e de homologação:
 5. Publicar a matriz de versões SDK realmente homologadas e validar o fluxo de pagamento, SSO, monitores e exclusão em cada fase. A classificação mobile continua em teste até essa homologação.
 
 Essas pendências não reabrem nome, preços, intervalo Ultra, cortesia ou política de desligamento. O produto continua em implementação por fases; os handoffs de cada fase devem atualizar o contrato efetivamente entregue.
+
+## Login dentro do Pulse
+
+O Pulse tem o próprio `/sign-in` (`pulse.getblup.io/sign-in`), sem passar pelo endereço do Cloud. A conta é a mesma: o formulário (`src/lib/ui/SignInForm.svelte`) e a moldura (`src/lib/ui/SignInFrame.svelte`, azul no Cloud e verde `#16846b` no Pulse, com o desenho `login-blups-pulse.svg`) são compartilhados pelos dois painéis. O Pulse fala com o Better Auth do Worker do Cloud por `createBlupAuthClient(cloudURL)`, com `credentials: "include"`; o cookie de sessão continua do Cloud e vale para os dois painéis.
+
+- Quem abre o Pulse sem sessão (401 em `/api/me`) vai para `/sign-in?next=<página>`; depois de entrar, `returnPath` só aceita uma página do próprio Pulse e o painel recarrega com `goto(..., { refreshAll: true })`. Com sessão, `/sign-in` leva direto à página pedida.
+- O Worker libera para a origem `PULSE_APP_URL`, com credenciais, só as rotas de login (`/api/config`, envio e confirmação do código, opções e verificação da passkey) além das que já eram do Pulse (`pulseCorsPath`, com teste). Gerenciar passkeys, excluir conta, cobrança e staff continuam só no Cloud.
+- A passkey aceita as duas origens (`origin: [APP_URL, PULSE_APP_URL]`), com `rpID` `getblup.io`.
+- A CSP do Pulse libera `https://challenges.cloudflare.com` em `script-src`, `frame-src` e `connect-src`, igual ao Cloud.
+- Operacional: o widget Turnstile de produção precisa ter `pulse.getblup.io` na lista de hostnames.
+

@@ -20,6 +20,7 @@ import { staffApi } from "./staff";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
 import { voicePrice } from "./ai";
 import { cleanUp } from "./cleanup";
+import { pulseCorsPath } from "./security";
 import { cleanSites } from "./sites-cleanup";
 import { DAY,softDelete,restoreAccount,purgeAccounts,cancelDeletedBilling,observePlan } from "./lifecycle";
 import { serveSite } from "./serve-site";
@@ -562,4 +563,8 @@ it("records a narration usage.cost from an invalid JSON audio response",async()=
  vi.stubGlobal("fetch",vi.fn(async()=>Response.json({usage:{cost:0.002},error:{message:"no audio"}})));
  const r=await request("/ai/audio/speech","POST",{model:"microsoft/mai-voice-2.1",input:"A",voice:"en-US-Emma:MAI-Voice-2.1"});
  expect(r.status).toBe(502);expect(d1.sqlite.prepare("SELECT cost_micros FROM ai_usage").get()?.cost_micros).toBe(2000);
+});
+describe("Pulse panel cross-origin paths",()=>{
+	it.each(["/api/pulse","/api/pulse/monitors","/api/me","/api/me/language","/api/config","/api/auth/get-session","/api/auth/sign-out","/api/auth/email-otp/send-verification-otp","/api/auth/sign-in/email-otp","/api/auth/passkey/generate-authenticate-options","/api/auth/passkey/verify-authentication","/api/auth/passkey/generate-register-options","/api/auth/passkey/verify-registration"])("allows %s",path=>expect(pulseCorsPath(path)).toBe(true));
+	it.each(["/api/auth/passkey/list-user-passkeys","/api/auth/passkey/delete-passkey","/api/auth/delete-user","/api/auth/change-email","/api/auth/device/approve","/api/billing/state","/api/staff/users","/api/me/export","/api/configx","/api/pulsex"])("refuses %s",path=>expect(pulseCorsPath(path)).toBe(false));
 });

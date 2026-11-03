@@ -105,7 +105,8 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 			passkey({
 				rpID: cfg.rpID,
 				rpName: "Blup Cloud",
-				origin: cfg.appUrl,
+				// Both panels sign in with the same passkeys (rpID is getblup.io).
+				origin: [cfg.appUrl, ...(cfg.pulseUrl ? [cfg.pulseUrl] : [])],
 				// Passkey-first: an account can start with a passkey alone. The
 				// user is created only after the WebAuthn ceremony succeeds.
 				registration: {

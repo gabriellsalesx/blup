@@ -54,6 +54,7 @@ As rotas são em inglês, como o código; as páginas continuam traduzidas (pt, 
 | Cloud | `/account/pulse` | Leva ao painel Pulse depois do login |
 | Cloud | `/device` | Aprovar o login do Blup Studio (`?user_code=`) |
 | Staff | `/staff`, `/staff/accounts/[id]`, `/staff/team`, `/staff/log` | Contas, conta, equipe e registro (no host staff, sem o prefixo `/staff`) |
+| Pulse | `/sign-in` | Entrar no Pulse, com a mesma conta e o mesmo formulário do Cloud, em verde (`?next=` volta à página do Pulse que pediu o login) |
 | Pulse | `/` e `/projects/new` | Projetos e novo projeto |
 | Pulse | `/issues` | Problemas (`?project=`) |
 | Pulse | `/monitors`, `/monitors/new`, `/monitors/[id]`, `/monitors/[id]/edit` | Monitores |

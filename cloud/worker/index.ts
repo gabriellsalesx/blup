@@ -31,7 +31,7 @@ import { isStudio, usageOf } from "./usage";
 import {user as userTable, session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
-import { mutationOriginAllowed } from "./security";
+import { mutationOriginAllowed, pulseCorsPath } from "./security";
 import {reconcileAlerts,dispatchAlerts} from "./pulse/outbox";
 import {checkDue} from "./pulse/scheduler";
 import {pulseMaintenance} from "./pulse/cleanup";
@@ -259,8 +259,8 @@ export default {
 		if(url.hostname===env.PULSE_INGEST_HOST)return secure(await pulseIngest(req,env));
 		if(url.hostname===env.PULSE_PUBLIC_HOST)return secure(await servePulsePage(req,env)??new Response("Not found",{status:404}));
 		const origin=req.headers.get("origin"),pulseOrigin=env.PULSE_APP_URL;
-		const pulseCors=origin===pulseOrigin&&!!pulseOrigin&&/^\/api\/(?:pulse(?:\/|$)|me(?:\/language)?$|auth\/(?:get-session|sign-out)$)/.test(url.pathname);
-		if(pulseCors&&req.method==="OPTIONS")return secure(new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":pulseOrigin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Methods":"GET, POST, PUT, PATCH, DELETE, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-Blup-Language","Access-Control-Max-Age":"600",Vary:"Origin"}}));
+		const pulseCors=origin===pulseOrigin&&!!pulseOrigin&&pulseCorsPath(url.pathname);
+		if(pulseCors&&req.method==="OPTIONS")return secure(new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":pulseOrigin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Methods":"GET, POST, PUT, PATCH, DELETE, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-Blup-Language, X-Captcha-Response","Access-Control-Max-Age":"600",Vary:"Origin"}}));
 		const staffApi = url.pathname.startsWith("/api/staff");
 		const staffPage = url.pathname === "/staff" || url.pathname.startsWith("/staff/");
 		if (env.STAFF_HOST) {

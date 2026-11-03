@@ -17,28 +17,27 @@
  import PanelShell from "#lib/ui/PanelShell.svelte";
  import Toaster from "#lib/ui/Toaster.svelte";
  import ConfirmHost from "#lib/ui/ConfirmHost.svelte";
- import LanguagePicker from "#lib/ui/LanguagePicker.svelte";
- import ThemePicker from "#lib/ui/ThemePicker.svelte";
  import SignOutButton from "#lib/ui/SignOutButton.svelte";
  import {cloudURL,rpc,pulseApi,parseResponse} from "../lib/api";
- import {cloudPaths,signInFor} from "../../../shared/panel-paths";
+ import {cloudPaths} from "../../../shared/panel-paths";
  import {panel} from "../lib/panel.svelte";
  let {children}:LayoutProps=$props();
  const links=$derived([{href:resolve("/"),label:t("pulseProjects"),Icon:Folder,match:(path:string)=>path===resolve("/")||path===resolve("/projects/new")},{href:resolve("/issues"),label:t("pulseIssues"),Icon:Bug},{href:resolve("/monitors"),label:t("pulseMonitors"),Icon:Activity,match:(path:string)=>path.startsWith(resolve("/monitors"))},{href:resolve("/status-pages"),label:t("pulsePages"),Icon:Globe,match:(path:string)=>path.startsWith(resolve("/status-pages"))},{href:resolve("/alerts"),label:t("pulseAlerts"),Icon:Bell,match:(path:string)=>path.startsWith(resolve("/alerts"))}]);
  let selectionBusy=$state(false),keep=$state({projects:[] as string[],monitors:[] as string[],pages:[] as string[]});
  async function saveSelection(){selectionBusy=true;try{await parseResponse(pulseApi.selection.$put({json:keep}));panel.usage=await parseResponse(pulseApi.usage.$get());location.reload();}catch{toast(()=>t("errorInvalid"),{kind:"error"});}finally{selectionBusy=false;}}
- // Signing out ends the Blup session on the Cloud, then goes to its sign-in.
- async function signOut(){try{await fetch(`${cloudURL}/api/auth/sign-out`,{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:"{}"});}finally{location.href=`${cloudURL}${cloudPaths.signIn}`;}}
+ // Signing out ends the Blup session, then opens the sign-in again (a
+ // full load, so nothing of the account stays in memory).
+ async function signOut(){try{await fetch(`${cloudURL}/api/auth/sign-out`,{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:"{}"});}finally{location.href=resolve("/sign-in");}}
  let alive=true;onDestroy(()=>{alive=false;});
  const saver=createLanguageSaver((language)=>parseResponse(rpc.me.language.$put({json:{language}})),id=>alive&&panel.me?.id===id,()=>toast(()=>t("errorGeneric"),{kind:"error"}));
  $effect(()=>{document.documentElement.lang=intlLocale();});
  $effect(()=>{const me=panel.me,selected=language(),revision=i18n.revision;void revision;if(me)void saver.schedule(me.id,selected,me.language);});
 </script>
 <svelte:head><title>Blup Pulse</title><meta name="robots" content="noindex,nofollow" /></svelte:head>
-<!-- An error page stands alone, outside the panel, like the Cloud's. -->
-{#if page.error}{@render children()}
+<!-- An error page and the sign-in stand alone, outside the panel. -->
+{#if page.error||page.route.id==="/sign-in"}{@render children()}
 {:else if !panel.ready}<main class="p-10"><p>{t("loading")}</p></main>
-{:else if !panel.me}<main class="mx-auto max-w-xl p-10"><img src="/mascot.svg" alt="" class="mb-6 size-24" /><h1 class="text-3xl font-bold">Blup Pulse</h1><h2 class="mt-5 text-xl font-semibold">{t("pulseWelcome")}</h2><p class="my-4">{t("pulseLead")}</p><a class="font-semibold text-blup underline" href={`${cloudURL}${signInFor(cloudPaths.pulse)}`}>{t("pulseLogin")}</a><div class="mt-6 flex gap-2"><LanguagePicker /><ThemePicker /></div></main>
+{:else if !panel.me}<main class="mx-auto max-w-xl p-10"><p>{t("errorGeneric")}</p><Button class="mt-4" onclick={()=>location.reload()}>{t("retry")}</Button></main>
 {:else}<PanelShell {links} home={resolve("/")} app={{current:"pulse",links:{cloud:`${cloudURL}${cloudPaths.account}`,pulse:resolve("/")}}} languages wide>
  {#snippet foot()}<SignOutButton onclick={signOut}/>{/snippet}
  {#if !panel.usage?.plan}<p class="mb-6 rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950">{t("pulseNeedPlan")} <a href={`${cloudURL}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>{/if}
