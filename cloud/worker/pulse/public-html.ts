@@ -12,7 +12,9 @@ export type PublicUpdate={body:string;state:string;createdAt:string};
 export type PublicService={name:string;status:"downtime"|"degraded"|"resolved"};
 export type PublicIncident={id:string;title:string;state:string;impact:string;createdAt:string;updatedAt:string;services:PublicService[];updates:PublicUpdate[]};
 export type PublicLook={showTitle:boolean;links:{label:string;url:string}[];logos:{light:string|null;dark:string|null}};
-export type PublicStatus={title:string;language:Language;historyDays:number;components:PublicComponent[];incidents:PublicIncident[];maintenance:PublicMaintenance[]}&PublicLook;
+// `home` is where the page lives (its own domain when it has one), set
+// when it is served.
+export type PublicStatus={home?:string;title:string;language:Language;historyDays:number;components:PublicComponent[];incidents:PublicIncident[];maintenance:PublicMaintenance[]}&PublicLook;
 
 const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]??""));
 const DAY=86_400_000;
@@ -94,6 +96,10 @@ h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spaci
 .inc-line{position:relative}.inc-line .tl+.tl{margin-top:16px}.inc-line .tl:not(:last-child) .tl-mark{background:linear-gradient(var(--line),var(--line)) center 36px/1px calc(100% - 22px) no-repeat}
 .back{display:inline-flex;align-items:center;gap:8px;margin-bottom:20px;color:var(--muted);font-weight:500;text-decoration:none}.back:hover{color:var(--text)}
 .inc-top{padding:24px 24px 20px}.inc-top h1{margin:12px 0 6px;font-size:26px;text-align:left}.inc-services{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:16px 24px;border-top:1px solid var(--line)}.inc-services>span{color:var(--muted);margin-right:4px}.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;background:var(--head);border:1px solid var(--line);font-size:14px}
+.history-top{text-align:center;margin-bottom:32px}.history-top h1{margin:0 0 14px}.window{display:inline-flex;align-items:center;gap:14px;color:var(--muted)}.arrow{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px;background:var(--head);border:1px solid var(--line);color:var(--text)}.arrow:hover{background:var(--line)}.arrow.off{opacity:.4}
+.month-day{display:flex;justify-content:space-between;gap:12px;padding:12px 20px;background:var(--head);border-top:1px solid var(--line);color:var(--muted);font-size:14px}.head+.month-day{border-top:0}.month-list{padding:12px 20px}.month-list .inc{margin:0 -12px}
+.none{display:flex;align-items:center;justify-content:center;gap:8px;margin:0;padding:40px 20px;color:var(--muted)}
+.head-link{color:var(--muted);font-size:14px;font-weight:500;text-decoration:none}.head-link:hover{color:var(--text)}
 .inc-body{padding:20px 24px 24px;border-top:1px solid var(--line);background:var(--head);border-radius:0 0 12px 12px}.services{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 8px;font-size:13px;color:var(--muted)}.incident h4{margin:0 0 6px;font-size:15px}.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:1px;background:var(--head);border:1px solid var(--line)}
 .update{margin:6px 0 0}.update p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.update small{color:var(--muted)}
 
@@ -153,6 +159,7 @@ const marks={
  done:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
  dashed:'<path d="M10.1 2.182a10 10 0 0 1 3.8 0"/><path d="M13.9 21.818a10 10 0 0 1-3.8 0"/><path d="M17.609 3.721a10 10 0 0 1 2.69 2.7"/><path d="M2.182 13.9a10 10 0 0 1 0-3.8"/><path d="M20.279 17.609a10 10 0 0 1-2.7 2.69"/><path d="M21.818 10.1a10 10 0 0 1 0 3.8"/><path d="M3.721 6.391a10 10 0 0 1 2.7-2.69"/><path d="M6.391 20.279a10 10 0 0 1-2.69-2.7"/>',
  back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+ left:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',
 } as const;
 const languageNames:Record<Language,string>={pt:"Português",en:"English",es:"Español"};
 // The page's one script, allowed by its hash: the stored theme before the
@@ -167,7 +174,7 @@ function headerOf(page:PublicStatus,lang:Language,t:(key:"language"|"theme"|"lig
  const languages=`<div class="lang-picker"><button class="icon-button" type="button" popovertarget="lang-menu" aria-label="${escape(t("language"))}: ${lang}" style="anchor-name:--lang">${lucide(marks.globe)}<span class="lang-code">${lang}</span></button><div id="lang-menu" class="dropdown" popover style="position-anchor:--lang" role="menu">${(Object.keys(languageNames) as Language[]).map(l=>`<a role="menuitemradio" href="?lang=${l}" hreflang="${l}" lang="${l}" aria-checked="${l===lang}">${languageNames[l]}</a>`).join("")}</div></div>`;
  const themes=`<div class="theme-picker"><button class="icon-button" type="button" popovertarget="theme-menu" aria-label="${escape(t("theme"))}" style="anchor-name:--theme">${lucide(marks.sun,' class="when-light"')}${lucide(marks.moon,' class="when-dark"')}${lucide(marks.chevron,"",16)}</button><div id="theme-menu" class="dropdown" popover style="position-anchor:--theme" role="menu">${([["light",marks.sun],["dark",marks.moon],["system",marks.monitor]] as const).map(([v,mark])=>`<button type="button" role="menuitemradio" data-set-theme="${v}">${lucide(mark)}${escape(t(v))}</button>`).join("")}</div></div>`;
  const menu=page.links.length?`<button class="icon-button menu-toggle" type="button" popovertarget="mobile-menu" aria-label="Menu">${lucide(marks.menu,' class="open"',22)}${lucide(marks.x,' class="close"',22)}</button><nav id="mobile-menu" class="mobile-menu" popover aria-label="Menu">${links}</nav>`:"";
- return `<header class="site-header"><div class="bar"><a class="brand" href="${root||"./"}?lang=${lang}"${page.showTitle?"":` aria-label="${escape(page.title)}"`}>${logo}${page.showTitle?`<span>${escape(page.title)}</span>`:""}</a>${nav}<div class="actions">${languages}${themes}${menu}</div></div></header>`;
+ return `<header class="site-header"><div class="bar"><a class="brand" href="${page.home?escape(page.home):root||"./"}"${page.showTitle?"":` aria-label="${escape(page.title)}"`}>${logo}${page.showTitle?`<span>${escape(page.title)}</span>`:""}</a>${nav}<div class="actions">${languages}${themes}${menu}</div></div></header>`;
 }
 // The badge for another site (in an iframe): the state's mark and words,
 // linking to the page. Light, dark or following the visitor's screen.
@@ -186,9 +193,12 @@ function incidentParts(lang:Language,stamp:Intl.DateTimeFormat){
  const pill=(i:PublicIncident)=>{const p=pillOf(i);return `<span class="pill p-${p.tone}">${escape(p.label)}</span>`;};
  return {
   stateName,pill,
-  incidentHead:(i:PublicIncident)=>`<div class="inc-head"><h4>${escape(i.title)}</h4>${pill(i)}</div>`,
   updateCard:(u:PublicUpdate)=>`<div class="upd"><p class="meta"><strong>${escape(stateName(u.state))}</strong><span>${escape(stamp.format(new Date(u.createdAt)))} UTC</span></p><p>${escape(u.body)}</p></div>`,
   serviceTone:(s:PublicService["status"])=>s==="downtime"?"down":s==="degraded"?"partial":"up",
+  // An incident in a list: its title and pill, then its latest update as
+  // a card on a timeline mark; earlier updates show as cards stacked under
+  // it and a count. The whole card opens the incident's own page.
+  incidentCard:(i:PublicIncident)=>{const [latest,...earlier]=i.updates;return `<a class="inc" href="incidents/${i.id}?lang=${lang}"><div class="inc-head"><h4>${escape(i.title)}</h4>${pill(i)}</div>${latest?`<div class="tl"><span class="tl-mark${latest.state==="resolved"?" t-up":""}">${lucide(latest.state==="resolved"?marks.done:marks.dashed)}</span><div class="stack${earlier.length?" more":""}"><div class="upd"><p class="meta"><strong>${escape(stateName(latest.state))}</strong><span>${escape(stamp.format(new Date(latest.createdAt)))} UTC</span></p><p>${escape(latest.body)}</p></div></div></div>`:""}${earlier.length?`<p class="prev"><span>${lucide(marks.dashed)}</span>${escape(earlier.length===1?t("pulsePreviousUpdate"):t("pulsePreviousUpdates",{count:earlier.length}))}</p>`:""}</a>`;},
  };
 }
 // What every public page shares: the head (title, the theme script, the
@@ -204,16 +214,37 @@ ${body}
 }
 // One incident's own page: its pill, title and start, the services it
 // touched and every update, newest first, on a timeline.
-export function renderIncidentPage(page:PublicStatus,id:string,now=Date.now(),language:Language=page.language):string{
+export function renderIncidentPage(page:PublicStatus,i:PublicIncident,now=Date.now(),language:Language=page.language):string{
  const lang=language,t=<K extends MessageKey>(key:K,...args:TranslationArgs<(typeof messages)[K][0]>)=>translate(lang,key,...args);
  const stamp=new Intl.DateTimeFormat(lang,{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"});
- const {pill,updateCard,serviceTone}=incidentParts(lang,stamp),i=page.incidents.find(x=>x.id===id);
- if(!i)return "";
+ const {pill,updateCard,serviceTone}=incidentParts(lang,stamp);
  const services=i.services.length?`<div class="inc-services"><span>${escape(t("pulseAffectedServices"))}</span>${i.services.map(s=>`<span class="chip"><span class="dot ${serviceTone(s.status)}">${svg(serviceTone(s.status),10,3)}</span>${escape(s.name)}</span>`).join("")}</div>`:"";
  const updates=i.updates.map(u=>`<div class="tl"><span class="tl-mark${u.state==="resolved"?" t-up":""}">${lucide(u.state==="resolved"?marks.done:marks.dashed)}</span>${updateCard(u)}</div>`).join("");
- const body=`<a class="back" href="../?lang=${lang}">${lucide(marks.back,"",18)}${escape(t("pulseBackToOverview"))}</a>
+ const body=`<a class="back" href="../incidents?lang=${lang}">${lucide(marks.back,"",18)}${escape(t("pulsePreviousIncidents"))}</a>
 <section class="card"><div class="inc-top">${pill(i)}<h1>${escape(i.title)}</h1><p class="updated">${escape(stamp.format(new Date(i.createdAt)))} UTC</p></div>${services}${updates?`<div class="inc-body"><div class="inc-line">${updates}</div></div>`:""}</section>`;
  return shell(page,lang,`${i.title} · ${page.title}`,body,now,"../");
+}
+// The page's previous incidents, three months at a time (newest first): a
+// card per month, its incidents by day with how many, or that none was
+// reported; arrows go to the months before and after.
+export type IncidentWindow={months:{key:string;start:number;end:number}[];older:string|null;newer:string|null};
+export function renderIncidentHistory(page:PublicStatus,window:IncidentWindow,incidents:PublicIncident[],now=Date.now(),language:Language=page.language):string{
+ const lang=language,t=<K extends MessageKey>(key:K,...args:TranslationArgs<(typeof messages)[K][0]>)=>translate(lang,key,...args);
+ const stamp=new Intl.DateTimeFormat(lang,{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"});
+ const monthName=new Intl.DateTimeFormat(lang,{month:"long",year:"numeric",timeZone:"UTC"}),shortMonth=new Intl.DateTimeFormat(lang,{month:"short",year:"numeric",timeZone:"UTC"}),dayName=new Intl.DateTimeFormat(lang,{dateStyle:"medium",timeZone:"UTC"});
+ const {incidentCard}=incidentParts(lang,stamp);
+ const months=window.months.map(m=>{
+  const list=incidents.filter(i=>{const at=Date.parse(i.createdAt);return at>=m.start&&at<m.end;});
+  const days=[...new Set(list.map(i=>dayOf(Date.parse(i.createdAt))))].sort((a,b)=>b-a);
+  const body=days.length?days.map(day=>{const items=list.filter(i=>dayOf(Date.parse(i.createdAt))===day);return `<div class="month-day"><span>${escape(dayName.format(new Date(day*DAY)))}</span><span>${escape(items.length===1?t("pulseIncidentOne"):t("pulseIncidentMany",{count:items.length}))}</span></div><div class="month-list">${items.map(incidentCard).join("")}</div>`;}).join(""):`<p class="none">${lucide(marks.done,"",18)}${escape(t("pulseNoIncidentsDay"))}</p>`;
+  return `<section class="card"><div class="head"><h2>${escape(monthName.format(new Date(m.start)))}</h2></div>${body}</section>`;
+ }).join("");
+ const arrow=(to:string|null,mark:string,label:string)=>to?`<a class="arrow" href="incidents?to=${to}&amp;lang=${lang}" aria-label="${escape(label)}">${lucide(mark,"",18)}</a>`:`<span class="arrow off" aria-hidden="true">${lucide(mark,"",18)}</span>`;
+ const range=t("pulseRange",{from:shortMonth.format(new Date(window.months[2].start)),to:shortMonth.format(new Date(window.months[0].start))});
+ const body=`<a class="back" href="./?lang=${lang}">${lucide(marks.back,"",18)}${escape(t("pulseBackToOverview"))}</a>
+<section class="history-top"><h1>${escape(t("pulsePreviousIncidents"))}</h1><div class="window">${arrow(window.older,marks.left,t("pulseOlderMonths"))}<span>${escape(range)}</span>${arrow(window.newer,marks.right,t("pulseNewerMonths"))}</div></section>
+${months}`;
+ return shell(page,lang,`${t("pulsePreviousIncidents")} · ${page.title}`,body,now);
 }
 // `language` is the one the visitor chose (?lang=), else the page's own.
 export function renderStatusPage(page:PublicStatus,now=Date.now(),language:Language=page.language):string{
@@ -248,11 +279,8 @@ export function renderStatusPage(page:PublicStatus,now=Date.now(),language:Langu
   return `<div class="row"><div class="line"><span class="name"><span class="dot ${tone==="unknown"?"b-unknown":tone}">${svg(tone,12,3)}</span>${escape(c.name)}</span><span class="state t-${tone}">${escape(stateLabel)}</span></div><div class="bars" role="img" aria-label="${escape(pct)}">${bars}</div><div class="scale"><span><span class="from-long">${escape(t("pulseDaysAgo",{days:range}))}</span><span class="from-short">${escape(t("pulseDaysAgo",{days:Math.min(range,30)}))}</span></span><span class="pct">${escape(pct)}</span><span>${escape(t("pulseToday"))}</span></div></div>`;
  };
 
- const {incidentHead,updateCard}=incidentParts(lang,stamp);
- // An incident in the list: its title and a pill with how it stands, then
- // its latest update as a card on a timeline mark; earlier updates show as
- // cards stacked under it and a count. The whole card opens its own page.
- const incident=(i:PublicIncident)=>{const [latest,...earlier]=i.updates;return `<a class="inc" href="incidents/${i.id}?lang=${lang}">${incidentHead(i)}${latest?`<div class="tl"><span class="tl-mark${latest.state==="resolved"?" t-up":""}">${lucide(latest.state==="resolved"?marks.done:marks.dashed)}</span><div class="stack${earlier.length?" more":""}">${updateCard(latest)}</div></div>`:""}${earlier.length?`<p class="prev"><span>${lucide(marks.dashed)}</span>${escape(earlier.length===1?t("pulsePreviousUpdate"):t("pulsePreviousUpdates",{count:earlier.length}))}</p>`:""}</a>`;};
+ const {incidentCard}=incidentParts(lang,stamp);
+ const incident=incidentCard;
  // The last seven days, newest first, each with its incidents; an
  // incident still open from before them shows on its own day after them.
  const older=[...new Set(open.map(i=>dayOf(Date.parse(i.createdAt))).filter(day=>day<=today-7))].sort((a,b)=>b-a);
@@ -262,11 +290,11 @@ export function renderStatusPage(page:PublicStatus,now=Date.now(),language:Langu
  }).join("");
  // Maintenance now and coming, soonest first: its window, what it is about
  // and the services in it.
- const windowOf=(m:PublicMaintenance)=>`${stamp.format(new Date(m.startsAt))} – ${stamp.format(new Date(m.endsAt))} UTC`;
+ const windowOf=(m:PublicMaintenance)=>`${t("pulseRange",{from:stamp.format(new Date(m.startsAt)),to:stamp.format(new Date(m.endsAt))})} UTC`;
  const maintenance=page.maintenance.length?`<section class="card"><div class="head"><h2>${escape(t("pulseScheduledMaintenance"))}</h2></div>${page.maintenance.map(m=>`<div class="day"><div class="incident"><h4>${escape(m.title)}<span class="tag t-maint">${escape(m.state==="active"?t("pulseMaintenanceActive"):t("pulseMaintenanceScheduled"))}</span></h4><p class="services"><span>${escape(windowOf(m))}</span>${m.services.map(name=>`<span>${escape(name)}</span>`).join("")}</p>${m.body?`<div class="update"><p>${escape(m.body)}</p></div>`:""}</div></div>`).join("")}</section>`:"";
 
  return shell(page,lang,page.title,`<section class="hero"><span class="badge ${overall.tone==="unknown"?"b-unknown":overall.tone}">${svg(overall.tone,40,2.5)}</span><h1>${escape(overall.label)}</h1>${updated}</section>
 <section class="card"><div class="head"><h2>${escape(t("pulseServices"))}</h2><div class="legend">${([["up","pulseOperational"],["partial","pulseDegraded"],["down","pulseDown"],["maint","pulseMaintenance"],["none","pulseNotMonitored"]] as const).map(([k,key])=>`<span class="l-${k}" data-tip="${escape(t(key))}" role="img" aria-label="${escape(t(key))}">${legendSvg(k)}</span>`).join("")}</div></div>${page.components.map(component).join("")||`<div class="row"><p class="updated">${escape(t("pulseNoData"))}</p></div>`}</section>
 ${maintenance}
-<section class="card"><div class="head"><h2>${escape(t("pulseIncidents"))}</h2></div>${history}</section>`,now);
+<section class="card"><div class="head"><h2>${escape(t("pulseIncidents"))}</h2><a class="head-link" href="incidents?lang=${lang}">${escape(t("pulsePreviousIncidents"))}</a></div>${history}</section>`,now);
 }

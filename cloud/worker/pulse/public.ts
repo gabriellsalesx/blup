@@ -2,11 +2,12 @@ import {languageOf,languageSchema} from "../../shared/language";
 import {pulseAccess,sha256} from "./limits";
 import {z} from "zod";
 import {pageSlug,serviceStatus,maintenanceStateAt} from "./page-rules";
-import {renderStatusPage,renderIncidentPage,renderBadge,THEME_SCRIPT} from "./public-html";
+import {renderStatusPage,renderIncidentPage,renderIncidentHistory,renderBadge,THEME_SCRIPT} from "./public-html";
+import {publishedPage,incidentById,incidentsBetween,monthWindow,monthParam} from "./public-incidents";
 import {navLinks,linksOf,logoVariant,logoKey,logoVersion,logoType} from "./page-look";
 const affectedStatus=serviceStatus.exclude(["none"]);
 
-const publicSchema=z.object({unavailable:z.literal(false),title:z.string().max(100),showTitle:z.boolean(),links:navLinks,logos:z.object({light:logoVersion.nullable(),dark:logoVersion.nullable()}),slug:pageSlug,language:z.enum(["pt","en","es"]),historyDays:z.number().int().min(1).max(90),components:z.array(z.object({name:z.string().max(80),state:z.enum(["up","down","unknown"]),lastCheckedAt:z.iso.datetime().nullable(),incident:z.enum(["downtime","degraded"]).nullable(),maintenance:z.boolean(),days:z.array(z.object({date:z.string(),up:z.number().int().nonnegative(),down:z.number().int().nonnegative(),unknown:z.number().int().nonnegative(),maintenance:z.number().int().nonnegative()})).max(90)})).max(50),maintenance:z.array(z.object({title:z.string().max(120),body:z.string().max(2000),state:z.enum(["scheduled","active"]),startsAt:z.iso.datetime(),endsAt:z.iso.datetime(),services:z.array(z.string().max(80)).max(50)})).max(10),incidents:z.array(z.object({id:z.uuid(),title:z.string().max(120),state:z.string(),impact:z.string(),createdAt:z.iso.datetime(),updatedAt:z.iso.datetime(),services:z.array(z.object({name:z.string().max(80),status:affectedStatus})).max(50),updates:z.array(z.object({body:z.string().max(2000),state:z.string(),createdAt:z.iso.datetime()})).max(20)})).max(20)});
+const publicSchema=z.object({unavailable:z.literal(false),domain:z.string().max(253).nullable(),title:z.string().max(100),showTitle:z.boolean(),links:navLinks,logos:z.object({light:logoVersion.nullable(),dark:logoVersion.nullable()}),slug:pageSlug,language:z.enum(["pt","en","es"]),historyDays:z.number().int().min(1).max(90),components:z.array(z.object({name:z.string().max(80),state:z.enum(["up","down","unknown"]),lastCheckedAt:z.iso.datetime().nullable(),incident:z.enum(["downtime","degraded"]).nullable(),maintenance:z.boolean(),days:z.array(z.object({date:z.string(),up:z.number().int().nonnegative(),down:z.number().int().nonnegative(),unknown:z.number().int().nonnegative(),maintenance:z.number().int().nonnegative()})).max(90)})).max(50),maintenance:z.array(z.object({title:z.string().max(120),body:z.string().max(2000),state:z.enum(["scheduled","active"]),startsAt:z.iso.datetime(),endsAt:z.iso.datetime(),services:z.array(z.string().max(80)).max(50)})).max(10),incidents:z.array(z.object({id:z.uuid(),title:z.string().max(120),state:z.string(),impact:z.string(),createdAt:z.iso.datetime(),updatedAt:z.iso.datetime(),services:z.array(z.object({name:z.string().max(80),status:affectedStatus})).max(50),updates:z.array(z.object({body:z.string().max(2000),state:z.string(),createdAt:z.iso.datetime()})).max(20)})).max(20)});
 export async function publicPage(env:Cloudflare.Env,slug:string){
  const parsed=pageSlug.safeParse(slug);if(!parsed.success)return null;
  const page=await env.DB.prepare("SELECT id,user_id AS userId,title,slug,language,show_title AS showTitle,nav_links AS navLinks,logo_light AS logoLight,logo_dark AS logoDark FROM pulse_page WHERE slug=? AND published=1 AND plan_disabled=0").bind(parsed.data).first<{id:string;userId:string;title:string;slug:string;language:string;showTitle:number;navLinks:string;logoLight:string|null;logoDark:string|null}>();if(!page)return null;
@@ -39,7 +40,9 @@ export async function publicPage(env:Cloudflare.Env,slug:string){
  }
  const publicIncidents=[];
  for(const item of incidents.results){const updates=await env.DB.prepare("SELECT body,state,created_at AS createdAt FROM pulse_incident_update WHERE incident_id=? AND created_at>? ORDER BY created_at DESC LIMIT 20").bind(item.id,cutoff).all<{body:string;state:string;createdAt:number}>();publicIncidents.push({id:item.id,title:item.title,state:item.state,impact:item.impact,createdAt:new Date(item.createdAt).toISOString(),updatedAt:new Date(item.updatedAt).toISOString(),services:affected.filter(a=>a.incidentId===item.id).map(a=>({name:a.name,status:a.status})),updates:updates.results.map(u=>({...u,createdAt:new Date(u.createdAt).toISOString()}))});}
- const result=publicSchema.parse({unavailable:false,title:page.title,showTitle:!!page.showTitle,links:linksOf(page.navLinks),logos:{light:page.logoLight,dark:page.logoDark},slug:page.slug,language:languageOf(page.language)??"en",historyDays:access.limits?.retentionDays??30,components:publicComponents,incidents:publicIncidents,maintenance:publicMaintenance});
+ // The page's own domain, when it is live and the plan allows it.
+ const domain=access.limits?.customDomain?(await env.DB.prepare("SELECT hostname FROM pulse_page_domain WHERE page_id=? AND verified_at IS NOT NULL AND status='active' AND ssl='active'").bind(page.id).first<{hostname:string}>())?.hostname??null:null;
+ const result=publicSchema.parse({unavailable:false,domain,title:page.title,showTitle:!!page.showTitle,links:linksOf(page.navLinks),logos:{light:page.logoLight,dark:page.logoDark},slug:page.slug,language:languageOf(page.language)??"en",historyDays:access.limits?.retentionDays??30,components:publicComponents,incidents:publicIncidents,maintenance:publicMaintenance});
  try{await cache?.put(key,Response.json(result,{headers:{"cache-control":"public, max-age=15"}}));}catch{}
  return result;
 }
@@ -50,8 +53,8 @@ const badgeTheme=z.enum(["light","dark","auto"]).catch("auto");
 export async function servePulsePage(req:Request,env:Cloudflare.Env,slugOverride?:string):Promise<Response|null>{
  const url=new URL(req.url);let slug=slugOverride;
  if(!slug){
-  if(url.hostname===env.PULSE_PUBLIC_HOST){if(/^\/[^/]+$/.test(url.pathname))return new Response(null,{status:301,headers:{location:`${url.origin}${url.pathname}/`,"cache-control":"no-store"}});const match=/^\/([^/]+)\/(status\.json|badge|logo-(?:light|dark)|incidents\/[0-9a-f-]{36})?$/.exec(url.pathname);if(!match)return new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});try{slug=decodeURIComponent(match[1]);}catch{return new Response("Not found",{status:404});}}
-  else{const row=await env.DB.prepare("SELECT p.slug FROM pulse_page_domain d JOIN pulse_page p ON p.id=d.page_id WHERE d.hostname=? AND d.verified_at IS NOT NULL AND d.status='active' AND d.ssl='active' AND p.plan_disabled=0").bind(url.hostname).first<{slug:string}>();if(!row)return null;slug=row.slug;if(!publicFiles.includes(url.pathname)&&!/^\/incidents\/[0-9a-f-]{36}$/.test(url.pathname))return new Response("Not found",{status:404});}
+  if(url.hostname===env.PULSE_PUBLIC_HOST){if(/^\/[^/]+$/.test(url.pathname))return new Response(null,{status:301,headers:{location:`${url.origin}${url.pathname}/`,"cache-control":"no-store"}});const match=/^\/([^/]+)\/(status\.json|badge|logo-(?:light|dark)|incidents|incidents\/[0-9a-f-]{36})?$/.exec(url.pathname);if(!match)return new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});try{slug=decodeURIComponent(match[1]);}catch{return new Response("Not found",{status:404});}}
+  else{const row=await env.DB.prepare("SELECT p.slug FROM pulse_page_domain d JOIN pulse_page p ON p.id=d.page_id WHERE d.hostname=? AND d.verified_at IS NOT NULL AND d.status='active' AND d.ssl='active' AND p.plan_disabled=0").bind(url.hostname).first<{slug:string}>();if(!row)return null;slug=row.slug;if(!publicFiles.includes(url.pathname)&&!/^\/incidents(?:\/[0-9a-f-]{36})?$/.test(url.pathname))return new Response("Not found",{status:404});}
  }
  if(!["GET","HEAD"].includes(req.method))return new Response(null,{status:405,headers:{allow:"GET, HEAD","cache-control":"no-store"}});
  if(!(await env.PULSE_PUBLIC_LIMIT.limit({key:`public:${req.headers.get("cf-connecting-ip")??"local"}`})).success)return Response.json({code:"TOO_MANY_REQUESTS"},{status:429,headers:{"Retry-After":"60","Cache-Control":"no-store"}});
@@ -72,10 +75,20 @@ export async function servePulsePage(req:Request,env:Cloudflare.Env,slugOverride
   return new Response(req.method==="HEAD"?null:object.body,{headers:{"content-type":logoType.catch("image/webp").parse(object.httpMetadata?.contentType),"cache-control":lasting?"public, max-age=31536000, immutable":"public, max-age=300","x-content-type-options":"nosniff","content-security-policy":"default-src 'none'; sandbox","cross-origin-resource-policy":"cross-origin",etag:`"${version}"`}});
  }
  const lang=languageSchema.safeParse(url.searchParams.get("lang")).data;
- // One incident's own page, with all its updates.
+ // Where the page lives: its own domain when it has one (from the shared
+ // address too), else its address here (relative, set by the header).
+ const shown={...page,home:page.domain&&url.hostname!==page.domain?`https://${page.domain}/`:undefined};
+ const missing=()=>new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});
+ let body:string;
+ // The previous incidents (three months at a time) and one incident's own
+ // page read the incidents themselves: the main page only carries the
+ // latest.
  const asked=/\/incidents\/([0-9a-f-]{36})$/.exec(url.pathname)?.[1];
- if(asked&&!page.incidents.some(i=>i.id===asked))return new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});
- const body=asked?renderIncidentPage(page,asked,Date.now(),lang):renderStatusPage(page,Date.now(),lang);
+ if(asked||/\/incidents$/.test(url.pathname)){
+  const source=await publishedPage(env,slug);if(!source)return missing();
+  if(asked){const incident=await incidentById(env,source,asked);if(!incident)return missing();body=renderIncidentPage(shown,incident,Date.now(),lang);}
+  else{const window=monthWindow(monthParam.safeParse(url.searchParams.get("to")).data??null,source.cutoff);body=renderIncidentHistory(shown,window,await incidentsBetween(env,source,window.from,window.to),Date.now(),lang);}
+ }else body=renderStatusPage(shown,Date.now(),lang);
  return respond(body,"text/html; charset=utf-8",{"Content-Security-Policy":`default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; script-src '${await themeScriptHash()}'; frame-ancestors 'none'; base-uri 'none'`});
 }
 // The CSP source of the page's one inline script (computed once).

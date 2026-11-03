@@ -788,3 +788,15 @@ O card abre `incidents/<id>` (o DTO público passou a levar o `id` do incidente;
 - todas as atualizações, da mais nova para a mais antiga, ligadas por uma linha do tempo.
 
 Um id que não está na página responde 404.
+
+## Incidentes anteriores e endereço do cabeçalho
+
+A página `incidents` (`/<slug>/incidents`, ou `/incidents` no domínio próprio) mostra os incidentes anteriores em janelas de três meses, do mais novo para o mais antigo:
+- **Janela:** `?to=AAAA-MM` é o último mês; sem ele, ou num mês futuro, vale o atual.
+- **Setas:** a da esquerda vai para os três meses anteriores e a da direita para os seguintes. A da esquerda some quando a janela já chega ao limite que o plano guarda; a da direita, quando a janela já está no mês atual.
+- **Meses:** cada mês é um card. Dentro dele, os dias com incidente, com a contagem ("3 incidentes"), e os mesmos cards da página de status. Um mês vazio diz "Nenhum incidente relatado".
+- **Acesso:** o card de Incidentes da página de status tem o link "Incidentes anteriores", e "Voltar" na página de um incidente leva a ela.
+
+O histórico e a página de um incidente consultam os incidentes no D1 (`public-incidents.ts`), dentro do que o plano guarda e com a mesma projeção fechada, sem o limite dos 20 da página principal. O histórico mostra até 200 incidentes por janela e até 50 atualizações por incidente.
+
+A logo e o título do cabeçalho levam à página de status. Quando ela tem domínio próprio ativo, e o plano permite, levam ao domínio, mesmo a partir do endereço compartilhado; sem domínio, levam ao próprio endereço da página. O DTO público passou a ter `domain`.

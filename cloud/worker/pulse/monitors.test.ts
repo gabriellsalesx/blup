@@ -78,7 +78,12 @@ it("publishes only explicit component names and incident text, escapes attacks a
  // The list links each incident to its own page, with every update.
  const incidentId=(page as {incidents:{id:string}[]}).incidents[0].id;expect(html).toContain(`href="incidents/${incidentId}?lang=en"`);
  const own=await servePulsePage(new Request(`https://pulse.audit.invalid/public-page/incidents/${incidentId}`),state.env),ownHtml=await own?.text()??"";
- expect(own?.status).toBe(200);expect(ownHtml).toContain("&lt;img src=x");expect(ownHtml).not.toContain("<img src=x");expect(ownHtml).toContain('href="../?lang=en"');expect(ownHtml).toContain("Public service");
+ expect(own?.status).toBe(200);expect(ownHtml).toContain("&lt;img src=x");expect(ownHtml).not.toContain("<img src=x");expect(ownHtml).toContain('href="../incidents?lang=en"');expect(ownHtml).toContain('class="brand" href="../"');
+ // The previous incidents, three months at a time.
+ const history=await(await servePulsePage(new Request("https://pulse.audit.invalid/public-page/incidents"),state.env))?.text()??"";
+ expect(history).toContain("Previous incidents");expect(history).toContain(`href="incidents/${incidentId}?lang=en"`);expect(history).toContain("November 2026");expect(history).toContain("September 2026");expect(history).toContain('class="arrow off"');
+ const older=await(await servePulsePage(new Request("https://pulse.audit.invalid/public-page/incidents?to=2026-08"),state.env))?.text()??"";expect(older).toContain("August 2026");expect(older).not.toContain(`incidents/${incidentId}`);
+expect(ownHtml).toContain("Public service");
  expect((await servePulsePage(new Request(`https://pulse.audit.invalid/public-page/incidents/${crypto.randomUUID()}`),state.env))?.status).toBe(404);
  db.sqlite.exec("UPDATE subscription SET status='canceled' WHERE reference_id='alice'");expect(await publicPage(state.env,"public-page")).toEqual({unavailable:true});expect((await servePulsePage(new Request("https://pulse.audit.invalid/public-page/"),state.env))?.status).toBe(503);
 });

@@ -3142,6 +3142,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             output: {
                 unavailable: false;
+                domain: string | null;
                 title: string;
                 showTitle: boolean;
                 links: {
@@ -3365,6 +3366,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             output: {
                 unavailable: false;
+                domain: string | null;
                 title: string;
                 showTitle: boolean;
                 links: {
