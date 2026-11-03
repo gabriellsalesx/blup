@@ -668,7 +668,7 @@ O Pulse tem o próprio `/sign-in` (`pulse.getblup.io/sign-in`), sem passar pelo 
 
 ## Primeiros passos
 
-Até a conta completar tudo, o painel do Pulse mostra no fim de todas as páginas, debaixo do conteúdo, o cartão "Primeiros passos no Blup Pulse" (`pulse/src/lib/SetupGuide.svelte`). Os passos, em ordem: plano com o Pulse ativo, primeiro projeto, primeiro erro recebido, primeiro monitor, destino de aviso ligado a um projeto e página de status. Sem plano ativo, os demais ficam travados com o aviso para ativar um plano.
+Até a conta completar tudo, o painel do Pulse mostra no fim das páginas principais do menu (Projetos, Problemas, Monitores, Página de status e Avisos), debaixo do conteúdo, o cartão "Primeiros passos no Blup Pulse" (`pulse/src/lib/SetupGuide.svelte`). Os passos, em ordem: plano com o Pulse ativo, primeiro projeto, primeiro erro recebido, primeiro monitor, destino de aviso ligado a um projeto e página de status. Sem plano ativo, os demais ficam travados com o aviso para ativar um plano.
 
 - `GET /api/pulse/setup` devolve `{steps:[{id,done}]}` na ordem acima, calculado do que a conta já tem (nada é marcado à mão), com uma consulta só no D1.
 - O primeiro erro fica em `pulse_project.first_event_at` (migração `0020`): enquanto ele não existe, a rota pergunta ao objeto de cada projeto (até 10) se há algum problema guardado e anota a data na primeira vez; depois não pergunta mais.
