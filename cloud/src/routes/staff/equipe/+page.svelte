@@ -12,13 +12,12 @@
 	// Who is on the staff. Each one also needs to be allowed in Cloudflare
 	// Access (the door); this list is the role inside.
 	let { data } = $props();
-	let team = $state<Team | null>(null);
+	let team = $derived<Team | null>(data.team);
 	let email = $state("");
 	let role = $state<Role>("support");
 	let busy = $state(false);
 
 	const load = () => staffApi.team().then((t) => (team = t)).catch(() => toast("Não deu para carregar a equipe.", { kind: "error" }));
-	load();
 
 	async function add(e: SubmitEvent) {
 		e.preventDefault();

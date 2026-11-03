@@ -1,6 +1,5 @@
 <script lang="ts">
  import {t,formatDate} from "#lib/i18n.svelte.ts";
- import { onMount } from "svelte";
  import { goto } from "$app/navigation";
  import Globe from "@lucide/svelte/icons/globe";
  import Row from "#lib/ui/Row.svelte";
@@ -12,13 +11,12 @@
  import { toast } from "#lib/toast.svelte.ts";
  import { bytes } from "#lib/usage.ts";
  let {data}=$props();
- let result=$state<Awaited<ReturnType<typeof api.sites>>|null>(null);
+ let result=$derived(data.sites);
  let busy=$state("");
  const limit=$derived(result?.limit??data.me.plan.limits.sites);
  const downgrade=$derived(result?.downgrade??null);
  const when=(date:string)=>formatDate(date);
  async function load(){try{result=await api.sites();}catch(error){toast(()=>errorMessage(error),{kind:"error"});}}
- onMount(()=>{void load();});
  async function choose(site:Site){
   busy=site.id;
   try{await api.selectRetained(site.id);await load();toast(()=>t("siteChoiceSaved"));}

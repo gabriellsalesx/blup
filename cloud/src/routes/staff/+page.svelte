@@ -4,19 +4,18 @@
 	import Search from "@lucide/svelte/icons/search";
 	import { staffApi, staffHref, when, type Stats } from "#lib/staff.ts";
 	import { createPager } from "#lib/pager.svelte.ts";
-	import { toast } from "#lib/toast.svelte.ts";
 	import Pager from "#lib/ui/Pager.svelte";
 	import Stat from "#lib/ui/Stat.svelte";
 
 	// Accounts: how many there are (per plan), then the list, newest first,
 	// found by the start of the e-mail or the ID, a page at a time.
+	let { data } = $props();
 	let q = $state("");
-	let stats = $state<Stats | null>(null);
-	const pager = createPager((cursor) => staffApi.users(q, cursor));
+	const stats = $derived<Stats | null>(data.stats);
+	// A fresh list whenever the route loads its first page again.
+	const pager = $derived(createPager((cursor) => staffApi.users(q, cursor), data.first));
 	let timer: ReturnType<typeof setTimeout>;
 
-	staffApi.stats().then((s) => (stats = s)).catch(() => {});
-	pager.reset().then(() => { if (pager.failed) toast("Não deu para buscar.", { kind: "error" }); });
 	const typed = () => { clearTimeout(timer); timer = setTimeout(() => pager.reset(), 250); };
 </script>
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import AccountId from "#lib/ui/AccountId.svelte";
 	import { accountIdHelp } from "#lib/account-id.ts";
-	import { goto, invalidateAll } from "$app/navigation";
+	import { goto, refreshAll } from "$app/navigation";
 	import { page } from "$app/state";
 	import ArrowLeft from "@lucide/svelte/icons/arrow-left";
 	import External from "@lucide/svelte/icons/external-link";
@@ -55,7 +55,7 @@
 
 	async function run(fn: () => Promise<unknown>, done: string) {
 		busy = true;
-		try { await fn(); toast(done); await invalidateAll(); }
+		try { await fn(); toast(done); await refreshAll(); }
 		catch { toast("Não deu certo. Tente de novo.", { kind: "error" }); }
 		finally { busy = false; }
 	}

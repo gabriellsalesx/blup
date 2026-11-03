@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { staffApi, staffHref, actionLabel, when } from "#lib/staff.ts";
 	import { createPager } from "#lib/pager.svelte.ts";
-	import { toast } from "#lib/toast.svelte.ts";
 	import Pager from "#lib/ui/Pager.svelte";
 	import PageHeader from "#lib/ui/PageHeader.svelte";
 
 	// Every staff action, newest first, a page at a time.
-	const pager = createPager((cursor) => staffApi.log(cursor));
-	pager.reset().then(() => { if (pager.failed) toast("Não deu para carregar o registro.", { kind: "error" }); });
+	let { data } = $props();
+	// A fresh list whenever the route loads its first page again.
+	const pager = $derived(createPager((cursor) => staffApi.log(cursor), data.first));
 </script>
 
 <PageHeader title="Registro"/>

@@ -1,14 +1,16 @@
 // Pages by cursor, for any list the API serves as { items, nextCursor }:
 // next() continues after the last item, prev() goes back to the cursor
 // the earlier page started at. reset() starts over (a new search).
+// `first` is the first page already loaded by the route's `load` (null
+// when that failed), so the list shows with the page.
 
-type Page<T> = { items: T[]; nextCursor: string | null };
+export type Page<T> = { items: T[]; nextCursor: string | null };
 
-export function createPager<T>(load: (cursor: string | null) => Promise<Page<T>>) {
-	let items = $state<T[]>([]);
-	let next = $state<string | null>(null);
+export function createPager<T>(load: (cursor: string | null) => Promise<Page<T>>, first?: Page<T> | null) {
+	let items = $state<T[]>(first?.items ?? []);
+	let next = $state<string | null>(first?.nextCursor ?? null);
 	let busy = $state(false);
-	let failed = $state(false);
+	let failed = $state(first === null);
 	// The cursor each page started at (null: the first page).
 	let starts = $state<(string | null)[]>([null]);
 

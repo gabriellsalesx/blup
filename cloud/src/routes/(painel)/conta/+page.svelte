@@ -3,7 +3,7 @@
 	import AccountId from "#lib/ui/AccountId.svelte";
 	import PageHeader from "#lib/ui/PageHeader.svelte";
 	import { accountIdHelp } from "#lib/account-id.ts";
-	import { goto, invalidateAll } from "$app/navigation";
+	import { goto, invalidate, refreshAll } from "$app/navigation";
 	import KeyRound from "@lucide/svelte/icons/key-round";
 	import Trash from "@lucide/svelte/icons/trash-2";
 	import { authClient, cancelled, message } from "#lib/auth.ts";
@@ -16,7 +16,6 @@
 
 	// The profile: name, e-mail, passkeys, leaving every device, deleting.
 	let { data } = $props();
-	const passkeys = authClient.useListPasskeys();
 	let busy = $state(false);
 	let nameOpen = $state(false);
 	let name = $state("");
@@ -37,7 +36,7 @@
 		if (error) return toast(()=>message(error), { kind: "error" });
 		nameOpen = false;
 		toast(()=>t("nameSaved"));
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	async function sendLinkCode(e: SubmitEvent) {
@@ -57,7 +56,7 @@
 		if (error) return toast(()=>message(error), { kind: "error" });
 		linkOpen = false;
 		toast(()=>t("emailLinked"));
-		await invalidateAll();
+		await refreshAll();
 	}
 
 	async function addPasskey() {
@@ -65,14 +64,14 @@
 		const { error } = await authClient.passkey.addPasskey();
 		busy = false;
 		if (error && !cancelled(error)) toast(()=>message(error), { kind: "error" });
-		else if (!error) toast(()=>t("passkeyAdded"));
+		else if (!error) { toast(()=>t("passkeyAdded")); await invalidate("app:passkeys"); }
 	}
 
 	async function removePasskey(id: string, name: string) {
 		if (!(await confirm({ title: t("removePasskeyTitle"), message: t("removePasskeyBody",{name}), confirmLabel: t("remove"), danger: true }))) return;
 		const { error } = await authClient.passkey.deletePasskey({ id });
 		if (error) toast(()=>message(error), { kind: "error" });
-		else toast(()=>t("passkeyRemoved"));
+		else { toast(()=>t("passkeyRemoved")); await invalidate("app:passkeys"); }
 	}
 
 	async function leaveEverywhere() {
@@ -123,9 +122,9 @@
 
 	<Row title={t("passkeys")}  help={t("passkeyHelp")} >
 		{#snippet action()}<Button variant="secondary" {busy} onclick={addPasskey}>{t("add")}</Button>{/snippet}
-		{#if $passkeys.data?.length}
+		{#if data.passkeys.length}
 			<ul class="mt-3 grid gap-2">
-				{#each $passkeys.data as p (p.id)}
+				{#each data.passkeys as p (p.id)}
 					<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800">
 						<KeyRound class="size-4 text-neutral-500" />
 						<span class="min-w-0 flex-1 text-sm"><b>{p.name || t("passkey")}</b> <span class="text-neutral-500">· {t("passkeyAddedAt",{date:date(p.createdAt)})}</span></span>

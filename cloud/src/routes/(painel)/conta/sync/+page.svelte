@@ -19,7 +19,7 @@
 	const limit = $derived(data.me.plan.limits.storageMB);
 	const used = $derived(data.me.usage.storageBytes);
 	const maxDevices = $derived(data.me.plan.limits.devices);
-	let devices = $state<Device[] | null>(null);
+	let devices = $derived<Device[]>(data.devices);
 	let busy = $state("");
 
 	const when = (d: string) => formatDate(d);
@@ -31,7 +31,6 @@
 			devices = [];
 		}
 	}
-	load();
 
 	async function disconnect(d: Device) {
 		const ok = await confirm({ title: t("disconnectTitle"), message: t("disconnectBody",{name:d.name}), confirmLabel: t("disconnect"), danger: true });

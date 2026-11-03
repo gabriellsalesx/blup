@@ -1,8 +1,6 @@
 <script lang="ts">
  import {planLabel} from "../../../../shared/plan-i18n";
  import {t,language} from "#lib/i18n.svelte.ts";
-	import { onMount } from "svelte";
-	import { page } from "$app/state";
 	import MonitorSmartphone from "@lucide/svelte/icons/monitor-smartphone";
 	import CircleCheck from "@lucide/svelte/icons/circle-check";
 	import { authClient } from "#lib/auth.ts";
@@ -17,9 +15,9 @@
 	let { data } = $props();
 
 	type Step = "type" | "confirm" | "approved" | "denied";
-	let step = $state<Step>("type");
-	let code = $state(page.url.searchParams.get("user_code") ?? "");
-	let error = $state<(()=>string)|null>(null);
+	let step = $derived<Step>(data.checked ? "confirm" : "type");
+	let code = $derived(data.code);
+	let error = $derived<(()=>string)|null>(data.checked === false ? () => t("deviceInvalid") : null);
 	let busy = $state(false);
 
 	const clean = (c: string) => c.replace(/[^0-9a-z]/gi, "").toUpperCase();
@@ -44,11 +42,6 @@
 		if (err) return (error = ()=>t("deviceInvalid"));
 		step = approve ? "approved" : "denied";
 	}
-
-	// Opened from the Studio, the code comes in the address.
-	onMount(() => {
-		if (code) check();
-	});
 </script>
 
 <PageHeader title={t("deviceTitle")}/>

@@ -1,6 +1,5 @@
 <script lang="ts">
- import {onMount} from "svelte";
- import {invalidateAll} from "$app/navigation";
+ import {refreshAll} from "$app/navigation";
  import type {InferResponseType} from "hono/client";
  import {parseResponse} from "hono/client";
  import {planLabel,planPerks} from "../../../../../shared/plan-i18n";
@@ -19,7 +18,9 @@
  type Preview=InferResponseType<typeof rpc.billing.preview.$post,200>;
  type BillingState=InferResponseType<typeof rpc.billing.state.$get,200>;
  type Result=InferResponseType<typeof rpc.billing.confirm.$post,200>;
- let busy=$state(false),yearly=$state(false),withPulse=$state({max:false,ultra:false} as Record<string,boolean>),error=$state<unknown>(null),preview=$state<Preview|null>(null),billing=$state<BillingState|null>(null),result=$state<Result|null>(null);
+ let busy=$state(false),error=$state<unknown>(null),preview=$state<Preview|null>(null),result=$state<Result|null>(null);
+ // They start from the current plan: its billing period and whether it has Pulse.
+ let yearly=$derived(data.me.plan.billingInterval==="year"),withPulse=$derived<Record<string,boolean>>({max:false,ultra:false,...(data.me.plan.pulse.enabled?{[data.me.plan.name]:true}:{})}),billing=$derived<BillingState|null>(data.billing);
  let keep=$state({projects:[] as string[],monitors:[] as string[],pages:[] as string[]});
  const current=$derived(data.me.plan),paid=$derived(current.name!=="free"),gift=$derived(current.gift);
  const bases=$derived(data.plans.filter(p=>p.name===p.basePlan));
@@ -27,9 +28,8 @@
  const when=(value:string)=>formatDate(new Date(value));
  async function run(fn:()=>Promise<void>){busy=true;error=null;try{await fn();}catch(e){error=e;}finally{busy=false;}}
  async function refresh(){billing=await parseResponse(rpc.billing.state.$get());}
- onMount(()=>{yearly=current.billingInterval==="year";if(current.pulse.enabled)withPulse[current.name]=true;if(!gift)void run(refresh);});
  async function choose(plan:PlanName){await run(async()=>{result=null;if(!paid){if(plan==="free")return;const response=await parseResponse(rpc.billing.checkout.$post({json:{plan,annual:yearly}}));location.assign(response.url);return;}preview=await parseResponse(rpc.billing.preview.$post({json:{plan,annual:yearly}}));keep={projects:[],monitors:[],pages:[]};});}
- async function confirmChange(){const value=preview;if(!value)return;await run(async()=>{result=await parseResponse(rpc.billing.confirm.$post({json:{ticket:value.ticket,...(value.quote.selectionRequired?{keep}: {})}}));preview=null;await refresh();await invalidateAll();});}
+ async function confirmChange(){const value=preview;if(!value)return;await run(async()=>{result=await parseResponse(rpc.billing.confirm.$post({json:{ticket:value.ticket,...(value.quote.selectionRequired?{keep}: {})}}));preview=null;await refresh();await refreshAll();});}
  async function portal(){await run(async()=>{const response=await parseResponse(rpc.billing.portal.$post({json:{}}));location.assign(response.url);});}
  async function undo(){await run(async()=>{await parseResponse(rpc.billing.pending.$delete());await refresh();});}
  async function cancelCheckout(){await run(async()=>{await parseResponse(rpc.billing.checkout.$delete());await refresh();});}
@@ -47,7 +47,7 @@
  {@const mine=p.name===current.billingName}{@const price=p.prices[yearly?"yearly":"monthly"]}{@const perks=planPerks(language(),p.name,p.limits)}{@const baseCount=planPerks(language(),base.name,base.limits).length}
  <div class="flex flex-col rounded-xl border bg-white p-5 transition-colors dark:bg-neutral-900 {mine?'border-blup ring-1 ring-blup':pulse?'border-emerald-500 ring-1 ring-emerald-500':'border-neutral-200 dark:border-neutral-800'}"><h2 class="font-semibold">{planLabel(p.name,language())}</h2>{#if mine}<span class="mt-1 text-xs text-blup">{gift?t("gift"):t("yourPlan")}</span>{/if}
  {#if p.name==="free"}<p class="mt-2 text-2xl font-bold">{planLabel("free",language())}</p>{:else if price}<p class="mt-2"><b class="text-2xl">{money(price.unitAmount,price.currency,language())}</b> <span class="text-sm text-neutral-500">{yearly?t("perYear"):t("perMonth")}</span></p>{:else}<p class="mt-2 text-sm">{t("pricingUnavailable")}</p>{/if}
- {#if pulseable}<div class="mt-4 border-t border-neutral-200 pt-4 dark:border-neutral-800"><Switch tone="mint" label={t("billingAddPulse")} checked={pulse} onchange={(on)=>withPulse[base.name]=on}/></div>{/if}
+ {#if pulseable}<div class="mt-4 border-t border-neutral-200 pt-4 dark:border-neutral-800"><Switch tone="mint" label={t("billingAddPulse")} checked={pulse} onchange={(on)=>withPulse={...withPulse,[base.name]:on}}/></div>{/if}
  <div class="my-5 flex-1"><ul class="grid content-start gap-2 text-sm">{#each perks.slice(0,baseCount) as perk(perk)}<li class="flex gap-2"><Check class="mt-0.5 size-4 shrink-0 text-green-600"/>{perk}</li>{/each}</ul>{#if pulse}<div class="mt-4 rounded-lg bg-emerald-50 p-3 dark:bg-emerald-950/40"><p class="mb-2 text-sm font-bold text-emerald-700 dark:text-emerald-300">Blup Pulse</p><ul class="grid gap-2 text-sm">{#each perks.slice(baseCount+1) as perk(perk)}<li class="flex gap-2"><Check class="mt-0.5 size-4 shrink-0 text-emerald-600"/>{perk}</li>{/each}</ul></div>{/if}</div>
  {#if !gift&&p.name!=="free"&&(!mine||yearly!==(current.billingInterval==="year"))}{#if data.me.email}<Button {busy} disabled={!price||!!billing?.change||!!billing?.checkout} onclick={()=>choose(p.name)}>{paid?t("billingChange"):t("subscribe",{plan:planLabel(p.name,language())})}</Button>{:else}<a class="text-sm text-blup underline" href="/conta">{t("linkBeforeSubscribeAction")}</a>{/if}{/if}</div>
  {/each}</div>
