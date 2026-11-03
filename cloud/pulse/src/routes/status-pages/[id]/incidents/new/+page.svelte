@@ -21,5 +21,5 @@
 {:else}
  <div class="mb-4"><BackLink href={back} label={data.page.title}/></div>
  <PageHeader title={t("pulseReportIncident")} lead={t("pulseReportIncidentLead")}/>
- <div class="mt-8">{#key data.page.id}<IncidentForm components={data.page.components} keepDays={panel.usage?.limits?.retentionDays??30} {busy} onsave={save} oncancel={()=>goto(back)}/>{/key}</div>
+ <div class="mt-8">{#key data.page.id}<IncidentForm components={data.page.components} keepDays={panel.usage?.limits?.retentionDays??30} {busy} onsave={save}/>{/key}</div>
 {/if}

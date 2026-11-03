@@ -5,7 +5,6 @@
 
 <script lang="ts">
  import {untrack} from "svelte";
- import Plus from "@lucide/svelte/icons/plus";
  import Circle from "@lucide/svelte/icons/circle";
  import CircleMinus from "@lucide/svelte/icons/circle-minus";
  import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
@@ -22,7 +21,7 @@
  // state, since when (new ones only, up to `keepDays` back) and how it
  // leaves each service of the page. An update starts from how the
  // incident left them.
- let {components,incident=null,keepDays,busy=false,onsave,oncancel}:{components:{monitorId:string;name:string}[];incident?:Incident|null;keepDays:number;busy?:boolean;onsave:(values:IncidentValues)=>void;oncancel?:()=>void}=$props();
+ let {components,incident=null,keepDays,busy=false,onsave}:{components:{monitorId:string;name:string}[];incident?:Incident|null;keepDays:number;busy?:boolean;onsave:(values:IncidentValues)=>void}=$props();
  const start=untrack(()=>incident);
  let title=$state(start?.title??""),body=$state(""),situation=$state<IncidentState>(start?.state??"investigating"),publishedAt=$state(Date.now());
  let statuses=$state<Record<string,ServiceStatus>>(Object.fromEntries(untrack(()=>components).map(c=>[c.monitorId,start?.services.find(s=>s.monitorId===c.monitorId)?.status??"none"])));
@@ -54,5 +53,5 @@
    {:else}<p class="py-4 text-center text-sm text-neutral-500">{t("pulseNoServices")}</p>{/each}
   </div>
  </FormSection>
- <div class="flex flex-wrap justify-end gap-2">{#if oncancel}<Button type="button" variant="secondary" onclick={oncancel}>{t("cancel")}</Button>{/if}<Button {busy}>{#if !incident}<Plus class="size-4"/>{/if}{incident?t("pulseUpdateIncident"):t("pulseNewIncident")}</Button></div>
+ <div class="flex justify-end"><Button {busy}>{incident?t("pulseUpdateIncident"):t("pulseCreateUpdate")}</Button></div>
 </form>
