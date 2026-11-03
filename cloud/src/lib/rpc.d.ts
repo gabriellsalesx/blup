@@ -5884,6 +5884,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $post: {
             input: {
                 json: {
+                    projectId: string;
                     type: "discord";
                     webhook: string;
                 };
@@ -5900,6 +5901,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
+                    projectId: string;
                     type: "discord";
                     webhook: string;
                 };
@@ -5913,6 +5915,20 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
+                    projectId: string;
+                    type: "discord";
+                    webhook: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                json: {
+                    projectId: string;
                     type: "discord";
                     webhook: string;
                 };
@@ -5925,6 +5941,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
+                    projectId: string;
                     type: "discord";
                     webhook: string;
                 };
@@ -5938,6 +5955,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
+                    projectId: string;
                     type: "discord";
                     webhook: string;
                 };
@@ -6222,7 +6240,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     link: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    projectId: string;
+                };
             };
             output: {
                 code: string;
@@ -6239,7 +6259,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     link: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    projectId: string;
+                };
             };
             output: {
                 code: string;
@@ -6253,7 +6275,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     link: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    projectId: string;
+                };
             };
             output: {
                 code: string;
@@ -6270,7 +6294,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     link: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    projectId: string;
+                };
             };
             output: {
                 code: string;
@@ -6284,7 +6310,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     link: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    projectId: string;
+                };
             };
             output: {
                 code: string;
@@ -6297,7 +6325,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     link: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    projectId: string;
+                };
             };
             output: {
                 id: string;
@@ -6310,7 +6340,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     link: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    projectId: string;
+                };
             };
             output: {
                 code: string;
@@ -6323,7 +6355,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     link: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    projectId: string;
+                };
             };
             output: {
                 code: string;

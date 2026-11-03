@@ -10,6 +10,7 @@
  import Pencil from "@lucide/svelte/icons/pencil";
  import Bell from "@lucide/svelte/icons/bell";
  import Send from "@lucide/svelte/icons/send";
+ import Plus from "@lucide/svelte/icons/plus";
  import {t,intlLocale,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import {confirm} from "#lib/confirm.svelte.ts";
@@ -67,7 +68,7 @@
   <Card title={t("pulseDuration")}><ResponseChart checks={history?.checks??[]}/></Card>
 
   <Card title={t("pulseAlertsTitle")}>
-   {#snippet action()}<div class="flex flex-wrap justify-end gap-2">{#if m.writable}<Button small variant="secondary" {busy} onclick={()=>testAlert(m)}><Send class="size-4"/>{t("pulseSendTestAlert")}</Button>{/if}<Button small variant="secondary" onclick={()=>goto(resolve("/alerts"))}><Bell class="size-4"/>{t("pulseEditAlerts")}</Button></div>{/snippet}
+   {#snippet action()}<div class="flex flex-wrap justify-end gap-2">{#if m.writable}<Button small variant="secondary" {busy} onclick={()=>testAlert(m)}><Send class="size-4"/>{t("pulseSendTestAlert")}</Button>{/if}{#if destinations===0&&m.writable}<Button small variant="secondary" onclick={()=>goto(resolve(`/alerts/new?${new URLSearchParams({project:m.projectId})}`))}><Plus class="size-4"/>{t("pulseAddChannel")}</Button>{:else}<Button small variant="secondary" onclick={()=>goto(resolve("/alerts"))}><Bell class="size-4"/>{t("pulseEditAlerts")}</Button>{/if}</div>{/snippet}
    <p class="mt-3 text-sm">{alerts}</p>
   </Card>
 

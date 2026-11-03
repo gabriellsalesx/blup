@@ -102,14 +102,14 @@ As rotas privadas exigem sessão/dono; criar, vincular, confirmar e testar exige
 | Método e caminho relativo a `/api/pulse` | Contrato local da Fase 3 |
 | --- | --- |
 | `GET /channels` | `{channels, bindings}`; até 20 canais com `id, type, label, active, lastError`, sem devolver destino; vínculos `{projectId, channelId}`; listas vazias sem direito de leitura |
-| `POST /channels` | JSON estrito `{type:"discord", webhook}`; webhook é string HTTPS validada; `201 {id, label}`; cota por tipo equivale ao número de projetos do plano |
+| `POST /channels` | JSON estrito `{projectId, type:"discord", webhook}`; o canal nasce ligado ao projeto, no lugar do Discord que ele tinha, no mesmo batch; projeto inexistente, pausado ou de outra conta retorna 404; webhook é string HTTPS validada; `201 {id, label}`; cota por tipo equivale ao número de projetos do plano |
 | `DELETE /channels/:channel` | Remove canal, vínculos, cooldowns e entregas na fila; `{ok:true}` ou 404 |
 | `POST /channels/:channel/test` | JSON estrito `{}`; `202 {queued:true}`; no máximo um teste por minuto por canal, com 429 e `Retry-After: 60` no excesso |
 | `POST /monitors/:monitor/test` | JSON estrito `{}`; envia um aviso de teste com o nome do monitor a cada destino ativo do projeto; `202 {queued:n}`, `409 NO_CHANNELS` sem destino, 429 e `Retry-After: 60` quando todos os destinos já testaram no último minuto |
 | `PUT /projects/:project/channels` | JSON estrito `{channelIds}`; lista distinta de até dois IDs ativos do mesmo dono, no máximo um de cada tipo; substitui todos os vínculos; `[]` retira todos; `{ok:true}` |
 | `POST /telegram/link` | JSON estrito `{}`; `201 {id, url, expiresAt}`; cria código de 48 caracteres hexadecimais com dez minutos de validade e substitui o registro de vínculo anterior da conta |
 | `GET /telegram/link/:link` | `{id, state, expiresAt, candidate, channelId}`; `candidate` é `{id, label}` ou `null`, `channelId` é string ou `null`; `expiresAt` em ISO UTC |
-| `POST /telegram/link/:link/confirm` | JSON estrito `{}`; cria canal a partir do chat candidato: `201 {id}`; repetição confirmada retorna `200 {id}`; inválido/expirado retorna `409 LINK_EXPIRED` |
+| `POST /telegram/link/:link/confirm` | JSON estrito `{projectId}`; liga o canal ao projeto, no lugar do Telegram que ele tinha, e cria canal a partir do chat candidato: `201 {id}`; repetição confirmada retorna `200 {id}`; inválido/expirado retorna `409 LINK_EXPIRED` |
 | `POST /telegram/webhook` | Registrado antes do middleware de sessão; autentica por `X-Telegram-Bot-Api-Secret-Token`, valida update, deduplica `update_id` e aceita `/start` apenas de pessoa em seu próprio chat privado; `{ok:true}` nos updates ignorados/aceitos |
 
 Vínculos Telegram passam por `pending`, `candidate` e `confirmed`; a consulta apresenta `expired` após o prazo. O código só fica como hash no D1. O painel consulta o vínculo a cada cinco segundos, interrompe ao sair de `pending` ou ao deixar a tela e exige confirmação autenticada do chat candidato. Conhecer o código não ativa o canal sozinho. Discord usa apenas os hosts/caminhos de webhook aceitos; destino inválido é recusado, sem executar fetch arbitrário.
@@ -439,14 +439,14 @@ Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com
 | `GET/POST /api/pulse/pages/:page/incidents` | Histórico limitado e criação de incidente manual |
 | `POST /api/pulse/pages/:page/incidents/:incident/updates` | Atualização pública de texto e estado |
 | `GET/POST/DELETE /api/pulse/pages/:page/domain` | Contrato local da Fase 4: POST `{hostname}`, GET `DomainInfo/null`, DELETE `{ok:true}` |
-| `GET/POST /api/pulse/channels` | Lista rótulos/estado sem destino; cadastro estrito `{type:"discord", webhook}` |
+| `GET/POST /api/pulse/channels` | Lista rótulos/estado sem destino; cadastro estrito `{projectId, type:"discord", webhook}` |
 | `DELETE /api/pulse/channels/:channel` | Desliga canal e cancela pendências ainda não enviadas |
 | `POST /api/pulse/channels/:channel/test` | JSON estrito `{}`; `202 {queued:true}`, limitado a um teste/minuto/canal |
 | `POST /api/pulse/monitors/:monitor/test` | JSON estrito `{}`; `202 {queued:n}`, mesmo limite por destino do teste de canal |
 | `PUT /api/pulse/projects/:project/channels` | Substitui `{channelIds}` com até dois canais ativos do mesmo dono, um por tipo |
 | `POST /api/pulse/telegram/link` | JSON estrito `{}`; emite `{id, url, expiresAt}` com dez minutos de validade |
 | `GET /api/pulse/telegram/link/:link` | `{id, state, expiresAt, candidate, channelId}`, sem expor código novamente |
-| `POST /api/pulse/telegram/link/:link/confirm` | JSON estrito `{}`; confirma candidato e retorna `{id}` do canal |
+| `POST /api/pulse/telegram/link/:link/confirm` | JSON estrito `{projectId}`; liga ao projeto, confirma candidato e retorna `{id}` do canal |
 | `POST /api/pulse/telegram/webhook` | Update do Telegram autenticado por secret, sem sessão do painel |
 | `GET /api/pulse/public/:slug` | Só DTO público, usado em `pulse.getblup.site/:slug` |
 

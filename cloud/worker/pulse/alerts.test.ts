@@ -18,7 +18,7 @@ beforeEach(()=>{
 });
 afterEach(()=>{db.close();vi.unstubAllGlobals();vi.restoreAllMocks();vi.useRealTimers();});
 const request=(path:string,method="GET",body?:unknown,user="alice",headers:Record<string,string>={})=>pulseApi.fetch(new Request(`https://cloud.audit.invalid${path}`,{method,headers:{...(user?{authorization:`Bearer ${user}`} : {}),...(body===undefined?{}:{"content-type":"application/json"}),...headers},body:body===undefined?undefined:JSON.stringify(body)}),state.env);
-async function channel(){return await(await request("/channels","POST",{type:"discord",webhook:WEBHOOK})).json() as {id:string};}
+async function channel(){return await(await request("/channels","POST",{projectId:"1",type:"discord",webhook:WEBHOOK})).json() as {id:string};}
 it("encrypts destinations with owner/channel/type binding and rejects forged targets",async()=>{
  const sealed=await sealTarget(state.env,"alice","channel","discord",WEBHOOK);expect(sealed).not.toContain(WEBHOOK);expect(await openTarget(state.env,"alice","channel","discord",sealed)).toBe(WEBHOOK);
  for(const [owner,id,type] of [["bob","channel","discord"],["alice","other","discord"],["alice","channel","telegram"]])await expect(openTarget(state.env,owner,id,type,sealed)).rejects.toThrow();
@@ -26,7 +26,7 @@ it("encrypts destinations with owner/channel/type binding and rejects forged tar
 });
 it("returns masked channels, enforces ownership and does not send on create/read",async()=>{
  const created=await channel();expect(created.id).toBeTruthy();const response=await request("/channels"),encoded=await response.text();expect(encoded).not.toContain("test_fixture_");expect(encoded).not.toContain("target");expect((await request(`/channels/${created.id}`,"DELETE",undefined,"bob")).status).toBe(404);
- expect((await request("/projects/2/channels","PUT",{channelIds:[created.id]})).status).toBe(404);expect((await request("/channels","POST",{type:"discord",webhook:WEBHOOK},"free")).status).toBe(403);expect(fetch).not.toHaveBeenCalled();
+ expect((await request("/projects/2/channels","PUT",{channelIds:[created.id]})).status).toBe(404);expect((await request("/channels","POST",{projectId:"1",type:"discord",webhook:WEBHOOK},"free")).status).toBe(403);expect(fetch).not.toHaveBeenCalled();
  expect((await request(`/channels/${created.id}/test`,"POST",{})).status).toBe(202);expect((await request(`/channels/${created.id}/test`,"POST",{})).status).toBe(429);expect(fetch).not.toHaveBeenCalled();
 });
 it("links Telegram only through a signed update, expiring code and authenticated confirmation",async()=>{
@@ -36,9 +36,9 @@ it("links Telegram only through a signed update, expiring code and authenticated
  const headers={"x-telegram-bot-api-secret-token":state.env.PULSE_TELEGRAM_WEBHOOK_SECRET};expect((await request("/telegram/webhook","POST",update,"",headers)).status).toBe(200);
  await request("/telegram/webhook","POST",{...update,message:{...update.message,chat:{...update.message.chat,id:999},from:{id:999,is_bot:false}}},"",headers);
  expect((await(await request(`/telegram/link/${result.id}`)).json() as {candidate:{id:string}}).candidate.id).toBe("12345");
- expect((await request(`/telegram/link/${result.id}/confirm`,"POST",{},"bob")).status).toBe(404);
- const confirmed=await Promise.all([request(`/telegram/link/${result.id}/confirm`,"POST",{}),request(`/telegram/link/${result.id}/confirm`,"POST",{})]);expect(confirmed.map(r=>r.status).sort()).toEqual([200,201]);expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_channel WHERE type='telegram'").get()?.n).toBe(1);
- const expired=await(await request("/telegram/link","POST",{})).json() as {id:string};db.sqlite.exec("UPDATE pulse_telegram_link SET state='candidate',chat_id='12345',expires_at=0");expect((await request(`/telegram/link/${expired.id}/confirm`,"POST",{})).status).toBe(409);
+ expect((await request(`/telegram/link/${result.id}/confirm`,"POST",{projectId:"1"},"bob")).status).toBe(404);
+ const confirmed=await Promise.all([request(`/telegram/link/${result.id}/confirm`,"POST",{projectId:"1"}),request(`/telegram/link/${result.id}/confirm`,"POST",{projectId:"1"})]);expect(confirmed.map(r=>r.status).sort()).toEqual([200,201]);expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_channel WHERE type='telegram'").get()?.n).toBe(1);
+ const expired=await(await request("/telegram/link","POST",{})).json() as {id:string};db.sqlite.exec("UPDATE pulse_telegram_link SET state='candidate',chat_id='12345',expires_at=0");expect((await request(`/telegram/link/${expired.id}/confirm`,"POST",{projectId:"1"})).status).toBe(409);
 });
 it("suppresses duplicates/cooldown and rechecks bindings and entitlement before delivery",async()=>{
  const created=await channel();await request("/projects/1/channels","PUT",{channelIds:[created.id]});
@@ -65,4 +65,12 @@ it("sends a monitor test alert to the project's destinations with the monitor na
  expect((await request("/monitors/m1/test","POST",{})).status).toBe(202);expect((await request("/monitors/m1/test","POST",{})).status).toBe(429);
  const send=vi.fn(async(_input:RequestInfo|URL,_init?:RequestInit)=>new Response(null,{status:204}));vi.stubGlobal("fetch",send);await dispatchAlerts(state.env);
  expect(send).toHaveBeenCalledTimes(1);expect(String(JSON.parse(String(send.mock.calls[0][1]?.body)).content)).toContain("Checkout API");
+});
+it("binds a new destination to the chosen project, in place of the one it had",async()=>{
+ expect((await request("/channels","POST",{type:"discord",webhook:WEBHOOK})).status).toBe(400);expect((await request("/channels","POST",{projectId:"2",type:"discord",webhook:WEBHOOK})).status).toBe(404);
+ const first=await channel(),second=await channel();
+ expect(db.sqlite.prepare("SELECT channel_id AS id FROM pulse_project_channel WHERE project_id='1' AND type='discord'").all()).toEqual([{id:second.id}]);expect(first.id).not.toBe(second.id);
+ const link=await(await request("/telegram/link","POST",{})).json() as {id:string};db.sqlite.prepare("UPDATE pulse_telegram_link SET state='candidate',chat_id='12345' WHERE id=?").run(link.id);
+ expect((await request(`/telegram/link/${link.id}/confirm`,"POST",{projectId:"2"})).status).toBe(404);expect((await request(`/telegram/link/${link.id}/confirm`,"POST",{projectId:"1"})).status).toBe(201);
+ expect(db.sqlite.prepare("SELECT type FROM pulse_project_channel WHERE project_id='1' ORDER BY type").all()).toEqual([{type:"discord"},{type:"telegram"}]);
 });
