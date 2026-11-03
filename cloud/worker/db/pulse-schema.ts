@@ -51,6 +51,15 @@ export const pulseMaintenance=sqliteTable("pulse_maintenance",{
 export const pulseMaintenanceComponent=sqliteTable("pulse_maintenance_component",{
  maintenanceId:text("maintenance_id").notNull(),monitorId:text("monitor_id").notNull(),
 },t=>[primaryKey({columns:[t.maintenanceId,t.monitorId]}),index("pulse_maintenance_component_monitor_idx").on(t.monitorId)]);
+// The secret a project's build uses to send its source maps (never the
+// DSN, which ships inside public code). Only its hash is kept.
+export const pulseUploadToken=sqliteTable("pulse_upload_token",{
+ id:text("id").primaryKey(),projectId:text("project_id").notNull(),hash:text("hash").notNull().unique(),prefix:text("prefix").notNull(),createdAt:integer("created_at").notNull(),revokedAt:integer("revoked_at"),
+},t=>[index("pulse_upload_token_project_idx").on(t.projectId)]);
+// One source map sent for a file of a release; the map itself is in R2.
+export const pulseSourcemap=sqliteTable("pulse_sourcemap",{
+ projectId:text("project_id").notNull(),release:text("release").notNull(),file:text("file").notNull(),objectKey:text("object_key").notNull(),size:integer("size").notNull(),uploadedAt:integer("uploaded_at").notNull(),
+},t=>[primaryKey({columns:[t.projectId,t.release,t.file]}),index("pulse_sourcemap_uploaded_idx").on(t.uploadedAt)]);
 export const pulsePageDomain=sqliteTable("pulse_page_domain",{
  pageId:text("page_id").primaryKey(),hostname:text("hostname").notNull(),proof:text("proof").notNull(),providerId:text("provider_id"),verifiedAt:integer("verified_at"),status:text("status").notNull().default("pending_ownership"),ssl:text("ssl").notNull().default("pending"),records:text("records").notNull().default("[]"),checkedAt:integer("checked_at"),
 },t=>[index("pulse_domain_host_idx").on(t.hostname,t.verifiedAt)]);

@@ -7,6 +7,7 @@
  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
  import Trash2 from "@lucide/svelte/icons/trash-2";
  import Bug from "@lucide/svelte/icons/bug";
+ import FileCode from "@lucide/svelte/icons/file-code";
  import {t,intlLocale} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import Button from "#lib/ui/Button.svelte";
@@ -46,7 +47,7 @@
  {#each projects as project(project.id)}
   <ListItem href={issuesOf(project.id)} label={project.name}>
    <div class="flex items-center gap-3"><StatusDot state={project.active?"up":"unknown"}/><div class="min-w-0"><p class="truncate font-semibold">{project.name}</p><p class="text-sm text-neutral-500">{platformName(project.platform)} · {project.active?t("pulseActive"):t("pulsePaused")}</p></div></div>
-   {#snippet menu()}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseSeeIssues"),Icon:Bug,onselect:()=>void goto(issuesOf(project.id))},...(project.writable?[{label:t("pulseRotate"),Icon:RefreshCw,onselect:()=>void rotate(project)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(project)}]}/>{/snippet}
+   {#snippet menu()}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseSeeIssues"),Icon:Bug,onselect:()=>void goto(issuesOf(project.id))},{label:t("pulseSourcemaps"),Icon:FileCode,onselect:()=>void goto(resolve("/projects/[project]/sourcemaps",{project:project.id}))},...(project.writable?[{label:t("pulseRotate"),Icon:RefreshCw,onselect:()=>void rotate(project)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(project)}]}/>{/snippet}
   </ListItem>
  {/each}
 </List></div>

@@ -56,6 +56,7 @@ As rotas são em inglês, como o código; as páginas continuam traduzidas (pt, 
 | Staff | `/staff`, `/staff/accounts/[id]`, `/staff/team`, `/staff/log` | Contas, conta, equipe e registro (no host staff, sem o prefixo `/staff`) |
 | Pulse | `/sign-in` | Entrar no Pulse, com a mesma conta e o mesmo formulário do Cloud, em verde (`?next=` volta à página do Pulse que pediu o login) |
 | Pulse | `/` e `/projects/new` | Projetos e novo projeto |
+| Pulse | `/projects/[project]/sourcemaps` | Chave de envio, comando e source maps enviados do projeto |
 | Pulse | `/issues` | Problemas (`?project=`) |
 | Pulse | `/issues/[project]/[issue]` | Um problema: números, ocorrências por dia, exceção com a pilha de chamadas e ocorrências recentes |
 | Pulse | `/monitors`, `/monitors/new`, `/monitors/[id]`, `/monitors/[id]/edit` | Monitores |

@@ -162,6 +162,13 @@
       "when": 1793719986194,
       "tag": "0022_pulse_manutencao",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1793724389578,
+      "tag": "0023_pulse_source_maps",
+      "breakpoints": true
     }
   ]
 }

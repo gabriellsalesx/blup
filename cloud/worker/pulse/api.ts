@@ -14,6 +14,7 @@ import {pageSlug} from "./page-rules";
 import {monitorsApi} from "./monitors";
 import {setupApi} from "./setup";
 import {maintenanceApi} from "./maintenance";
+import {sourcemapUploadApi,sourcemapPanelApi,withOriginals} from "./sourcemaps";
 import {z} from "zod";
 import {validate,hashId,opaqueId} from "../validation";
 import {pulseIdParam,projectId,issueState,numericId,publicKey,sha256,monthOf} from "./limits";
@@ -31,7 +32,7 @@ async function newKey(env:Cloudflare.Env,project:string,rotate=false){
  if(!rows[rotate?1:0].results.length)throw new HTTPException(404,{res:Response.json({code:"NOT_FOUND"},{status:404})});
  return {id,prefix:key.slice(0,8),dsn:`https://${key}@ingest.getblup.io/${project}`};
 }
-export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi).get("/public/:slug",validate("param",z.object({slug:pageSlug})),async c=>{if(!(await c.env.PULSE_PUBLIC_LIMIT.limit({key:`public:${c.req.header("cf-connecting-ip")??"local"}`})).success){c.header("Retry-After","60");return c.json({code:"TOO_MANY_REQUESTS"},429);}const page=await publicPage(c.env,c.req.valid("param").slug);return page?c.json(page):c.json({code:"NOT_FOUND"},404);}).use("*",pulseSession).use("/projects/:project",projectWrite).use("/projects/:project/*",projectWrite)
+export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi).get("/public/:slug",validate("param",z.object({slug:pageSlug})),async c=>{if(!(await c.env.PULSE_PUBLIC_LIMIT.limit({key:`public:${c.req.header("cf-connecting-ip")??"local"}`})).success){c.header("Retry-After","60");return c.json({code:"TOO_MANY_REQUESTS"},429);}const page=await publicPage(c.env,c.req.valid("param").slug);return page?c.json(page):c.json({code:"NOT_FOUND"},404);}).route("/",sourcemapUploadApi).use("*",pulseSession).use("/projects/:project",projectWrite).use("/projects/:project/*",projectWrite)
  .get("/usage",async c=>{
   const owner=c.get("session").user.id,access=c.get("access"),month=monthOf();
   const projects=await c.env.DB.prepare("SELECT id,object_name AS objectName FROM pulse_project WHERE user_id=? AND deleted_at IS NULL ORDER BY id LIMIT 10").bind(owner).all<{id:string;objectName:string}>();
@@ -87,7 +88,10 @@ export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi)
  })
  .get("/projects/:project/issues/:issue/events",validate("param",issuesParam),async c=>{
   const p=await ownedProject(c.env,c.get("session").user.id,c.req.valid("param").project),access=c.get("access");if(!p||!access.readable)return c.json({code:"NOT_FOUND"},404);
-  return c.json({events:await c.env.PULSE_PROJECT.getByName(p.objectName).samples(c.req.valid("param").issue,Date.now()-(access.limits?.retentionDays??30)*86_400_000)});
+  const samples=await c.env.PULSE_PROJECT.getByName(p.objectName).samples(c.req.valid("param").issue,Date.now()-(access.limits?.retentionDays??30)*86_400_000);
+  // Frames of minified browser code, with their original place when the
+  // release's source map was sent.
+  return c.json({events:await withOriginals(c.env,p.id,samples)});
  })
  .patch("/projects/:project/issues/:issue",pulseWrite,validate("param",issuesParam),validate("json",z.object({state:issueState}).strict()),async c=>{
   const p=await ownedProject(c.env,c.get("session").user.id,c.req.valid("param").project);if(!p)return c.json({code:"NOT_FOUND"},404);
@@ -98,6 +102,7 @@ export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi)
  .route("/pages",pagesApi)
  .route("/pages",pulseDomainsApi)
  .route("/pages",maintenanceApi)
+ .route("/",sourcemapPanelApi)
  .route("/channels",channelsApi)
  .route("/telegram",telegramApi)
  .route("/projects",projectChannelsApi);

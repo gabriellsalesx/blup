@@ -64,7 +64,7 @@
   </Card>
 
   <Card title={t("pulseException")} help={shown?t("pulseOccurrenceAt",{date:formatDate(new Date(shown.receivedAt))}):undefined}>
-   <div class="mt-4">{#if shown}{#key shown.id}<StackTrace exceptions={shown.event.exceptions}/>{/key}{#if shown.event.message&&!shown.event.exceptions.length}<p class="font-mono text-sm break-words">{shown.event.message}</p>{/if}{:else}<p class="text-sm text-neutral-500">{t("pulseNoEvents")}</p>{/if}</div>
+   <div class="mt-4">{#if shown}{#key shown.id}<StackTrace exceptions={shown.event.exceptions} originals={shown.originals}/>{/key}{#if shown.event.message&&!shown.event.exceptions.length}<p class="font-mono text-sm break-words">{shown.event.message}</p>{/if}{:else}<p class="text-sm text-neutral-500">{t("pulseNoEvents")}</p>{/if}</div>
   </Card>
 
   {#if shown&&(details.length||trail.length)}

@@ -5,6 +5,7 @@ interface __BaseEnv_CloudflareBindings {
 	SITE_CACHE: Service<import("./sites-entry").CachedSite>;
 	NOTES: R2Bucket;
 	SITES: R2Bucket;
+	PULSE_SOURCEMAPS: R2Bucket;
 	DB: D1Database;
 	EMAIL: SendEmail;
 	PULSE_PROJECT: DurableObjectNamespace<import("./pulse/project").PulseProject>;
@@ -51,6 +52,7 @@ declare namespace Cloudflare {
 		SITE_CACHE: Service<import("./sites-entry").CachedSite>;
 		NOTES: R2Bucket;
 		SITES: R2Bucket;
+		PULSE_SOURCEMAPS: R2Bucket;
 		DB: D1Database;
 		EMAIL: SendEmail;
 		PULSE_PROJECT: DurableObjectNamespace<import("./pulse/project").PulseProject>;

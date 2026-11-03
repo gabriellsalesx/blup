@@ -48,7 +48,7 @@ app.use("*",async(c,next)=>{
  const checked=headersSchema.safeParse(Object.fromEntries(c.req.raw.headers));
  if(!checked.success)return c.json(requestError(c.req.path,"INVALID"),400);
  if(c.req.raw.body && !/\/(?:files|blocks)\/[0-9a-f]{64}$/.test(c.req.path)){
-  const max=c.req.path==="/api/auth/stripe/webhook"?1024*1024:/\/sync\/vaults\/[^/]+\/(?:versions|prepare)$/.test(c.req.path)?34*1024*1024:/\/sites\/[^/]+\/deploys$/.test(c.req.path)?8*1024*1024:96*1024;
+  const max=c.req.path==="/api/auth/stripe/webhook"?1024*1024:/\/sync\/vaults\/[^/]+\/(?:versions|prepare)$/.test(c.req.path)?34*1024*1024:/\/sites\/[^/]+\/deploys$/.test(c.req.path)?8*1024*1024:c.req.path==="/api/pulse/sourcemaps"?20*1024*1024:96*1024;
   const bounded=boundedStream(c.req.raw.body,max,checked.data["content-length"]);
   const init={body:bounded,duplex:"half"};c.req.raw=new Request(c.req.raw,init);
  }

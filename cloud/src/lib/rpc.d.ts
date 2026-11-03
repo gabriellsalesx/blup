@@ -3415,7 +3415,102 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: 404;
         };
     };
-})) & {
+}) | import("hono/types").MergeSchemaPath<{
+    "/sourcemaps": {
+        $post: {
+            input: {
+                query: {
+                    release: string;
+                    file: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                query: {
+                    release: string;
+                    file: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                query: {
+                    release: string;
+                    file: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 401;
+        } | {
+            input: {
+                query: {
+                    release: string;
+                    file: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 413;
+        } | {
+            input: {
+                query: {
+                    release: string;
+                    file: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                query: {
+                    release: string;
+                    file: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                query: {
+                    release: string;
+                    file: string;
+                };
+            };
+            output: {
+                release: string;
+                file: string;
+                size: number;
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+}, "/">) & {
     "/usage": {
         $get: {
             input: {};
@@ -4276,6 +4371,20 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     };
                     id: string;
                     receivedAt: number;
+                    originals: {
+                        [x: string]: {
+                            file: string;
+                            line: number;
+                            column: number;
+                            function: string;
+                            inApp: boolean;
+                            context?: {
+                                pre: string[];
+                                line: string;
+                                post: string[];
+                            } | undefined;
+                        };
+                    };
                 }[];
             };
             outputFormat: "json";
@@ -6830,6 +6939,162 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 }, "/pages"> | import("hono/types").MergeSchemaPath<{
+    "/projects/:project/sourcemaps": {
+        $get: {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                token: {
+                    prefix: string;
+                    createdAt: number;
+                };
+                maps: {
+                    release: string;
+                    file: string;
+                    size: number;
+                    uploadedAt: number;
+                }[];
+                limit: number;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/projects/:project/upload-token": {
+        $post: {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                token: string;
+                prefix: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+}, "/"> | import("hono/types").MergeSchemaPath<{
     "/": {
         $get: {
             input: {};

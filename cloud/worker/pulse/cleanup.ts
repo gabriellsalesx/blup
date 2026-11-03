@@ -1,3 +1,4 @@
+import {dropSourcemaps,SOURCEMAP_KEEP_MS} from "./sourcemap-store";
 import {observePulseEntitlements} from "./entitlements";
 import {disablePulseDomain,expirePulseDomains} from "./domain-lifecycle";
 import {releaseHostname} from "../hostname-claim";
@@ -5,12 +6,14 @@ import {removeDomainProvider} from "../domain-provider";
 
 export async function purgeProject(env:Cloudflare.Env,id:string,objectName:string){
  await env.PULSE_PROJECT.getByName(objectName).purge();
+ await dropSourcemaps(env,{project:id});
  await env.DB.batch([
   env.DB.prepare("DELETE FROM pulse_component WHERE monitor_id IN(SELECT id FROM pulse_monitor WHERE project_id=?)").bind(id),
   env.DB.prepare("DELETE FROM pulse_monitor WHERE project_id=?").bind(id),
   env.DB.prepare("DELETE FROM pulse_outbox WHERE project_id=?").bind(id),
   env.DB.prepare("DELETE FROM pulse_project_channel WHERE project_id=?").bind(id),
   env.DB.prepare("DELETE FROM pulse_key WHERE project_id=?").bind(id),
+  env.DB.prepare("DELETE FROM pulse_upload_token WHERE project_id=?").bind(id),
   env.DB.prepare("DELETE FROM pulse_project WHERE id=?").bind(id),
  ]);
 }
@@ -44,6 +47,7 @@ export async function pulseMaintenance(env:Cloudflare.Env,daily=false,now=Date.n
  for(const monitor of monitors.results)await env.DB.batch([env.DB.prepare("DELETE FROM pulse_component WHERE monitor_id=?").bind(monitor.id),env.DB.prepare("DELETE FROM pulse_monitor WHERE id=? AND retire_at<=?").bind(monitor.id,now)]);
  const due=await env.DB.prepare("SELECT user_id AS id FROM pulse_account WHERE read_only_until<=? ORDER BY read_only_until LIMIT 10").bind(now).all<{id:string}>();
  for(const account of due.results){const claimed=await env.DB.prepare("UPDATE pulse_account SET purge_started=? WHERE user_id=? AND read_only_until<=? RETURNING user_id").bind(now,account.id,now).first();if(claimed)await purgePulseAccount(env,account.id,true);}
+ if(daily)await dropSourcemaps(env,{before:now-SOURCEMAP_KEEP_MS});
  const deleted=await env.DB.prepare("SELECT id,object_name AS objectName FROM pulse_project WHERE deleted_at IS NOT NULL ORDER BY deleted_at LIMIT 25").all<{id:string;objectName:string}>();
  for(const p of deleted.results)await purgeProject(env,p.id,p.objectName);
  {
