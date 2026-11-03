@@ -74,7 +74,7 @@ it("publishes only explicit component names and incident text, escapes attacks a
  await request(`/pages/${id}`,"PATCH",{published:true});expect((await request(`/pages/${id}/incidents`,"POST",{title:"Incident",body:'<img src=x onerror="attack()">',state:"investigating",publishedAt:new Date().toISOString(),services:[{monitorId:monitor.id,status:"degraded"}]})).status).toBe(201);
  const cache=new Map<string,Response>();vi.stubGlobal("caches",{default:{match:async(key:Request)=>cache.get(key.url)?.clone(),put:async(key:Request,response:Response)=>{cache.set(key.url,response);}}});
  const page=await publicPage(state.env,"public-page"),data=JSON.stringify(page);for(const privateValue of ["PRIVATE_MONITOR_NAME","private-secret","object1","alice","Private project"])expect(data).not.toContain(privateValue);
- const html=await(await servePulsePage(new Request("https://pulse.audit.invalid/public-page/"),state.env))?.text();expect(html).toContain("&lt;script&gt;");expect(html).not.toContain("<script>");expect(html).not.toContain("<img");
+ const html=await(await servePulsePage(new Request("https://pulse.audit.invalid/public-page/"),state.env))?.text();expect(html).toContain("&lt;script&gt;");expect(html).not.toContain("<script>attack");expect(html?.match(/<script>/g)).toHaveLength(1);expect(html).not.toContain("<img");
  db.sqlite.exec("UPDATE subscription SET status='canceled' WHERE reference_id='alice'");expect(await publicPage(state.env,"public-page")).toEqual({unavailable:true});expect((await servePulsePage(new Request("https://pulse.audit.invalid/public-page/"),state.env))?.status).toBe(503);
 });
 it("keeps how an incident leaves each service and when it was published",async()=>{
@@ -196,7 +196,12 @@ it("shows the page's logo, links and title choice, and a badge and favicon with 
  const served=await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/"),state.env),html=await served?.text()??"";
  expect(html).toContain(`src="logo-dark?v=${version}"`);expect(html).toContain('alt="Acme"');expect(html).not.toContain("<span>Acme</span>");expect(html).toContain(`class="site-header"`);expect(html).toContain(`popovertarget="mobile-menu"`);
  expect(html).toContain('<a href="https://acme.example/" rel="noopener nofollow">Site &lt;b&gt;</a>');expect(html).toContain('rel="icon" type="image/svg+xml" href="data:image/svg+xml,');
- expect(served?.headers.get("content-security-policy")).toContain("img-src 'self' data:");
+ const csp=served?.headers.get("content-security-policy")??"";expect(csp).toContain("img-src 'self' data:");
+ // Only the page's own theme script runs, by its hash.
+ const script=/<script>([^<]*)<\/script>/.exec(html)?.[1]??"",hash=btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(script)))));expect(csp).toContain(`script-src 'sha256-${hash}'`);
+ expect(html).toContain('data-set-theme="dark"');expect(html).toContain('<html lang="en">');
+ const spanish=await(await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/?lang=es"),state.env))?.text()??"";expect(spanish).toContain('<html lang="es">');expect(spanish).toContain('aria-checked="true">Español');
+ expect(await(await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/?lang=xx"),state.env))?.text()).toContain('<html lang="en">');
  const logo=await servePulsePage(new Request(`https://pulse.audit.invalid/acme-status/logo-dark?v=${version}`),state.env);expect(logo?.headers.get("content-type")).toBe("image/webp");expect(logo?.headers.get("cache-control")).toContain("immutable");
  expect((await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/logo-light"),state.env))?.status).toBe(404);
  const badge=await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/badge?theme=dark"),state.env);expect(badge?.headers.get("content-security-policy")).toContain("frame-ancestors *");

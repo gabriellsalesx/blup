@@ -1,8 +1,8 @@
-import {languageOf} from "../../shared/language";
+import {languageOf,languageSchema} from "../../shared/language";
 import {pulseAccess,sha256} from "./limits";
 import {z} from "zod";
 import {pageSlug,serviceStatus,maintenanceStateAt} from "./page-rules";
-import {renderStatusPage,renderBadge} from "./public-html";
+import {renderStatusPage,renderBadge,THEME_SCRIPT} from "./public-html";
 import {navLinks,linksOf,logoVariant,logoKey,logoVersion,logoType} from "./page-look";
 const affectedStatus=serviceStatus.exclude(["none"]);
 
@@ -59,7 +59,7 @@ export async function servePulsePage(req:Request,env:Cloudflare.Env,slugOverride
  const page=await publicPage(env,slug);if(!page)return Response.json({code:"NOT_FOUND"},{status:404,headers:{"cache-control":"no-store"}});
  if(page.unavailable)return Response.json({code:"UNAVAILABLE"},{status:503,headers:{"cache-control":"no-store","Retry-After":"60"}});
  const headers={"cache-control":"public, max-age=0, must-revalidate","Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
- const respond=async(body:string,type:string)=>{const etag=`"${await sha256(body)}"`,responseHeaders={...headers,etag,"content-type":type};return new Response(req.method==="HEAD"||req.headers.get("if-none-match")===etag?null:body,{status:req.headers.get("if-none-match")===etag?304:200,headers:responseHeaders});};
+ const respond=async(body:string,type:string,extra:Record<string,string>={})=>{const etag=`"${await sha256(body)}"`,responseHeaders={...headers,...extra,etag,"content-type":type};return new Response(req.method==="HEAD"||req.headers.get("if-none-match")===etag?null:body,{status:req.headers.get("if-none-match")===etag?304:200,headers:responseHeaders});};
  if(url.pathname.endsWith("status.json")||slugOverride)return respond(JSON.stringify(page),"application/json; charset=utf-8");
  // The badge is meant for other sites' iframes.
  if(url.pathname.endsWith("/badge")){const body=renderBadge(page,badgeTheme.parse(url.searchParams.get("theme")));const etag=`"${await sha256(body)}"`;return new Response(req.method==="HEAD"||req.headers.get("if-none-match")===etag?null:body,{status:req.headers.get("if-none-match")===etag?304:200,headers:{...headers,etag,"content-type":"text/html; charset=utf-8","Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors *; base-uri 'none'; form-action 'none'"}});}
@@ -71,6 +71,9 @@ export async function servePulsePage(req:Request,env:Cloudflare.Env,slugOverride
   const lasting=url.searchParams.get("v")===version;
   return new Response(req.method==="HEAD"?null:object.body,{headers:{"content-type":logoType.catch("image/webp").parse(object.httpMetadata?.contentType),"cache-control":lasting?"public, max-age=31536000, immutable":"public, max-age=300","x-content-type-options":"nosniff","content-security-policy":"default-src 'none'; sandbox","cross-origin-resource-policy":"cross-origin",etag:`"${version}"`}});
  }
- const body=renderStatusPage(page);
- return respond(body,"text/html; charset=utf-8");
+ const body=renderStatusPage(page,Date.now(),languageSchema.safeParse(url.searchParams.get("lang")).data);
+ return respond(body,"text/html; charset=utf-8",{"Content-Security-Policy":`default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; script-src '${await themeScriptHash()}'; frame-ancestors 'none'; base-uri 'none'`});
 }
+// The CSP source of the page's one inline script (computed once).
+let themeHash:Promise<string>|undefined;
+const themeScriptHash=()=>themeHash??=crypto.subtle.digest("SHA-256",new TextEncoder().encode(THEME_SCRIPT)).then(d=>`sha256-${btoa(String.fromCharCode(...new Uint8Array(d)))}`);

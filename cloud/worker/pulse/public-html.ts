@@ -42,7 +42,8 @@ const svg=(tone:Tone,size:number,width=2)=>`<svg width="${size}" height="${size}
 const blup='<svg width="34" height="34" viewBox="0 0 64 64" fill="none" stroke="#0e1b45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M33 4C38 10 58 29 58 41C58 53 47 59 32 59C17 59 6 53 6 41C6 29 24 13 33 4Z" fill="#9ee6c8"/><rect x="29" y="33.5" width="4" height="11" rx="1.4" fill="#0B1220" stroke="none" transform="rotate(8 31 39)"/><rect x="41" y="32.5" width="4" height="11" rx="1.4" fill="#0B1220" stroke="none" transform="rotate(8 43 38)"/></svg>';
 
 const css=`:root{color-scheme:light dark;--bg:#fafafa;--card:#fff;--head:#fafafa;--line:#e5e5e5;--text:#171717;--muted:#737373;--up:#10b981;--partial:#f59e0b;--down:#ef4444;--maint:#6366f1;--none:#e5e5e5;--legend:#d4d4d4;--tip:#262626;--tip-text:#fff}
-@media (prefers-color-scheme:dark){:root{--bg:#0a0a0a;--card:#171717;--head:#1c1c1c;--line:#262626;--text:#f5f5f5;--muted:#a3a3a3;--none:#303030;--legend:#525252;--tip:#f5f5f5;--tip-text:#171717}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a0a0a;--card:#171717;--head:#1c1c1c;--line:#262626;--text:#f5f5f5;--muted:#a3a3a3;--none:#303030;--legend:#525252;--tip:#f5f5f5;--tip-text:#171717}}
+:root[data-theme="light"]{color-scheme:light}:root[data-theme="dark"]{color-scheme:dark;--bg:#0a0a0a;--card:#171717;--head:#1c1c1c;--line:#262626;--text:#f5f5f5;--muted:#a3a3a3;--none:#303030;--legend:#525252;--tip:#f5f5f5;--tip-text:#171717}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 .wrap{max-width:780px;margin:0 auto;padding:56px 20px 32px}
 .site-header{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:saturate(1.4) blur(8px);box-shadow:0 1px 2px 0 rgb(0 0 0/.05)}
@@ -53,6 +54,15 @@ const css=`:root{color-scheme:light dark;--bg:#fafafa;--card:#fff;--head:#fafafa
 .menu-toggle{display:inline-flex;margin-left:auto;padding:8px;border:0;border-radius:4px;background:none;color:var(--muted);cursor:pointer}.menu-toggle:hover{background:color-mix(in srgb,var(--line) 60%,transparent);color:var(--text)}.menu-toggle .close{display:none}
 body:has(.mobile-menu:popover-open) .menu-toggle .open{display:none}body:has(.mobile-menu:popover-open) .menu-toggle .close{display:block}
 .mobile-menu{position:fixed;inset:64px 0 auto 0;margin:0;width:100%;max-width:none;border:0;border-bottom:1px solid var(--line);padding:8px 20px;background:var(--card);color:var(--text);box-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1)}.mobile-menu a{display:block;padding:12px 0;font-weight:500;color:var(--text);text-decoration:none}
+.actions{display:flex;flex-shrink:0;align-items:center;gap:4px;margin-left:auto}.icon-button{display:inline-flex;align-items:center;gap:2px;padding:8px;border:0;border-radius:4px;background:none;color:var(--muted);font:inherit;cursor:pointer}.icon-button:hover{background:color-mix(in srgb,var(--line) 60%,transparent);color:var(--text)}
+.lang-code{font-size:12px;font-weight:600;text-transform:uppercase}.lang-picker .icon-button{gap:4px;padding:8px}
+.dropdown{margin:0;inset:auto;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--text);box-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1);min-width:9rem;position-area:bottom span-left;margin-top:6px}
+@supports not (position-area:bottom){.dropdown{inset:60px 16px auto auto}}
+.dropdown a,.dropdown button{display:flex;width:100%;align-items:center;gap:12px;padding:8px 12px;border:0;border-radius:4px;background:none;color:inherit;font:inherit;font-size:14px;text-align:left;text-decoration:none;cursor:pointer}.dropdown a:hover,.dropdown a[aria-checked="true"],.dropdown button:hover,.dropdown button[aria-checked="true"]{background:color-mix(in srgb,var(--line) 70%,transparent)}
+:root:not(.js) .theme-picker{display:none}.when-dark{display:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .when-light{display:none}:root:not([data-theme="light"]) .when-dark{display:block}}
+:root[data-theme="dark"] .when-light{display:none}:root[data-theme="dark"] .when-dark{display:block}
+.menu-toggle{margin-left:0}
 @media (min-width:768px){.nav{display:flex}.menu-toggle{display:none}}
 .hero{text-align:center;margin-bottom:48px}.badge{display:inline-grid;place-items:center;width:80px;height:80px;border-radius:999px;color:#fff}.badge svg{color:#fff}
 h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spacing:-.02em}.updated{color:var(--muted);font-size:14px;margin:0}
@@ -115,18 +125,35 @@ export function faviconOf(tone:Tone){
  return `data:image/svg+xml,${encodeURIComponent(mark)}`;
 }
 // The header, as in the Blup themes (Nori, Bento, Mochi): a bar across the
-// top with the logos (the dark one on a dark screen, when there is one, else
+// top with the logos (the dark one on a dark theme, when there is one, else
 // the Blup) and the title unless hidden on the left, the page's links in
-// the middle and, on a small screen, a menu with them (a popover: the page
-// runs no script).
-const menuIcon=(name:"open"|"close",paths:string)=>`<svg class="${name}" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
-function headerOf(page:PublicStatus){
+// the middle, and on the right the language (links: the server writes the
+// page in it), the theme (light, dark or the system's, kept by the
+// visitor's browser) and, on a small screen, a menu with the links
+// (popovers).
+const lucide=(paths:string,extra="",size=20)=>`<svg${extra} width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const marks={
+ menu:'<path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/>',x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+ globe:'<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+ sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+ moon:'<path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/>',
+ monitor:'<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>',
+ chevron:'<path d="m6 9 6 6 6-6"/>',
+} as const;
+const languageNames:Record<Language,string>={pt:"Português",en:"English",es:"Español"};
+// The page's one script, allowed by its hash: the stored theme before the
+// page paints, and the theme menu.
+export const THEME_SCRIPT=`(function(){var r=document.documentElement,k="theme";r.classList.add("js");try{var t=localStorage.getItem(k);if(t==="light"||t==="dark")r.dataset.theme=t}catch(e){}function sync(){var c=r.dataset.theme||"system";document.querySelectorAll("[data-set-theme]").forEach(function(b){b.setAttribute("aria-checked",String(b.getAttribute("data-set-theme")===c))})}document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-set-theme]");if(!b)return;var v=b.getAttribute("data-set-theme");try{localStorage.setItem(k,v)}catch(e){}if(v==="system")delete r.dataset.theme;else r.dataset.theme=v;var m=document.getElementById("theme-menu");if(m&&m.hidePopover)m.hidePopover();sync()});document.addEventListener("DOMContentLoaded",sync)})();`;
+function headerOf(page:PublicStatus,lang:Language,t:(key:"language"|"theme"|"light"|"dark"|"system")=>string){
  const {light,dark}=page.logos,alt=page.showTitle?"":escape(page.title);
- const img=(file:string,version:string)=>`<img class="logo" src="${file}?v=${version}" alt="${alt}">`;
- const logo=light&&dark?`<picture><source srcset="logo-dark?v=${dark}" media="(prefers-color-scheme: dark)">${img("logo-light",light)}</picture>`:light?img("logo-light",light):dark?img("logo-dark",dark):blup;
+ const img=(file:string,version:string,extra="")=>`<img class="logo${extra}" src="${file}?v=${version}" alt="${alt}">`;
+ const logo=light&&dark?img("logo-light",light," when-light")+img("logo-dark",dark," when-dark"):light?img("logo-light",light):dark?img("logo-dark",dark):blup;
  const links=page.links.map(l=>`<a href="${escape(l.url)}" rel="noopener nofollow">${escape(l.label)}</a>`).join("");
- const menu=page.links.length?`<nav class="nav" aria-label="Menu">${links}</nav><button class="menu-toggle" type="button" popovertarget="mobile-menu" aria-label="Menu">${menuIcon("open",'<path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/>')}${menuIcon("close",'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>')}</button><nav id="mobile-menu" class="mobile-menu" popover aria-label="Menu">${links}</nav>`:"";
- return `<header class="site-header"><div class="bar"><a class="brand" href="./"${page.showTitle?"":` aria-label="${escape(page.title)}"`}>${logo}${page.showTitle?`<span>${escape(page.title)}</span>`:""}</a>${menu}</div></header>`;
+ const nav=page.links.length?`<nav class="nav" aria-label="Menu">${links}</nav>`:"";
+ const languages=`<div class="lang-picker"><button class="icon-button" type="button" popovertarget="lang-menu" aria-label="${escape(t("language"))}: ${lang}" style="anchor-name:--lang">${lucide(marks.globe)}<span class="lang-code">${lang}</span></button><div id="lang-menu" class="dropdown" popover style="position-anchor:--lang" role="menu">${(Object.keys(languageNames) as Language[]).map(l=>`<a role="menuitemradio" href="?lang=${l}" hreflang="${l}" lang="${l}" aria-checked="${l===lang}">${languageNames[l]}</a>`).join("")}</div></div>`;
+ const themes=`<div class="theme-picker"><button class="icon-button" type="button" popovertarget="theme-menu" aria-label="${escape(t("theme"))}" style="anchor-name:--theme">${lucide(marks.sun,' class="when-light"')}${lucide(marks.moon,' class="when-dark"')}${lucide(marks.chevron,"",16)}</button><div id="theme-menu" class="dropdown" popover style="position-anchor:--theme" role="menu">${([["light",marks.sun],["dark",marks.moon],["system",marks.monitor]] as const).map(([v,mark])=>`<button type="button" role="menuitemradio" data-set-theme="${v}">${lucide(mark)}${escape(t(v))}</button>`).join("")}</div></div>`;
+ const menu=page.links.length?`<button class="icon-button menu-toggle" type="button" popovertarget="mobile-menu" aria-label="Menu">${lucide(marks.menu,' class="open"',22)}${lucide(marks.x,' class="close"',22)}</button><nav id="mobile-menu" class="mobile-menu" popover aria-label="Menu">${links}</nav>`:"";
+ return `<header class="site-header"><div class="bar"><a class="brand" href="./?lang=${lang}"${page.showTitle?"":` aria-label="${escape(page.title)}"`}>${logo}${page.showTitle?`<span>${escape(page.title)}</span>`:""}</a>${nav}<div class="actions">${languages}${themes}${menu}</div></div></header>`;
 }
 // The badge for another site (in an iframe): the state's mark and words,
 // linking to the page. Light, dark or following the visitor's screen.
@@ -136,8 +163,9 @@ export function renderBadge(page:PublicStatus,theme:"light"|"dark"|"auto"){
  const color=theme==="auto"?`color:${ink.light}}@media (prefers-color-scheme:dark){a{color:${ink.dark}}`:`color:${ink[theme]}}`;
  return `<!doctype html><html lang="${page.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(label)}</title><style>html,body{margin:0;background:transparent;overflow:hidden}a{display:inline-flex;align-items:center;gap:8px;height:30px;font:500 14px/1 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-decoration:none;white-space:nowrap;-webkit-font-smoothing:antialiased;${color}a:hover span:last-child{text-decoration:underline}.dot{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:999px;background:${toneColor[state.tone]};color:#fff}</style></head><body><a href="./" target="_blank" rel="noopener"><span class="dot">${svg(state.tone,12,3)}</span><span>${escape(label)}</span></a></body></html>`;
 }
-export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
- const lang=page.language;
+// `language` is the one the visitor chose (?lang=), else the page's own.
+export function renderStatusPage(page:PublicStatus,now=Date.now(),language:Language=page.language):string{
+ const lang=language;
  const t=<K extends MessageKey>(key:K,...args:TranslationArgs<(typeof messages)[K][0]>)=>translate(lang,key,...args);
  const number=new Intl.NumberFormat(lang,{maximumFractionDigits:2});
  const longDate=new Intl.DateTimeFormat(lang,{dateStyle:"long",timeZone:"UTC"});
@@ -185,7 +213,7 @@ export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
  const maintenance=page.maintenance.length?`<section class="card"><div class="head"><h2>${escape(t("pulseScheduledMaintenance"))}</h2></div>${page.maintenance.map(m=>`<div class="day"><div class="incident"><h4>${escape(m.title)}<span class="tag t-maint">${escape(m.state==="active"?t("pulseMaintenanceActive"):t("pulseMaintenanceScheduled"))}</span></h4><p class="services"><span>${escape(windowOf(m))}</span>${m.services.map(name=>`<span>${escape(name)}</span>`).join("")}</p>${m.body?`<div class="update"><p>${escape(m.body)}</p></div>`:""}</div></div>`).join("")}</section>`:"";
  const year=new Date(now).getUTCFullYear();
 
- return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(page.title)}</title><link rel="icon" type="image/svg+xml" href="${faviconOf(overall.tone)}"><meta name="description" content="${escape(overall.label)}"><style>${css}</style></head><body>${headerOf(page)}<div class="wrap">
+ return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(page.title)}</title><script>${THEME_SCRIPT}</script><link rel="icon" type="image/svg+xml" href="${faviconOf(overall.tone)}"><meta name="description" content="${escape(overall.label)}"><style>${css}</style></head><body>${headerOf(page,lang,key=>t(key))}<div class="wrap">
 <section class="hero"><span class="badge ${overall.tone==="unknown"?"b-unknown":overall.tone}">${svg(overall.tone,40,2.5)}</span><h1>${escape(overall.label)}</h1>${updated}</section>
 <section class="card"><div class="head"><h2>${escape(t("pulseServices"))}</h2><div class="legend">${([["up","pulseOperational"],["partial","pulseDegraded"],["down","pulseDown"],["maint","pulseMaintenance"],["none","pulseNotMonitored"]] as const).map(([k,key])=>`<span class="l-${k}" data-tip="${escape(t(key))}" role="img" aria-label="${escape(t(key))}">${legendSvg(k)}</span>`).join("")}</div></div>${page.components.map(component).join("")||`<div class="row"><p class="updated">${escape(t("pulseNoData"))}</p></div>`}</section>
 ${maintenance}
