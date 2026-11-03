@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { reserve,release,releaseStatements } from "./quota";
 export const approvalBody=z.object({userCode:z.string().regex(/^[A-Za-z0-9-]{6,32}$/)}).strict();
-const tokenBody=z.object({device_code:z.string().min(1).max(512)}).passthrough();
+const tokenBody=z.looseObject({device_code:z.string().min(1).max(512)});
 const hash=async(code:string)=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(code)))].map(n=>n.toString(16).padStart(2,"0")).join("");
 
 export async function approveDevice(db:D1Database,userId:string,code:string,limit:number){

@@ -69,12 +69,12 @@ export const deploySchema = z.object({
 				hash: z.string().regex(HASH),
 				type: z.string().regex(/^[a-z0-9.+-]+\/[a-z0-9.+-]+(?:; ?charset=utf-8)?$/i).max(100),
 				gz: z.boolean(),
-			}),
+			}).strict(),
 		)
 		.min(1)
 		.max(20_000)
 		.refine((files) => new Set(files.map((f) => f.path)).size === files.length, "duplicate path"),
-});
+}).strict();
 type DeployFiles = z.infer<typeof deploySchema>["files"];
 
 // The manifest kept in R2: path -> [hash, type, gzipped].

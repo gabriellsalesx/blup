@@ -59,7 +59,7 @@ const siteURL = (env: Cloudflare.Env, slug: string) => {
 // Every R2 object of a site, in pages of 1000 (list and delete both take that many).
 
 
-const created = z.object({ slug: z.string().refine(slugAllowed, "slug"), title: z.string().trim().min(1).max(200) });
+const created = z.object({ slug: z.string().refine(slugAllowed, "slug"), title: z.string().trim().min(1).max(200) }).strict();
 
 export const sitesApi = new Hono<App>()
 	.use(signedIn)
@@ -125,7 +125,7 @@ export const sitesApi = new Hono<App>()
 
 	// Taking a site down: its address stops answering and its files go.
 	.delete("/:id", validate("param",idParam), async (c) => {
-		const s = await ownSite(c.get("userId"), c.req.param("id"));
+		const s = await ownSite(c.get("userId"), c.req.valid("param").id);
 		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
 		const lock=await siteLock(c.env.DB,s.id),domainLock=await siteLock(c.env.DB,`domain:${s.id}`);
 		if(!lock||!domainLock){if(lock)await unlockSite(c.env.DB,s.id,lock);if(domainLock)await unlockSite(c.env.DB,`domain:${s.id}`,domainLock);return c.json({code:"DEPLOY_BUSY"},409);}
@@ -148,8 +148,8 @@ export const sitesApi = new Hono<App>()
 	})
 
 	// Which of these files the site doesn't have yet (at most 1000 per call).
-	.post("/:id/missing", validate("param",idParam), validate("json", z.object({ hashes: z.array(z.string().regex(HASH)).max(1000) })), async (c) => {
-		const s = await ownSite(c.get("userId"), c.req.param("id"));
+	.post("/:id/missing", validate("param",idParam), validate("json", z.object({ hashes: z.array(z.string().regex(HASH)).max(1000) }).strict()), async (c) => {
+		const s = await ownSite(c.get("userId"), c.req.valid("param").id);
 		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
 		const hashes = [...new Set(c.req.valid("json").hashes)];
 		const found = new Set<string>();
@@ -163,9 +163,8 @@ export const sitesApi = new Hono<App>()
 	// One file, as stored; its name is the SHA-256 of these bytes.
 	.put("/:id/files/:hash", validate("param",idParam.extend({hash:hashId})), async (c) => {
 		const userId = c.get("userId");
-		const hash = c.req.param("hash");
-		if (!HASH.test(hash)) return c.json({ code: "BAD_REQUEST" }, 400);
-		const s = await ownSite(userId, c.req.param("id"));
+		const { hash } = c.req.valid("param");
+		const s = await ownSite(userId, c.req.valid("param").id);
 		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
 		const plan = await planOf(userId);
 		if (plan.limits.sites === 0) return c.json({ code: "PLAN" }, 403);
@@ -201,7 +200,7 @@ export const sitesApi = new Hono<App>()
 	// A deploy: every path and its file. Live as soon as it is saved.
 	.post("/:id/deploys", validate("param",idParam), validate("json", deploySchema), async (c) => {
 		const userId = c.get("userId");
-		const s = await ownSite(userId, c.req.param("id"));
+		const s = await ownSite(userId, c.req.valid("param").id);
 		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
 		if ((await planOf(userId)).limits.sites === 0) return c.json({ code: "PLAN" }, 403);
 		const lock=await siteLock(c.env.DB,s.id);

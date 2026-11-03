@@ -144,7 +144,7 @@ export const staffApi = new Hono<App>()
 	})
 
 	.get("/users/:id", validate("param",idParam), async (c) => {
-		const id = c.req.param("id");
+		const { id } = c.req.valid("param");
 		const [u] = await db.select().from(user).where(eq(user.id, id)).limit(1);
 		if (!u) return c.json({ code: "NOT_FOUND" }, 404);
 		const [sessions, keys, subs, history, billing] = await Promise.all([
@@ -176,7 +176,7 @@ export const staffApi = new Hono<App>()
 
 	// "I lost my laptop": every session ends; the person signs in again.
 	.post("/users/:id/sessions/revoke", validate("param",idParam), async (c) => {
-		const id = c.req.param("id");
+		const { id } = c.req.valid("param");
 		const gone = await db.delete(session).where(eq(session.userId, id)).returning({ id: session.id });
 		await c.env.SYNC_LIVE.getByName(id).revoke();
 		await log(c.get("staff").email, "sessions.revoke", id, `${gone.length} sessões`);
@@ -185,15 +185,15 @@ export const staffApi = new Hono<App>()
 
 	// A lost passkey: the person signs in by e-mail code and adds another.
 	.delete("/users/:id/passkeys/:pid", validate("param",idParam.extend({pid:opaqueId})), async (c) => {
-		const { id, pid } = c.req.param();
+		const { id, pid } = c.req.valid("param");
 		const gone = await db.delete(passkey).where(and(eq(passkey.id, pid), eq(passkey.userId, id))).returning({ name: passkey.name });
 		if (!gone.length) return c.json({ code: "NOT_FOUND" }, 404);
 		await log(c.get("staff").email, "passkey.remove", id, gone[0].name ?? undefined);
 		return c.json({ ok: true });
 	})
 
-	.post("/users/:id/ban", adminOnly, validate("param",idParam), body(z.object({ reason: z.string().trim().min(3).max(300) })), async (c) => {
-		const id = c.req.param("id");
+	.post("/users/:id/ban", adminOnly, validate("param",idParam), body(z.object({ reason: z.string().trim().min(3).max(300) }).strict()), async (c) => {
+		const { id } = c.req.valid("param");
 		const { reason } = c.req.valid("json");
 		await db.update(user).set({ banned: true, banReason: reason }).where(eq(user.id, id));
 		await queueAccountPurge(c.env.DB,id).run();
@@ -204,7 +204,7 @@ export const staffApi = new Hono<App>()
 	})
 
 	.post("/users/:id/unban", adminOnly, validate("param",idParam), async (c) => {
-		const id = c.req.param("id");
+		const { id } = c.req.valid("param");
 		await db.update(user).set({ banned: false, banReason: null }).where(eq(user.id, id));
 		await queueAccountPurge(c.env.DB,id).run();
 		await log(c.get("staff").email, "user.unban", id);
@@ -229,14 +229,14 @@ export const staffApi = new Hono<App>()
 		const rows = await db.select().from(staff).orderBy(staff.email);
 		return c.json({ owner: c.env.STAFF_OWNER_EMAIL?.toLowerCase() ?? null, staff: rows });
 	})
-	.post("/team", adminOnly, body(z.object({ email: z.email().transform((e) => e.toLowerCase()), role: z.enum(["support", "admin"]) })), async (c) => {
+	.post("/team", adminOnly, body(z.object({ email: z.email().max(254).transform((e) => e.toLowerCase()), role: z.enum(["support", "admin"]) }).strict()), async (c) => {
 		const body = c.req.valid("json");
 		await db.insert(staff).values({ ...body, addedBy: c.get("staff").email }).onConflictDoUpdate({ target: staff.email, set: { role: body.role } });
 		await log(c.get("staff").email, "team.set", null, `${body.email} ${body.role}`);
 		return c.json({ ok: true });
 	})
 	.delete("/team/:email", adminOnly, validate("param",z.object({email:z.email().max(254).toLowerCase()})), async (c) => {
-		const email = c.req.param("email").toLowerCase();
+		const { email } = c.req.valid("param");
 		if (email === c.get("staff").email) return c.json({ code: "NOT_YOURSELF" }, 400);
 		await db.delete(staff).where(eq(staff.email, email));
 		await log(c.get("staff").email, "team.remove", null, email);

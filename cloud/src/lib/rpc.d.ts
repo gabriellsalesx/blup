@@ -1017,14 +1017,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     wrapped: {
+                        by_password: string;
+                        by_recovery: string;
                         params: {
                             time: number;
                             memory_kib: number;
                             threads: number;
                             salt: string;
                         };
-                        by_password: string;
-                        by_recovery: string;
                     };
                 };
             };
@@ -1041,14 +1041,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     wrapped: {
+                        by_password: string;
+                        by_recovery: string;
                         params: {
                             time: number;
                             memory_kib: number;
                             threads: number;
                             salt: string;
                         };
-                        by_password: string;
-                        by_recovery: string;
                     };
                 };
             };
@@ -1062,14 +1062,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     wrapped: {
+                        by_password: string;
+                        by_recovery: string;
                         params: {
                             time: number;
                             memory_kib: number;
                             threads: number;
                             salt: string;
                         };
-                        by_password: string;
-                        by_recovery: string;
                     };
                 };
             };
@@ -1082,14 +1082,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     wrapped: {
+                        by_password: string;
+                        by_recovery: string;
                         params: {
                             time: number;
                             memory_kib: number;
                             threads: number;
                             salt: string;
                         };
-                        by_password: string;
-                        by_recovery: string;
                     };
                 };
             };
@@ -1102,14 +1102,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     wrapped: {
+                        by_password: string;
+                        by_recovery: string;
                         params: {
                             time: number;
                             memory_kib: number;
                             threads: number;
                             salt: string;
                         };
-                        by_password: string;
-                        by_recovery: string;
                     };
                 };
             };
@@ -2624,18 +2624,6 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: string;
             };
             outputFormat: "json";
-            status: 400;
-        } | {
-            input: {
-                param: {
-                    id: string;
-                    hash: string;
-                };
-            };
-            output: {
-                code: string;
-            };
-            outputFormat: "json";
             status: 404;
         } | {
             input: {
@@ -2661,6 +2649,18 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                    hash: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
         } | {
             input: {
                 param: {

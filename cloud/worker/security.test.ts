@@ -517,6 +517,29 @@ it("does not retain an obsolete password wrapping after a key update",async()=>{
  expect(JSON.stringify(d1.sqlite.prepare("SELECT * FROM sync_account WHERE user_id='alice'").get())).not.toContain("b2xk");
 });
 
+it("rejects unknown keys in client bodies and reads path params from the validator",async()=>{
+ d1.sqlite.exec("DELETE FROM sync_account WHERE user_id='alice'");
+ const wrapped={params:{time:3,memory_kib:65536,threads:1,salt:"YQ=="},by_password:"b25l",by_recovery:"cmVjb3Zlcnk="};
+ expect((await request("/sync/key","PUT",{wrapped:{...wrapped,extra:"x"}})).status).toBe(400);
+ expect((await request("/sync/key","PUT",{wrapped:{...wrapped,params:{...wrapped.params,extra:1}}})).status).toBe(400);
+ expect((await request("/sync/key","PUT",{wrapped,owner:"bob"})).status).toBe(400);
+ expect((await request("/sync/key","PUT",{wrapped})).status).toBe(201);
+ expect((await request("/sync/vaults","POST",{name:"YQ==",userId:"bob"})).status).toBe(400);
+ expect((await request("/sync/blocks/missing","POST",{ids:[],userId:"bob"})).status).toBe(400);
+ expect((await request("/sync/blocks/missing","POST",{ids:[HASH]})).status).toBe(200);
+ expect((await request("/sites","POST",{slug:"alice-extra",title:"x",userId:"bob"})).status).toBe(400);
+ expect((await request("/sites/site-a/deploys","POST",{files:[{path:"/index.html",hash:HASH,type:"text/html",gz:false,owner:"bob"}]})).status).toBe(400);
+ expect((await request("/sites/site-a/missing","POST",{hashes:[HASH],siteId:"site-b"})).status).toBe(400);
+ expect(await (await request("/sites/site-a/missing","POST",{hashes:[HASH]})).json()).toEqual({missing:[HASH]});
+ Object.assign(state.env,{STAFF_DEV_EMAIL:"owner@audit.invalid",STAFF_OWNER_EMAIL:"owner@audit.invalid"});
+ const staff=(path:string,method:string,body?:unknown)=>staffApi.fetch(new Request(`http://localhost:18848${path}`,{method,headers:{"content-type":"application/json"},body:body===undefined?undefined:JSON.stringify(body)}),state.env,ctx);
+ expect((await staff("/users/alice/ban","POST",{reason:"local test",until:1})).status).toBe(400);
+ expect((await staff("/team","POST",{email:"Helper@Audit.invalid",role:"support",addedBy:"x"})).status).toBe(400);
+ expect((await staff("/team","POST",{email:"Helper@Audit.invalid",role:"support"})).status).toBe(200);
+ expect((await staff("/team/HELPER%40audit.invalid","DELETE")).status).toBe(200);
+ expect(d1.sqlite.prepare("SELECT count(*) AS n FROM staff").get()?.n).toBe(0);
+});
+
 it("reports a conflict instead of accepting two different initial sync keys",async()=>{
  d1.sqlite.exec("DELETE FROM sync_account WHERE user_id='alice'");
  const wrapped={params:{time:3,memory_kib:65536,threads:1,salt:"YQ=="},by_password:"b25l",by_recovery:"cmVjb3Zlcnk="};

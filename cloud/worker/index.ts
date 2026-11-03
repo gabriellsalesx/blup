@@ -193,7 +193,7 @@ const routes = app
 	})
 	.delete("/devices/:id", session, validate("param",idParam), async (c) => {
 		const { user } = c.get("session");
-		await db.delete(sessionTable).where(and(eq(sessionTable.id, c.req.param("id")), eq(sessionTable.userId, user.id), isStudio));
+		await db.delete(sessionTable).where(and(eq(sessionTable.id, c.req.valid("param").id), eq(sessionTable.userId, user.id), isStudio));
 		return c.json({ ok: true });
 	})
 	.route("/staff",staffApi)

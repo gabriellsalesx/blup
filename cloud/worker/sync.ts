@@ -47,6 +47,9 @@ const wrappedKey = z.object({
 	by_password: b64,
 	by_recovery: b64,
 });
+// What a client sends: no unknown keys at any level. Stored rows keep the
+// lenient read above.
+const wrappedKeyInput = wrappedKey.extend({ params: wrappedKey.shape.params.strict() }).strict();
 
 const blockKey = (user: string, id: string) => `u/${user}/b/${id}`;
 
@@ -82,7 +85,7 @@ export const syncApi = new Hono<App>()
 	})
 	// Created once; afterwards only the password wrapping may change (a new
 	// notes password), never the recovery key's.
-	.put("/key", validate("json", z.object({ wrapped: wrappedKey })), async (c) => {
+	.put("/key", validate("json", z.object({ wrapped: wrappedKeyInput }).strict()), async (c) => {
 		const userId = c.get("userId");
 		const { wrapped } = c.req.valid("json");
 		const a = await account(userId);
@@ -101,7 +104,7 @@ export const syncApi = new Hono<App>()
 		const rows = await db.select({ id: vault.id, name: vault.name, head: vault.head, updatedAt: vault.updatedAt }).from(vault).where(eq(vault.userId, c.get("userId"))).orderBy(desc(vault.id)).limit(500);
 		return c.json({ vaults: rows });
 	})
-	.post("/vaults", validate("json", z.object({ name: b64.min(1) })), async (c) => {
+	.post("/vaults", validate("json", z.object({ name: b64.min(1) }).strict()), async (c) => {
 		const userId = c.get("userId");
 		if (!(await account(userId))) return c.json({ code: "NO_KEY" }, 409);
 		const id = uuidv7();
@@ -112,13 +115,13 @@ export const syncApi = new Hono<App>()
 		return c.json({ id, head: 0 }, 201);
 	})
 	.get("/vaults/:id", validate("param",idParam), async (c) => {
-		const v = await ownVault(c.get("userId"), c.req.param("id"));
+		const v = await ownVault(c.get("userId"), c.req.valid("param").id);
 		return v ? c.json(v) : c.json({ code: "NOT_FOUND" }, 404);
 	})
 
 	// The versions kept, newest first (the history).
 	.get("/vaults/:id/versions", validate("param",idParam), validate("query", z.object({ before: safeInt.pipe(z.number().positive()).optional() })), async (c) => {
-		const id = c.req.param("id");
+		const { id } = c.req.valid("param");
 		if (!(await ownVault(c.get("userId"), id))) return c.json({ code: "NOT_FOUND" }, 404);
 		const { before } = c.req.valid("query");
 		const rows = await db
@@ -130,7 +133,7 @@ export const syncApi = new Hono<App>()
 		return c.json({ versions: rows });
 	})
 	.get("/vaults/:id/versions/:n", validate("param",idParam.extend({n:safeInt.pipe(z.number().positive())})), async (c) => {
-		const id = c.req.param("id");
+		const { id } = c.req.valid("param");
 		if (!(await ownVault(c.get("userId"), id))) return c.json({ code: "NOT_FOUND" }, 404);
 		const [row] = await db.select({ key: vaultVersion.key }).from(vaultVersion).where(and(eq(vaultVersion.vaultId, id), eq(vaultVersion.n, c.req.valid("param").n))).limit(1);
 		const obj = row && (await c.env.NOTES.get(`${row.key}/m`));
@@ -142,7 +145,7 @@ export const syncApi = new Hono<App>()
 	// (the ids it uses, one per line) and "manifest" (sealed).
 	.post("/vaults/:id/versions", validate("param",idParam), async (c) => {
 		const userId = c.get("userId");
-		const id = c.req.param("id");
+		const { id } = c.req.valid("param");
 		const v = await ownVault(userId, id);
 		if (!v) return c.json({ code: "NOT_FOUND" }, 404);
 		const form=await c.req.formData().catch(()=>null);
@@ -179,7 +182,7 @@ export const syncApi = new Hono<App>()
 	})
 
 	// Which of these blocks are not stored yet (at most 1000 per call).
-	.post("/blocks/missing", validate("json", z.object({ ids: z.array(z.string().regex(BLOCK_ID)).max(1000) })), async (c) => {
+	.post("/blocks/missing", validate("json", z.object({ ids: z.array(z.string().regex(BLOCK_ID)).max(1000) }).strict()), async (c) => {
 		const userId = c.get("userId");
 		const ids = [...new Set(c.req.valid("json").ids)];
 		const found = new Set<string>();
@@ -192,8 +195,7 @@ export const syncApi = new Hono<App>()
 	})
 	.put("/blocks/:id", validate("param",z.object({id:hashId})), async (c) => {
 		const userId = c.get("userId");
-		const id = c.req.param("id");
-		if (!BLOCK_ID.test(id)) return c.json({ code: "BAD_REQUEST" }, 400);
+		const { id } = c.req.valid("param");
 		const body = await boundedBody(c.req.raw,MAX_BLOCK);
 		if (body.byteLength === 0 || body.byteLength > MAX_BLOCK) return c.json({ code: "BAD_REQUEST" }, 400);
 		const ticket=c.req.header("x-blup-upload-ticket");
@@ -223,8 +225,7 @@ export const syncApi = new Hono<App>()
 
 	})
 	.get("/blocks/:id", validate("param",z.object({id:hashId})), async (c) => {
-		const id = c.req.param("id");
-		if (!BLOCK_ID.test(id)) return c.json({ code: "BAD_REQUEST" }, 400);
+		const { id } = c.req.valid("param");
 		const stored=await c.env.DB.prepare("SELECT object_key AS key FROM sync_block WHERE user_id=? AND id=?").bind(c.get("userId"),id).first<{key:string|null}>();
 		const obj = stored?await c.env.NOTES.get(stored.key??blockKey(c.get("userId"),id)):null;
 		if (!obj) return c.json({ code: "NOT_FOUND" }, 404);

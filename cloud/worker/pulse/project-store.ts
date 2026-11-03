@@ -1,4 +1,4 @@
-import type {SafeEvent} from "./event";
+import {storedEvent,type SafeEvent} from "./event";
 import type {PulsePlan} from "./limits";
 import {monthOf,pulseLimits} from "./limits";
 import {IngestError} from "./protocol";
@@ -6,6 +6,8 @@ import {IngestError} from "./protocol";
 export type Issue={id:string;state:"open"|"resolved"|"ignored";title:string;level:string;firstAt:number;lastAt:number;count:number;environment:string;release:string};
 export type Occurrence={id:string;receivedAt:number;event:SafeEvent};
 export type ProjectSQL=Pick<SqlStorage,"exec"|"databaseSize">;
+// A stored sample that no longer parses is skipped, not shown half-typed.
+function storedSample(text:string):SafeEvent|null{try{const parsed=storedEvent.safeParse(JSON.parse(text));return parsed.success?parsed.data:null;}catch{return null;}}
 
 // Pure SQL engine is also exercised against actual SQLite in tests.
 export class ProjectStore{
@@ -54,7 +56,7 @@ INSERT OR IGNORE INTO meta VALUES('schema','1');`);
  issues(cutoff:number,filter:{state?:string;environment?:string;release?:string;q?:string;before?:number;beforeId?:string;limit:number}){
   return this.sql.exec<Issue>(`SELECT i.id,i.state,i.title,i.level,i.first_at AS firstAt,i.last_at AS lastAt,(SELECT coalesce(sum(count),0) FROM issue_day WHERE issue_id=i.id AND day>=?) AS count,i.environment,i.release FROM issue i WHERE last_at>? AND (? IS NULL OR state=?) AND (? IS NULL OR environment=?) AND (? IS NULL OR release=?) AND (? IS NULL OR instr(lower(title),lower(?))>0) AND (? IS NULL OR last_at<? OR (last_at=? AND ? IS NOT NULL AND i.id<?)) ORDER BY last_at DESC,id DESC LIMIT ?`,Math.floor(cutoff/86_400_000),cutoff,filter.state??null,filter.state??null,filter.environment??null,filter.environment??null,filter.release??null,filter.release??null,filter.q??null,filter.q??null,filter.before??null,filter.before??null,filter.before??null,filter.beforeId??null,filter.beforeId??null,filter.limit).toArray();
  }
- samples(id:string,cutoff:number,limit=50){return this.sql.exec<{id:string;receivedAt:number;event:string}>("SELECT id,received_at AS receivedAt,event FROM sample WHERE issue_id=? AND received_at>? ORDER BY received_at DESC,id DESC LIMIT ?",id,cutoff,limit).toArray().map(row=>({...row,event:JSON.parse(row.event) as SafeEvent}));}
+ samples(id:string,cutoff:number,limit=50){return this.sql.exec<{id:string;receivedAt:number;event:string}>("SELECT id,received_at AS receivedAt,event FROM sample WHERE issue_id=? AND received_at>? ORDER BY received_at DESC,id DESC LIMIT ?",id,cutoff,limit).toArray().flatMap(row=>{const event=storedSample(row.event);return event?[{...row,event}]:[];});}
  setState(id:string,state:Issue["state"],cutoff:number){return this.sql.exec("UPDATE issue SET state=? WHERE id=? AND last_at>? RETURNING id",state,id,cutoff).toArray().length>0;}
  usage(month:string){return {accepted:this.sql.exec<{n:number}>("SELECT coalesce(sum(used),0) AS n FROM grant_slot WHERE month=?",month).toArray()[0].n,bytes:this.sql.databaseSize};}
  cleanup(cutoff:number,now=Date.now()){

@@ -92,6 +92,14 @@ describe("Pulse atomic admission and retention",()=>{
   expect(store.samples(event.group,0,100)).toHaveLength(100);expect(store.issues(0,{limit:10})[0]).toMatchObject({count:103,state:"open"});expect(store.usage(month).accepted).toBe(103);
   store.setState(event.group,"ignored",0);store.accept({...event,id:"b".repeat(32)},"ultra_pulse",now+104);expect(store.issues(0,{limit:10})[0].state).toBe("ignored");
  });
+ it("skips stored samples that no longer match the event projection",async()=>{
+  const now=Date.now(),event=await safeEvent(raw(),"c".repeat(32));store.importGrant({id:"g",amount:10},new Date(now).toISOString().slice(0,7));
+  store.accept(event,"max_pulse",now);store.accept({...event,id:"d".repeat(32)},"max_pulse",now+1);
+  local.sqlite.prepare("UPDATE sample SET event=? WHERE id=?").run(JSON.stringify({...event,id:"d".repeat(32),injected:true}),"d".repeat(32));
+  expect(store.samples(event.group,0).map(s=>s.id)).toEqual([event.id]);
+  local.sqlite.prepare("UPDATE sample SET event='not json' WHERE id=?").run(event.id);
+  expect(store.samples(event.group,0)).toEqual([]);
+ });
  it("enforces burst atomically, hides expired data before cleanup and rolls back failed admissions",async()=>{
   const now=Date.now(),month=new Date(now).toISOString().slice(0,7),event=await safeEvent(raw(),"a".repeat(32));store.importGrant({id:"g",amount:100},month);
   for(let i=0;i<60;i++)store.accept({...event,id:i.toString(16).padStart(32,"0")},"max_pulse",now);
