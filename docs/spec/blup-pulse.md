@@ -809,4 +809,4 @@ Passar o mouse numa barra de dia abre um pequeno card, sem script:
 - **Detalhe (só em dia de queda ou lentidão):** a situação e o quanto ficou no ar ("Indisponível · 87,43% no ar").
 - **Embaixo:** a data, depois de uma linha.
 
-As dicas das barras das pontas se alinham à borda, para não sair do card.
+As dicas das barras das pontas se alinham à borda, para não sair do card; no celular, isso vale para as pontas dos 30 dias que aparecem. Cada barra recebe foco (`tabindex`), então no celular a dica abre com um toque e fecha com um toque fora; pelo teclado, abre com Tab.
