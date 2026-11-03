@@ -1,6 +1,7 @@
 <script lang="ts">
  import type {LayoutProps} from "./$types";
  import {resolve} from "$app/paths";
+ import {page} from "$app/state";
  import "../app.css";
  import {onDestroy} from "svelte";
  import {toast} from "#lib/toast.svelte.ts";
@@ -34,7 +35,9 @@
  $effect(()=>{const me=panel.me,selected=language(),revision=i18n.revision;void revision;if(me)void saver.schedule(me.id,selected,me.language);});
 </script>
 <svelte:head><title>Blup Pulse</title><meta name="robots" content="noindex,nofollow" /></svelte:head>
-{#if !panel.ready}<main class="p-10"><p>{t("loading")}</p></main>
+<!-- An error page stands alone, outside the panel, like the Cloud's. -->
+{#if page.error}{@render children()}
+{:else if !panel.ready}<main class="p-10"><p>{t("loading")}</p></main>
 {:else if !panel.me}<main class="mx-auto max-w-xl p-10"><img src="/mascot.svg" alt="" class="mb-6 size-24" /><h1 class="text-3xl font-bold">Blup Pulse</h1><h2 class="mt-5 text-xl font-semibold">{t("pulseWelcome")}</h2><p class="my-4">{t("pulseLead")}</p><a class="font-semibold text-blup underline" href={`${cloudURL}${signInFor(cloudPaths.pulse)}`}>{t("pulseLogin")}</a><div class="mt-6 flex gap-2"><LanguagePicker /><ThemePicker /></div></main>
 {:else}<PanelShell {links} home={resolve("/")} app={{current:"pulse",links:{cloud:`${cloudURL}${cloudPaths.account}`,pulse:resolve("/")}}} languages wide>
  {#snippet foot()}<SignOutButton onclick={signOut}/>{/snippet}
