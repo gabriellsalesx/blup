@@ -17,7 +17,8 @@
  import UptimeBars from "#lib/ui/UptimeBars.svelte";
  import {panel} from "../../lib/panel.svelte";
  import {stateOf,stateName,stateColor,since,bars,type Monitor} from "../../lib/monitor";
- // Each monitor is one row: its state as a colored edge, name and address,
+ // Each monitor is one row: its state as the color of its edge and address,
+ // its name,
  // the last days as bars and how long it has been like this. A click opens
  // its own page with the details; the three dots pause, edit or delete it.
  let {data}=$props();
@@ -27,7 +28,8 @@
  const toggle=(m:Monitor)=>act(async()=>{await parseResponse(pulseApi.monitors[":monitor"].$patch({param:{monitor:m.id},json:{active:!m.active}}));toast(()=>m.active?t("pulseToastPaused"):t("pulseToastResumed"));});
  async function remove(m:Monitor){if(!await confirm({title:t("delete"),message:t("pulseRemoveMonitor"),danger:true}))return;await act(async()=>{await parseResponse(pulseApi.monitors[":monitor"].$delete({param:{monitor:m.id}}));toast(()=>t("pulseToastDeleted"));});}
  const menu=(m:Monitor)=>[...(m.writable?[{label:m.active?t("pulsePause"):t("pulseResume"),Icon:m.active?Pause:Play,onselect:()=>void toggle(m)},{label:t("pulseEdit"),Icon:Pencil,onselect:()=>void goto(`/monitores/${encodeURIComponent(m.id)}/editar`)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(m)}];
- const edge={up:"border-l-emerald-500",down:"border-l-red-500",unknown:"border-l-neutral-300 dark:border-l-neutral-700",paused:"border-l-neutral-300 dark:border-l-neutral-700"};
+ // Both themes named, so the card's own border color never covers the edge.
+ const edge={up:"border-l-emerald-500 dark:border-l-emerald-500",down:"border-l-red-500 dark:border-l-red-500",unknown:"border-l-neutral-300 dark:border-l-neutral-700",paused:"border-l-neutral-300 dark:border-l-neutral-700"};
 </script>
 
 <PageHeader title={t("pulseMonitors")} lead={t("pulseCheckLead")}>
@@ -42,7 +44,7 @@
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
   <div onclick={(event)=>openCard(event,href)} onauxclick={(event)=>openCard(event,href)} class="relative grid cursor-pointer items-center gap-x-6 gap-y-3 rounded-xl border border-l-4 border-neutral-200 bg-white px-5 py-4 transition-colors hover:bg-neutral-50 sm:grid-cols-[minmax(0,1fr)_minmax(0,22rem)_12rem] dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60 {edge[s]}">
    <a class={cardLink} {href} aria-label={monitor.name}></a>
-   <span class="min-w-0"><span class="block truncate font-semibold">{monitor.name}</span><span class="block truncate text-sm text-neutral-500 underline">{monitor.url}</span></span>
+   <span class="min-w-0"><span class="block truncate font-semibold">{monitor.name}</span><span class="block truncate text-sm underline {stateColor[s]}">{monitor.url}</span></span>
    <span class="hidden sm:block"><UptimeBars days={bars(histories[monitor.id],30)} label={t("pulseHistory")}/></span>
    <span class="sm:hidden"><UptimeBars days={bars(histories[monitor.id],14)} label={t("pulseHistory")}/></span>
    <span class="flex items-center justify-between gap-2 sm:justify-end sm:text-right"><span><span class="block text-sm font-semibold {stateColor[s]}">{stateName(s)}</span>{#if changed}<span class="block text-xs text-neutral-500">{changed}</span>{/if}</span><ActionMenu label={t("pulseActions")} items={menu(monitor)}/></span>
