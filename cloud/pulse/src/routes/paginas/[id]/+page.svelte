@@ -1,13 +1,13 @@
 <script lang="ts">
  import {goto} from "$app/navigation";
- import ArrowLeft from "@lucide/svelte/icons/arrow-left";
- import ExternalLink from "@lucide/svelte/icons/external-link";
  import Eye from "@lucide/svelte/icons/eye";
  import EyeOff from "@lucide/svelte/icons/eye-off";
  import {t,language,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import {toast} from "#lib/toast.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
+ import BackLink from "#lib/ui/BackLink.svelte";
+ import DetailHeader from "#lib/ui/DetailHeader.svelte";
  import Card from "#lib/ui/Card.svelte";
  import FloatField from "#lib/ui/FloatField.svelte";
  import Select from "#lib/ui/Select.svelte";
@@ -39,14 +39,15 @@
  async function incident(e:SubmitEvent){e.preventDefault();const current=page;if(!current)return;await run(async()=>{if(incidentId)await parseResponse(pulseApi.pages[":page"].incidents[":incident"].updates.$post({param:{page:current.id,incident:incidentId},json:{body:text,state:incidentStateValue}}));else await parseResponse(pulseApi.pages[":page"].incidents.$post({param:{page:current.id},json:{title:incidentTitle,body:text,state:incidentStateValue,impact}}));incidentId=null;incidentTitle="";text="";incidents=await getIncidents(current.id);toast(()=>t("pulseToastIncident"));});}
 </script>
 
-<a href="/paginas" class="mb-4 inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white"><ArrowLeft class="size-4"/>{t("pulsePages")}</a>
+<BackLink href="/paginas" label={t("pulsePages")}/>
 
 {#if !page}<p class="mt-4 rounded-xl border border-neutral-200 bg-white px-5 py-10 text-center text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">{t("pulsePageNotFound")}</p>
 {:else}
- <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-  <div class="min-w-0"><a class="group inline-flex max-w-full items-center gap-2 text-2xl font-bold sm:text-3xl" href={`https://pulse.getblup.site/${page.slug}/`} target="_blank" rel="noopener noreferrer"><span class="truncate">pulse.getblup.site/{page.slug}/</span><ExternalLink class="size-5 shrink-0 text-neutral-400 group-hover:text-blup"/></a><p class="mt-2 flex flex-wrap items-center gap-2 text-neutral-500"><span class="truncate">{page.title}</span><Badge tone={page.published?"green":"neutral"}>{page.published?t("pulsePublished"):t("pulseDraft")}</Badge></p></div>
-  {#if writable}<div class="shrink-0"><Button variant="secondary" {busy} onclick={publish}>{#if page.published}<EyeOff class="size-4"/>{t("pulseUnpublish")}{:else}<Eye class="size-4"/>{t("pulsePublish")}{/if}</Button></div>{/if}
- </header>
+ {@const live=page.published}
+ <DetailHeader title={page.title} url={`https://pulse.getblup.site/${page.slug}/`}>
+  {#snippet badge()}<Badge tone={live?"green":"neutral"}>{live?t("pulsePublished"):t("pulseDraft")}</Badge>{/snippet}
+  {#snippet actions()}{#if writable}<Button small variant="secondary" {busy} onclick={publish}>{#if live}<EyeOff class="size-4"/>{t("pulseUnpublish")}{:else}<Eye class="size-4"/>{t("pulsePublish")}{/if}</Button>{/if}{/snippet}
+ </DetailHeader>
 
  <div class="mt-8"><Segmented label={t("pulsePages")} options={tabs} bind:value={tab}/></div>
 

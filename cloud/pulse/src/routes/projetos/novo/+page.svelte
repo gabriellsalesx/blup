@@ -2,13 +2,13 @@
  import {goto} from "$app/navigation";
  import Copy from "@lucide/svelte/icons/copy";
  import Plus from "@lucide/svelte/icons/plus";
- import ArrowLeft from "@lucide/svelte/icons/arrow-left";
  import {t} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import Button from "#lib/ui/Button.svelte";
  import Card from "#lib/ui/Card.svelte";
  import FloatField from "#lib/ui/FloatField.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
+ import BackLink from "#lib/ui/BackLink.svelte";
  import {toast} from "#lib/toast.svelte.ts";
  import type {PlatformId} from "../../../../../shared/pulse-platforms";
  import PlatformPicker from "../../../lib/PlatformPicker.svelte";
@@ -20,7 +20,7 @@
  async function copy(){try{await navigator.clipboard.writeText(dsn);toast(()=>t("copied"));}catch{toast(()=>t("copyFailed"),{kind:"error"});}}
 </script>
 
-<a href="/" class="mb-4 inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white"><ArrowLeft class="size-4"/>{t("pulseProjects")}</a>
+<div class="mb-4"><BackLink href="/" label={t("pulseProjects")}/></div>
 <PageHeader title={t("pulseCreateProjectTitle")}/>
 
 {#if dsn}

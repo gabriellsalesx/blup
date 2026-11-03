@@ -1,7 +1,7 @@
 <script lang="ts">
 	import {t} from "#lib/i18n.svelte.ts";
 	import FloatField from "#lib/ui/FloatField.svelte";
-	import Tabs from "#lib/ui/Tabs.svelte";
+	import Segmented from "#lib/ui/Segmented.svelte";
 	import {platforms,type PlatformGroup,type PlatformId} from "../../../shared/pulse-platforms";
 
 	// The platform of a new project: a group of tabs (or a filter across all
@@ -17,7 +17,7 @@
 	<div class="min-w-0 flex-1 basis-64"><h2 class="font-bold">{t("pulsePlatform")}</h2><p class="mt-0.5 text-sm text-neutral-500">{t("pulsePlatformHelp")}</p></div>
 	<div class="w-full sm:w-64"><FloatField id="platform-filter" surface="bg-white dark:bg-neutral-900" label={t("pulseFilterPlatforms")} type="search" bind:value={filter}/></div>
 </div>
-{#if !filter.trim()}<div class="mt-5"><Tabs label={t("pulsePlatform")} {tabs} bind:value={group}/></div>{/if}
+{#if !filter.trim()}<div class="mt-5"><Segmented label={t("pulsePlatform")} options={tabs} bind:value={group}/></div>{/if}
 <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t("pulsePlatform")}>
 	{#each shown as platform(platform.id)}
 		<button type="button" role="radio" aria-checked={value===platform.id} class="flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors {value===platform.id?'border-blup bg-emerald-50 text-blup dark:bg-emerald-950/40':'border-neutral-200 hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600'}" onclick={()=>value=platform.id}>

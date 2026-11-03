@@ -1,7 +1,6 @@
 <script lang="ts">
  import {goto} from "$app/navigation";
  import Plus from "@lucide/svelte/icons/plus";
- import ArrowLeft from "@lucide/svelte/icons/arrow-left";
  import {t} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import {toast} from "#lib/toast.svelte.ts";
@@ -10,6 +9,7 @@
  import FloatField from "#lib/ui/FloatField.svelte";
  import FieldHelp from "#lib/ui/FieldHelp.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
+ import BackLink from "#lib/ui/BackLink.svelte";
  import Select from "#lib/ui/Select.svelte";
  import {pulseApi,parseResponse,type Project} from "../../../lib/api";
  import {panel} from "../../../lib/panel.svelte";
@@ -23,7 +23,7 @@
  async function create(e:SubmitEvent){e.preventDefault();busy=true;try{await parseResponse(pulseApi.monitors.$post({json:{name:name.trim(),url:url.trim(),projectId,intervalMinutes}}));toast(()=>t("pulseToastMonitor"));await goto("/monitores");}catch(err){toast(errorMessage(err),{kind:"error"});}finally{busy=false;}}
 </script>
 
-<a href="/monitores" class="mb-4 inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white"><ArrowLeft class="size-4"/>{t("pulseMonitors")}</a>
+<div class="mb-4"><BackLink href="/monitores" label={t("pulseMonitors")}/></div>
 <PageHeader title={t("pulseNewMonitorTitle")} lead={t("pulseMonitorHow")}/>
 
 <form class="mt-8" onsubmit={create}><Card><div class="grid gap-6">

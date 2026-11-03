@@ -1,18 +1,18 @@
 <script lang="ts">
  import {goto} from "$app/navigation";
- import ArrowLeft from "@lucide/svelte/icons/arrow-left";
  import ChevronLeft from "@lucide/svelte/icons/chevron-left";
  import ChevronRight from "@lucide/svelte/icons/chevron-right";
  import Pause from "@lucide/svelte/icons/pause";
  import Play from "@lucide/svelte/icons/play";
  import Trash2 from "@lucide/svelte/icons/trash-2";
  import Bell from "@lucide/svelte/icons/bell";
- import ExternalLink from "@lucide/svelte/icons/external-link";
  import {t,intlLocale,formatDate} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import {confirm} from "#lib/confirm.svelte.ts";
  import {toast} from "#lib/toast.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
+ import BackLink from "#lib/ui/BackLink.svelte";
+ import DetailHeader from "#lib/ui/DetailHeader.svelte";
  import Card from "#lib/ui/Card.svelte";
  import Segmented from "#lib/ui/Segmented.svelte";
  import StatusDot from "#lib/ui/StatusDot.svelte";
@@ -41,16 +41,15 @@
  async function remove(m:Monitor){if(!await confirm({title:t("delete"),message:t("pulseRemoveMonitor"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.monitors[":monitor"].$delete({param:{monitor:m.id}}));toast(()=>t("pulseToastDeleted"));await goto("/monitores");});}
 </script>
 
-<a class="inline-flex items-center gap-1.5 text-sm font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-white" href="/monitores"><ArrowLeft class="size-4"/>{t("pulseBackToMonitors")}</a>
+<BackLink href="/monitores" label={t("pulseBackToMonitors")}/>
 
 {#if missing}<p class="mt-8 rounded-xl border border-neutral-200 bg-white px-5 py-10 text-center text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">{t("pulseMonitorNotFound")}</p>
 {:else if monitor}
  {@const m=monitor}
  {@const changed=since(m,history)}
- <header class="mt-4 flex flex-wrap items-start justify-between gap-4">
-  <div class="min-w-0"><h1 class="truncate text-2xl font-bold">{m.name}</h1><a class="mt-1 inline-flex max-w-full items-center gap-1 text-sm text-neutral-500 underline hover:text-neutral-900 dark:hover:text-white" href={m.url} target="_blank" rel="noopener noreferrer"><span class="truncate">{m.url}</span><ExternalLink class="size-3.5 shrink-0"/></a></div>
-  <div class="flex flex-wrap gap-2">{#if m.writable}<Button small variant="secondary" {busy} onclick={()=>toggle(m)}>{#if m.active}<Pause class="size-4"/>{t("pulsePause")}{:else}<Play class="size-4"/>{t("pulseResume")}{/if}</Button>{/if}<Button small variant="secondary" {busy} onclick={()=>remove(m)}><Trash2 class="size-4"/>{t("delete")}</Button></div>
- </header>
+ <DetailHeader title={m.name} url={m.url}>
+  {#snippet actions()}{#if m.writable}<Button small variant="secondary" {busy} onclick={()=>toggle(m)}>{#if m.active}<Pause class="size-4"/>{t("pulsePause")}{:else}<Play class="size-4"/>{t("pulseResume")}{/if}</Button>{/if}<Button small variant="secondary" {busy} onclick={()=>remove(m)}><Trash2 class="size-4"/>{t("delete")}</Button>{/snippet}
+ </DetailHeader>
 
  <div class="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6">
   <Card>
