@@ -56,6 +56,13 @@ INSERT OR IGNORE INTO meta VALUES('schema','1');`);
  issues(cutoff:number,filter:{state?:string;environment?:string;release?:string;q?:string;before?:number;beforeId?:string;limit:number}){
   return this.sql.exec<Issue>(`SELECT i.id,i.state,i.title,i.level,i.first_at AS firstAt,i.last_at AS lastAt,(SELECT coalesce(sum(count),0) FROM issue_day WHERE issue_id=i.id AND day>=?) AS count,i.environment,i.release FROM issue i WHERE last_at>? AND (? IS NULL OR state=?) AND (? IS NULL OR environment=?) AND (? IS NULL OR release=?) AND (? IS NULL OR instr(lower(title),lower(?))>0) AND (? IS NULL OR last_at<? OR (last_at=? AND ? IS NOT NULL AND i.id<?)) ORDER BY last_at DESC,id DESC LIMIT ?`,Math.floor(cutoff/86_400_000),cutoff,filter.state??null,filter.state??null,filter.environment??null,filter.environment??null,filter.release??null,filter.release??null,filter.q??null,filter.q??null,filter.before??null,filter.before??null,filter.before??null,filter.beforeId??null,filter.beforeId??null,filter.limit).toArray();
  }
+ // The environments and releases its issues came from, the most recent
+ // first, for the filters of the issue list.
+ facets(cutoff:number){
+  const environments=this.sql.exec<{value:string}>("SELECT environment AS value FROM issue WHERE last_at>? AND environment<>'' GROUP BY environment ORDER BY max(last_at) DESC LIMIT 30",cutoff).toArray().map(r=>r.value);
+  const releases=this.sql.exec<{value:string}>("SELECT release AS value FROM issue WHERE last_at>? AND release<>'' GROUP BY release ORDER BY max(last_at) DESC LIMIT 30",cutoff).toArray().map(r=>r.value);
+  return {environments,releases};
+ }
  // One issue with its occurrences per day (UTC days since the epoch), for
  // its own page.
  issue(id:string,cutoff:number){

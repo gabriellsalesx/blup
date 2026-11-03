@@ -7,12 +7,12 @@
  import {toast} from "#lib/toast.svelte.ts";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import BackLink from "#lib/ui/BackLink.svelte";
- import MonitorForm from "../../../lib/MonitorForm.svelte";
+ import MonitorForm,{type MonitorValues} from "../../../lib/MonitorForm.svelte";
  import {pulseApi,parseResponse} from "../../../lib/api";
  // A new monitor; once made, back to the list.
  let {data}:PageProps=$props();
  let busy=$state(false);
- async function save(values:{name:string;url:string;projectId:string;intervalMinutes:number}){busy=true;try{await parseResponse(pulseApi.monitors.$post({json:values}));toast(()=>t("pulseToastMonitor"));await goto(resolve("/monitors"));}catch(err){toast(errorMessage(err),{kind:"error"});}finally{busy=false;}}
+ async function save(values:MonitorValues){busy=true;try{await parseResponse(pulseApi.monitors.$post({json:{...values,headers:values.headers.map(h=>({name:h.name,value:h.value??""}))}}));toast(()=>t("pulseToastMonitor"));await goto(resolve("/monitors"));}catch(err){toast(errorMessage(err),{kind:"error"});}finally{busy=false;}}
 </script>
 
 <div class="mb-4"><BackLink href={resolve("/monitors")} label={t("pulseMonitors")}/></div>

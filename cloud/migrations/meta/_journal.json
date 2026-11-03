@@ -169,6 +169,13 @@
       "when": 1793724389578,
       "tag": "0023_pulse_source_maps",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1793727776217,
+      "tag": "0024_pulse_monitor_opcoes",
+      "breakpoints": true
     }
   ]
 }

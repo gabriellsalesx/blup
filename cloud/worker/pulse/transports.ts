@@ -1,7 +1,9 @@
 import {z} from "zod";
-import {discordWebhook,chatIdSchema} from "./channel-crypto";
+import {discordWebhook,slackWebhook,chatIdSchema} from "./channel-crypto";
 import {boundedBody} from "../validation";
-import {discordPayload,telegramPayload,type AlertMessage} from "./alert-message";
+import {discordPayload,telegramPayload,slackPayload,webhookPayload,webhookSignature,type AlertMessage} from "./alert-message";
+import {webhookTarget} from "./channel-crypto";
+import {monitorURL,publicDNS} from "./monitor-http";
 export type Delivery={sent:boolean;permanent:boolean;code:string|null;waitMs:number;global:boolean};
 const success=(waitMs=0):Delivery=>({sent:true,permanent:false,code:null,waitMs,global:false});
 const failure=(code:string,waitMs=15_000,permanent=false,global=false):Delivery=>({sent:false,permanent,code,waitMs,global});
@@ -30,3 +32,30 @@ export async function deliverTelegram(env:Cloudflare.Env,target:string,message:A
   return failure("PROVIDER");
  }catch{return failure("PROVIDER");}
 }
+// Slack answers "ok" (200); a removed hook, a revoked app or an archived
+// channel stop the destination; too many requests wait.
+export async function deliverSlack(target:string,message:AlertMessage):Promise<Delivery>{
+ const parsed=slackWebhook.safeParse(target);if(!parsed.success)return failure("INVALID_TARGET",0,true);
+ try{
+  const res=await fetch(parsed.data.url,{method:"POST",redirect:"manual",signal:AbortSignal.timeout(10_000),headers:{"content-type":"application/json"},body:JSON.stringify(slackPayload(message))});await res.body?.cancel();
+  if(res.status===429)return failure("RATE_LIMIT",wait(res.headers.get("retry-after")));
+  if([403,404,410].includes(res.status))return failure("DESTINATION_DISABLED",0,true);
+  return res.ok?success():failure("PROVIDER");
+ }catch{return failure("PROVIDER");}
+}
+// The person's own system: signed JSON to a public HTTPS address, checked
+// again before each request (no private networks, no redirects followed).
+// 2xx is delivered; 410 stops the destination; 429 waits; the rest retry.
+export async function deliverWebhook(target:string,message:AlertMessage,now=Date.now()):Promise<Delivery>{
+ let parsed:ReturnType<typeof webhookTarget.parse>;try{parsed=webhookTarget.parse(JSON.parse(target));}catch{return failure("INVALID_TARGET",0,true);}
+ const signal=AbortSignal.timeout(10_000);
+ try{
+  const url=monitorURL(parsed.url);await publicDNS(url.hostname,signal);
+  const body=JSON.stringify(webhookPayload(message,now));
+  const res=await fetch(url,{method:"POST",redirect:"manual",signal,headers:{"content-type":"application/json","user-agent":"BlupPulse/1.0 (+https://getblup.io)","x-blup-event":message.event,"x-blup-signature":await webhookSignature(parsed.secret,body,now)},body});await res.body?.cancel();
+  if(res.status===429)return failure("RATE_LIMIT",wait(res.headers.get("retry-after")));
+  if(res.status===410)return failure("DESTINATION_DISABLED",0,true);
+  return res.ok?success():failure("PROVIDER");
+ }catch(e){return e instanceof Error&&e.message==="INVALID_TARGET"?failure("INVALID_TARGET",0,true):failure("PROVIDER");}
+}
+

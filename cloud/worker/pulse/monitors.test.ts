@@ -142,3 +142,34 @@ it("alerts a confirmed fall and its return, not a new monitor that is up",()=>{
  store.record(check("i",8,"down"));store.record(check("j",9,"down"));store.record({...check("k",10,"up"),result:{outcome:"unknown",status:null,durationMs:1,reason:"network"}});
  store.record(check("l",11,"up"));store.record(check("m",12,"up"));expect(kinds()).toEqual(["monitor_down","monitor_up","monitor_down","monitor_up"]);
 });
+it("checks with the monitor's method, statuses, keyword, timeout and headers",async()=>{
+ const dns=(input:RequestInfo|URL)=>String(input).startsWith("https://cloudflare-dns.com/")?Response.json({Status:0,Answer:[{type:1,data:"93.184.216.34"}]}):null;
+ const seen:{url:string;method:string;auth:string|null}[]=[];
+ const site=(status:number,body="",location?:string)=>vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{const d=dns(input);if(d)return d;seen.push({url:String(input),method:init?.method??"GET",auth:new Headers(init?.headers).get("authorization")});return new Response(init?.method==="HEAD"?null:body,{status,headers:location?{location}:{}});});
+ const base={method:"GET" as const,expectedStatus:[] as number[],keyword:null,timeoutSeconds:10};
+ expect((await checkHTTP("https://example.com/",false,site(404),base)).outcome).toBe("down");
+ expect((await checkHTTP("https://example.com/",false,site(404),{...base,expectedStatus:[404]})).outcome).toBe("up");
+ expect(await checkHTTP("https://example.com/",false,site(200,"<h1>Erro interno</h1>"),{...base,keyword:{text:"Bem-vindo",mode:"contains"}})).toMatchObject({outcome:"down",reason:"keyword"});
+ expect((await checkHTTP("https://example.com/",false,site(200,"<h1>BEM-VINDO</h1>"),{...base,keyword:{text:"bem-vindo",mode:"contains"}})).outcome).toBe("up");
+ expect(await checkHTTP("https://example.com/",false,site(200,"Fatal error"),{...base,keyword:{text:"fatal error",mode:"absent"}})).toMatchObject({outcome:"down",reason:"keyword"});
+ seen.length=0;await checkHTTP("https://example.com/",false,site(200),{...base,method:"HEAD"});expect(seen[0].method).toBe("HEAD");
+ seen.length=0;const hop=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{const d=dns(input);if(d)return d;seen.push({url:String(input),method:"GET",auth:new Headers(init?.headers).get("authorization")});return String(input).startsWith("https://example.com/")?new Response(null,{status:302,headers:{location:"https://other.example.org/login"}}):new Response("ok");});
+ await checkHTTP("https://example.com/api",false,hop,base,[{name:"Authorization",value:"Bearer secret-value"}]);
+ expect(seen.map(s=>[new URL(s.url).hostname,s.auth])).toEqual([["example.com","Bearer secret-value"],["other.example.org",null]]);
+ const slow=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{const d=dns(input);if(d)return d;return await new Promise<Response>((_,reject)=>init?.signal?.addEventListener("abort",()=>reject(new Error("aborted"))));});
+ vi.useRealTimers();expect(await checkHTTP("https://example.com/",false,slow,{...base,timeoutSeconds:1})).toMatchObject({outcome:"down",reason:"timeout"});
+});
+it("keeps request headers sealed and never sends their values back",async()=>{
+ Object.assign(state.env,{PULSE_CHANNEL_KEY:btoa("k".repeat(32))});
+ const options={method:"GET",expectedStatus:[200],keyword:{text:"ok",mode:"contains"},timeoutSeconds:5};
+ expect((await request("/monitors","POST",{projectId:"1",name:"API",url:"https://example.com/",intervalMinutes:5,options:{...options,method:"HEAD"}})).status).toBe(400);
+ expect((await request("/monitors","POST",{projectId:"1",name:"API",url:"https://example.com/",intervalMinutes:5,headers:[{name:"Host",value:"x"}]})).status).toBe(400);
+ const made=await request("/monitors","POST",{projectId:"1",name:"API",url:"https://example.com/",intervalMinutes:5,options,headers:[{name:"Authorization",value:"Bearer TOP_SECRET_VALUE"},{name:"X-Env",value:"prod"}]});expect(made.status).toBe(201);const {id}=await made.json() as {id:string};
+ expect(JSON.stringify(db.sqlite.prepare("SELECT * FROM pulse_monitor WHERE id=?").get(id))).not.toContain("TOP_SECRET_VALUE");
+ const listed=await(await request("/monitors")).json() as {monitors:{id:string;options:unknown;headerNames:string[]}[]},mine=listed.monitors.find(m=>m.id===id);
+ expect(mine).toMatchObject({options,headerNames:["Authorization","X-Env"]});expect(JSON.stringify(listed)).not.toContain("TOP_SECRET_VALUE");
+ expect((await request(`/monitors/${id}`,"PATCH",{headers:[{name:"Unknown",value:null}]})).status).toBe(400);
+ expect((await request(`/monitors/${id}`,"PATCH",{headers:[{name:"Authorization",value:null}]})).status).toBe(200);
+ const {openHeaders}=await import("./monitor-options");const row=db.sqlite.prepare("SELECT headers FROM pulse_monitor WHERE id=?").get(id) as {headers:string};
+ expect(await openHeaders(state.env,"alice",id,row.headers)).toEqual([{name:"Authorization",value:"Bearer TOP_SECRET_VALUE"}]);
+});

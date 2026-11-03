@@ -40,6 +40,7 @@ Todas as rotas abaixo estão no Worker Cloud, sob `/api/pulse`, com sessão e do
 | `GET /projects/:project/issues` | Filtros `state`, `environment`, `release`, `q`, `before`, `beforeId` e `limit`; `limit` de 1 a 50, padrão 30; retorna `{issues}`; o par `before/beforeId` preserva empates na paginação |
 | `PATCH /projects/:project/issues/:issue` | JSON estrito `{state}`, em `open/resolved/ignored`; `{ok:true}` ou 404 |
 | `GET /projects/:project/issues/:issue/events` | `{events}` com até 50 amostras recentes; ainda sem cursor ou parâmetro de paginação |
+| `GET /projects/:project/issue-facets` | `{environments, releases}`: os ambientes e versões vistos nos problemas do histórico guardado, para os filtros da lista |
 
 `project` é string decimal positiva segura como inteiro JavaScript; `issue` é o hash hexadecimal do grupo. `createdAt` de projeto e `readOnlyUntil` saem em ISO UTC. `firstAt`, `lastAt`, `receivedAt` e `revokedAt` usam números em milissegundos na Fase 1, com `null` quando previsto. A tabela de API da seção 9 descreve a evolução-alvo; por exemplo, ainda não existe uma rota GET separada de detalhe do problema.
 
@@ -109,7 +110,7 @@ As rotas privadas exigem sessão/dono; criar, vincular, confirmar e testar exige
 | `DELETE /channels/:channel` | Remove canal, vínculos, cooldowns e entregas na fila; `{ok:true}` ou 404 |
 | `POST /channels/:channel/test` | JSON estrito `{}`; `202 {queued:true}`; no máximo um teste por minuto por canal, com 429 e `Retry-After: 60` no excesso |
 | `POST /monitors/:monitor/test` | JSON estrito `{}`; envia um aviso de teste com o nome do monitor a cada destino ativo do projeto; `202 {queued:n}`, `409 NO_CHANNELS` sem destino, 429 e `Retry-After: 60` quando todos os destinos já testaram no último minuto |
-| `PUT /projects/:project/channels` | JSON estrito `{channelIds}`; lista distinta de até dois IDs ativos do mesmo dono, no máximo um de cada tipo; substitui todos os vínculos; `[]` retira todos; `{ok:true}` |
+| `PUT /projects/:project/channels` | JSON estrito `{channelIds}`; lista distinta de até quatro IDs ativos do mesmo dono, no máximo um de cada tipo; substitui todos os vínculos; `[]` retira todos; `{ok:true}` |
 | `POST /telegram/link` | JSON estrito `{}`; `201 {id, url, expiresAt}`; cria código de 48 caracteres hexadecimais com dez minutos de validade e substitui o registro de vínculo anterior da conta |
 | `GET /telegram/link/:link` | `{id, state, expiresAt, candidate, channelId}`; `candidate` é `{id, label}` ou `null`, `channelId` é string ou `null`; `expiresAt` em ISO UTC |
 | `POST /telegram/link/:link/confirm` | JSON estrito `{projectId}`; liga o canal ao projeto, no lugar do Telegram que ele tinha, e cria canal a partir do chat candidato: `201 {id}`; repetição confirmada retorna `200 {id}`; inválido/expirado retorna `409 LINK_EXPIRED` |
@@ -173,7 +174,7 @@ O Pulse não é vendido sozinho. O switch **+ Blup Pulse** escolhe uma variante 
 | Menor intervalo de checagem | 5 minutos | 2 minutos |
 | Páginas públicas de status | 1 | 3 |
 | Domínio próprio nas páginas de status | Não | Incluído, contrato local da Fase 4 |
-| Avisos | Discord e Telegram | Discord e Telegram |
+| Avisos | Discord, Telegram, Slack e webhook | Discord, Telegram, Slack e webhook |
 
 As cotas do Pulse e o mês civil UTC seguem a proposta mantida pelo dono. O anual custa o equivalente a dez mensalidades, cobrado uma vez por ano. Grátis, Pro, Max e Ultra sem o switch não incluem Pulse. Max continua com 5 GiB de notas, arquivos de até 50 MiB, 3 sites, 3 computadores, histórico de 365 dias, tempo real, domínio próprio, IA 2x e 50 lembretes por e-mail. Ultra continua com 10 GiB, arquivos de até 100 MiB e 10 sites, além dos demais direitos atuais. A [spec Cloud](blup-cloud-sync.md#planos-executados) detalha esses direitos.
 
@@ -432,6 +433,7 @@ Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com
 | `POST /api/pulse/projects/:project/keys` | Rotaciona ou cria chave; valor completo só na emissão |
 | `DELETE /api/pulse/projects/:project/keys/:key` | Revoga chave do projeto |
 | `GET /api/pulse/projects/:project/issues` | Filtros `state`, `environment`, `release`, `q`, cursor e limite máximo 50 |
+| `GET /api/pulse/projects/:project/issue-facets` | Ambientes e versões vistos, para os filtros |
 | `GET/PATCH /api/pulse/projects/:project/issues/:issue` | Detalhe; alteração estrita `{state}` |
 | `GET /api/pulse/projects/:project/issues/:issue/events` | Amostras paginadas dentro da retenção |
 | `GET/POST /api/pulse/monitors` | Lista; criação `{projectId, name, url, intervalMinutes}` |
@@ -442,11 +444,11 @@ Exportar rotas encadeadas como `PulseAppType`/parte de `AppType` e usar `hc` com
 | `GET/POST /api/pulse/pages/:page/incidents` | Histórico limitado e criação de incidente manual |
 | `POST /api/pulse/pages/:page/incidents/:incident/updates` | Atualização pública de texto e estado |
 | `GET/POST/DELETE /api/pulse/pages/:page/domain` | Contrato local da Fase 4: POST `{hostname}`, GET `DomainInfo/null`, DELETE `{ok:true}` |
-| `GET/POST /api/pulse/channels` | Lista rótulos/estado sem destino; cadastro estrito `{projectId, type:"discord", webhook}` |
+| `GET/POST /api/pulse/channels` | Lista rótulos/estado sem destino; cadastro estrito `{projectId, type:"discord"|"slack", webhook}` ou `{projectId, type:"webhook", url}` (devolve o segredo uma vez) |
 | `DELETE /api/pulse/channels/:channel` | Desliga canal e cancela pendências ainda não enviadas |
 | `POST /api/pulse/channels/:channel/test` | JSON estrito `{}`; `202 {queued:true}`, limitado a um teste/minuto/canal |
 | `POST /api/pulse/monitors/:monitor/test` | JSON estrito `{}`; `202 {queued:n}`, mesmo limite por destino do teste de canal |
-| `PUT /api/pulse/projects/:project/channels` | Substitui `{channelIds}` com até dois canais ativos do mesmo dono, um por tipo |
+| `PUT /api/pulse/projects/:project/channels` | Substitui `{channelIds}` com até quatro canais ativos do mesmo dono, um por tipo |
 | `POST /api/pulse/telegram/link` | JSON estrito `{}`; emite `{id, url, expiresAt}` com dez minutos de validade |
 | `GET /api/pulse/telegram/link/:link` | `{id, state, expiresAt, candidate, channelId}`, sem expor código novamente |
 | `POST /api/pulse/telegram/link/:link/confirm` | JSON estrito `{projectId}`; liga ao projeto, confirma candidato e retorna `{id}` do canal |
@@ -716,3 +718,29 @@ Para o JavaScript comprimido do navegador, o build envia o source map de cada ar
 
 Ao ler as ocorrências (`GET /projects/:project/issues/:issue/events`), cada quadro de um arquivo `.js` de uma versão com mapa ganha `originals["exceção:quadro"]`: arquivo, linha e coluna originais, a função em volta da linha no código original e o trecho do código original (5 linhas de cada lado, tratadas), com no máximo 5 mapas por leitura. O decodificador é nosso (`worker/pulse/sourcemap.ts`, sem dependência): decodifica as linhas do mapa só até a pedida. No painel, a página `/projects/[project]/sourcemaps` cria a chave, mostra o comando com `$PULSE_UPLOAD_TOKEN` e lista os mapas enviados; a pilha mostra o quadro original com o selo "source map" e o lugar no arquivo publicado embaixo.
 
+## Verificação avançada do monitor
+
+Além de nome, endereço, projeto e intervalo, o monitor guarda `options` (migração `0024`, colunas em `pulse_monitor`), validadas por Zod em `worker/pulse/monitor-http.ts`:
+
+| Opção | Padrão | O que faz |
+|---|---|---|
+| `method` | `GET` | `GET` ou `HEAD` |
+| `expectedStatus` | `[]` | Até 10 códigos (100 a 599) que contam como no ar; vazio aceita qualquer 2xx. Um 3xx aceito aqui não é seguido |
+| `keyword` | `null` | `{text, mode}`: `contains` (a palavra deve aparecer) ou `absent` (não pode aparecer); sem diferenciar maiúsculas, só nos primeiros 256 KB da página, que não é guardada. Não vale com `HEAD`. Falha por isso tem o motivo `keyword` |
+| `timeoutSeconds` | 10 | De 1 a 30, para o pedido inteiro |
+
+`POST /monitors` aceita também `headers: [{name, value}]` e `PATCH /monitors/:monitor` aceita `headers: [{name, value|null}]`, com `null` mantendo o valor guardado daquele nome. São até 5, com nomes de cabeçalho válidos; nomes reservados (`Host`, `Cookie`, `Content-Length`, `Connection` e semelhantes) são recusados. Os valores ficam cifrados como os destinos de aviso (alvo `monitor-headers`), nunca voltam na leitura (`GET` devolve só `headerNames`) e só vão para a origem do próprio endereço do monitor: num redirecionamento para outro site, saem do pedido.
+
+## Slack e webhook
+
+Cada projeto pode ter até quatro destinos, um de cada tipo: Discord, Telegram, Slack e webhook. `POST /channels` recebe uma das formas:
+
+- `{projectId, type:"discord", webhook}`;
+- `{projectId, type:"slack", webhook}`: o endereço de Incoming Webhook do Slack (`https://hooks.slack.com/services/...`). Funciona como o Discord: a pessoa cria o webhook num canal do Slack e cola o endereço;
+- `{projectId, type:"webhook", url}`: um endereço HTTPS público do sistema da pessoa, validado como o endereço de um monitor (sem rede privada nem endereços do Blup). Devolve `secret`, 64 caracteres hexadecimais, mostrado uma única vez; o servidor guarda endereço e segredo cifrados.
+
+No Slack, o aviso vai como attachment com a cor do tipo, o título com link para o painel e os campos lado a lado; `&`, `<` e `>` são escapados para que nada no título vire menção ou link. O webhook recebe um `POST` JSON `{version:1, source:"blup-pulse", event, label, title, url, tone, description, fields, sentAt}`, em que `event` é `issue`, `regression`, `monitor_down`, `monitor_up` ou `test`, com o cabeçalho `X-Blup-Signature: t=<segundos>,v1=<HMAC-SHA256 hexadecimal de "${t}.${corpo}" com o segredo>`. Quem recebe recalcula a assinatura sobre o corpo cru, compara em tempo constante e recusa um `t` antigo (o painel mostra um exemplo em Node). Antes de cada envio, o endereço e o DNS são validados de novo; redirecionamentos não são seguidos, e uma resposta 410 desliga o destino.
+
+## Filtros dos Problemas
+
+A lista de Problemas busca pelo título (o pedido sai 300 ms depois de parar de digitar) e filtra por ambiente e versão, com as opções vindas de `GET /projects/:project/issue-facets`; "Limpar filtros" volta tudo. Os filtros valem também para a paginação e para a troca entre Em aberto, Resolvido e Ignorado; trocar de projeto limpa ambiente e versão e busca as opções do novo projeto.

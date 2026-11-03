@@ -23,6 +23,11 @@ export const pulseAccount=sqliteTable("pulse_account",{
 export const pulseMonitor=sqliteTable("pulse_monitor",{
  id:text("id").primaryKey(),userId:text("user_id").notNull(),projectId:text("project_id").notNull(),name:text("name").notNull(),url:text("url").notNull(),intervalMinutes:integer("interval_minutes").notNull(),active:integer("active").notNull().default(1),nextAt:integer("next_at").notNull(),claim:text("claim"),claimUntil:integer("claim_until").notNull().default(0),state:text("state").notNull().default("unknown"),revision:integer("revision").notNull().default(1),lastAt:integer("last_at"),createdAt:integer("created_at").notNull(),
  planDisabled:integer("plan_disabled").notNull().default(0),retireAt:integer("retire_at"),
+ // How the check asks and what counts as up (see monitor-http.ts): the
+ // method, the accepted statuses (JSON list, empty = any 2xx), a keyword
+ // that must or must not be in the page, the timeout and request headers
+ // (sealed like a destination, never shown back).
+ method:text("method").notNull().default("GET"),expectedStatus:text("expected_status").notNull().default("[]"),keyword:text("keyword"),keywordMode:text("keyword_mode"),timeoutSeconds:integer("timeout_seconds").notNull().default(10),headers:text("headers"),
 },t=>[index("pulse_monitor_owner_idx").on(t.userId,t.id),index("pulse_monitor_retire_idx").on(t.retireAt),index("pulse_monitor_due_idx").on(t.active,t.nextAt),index("pulse_monitor_project_idx").on(t.projectId)]);
 export const pulsePage=sqliteTable("pulse_page",{
  id:text("id").primaryKey(),userId:text("user_id").notNull(),slug:text("slug").notNull().unique(),title:text("title").notNull(),published:integer("published").notNull().default(0),language:text("language").notNull().default("en"),createdAt:integer("created_at").notNull(),

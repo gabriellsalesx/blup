@@ -3094,7 +3094,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-}, "/api/ai"> | import("hono/types").MergeSchemaPath<(((((((((((((({
+}, "/api/ai"> | import("hono/types").MergeSchemaPath<((((((((((((((({
     "/public/:slug": {
         $get: {
             input: {
@@ -4206,6 +4206,60 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 }) & {
+    "/projects/:project/issue-facets": {
+        $get: {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            };
+            output: {
+                environments: string[];
+                releases: string[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}) & {
     "/projects/:project/issues/:issue": {
         $get: {
             input: {
@@ -4511,6 +4565,16 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     writable: boolean;
                     readOnlyUntil: string | null;
                     lastAt: string | null;
+                    options: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    };
+                    headerNames: string[];
                     id: string;
                     projectId: string;
                     name: string;
@@ -4534,6 +4598,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     name: string;
                     url: string;
                     intervalMinutes: number;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4552,6 +4629,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     name: string;
                     url: string;
                     intervalMinutes: number;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4567,6 +4657,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     name: string;
                     url: string;
                     intervalMinutes: number;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4581,6 +4684,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     name: string;
                     url: string;
                     intervalMinutes: number;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4595,6 +4711,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     name: string;
                     url: string;
                     intervalMinutes: number;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4609,6 +4738,46 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     name: string;
                     url: string;
                     intervalMinutes: number;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string;
+                    }[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                json: {
+                    projectId: string;
+                    name: string;
+                    url: string;
+                    intervalMinutes: number;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4623,6 +4792,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     name: string;
                     url: string;
                     intervalMinutes: number;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4645,6 +4827,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url?: string | undefined;
                     intervalMinutes?: number | undefined;
                     active?: boolean | undefined;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string | null;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4667,6 +4862,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url?: string | undefined;
                     intervalMinutes?: number | undefined;
                     active?: boolean | undefined;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string | null;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4686,6 +4894,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url?: string | undefined;
                     intervalMinutes?: number | undefined;
                     active?: boolean | undefined;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string | null;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4708,6 +4929,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url?: string | undefined;
                     intervalMinutes?: number | undefined;
                     active?: boolean | undefined;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string | null;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4727,6 +4961,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url?: string | undefined;
                     intervalMinutes?: number | undefined;
                     active?: boolean | undefined;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string | null;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4745,6 +4992,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url?: string | undefined;
                     intervalMinutes?: number | undefined;
                     active?: boolean | undefined;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string | null;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4763,6 +5023,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url?: string | undefined;
                     intervalMinutes?: number | undefined;
                     active?: boolean | undefined;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string | null;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -4781,6 +5054,50 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url?: string | undefined;
                     intervalMinutes?: number | undefined;
                     active?: boolean | undefined;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string | null;
+                    }[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                param: {
+                    monitor: string;
+                };
+            } & {
+                json: {
+                    name?: string | undefined;
+                    url?: string | undefined;
+                    intervalMinutes?: number | undefined;
+                    active?: boolean | undefined;
+                    options?: {
+                        method: "GET" | "HEAD";
+                        expectedStatus: number[];
+                        keyword: {
+                            text: string;
+                            mode: "contains" | "absent";
+                        } | null;
+                        timeoutSeconds: number;
+                    } | undefined;
+                    headers?: {
+                        name: string;
+                        value: string | null;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -7100,7 +7417,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {};
             output: {
                 channels: {
-                    type: "discord" | "telegram";
+                    type: "webhook" | "discord" | "slack" | "telegram";
                     active: boolean;
                     id: string;
                     label: string;
@@ -7123,6 +7440,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     projectId: string;
                     type: "discord";
                     webhook: string;
+                } | {
+                    projectId: string;
+                    type: "slack";
+                    webhook: string;
+                } | {
+                    projectId: string;
+                    type: "webhook";
+                    url: string;
                 };
             };
             output: {
@@ -7140,6 +7465,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     projectId: string;
                     type: "discord";
                     webhook: string;
+                } | {
+                    projectId: string;
+                    type: "slack";
+                    webhook: string;
+                } | {
+                    projectId: string;
+                    type: "webhook";
+                    url: string;
                 };
             };
             output: {
@@ -7154,6 +7487,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     projectId: string;
                     type: "discord";
                     webhook: string;
+                } | {
+                    projectId: string;
+                    type: "slack";
+                    webhook: string;
+                } | {
+                    projectId: string;
+                    type: "webhook";
+                    url: string;
                 };
             };
             output: {
@@ -7167,6 +7508,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     projectId: string;
                     type: "discord";
                     webhook: string;
+                } | {
+                    projectId: string;
+                    type: "slack";
+                    webhook: string;
+                } | {
+                    projectId: string;
+                    type: "webhook";
+                    url: string;
                 };
             };
             output: {
@@ -7180,11 +7529,20 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     projectId: string;
                     type: "discord";
                     webhook: string;
+                } | {
+                    projectId: string;
+                    type: "slack";
+                    webhook: string;
+                } | {
+                    projectId: string;
+                    type: "webhook";
+                    url: string;
                 };
             };
             output: {
                 id: string;
                 label: string;
+                secret: string | null;
             };
             outputFormat: "json";
             status: 201;
@@ -7194,6 +7552,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     projectId: string;
                     type: "discord";
                     webhook: string;
+                } | {
+                    projectId: string;
+                    type: "slack";
+                    webhook: string;
+                } | {
+                    projectId: string;
+                    type: "webhook";
+                    url: string;
                 };
             };
             output: {

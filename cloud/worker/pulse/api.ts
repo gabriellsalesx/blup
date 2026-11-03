@@ -80,6 +80,11 @@ export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi)
   const p=await ownedProject(c.env,c.get("session").user.id,c.req.valid("param").project),access=c.get("access");if(!p||!access.readable)return c.json({code:"NOT_FOUND"},404);
   const issues=await c.env.PULSE_PROJECT.getByName(p.objectName).issues(Date.now()-(access.limits?.retentionDays??30)*86_400_000,c.req.valid("query"));return c.json({issues});
  })
+ // The environments and releases a project's issues came from (filters).
+ .get("/projects/:project/issue-facets",validate("param",pulseIdParam),async c=>{
+  const p=await ownedProject(c.env,c.get("session").user.id,c.req.valid("param").project),access=c.get("access");if(!p||!access.readable)return c.json({code:"NOT_FOUND"},404);
+  return c.json(await c.env.PULSE_PROJECT.getByName(p.objectName).facets(Date.now()-(access.limits?.retentionDays??30)*86_400_000));
+ })
  // One issue for its own page: the issue and its occurrences per day.
  .get("/projects/:project/issues/:issue",validate("param",issuesParam),async c=>{
   const p=await ownedProject(c.env,c.get("session").user.id,c.req.valid("param").project),access=c.get("access");if(!p||!access.readable)return c.json({code:"NOT_FOUND"},404);

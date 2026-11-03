@@ -1,4 +1,5 @@
 import {checkHTTP} from "./monitor-http";
+import {optionsOf,openHeaders,OPTION_SELECT,type OptionRow} from "./monitor-options";
 import {pulseAccess,type PulseAccess} from "./limits";
 import {ownerMatches} from "../plans";
 import {siteLock,unlockSite} from "../quota";
@@ -6,7 +7,7 @@ import type {MonitorObservation} from "./monitor-store";
 export async function checkDue(env:Cloudflare.Env,now=Date.now()){
  const lock=await siteLock(env.DB,"pulse-cron",55_000);if(!lock)return;
  try{
-  const due=await env.DB.prepare("SELECT m.id,m.user_id AS userId,m.project_id AS projectId,m.url,m.interval_minutes AS intervalMinutes,m.next_at AS nextAt,m.revision,p.object_name AS objectName,u.email,u.email_verified AS verified FROM pulse_monitor m JOIN pulse_project p ON p.id=m.project_id JOIN user u ON u.id=m.user_id WHERE m.active=1 AND m.plan_disabled=0 AND m.next_at<=? AND m.claim_until<=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL ORDER BY m.next_at,m.id LIMIT 100").bind(now,now).all<{id:string;userId:string;projectId:string;url:string;intervalMinutes:number;nextAt:number;revision:number;objectName:string;email:string;verified:number}>();
+  const due=await env.DB.prepare(`SELECT m.id,m.user_id AS userId,m.project_id AS projectId,m.url,m.interval_minutes AS intervalMinutes,m.next_at AS nextAt,m.revision,${OPTION_SELECT.split(",").map(c=>`m.${c}`).join(",")},m.headers,p.object_name AS objectName,u.email,u.email_verified AS verified FROM pulse_monitor m JOIN pulse_project p ON p.id=m.project_id JOIN user u ON u.id=m.user_id WHERE m.active=1 AND m.plan_disabled=0 AND m.next_at<=? AND m.claim_until<=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL ORDER BY m.next_at,m.id LIMIT 100`).bind(now,now).all<{id:string;userId:string;projectId:string;url:string;intervalMinutes:number;nextAt:number;revision:number;headers:string|null;objectName:string;email:string;verified:number}&OptionRow>();
   const accessByOwner=new Map<string,PulseAccess>();
   for(let start=0;start<due.results.length&&Date.now()-now<45_000;start+=5){
    const group=due.results.slice(start,start+5),observations=new Map<string,{monitor:typeof group[number];observation:MonitorObservation;claim:string}[]>();
@@ -15,7 +16,10 @@ export async function checkDue(env:Cloudflare.Env,now=Date.now()){
     if(!access.writable){await env.DB.prepare("UPDATE pulse_monitor SET next_at=? WHERE id=? AND next_at=?").bind(now+86_400_000,monitor.id,monitor.nextAt).run();return;}
     const claim=crypto.randomUUID(),claimed=await env.DB.prepare("UPDATE pulse_monitor SET claim=?,claim_until=? WHERE id=? AND active=1 AND next_at=? AND claim_until<=? AND revision=? RETURNING id").bind(claim,now+55_000,monitor.id,monitor.nextAt,now,monitor.revision).first();if(!claimed)return;
     const intervalMinutes=Math.max(monitor.intervalMinutes,access.limits?.intervalMinutes??5);
-    const result=await checkHTTP(monitor.url,ownerMatches(env.STAFF_OWNER_EMAIL,monitor.email,!!monitor.verified));
+    // Headers that cannot be opened (a key change) leave the check without
+    // them: the site then answers as it does to anyone.
+    const headers=await openHeaders(env,monitor.userId,monitor.id,monitor.headers).catch(()=>[]);
+    const result=await checkHTTP(monitor.url,ownerMatches(env.STAFF_OWNER_EMAIL,monitor.email,!!monitor.verified),fetch,optionsOf(monitor),headers);
     const observation={id:`${monitor.id}:${monitor.revision}:${monitor.nextAt}`,monitor:monitor.id,revision:monitor.revision,scheduledAt:monitor.nextAt,checkedAt:Date.now(),intervalMinutes,result};
     const list=observations.get(monitor.objectName)??[];list.push({monitor,observation,claim});observations.set(monitor.objectName,list);
    }));

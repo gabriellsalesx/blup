@@ -1,11 +1,10 @@
 import {Hono} from "hono";
 import {z} from "zod";
 import {validate,opaqueId} from "../validation";
-import {discordWebhook,sealTarget} from "./channel-crypto";
+import {discordWebhook,slackWebhook,customWebhook,sealTarget,channelType} from "./channel-crypto";
 import {pulseWrite,ownedProject,type PulseApp} from "./access";
 import {projectId} from "./limits";
 const channelParam=z.object({channel:opaqueId});
-const channelType=z.enum(["discord","telegram"]);
 // A new destination is made for one project: it becomes that project's
 // destination of its type, in the same batch that creates it, taking the
 // place of the one it had.
@@ -18,10 +17,16 @@ export const channelsApi=new Hono<PulseApp>()
   const bindings=await c.env.DB.prepare("SELECT p.project_id AS projectId,p.channel_id AS channelId FROM pulse_project_channel p JOIN pulse_channel c ON c.id=p.channel_id WHERE c.user_id=?").bind(c.get("session").user.id).all<{projectId:string;channelId:string}>();
   return c.json({channels:c.get("access").readable?channels.results.map(row=>({...row,type:channelType.parse(row.type),active:!!row.active})):[],bindings:c.get("access").readable?bindings.results:[]});
  })
- .post("/",pulseWrite,validate("json",projectChoice.extend({type:z.literal("discord"),webhook:discordWebhook}).strict()),async c=>{
-  const input=c.req.valid("json"),owner=c.get("session").user.id,id=crypto.randomUUID();if(!await usableProject(c.env,owner,input.projectId))return c.json({code:"NOT_FOUND"},404);let target:string;
-  try{target=await sealTarget(c.env,owner,id,"discord",input.webhook.url);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
-  const [made]=await c.env.DB.batch([c.env.DB.prepare("INSERT INTO pulse_channel(id,user_id,type,target,label,created_at) SELECT ?,?,'discord',?,?,? WHERE (SELECT count(*) FROM pulse_channel WHERE user_id=? AND type='discord')<? RETURNING id").bind(id,owner,target,input.webhook.label,Date.now(),owner,c.get("access").limits?.projects??0),bindToProject(c.env.DB,owner,input.projectId,id,"discord")]);return made.results.length?c.json({id,label:input.webhook.label},201):c.json({code:"QUOTA"},409);
+ // A destination by an address the person pastes: a Discord or Slack
+ // webhook, or a webhook of their own system (whose signing secret is
+ // made here and shown in this answer only).
+ .post("/",pulseWrite,validate("json",z.discriminatedUnion("type",[projectChoice.extend({type:z.literal("discord"),webhook:discordWebhook}).strict(),projectChoice.extend({type:z.literal("slack"),webhook:slackWebhook}).strict(),projectChoice.extend({type:z.literal("webhook"),url:customWebhook}).strict()])),async c=>{
+  const input=c.req.valid("json"),owner=c.get("session").user.id,id=crypto.randomUUID();if(!await usableProject(c.env,owner,input.projectId))return c.json({code:"NOT_FOUND"},404);
+  const secret=input.type==="webhook"?Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,"0")).join(""):null;
+  const destination=input.type==="webhook"?{target:JSON.stringify({url:input.url.url,secret}),label:input.url.label}:{target:input.webhook.url,label:input.webhook.label};
+  let target:string;try{target=await sealTarget(c.env,owner,id,input.type,destination.target);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
+  const [made]=await c.env.DB.batch([c.env.DB.prepare("INSERT INTO pulse_channel(id,user_id,type,target,label,created_at) SELECT ?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_channel WHERE user_id=? AND type=?)<? RETURNING id").bind(id,owner,input.type,target,destination.label,Date.now(),owner,input.type,c.get("access").limits?.projects??0),bindToProject(c.env.DB,owner,input.projectId,id,input.type)]);
+  return made.results.length?c.json({id,label:destination.label,secret},201):c.json({code:"QUOTA"},409);
  })
  .delete("/:channel",validate("param",channelParam),async c=>{
   const id=c.req.valid("param").channel,owner=c.get("session").user.id;
@@ -35,7 +40,7 @@ export const channelsApi=new Hono<PulseApp>()
   const event=crypto.randomUUID();await c.env.DB.prepare("INSERT INTO pulse_outbox(id,user_id,channel_id,ref_id,kind,created_at,expires_at,next_at) VALUES(?,?,?,?,'test',?,?,?)").bind(event,owner,id,event,now,now+86_400_000,now).run();return c.json({queued:true},202);
  });
 export const projectChannelsApi=new Hono<PulseApp>()
- .put("/:project/channels",pulseWrite,validate("param",z.object({project:projectId})),validate("json",z.object({channelIds:z.array(opaqueId).max(2).refine(v=>new Set(v).size===v.length)}).strict()),async c=>{
+ .put("/:project/channels",pulseWrite,validate("param",z.object({project:projectId})),validate("json",z.object({channelIds:z.array(opaqueId).max(4).refine(v=>new Set(v).size===v.length)}).strict()),async c=>{
   const owner=c.get("session").user.id,project=c.req.valid("param").project;if(!await ownedProject(c.env,owner,project))return c.json({code:"NOT_FOUND"},404);
   const selected:{id:string;type:string}[]=[];
   for(const id of c.req.valid("json").channelIds){const row=await c.env.DB.prepare("SELECT id,type FROM pulse_channel WHERE id=? AND user_id=? AND active=1").bind(id,owner).first<{id:string;type:string}>();if(!row)return c.json({code:"NOT_FOUND"},404);selected.push(row);}

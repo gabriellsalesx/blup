@@ -2,34 +2,51 @@
  import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
+ import {onDestroy} from "svelte";
  import CircleCheck from "@lucide/svelte/icons/circle-check";
  import EyeOff from "@lucide/svelte/icons/eye-off";
  import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
  import FileText from "@lucide/svelte/icons/file-text";
+ import X from "@lucide/svelte/icons/x";
  import {t,intlLocale} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import {openCard,cardLink} from "#lib/card.ts";
  import Button from "#lib/ui/Button.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import Select from "#lib/ui/Select.svelte";
+ import FloatField from "#lib/ui/FloatField.svelte";
  import Segmented from "#lib/ui/Segmented.svelte";
  import Badge from "#lib/ui/Badge.svelte";
  import ActionMenu from "#lib/ui/ActionMenu.svelte";
  import {toast} from "#lib/toast.svelte.ts";
  import {pulseApi,parseResponse,type Project,type Issue} from "../../lib/api";
  import {ago} from "../../lib/monitor";
- import {issuePage,stateEdge,levelTone,levelName} from "../../lib/issues";
+ import {issuePage,stateEdge,levelTone,levelName,issueFacets} from "../../lib/issues";
  // The issues of one project at a time (chosen at the top, kept in the
- // address), open, resolved or ignored. Each is a card with its state on
- // the side, like a monitor's; a click opens its own page.
+ // address), open, resolved or ignored, narrowed by words of the title,
+ // environment and release. Each is a card with its state on the side,
+ // like a monitor's; a click opens its own page.
  let {data}:PageProps=$props();
  let projects=$derived<Project[]>(data.projects),projectId=$derived(data.projectId),issues=$derived<Issue[]>(data.issues),busy=$state(false),filter=$state<"open"|"resolved"|"ignored">("open");
  const project=$derived(projects.find(p=>p.id===projectId)??null);
  const projectOptions=$derived(projects.map(p=>({value:p.id,label:p.name})));
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
- async function load(){issues=projectId?(await parseResponse(pulseApi.projects[":project"].issues.$get({param:{project:projectId},query:{state:filter}}))).issues:[];}
- function choose(id:string){projectId=id;void goto(resolve(`/issues?${new URLSearchParams({project:id})}`),{replace:true,shallow:true});void run(load);}
- async function more(){const last=issues.at(-1);if(!projectId||!last)return;await run(async()=>{const next=(await parseResponse(pulseApi.projects[":project"].issues.$get({param:{project:projectId},query:{state:filter,before:String(last.lastAt),beforeId:last.id}}))).issues;issues=[...issues,...next];});}
+ let search=$state(""),environment=$state(""),release=$state("");
+ let facets=$derived(data.facets);
+ const environmentOptions=$derived([{value:"",label:t("pulseAllEnvironments")},...facets.environments.map(v=>({value:v,label:v}))]);
+ const releaseOptions=$derived([{value:"",label:t("pulseAllReleases")},...facets.releases.map(v=>({value:v,label:v}))]);
+ const filtered=$derived(!!(search.trim()||environment||release));
+ // The list's query: state and the filters that are set.
+ const query=()=>({state:filter,...(search.trim()?{q:search.trim()}:{}),...(environment?{environment}:{}),...(release?{release}:{})});
+ async function load(){issues=projectId?(await parseResponse(pulseApi.projects[":project"].issues.$get({param:{project:projectId},query:query()}))).issues:[];}
+ // Typing waits a moment before asking again.
+ let typing:ReturnType<typeof setTimeout>|undefined;
+ function typed(){clearTimeout(typing);typing=setTimeout(()=>void run(load),300);}
+ onDestroy(()=>clearTimeout(typing));
+ function clearFilters(){search="";environment="";release="";void run(load);}
+
+ function choose(id:string){projectId=id;environment="";release="";void issueFacets(id).then(next=>{if(projectId===id)facets=next;});void goto(resolve(`/issues?${new URLSearchParams({project:id})}`),{replace:true,shallow:true});void run(load);}
+ async function more(){const last=issues.at(-1);if(!projectId||!last)return;await run(async()=>{const next=(await parseResponse(pulseApi.projects[":project"].issues.$get({param:{project:projectId},query:{...query(),before:String(last.lastAt),beforeId:last.id}}))).issues;issues=[...issues,...next];});}
  async function change(issue:Issue,state:Issue["state"]){await run(async()=>{await parseResponse(pulseApi.projects[":project"].issues[":issue"].$patch({param:{project:projectId,issue:issue.id},json:{state}}));await load();toast(()=>t("pulseToastIssue"));});}
  const menu=(issue:Issue,href:string)=>[{label:t("pulseSeeDetails"),Icon:FileText,onselect:()=>void goto(href)},...(project?.writable?issue.state==="open"?[{label:t("pulseResolve"),Icon:CircleCheck,onselect:()=>void change(issue,"resolved")},{label:t("pulseIgnore"),Icon:EyeOff,onselect:()=>void change(issue,"ignored")}]:[{label:t("pulseReopen"),Icon:RotateCcw,onselect:()=>void change(issue,"open")}]:[])];
 </script>
@@ -40,6 +57,15 @@
  {#if projects.length}<div class="w-full sm:w-72"><Select label={t("pulseAllProjects")} options={projectOptions} value={projectId} onchange={choose}/></div>{/if}
  <Segmented label={t("pulseIssues")} options={[{value:"open",label:t("pulseOpen")},{value:"resolved",label:t("pulseResolved")},{value:"ignored",label:t("pulseIgnored")}]} bind:value={filter} onchange={()=>void run(load)}/>
 </div>
+
+{#if projectId}
+ <div class="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,12rem)_minmax(0,12rem)_auto] sm:items-center">
+  <FloatField id="issue-search" label={t("pulseSearchIssues")} maxlength={128} bind:value={search} oninput={typed}/>
+  <Select label={t("pulseFieldEnvironment")} options={environmentOptions} bind:value={environment} onchange={()=>void run(load)}/>
+  <Select label={t("pulseFieldRelease")} options={releaseOptions} bind:value={release} onchange={()=>void run(load)}/>
+  {#if filtered}<Button small variant="secondary" onclick={clearFilters}><X class="size-4"/>{t("pulseClearFilters")}</Button>{/if}
+ </div>
+{/if}
 
 <div class="mt-6 grid gap-3">
  {#each issues as issue(issue.id)}

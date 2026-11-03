@@ -7,8 +7,8 @@ vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})
 import {pulseApi} from "./api";
 import {deliverDiscord,deliverTelegram} from "./transports";
 import {enqueueSignals,dispatchAlerts} from "./outbox";
-import {discordPayload,telegramPayload,type AlertMessage} from "./alert-message";
-const note=(title:string):AlertMessage=>({label:"New issue",title,url:"https://pulse.getblup.io/issues",tone:"red",fields:[]});
+import {discordPayload,telegramPayload,slackPayload,webhookSignature,type AlertMessage} from "./alert-message";
+const note=(title:string):AlertMessage=>({event:"issue",label:"New issue",title,url:"https://pulse.getblup.io/issues",tone:"red",fields:[]});
 let db:TestD1;
 const WEBHOOK=`https://discord.com/api/webhooks/123456789012345678/${"test_fixture_".repeat(6)}`;
 beforeEach(()=>{
@@ -77,11 +77,30 @@ it("binds a new destination to the chosen project, in place of the one it had",a
  expect(db.sqlite.prepare("SELECT type FROM pulse_project_channel WHERE project_id='1' ORDER BY type").all()).toEqual([{type:"discord"},{type:"telegram"}]);
 });
 it("shapes one alert as a Discord embed and as Telegram text with entities",()=>{
- const message:AlertMessage={label:"New issue",title:"TypeError: <b>x</b> is undefined",url:"https://pulse.getblup.io/issues?project=1",tone:"red",fields:[{name:"Project",value:"Tiro Seguro"},{name:"Environment",value:"development"},{name:"Release",value:""}]};
+ const message:AlertMessage={event:"issue",label:"New issue",title:"TypeError: <b>x</b> is undefined",url:"https://pulse.getblup.io/issues?project=1",tone:"red",fields:[{name:"Project",value:"Tiro Seguro"},{name:"Environment",value:"development"},{name:"Release",value:""}]};
  expect(discordPayload(message).embeds[0]).toEqual({author:{name:"New issue"},title:"TypeError: <b>x</b> is undefined",url:"https://pulse.getblup.io/issues?project=1",color:0xef4444,fields:[{name:"Project",value:"Tiro Seguro",inline:true},{name:"Environment",value:"development",inline:true},{name:"Release",value:"-",inline:true}]});
  const tg=telegramPayload(message);
  expect(tg.text).toBe("Blup Pulse · New issue\nTypeError: <b>x</b> is undefined\n\nProject: Tiro Seguro\nEnvironment: development\nRelease: -");
  const at=(e:{offset:number;length:number})=>tg.text.slice(e.offset,e.offset+e.length);
  expect(tg.entities.map(e=>[e.type,at(e)])).toEqual([["bold","Blup Pulse · New issue"],["bold","TypeError: <b>x</b> is undefined"],["text_link","TypeError: <b>x</b> is undefined"],["bold","Project: "],["bold","Environment: "],["bold","Release: "]]);
  expect(discordPayload({...message,title:"x".repeat(400)}).embeds[0].title).toHaveLength(256);
+});
+it("connects Slack and signed generic webhooks, refusing other or private addresses",async()=>{
+ const SLACK="https://hooks.slack.com/services/T0ABCDEF1/B0ABCDEF2/abcdefghijklmnopqrstuvwx";
+ const create=(body:Record<string,unknown>)=>request("/channels","POST",{projectId:"1",...body});
+ for(const webhook of ["https://hooks.slack.com/workflows/x","http://hooks.slack.com/services/T0ABCDEF1/B0ABCDEF2/abcdefghijklmnopqrstuvwx","https://evil.example/services/T0ABCDEF1/B0ABCDEF2/abcdefghijklmnopqrstuvwx"])expect((await create({type:"slack",webhook})).status).toBe(400);
+ for(const url of ["http://hooks.example.com/x","https://localhost/x","https://10.0.0.1/x","https://cloud.getblup.io/api","https://user:pw@hooks.example.com/x"])expect((await create({type:"webhook",url})).status).toBe(400);
+ const slack=await create({type:"slack",webhook:SLACK});expect(slack.status).toBe(201);expect((await slack.json() as {secret:unknown}).secret).toBeNull();
+ const made=await create({type:"webhook",url:"https://hooks.example.com/blup?team=1"});expect(made.status).toBe(201);const {secret}=await made.json() as {secret:string};expect(secret).toMatch(/^[a-f0-9]{64}$/);
+ const listed=await(await request("/channels")).json() as {channels:{type:string}[];bindings:unknown[]};
+ expect(listed.channels.map(c=>c.type).sort()).toEqual(["slack","webhook"]);expect(listed.bindings).toHaveLength(2);expect(JSON.stringify(listed)).not.toContain(secret);expect(JSON.stringify(db.sqlite.prepare("SELECT target FROM pulse_channel").all())).not.toContain(secret);
+ const calls:{url:string;init?:RequestInit}[]=[];
+ vi.stubGlobal("fetch",vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{const url=String(input);if(url.startsWith("https://cloudflare-dns.com/"))return Response.json({Status:0,Answer:[{type:1,data:"93.184.216.34"}]});calls.push({url,init});return new Response("ok");}));
+ state.env.PULSE_PROJECT={getByName:()=>({notification:async()=>({state:"open",title:"<!channel> Boom & co",environment:"production",release:"1.0.0"})})} as unknown as Cloudflare.Env["PULSE_PROJECT"];
+ await enqueueSignals(state.env,"1",[{id:"event-s",refId:"group-s",kind:"issue",createdAt:Date.now()}]);await dispatchAlerts(state.env);
+ const toSlack=calls.find(c=>c.url.startsWith("https://hooks.slack.com/")),toHook=calls.find(c=>c.url.startsWith("https://hooks.example.com/"));
+ const slackBody=JSON.parse(String(toSlack?.init?.body)) as ReturnType<typeof slackPayload>;expect(slackBody.attachments[0].color).toBe("#ef4444");expect(JSON.stringify(slackBody)).not.toContain("<!channel>");expect(JSON.stringify(slackBody)).toContain("&lt;!channel&gt; Boom &amp; co");
+ const body=String(toHook?.init?.body),headers=new Headers(toHook?.init?.headers);expect(JSON.parse(body)).toMatchObject({version:1,event:"issue",title:"<!channel> Boom & co",fields:[{name:"Projeto",value:"App"},{name:"Ambiente",value:"production"},{name:"Versão",value:"1.0.0"}]});
+ const [t,v1]=(headers.get("x-blup-signature")??"").split(",").map(p=>p.split("=")[1]);expect(v1).toBe(await webhookSignature(secret,body,Number(t)*1000).then(s=>s.split("v1=")[1]));
+ expect(toHook?.init?.redirect).toBe("manual");expect(headers.get("x-blup-event")).toBe("issue");
 });

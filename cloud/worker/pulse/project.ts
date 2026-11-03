@@ -36,6 +36,7 @@ export class PulseProject extends DurableObject<Cloudflare.Env>{
  });}
  async issues(cutoff:number,filter:Parameters<ProjectStore["issues"]>[1]){return this.store.issues(cutoff,filter);}
  async issue(id:string,cutoff:number){return this.store.issue(id,cutoff);}
+ async facets(cutoff:number){return this.store.facets(cutoff);}
  async samples(id:string,cutoff:number){return this.store.samples(id,cutoff);}
  async setState(id:string,state:Issue["state"],cutoff:number){return this.serial(async()=>this.store.setState(id,state,cutoff));}
  async flushAlerts(project:string){

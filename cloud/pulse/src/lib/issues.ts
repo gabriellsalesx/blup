@@ -25,3 +25,6 @@ export const stateName=(s:IssueState)=>s==="open"?t("pulseOpen"):s==="resolved"?
 // The severity the SDK sent (fatal, error, warning, info, debug).
 export const levelTone=(level:string):"red"|"amber"|"blue"|"neutral"=>level==="fatal"||level==="error"?"red":level==="warning"?"amber":level==="info"?"blue":"neutral";
 export const levelName=(level:string)=>level==="fatal"?t("pulseLevelFatal"):level==="error"?t("pulseLevelError"):level==="warning"?t("pulseLevelWarning"):level==="info"?t("pulseLevelInfo"):t("pulseLevelDebug");
+// The environments and releases of a project's issues, for the filters.
+export const noFacets={environments:[] as string[],releases:[] as string[]};
+export const issueFacets=async(project:string)=>project?parseResponse(pulseApi.projects[":project"]["issue-facets"].$get({param:{project}})).catch(()=>noFacets):noFacets;
