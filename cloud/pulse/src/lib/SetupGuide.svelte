@@ -16,7 +16,7 @@
  import {cloudPaths} from "../../../shared/panel-paths";
  import {cloudURL} from "./api";
  import type {SetupStep} from "./setup";
- // The first steps of a new account, on top of every page until all are
+ // The first steps of a new account, under every page until all are
  // done. The open step is the first one left (another can be opened); the
  // plan comes first, and until it is active the others wait for it. The
  // whole box can be folded away, remembered on this device.
@@ -42,7 +42,7 @@
  const R=8,C=2*Math.PI*R;
 </script>
 
-<section class="mb-8 rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900" aria-label={t("pulseSetupTitle")}>
+<section class="mt-10 rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900" aria-label={t("pulseSetupTitle")}>
  <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
   <h2 class="font-bold">{t("pulseSetupTitle")}</h2>
   <div class="flex items-center gap-3 text-sm text-neutral-500">

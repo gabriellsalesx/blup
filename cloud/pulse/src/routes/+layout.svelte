@@ -42,10 +42,11 @@
 {:else if !panel.me}<main class="mx-auto max-w-xl p-10"><p>{t("errorGeneric")}</p><Button class="mt-4" onclick={()=>location.reload()}>{t("retry")}</Button></main>
 {:else}<PanelShell {links} home={resolve("/")} app={{current:"pulse",links:{cloud:`${cloudURL}${cloudPaths.account}`,pulse:resolve("/")}}} languages wide>
  {#snippet foot()}<SignOutButton onclick={signOut}/>{/snippet}
- {#if panel.setup&&!setupDone(panel.setup)}<SetupGuide steps={panel.setup.steps}/>
- {:else if !panel.usage?.plan}<p class="mb-6 rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950">{t("pulseNeedPlan")} <a href={`${cloudURL}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>{/if}
+ {#if !(panel.setup&&!setupDone(panel.setup))&&!panel.usage?.plan}<p class="mb-6 rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950">{t("pulseNeedPlan")} <a href={`${cloudURL}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>{/if}
  {#if panel.usage?.readOnlyUntil}<p class="mb-6 rounded-lg bg-amber-50 p-4 dark:bg-amber-950">{t("pulseReadOnly",{date:new Intl.DateTimeFormat(intlLocale(),{dateStyle:"long"}).format(new Date(panel.usage.readOnlyUntil))})}</p>{/if}
  {#if panel.usage?.selectionRequired&&panel.usage.limits}<PulseSelection resources={panel.usage.resources} limits={panel.usage.limits} bind:keep/><Button busy={selectionBusy} onclick={saveSelection}>{t("save")}</Button>{/if}
  {@render children()}
+ <!-- The first steps, under the page, until all are done. -->
+ {#if panel.setup&&!setupDone(panel.setup)}<SetupGuide steps={panel.setup.steps}/>{/if}
  </PanelShell>{/if}
 <Toaster /><ConfirmHost />
