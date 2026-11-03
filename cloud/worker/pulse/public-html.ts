@@ -63,7 +63,7 @@ h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spaci
 .day{padding:18px 20px 4px}.day h3{margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line);font-size:15px;font-weight:600}.day>p{color:var(--muted);margin:0 0 14px}
 .incident{margin:0 0 16px}.incident h4{margin:0 0 6px;font-size:15px}.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:1px;background:var(--head);border:1px solid var(--line)}
 .update{margin:6px 0 0}.update p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.update small{color:var(--muted)}
-.active{border-color:var(--partial)}.active .head{background:transparent;color:var(--partial)}
+
 footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:13px;padding:8px 2px}footer a{color:inherit;font-weight:600;text-decoration:none}footer a:hover{text-decoration:underline}
 @media (max-width:640px){.wrap{padding-top:28px}header{margin-bottom:36px}h1{font-size:24px}.bars i:nth-last-child(n+31){display:none}.bars i:nth-last-child(30):hover::after{left:0;transform:none}.from-long{display:none}.from-short{display:inline}}
 `;
@@ -120,10 +120,11 @@ export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
 
  const stateName=(s:string)=>s==="investigating"?t("pulseInvestigating"):s==="identified"?t("pulseIdentified"):s==="monitoring"?t("pulseMonitoring"):t("pulseResolved");
  const incident=(i:PublicIncident)=>`<div class="incident"><h4>${escape(i.title)}<span class="tag">${escape(stateName(i.state))}</span></h4>${i.updates.map(u=>`<div class="update"><p>${escape(u.body)}</p><small>${escape(stateName(u.state))} · ${escape(stamp.format(new Date(u.createdAt)))} UTC</small></div>`).join("")}</div>`;
- const openCard=open.length?`<section class="card active"><div class="head"><h2>${escape(t("pulseIncidents"))}</h2></div><div class="day">${open.map(incident).join("")}</div></section>`:"";
- // The last seven days, newest first, each with its incidents.
- const history=Array.from({length:7},(_,i)=>today-i).map(day=>{
-  const list=page.incidents.filter(i=>dayOf(Date.parse(i.createdAt))===day);
+ // The last seven days, newest first, each with its incidents; an
+ // incident still open from before them shows on its own day after them.
+ const older=[...new Set(open.map(i=>dayOf(Date.parse(i.createdAt))).filter(day=>day<=today-7))].sort((a,b)=>b-a);
+ const history=[...Array.from({length:7},(_,i)=>today-i),...older].map(day=>{
+  const list=page.incidents.filter(i=>dayOf(Date.parse(i.createdAt))===day&&(day>today-7||i.state!=="resolved"));
   return `<div class="day"><h3>${escape(longDate.format(new Date(day*DAY)))}</h3>${list.length?list.map(incident).join(""):`<p>${escape(t("pulseNoIncidentsDay"))}</p>`}</div>`;
  }).join("");
  const year=new Date(now).getUTCFullYear();
@@ -131,7 +132,7 @@ export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(page.title)}</title><meta name="description" content="${escape(overall.label)}"><style>${css}</style></head><body><div class="wrap">
 <header>${blup}<strong>${escape(page.title)}</strong><span>Status</span></header>
 <section class="hero"><span class="badge ${overall.tone==="unknown"?"b-unknown":overall.tone}">${svg(overall.tone,40,2.5)}</span><h1>${escape(overall.label)}</h1>${updated}</section>
-${openCard}<section class="card"><div class="head"><h2>${escape(t("pulseServices"))}</h2><div class="legend">${([["up","pulseOperational"],["partial","pulseDegraded"],["down","pulseDown"],["maint","pulseMaintenance"],["none","pulseNotMonitored"]] as const).map(([k,key])=>`<span class="l-${k}" data-tip="${escape(t(key))}" role="img" aria-label="${escape(t(key))}">${legendSvg(k)}</span>`).join("")}</div></div>${page.components.map(component).join("")||`<div class="row"><p class="updated">${escape(t("pulseNoData"))}</p></div>`}</section>
+<section class="card"><div class="head"><h2>${escape(t("pulseServices"))}</h2><div class="legend">${([["up","pulseOperational"],["partial","pulseDegraded"],["down","pulseDown"],["maint","pulseMaintenance"],["none","pulseNotMonitored"]] as const).map(([k,key])=>`<span class="l-${k}" data-tip="${escape(t(key))}" role="img" aria-label="${escape(t(key))}">${legendSvg(k)}</span>`).join("")}</div></div>${page.components.map(component).join("")||`<div class="row"><p class="updated">${escape(t("pulseNoData"))}</p></div>`}</section>
 <section class="card"><div class="head"><h2>${escape(t("pulseIncidents"))}</h2></div>${history}</section>
 <footer><span>© ${year} ${escape(page.title)}</span><span>${escape(t("pulseMadeWith"))} <a href="https://getblup.io/blup-pulse/" rel="noopener">Blup Pulse</a></span></footer>
 </div></body></html>`;
