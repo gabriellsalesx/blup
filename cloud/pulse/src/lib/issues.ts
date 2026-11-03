@@ -27,4 +27,11 @@ export const levelTone=(level:string):"red"|"amber"|"blue"|"neutral"=>level==="f
 export const levelName=(level:string)=>level==="fatal"?t("pulseLevelFatal"):level==="error"?t("pulseLevelError"):level==="warning"?t("pulseLevelWarning"):level==="info"?t("pulseLevelInfo"):t("pulseLevelDebug");
 // The environments and releases of a project's issues, for the filters.
 export const noFacets={environments:[] as string[],releases:[] as string[]};
+// The counters of a project's issues: by state, the total and how many
+// times they happened in the last `days` (for an environment and a release
+// when chosen).
+const countsGET=pulseApi.projects[":project"]["issue-counts"].$get;
+export type IssueCounts=InferResponseType<typeof countsGET,200>;
+export const noCounts:IssueCounts={open:0,resolved:0,ignored:0,total:0,occurrences:0,days:30};
+export const issueCounts=async(project:string,filter:{environment?:string;release?:string}={})=>project?parseResponse(countsGET({param:{project},query:filter})).catch(()=>noCounts):noCounts;
 export const issueFacets=async(project:string)=>project?parseResponse(pulseApi.projects[":project"]["issue-facets"].$get({param:{project}})).catch(()=>noFacets):noFacets;

@@ -3094,7 +3094,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-}, "/api/ai"> | import("hono/types").MergeSchemaPath<((((((((((((((({
+}, "/api/ai"> | import("hono/types").MergeSchemaPath<(((((((((((((((({
     "/public/:slug": {
         $get: {
             input: {
@@ -4276,6 +4276,121 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 environments: string[];
                 releases: string[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}) & {
+    "/projects/:project/issue-counts": {
+        $get: {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    release?: string | undefined;
+                    environment?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    release?: string | undefined;
+                    environment?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    release?: string | undefined;
+                    environment?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    release?: string | undefined;
+                    environment?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    release?: string | undefined;
+                    environment?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    project: string;
+                };
+            } & {
+                query: {
+                    release?: string | undefined;
+                    environment?: string | undefined;
+                };
+            };
+            output: {
+                days: 90 | 30;
+                open: number;
+                resolved: number;
+                ignored: number;
+                total: number;
+                occurrences: number;
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;

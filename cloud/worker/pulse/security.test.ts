@@ -88,6 +88,17 @@ describe("Pulse atomic admission and retention",()=>{
   expect(store.facets(0)).toEqual({environments:["production","staging"],releases:["1.1.0","1.0.0"]});
   expect(store.issues(0,{environment:"staging",limit:10}).map(i=>i.title)).toEqual(["one"]);expect(store.issues(0,{release:"1.1.0",q:"tw",limit:10}).map(i=>i.title)).toEqual(["two"]);
  });
+ it("counts issues by state and their occurrences, for an environment and a release",async()=>{
+  const now=Date.now();store.importGrant({id:"counts",amount:32},new Date(now).toISOString().slice(0,7));
+  for(const [id,title,environment,release] of [["1","one","production","1.0.0"],["2","two","production","1.1.0"],["3","three","staging","1.0.0"]] as const)store.accept(await safeEvent({...raw(id.repeat(32),title),environment,release},id.repeat(32)),"max_pulse",now);
+  // A second occurrence of "one" (same group, new event).
+  const again=await safeEvent({...raw("4".repeat(32),"one"),environment:"production",release:"1.0.0"},"4".repeat(32));store.accept({...again,group:store.issues(0,{q:"one",limit:1})[0].id},"max_pulse",now);
+  const [two,three]=[store.issues(0,{q:"two",limit:1})[0],store.issues(0,{q:"three",limit:1})[0]];store.setState(two.id,"resolved",0);store.setState(three.id,"ignored",0);
+  expect(store.counts(0,{})).toEqual({open:1,resolved:1,ignored:1,total:3,occurrences:4});
+  expect(store.counts(0,{environment:"production"})).toEqual({open:1,resolved:1,ignored:0,total:2,occurrences:3});
+  expect(store.counts(0,{release:"1.0.0"})).toMatchObject({open:1,ignored:1,total:2});
+  expect(store.counts(now+1,{})).toEqual({open:0,resolved:0,ignored:0,total:0,occurrences:0});
+ });
  it("gives one issue with its occurrences per day, and nothing for an unknown or old one",async()=>{
   const now=Date.now();store.importGrant({id:"detail",amount:32},new Date(now).toISOString().slice(0,7));const event=await safeEvent(raw("d".repeat(32),"detail failure"),"d".repeat(32));store.accept(event,"max_pulse",now);store.accept(await safeEvent(raw("e".repeat(32),"detail failure"),"e".repeat(32)),"max_pulse",now);
   const found=store.issue(event.group,0);expect(found?.issue).toMatchObject({id:event.group,title:"detail failure",count:2,state:"open"});expect(found?.days).toEqual([{day:Math.floor(now/86_400_000),count:2}]);

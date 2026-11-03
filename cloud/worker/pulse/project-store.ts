@@ -63,6 +63,16 @@ INSERT OR IGNORE INTO meta VALUES('schema','1');`);
   const releases=this.sql.exec<{value:string}>("SELECT release AS value FROM issue WHERE last_at>? AND release<>'' GROUP BY release ORDER BY max(last_at) DESC LIMIT 30",cutoff).toArray().map(r=>r.value);
   return {environments,releases};
  }
+ // How many issues are open, resolved and ignored, and how many times
+ // they happened, within what is kept (for an environment and a release
+ // when chosen), for the counters of the issue list.
+ counts(cutoff:number,filter:{environment?:string;release?:string}){
+  const where="i.last_at>? AND (? IS NULL OR i.environment=?) AND (? IS NULL OR i.release=?)",binds=[cutoff,filter.environment??null,filter.environment??null,filter.release??null,filter.release??null];
+  const by=new Map(this.sql.exec<{state:string;n:number}>(`SELECT i.state,count(*) AS n FROM issue i WHERE ${where} GROUP BY i.state`,...binds).toArray().map(r=>[r.state,r.n]));
+  const occurrences=this.sql.exec<{n:number}>(`SELECT coalesce(sum(d.count),0) AS n FROM issue_day d JOIN issue i ON i.id=d.issue_id WHERE d.day>=? AND ${where}`,Math.floor(cutoff/86_400_000),...binds).toArray()[0].n;
+  const open=by.get("open")??0,resolved=by.get("resolved")??0,ignored=by.get("ignored")??0;
+  return {open,resolved,ignored,total:open+resolved+ignored,occurrences};
+ }
  // One issue with its occurrences per day (UTC days since the epoch), for
  // its own page.
  issue(id:string,cutoff:number){

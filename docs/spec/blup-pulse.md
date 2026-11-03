@@ -739,6 +739,15 @@ Cada projeto pode ter até quatro destinos, um de cada tipo: Discord, Telegram, 
 
 No Slack, o aviso vai como attachment com a cor do tipo, o título com link para o painel e os campos lado a lado; `&`, `<` e `>` são escapados para que nada no título vire menção ou link. O webhook recebe um `POST` JSON `{version:1, source:"blup-pulse", event, label, title, url, tone, description, fields, sentAt}`, em que `event` é `issue`, `regression`, `monitor_down`, `monitor_up` ou `test`, com o cabeçalho `X-Blup-Signature: t=<segundos>,v1=<HMAC-SHA256 hexadecimal de "${t}.${corpo}" com o segredo>`. Quem recebe recalcula a assinatura sobre o corpo cru, compara em tempo constante e recusa um `t` antigo (o painel mostra um exemplo em Node). Antes de cada envio, o endereço e o DNS são validados de novo; redirecionamentos não são seguidos, e uma resposta 410 desliga o destino.
 
+## Contadores dos Problemas
+
+Abaixo do projeto ficam cinco cards:
+- **Em aberto, Resolvidos e Ignorados:** quantos problemas há em cada situação. Esses três também são as abas da lista: clicar num deles mostra os problemas daquela situação, e o escolhido fica com a borda e o fundo da sua cor. As abas antigas saíram.
+- **Total:** a soma dos três.
+- **Ocorrências:** quantas vezes os erros aconteceram nos últimos dias que o plano guarda.
+
+Os números vêm de `GET /projects/:project/issue-counts?environment&release` (`{open, resolved, ignored, total, occurrences, days}`), uma contagem no SQLite do projeto. Seguem o projeto, o ambiente e a versão escolhidos, mas não a busca por texto, e são refeitos quando a situação de um problema muda. No celular, as três situações ficam numa linha e o Total e as Ocorrências na de baixo.
+
 ## Filtros dos Problemas
 
 A lista de Problemas busca pelo título (o pedido sai 300 ms depois de parar de digitar) e filtra por ambiente e versão, com as opções vindas de `GET /projects/:project/issue-facets`; "Limpar filtros" volta tudo. Os filtros valem também para a paginação e para a troca entre Em aberto, Resolvido e Ignorado; trocar de projeto limpa ambiente e versão e busca as opções do novo projeto.

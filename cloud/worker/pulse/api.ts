@@ -86,6 +86,13 @@ export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi)
   const p=await ownedProject(c.env,c.get("session").user.id,c.req.valid("param").project),access=c.get("access");if(!p||!access.readable)return c.json({code:"NOT_FOUND"},404);
   return c.json(await c.env.PULSE_PROJECT.getByName(p.objectName).facets(Date.now()-(access.limits?.retentionDays??30)*86_400_000));
  })
+ // The issue counters of a project (by state, the total and occurrences),
+ // for an environment and a release when chosen; `days` is how far back.
+ .get("/projects/:project/issue-counts",validate("param",pulseIdParam),validate("query",filters.pick({environment:true,release:true})),async c=>{
+  const p=await ownedProject(c.env,c.get("session").user.id,c.req.valid("param").project),access=c.get("access");if(!p||!access.readable)return c.json({code:"NOT_FOUND"},404);
+  const days=access.limits?.retentionDays??30;
+  return c.json({...await c.env.PULSE_PROJECT.getByName(p.objectName).counts(Date.now()-days*86_400_000,c.req.valid("query")),days});
+ })
  // One issue for its own page: the issue and its occurrences per day.
  .get("/projects/:project/issues/:issue",validate("param",issuesParam),async c=>{
   const p=await ownedProject(c.env,c.get("session").user.id,c.req.valid("param").project),access=c.get("access");if(!p||!access.readable)return c.json({code:"NOT_FOUND"},404);
