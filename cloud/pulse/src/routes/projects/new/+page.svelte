@@ -6,7 +6,7 @@
  import {t} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import Button from "#lib/ui/Button.svelte";
- import CopyButton from "#lib/ui/CopyButton.svelte";
+ import CodeBlock from "#lib/ui/CodeBlock.svelte";
  import Card from "#lib/ui/Card.svelte";
  import FloatField from "#lib/ui/FloatField.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
@@ -28,7 +28,7 @@
  <div class="mt-8 rounded-xl border border-blup bg-white p-6 dark:bg-neutral-900">
   <h2 class="text-lg font-bold">{t("pulseProjectReady")}: {name}</h2>
   <p class="mt-2 text-neutral-500">{t("pulseSDK")}</p>
-  <div class="mt-4 flex items-center gap-2 rounded-lg bg-neutral-100 p-3 dark:bg-neutral-800"><code class="min-w-0 flex-1 break-all text-sm">{dsn}</code><CopyButton text={dsn}/></div>
+  <div class="mt-4"><CodeBlock code={dsn} wrap/></div>
   <p class="mt-3 text-sm text-neutral-500">{t("pulseDSNOnce")}</p>
   <div class="mt-5 flex justify-end"><Button onclick={()=>goto(resolve("/"))}>{t("pulseBackToProjects")}</Button></div>
  </div>

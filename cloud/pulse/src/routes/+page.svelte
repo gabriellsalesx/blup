@@ -10,7 +10,7 @@
  import {t,intlLocale} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
  import Button from "#lib/ui/Button.svelte";
- import CopyButton from "#lib/ui/CopyButton.svelte";
+ import CodeBlock from "#lib/ui/CodeBlock.svelte";
  import ActionMenu from "#lib/ui/ActionMenu.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import List from "#lib/ui/List.svelte";
@@ -40,7 +40,7 @@
 
 {#if usage}<div class="mt-6 max-w-sm"><p class="text-sm text-neutral-500">{t("pulseMonthUsage",{accepted:usage.used.toLocaleString(intlLocale()),limit:usage.limit.toLocaleString(intlLocale())})}</p><div class="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"><div class="h-full rounded-full bg-blup" style:width="{Math.min(100,usage.used/Math.max(1,usage.limit)*100)}%"></div></div></div>{/if}
 
-{#if dsn}<div class="mt-6 rounded-xl border border-blup bg-white p-5 dark:bg-neutral-900"><p class="font-semibold">{t("pulseSDK")}</p><div class="mt-3 flex items-center gap-2 rounded-lg bg-neutral-100 p-3 dark:bg-neutral-800"><code class="min-w-0 flex-1 break-all text-sm">{dsn}</code><CopyButton text={dsn}/></div><p class="mt-3 text-sm text-neutral-500">{t("pulseDSNOnce")}</p></div>{/if}
+{#if dsn}<div class="mt-6 rounded-xl border border-blup bg-white p-5 dark:bg-neutral-900"><p class="font-semibold">{t("pulseSDK")}</p><div class="mt-3"><CodeBlock code={dsn} wrap/></div><p class="mt-3 text-sm text-neutral-500">{t("pulseDSNOnce")}</p></div>{/if}
 
 <div class="mt-6"><List empty={t("pulseEmpty")}>
  {#each projects as project(project.id)}

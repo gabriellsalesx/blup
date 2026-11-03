@@ -11,7 +11,7 @@
  import BackLink from "#lib/ui/BackLink.svelte";
  import Card from "#lib/ui/Card.svelte";
  import Button from "#lib/ui/Button.svelte";
- import CopyButton from "#lib/ui/CopyButton.svelte";
+ import CodeBlock from "#lib/ui/CodeBlock.svelte";
  import {cloudURL,pulseApi,parseResponse} from "../../../../lib/api";
  import {panel} from "../../../../lib/panel.svelte";
  // The source maps of a project's browser code: the upload token its build
@@ -36,7 +36,7 @@
  <div class="mt-8 grid grid-cols-[minmax(0,1fr)] gap-6">
   <Card title={t("pulseUploadToken")} help={t("pulseUploadTokenHelp")}>
    {#snippet action()}{#if writable}<Button small variant={maps.token?"secondary":"primary"} {busy} onclick={mint}><KeyRound class="size-4"/>{maps.token?t("pulseNewUploadToken"):t("pulseCreateUploadToken")}</Button>{/if}{/snippet}
-   {#if token}<div class="mt-4 rounded-lg border border-blup p-3"><div class="flex items-center gap-2"><code class="min-w-0 flex-1 font-mono text-sm break-all">{token}</code><CopyButton text={token}/></div><p class="mt-2 text-xs text-neutral-500">{t("pulseUploadTokenOnce")}</p></div>
+   {#if token}<div class="mt-4"><CodeBlock code={token} wrap/><p class="mt-2 text-xs text-neutral-500">{t("pulseUploadTokenOnce")}</p></div>
    {:else if maps.token}<p class="mt-4 text-sm">{t("pulseUploadTokenActive",{prefix:maps.token.prefix,date:formatDate(new Date(maps.token.createdAt))})}</p>
    {:else}<p class="mt-4 text-sm text-neutral-500">{t("pulseUploadTokenNone")}</p>{/if}
   </Card>
@@ -47,7 +47,7 @@
     <li>{t("pulseSourcemapsStep2")}</li>
     <li>{t("pulseSourcemapsStep3")}</li>
    </ol>
-   <div class="relative mt-4"><pre class="overflow-x-auto rounded-lg bg-neutral-100 p-4 pr-24 font-mono text-[13px] leading-6 dark:bg-neutral-950">{command}</pre><div class="absolute top-2 right-2"><CopyButton text={command}/></div></div>
+   <div class="mt-4"><CodeBlock code={command}/></div>
    <p class="mt-3 text-xs text-neutral-500">{t("pulseSourcemapsNote",{days:"90",limit:String(maps.limit)})}</p>
   </Card>
 
