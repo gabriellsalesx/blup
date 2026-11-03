@@ -45,7 +45,7 @@ Todas as rotas abaixo estão no Worker Cloud, sob `/api/pulse`, com sessão e do
 
 ### Login, banco e validação local
 
-Sem sessão, o painel leva a `https://cloud.getblup.io/entrar?volta=/conta/pulse`. Após o login comum, a página Cloud `/conta/pulse` redireciona para o endereço fixo `https://pulse.getblup.io/`, sem aceitar uma URL externa fornecida na query. O cookie permanece restrito ao host Cloud; o cliente Pulse chama a API com credenciais e CORS exato. Fontes: [cliente Pulse](../../cloud/pulse/src/lib/api.ts), [retorno fixo](../../cloud/src/routes/%28painel%29/conta/pulse/+page.svelte) e [roteamento/CORS](../../cloud/worker/index.ts).
+Sem sessão, o painel leva a `https://cloud.getblup.io/sign-in?next=/account/pulse`. Após o login comum, a página Cloud `/account/pulse` redireciona para o endereço fixo `https://pulse.getblup.io/`, sem aceitar uma URL externa fornecida na query. O cookie permanece restrito ao host Cloud; o cliente Pulse chama a API com credenciais e CORS exato. Fontes: [cliente Pulse](../../cloud/pulse/src/lib/api.ts), [retorno fixo](../../cloud/src/routes/%28panel%29/account/pulse/+page.svelte) e [roteamento/CORS](../../cloud/worker/index.ts).
 
 A migração [0015_pulse_nucleo.sql](../../cloud/migrations/0015_pulse_nucleo.sql), gerada pelo Drizzle, cria `pulse_account`, `pulse_project`, `pulse_key`, `pulse_month` e `pulse_grant`. O DO usa `meta`, `grant_slot`, `issue`, `seen`, `sample`, `issue_day`, `burst` e `pending_alert`. O binding é `PULSE_PROJECT`, classe `PulseProject`, com migração Workers `v2-pulse`, separada do SQL D1. Aplique `0015` antes do Worker que consulta essas tabelas.
 
@@ -75,7 +75,7 @@ As rotas privadas abaixo usam a sessão Cloud e verificam o dono. Criar, editar,
 
 O slug tem de 3 a 40 caracteres minúsculos, números e hífens internos, é único e não aceita nomes reservados. Os estados de incidente são `investigating`, `identified`, `monitoring`, `resolved`; os impactos são `operational`, `degraded`, `partial_outage`, `major_outage`. Limite de quantidade retorna `409 QUOTA`, slug ocupado retorna `409 SLUG_TAKEN` e intervalo abaixo do plano retorna `403 PLAN`. As checagens privadas usam milissegundos em `scheduledAt`/`checkedAt`; resumos privados usam número de dia UTC e contagens `up/down/unknown`, além de `durationMs` acumulado.
 
-O painel tem [Monitores](../../cloud/pulse/src/routes/monitores/+page.svelte), para criar, pausar/retomar, excluir e consultar histórico, e [Páginas](../../cloud/pulse/src/routes/paginas/+page.svelte), para selecionar monitores, definir seus nomes públicos, editar, publicar/despublicar e escrever incidentes/atualizações. O idioma da página é salvo a partir da escolha atual do painel. Os tipos de transporte vêm do RPC Hono.
+O painel tem [Monitores](../../cloud/pulse/src/routes/monitors/+page.svelte), para criar, pausar/retomar, excluir e consultar histórico, e [Páginas](../../cloud/pulse/src/routes/status-pages/+page.svelte), para selecionar monitores, definir seus nomes públicos, editar, publicar/despublicar e escrever incidentes/atualizações. O idioma da página é salvo a partir da escolha atual do painel. Os tipos de transporte vêm do RPC Hono.
 
 ### Publicação e cache da Fase 2
 
@@ -95,7 +95,7 @@ A Lupa informou para esta fase: 303/303 testes, check Cloud/Pulse com zero erros
 
 ### Fase 3: canais e avisos
 
-Fontes: [canais e vínculos de projeto](../../cloud/worker/pulse/channels.ts), [Telegram](../../cloud/worker/pulse/telegram.ts), [proteção dos destinos](../../cloud/worker/pulse/channel-crypto.ts), [fila/despachante](../../cloud/worker/pulse/outbox.ts), [transportes](../../cloud/worker/pulse/transports.ts), [testes simulados](../../cloud/worker/pulse/alerts.test.ts) e [tela Avisos](../../cloud/pulse/src/routes/avisos/+page.svelte).
+Fontes: [canais e vínculos de projeto](../../cloud/worker/pulse/channels.ts), [Telegram](../../cloud/worker/pulse/telegram.ts), [proteção dos destinos](../../cloud/worker/pulse/channel-crypto.ts), [fila/despachante](../../cloud/worker/pulse/outbox.ts), [transportes](../../cloud/worker/pulse/transports.ts), [testes simulados](../../cloud/worker/pulse/alerts.test.ts) e [tela Avisos](../../cloud/pulse/src/routes/alerts/+page.svelte).
 
 As rotas privadas exigem sessão/dono; criar, vincular, confirmar e testar exigem direito gravável. Remover canal continua disponível ao dono. O DSN só autoriza ingestão de eventos, sem acesso administrativo a canais ou projetos.
 

@@ -40,11 +40,31 @@ Use a mesma pasta de persistência nas migrações e no servidor. Acesse por `lo
 
 O cron local pode ser invocado pelo endpoint da versão do Wrangler instalada. A documentação Cloudflare atual usa `/cdn-cgi/local/scheduled`; o [guia de deploy](../docs/deploy.md#4-e-mail-e-cron) mostra a chamada. No modo log, OTP e destinatário aparecem no terminal: não compartilhe nem publique esse log. Ao encerrar, remova só os dados temporários da própria sessão.
 
+## Rotas dos painéis
+
+As rotas são em inglês, como o código; as páginas continuam traduzidas (pt, en, es). Não há redirecionamento de endereços antigos. Dentro de cada app, os links passam pelo `resolve()` de `$app/paths` com o ID da rota (por exemplo `resolve("/(panel)/account")` ou `resolve("/monitors/[id]", { id })`), então um caminho inexistente falha no `npm run check`. Endereços usados fora do próprio app (Pulse, e-mails, retorno do Stripe) ficam em [`shared/panel-paths.ts`](shared/panel-paths.ts); no Go, em [`blupcloud.Page`](../internal/blupcloud/pages.go).
+
+| Painel | Rota | Página |
+|---|---|---|
+| Cloud | `/sign-in` | Entrar (`?next=` volta à página que pediu o login) |
+| Cloud | `/account` | Perfil |
+| Cloud | `/account/plan` | Plano (`?checkout=success` após o Stripe) |
+| Cloud | `/account/sync` | Sincronização |
+| Cloud | `/account/sites` | Sites |
+| Cloud | `/account/pulse` | Leva ao painel Pulse depois do login |
+| Cloud | `/device` | Aprovar o login do Blup Studio (`?user_code=`) |
+| Staff | `/staff`, `/staff/accounts/[id]`, `/staff/team`, `/staff/log` | Contas, conta, equipe e registro (no host staff, sem o prefixo `/staff`) |
+| Pulse | `/` e `/projects/new` | Projetos e novo projeto |
+| Pulse | `/issues` | Problemas (`?project=`) |
+| Pulse | `/monitors`, `/monitors/new`, `/monitors/[id]`, `/monitors/[id]/edit` | Monitores |
+| Pulse | `/status-pages`, `/status-pages/new`, `/status-pages/[id]` | Páginas de status |
+| Pulse | `/alerts`, `/alerts/new` | Avisos (destinos Discord e Telegram) |
+
 ## Conta, planos e dados
 
 O ID da conta aparece com botão de copiar na tela Conta e no detalhe da staff; ele não é segredo. A ajuda é: “Em caso de ajuda, informe seu ID.” Na lista da staff, contas sem e-mail mostram o ID curto copiável. Uma conta só com passkey recebe o aviso discreto para ligar um e-mail, com acesso ao diálogo existente, sem obrigação.
 
-A conta pode nascer com passkey sem e-mail; um endereço técnico `.invalid` atende ao formato exigido pelo auth. E-mail real vinculado é necessário para assinar. Cadastro grátis não cria Customer no Stripe. O Studio entra por aprovação de aparelho em `/aparelho`; os limites contam sessões marcadas pelo servidor ao resgatar uma aprovação de aparelho; o User-Agent serve apenas como nome de exibição.
+A conta pode nascer com passkey sem e-mail; um endereço técnico `.invalid` atende ao formato exigido pelo auth. E-mail real vinculado é necessário para assinar. Cadastro grátis não cria Customer no Stripe. O Studio entra por aprovação de aparelho em `/device`; os limites contam sessões marcadas pelo servidor ao resgatar uma aprovação de aparelho; o User-Agent serve apenas como nome de exibição.
 
 Limites, benefícios e lookup keys ficam em `worker/plans.ts`. Os preços exibidos vêm dos Prices ativos do Stripe, inclusive os anuais, por `worker/pricing.ts`. Grátis permite 50 MiB, um aparelho e sync pelo botão. Pro, Max e Ultra têm sync ao vivo, histórico, IA e, respectivamente, um, três e dez sites. O armazenamento é de 1 GiB no Pro, 5 GiB no Max e 10 GiB no Ultra. Notas, histórico e sites compartilham esse limite. Max tem 50 e Ultra 100 lembretes por e-mail por mês UTC. A [tabela completa](../docs/spec/blup-cloud-sync.md#planos-executados) detalha os limites. Grátis, Pro, Max e Ultra permitem arquivos de 10, 25, 50 e 100 MiB, respectivamente; o texto comercial usa MB e GB. Cada conta tem no máximo 50 cofres. Max/Ultra podem vincular um domínio próprio por site, junto com o endereço getblup.site.
 

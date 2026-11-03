@@ -8,7 +8,7 @@ Implementação conferida em 02/11/2026, após os handoffs de contrato da rodada
 
 Uma conta pode nascer só com passkey. O servidor cria um endereço técnico no domínio `.invalid`; não envia mensagens a esse endereço. Vincular e-mail exige confirmar um código. Assinar exige e-mail real; trocar um e-mail já vinculado passa pelo suporte no fluxo atual.
 
-`StartBlupLogin` obtém uma autorização de aparelho para o cliente `blup-studio`; a pessoa confere o código em `/aparelho`, no navegador, e aprova. `FinishBlupLogin` aguarda e guarda a sessão em `credentials.toml`. O Studio usa `Authorization: Bearer`, com identificação da instalação no User-Agent. O painel lista e encerra sessões de aparelhos. O limite de aparelhos é verificado na aprovação; não é uma contagem de cofres.
+`StartBlupLogin` obtém uma autorização de aparelho para o cliente `blup-studio`; a pessoa confere o código em `/device`, no navegador, e aprova. `FinishBlupLogin` aguarda e guarda a sessão em `credentials.toml`. O Studio usa `Authorization: Bearer`, com identificação da instalação no User-Agent. O painel lista e encerra sessões de aparelhos. O limite de aparelhos é verificado na aprovação; não é uma contagem de cofres.
 
 `LoadBlupAccount` retorna plano, uso e estado das notas: `new`, `locked` ou `ready`. Sair tenta enviar uma lista vazia de lembretes antes de encerrar a sessão e remove `blup_token` e `notes_key` das credenciais. Se o cancelamento não alcançar o servidor, conserva temporariamente a sessão em `signout-pending`, modo `0600`, para repetir o cancelamento no início ou no próximo login. Não apaga as notas no disco. A retenção desse token de trabalho é distinta da sessão usada normalmente pela interface.
 
