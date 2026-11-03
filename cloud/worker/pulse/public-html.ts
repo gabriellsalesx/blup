@@ -11,7 +11,8 @@ export type PublicMaintenance={title:string;body:string;state:"scheduled"|"activ
 export type PublicUpdate={body:string;state:string;createdAt:string};
 export type PublicService={name:string;status:"downtime"|"degraded"|"resolved"};
 export type PublicIncident={title:string;state:string;impact:string;createdAt:string;updatedAt:string;services:PublicService[];updates:PublicUpdate[]};
-export type PublicStatus={title:string;language:Language;historyDays:number;components:PublicComponent[];incidents:PublicIncident[];maintenance:PublicMaintenance[]};
+export type PublicLook={showTitle:boolean;links:{label:string;url:string}[];logos:{light:string|null;dark:string|null}};
+export type PublicStatus={title:string;language:Language;historyDays:number;components:PublicComponent[];incidents:PublicIncident[];maintenance:PublicMaintenance[]}&PublicLook;
 
 const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]??""));
 const DAY=86_400_000;
@@ -44,7 +45,8 @@ const css=`:root{color-scheme:light dark;--bg:#fafafa;--card:#fff;--head:#fafafa
 @media (prefers-color-scheme:dark){:root{--bg:#0a0a0a;--card:#171717;--head:#1c1c1c;--line:#262626;--text:#f5f5f5;--muted:#a3a3a3;--none:#303030;--legend:#525252;--tip:#f5f5f5;--tip-text:#171717}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 .wrap{max-width:780px;margin:0 auto;padding:40px 20px 32px}
-header{display:flex;align-items:center;gap:12px;margin-bottom:56px}header strong{font-size:18px;font-weight:700;overflow-wrap:anywhere}header span{color:var(--muted);padding-left:12px;border-left:1px solid var(--line)}
+header{display:flex;align-items:center;flex-wrap:wrap;gap:12px 24px;margin-bottom:56px}.brand{display:flex;align-items:center;gap:12px;min-width:0}header strong{font-size:18px;font-weight:700;overflow-wrap:anywhere}.brand>span{color:var(--muted);padding-left:12px;border-left:1px solid var(--line)}
+.logo{display:block;height:36px;width:auto;max-width:220px;object-fit:contain}nav{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px 20px}nav a{color:var(--muted);font-size:14px;font-weight:500;text-decoration:none}nav a:hover{color:var(--text)}
 .hero{text-align:center;margin-bottom:48px}.badge{display:inline-grid;place-items:center;width:80px;height:80px;border-radius:999px;color:#fff}.badge svg{color:#fff}
 h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spacing:-.02em}.updated{color:var(--muted);font-size:14px;margin:0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:28px}
@@ -68,7 +70,7 @@ h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spaci
 .update{margin:6px 0 0}.update p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.update small{color:var(--muted)}
 
 footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:13px;padding:8px 2px}footer a{color:inherit;font-weight:600;text-decoration:none}footer a:hover{text-decoration:underline}
-@media (max-width:640px){.wrap{padding-top:28px}header{margin-bottom:36px}h1{font-size:24px}.bars i:nth-last-child(n+31){display:none}.bars i:nth-last-child(30):hover::after{left:0;transform:none}.from-long{display:none}.from-short{display:inline}}
+@media (max-width:640px){.wrap{padding-top:28px}header{margin-bottom:36px}nav{margin-left:0;width:100%}h1{font-size:24px}.bars i:nth-last-child(n+31){display:none}.bars i:nth-last-child(30):hover::after{left:0;transform:none}.from-long{display:none}.from-short{display:inline}}
 `;
 
 // Day key (UTC) of a date, as days since the epoch.
@@ -84,6 +86,44 @@ function dayTone(d:PublicDay|undefined):Tone|"none"{
  return tone==="up"&&d.maintenance?"maint":tone;
 }
 
+// A service's state: maintenance while one lasts, else its monitor's,
+// unless an open incident says it is down or slow.
+const toneOf=(c:PublicComponent):Tone=>c.maintenance?"maint":c.state==="down"||c.incident==="downtime"?"down":c.incident==="degraded"?"partial":c.state==="up"?"up":"unknown";
+type OverallKey="pulseWaiting"|"pulseAllDown"|"pulseSomeDown"|"pulseMaintenanceNow"|"pulseAllUp";
+// The page's overall state, from the services (and an open incident): the
+// top of the page, its favicon and the badge all show it.
+export function overallOf(page:Pick<PublicStatus,"components"|"incidents">):{tone:Tone;key:OverallKey}{
+ const states=page.components.map(c=>{const tone=toneOf(c);return tone==="partial"||tone==="maint"?"up":tone;}),open=page.incidents.filter(i=>i.state!=="resolved");
+ const down=states.filter(s=>s==="down").length,known=states.filter(s=>s!=="unknown").length;
+ return !page.components.length||known===0?{tone:"unknown",key:"pulseWaiting"}:
+  down&&down===known?{tone:"down",key:"pulseAllDown"}:
+  down||open.length?{tone:"partial",key:"pulseSomeDown"}:
+  page.components.some(c=>c.maintenance)?{tone:"maint",key:"pulseMaintenanceNow"}:
+  {tone:"up",key:"pulseAllUp"};
+}
+// The state as a favicon: the same colored circle and Lucide mark.
+const toneColor:Record<Tone,string>={up:"#10b981",partial:"#f59e0b",down:"#ef4444",maint:"#6366f1",unknown:"#737373"};
+export function faviconOf(tone:Tone){
+ const mark=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="${toneColor[tone]}"/><g transform="translate(6 6) scale(.8333)" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${icon[tone]}</g></svg>`;
+ return `data:image/svg+xml,${encodeURIComponent(mark)}`;
+}
+// The header: the logos (the dark one on a dark screen, when there is
+// one), else the Blup; the title unless hidden; and the page's links.
+function headerOf(page:PublicStatus){
+ const {light,dark}=page.logos,alt=page.showTitle?"":escape(page.title);
+ const img=(file:string,version:string)=>`<img class="logo" src="${file}?v=${version}" alt="${alt}">`;
+ const logo=light&&dark?`<picture><source srcset="logo-dark?v=${dark}" media="(prefers-color-scheme: dark)">${img("logo-light",light)}</picture>`:light?img("logo-light",light):dark?img("logo-dark",dark):blup;
+ const links=page.links.length?`<nav>${page.links.map(l=>`<a href="${escape(l.url)}" rel="noopener nofollow">${escape(l.label)}</a>`).join("")}</nav>`:"";
+ return `<header><div class="brand">${logo}${page.showTitle?`<strong>${escape(page.title)}</strong>`:""}<span>Status</span></div>${links}</header>`;
+}
+// The badge for another site (in an iframe): the state's mark and words,
+// linking to the page. Light, dark or following the visitor's screen.
+export function renderBadge(page:PublicStatus,theme:"light"|"dark"|"auto"){
+ const state=overallOf(page),label=translate(page.language,state.key);
+ const ink={light:"#171717",dark:"#f5f5f5"};
+ const color=theme==="auto"?`color:${ink.light}}@media (prefers-color-scheme:dark){a{color:${ink.dark}}`:`color:${ink[theme]}}`;
+ return `<!doctype html><html lang="${page.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(label)}</title><style>html,body{margin:0;background:transparent;overflow:hidden}a{display:inline-flex;align-items:center;gap:8px;height:30px;font:500 14px/1 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-decoration:none;white-space:nowrap;-webkit-font-smoothing:antialiased;${color}a:hover span:last-child{text-decoration:underline}.dot{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:999px;background:${toneColor[state.tone]};color:#fff}</style></head><body><a href="./" target="_blank" rel="noopener"><span class="dot">${svg(state.tone,12,3)}</span><span>${escape(label)}</span></a></body></html>`;
+}
 export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
  const lang=page.language;
  const t=<K extends MessageKey>(key:K,...args:TranslationArgs<(typeof messages)[K][0]>)=>translate(lang,key,...args);
@@ -94,18 +134,7 @@ export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
  const today=dayOf(now),range=Math.min(Math.max(page.historyDays,1),90);
  const days=Array.from({length:range},(_,i)=>today-range+1+i);
 
- // A service's state: maintenance while one lasts, else its monitor's,
- // unless an open incident says it is down or slow.
- const toneOf=(c:PublicComponent):Tone=>c.maintenance?"maint":c.state==="down"||c.incident==="downtime"?"down":c.incident==="degraded"?"partial":c.state==="up"?"up":"unknown";
- // The overall state, from the components (and an open incident).
- const states=page.components.map(c=>{const tone=toneOf(c);return tone==="partial"||tone==="maint"?"up":tone;}),open=page.incidents.filter(i=>i.state!=="resolved");
- const down=states.filter(s=>s==="down").length,known=states.filter(s=>s!=="unknown").length;
- const overall:{tone:Tone;label:string}=
-  !page.components.length||known===0?{tone:"unknown",label:t("pulseWaiting")}:
-  down&&down===known?{tone:"down",label:t("pulseAllDown")}:
-  down||open.length?{tone:"partial",label:t("pulseSomeDown")}:
-  page.components.some(c=>c.maintenance)?{tone:"maint",label:t("pulseMaintenanceNow")}:
-  {tone:"up",label:t("pulseAllUp")};
+ const state=overallOf(page),overall={tone:state.tone,label:t(state.key)},open=page.incidents.filter(i=>i.state!=="resolved");
  const lastCheck=Math.max(0,...page.components.map(c=>c.lastCheckedAt?Date.parse(c.lastCheckedAt):0));
  const updated=lastCheck?`<p class="updated">${escape(t("pulseUpdatedAt",{date:stamp.format(new Date(lastCheck))+" UTC"}))}</p>`:"";
 
@@ -144,8 +173,8 @@ export function renderStatusPage(page:PublicStatus,now=Date.now()):string{
  const maintenance=page.maintenance.length?`<section class="card"><div class="head"><h2>${escape(t("pulseScheduledMaintenance"))}</h2></div>${page.maintenance.map(m=>`<div class="day"><div class="incident"><h4>${escape(m.title)}<span class="tag t-maint">${escape(m.state==="active"?t("pulseMaintenanceActive"):t("pulseMaintenanceScheduled"))}</span></h4><p class="services"><span>${escape(windowOf(m))}</span>${m.services.map(name=>`<span>${escape(name)}</span>`).join("")}</p>${m.body?`<div class="update"><p>${escape(m.body)}</p></div>`:""}</div></div>`).join("")}</section>`:"";
  const year=new Date(now).getUTCFullYear();
 
- return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(page.title)}</title><meta name="description" content="${escape(overall.label)}"><style>${css}</style></head><body><div class="wrap">
-<header>${blup}<strong>${escape(page.title)}</strong><span>Status</span></header>
+ return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(page.title)}</title><link rel="icon" type="image/svg+xml" href="${faviconOf(overall.tone)}"><meta name="description" content="${escape(overall.label)}"><style>${css}</style></head><body><div class="wrap">
+${headerOf(page)}
 <section class="hero"><span class="badge ${overall.tone==="unknown"?"b-unknown":overall.tone}">${svg(overall.tone,40,2.5)}</span><h1>${escape(overall.label)}</h1>${updated}</section>
 <section class="card"><div class="head"><h2>${escape(t("pulseServices"))}</h2><div class="legend">${([["up","pulseOperational"],["partial","pulseDegraded"],["down","pulseDown"],["maint","pulseMaintenance"],["none","pulseNotMonitored"]] as const).map(([k,key])=>`<span class="l-${k}" data-tip="${escape(t(key))}" role="img" aria-label="${escape(t(key))}">${legendSvg(k)}</span>`).join("")}</div></div>${page.components.map(component).join("")||`<div class="row"><p class="updated">${escape(t("pulseNoData"))}</p></div>`}</section>
 ${maintenance}

@@ -4,9 +4,13 @@ import {validate,opaqueId} from "../validation";
 import {languageSchema} from "../../shared/language";
 import {pulseWrite,type PulseApp} from "./access";
 import {pageSlug,slugShape,reservedSlugs,serviceStatus} from "./page-rules";
+import {navLinks,linksOf} from "./page-look";
+import {dropPageAssets} from "./page-asset-store";
 const component=z.object({monitorId:opaqueId,name:z.string().trim().min(1).max(80)}).strict();
 const components=z.array(component).max(50).refine(v=>new Set(v.map(c=>c.monitorId)).size===v.length);
-const pageBody=z.object({title:z.string().trim().min(1).max(100),slug:pageSlug,components,language:languageSchema}).strict();
+// The header of the public page: the title shown or not and its links.
+const look={showTitle:z.boolean().optional(),links:navLinks.optional()};
+const pageBody=z.object({title:z.string().trim().min(1).max(100),slug:pageSlug,components,language:languageSchema,...look}).strict();
 export const incidentState=z.enum(["investigating","identified","monitoring","resolved"]);
 export const impact=z.enum(["operational","degraded","partial_outage","major_outage"]);
 // "none" (not affected) is not stored; the page's impact follows the
@@ -28,8 +32,8 @@ async function validComponents(db:D1Database,owner:string,list:z.infer<typeof co
 function setComponents(db:D1Database,page:string,list:z.infer<typeof components>){return [db.prepare("DELETE FROM pulse_component WHERE page_id=?").bind(page),...list.map((item,position)=>db.prepare("INSERT INTO pulse_component VALUES(?,?,?,?)").bind(page,item.monitorId,item.name,position))];}
 export const pagesApi=new Hono<PulseApp>()
  .get("/",async c=>{
-  const pages=await c.env.DB.prepare("SELECT id,title,slug,published,language,plan_disabled AS planDisabled,retire_at AS retireAt FROM pulse_page WHERE user_id=? AND (retire_at IS NULL OR retire_at>?) ORDER BY created_at,id LIMIT 3").bind(c.get("session").user.id,Date.now()).all<{id:string;title:string;slug:string;published:number;language:string;planDisabled:number;retireAt:number|null}>();
-  const rows=c.get("access").readable?await Promise.all(pages.results.map(async p=>({...p,published:!!p.published&&!p.planDisabled,writable:!p.planDisabled&&c.get("access").writable,readOnlyUntil:p.retireAt===null?null:new Date(p.retireAt).toISOString(),components:(await c.env.DB.prepare("SELECT monitor_id AS monitorId,name FROM pulse_component WHERE page_id=? ORDER BY position").bind(p.id).all<{monitorId:string;name:string}>()).results}))):[];return c.json({pages:rows});
+  const pages=await c.env.DB.prepare("SELECT id,title,slug,published,language,plan_disabled AS planDisabled,retire_at AS retireAt,show_title AS showTitle,nav_links AS navLinks,logo_light AS logoLight,logo_dark AS logoDark FROM pulse_page WHERE user_id=? AND (retire_at IS NULL OR retire_at>?) ORDER BY created_at,id LIMIT 3").bind(c.get("session").user.id,Date.now()).all<{id:string;title:string;slug:string;published:number;language:string;planDisabled:number;retireAt:number|null;showTitle:number;navLinks:string;logoLight:string|null;logoDark:string|null}>();
+  const rows=c.get("access").readable?await Promise.all(pages.results.map(async ({showTitle,navLinks:stored,logoLight,logoDark,...p})=>({...p,showTitle:!!showTitle,links:linksOf(stored),logos:{light:logoLight,dark:logoDark},published:!!p.published&&!p.planDisabled,writable:!p.planDisabled&&c.get("access").writable,readOnlyUntil:p.retireAt===null?null:new Date(p.retireAt).toISOString(),components:(await c.env.DB.prepare("SELECT monitor_id AS monitorId,name FROM pulse_component WHERE page_id=? ORDER BY position").bind(p.id).all<{monitorId:string;name:string}>()).results}))):[];return c.json({pages:rows});
  })
  // Whether an address can be used, while the new page is being typed.
  // Addresses are public, so this tells nothing that visiting would not.
@@ -44,14 +48,14 @@ export const pagesApi=new Hono<PulseApp>()
   const input=c.req.valid("json"),owner=c.get("session").user.id;if(!await validComponents(c.env.DB,owner,input.components))return c.json({code:"NOT_FOUND"},404);
   const id=crypto.randomUUID();
   try{
-   const result=await c.env.DB.batch([c.env.DB.prepare("INSERT INTO pulse_page(id,user_id,slug,title,language,created_at) SELECT ?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_page WHERE user_id=? AND plan_disabled=0)<? AND (SELECT count(*) FROM pulse_page WHERE user_id=?)<3 RETURNING id").bind(id,owner,input.slug,input.title,input.language,Date.now(),owner,c.get("access").limits?.pages??0,owner),...input.components.map((item,position)=>c.env.DB.prepare("INSERT INTO pulse_component SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM pulse_page WHERE id=?)").bind(id,item.monitorId,item.name,position,id))]);
+   const result=await c.env.DB.batch([c.env.DB.prepare("INSERT INTO pulse_page(id,user_id,slug,title,language,show_title,nav_links,created_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_page WHERE user_id=? AND plan_disabled=0)<? AND (SELECT count(*) FROM pulse_page WHERE user_id=?)<3 RETURNING id").bind(id,owner,input.slug,input.title,input.language,Number(input.showTitle??true),JSON.stringify(input.links??[]),Date.now(),owner,c.get("access").limits?.pages??0,owner),...input.components.map((item,position)=>c.env.DB.prepare("INSERT INTO pulse_component SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM pulse_page WHERE id=?)").bind(id,item.monitorId,item.name,position,id))]);
    return result[0].results.length?c.json({id,slug:input.slug},201):c.json({code:"QUOTA"},409);
   }catch(e){if(e instanceof Error&&e.message.includes("UNIQUE"))return c.json({code:"SLUG_TAKEN"},409);throw e;}
  })
- .patch("/:page",pulseWrite,validate("param",pageParam),validate("json",z.object({title:pageBody.shape.title.optional(),components:components.optional(),published:z.boolean().optional(),language:languageSchema.optional()}).strict().refine(v=>Object.keys(v).length>0)),async c=>{
+ .patch("/:page",pulseWrite,validate("param",pageParam),validate("json",z.object({title:pageBody.shape.title.optional(),components:components.optional(),published:z.boolean().optional(),language:languageSchema.optional(),...look}).strict().refine(v=>Object.keys(v).length>0)),async c=>{
   const id=c.req.valid("param").page,owner=c.get("session").user.id,current=await ownedPage(c.env,owner,id);if(!current)return c.json({code:"NOT_FOUND"},404);const body=c.req.valid("json");if(current.planDisabled)return c.json({code:"PLAN"},403);
   if(body.components&&!await validComponents(c.env.DB,owner,body.components))return c.json({code:"NOT_FOUND"},404);
-  await c.env.DB.batch([c.env.DB.prepare("UPDATE pulse_page SET title=?,published=?,language=? WHERE id=? AND user_id=?").bind(body.title??current.title,body.published===undefined?current.published:Number(body.published),body.language??current.language,id,owner),...(body.components?setComponents(c.env.DB,id,body.components):[])]);return c.json({ok:true});
+  await c.env.DB.batch([c.env.DB.prepare("UPDATE pulse_page SET title=?,published=?,language=?,show_title=coalesce(?,show_title),nav_links=coalesce(?,nav_links) WHERE id=? AND user_id=?").bind(body.title??current.title,body.published===undefined?current.published:Number(body.published),body.language??current.language,body.showTitle===undefined?null:Number(body.showTitle),body.links===undefined?null:JSON.stringify(body.links),id,owner),...(body.components?setComponents(c.env.DB,id,body.components):[])]);return c.json({ok:true});
  })
  .delete("/:page",validate("param",pageParam),async c=>{
   const id=c.req.valid("param").page,current=await ownedPage(c.env,c.get("session").user.id,id);if(!current)return c.json({code:"NOT_FOUND"},404);
@@ -59,6 +63,7 @@ export const pagesApi=new Hono<PulseApp>()
   // the row is lost. Keep the tombstone unpublished until it succeeds.
   await c.env.DB.prepare("UPDATE pulse_page SET published=0 WHERE id=?").bind(id).run();
   if(await c.env.DB.prepare("SELECT page_id FROM pulse_page_domain WHERE page_id=?").bind(id).first())return c.json({code:"DOMAIN_EXISTS"},409);
+  await dropPageAssets(c.env,id);
   await c.env.DB.batch([c.env.DB.prepare("DELETE FROM pulse_incident_update WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(id),c.env.DB.prepare("DELETE FROM pulse_incident_component WHERE incident_id IN(SELECT id FROM pulse_incident WHERE page_id=?)").bind(id),c.env.DB.prepare("DELETE FROM pulse_incident WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_maintenance_component WHERE maintenance_id IN(SELECT id FROM pulse_maintenance WHERE page_id=?)").bind(id),c.env.DB.prepare("DELETE FROM pulse_maintenance WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_component WHERE page_id=?").bind(id),c.env.DB.prepare("DELETE FROM pulse_page WHERE id=?").bind(id)]);return c.json({ok:true});
  })
  .get("/:page/incidents",validate("param",pageParam),async c=>{

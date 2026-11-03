@@ -32,6 +32,9 @@ export const pulseMonitor=sqliteTable("pulse_monitor",{
 export const pulsePage=sqliteTable("pulse_page",{
  id:text("id").primaryKey(),userId:text("user_id").notNull(),slug:text("slug").notNull().unique(),title:text("title").notNull(),published:integer("published").notNull().default(0),language:text("language").notNull().default("en"),createdAt:integer("created_at").notNull(),
  planDisabled:integer("plan_disabled").notNull().default(0),retireAt:integer("retire_at"),
+ // The public header: the title shown or not, up to five links (JSON
+ // [{label,url}]) and the version of each logo in R2 (null without one).
+ showTitle:integer("show_title").notNull().default(1),navLinks:text("nav_links").notNull().default("[]"),logoLight:text("logo_light"),logoDark:text("logo_dark"),
 },t=>[index("pulse_page_owner_idx").on(t.userId,t.id),index("pulse_page_retire_idx").on(t.retireAt)]);
 export const pulseComponent=sqliteTable("pulse_component",{
  pageId:text("page_id").notNull(),monitorId:text("monitor_id").notNull(),name:text("name").notNull(),position:integer("position").notNull(),

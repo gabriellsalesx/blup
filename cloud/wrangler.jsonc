@@ -33,7 +33,8 @@
 	"r2_buckets": [
 		{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" },
 		{ "binding": "SITES", "bucket_name": "blup-cloud-sites" },
-		{ "binding": "PULSE_SOURCEMAPS", "bucket_name": "blup-pulse-sourcemaps" }
+		{ "binding": "PULSE_SOURCEMAPS", "bucket_name": "blup-pulse-sourcemaps" },
+		{ "binding": "PULSE_ASSETS", "bucket_name": "blup-pulse-assets" }
 	],
 	// A sala ao vivo de cada conta (sincronização em tempo real dos planos
 	// pagos), com hibernação de WebSocket.
@@ -98,7 +99,8 @@
 			"r2_buckets": [
 				{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" },
 				{ "binding": "SITES", "bucket_name": "blup-cloud-sites" },
-				{ "binding": "PULSE_SOURCEMAPS", "bucket_name": "blup-pulse-sourcemaps" }
+				{ "binding": "PULSE_SOURCEMAPS", "bucket_name": "blup-pulse-sourcemaps" },
+				{ "binding": "PULSE_ASSETS", "bucket_name": "blup-pulse-assets" }
 			],
 			"durable_objects": { "bindings": [{ "name": "SYNC_LIVE", "class_name": "SyncLive" }, { "name": "PULSE_PROJECT", "class_name": "PulseProject" }] },
 			// Só manda a partir do no-reply (o domínio getblup.io precisa estar

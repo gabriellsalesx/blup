@@ -15,3 +15,5 @@ export const getIncidents=async(page:string)=>(await parseResponse(incidentsGET(
 export const maintenanceGET=pulseApi.pages[":page"].maintenance.$get;
 export type Maintenance=InferResponseType<typeof maintenanceGET,200>["maintenance"][number];
 export const getMaintenance=async(page:string)=>(await parseResponse(maintenanceGET({param:{page}}))).maintenance;
+// Where a published page is, on the shared public host.
+export const publicPageURL=(slug:string)=>`https://pulse.getblup.site/${slug}/`;

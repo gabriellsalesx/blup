@@ -6,6 +6,6 @@ import {defineConfig} from "vite";
 // (the same as the Cloud panel's); the data and the sign-in come from the
 // Cloud's Worker.
 export default defineConfig({
- plugins:[tailwindcss(),sveltekit({adapter:adapter({fallback:"index.html"}),csp:{mode:"hash",directives:{"default-src":["self"],"script-src":["self","https://challenges.cloudflare.com"],"frame-src":["https://challenges.cloudflare.com"],"connect-src":["self","https://cloud.getblup.io","https://challenges.cloudflare.com"],"img-src":["self","data:"],"style-src":["self","unsafe-inline"],"font-src":["self"],"object-src":["none"],"base-uri":["self"],"form-action":["self"]}}})],
+ plugins:[tailwindcss(),sveltekit({adapter:adapter({fallback:"index.html"}),csp:{mode:"hash",directives:{"default-src":["self"],"script-src":["self","https://challenges.cloudflare.com"],"frame-src":["https://challenges.cloudflare.com","https://pulse.getblup.site"],"connect-src":["self","https://cloud.getblup.io","https://challenges.cloudflare.com"],"img-src":["self","data:","blob:"],"style-src":["self","unsafe-inline"],"font-src":["self"],"object-src":["none"],"base-uri":["self"],"form-action":["self"]}}})],
  server:{fs:{allow:[".."]}},
 });

@@ -183,6 +183,13 @@
       "when": 1793732421238,
       "tag": "0025_pulse_destino_sempre_em_projeto",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1793742764932,
+      "tag": "0026_pulse_pagina_aparencia",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,7 @@ import {pulseSession,pulseWrite,projectWrite,ownedProject,type PulseApp} from ".
 import {channelsApi} from "./channels";
 import {telegramApi,telegramWebhookApi} from "./telegram";
 import {pagesApi} from "./pages";
+import {pageAssetsApi} from "./page-assets";
 import {pulseDomainsApi} from "./domains";
 import {publicPage} from "./public";
 import {pageSlug} from "./page-rules";
@@ -105,6 +106,7 @@ export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi)
  .route("/monitors",monitorsApi)
  .route("/setup",setupApi)
  .route("/pages",pagesApi)
+ .route("/pages",pageAssetsApi)
  .route("/pages",pulseDomainsApi)
  .route("/pages",maintenanceApi)
  .route("/",sourcemapPanelApi)

@@ -41,6 +41,7 @@ import {pulseIngest} from "./pulse/ingest";
 
 type App = { Bindings: Cloudflare.Env; Variables: { session: Session } };
 
+import {LOGO_MAX_BYTES} from "./pulse/page-look";
 const app = new Hono<App>().basePath("/api");
 
 const headersSchema=z.object({"x-blup-language":languageSchema.optional(),"accept-language":z.string().max(1024).optional(),authorization:z.string().max(8192).optional(),cookie:z.string().max(16384).optional(),origin:z.url().max(2048).optional(),"cf-connecting-ip":z.union([z.ipv4(),z.ipv6()]).optional(),"user-agent":z.string().max(1024).optional(),"cf-access-jwt-assertion":z.string().max(16384).optional(),"x-captcha-response":z.string().max(4096).optional(),"x-blup-upload-ticket":opaqueId.optional(),"content-length":safeInt.optional(),"sec-fetch-site":z.enum(["same-origin","same-site","cross-site","none"]).optional(),upgrade:z.enum(["websocket"]).optional()});
@@ -48,7 +49,7 @@ app.use("*",async(c,next)=>{
  const checked=headersSchema.safeParse(Object.fromEntries(c.req.raw.headers));
  if(!checked.success)return c.json(requestError(c.req.path,"INVALID"),400);
  if(c.req.raw.body && !/\/(?:files|blocks)\/[0-9a-f]{64}$/.test(c.req.path)){
-  const max=c.req.path==="/api/auth/stripe/webhook"?1024*1024:/\/sync\/vaults\/[^/]+\/(?:versions|prepare)$/.test(c.req.path)?34*1024*1024:/\/sites\/[^/]+\/deploys$/.test(c.req.path)?8*1024*1024:c.req.path==="/api/pulse/sourcemaps"?20*1024*1024:96*1024;
+  const max=c.req.path==="/api/auth/stripe/webhook"?1024*1024:/\/sync\/vaults\/[^/]+\/(?:versions|prepare)$/.test(c.req.path)?34*1024*1024:/\/sites\/[^/]+\/deploys$/.test(c.req.path)?8*1024*1024:c.req.path==="/api/pulse/sourcemaps"?20*1024*1024:/^\/api\/pulse\/pages\/[^/]+\/logo\/(?:light|dark)$/.test(c.req.path)?LOGO_MAX_BYTES:96*1024;
   const bounded=boundedStream(c.req.raw.body,max,checked.data["content-length"]);
   const init={body:bounded,duplex:"half"};c.req.raw=new Request(c.req.raw,init);
  }

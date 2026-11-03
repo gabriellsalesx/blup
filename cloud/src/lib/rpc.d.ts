@@ -3143,6 +3143,15 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 unavailable: false;
                 title: string;
+                showTitle: boolean;
+                links: {
+                    label: string;
+                    url: string;
+                }[];
+                logos: {
+                    light: string | null;
+                    dark: string | null;
+                };
                 slug: string;
                 language: "pt" | "en" | "es";
                 historyDays: number;
@@ -3356,6 +3365,15 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 unavailable: false;
                 title: string;
+                showTitle: boolean;
+                links: {
+                    label: string;
+                    url: string;
+                }[];
+                logos: {
+                    light: string | null;
+                    dark: string | null;
+                };
                 slug: string;
                 language: "pt" | "en" | "es";
                 historyDays: number;
@@ -5368,6 +5386,15 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {};
             output: {
                 pages: {
+                    showTitle: boolean;
+                    links: {
+                        label: string;
+                        url: string;
+                    }[];
+                    logos: {
+                        light: string | null;
+                        dark: string | null;
+                    };
                     published: boolean;
                     writable: boolean;
                     readOnlyUntil: string | null;
@@ -5463,6 +5490,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         name: string;
                     }[];
                     language: "pt" | "en" | "es";
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -5484,6 +5516,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         name: string;
                     }[];
                     language: "pt" | "en" | "es";
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -5502,6 +5539,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         name: string;
                     }[];
                     language: "pt" | "en" | "es";
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -5519,6 +5561,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         name: string;
                     }[];
                     language: "pt" | "en" | "es";
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -5537,6 +5584,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         name: string;
                     }[];
                     language: "pt" | "en" | "es";
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -5555,6 +5607,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             } & {
                 json: {
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                     title?: string | undefined;
                     components?: {
                         monitorId: string;
@@ -5580,6 +5637,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             } & {
                 json: {
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                     title?: string | undefined;
                     components?: {
                         monitorId: string;
@@ -5602,6 +5664,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             } & {
                 json: {
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                     title?: string | undefined;
                     components?: {
                         monitorId: string;
@@ -5627,6 +5694,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             } & {
                 json: {
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                     title?: string | undefined;
                     components?: {
                         monitorId: string;
@@ -5649,6 +5721,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             } & {
                 json: {
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                     title?: string | undefined;
                     components?: {
                         monitorId: string;
@@ -5670,6 +5747,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             } & {
                 json: {
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                     title?: string | undefined;
                     components?: {
                         monitorId: string;
@@ -5691,6 +5773,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             } & {
                 json: {
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
                     title?: string | undefined;
                     components?: {
                         monitorId: string;
@@ -6494,6 +6581,199 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             outputFormat: "json";
             status: 409;
+        };
+    };
+}, "/pages"> | import("hono/types").MergeSchemaPath<{
+    "/:page/logo/:variant": {
+        $put: {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 413;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                version: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+} & {
+    "/:page/logo/:variant": {
+        $get: {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {};
+            outputFormat: string;
+            status: import("hono/utils/http-status").StatusCode;
+        };
+    };
+} & {
+    "/:page/logo/:variant": {
+        $delete: {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    page: string;
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
 }, "/pages"> | import("hono/types").MergeSchemaPath<{

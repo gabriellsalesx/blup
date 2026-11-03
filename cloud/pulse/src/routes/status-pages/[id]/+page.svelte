@@ -25,6 +25,7 @@
  import Segmented from "#lib/ui/Segmented.svelte";
  import Domain from "../../../lib/Domain.svelte";
  import PageForm from "../../../lib/PageForm.svelte";
+ import BadgeEmbed from "../../../lib/BadgeEmbed.svelte";
  import {pulseApi,parseResponse} from "../../../lib/api";
  import {panel} from "../../../lib/panel.svelte";
  import {getPages,getIncidents,getMaintenance,type Incident,type Maintenance} from "../../../lib/status-pages";
@@ -45,7 +46,7 @@
  // The mark of an incident: green once resolved, else by how bad it is.
  const toneOf=(i:Incident)=>i.state==="resolved"?"up" as const:i.impact==="major_outage"||i.impact==="partial_outage"?"down" as const:"partial" as const;
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(errorMessage(e),{kind:"error"});}finally{busy=false;}}
- async function save(values:{title:string;components:{monitorId:string;name:string}[]}){const current=page;if(!current)return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].$patch({param:{page:current.id},json:{title:values.title,components:values.components,language:language()}}));page=(await getPages()).find(p=>p.id===current.id)??null;toast(()=>t("pulseToastSaved"));});}
+ async function save(values:{title:string;components:{monitorId:string;name:string}[];showTitle:boolean;links:{label:string;url:string}[]}){const current=page;if(!current)return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].$patch({param:{page:current.id},json:{title:values.title,components:values.components,showTitle:values.showTitle,links:values.links,language:language()}}));page=(await getPages()).find(p=>p.id===current.id)??null;toast(()=>t("pulseToastSaved"));});}
  async function removeIncident(item:Incident){const current=page;if(!current||!await confirm({title:t("delete"),message:t("pulseRemoveIncident"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].incidents[":incident"].$delete({param:{page:current.id,incident:item.id}}));incidents=await getIncidents(current.id);toast(()=>t("pulseToastDeleted"));});}
  async function removeMaintenance(item:Maintenance){const current=page;if(!current||!await confirm({title:t("pulseRemoveMaintenanceTitle"),message:t("pulseRemoveMaintenance"),danger:true}))return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].maintenance[":maintenance"].$delete({param:{page:current.id,maintenance:item.id}}));maintenance=await getMaintenance(current.id);toast(()=>t("pulseToastDeleted"));});}
  async function publish(){const current=page;if(!current)return;await run(async()=>{await parseResponse(pulseApi.pages[":page"].$patch({param:{page:current.id},json:{published:!current.published}}));page=(await getPages()).find(p=>p.id===current.id)??null;toast(()=>current.published?t("pulseToastOffline"):t("pulseToastLive"));});}
@@ -65,7 +66,8 @@
  <div class="mt-8"><Segmented label={t("pulsePages")} options={tabs} bind:value={tab}/></div>
 
  {#if tab==="settings"}
-  <div class="mt-8">{#key page.id}{#if writable}<PageForm monitors={data.monitors} initial={page} editing {busy} onsave={save} oncancel={()=>goto(resolve("/status-pages"))}/>{:else}<p class="text-neutral-500">{t("pulseReadOnlyPage")}</p>{/if}{/key}</div>
+  <div class="mt-8">{#key page.id}{#if writable}<PageForm monitors={data.monitors} initial={page} logos={{page:page.id,light:data.logoPreviews.light,dark:data.logoPreviews.dark}} editing {busy} onsave={save} oncancel={()=>goto(resolve("/status-pages"))}/>{:else}<p class="text-neutral-500">{t("pulseReadOnlyPage")}</p>{/if}{/key}</div>
+  <div class="mt-10"><BadgeEmbed slug={page.slug} published={page.published}/></div>
  {:else if tab==="domain"}
   <Domain page={page.id} eligible={writable&&!!panel.usage?.limits?.customDomain}/>
  {:else if tab==="maintenance"}

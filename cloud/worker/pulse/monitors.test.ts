@@ -1,5 +1,5 @@
 import {beforeEach,afterEach,it,expect,vi} from "vitest";
-import {TestD1,seedUser} from "../security-test-support";
+import {TestD1,TestBucket,seedUser} from "../security-test-support";
 import {MonitorStore} from "./monitor-store";
 import type {ProjectSQL} from "./project-store";
 import {checkHTTP,monitorURL,publicIPv4,publicIPv6} from "./monitor-http";
@@ -17,7 +17,7 @@ beforeEach(()=>{
  const sql={get databaseSize(){return 0;},exec(query:string,...args:unknown[]){if(query.includes(";")){storage.sqlite.exec(query);return {toArray:()=>[]};}const rows=storage.sqlite.prepare(query).all(...args);return {toArray:()=>rows};}} as unknown as ProjectSQL;
  storage.sqlite.exec("CREATE TABLE pending_alert(id TEXT PRIMARY KEY,issue_id TEXT,kind TEXT,created_at INTEGER)");
  store=new MonitorStore(sql,fn=>{storage.sqlite.exec("BEGIN");try{const result=fn();storage.sqlite.exec("COMMIT");return result;}catch(e){storage.sqlite.exec("ROLLBACK");throw e;}});
- Object.assign(state.env,{DB:db.asD1(),STAFF_OWNER_EMAIL:"",PULSE_PUBLIC_HOST:"pulse.audit.invalid",PULSE_PUBLIC_LIMIT:{limit:async()=>({success:true})},PULSE_PROJECT:{getByName:()=>({recordChecks:async(observations:Parameters<MonitorStore["record"]>[0][])=>observations.map(o=>store.record(o)),monitorHistory:async(id:string,days:number)=>store.history(id,days)})}});
+ Object.assign(state.env,{DB:db.asD1(),PULSE_ASSETS:new TestBucket().asR2(),STAFF_OWNER_EMAIL:"",PULSE_PUBLIC_HOST:"pulse.audit.invalid",PULSE_PUBLIC_LIMIT:{limit:async()=>({success:true})},PULSE_PROJECT:{getByName:()=>({recordChecks:async(observations:Parameters<MonitorStore["record"]>[0][])=>observations.map(o=>store.record(o)),monitorHistory:async(id:string,days:number)=>store.history(id,days)})}});
 });
 afterEach(()=>{db.close();storage.close();vi.unstubAllGlobals();vi.restoreAllMocks();vi.useRealTimers();});
 const request=(path:string,method="GET",body?:unknown,user="alice")=>pulseApi.fetch(new Request(`https://cloud.audit.invalid${path}`,{method,headers:{authorization:`Bearer ${user}`,...(body===undefined?{}:{"content-type":"application/json"})},body:body===undefined?undefined:JSON.stringify(body)}),state.env);
@@ -172,4 +172,38 @@ it("keeps request headers sealed and never sends their values back",async()=>{
  expect((await request(`/monitors/${id}`,"PATCH",{headers:[{name:"Authorization",value:null}]})).status).toBe(200);
  const {openHeaders}=await import("./monitor-options");const row=db.sqlite.prepare("SELECT headers FROM pulse_monitor WHERE id=?").get(id) as {headers:string};
  expect(await openHeaders(state.env,"alice",id,row.headers)).toEqual([{name:"Authorization",value:"Bearer TOP_SECRET_VALUE"}]);
+});
+// A WebP header (lossless) of a given size, as the browser makes them.
+function webp(width:number,height:number,extra=16){
+ const bytes=new Uint8Array(25+extra),view=new DataView(bytes.buffer),text=(at:number,v:string)=>[...v].forEach((c,i)=>bytes[at+i]=c.charCodeAt(0));
+ text(0,"RIFF");view.setUint32(4,bytes.length-8,true);text(8,"WEBP");text(12,"VP8L");view.setUint32(16,bytes.length-20,true);bytes[20]=0x2f;view.setUint32(21,((width-1)&0x3fff)|(((height-1)&0x3fff)<<14),true);
+ return bytes;
+}
+it("shows the page's logo, links and title choice, and a badge and favicon with its state",async()=>{
+ const monitor=await(await request("/monitors","POST",{projectId:"1",name:"Api",url:"https://example.com/",intervalMinutes:5})).json() as {id:string};
+ const {id}=await(await request("/pages","POST",{title:"Acme",slug:"acme-status",language:"en",components:[{monitorId:monitor.id,name:"Api"}]})).json() as {id:string};
+ expect((await request(`/pages/${id}`,"PATCH",{links:[{label:"Site",url:"http://acme.example/"}]})).status).toBe(400);
+ expect((await request(`/pages/${id}`,"PATCH",{links:Array.from({length:6},(_,i)=>({label:`L${i}`,url:"https://acme.example/"}))})).status).toBe(400);
+ expect((await request(`/pages/${id}`,"PATCH",{published:true,showTitle:false,links:[{label:"Site <b>",url:"https://acme.example/"}]})).status).toBe(200);
+ const upload=(body:BodyInit,user="alice",type="image/webp")=>pulseApi.fetch(new Request(`https://cloud.audit.invalid/pages/${id}/logo/dark`,{method:"PUT",headers:{authorization:`Bearer ${user}`,"content-type":type},body}),state.env);
+ expect((await upload(new Uint8Array([137,80,78,71,13,10,26,10]))).status).toBe(400);
+ expect((await upload(webp(120,40),"alice","image/png")).status).toBe(400);expect((await upload(webp(120,40),"alice","image/gif")).status).toBe(400);
+ expect((await upload(webp(4000,40))).status).toBe(400);
+ expect((await upload(webp(120,40),"bob")).status).toBe(404);
+ const sent=await upload(webp(120,40));expect(sent.status).toBe(201);const {version}=await sent.json() as {version:string};expect(version).toMatch(/^[a-f0-9]{16}$/);
+ const listed=await(await request("/pages")).json() as {pages:{showTitle:boolean;links:unknown[];logos:{light:string|null;dark:string|null}}[]};
+ expect(listed.pages[0]).toMatchObject({showTitle:false,links:[{label:"Site <b>",url:"https://acme.example/"}],logos:{light:null,dark:version}});
+ const served=await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/"),state.env),html=await served?.text()??"";
+ expect(html).toContain(`src="logo-dark?v=${version}"`);expect(html).toContain('alt="Acme"');expect(html).not.toContain("<strong>Acme</strong>");
+ expect(html).toContain('<a href="https://acme.example/" rel="noopener nofollow">Site &lt;b&gt;</a>');expect(html).toContain('rel="icon" type="image/svg+xml" href="data:image/svg+xml,');
+ expect(served?.headers.get("content-security-policy")).toContain("img-src 'self' data:");
+ const logo=await servePulsePage(new Request(`https://pulse.audit.invalid/acme-status/logo-dark?v=${version}`),state.env);expect(logo?.headers.get("content-type")).toBe("image/webp");expect(logo?.headers.get("cache-control")).toContain("immutable");
+ expect((await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/logo-light"),state.env))?.status).toBe(404);
+ const badge=await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/badge?theme=dark"),state.env);expect(badge?.headers.get("content-security-policy")).toContain("frame-ancestors *");
+ const badgeHtml=await badge?.text()??"";expect(badgeHtml).toContain('href="./" target="_blank"');expect(badgeHtml).toContain("color:#f5f5f5");
+ // A PNG, where the browser could not make WebP.
+ const png=new Uint8Array(40);png.set([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82]);new DataView(png.buffer).setUint32(16,200);new DataView(png.buffer).setUint32(20,60);
+ const light=pulseApi.fetch(new Request(`https://cloud.audit.invalid/pages/${id}/logo/light`,{method:"PUT",headers:{authorization:"Bearer alice","content-type":"image/png"},body:png}),state.env);expect((await light).status).toBe(201);
+ expect((await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/logo-light"),state.env))?.headers.get("content-type")).toBe("image/png");
+ expect((await request(`/pages/${id}/logo/dark`,"DELETE")).status).toBe(200);expect((await servePulsePage(new Request(`https://pulse.audit.invalid/acme-status/logo-dark?v=${version}`),state.env))?.status).toBe(404);
 });

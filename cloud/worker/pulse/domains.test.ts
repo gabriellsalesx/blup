@@ -1,5 +1,5 @@
 import {afterEach,beforeEach,expect,it,vi} from "vitest";
-import {TestD1,seedUser} from "../security-test-support";
+import {TestD1,TestBucket,seedUser} from "../security-test-support";
 const state=vi.hoisted(()=>({env:{} as Cloudflare.Env}));
 vi.mock("cloudflare:workers",()=>({env:state.env}));
 vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})=>{const id=headers.get("authorization")?.replace("Bearer ","");return id?{user:{id}}:null;}}}}));
@@ -12,7 +12,7 @@ let db:TestD1,proved:boolean,providerFailure:boolean,calls:{method:string;path:s
 beforeEach(()=>{
  vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
  db=new TestD1();seedUser(db,"alice","ultra_pulse");seedUser(db,"bob","ultra_pulse");seedUser(db,"max","max_pulse");db.sqlite.exec("INSERT INTO pulse_page(id,user_id,slug,title,created_at,published) VALUES('page1','alice','public-page','Public',0,1)");
- Object.assign(state.env,{DB:db.asD1(),STAFF_OWNER_EMAIL:"",CF_ZONE_ID:"a".repeat(32),CF_API_TOKEN:"fixture-only",SITES_CNAME_TARGET:"sites.audit.invalid",PULSE_PUBLIC_HOST:"pulse.audit.invalid",PULSE_PUBLIC_LIMIT:{limit:async()=>({success:true})},PULSE_PROJECT:{getByName:()=>({purge:async()=>{},cleanup:async()=>{}})}});proved=false;providerFailure=false;calls=[];
+ Object.assign(state.env,{DB:db.asD1(),PULSE_ASSETS:new TestBucket().asR2(),STAFF_OWNER_EMAIL:"",CF_ZONE_ID:"a".repeat(32),CF_API_TOKEN:"fixture-only",SITES_CNAME_TARGET:"sites.audit.invalid",PULSE_PUBLIC_HOST:"pulse.audit.invalid",PULSE_PUBLIC_LIMIT:{limit:async()=>({success:true})},PULSE_PROJECT:{getByName:()=>({purge:async()=>{},cleanup:async()=>{}})}});proved=false;providerFailure=false;calls=[];
  vi.stubGlobal("fetch",vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
   const url=new URL(String(input));if(url.hostname==="cloudflare-dns.com"){
    const row=db.sqlite.prepare("SELECT proof FROM pulse_page_domain WHERE page_id='page1'").get();return Response.json({Status:0,Answer:proved?[{name:"_blup.status.audit.invalid.",type:16,data:`"${row?.proof}"`}]:[]});
