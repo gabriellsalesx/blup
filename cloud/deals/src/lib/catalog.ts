@@ -41,6 +41,10 @@ export const huntName=(kind:HuntKind)=>huntNames[kind];
 // link opens that country's page, with its own price.
 export type NuuvemCountry=NonNullable<Hunt["filters"]["country"]>;
 export const nuuvemCountries=["br","ar","bo","ca","cl","co","ec","mx","pe","us","uy"] as const satisfies readonly NuuvemCountry[];
+// Each country's flag, from flag-icons 7.6.0 (MIT, assets/flags/LICENSE),
+// unchanged.
+const flagFiles=import.meta.glob<string>("./assets/flags/*.svg",{eager:true,import:"default"});
+export const countryFlag=(country:NuuvemCountry)=>flagFiles[`./assets/flags/${country}.svg`];
 export function countryName(country:NuuvemCountry,locale:string){try{return new Intl.DisplayNames([locale],{type:"region"}).of(country.toUpperCase())??country;}catch{return country.toUpperCase();}}
 // The platforms the server accepts (giveaways); Nuuvem's sales take none.
 export const platforms=[

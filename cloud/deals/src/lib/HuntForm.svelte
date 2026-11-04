@@ -9,7 +9,7 @@
  import Switch from "#lib/ui/Switch.svelte";
  import Select from "#lib/ui/Select.svelte";
  import ChannelPicker from "./ChannelPicker.svelte";
- import {huntKinds,platformsFor,nuuvemCountries,countryName,type HuntInput,type Platform,type NuuvemCountry} from "./catalog";
+ import {huntKinds,platformsFor,nuuvemCountries,countryName,countryFlag,type HuntInput,type Platform,type NuuvemCountry} from "./catalog";
  import type {Channel,Hunt,HuntKind} from "./api";
  // A hunt's form (new and edit): what to hunt (games now; stores and
  // mirroring are coming), its filters and the channels it posts to. The
@@ -25,7 +25,7 @@
  let maxPrice=$state(start?.filters.maxPrice!==undefined?(start.filters.maxPrice/100).toFixed(2):"");
  let gamesOnly=$state(start?.filters.gamesOnly!==false);
  let country=$state<NuuvemCountry>(start?.filters.country??"br");
- const countryOptions=$derived(nuuvemCountries.map(value=>({value,label:countryName(value,intlLocale())})).sort((a,b)=>a.value==="br"?-1:b.value==="br"?1:a.label.localeCompare(b.label,intlLocale())));
+ const countryOptions=$derived(nuuvemCountries.map(value=>({value,label:countryName(value,intlLocale()),image:countryFlag(value)})).sort((a,b)=>a.value==="br"?-1:b.value==="br"?1:a.label.localeCompare(b.label,intlLocale())));
  let channelIds=$state<string[]>(untrack(()=>[...(start?.channelIds??channels.filter(c=>c.active).slice(0,1).map(c=>c.id))]));
  const options=$derived(platformsFor(kind));
  // Platforms the kind does not take are dropped when it changes.

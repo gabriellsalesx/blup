@@ -7,8 +7,9 @@
 	// FloatField, with its label on the border, and a list that opens under
 	// it. Arrows move, Enter or Space picks, Escape closes. `compact` is the
 	// small one of a list row, whose label is only read aloud.
-	// An option may carry a mark (a Lucide icon in its color) before its label.
-	type Option = { value: T; label: string; icon?: { Icon: Component<{ class?: string }>; class: string } };
+	// An option may carry a mark (a Lucide icon in its color) or a small
+	// picture (a flag; decorative, the label says it) before its label.
+	type Option = { value: T; label: string; icon?: { Icon: Component<{ class?: string }>; class: string }; image?: string };
 	let { label, options, value = $bindable(), surface = "bg-neutral-50 dark:bg-neutral-950", disabled = false, compact = false, class: width = "", onchange }: {
 		label: string;
 		options: readonly Option[];
@@ -61,7 +62,7 @@
 		class="flex w-full items-center justify-between gap-3 rounded-md border text-left transition-colors {compact ? 'min-h-9 px-2.5 text-sm' : 'min-h-14 px-3 text-base'} disabled:opacity-50 {surface} {open ? 'border-blup' : 'border-neutral-300 hover:border-neutral-400 dark:border-neutral-700'}"
 		onkeydown={keys}
 	>
-		<span class="flex min-w-0 items-center gap-2.5">{#if current?.icon}<current.icon.Icon class="size-[18px] shrink-0 {current.icon.class}" />{/if}<span class="truncate">{current?.label ?? ""}</span></span>
+		<span class="flex min-w-0 items-center gap-2.5">{#if current?.icon}<current.icon.Icon class="size-[18px] shrink-0 {current.icon.class}" />{:else if current?.image}<img src={current.image} alt="" class="h-3.5 w-[18px] shrink-0 rounded-[2px] object-cover shadow-[0_0_0_1px_rgb(0_0_0/0.08)]" />{/if}<span class="truncate">{current?.label ?? ""}</span></span>
 		<ChevronDown class="size-4 shrink-0 text-neutral-500 transition-transform {open ? 'rotate-180' : ''}" />
 	</button>
 	<div
@@ -83,7 +84,7 @@
 				onmouseenter={() => (active = index)}
 				onclick={() => pick(option)}
 			>
-				<span class="flex min-w-0 items-center gap-2.5">{#if option.icon}<option.icon.Icon class="size-[18px] shrink-0 {option.icon.class}" />{/if}<span class="truncate">{option.label}</span></span>
+				<span class="flex min-w-0 items-center gap-2.5">{#if option.icon}<option.icon.Icon class="size-[18px] shrink-0 {option.icon.class}" />{:else if option.image}<img src={option.image} alt="" class="h-3.5 w-[18px] shrink-0 rounded-[2px] object-cover shadow-[0_0_0_1px_rgb(0_0_0/0.08)]" />{/if}<span class="truncate">{option.label}</span></span>
 				{#if option.value === value}<Check class="size-4 shrink-0 text-blup" />{/if}
 			</button>
 		{/each}
