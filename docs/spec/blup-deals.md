@@ -382,7 +382,7 @@ Perder o plano ou encontrar destino desativado encerra a pendência com o códig
 
 ### Conteúdo e provedores
 
-[Mensagens e transportes](../../cloud/worker/deals/message.ts) geram texto Telegram/HTML ou embed Discord, com título, preço conhecido, preço antigo quando aplicável, desconto, link curto e crédito ativo da fonte no texto Telegram e na descrição do embed Discord. Aviso de afiliado é incluído quando o post tem `affiliate:true`; não há campo estruturado de cupom na F1. O idioma vem de `user.language`, com fallback português. A prévia do painel é uma representação, sem executar o envio.
+[Mensagens e transportes](../../cloud/worker/deals/message.ts) geram texto Telegram/HTML ou embed Discord, com título, preço conhecido, preço antigo quando aplicável, desconto, link curto e crédito ativo da fonte: no Telegram na última linha ("Via GamerPower"); no Discord na linha pequena do autor, acima do título ("GamerPower", com link), fora da descrição. Aviso de afiliado é incluído quando o post tem `affiliate:true`; não há campo estruturado de cupom na F1. O idioma vem de `user.language`, com fallback português. A prévia do painel é uma representação, sem executar o envio.
 
 Telegram usa o bot Deals e tenta `sendPhoto` quando há imagem. Se o provedor responder erro 400 para a foto, tenta texto; outros erros seguem o tratamento de falha. Discord usa webhook com `wait=true` e sem menções em massa. Os dois transportes têm timeout de dez segundos e tratam 429/espera. Falha permanente de destino o desativa; resposta perdida pode causar repetição, sem promessa de entrega exatamente uma vez.
 

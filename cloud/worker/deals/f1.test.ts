@@ -271,7 +271,7 @@ describe("games, sending and clicks",()=>{
  it("credits the source with an active link on Telegram and Discord",()=>{
   const game={title:"Jogo <x>",image:null,price:0,originalPrice:1999,currency:"USD",discount:100,link:"https://deals.audit.invalid/r/ABCDEFGH",affiliate:false,kind:"game_free",credit:"gamerpower"};
   const text=telegramText(game,"pt");expect(text).toContain('<a href="https://www.gamerpower.com/">Via GamerPower</a>');expect(text).toContain("\nGrátis\n");expect(text).not.toContain("US$");expect(discordPayload(game,"en").embeds[0].description.split("\n")[0]).toBe("Free");expect(text).toContain("<b>Jogo &lt;x&gt;</b>");expect(text).not.toContain("#publi");
-  const embed=discordPayload(game,"en").embeds[0];expect(embed.description).toContain("[Via GamerPower](https://www.gamerpower.com/)");expect(embed).not.toHaveProperty("footer");
+  const embed=discordPayload(game,"en").embeds[0];expect(embed.author).toEqual({name:"GamerPower",url:"https://www.gamerpower.com/"});expect(embed.description).toBe("Free\n[See the deal](https://deals.audit.invalid/r/ABCDEFGH)");expect(discordPayload({...game,credit:null},"en").embeds[0]).not.toHaveProperty("author");expect(text.split("\n").at(-1)).toBe('<a href="https://www.gamerpower.com/">Via GamerPower</a>');expect(embed).not.toHaveProperty("footer");
   expect(telegramText({...game,credit:"unknown"},"pt")).not.toContain("Via");expect(telegramText({...game,credit:null},"pt")).not.toContain("Via");
  });
  it("reads each source once per round for everyone, first only filling the catalog",async()=>{

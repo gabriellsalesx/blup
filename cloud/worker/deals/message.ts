@@ -14,8 +14,9 @@ const words={
 } as const;
 export const testText=(language:Language)=>words[language].test;
 // The source a post must credit, as an active link (GamerPower's terms ask
-// for a clickable attribution).
-export const credits:Record<string,{label:string;url:string}>={gamerpower:{label:"Via GamerPower",url:"https://www.gamerpower.com/"}};
+// for a clickable attribution): on Discord the small line above the title,
+// on Telegram the last line.
+export const credits:Record<string,{name:string;label:string;url:string}>={gamerpower:{name:"GamerPower",label:"Via GamerPower",url:"https://www.gamerpower.com/"}};
 const creditOf=(p:Post)=>p.credit&&Object.hasOwn(credits,p.credit)?credits[p.credit]:null;
 // Money in minor units, as many decimals as the currency has (none for
 // the yen), the same as the panel.
@@ -43,12 +44,12 @@ function parts(p:Post,language:Language){
 // Telegram (HTML): at most 1024 characters with a photo.
 export function telegramText(p:Post,language:Language){
  const {title,open,ad}=parts(p,language),price=priceLine(p,language,s=>`<s>${escapeHTML(s)}</s>`);
- const lines=[`<b>${escapeHTML([...title].slice(0,300).join(""))}</b>`,...(price?[price]:[]),`<a href="${escapeHTML(p.link)}">${open}</a>`,...((c=>c?[`<a href="${c.url}">${c.label}</a>`]:[])(creditOf(p))),...(ad?[ad]:[])];
+ const lines=[`<b>${escapeHTML([...title].slice(0,300).join(""))}</b>`,...(price?[price]:[]),`<a href="${escapeHTML(p.link)}">${open}</a>`,...(ad?[ad]:[]),...((c=>c?[`<a href="${c.url}">${c.label}</a>`]:[])(creditOf(p)))];
  return lines.join("\n");
 }
 export function discordPayload(p:Post,language:Language){
  const {title,open,ad}=parts(p,language),price=priceLine(p,language,s=>`~~${s}~~`),credit=creditOf(p);
- return {username:"Blup Deals",allowed_mentions:{parse:[]},embeds:[{title:[...title].slice(0,250).join(""),url:p.link,color:0xc2410c,description:[...(price?[price]:[]),`[${open}](${p.link})`,...(credit?[`[${credit.label}](${credit.url})`]:[]),...(ad?[ad]:[])].join("\n"),...(p.image?{image:{url:p.image}}:{})}]};
+ return {username:"Blup Deals",allowed_mentions:{parse:[]},embeds:[{...(credit?{author:{name:credit.name,url:credit.url}}:{}),title:[...title].slice(0,250).join(""),url:p.link,color:0xc2410c,description:[...(price?[price]:[]),`[${open}](${p.link})`,...(ad?[ad]:[])].join("\n"),...(p.image?{image:{url:p.image}}:{})}]};
 }
 
 export const dealsChatId=z.string().regex(/^-?[1-9][0-9]{0,15}$/).refine(v=>Number.isSafeInteger(Number(v)));
