@@ -39,16 +39,15 @@
 
 <div class="mb-4"><BackLink href={resolve("/affiliates")} label={t("dealsAffiliates")}/></div>
 
-<header class="flex flex-col gap-5 sm:flex-row sm:items-start">
+<!-- The action on the right, as on the other pages' headers. -->
+<header class="flex flex-col gap-5 sm:flex-row sm:items-center">
  <StoreLogo store={data.store} class="size-20 sm:size-24"/>
- <div class="min-w-0">
+ <div class="min-w-0 flex-1">
   <h1 class="text-2xl font-bold sm:text-3xl">{name}</h1>
   <p class="mt-1 text-neutral-600 dark:text-neutral-300">{t(info.about)}</p>
-  <div class="mt-4">
-   {#if connected}<span class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"><CircleCheck class="size-4"/>{t("dealsConfigured")}</span>
-   {:else if hasPlan()&&!adding}<Button onclick={()=>adding=true}>{t("dealsIntegrate")}</Button>{/if}
-  </div>
  </div>
+ {#if connected}<span class="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 sm:self-center dark:bg-emerald-950/50 dark:text-emerald-400"><CircleCheck class="size-4"/>{t("dealsConfigured")}</span>
+ {:else if hasPlan()&&!adding}<div class="shrink-0 self-start sm:self-center"><Button onclick={()=>adding=true}>{t("dealsIntegrate")}</Button></div>{/if}
 </header>
 
 <dl class="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-neutral-200 bg-neutral-200 sm:grid-cols-4 dark:border-neutral-800 dark:bg-neutral-800">
