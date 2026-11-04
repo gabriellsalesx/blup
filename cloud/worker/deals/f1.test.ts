@@ -741,4 +741,24 @@ describe("pace, opening lines and networks",()=>{
   const text=telegramText({title:"Fone",image:null,price:null,originalPrice:null,currency:null,discount:null,link:"https://deals.audit.invalid/r/x",affiliate:false,kind:"product",credit:null,extra:"<b>oi</b>",socials:[{name:"X",url:"https://x.com/a"}]},"pt");
   expect(text).toContain("&lt;b&gt;oi&lt;/b&gt;");expect(text).toContain('<a href="https://x.com/a">X</a>');
  });
+ it("lays out the post with emoji, the description and the coupon",async()=>{
+  const channel=await addDiscord(),now=Date.now();
+  expect((await put({...base,style:"emoji"})).status).toBe(200);
+  const deal=await upsertOffer(db.asD1(),offer({key:"s",title:"Controle GameSir",kind:"store_deal",store:"aliexpress",price:21043,originalPrice:42086,discount:50}),now);
+  await enqueue(db.asD1(),{owner:"alice",offerId:deal.id,channels:[channel],link:"https://s.click.aliexpress.com/e/x",affiliate:true,huntId:null,sendAt:now,now,description:"Compatível com *Switch*",coupon:"AEMEGA2"});
+  const sent:{embeds:{title:string;description:string}[]}[]=[];
+  const {send}=net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}});
+  await dispatchDeals(state.env,send,now);
+  const embed=sent[0].embeds[0];
+  expect(embed.title).toBe("🔥 Achado do dia: Controle GameSir com 50% de desconto. 📉");
+  const lines=embed.description.split("\n");
+  expect(lines[0]).toBe("Compatível com \\*Switch\\*");
+  expect(lines).toContain("🧾 Cupom: AEMEGA2");
+  expect(lines.find(l=>l.startsWith("💵 Valor: "))).toContain("210,43");
+  expect(lines.find(l=>l.startsWith("📌 Link: "))).toMatch(/^📌 Link: \[deals\.audit\.invalid\/r\/[A-Za-z0-9]{8}\]\(https:\/\/deals\.audit\.invalid\/r\/[A-Za-z0-9]{8}\)$/);
+  expect(lines.at(-1)).toBe("#publi · link de afiliado");
+  const classic=telegramText({title:"Fone",image:null,price:null,originalPrice:null,currency:null,discount:null,link:"https://deals.audit.invalid/r/x",affiliate:false,kind:"product",credit:null,description:"Bom",coupon:"BLUP10"},"pt");
+  expect(classic.split("\n")).toEqual(["<b>Fone</b>","Bom","Cupom: BLUP10",'<a href="https://deals.audit.invalid/r/x">Ver oferta</a>']);
+  expect((await call("/offers",{method:"POST",user:"alice",body:{url:"https://www.amazon.com.br/dp/B000000001",channelIds:[channel],coupon:"veja em www.site.com"}})).status).toBe(400);
+ });
 });

@@ -18,7 +18,7 @@ import worker from "./index";
 import { sendDue, forgetOld } from "./reminders";
 import { staffApi } from "./staff";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
-import { voicePrice } from "./ai";
+import { voicePrice, aiText } from "./ai";
 import { cleanUp } from "./cleanup";
 import { pulseCorsPath, dealsCorsPath, panelCorsOrigin, mutationOriginAllowed } from "./security";
 import { cleanSites } from "./sites-cleanup";
@@ -257,6 +257,21 @@ describe("atomic resource admission and publish regressions",()=>{
 			const responses=await Promise.all([request("/ai/audio/speech","POST",body),request("/ai/audio/speech","POST",body)]);
 			expect(responses.filter(r=>r.status===200)).toHaveLength(1);
 		} finally {vi.useRealTimers();}
+	});
+	it("writes a Deals description with the staff's models in order, paid from the plan",async()=>{
+		Object.assign(state.env,{OPENROUTER_API_KEY:"audit-only-placeholder",OPENROUTER_URL:"https://upstream.audit.invalid"});
+		d1.sqlite.prepare("INSERT INTO ai_model_setting(feature,models,updated_by,updated_at) VALUES('deals_describe',?,'admin@audit.invalid',0)").run(JSON.stringify(["deepseek/deepseek-v4.1-flash","google/gemini-4-flash"]));
+		const calls:{url:string;body:unknown}[]=[];
+		vi.stubGlobal("fetch",vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{
+			const u=String(url);calls.push({url:u,body:init?.body?JSON.parse(String(init.body)):null});
+			if(u.endsWith("/models"))return Response.json({data:[{id:"deepseek/deepseek-v4.1-flash",pricing:{prompt:"0.000000045",completion:"0.0000005"}},{id:"google/gemini-4-flash",pricing:{prompt:"0.0000003",completion:"0.0000025"}}]});
+			return Response.json({model:"google/gemini-4-flash",choices:[{message:{content:" Bom para o dia a dia. "},finish_reason:"stop"}],usage:{cost:0.00004}});
+		}));
+		const out=await aiText(state.env,"alice","deals_describe",{system:"s",user:"u",maxTokens:160});
+		expect(out).toEqual({text:"Bom para o dia a dia.",model:"google/gemini-4-flash"});
+		expect((calls.find(c=>c.url.endsWith("/chat/completions"))?.body as {models:string[]}).models).toEqual(["deepseek/deepseek-v4.1-flash","google/gemini-4-flash"]);
+		expect(d1.sqlite.prepare("SELECT kind,cost_micros AS cost FROM ai_usage").get()).toEqual({kind:"deals_describe",cost:40});
+		expect(await aiText(state.env,"free","deals_describe",{system:"s",user:"u",maxTokens:160})).toEqual({code:"NO_AI",status:402});
 	});
 	it("an incomplete translation still has a provider cost to account for",async()=>{
 		Object.assign(state.env,{OPENROUTER_API_KEY:"audit-only-placeholder",OPENROUTER_URL:"https://upstream.audit.invalid"});

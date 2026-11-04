@@ -13,7 +13,7 @@ import { planNamed } from "./plans";
 import { GIFT_PLAN, isOwner } from "./account";
 import { hasEmail } from "./auth-options";
 import { usageOf } from "./usage";
-import { aiUsageOf } from "./ai";
+import { aiUsageOf, aiFeatures, modelList, modelsFor, chatModels, type AIFeature } from "./ai";
 
 // The staff area (support and administration). In production Cloudflare
 // Access stands in front of /staff and /api/staff; here the Worker checks
@@ -240,6 +240,26 @@ export const staffApi = new Hono<App>()
 		if (email === c.get("staff").email) return c.json({ code: "NOT_YOURSELF" }, 400);
 		await db.delete(staff).where(eq(staff.email, email));
 		await log(c.get("staff").email, "team.remove", null, email);
+		return c.json({ ok: true });
+	})
+
+	// The AI models of each feature, in order (admin only): the first
+	// answers, the others take over when it fails. Each must be in
+	// OpenRouter's catalog (when it can be read); the price is shown.
+	.get("/ai", adminOnly, async (c) => {
+		const catalog = await chatModels(c.env);
+		const features = await Promise.all((Object.keys(aiFeatures) as AIFeature[]).map(async (feature) => {
+			const models = await modelsFor(c.env.DB, feature);
+			return { feature, models: models.map((id) => { const m = catalog.get(id); return { id, name: m?.name ?? null, prompt: m ? m.prompt * 1e6 : null, completion: m ? m.completion * 1e6 : null }; }), defaults: [...aiFeatures[feature]] };
+		}));
+		return c.json({ features, catalog: catalog.size > 0 });
+	})
+	.put("/ai/:feature", adminOnly, validate("param", z.object({ feature: z.enum(Object.keys(aiFeatures) as [AIFeature, ...AIFeature[]]) })), body(z.object({ models: modelList }).strict()), async (c) => {
+		const { feature } = c.req.valid("param"), { models } = c.req.valid("json"), catalog = await chatModels(c.env);
+		const unknown = catalog.size ? models.filter((m) => !catalog.has(m)) : [];
+		if (unknown.length) return c.json({ code: "UNKNOWN_MODEL", models: unknown }, 400);
+		await c.env.DB.prepare("INSERT INTO ai_model_setting(feature,models,updated_by,updated_at) VALUES(?,?,?,?) ON CONFLICT(feature) DO UPDATE SET models=excluded.models,updated_by=excluded.updated_by,updated_at=excluded.updated_at").bind(feature, JSON.stringify(models), c.get("staff").email, Date.now()).run();
+		await log(c.get("staff").email, "ai.models", null, `${feature}: ${models.join(", ")}`);
 		return c.json({ ok: true });
 	})
 

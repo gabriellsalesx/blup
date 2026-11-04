@@ -7,6 +7,8 @@ type StaffMe=InferResponseType<typeof client.me.$get,200>;
 export type Role=StaffMe["role"];
 export type Stats=InferResponseType<typeof client.stats.$get,200>;
 export type Team=InferResponseType<typeof client.team.$get,200>;
+export type AIModels=InferResponseType<typeof client.ai.$get,200>;
+export type AIFeature=AIModels["features"][number]["feature"];
 export class StaffError extends Error {
  constructor(public status:number,public code:string){super(code);}
 }
@@ -32,6 +34,8 @@ export const staffApi={
  team:()=>call(parseResponse(client.team.$get())),
  setMember:(email:string,role:Role)=>call(parseResponse(client.team.$post({json:{email,role}}))),
  removeMember:(email:string)=>call(parseResponse(client.team[":email"].$delete({param:{email}}))),
+ ai:()=>call(parseResponse(client.ai.$get())),
+ setModels:(feature:AIFeature,models:string[])=>call(parseResponse(client.ai[":feature"].$put({param:{feature},json:{models}}))),
  log:(cursor:string|null)=>call(parseResponse(client.log.$get({query:cursor?{cursor}:{}}))),
 };
 
@@ -51,6 +55,7 @@ export const actionLabel: Record<string, string> = {
 	"user.restore": "Recuperou a conta",
 	"team.set": "Mudou a equipe",
 	"team.remove": "Tirou da equipe",
+	"ai.models": "Mudou os modelos de IA",
 };
 
 // Stripe's money events, in the staff's words (and whether they need a look).

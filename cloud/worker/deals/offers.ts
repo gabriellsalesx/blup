@@ -9,6 +9,9 @@ import {convertLink,isShortLink,storeOf,rakutenTarget,type Converted,type Store}
 import {upsertOffer} from "./catalog";
 import {affiliateOf,enqueue,postsOn,usableChannels,dayOf,DAY} from "./store";
 import {tiktokVideo,VideoError,type Video} from "./video";
+import {aiText} from "../ai";
+import {hasAddress} from "../../shared/deals-post";
+import {languageOf} from "../../shared/language";
 
 export type Preview={store:Store|"other";title:string;image:string|null;price:number|null;currency:string|null;link:string;affiliate:boolean;reason?:Converted["reason"];url:string};
 // Reads the pasted page (safely, following short links), takes what it
@@ -34,6 +37,18 @@ type PostRow={id:string;title:string;image:string|null;store:string;link:string;
 // A page of posts goes on after the last one shown: its time and id.
 const cursor=z.string().regex(/^[0-9]{1,15}\.[A-Za-z0-9-]{1,64}$/).transform(v=>{const [at,id]=v.split(".");return {at:Number(at),id};});
 const PAGE=20;
+// What the person adds to one post: a few words about the product and the
+// coupon, as typed, with no address (the link is the post's own).
+const written=(max:number)=>z.string().trim().max(max).refine(t=>!hasAddress(t),{message:"ADDRESS"});
+const extras={description:written(300).optional(),coupon:written(60).optional()};
+const languageName={pt:"Brazilian Portuguese",en:"English",es:"Spanish (neutral Latin American)"} as const;
+// The AI's few words about a product: only from its name, store and price.
+const describePrompt=(language:keyof typeof languageName)=>`You write the short description of a deal post for a group of deal hunters, in ${languageName[language]}.
+Rules:
+- One or two short sentences, at most 220 characters, saying who the product is good for or why the deal is worth it.
+- Use only what the product name says. Never invent specifications, prices, coupons, stock, shipping or guarantees.
+- No emoji, hashtags, links, quotes or the product name in capitals.
+- Output only the description.`;
 
 type Channels=Awaited<ReturnType<typeof usableChannels>>;
 // What every post checks before it is queued: a time from now up to 30
@@ -70,7 +85,7 @@ export const offersApi=new Hono<DealsApp>()
    return c.json({store:p.store,title:p.title,image:p.image,price:p.price,currency:p.currency,link:p.link,affiliate:p.affiliate,...(p.reason?{reason:p.reason}:{})});
   }catch(e){const code=fetchFailure(e);if(!code)throw e;return code==="FETCH_BLOCKED"?c.json({code},400):c.json({code},502);}
  })
- .post("/",dealsWrite,validate("json",z.object({url:z.string().max(2048),channelIds:ids,sendAt:z.iso.datetime({offset:true}).optional(),queue:z.boolean().optional()}).strict()),async c=>{
+ .post("/",dealsWrite,validate("json",z.object({url:z.string().max(2048),channelIds:ids,sendAt:z.iso.datetime({offset:true}).optional(),queue:z.boolean().optional(),...extras}).strict()),async c=>{
   const owner=c.get("session").user.id,input=c.req.valid("json"),now=Date.now();
   const ready=await readyToQueue(c.env.DB,owner,input,now);if("code" in ready)return c.json({code:ready.code},ready.status);
   let p:Preview;
@@ -79,7 +94,7 @@ export const offersApi=new Hono<DealsApp>()
   // the person's link.
   const product=new URL(p.url);product.hash="";
   const offer=await upsertOffer(c.env.DB,{key:`link:${p.store}:${product.origin}${product.pathname}`,store:p.store,externalId:null,sourceId:null,title:p.title,url:p.url,imageUrl:p.image,price:p.price,originalPrice:null,currency:p.currency,kind:"product",platforms:[],discount:null,credit:null,expiresAt:null},now);
-  const queued=await enqueue(c.env.DB,{owner,offerId:offer.id,channels:ready.channels,link:p.link,affiliate:p.affiliate,huntId:null,sendAt:ready.sendAt,now,paced:ready.paced,horizon:30*DAY});
+  const queued=await enqueue(c.env.DB,{owner,offerId:offer.id,channels:ready.channels,link:p.link,affiliate:p.affiliate,huntId:null,sendAt:ready.sendAt,now,paced:ready.paced,horizon:30*DAY,description:input.description,coupon:input.coupon});
   if(!queued)return c.json(...await notQueued(c.env.DB,owner,offer.id,ready));
   return c.json({id:offer.id,queued},201);
  })
@@ -90,7 +105,7 @@ export const offersApi=new Hono<DealsApp>()
   const video=await checkVideo(c.req.valid("json").url);
   return "code" in video?c.json({code:video.code},video.status):c.json({id:video.id,author:video.author,url:video.url});
  })
- .post("/video",dealsWrite,validate("json",z.object({url:z.string().max(2048),title:z.string().trim().min(1).max(200),price:z.number().int().min(0).max(100_000_00).optional(),channelIds:ids,sendAt:z.iso.datetime({offset:true}).optional(),queue:z.boolean().optional()}).strict()),async c=>{
+ .post("/video",dealsWrite,validate("json",z.object({url:z.string().max(2048),title:z.string().trim().min(1).max(200),price:z.number().int().min(0).max(100_000_00).optional(),channelIds:ids,sendAt:z.iso.datetime({offset:true}).optional(),queue:z.boolean().optional(),...extras}).strict()),async c=>{
   const owner=c.get("session").user.id,input=c.req.valid("json"),now=Date.now();
   const title=cleanLine(input.title,200);if(!title)return c.json({code:"INVALID"},400);
   const ready=await readyToQueue(c.env.DB,owner,input,now);if("code" in ready)return c.json({code:ready.code},ready.status);
@@ -99,12 +114,23 @@ export const offersApi=new Hono<DealsApp>()
   // the catalog keeps the video with the product it shows.
   if(await c.env.DB.prepare("SELECT 1 FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id WHERE p.user_id=? AND o.store='tiktok' AND o.external_id=? LIMIT 1").bind(owner,video.id).first())return c.json({code:"VIDEO_ANNOUNCED"},409);
   const offer=await upsertOffer(c.env.DB,{key:`tiktok:${owner}:${video.id}`,store:"tiktok",externalId:video.id,sourceId:null,title,url:video.url,imageUrl:null,price:input.price??null,originalPrice:null,currency:input.price===undefined?null:"BRL",kind:"video",platforms:[],discount:null,credit:null,expiresAt:null},now);
-  const queued=await enqueue(c.env.DB,{owner,offerId:offer.id,channels:ready.channels,link:video.url,affiliate:true,huntId:null,sendAt:ready.sendAt,now,paced:ready.paced,horizon:30*DAY});
+  const queued=await enqueue(c.env.DB,{owner,offerId:offer.id,channels:ready.channels,link:video.url,affiliate:true,huntId:null,sendAt:ready.sendAt,now,paced:ready.paced,horizon:30*DAY,description:input.description,coupon:input.coupon});
   if(!queued)return c.json(...await notQueued(c.env.DB,owner,offer.id,ready));
   return c.json({id:offer.id,queued},201);
  })
  // The posts of one state, a page at a time: the queue in the order it goes
  // out, the sent and failed ones newest first.
+ // A few words about a product, written by the AI with the person's plan
+ // allowance (the Cloud's, in percent of the month).
+ .post("/describe",dealsWrite,validate("json",z.object({title:z.string().trim().min(1).max(200),store:z.string().trim().max(40).optional(),price:z.string().trim().max(40).optional()}).strict()),async c=>{
+  const input=c.req.valid("json"),language=languageOf(c.req.header("x-blup-language"))??"pt";
+  const user=[`Product: ${input.title}`,...(input.store?[`Store: ${input.store}`]:[]),...(input.price?[`Price: ${input.price}`]:[])].join("\n");
+  const out=await aiText(c.env,c.get("session").user.id,"deals_describe",{system:describePrompt(language),user,maxTokens:160});
+  if("code" in out)return c.json({code:out.code},out.status);
+  const text=cleanLine(out.text.replace(/^["'“”]+|["'“”]+$/g,""),300);
+  if(!text||hasAddress(text))return c.json({code:"UPSTREAM"},502);
+  return c.json({text});
+ })
  .get("/",validate("query",z.object({state:z.enum(["queued","sent","failed"]).optional(),cursor:cursor.optional()})),async c=>{
   const owner=c.get("session").user.id,{state,cursor:after}=c.req.valid("query"),up=state==="queued";
   const at="coalesce(p.sent_at,p.next_at)";

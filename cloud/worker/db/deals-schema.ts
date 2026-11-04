@@ -81,6 +81,9 @@ export const dealsPost=sqliteTable("deals_post",{
  priceShown:integer("price_shown").notNull().default(1),
  // 1 when it waits its turn in the account's pace (deals_setting.pace).
  paced:integer("paced").notNull().default(0),
+ // What the person wrote (or asked the AI for) about the product, and the
+ // coupon, both for this post only.
+ description:text("description"),coupon:text("coupon"),
 },t=>[uniqueIndex("deals_post_once_idx").on(t.channelId,t.offerId),index("deals_post_due_idx").on(t.state,t.nextAt),index("deals_post_owner_day_idx").on(t.userId,t.day),index("deals_post_created_idx").on(t.createdAt)]);
 
 // Clicks on the short links, added up per post and day (few writes).
@@ -110,9 +113,10 @@ export const dealsAccount=sqliteTable("deals_account",{
 // the time the last one was given; droppedAt, when a hunt last found more
 // than the pace can send in two days (the panel warns). headlines (JSON,
 // per kind, missing: the default line), the extra text and the social
-// networks (JSON [{network,url}]), each with its switch.
+// networks (JSON [{network,url}]), each with its switch; style, how the
+// post is laid out (classic, or emoji: a line and a mark for each part).
 export const dealsSetting=sqliteTable("deals_setting",{
  userId:text("user_id").primaryKey(),pace:integer("pace").notNull().default(0),paceLast:integer("pace_last").notNull().default(0),droppedAt:integer("dropped_at"),
  headlines:text("headlines").notNull().default("{}"),extra:text("extra"),extraOn:integer("extra_on").notNull().default(0),
- socials:text("socials").notNull().default("[]"),socialsOn:integer("socials_on").notNull().default(0),updatedAt:integer("updated_at").notNull().default(0),
+ socials:text("socials").notNull().default("[]"),socialsOn:integer("socials_on").notNull().default(0),style:text("style").notNull().default("classic"),updatedAt:integer("updated_at").notNull().default(0),
 });

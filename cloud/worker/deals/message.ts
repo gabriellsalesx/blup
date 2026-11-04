@@ -8,11 +8,13 @@ import {discordWebhook} from "../pulse/channel-crypto";
 // watch, for a video, is the video itself (Telegram shows it above).
 // title is the opening line already written; extra, the person's own text,
 // and socials, their networks, go under the link.
-export type Post={title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;link:string;affiliate:boolean;kind:string;credit:string|null;watch?:string|null;extra?:string|null;socials?:readonly {name:string;url:string}[]};
+// description and coupon are the person's own for this post; style, the
+// account's layout (classic, or emoji: a mark for each part).
+export type Post={title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;link:string;affiliate:boolean;kind:string;credit:string|null;watch?:string|null;extra?:string|null;socials?:readonly {name:string;url:string}[];description?:string|null;coupon?:string|null;style?:"classic"|"emoji"};
 const words={
- pt:{free:"Grátis",open:"Ver oferta",video:"Vídeo novo",watch:"Ver o vídeo",videoAd:"#publi",ad:"#publi · link de afiliado",off:"de desconto",test:"Teste do Blup Deals: este canal está pronto para receber ofertas."},
- en:{free:"Free",open:"See the deal",video:"New video",watch:"Watch the video",videoAd:"#ad",ad:"#ad · affiliate link",off:"off",test:"Blup Deals test: this channel is ready to get deals."},
- es:{free:"Gratis",open:"Ver oferta",video:"Video nuevo",watch:"Ver el video",videoAd:"#publi",ad:"#publi · enlace de afiliado",off:"de descuento",test:"Prueba de Blup Deals: este canal está listo para recibir ofertas."},
+ pt:{free:"Grátis",open:"Ver oferta",video:"Vídeo novo",watch:"Ver o vídeo",videoAd:"#publi",ad:"#publi · link de afiliado",off:"de desconto",value:"Valor",coupon:"Cupom",link:"Link",test:"Teste do Blup Deals: este canal está pronto para receber ofertas."},
+ en:{free:"Free",open:"See the deal",video:"New video",watch:"Watch the video",videoAd:"#ad",ad:"#ad · affiliate link",off:"off",value:"Price",coupon:"Coupon",link:"Link",test:"Blup Deals test: this channel is ready to get deals."},
+ es:{free:"Gratis",open:"Ver oferta",video:"Video nuevo",watch:"Ver el video",videoAd:"#publi",ad:"#publi · enlace de afiliado",off:"de descuento",value:"Precio",coupon:"Cupón",link:"Enlace",test:"Prueba de Blup Deals: este canal está listo para recibir ofertas."},
 } as const;
 export const testText=(language:Language)=>words[language].test;
 // The source a post must credit, as an active link (GamerPower's terms ask
@@ -46,15 +48,34 @@ function parts(p:Post,language:Language){
  const w=words[language],video=p.kind==="video";
  return {title:video?`${w.video}: ${p.title}`:p.title,open:video?w.watch:w.open,ad:p.affiliate?video?w.videoAd:w.ad:null};
 }
+// The lines under the title, in either platform's markup (esc: the
+// person's text as typed; link; strike). Classic: description, price,
+// coupon, the link's words; emoji: each part on its own line with its mark
+// and the address itself, as the deal groups write. Then the person's
+// extra text and networks, and the notice.
+type Markup={esc:(s:string)=>string;link:(text:string,url:string)=>string;strike:(s:string)=>string};
+function bodyLines(p:Post,language:Language,m:Markup){
+ const w=words[language],{open,ad}=parts(p,language),price=priceLine(p,language,m.strike);
+ const desc=p.description?m.esc(p.description):null,coupon=p.coupon?m.esc(p.coupon):null;
+ const tail=[...(p.extra?[m.esc(p.extra)]:[]),...(p.socials?.length?[p.socials.map(n=>m.link(m.esc(n.name),n.url)).join(" · ")]:[]),...(ad?[ad]:[])];
+ if(p.style!=="emoji")return [...(desc?[desc]:[]),...(price?[price]:[]),...(coupon?[`${w.coupon}: ${coupon}`]:[]),m.link(open,p.link),...tail];
+ const lines=[...(desc?["",desc]:[]),"",...(price?[`💵 ${w.value}: ${price}`]:[]),...(coupon?[`🧾 ${w.coupon}: ${coupon}`]:[]),...(price||coupon?[""]:[]),`📌 ${p.kind==="video"?w.watch:w.link}: ${m.link(m.esc(p.link.replace(/^https:\/\//,"")),p.link)}`,...(tail.length?["",...tail]:[])];
+ // No blank line twice or at the end (the first one parts it from the title).
+ return lines.filter((l,i,a)=>l!==""||(a[i-1]!==""&&i<a.length-1));
+}
+// The title: in the emoji layout, a flame before it and, on a discount, a
+// falling chart after it.
+const headTitle=(p:Post,title:string)=>p.style==="emoji"?`🔥 ${title}${p.discount&&p.discount>0&&p.kind!=="game_free"?" 📉":""}`:title;
 // Telegram (HTML): at most 1024 characters with a photo.
 export function telegramText(p:Post,language:Language){
- const {title,open,ad}=parts(p,language),price=priceLine(p,language,s=>`<s>${escapeHTML(s)}</s>`);
- const lines=[`<b>${escapeHTML([...title].slice(0,300).join(""))}</b>`,...(price?[price]:[]),`<a href="${escapeHTML(p.link)}">${open}</a>`,...(p.extra?[escapeHTML(p.extra)]:[]),...(p.socials?.length?[p.socials.map(n=>`<a href="${escapeHTML(n.url)}">${escapeHTML(n.name)}</a>`).join(" · ")]:[]),...(ad?[ad]:[]),...((c=>c?[`<a href="${c.url}">${c.label}</a>`]:[])(creditOf(p)))];
+ const {title}=parts(p,language);
+ const lines=[`<b>${escapeHTML([...headTitle(p,title)].slice(0,300).join(""))}</b>`,...bodyLines(p,language,{esc:escapeHTML,link:(t,u)=>`<a href="${escapeHTML(u)}">${t}</a>`,strike:s=>`<s>${escapeHTML(s)}</s>`}),...((c=>c?[`<a href="${c.url}">${c.label}</a>`]:[])(creditOf(p)))];
  return lines.join("\n");
 }
 export function discordPayload(p:Post,language:Language){
- const {title,open,ad}=parts(p,language),price=priceLine(p,language,s=>`~~${s}~~`),credit=creditOf(p);
- return {username:"Blup Deals",allowed_mentions:{parse:[]},embeds:[{...(credit?{author:{name:credit.name,url:credit.url}}:{}),title:[...title].slice(0,250).join(""),url:p.link,color:0xc2410c,description:[...(price?[price]:[]),`[${open}](${p.link})`,...(p.extra?[escapeMarkdown(p.extra)]:[]),...(p.socials?.length?[p.socials.map(n=>`[${n.name}](${markdownURL(n.url)})`).join(" · ")]:[]),...(ad?[ad]:[])].join("\n"),...(p.image?{image:{url:p.image}}:{})}]};
+ const {title}=parts(p,language),credit=creditOf(p);
+ const description=bodyLines(p,language,{esc:escapeMarkdown,link:(t,u)=>`[${t}](${markdownURL(u)})`,strike:s=>`~~${s}~~`}).join("\n").replace(/^\n+/,"");
+ return {username:"Blup Deals",allowed_mentions:{parse:[]},embeds:[{...(credit?{author:{name:credit.name,url:credit.url}}:{}),title:[...headTitle(p,title)].slice(0,250).join(""),url:p.link,color:0xc2410c,description,...(p.image?{image:{url:p.image}}:{})}]};
 }
 
 export const dealsChatId=z.string().regex(/^-?[1-9][0-9]{0,15}$/).refine(v=>Number.isSafeInteger(Number(v)));

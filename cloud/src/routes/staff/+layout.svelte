@@ -4,6 +4,7 @@
 	import Users from "@lucide/svelte/icons/users";
 	import UserCog from "@lucide/svelte/icons/user-cog";
 	import ScrollText from "@lucide/svelte/icons/scroll-text";
+	import Sparkles from "@lucide/svelte/icons/sparkles";
 	import PanelShell from "#lib/ui/PanelShell.svelte";
 	import { roleLabel, staffHref } from "#lib/staff.ts";
 
@@ -15,6 +16,7 @@
 		...(data.me?.role === "admin"
 			? [
 					{ href: staffHref(resolve("/staff/team")), label: "Equipe", Icon: UserCog },
+					{ href: staffHref(resolve("/staff/ai")), label: "IA", Icon: Sparkles },
 					{ href: staffHref(resolve("/staff/log")), label: "Registro", Icon: ScrollText },
 				]
 			: []),

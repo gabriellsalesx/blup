@@ -139,7 +139,7 @@ export const aiUsage = sqliteTable(
 	{
 		id: integer("id").primaryKey(),
 		userId: text("user_id").notNull(),
-		kind: text("kind").notNull(), // "narration" or "translation"
+		kind: text("kind").notNull(), // "narration", "translation" or an AI feature (ai.ts aiFeatures)
 		units: integer("units").notNull(), // characters read
 		costMicros: integer("cost_micros").notNull(),
 		createdAt: integer("created_at", { mode: "timestamp_ms" })
@@ -296,4 +296,14 @@ export const siteCachePurge=sqliteTable("site_cache_purge",{
 },t=>[index("site_cache_purge_queued_idx").on(t.queuedAt)]);
 export const siteCachePurgeState=sqliteTable("site_cache_purge_state",{
  id:text("id").primaryKey(),nextAt:integer("next_at").notNull(),
+});
+
+// The AI models a feature uses, in order (OpenRouter's models list: the
+// first answers, the next ones take over when it fails). Set by an admin
+// on the staff panel; missing, the feature's default list.
+export const aiModelSetting = sqliteTable("ai_model_setting", {
+	feature: text("feature").primaryKey(),
+	models: text("models").notNull(),
+	updatedBy: text("updated_by").notNull(),
+	updatedAt: integer("updated_at").notNull(),
 });

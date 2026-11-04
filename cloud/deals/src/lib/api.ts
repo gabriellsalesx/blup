@@ -20,4 +20,5 @@ export type PostState=Post["state"];
 export type Hunt=InferResponseType<typeof dealsApi.hunts.$get,200>["hunts"][number];
 export type HuntKind=Hunt["kind"];
 export type Stats=InferResponseType<typeof dealsApi.stats.$get,200>;
+export type AIUsage=InferResponseType<typeof dealsApi.ai.$get,200>;
 export type Settings=InferResponseType<typeof dealsApi.settings.$get,200>;

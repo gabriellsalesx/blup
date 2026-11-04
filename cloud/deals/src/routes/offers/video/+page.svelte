@@ -20,6 +20,8 @@
  import PostPreview from "../../../lib/PostPreview.svelte";
  import ChannelPicker from "../../../lib/ChannelPicker.svelte";
  import SendWhen,{type SendMode} from "../../../lib/SendWhen.svelte";
+ import PostExtras from "../../../lib/PostExtras.svelte";
+ import {hasAddress} from "../../../../../shared/deals-post";
  // A new TikTok video about a product: the link is checked first (a public
  // video), then the person names the product and, if they want, its
  // price; the preview shows the news as the channels will see it. The
@@ -28,6 +30,8 @@
  let {data}:PageProps=$props();
  let url=$state(""),video=$state<VideoPreview|null>(null),videoOf=$state(""),busy=$state(false);
  let title=$state(""),price=$state("");
+ let description=$state(""),coupon=$state("");
+ const extrasBad=$derived(hasAddress(description)||hasAddress(coupon));
  let mode=$state<SendMode>("now"),sendAt=$state(Math.ceil((Date.now()+3_600_000)/900_000)*900_000);
  let channelIds=$derived(data.channels.filter(c=>c.active).map(c=>c.id));
  const stale=$derived(!!video&&videoOf!==url.trim());
@@ -37,7 +41,7 @@
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}}
  async function check(e:SubmitEvent){e.preventDefault();const target=url.trim();if(!target)return;await run(async()=>{video=await parseResponse(dealsApi.offers.video.preview.$post({json:{url:target}}));videoOf=target;});}
  async function announce(){if(!video||stale||!title.trim()||cents===null||!channelIds.length)return;await run(async()=>{
-  await parseResponse(dealsApi.offers.video.$post({json:{url:videoOf,title:title.trim(),...(cents!==undefined?{price:cents}:{}),channelIds,...(mode==="schedule"?{sendAt:new Date(sendAt).toISOString()}:mode==="queue"?{queue:true}:{})}}));
+  await parseResponse(dealsApi.offers.video.$post({json:{url:videoOf,title:title.trim(),...(cents!==undefined?{price:cents}:{}),channelIds,...(description.trim()?{description:description.trim()}:{}),...(coupon.trim()?{coupon:coupon.trim()}:{}),...(mode==="schedule"?{sendAt:new Date(sendAt).toISOString()}:mode==="queue"?{queue:true}:{})}}));
   void refreshUsage();toast(()=>t("dealsVideoQueuedToast"));await goto(resolve("/"));
  });}
 </script>
@@ -63,8 +67,9 @@
      {#if cents===null}<p class="mt-1.5 text-sm text-red-700 dark:text-red-400">{t("dealsPriceInvalid")}</p>{/if}
     </div>
     <p class="flex items-start gap-2 text-sm text-neutral-500"><Info class="mt-0.5 size-4 shrink-0"/>{t("dealsVideoTelegram")}</p>
+    <PostExtras title={title.trim()} store="TikTok" bind:description bind:coupon/>
    </div>
-   <PostPreview title={title.trim()||t("dealsProductName")} price={cents??null} currency={cents===undefined||cents===null?null:"BRL"} store="TikTok" affiliate author={video.author}/>
+   <PostPreview title={title.trim()||t("dealsProductName")} price={cents??null} currency={cents===undefined||cents===null?null:"BRL"} store="TikTok" affiliate author={video.author} description={description.trim()||null} coupon={coupon.trim()||null} style={data.style}/>
   </div>
  </Card></div>
 
@@ -74,6 +79,6 @@
   <div class="mt-6 border-t border-neutral-200 pt-6 dark:border-neutral-800">
    <SendWhen bind:mode bind:sendAt min={minSend} max={maxSend} pace={data.pace}/>
   </div>
-  <div class="mt-6 flex justify-end"><Button {busy} disabled={!title.trim()||cents===null||!channelIds.length||(mode==="schedule"&&(sendAt<minSend||sendAt>maxSend))||!hasPlan()} onclick={announce}><Send class="size-4"/>{t("dealsAnnounce")}</Button></div>
+  <div class="mt-6 flex justify-end"><Button {busy} disabled={extrasBad||!title.trim()||cents===null||!channelIds.length||(mode==="schedule"&&(sendAt<minSend||sendAt>maxSend))||!hasPlan()} onclick={announce}><Send class="size-4"/>{t("dealsAnnounce")}</Button></div>
  </Card></div>
 {/if}

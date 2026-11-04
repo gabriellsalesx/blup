@@ -926,6 +926,132 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 } & {
+    "/ai": {
+        $get: {
+            input: {};
+            output: {
+                features: {
+                    feature: "deals_describe";
+                    models: {
+                        id: string;
+                        name: string | null;
+                        prompt: number | null;
+                        completion: number | null;
+                    }[];
+                    defaults: "deepseek/deepseek-v4.1-flash"[];
+                }[];
+                catalog: boolean;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/ai/:feature": {
+        $put: {
+            input: {
+                param: {
+                    feature: "deals_describe";
+                };
+            } & {
+                json: {
+                    models: string[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    feature: "deals_describe";
+                };
+            } & {
+                json: {
+                    models: string[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    feature: "deals_describe";
+                };
+            } & {
+                json: {
+                    models: string[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    feature: "deals_describe";
+                };
+            } & {
+                json: {
+                    models: string[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    feature: "deals_describe";
+                };
+            } & {
+                json: {
+                    models: string[];
+                };
+            };
+            output: {
+                code: string;
+                models: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    feature: "deals_describe";
+                };
+            } & {
+                json: {
+                    models: string[];
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
     "/log": {
         $get: {
             input: {
@@ -8662,7 +8788,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: 503;
         };
     };
-}, "/telegram">, "/api/pulse"> | import("hono/types").MergeSchemaPath<{
+}, "/telegram">, "/api/pulse"> | import("hono/types").MergeSchemaPath<(({
     "/usage": {
         $get: {
             input: {};
@@ -8940,6 +9066,19 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     mirrors: number;
                     postsToday: number;
                 };
+                resetsAt: string;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+})) & {
+    "/ai": {
+        $get: {
+            input: {};
+            output: {
+                available: boolean;
+                percent: number;
                 resetsAt: string;
             };
             outputFormat: "json";
@@ -9824,6 +9963,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     url: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
                 };
@@ -9842,6 +9983,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     url: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
                 };
@@ -9857,6 +10000,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     url: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
                 };
@@ -9871,6 +10016,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     url: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
                 };
@@ -9885,6 +10032,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     url: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
                 };
@@ -9899,6 +10048,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     url: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
                 };
@@ -9913,6 +10064,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     url: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
                 };
@@ -9988,6 +10141,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     title: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     price?: number | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
@@ -10004,6 +10159,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     title: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     price?: number | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
@@ -10024,6 +10181,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     title: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     price?: number | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
@@ -10041,6 +10200,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     title: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     price?: number | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
@@ -10057,6 +10218,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     title: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     price?: number | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
@@ -10073,6 +10236,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     title: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     price?: number | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
@@ -10089,6 +10254,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     title: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     price?: number | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
@@ -10105,6 +10272,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     title: string;
                     channelIds: string[];
+                    description?: string | undefined;
+                    coupon?: string | undefined;
                     price?: number | undefined;
                     sendAt?: string | undefined;
                     queue?: boolean | undefined;
@@ -10116,6 +10285,80 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             outputFormat: "json";
             status: 201;
+        };
+    };
+} & {
+    "/describe": {
+        $post: {
+            input: {
+                json: {
+                    title: string;
+                    store?: string | undefined;
+                    price?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    store?: string | undefined;
+                    price?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    store?: string | undefined;
+                    price?: string | undefined;
+                };
+            };
+            output: {
+                code: "NO_AI" | "AI_MONTH_LIMIT" | "AI_WEEK_LIMIT" | "UNAVAILABLE" | "UPSTREAM";
+            };
+            outputFormat: "json";
+            status: 402 | 429 | 502 | 503;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    store?: string | undefined;
+                    price?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 502;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    store?: string | undefined;
+                    price?: string | undefined;
+                };
+            };
+            output: {
+                text: string;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
 } & {
@@ -10784,6 +11027,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {};
             output: {
                 pace: 0 | 30 | 60 | 300 | 180 | 480;
+                style: "emoji" | "classic";
                 headlines: {
                     product?: string | undefined;
                     game_free?: string | undefined;
@@ -10825,10 +11069,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         }[];
                         on: boolean;
                     };
+                    style?: "emoji" | "classic" | undefined;
                 };
             };
             output: {
                 pace: 0 | 30 | 60 | 300 | 180 | 480;
+                style: "emoji" | "classic";
                 headlines: {
                     product?: string | undefined;
                     game_free?: string | undefined;
@@ -10866,6 +11112,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         }[];
                         on: boolean;
                     };
+                    style?: "emoji" | "classic" | undefined;
                 };
             };
             output: {
@@ -10893,6 +11140,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         }[];
                         on: boolean;
                     };
+                    style?: "emoji" | "classic" | undefined;
                 };
             };
             output: {

@@ -33,9 +33,10 @@
  // the extra text and the social networks (one of each), with a preview
  // of the post as it will read.
  let {data}:PageProps=$props();
- const saved:Settings=untrack(()=>data.settings)??{pace:0,headlines:{},extra:{text:"",on:false},socials:{links:[],on:false},behind:false};
+ const saved:Settings=untrack(()=>data.settings)??{pace:0,style:"classic",headlines:{},extra:{text:"",on:false},socials:{links:[],on:false},behind:false};
  const defaults=$derived(defaultHeadlines[language()]);
- let pace=$state(String(saved.pace));
+ let pace=$state(String(saved.pace)),style=$state<"classic"|"emoji">(saved.style);
+ const styles=$derived([{value:"classic" as const,label:t("dealsStyleClassic")},{value:"emoji" as const,label:t("dealsStyleEmoji")}]);
  // An empty line is the default one.
  let lines=$state<Record<HeadlineKind,string>>(untrack(()=>Object.fromEntries(headlineKinds.map(k=>[k,saved.headlines[k]??defaultHeadlines[language()][k]])) as Record<HeadlineKind,string>));
  // A first extra text ready (off until the person turns it on).
@@ -79,7 +80,7 @@
   if(invalid)return;busy=true;
   try{
    const headlines=Object.fromEntries(headlineKinds.filter(k=>lines[k].trim()!==defaults[k]).map(k=>[k,lines[k].trim()]));
-   await parseResponse(dealsApi.settings.$put({json:{pace:Number(pace) as DealsPace,headlines,extra:{text:extraOn||!hasAddress(extra)?extra.trim():saved.extra.text,on:extraOn},socials:{links:socialsOn?links:links.filter(l=>!linkBad(l)),on:socialsOn}}}));
+   await parseResponse(dealsApi.settings.$put({json:{pace:Number(pace) as DealsPace,style,headlines,extra:{text:extraOn||!hasAddress(extra)?extra.trim():saved.extra.text,on:extraOn},socials:{links:socialsOn?links:links.filter(l=>!linkBad(l)),on:socialsOn}}}));
    toast(()=>t("dealsSettingsSaved"));
   }catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}
  }
@@ -95,6 +96,10 @@
  <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
   <Card title={t("dealsPace")} help={t("dealsPaceHelp")}>
    <div class="mt-5"><Segmented label={t("dealsPace")} options={paces} bind:value={pace}/></div>
+  </Card>
+
+  <Card title={t("dealsStyle")} help={t("dealsStyleHelp")}>
+   <div class="mt-5"><Segmented label={t("dealsStyle")} options={styles} bind:value={style}/></div>
   </Card>
 
   <Card title={t("dealsHeadlines")} help={t("dealsHeadlinesHelp")}>
@@ -155,6 +160,6 @@
  <aside class="grid min-w-0 gap-3 lg:sticky lg:top-6">
   <p class="text-sm font-semibold">{t("dealsPreviewOf")}</p>
   <Segmented label={t("dealsPreviewOf")} options={previewKinds} bind:value={previewKind}/>
-  <PostPreview example image={sample.art} title={headline(lines[previewKind].trim()||defaults[previewKind],sample)||sample.name} price={sample.price} currency={sample.price===null?null:"BRL"} store={sample.store} affiliate={previewKind!=="game_free"} extra={extraOn&&extra.trim()&&!hasAddress(extra)?extra.trim():null} socials={shownSocials}/>
+  <PostPreview example image={sample.art} title={headline(lines[previewKind].trim()||defaults[previewKind],sample)||sample.name} price={sample.price} currency={sample.price===null?null:"BRL"} store={sample.store} affiliate={previewKind!=="game_free"} extra={extraOn&&extra.trim()&&!hasAddress(extra)?extra.trim():null} socials={shownSocials} {style} discount={sample.discount} coupon={previewKind==="store_deal"?"BLUP10":null}/>
  </aside>
 </div>

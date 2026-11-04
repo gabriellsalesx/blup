@@ -157,6 +157,66 @@ function providerCost(value:unknown,fallback:number) {
  const usage=usageSchema.safeParse(value);
  return usage.success && usage.data.usage?.cost!==undefined ? Math.ceil(usage.data.usage.cost*1e6) : fallback;
 }
+// The features that write text with a list of models the staff sets
+// (/staff/ai): each one's default list, used until an admin changes it.
+// OpenRouter takes the list as models: the first answers, the next ones
+// take over when it fails, and the one that answered is the one charged.
+export const aiFeatures = { deals_describe: ["deepseek/deepseek-v4.1-flash"] } as const satisfies Record<string, readonly string[]>;
+export type AIFeature = keyof typeof aiFeatures;
+export const modelId = z.string().regex(/^[a-z0-9][a-z0-9._-]{0,63}\/[a-z0-9][a-z0-9._:-]{0,99}$/);
+export const modelList = z.array(modelId).min(1).max(5).refine((l) => new Set(l).size === l.length);
+export async function modelsFor(db: D1Database, feature: AIFeature): Promise<string[]> {
+	const row = await db.prepare("SELECT models FROM ai_model_setting WHERE feature=?").bind(feature).first<{ models: string }>();
+	try { const parsed = modelList.safeParse(JSON.parse(row?.models ?? "null")); if (parsed.success) return parsed.data; } catch {}
+	return [...aiFeatures[feature]];
+}
+// OpenRouter's text models and their prices (US$ per token), read at most
+// every 6 hours per isolate, to hold enough of the allowance before a
+// request (the dearest of the list) and to show the staff what each costs.
+const chatCatalog = z.object({ data: z.array(z.object({ id: z.string().min(1).max(200), name: z.string().max(200).optional(), pricing: z.object({ prompt: z.string().max(32), completion: z.string().max(32) }) })).max(10000) });
+export type ChatModel = { id: string; name: string; prompt: number; completion: number };
+let chatCache: { at: number; models: Map<string, ChatModel> } | null = null;
+export async function chatModels(env: Cloudflare.Env): Promise<Map<string, ChatModel>> {
+	if (chatCache && Date.now() - chatCache.at < 6 * 3600 * 1000) return chatCache.models;
+	const models = new Map<string, ChatModel>();
+	try {
+		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/models`, { signal: AbortSignal.timeout(15_000) });
+		if (res.ok) for (const m of chatCatalog.parse(await res.json()).data) {
+			const prompt = Number(m.pricing.prompt), completion = Number(m.pricing.completion);
+			if (Number.isFinite(prompt) && Number.isFinite(completion) && prompt >= 0 && completion >= 0) models.set(m.id, { id: m.id, name: m.name ?? m.id, prompt, completion });
+		}
+	} catch {}
+	if (models.size) chatCache = { at: Date.now(), models };
+	return models;
+}
+// A short text written by the AI for a feature, paid by the person's plan
+// (the same allowance as narration and translation). The hold is the
+// dearest model of the list at the most it may write; the charge, what
+// OpenRouter says it cost.
+export type AIText = { text: string; model: string } | { code: "NO_AI" | "AI_MONTH_LIMIT" | "AI_WEEK_LIMIT" | "UNAVAILABLE" | "UPSTREAM"; status: 402 | 429 | 502 | 503 };
+export async function aiText(env: Cloudflare.Env, userId: string, feature: AIFeature, input: { system: string; user: string; maxTokens: number }): Promise<AIText> {
+	if (!env.OPENROUTER_API_KEY) return { code: "UNAVAILABLE", status: 503 };
+	const models = await modelsFor(env.DB, feature), catalog = await chatModels(env);
+	// Without the catalog, a generous price per token (US$ 20 per million).
+	const price = (id: string) => catalog.get(id) ?? { prompt: 0.00002, completion: 0.00002 };
+	const inTokens = Math.ceil(new TextEncoder().encode(input.system + input.user).length / 3) + 16;
+	const estimate = Math.ceil(Math.max(...models.map((m) => inTokens * price(m).prompt + input.maxTokens * price(m).completion)) * 1e6) + 1;
+	const admission = await aiReservation(env, userId, estimate);
+	if (!admission.hold) return { code: admission.error.code as "NO_AI" | "AI_MONTH_LIMIT" | "AI_WEEK_LIMIT", status: 402 };
+	const hold = admission.hold;
+	try {
+		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(60_000), redirect: "manual", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://getblup.io", "X-Title": "Blup Cloud" }, body: JSON.stringify({ models, temperature: 0.7, max_tokens: input.maxTokens, usage: { include: true }, messages: [{ role: "system", content: input.system }, { role: "user", content: input.user }] }) });
+		const raw: unknown = await res.json().catch(() => null);
+		const cost = providerCost(raw, res.ok ? estimate : 0);
+		if (res.ok || usageSchema.safeParse(raw).success) await settle(env.DB, hold, [env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,?,?,?)").bind(userId, feature, input.maxTokens, cost)]);
+		const out = outputSchema.safeParse(raw), choice = out.success ? out.data.choices?.[0] : undefined;
+		const model = z.object({ model: z.string().max(200) }).safeParse(raw);
+		if (!res.ok || !choice?.message?.content?.trim()) return { code: "UPSTREAM", status: res.status === 429 ? 429 : 502 };
+		return { text: choice.message.content.trim(), model: model.success ? model.data.model : models[0] };
+	} catch { return { code: "UPSTREAM", status: 502 }; }
+	finally { await release(env.DB, hold); }
+}
+
 export const aiApi = new Hono<App>()
  .use(signedIn)
  .get("/usage",async c=>c.json(await aiUsageOf(c.get("userId"),await planOf(c.get("userId")))))
