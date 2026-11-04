@@ -22,7 +22,7 @@
  import {dealsError} from "../../lib/errors";
  import {refreshUsage} from "../../lib/panel.svelte";
  import {hasPlan} from "../../lib/plan";
- import {huntKinds,huntName,countryName,platformLabel} from "../../lib/catalog";
+ import {huntKinds,huntName,countryName,platformLabel,storeName} from "../../lib/catalog";
  import Usage from "../../lib/Usage.svelte";
  // The hunts: what each one looks for, its filters in one line, how many
  // channels it posts to, and a switch to pause it. Stores and mirroring
@@ -31,7 +31,7 @@
  const soon=huntKinds.filter(k=>k.soon);
  const artOf=(kind:Hunt["kind"])=>huntKinds.find(k=>k.id===kind)!.art;
  function summary(hunt:Hunt){
-  const f=hunt.filters,parts=hunt.kind==="nuuvem_deals"?[countryName(f.country??"br",intlLocale()),...(f.gamesOnly!==false?[t("dealsGamesOnly")]:[])]:[f.platforms?.length?f.platforms.map(platformLabel).join(", "):t("dealsAllPlatforms")];
+  const f=hunt.filters,parts=hunt.kind==="mirror"?[`@${hunt.mirror?.channel??""}`,f.stores?.length?f.stores.map(s=>storeName[s]).join(", "):t("dealsAllStores")]:hunt.kind==="nuuvem_deals"?[countryName(f.country??"br",intlLocale()),...(f.gamesOnly!==false?[t("dealsGamesOnly")]:[])]:[f.platforms?.length?f.platforms.map(platformLabel).join(", "):t("dealsAllPlatforms")];
   if(f.minDiscount!==undefined)parts.push(t("dealsDiscountFrom",{percent:String(f.minDiscount)}));
   if(f.maxPrice!==undefined)parts.push(t("dealsUpTo",{price:money(f.maxPrice,"BRL",language())}));
   const n=hunt.channelIds.length;parts.push(n===1?t("dealsOneChannel"):t("dealsChannelCount",{count:n.toLocaleString(intlLocale())}));
@@ -48,12 +48,12 @@
  {#snippet aside()}{#if hasPlan()}<Button onclick={()=>goto(resolve("/hunts/new"))}><Plus class="size-4"/>{t("dealsNewHunt")}</Button>{/if}{/snippet}
 </PageHeader>
 
-<div class="mt-6"><Usage kind="hunts"/></div>
+<div class="mt-6 grid gap-4 sm:grid-cols-2"><Usage kind="hunts"/><Usage kind="mirrors"/></div>
 
 <div class="mt-6"><List empty={t("dealsHuntsEmpty")}>
  {#each data.hunts as hunt(hunt.id)}
   <ListItem href={hasPlan()?editHref(hunt):undefined} label={t(huntName(hunt.kind))}>
-   <div class="flex items-center gap-3"><img src={artOf(hunt.kind)} alt="" width="40" height="40" class="size-10 shrink-0 transition-opacity {hunt.active?'':'opacity-50 grayscale'}"/><div class="min-w-0"><p class="truncate font-semibold">{t(huntName(hunt.kind))}</p><p class="text-sm text-neutral-500">{summary(hunt)}</p></div></div>
+   <div class="flex items-center gap-3"><img src={artOf(hunt.kind)} alt="" width="40" height="40" class="size-10 shrink-0 transition-opacity {hunt.active?'':'opacity-50 grayscale'}"/><div class="min-w-0"><p class="truncate font-semibold">{t(huntName(hunt.kind))}</p><p class="text-sm text-neutral-500">{summary(hunt)}</p>{#if hunt.mirror?.error}<p class="text-sm text-amber-800 dark:text-amber-300">{hunt.mirror.error==="CHANNEL_GONE"?t("dealsMirrorStatusGone"):t("dealsMirrorStatusRefused")}</p>{/if}</div></div>
    {#snippet actions()}<div class="relative z-10"><Switch label={hunt.active?t("dealsHuntOn"):t("dealsHuntOff")} tone="coral" checked={hunt.active} disabled={!hasPlan()} onchange={(on)=>void toggle(hunt,on)}/></div>{/snippet}
    {#snippet menu()}<ActionMenu label={t("dealsActions")} items={menuFor(hunt)}/>{/snippet}
   </ListItem>

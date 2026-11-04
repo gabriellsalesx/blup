@@ -43,9 +43,9 @@ export const huntKinds:HuntOption[]=[
  // Nuuvem's sales use the game-sales drawing.
  {id:"nuuvem_deals",title:"dealsNuuvemDeals",help:"dealsNuuvemDealsHelp",art:gamesDealsArt},
  {id:"stores",title:"dealsStoresKind",help:"dealsStoresKindHelp",art:storesArt,soon:true},
- {id:"mirror",title:"dealsMirrorKind",help:"dealsMirrorKindHelp",art:mirrorArt,soon:true},
+ {id:"mirror",title:"dealsMirrorKind",help:"dealsMirrorKindHelp",art:mirrorArt},
 ];
-const huntNames={games_free:"dealsGamesFree",nuuvem_deals:"dealsNuuvemDeals"} as const satisfies Record<HuntKind,PlainMessageKey>;
+const huntNames={games_free:"dealsGamesFree",nuuvem_deals:"dealsNuuvemDeals",mirror:"dealsMirrorKind"} as const satisfies Record<HuntKind,PlainMessageKey>;
 export const huntName=(kind:HuntKind)=>huntNames[kind];
 // Nuuvem's stores by country, named in the panel's language. Its catalog
 // is Brazil's (in reais): elsewhere the post gives the discount and the
@@ -62,8 +62,8 @@ export const platforms=[
  {id:"pc",label:"PC"},{id:"steam",label:"Steam"},{id:"epic",label:"Epic Games"},{id:"gog",label:"GOG"},{id:"ubisoft",label:"Ubisoft"},
  {id:"itchio",label:"itch.io"},{id:"playstation",label:"PlayStation"},{id:"xbox",label:"Xbox"},{id:"switch",label:"Nintendo Switch"},{id:"android",label:"Android"},{id:"ios",label:"iOS"},
 ] as const satisfies readonly {id:Platform;label:string}[];
-export const platformsFor=(kind:HuntKind)=>kind==="nuuvem_deals"?[]:platforms;
+export const platformsFor=(kind:HuntKind)=>kind==="games_free"?platforms:[];
 export const platformLabel=(id:string)=>platforms.find(p=>p.id===id)?.label??id;
 // What the hunt form gives back (POST /hunts, and PATCH without the kind).
 export type Platform=NonNullable<Hunt["filters"]["platforms"]>[number];
-export type HuntInput={kind:HuntKind;channelIds:string[];filters:Hunt["filters"]};
+export type HuntInput={kind:HuntKind;channelIds:string[];filters:Hunt["filters"];channel?:string};

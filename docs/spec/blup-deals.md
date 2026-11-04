@@ -597,3 +597,16 @@ Essas pendências técnicas e comerciais não reabrem a decisão de espelhamento
 - **Nuuvem por país.** A caçada escolhe a loja: Brasil, Argentina, Bolívia, Canadá, Chile, Colômbia, Equador, Estados Unidos, México, Peru ou Uruguai (as páginas `/<país>-<idioma>/` do próprio site; o idioma segue o país: `pt` no Brasil, `en` nos EUA e no Canadá, `es` nos outros).
 - O catálogo da Rakuten é o do Brasil, em reais. No Brasil o post sai com o preço; nos outros países sai só o desconto ("50% de desconto"), e o link abre a página da Nuuvem do país, com o preço de lá (`deals_post.price_shown = 0`). O preço máximo só existe para o Brasil. Nunca há conversão de moeda.
 - Se a Rakuten tiver catálogos da Nuuvem para outros países, cada país passa a ler o seu, com o preço local.
+
+## F2: espelhamento de canais públicos do Telegram (entregue)
+
+- **Fonte:** só a prévia pública `https://t.me/s/<canal>` (pelo fetch seguro, até 1 MB), sem login, sessão, número ou userbot. O canal é aceito como `t.me/nome`, `t.me/s/nome` ou `@nome`; link de convite não serve.
+- **Uma leitura por canal:** a fonte é `deals_source` com `id = key = telegram:<nome>`, compartilhada por todas as contas. Até 5 canais por minuto, cada um a cada 10 minutos, só enquanto algum espelho ativo usa o canal. O cursor é o número do último post lido.
+- **Primeira leitura** só marca o cursor (nada é postado). Depois entram até 20 posts novos por leitura, com menos de 3 horas.
+- **Recusa** (403, 429, canal sumido ou privado): a fonte pausa com espera crescente e o motivo (`CHANNEL_GONE`, `RATE_LIMIT`, `CHANNEL_REFUSED`, `FETCH_FAILED`), mostrado na lista de caçadas. Sem proxy, sem login e sem leitura escondida.
+- **Do post ao produto:** o primeiro link de uma loja conhecida (links curtos seguidos com segurança). O título, a imagem e o preço vêm da página da loja quando ela dá; senão, do próprio post (primeira linha e o último "R$"; um "R$" anterior maior vira o "de"). O texto de quem postou nunca é copiado: o post sai do zero no formato do Blup.
+- **Link:** sempre o do cliente, pela conversão de cada loja. Se o cliente não tem o ID daquela loja, o post não sai.
+- **Repetição:** o mesmo produto (loja, host e caminho) só volta para a mesma conta se ficar mais de 1% mais barato que o menor preço já postado em 30 dias; sem preço, não volta em 7 dias. A fila já impede o mesmo post duas vezes no mesmo canal.
+- **Limites:** 10 espelhos por conta (`dealsLimits.mirrors`), um por canal de origem (`MIRROR_EXISTS`), contados à parte das 20 caçadas; os posts entram na cota de 100 por dia.
+- **Filtro:** "Lojas que entram" (`filters.stores`); sem nenhuma, todas.
+- **API:** `POST /api/deals/hunts/mirror/check {channel}` devolve `{name,title,posts}`; `POST /api/deals/hunts` com `kind:"mirror"` e `channel`; a lista traz `mirror:{channel,title,error}`.

@@ -48,7 +48,7 @@
  const first=(()=>({step:data.step,topic:data.topic}))();
  let at=$state(first.step),topic=$state<"games"|"other">(first.topic),busy=$state(false);
  // Nuuvem's sales need the Rakuten ID, so they start off.
- let kinds=$state<Record<HuntKind,boolean>>({games_free:true,nuuvem_deals:false});
+ let kinds=$state<Record<Exclude<HuntKind,"mirror">,boolean>>({games_free:true,nuuvem_deals:false});
  // Starts on the active channels; a tick changes it.
  let channelIds=$derived(data.channels.filter(c=>c.active).map(c=>c.id));
  const step=$derived(steps[at]);

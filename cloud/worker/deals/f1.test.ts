@@ -12,6 +12,7 @@ import {enqueue,dayOf,seal} from "./store";
 import {dispatchDeals,DEALS_BUDGET} from "./dispatch";
 import {telegramText,discordPayload,sendTelegram} from "./message";
 import {videoOf} from "./video";
+import {readChannel,textPrices,textTitle,channelName,collectMirrors} from "./mirror";
 import {nuuvemOffers,isCredit,NUUVEM_PAGES_PER_RUN} from "./nuuvem";
 import {serveDealsLink} from "./redirect";
 import {panelCorsOrigin} from "../security";
@@ -557,5 +558,52 @@ describe("Magalu and Terabyte",()=>{
   expect((await call("/affiliates/terabyte",{method:"PUT",body:{partner:"meucodigo"}})).status).toBe(200);
   const listed=await(await call("/affiliates")).json() as {stores:{store:string;configured:boolean;hint:string|null}[]};
   expect(listed.stores.filter(s=>s.configured).map(s=>[s.store,s.hint])).toEqual([["magalu","magazineminhaloja"],["terabyte","…digo"]]);
+ });
+});
+
+describe("mirroring a public Telegram channel",()=>{
+ const post=(id:number,text:string,link:string,at=new Date().toISOString())=>`<div class="tgme_widget_message_wrap js-widget_message_wrap"><div class="tgme_widget_message js-widget_message" data-post="promos/${id}"><a class="tgme_widget_message_photo_wrap 1" href="https://t.me/promos/${id}" style="width:800px;background-image:url('https://cdn4.telesco.pe/file/p${id}.jpg')"></a><div class="tgme_widget_message_text js-message_text" dir="auto">${text}<br/><a href="${link}" target="_blank" rel="noopener" onclick="return confirm('Open this link?\n\n'+this.href);">${link}</a></div><span class="tgme_widget_message_meta"><a class="tgme_widget_message_date" href="https://t.me/promos/${id}"><time datetime="${at}" class="time">10:00</time></a></span></div></div>`;
+ const page=(...posts:string[])=>`<html><head><meta property="og:title" content="Promos &amp; Cia"></head><body><div class="tgme_channel_info"></div>${posts.join("")}</body></html>`;
+ it("reads posts, prices and titles from the public preview",()=>{
+  expect(channelName.parse("https://t.me/s/promos_br")).toBe("promos_br");expect(channelName.parse("@promos_br")).toBe("promos_br");expect(channelName.safeParse("https://t.me/+abcdef").success).toBe(false);
+  const read=readChannel(page(post(7,"🔥 <b>Fone Bluetooth</b><br/>de R$ 199,90 por R$ 89,90","https://amzn.to/abc")),"promos");
+  expect(read).toMatchObject({title:"Promos & Cia",posts:[{id:7,links:["https://amzn.to/abc"],photo:"https://cdn4.telesco.pe/file/p7.jpg"}]});
+  expect(textPrices(read.posts[0].text)).toEqual({price:8990,before:19990});expect(textTitle(read.posts[0].text)).toBe("Fone Bluetooth");
+ });
+ it("posts each new product once with the person's own link, again only when cheaper",async()=>{
+  const channel=await addDiscord();await call("/affiliates/amazon",{method:"PUT",body:{tag:"minhatag-20"}});
+  const bobChannel=await addDiscord("bob");
+  let html=page(post(5,"Velho","https://amzn.to/old"));
+  const store=(price:string)=>()=>html_(`<meta property="og:title" content="Fone Bom"><meta property="product:price:amount" content="${price}"><meta property="product:price:currency" content="BRL">`);
+  const html_=(b:string)=>new Response(b,{headers:{"content-type":"text/html; charset=utf-8"}});
+  let amazonPrice="89.90";
+  const {send}=net({"t.me/s/promos":()=>html_(html),"amzn.to":()=>new Response(null,{status:301,headers:{location:"https://www.amazon.com.br/Fone/dp/B0ABCDEF12?tag=dono-20"}}),"www.amazon.com.br":()=>store(amazonPrice)()});
+  vi.stubGlobal("fetch",send);
+  expect(await(await call("/hunts/mirror/check",{method:"POST",body:{channel:"https://t.me/promos"}})).json()).toEqual({name:"promos",title:"Promos & Cia",posts:1});
+  expect((await call("/hunts",{method:"POST",body:{kind:"mirror",channel:"@promos",channelIds:[channel],filters:{}}})).status).toBe(201);
+  expect((await call("/hunts",{method:"POST",body:{kind:"mirror",channel:"promos",channelIds:[channel],filters:{}}})).status).toBe(409);
+  expect((await call("/hunts",{method:"POST",body:{kind:"mirror",channel:"promos",channelIds:[channel],filters:{platforms:["pc"]}}})).status).toBe(400);
+  expect((await call("/hunts",{method:"POST",user:"bob",body:{kind:"mirror",channel:"promos",channelIds:[bobChannel],filters:{}}})).status).toBe(201);
+  const t0=Date.now();
+  await collectMirrors(state.env,send,t0);expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(0);
+  html=page(post(5,"Velho","https://amzn.to/old"),post(6,"Fone Bom<br/>por R$ 89,90","https://amzn.to/abc"));
+  await collectMirrors(state.env,send,t0+5*60_000);expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(0);
+  await collectMirrors(state.env,send,t0+11*60_000);
+  // Bob has no Amazon tag: nothing for him.
+  expect(db.sqlite.prepare("SELECT p.user_id AS u,p.link,o.title,o.price FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id").all()).toEqual([{u:"alice",link:"https://www.amazon.com.br/dp/B0ABCDEF12?tag=minhatag-20",title:"Fone Bom",price:8990}]);
+  html=page(post(7,"Fone Bom de novo","https://amzn.to/abc"));
+  await collectMirrors(state.env,send,t0+22*60_000);expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(1);
+  amazonPrice="79.90";html=page(post(8,"Fone Bom mais barato","https://amzn.to/abc"));
+  await collectMirrors(state.env,send,t0+33*60_000);expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(2);
+  const listed=await(await call("/hunts")).json() as {hunts:{kind:string;mirror:{channel:string;title:string|null;error:string|null}|null}[]};
+  expect(listed.hunts).toEqual([expect.objectContaining({kind:"mirror",mirror:{channel:"promos",title:"Promos & Cia",error:null}})]);
+ });
+ it("pauses a channel that is gone or refuses, with the reason",async()=>{
+  const channel=await addDiscord();
+  vi.stubGlobal("fetch",net({"t.me/s/promos":()=>new Response("<html><div class=\"tgme_channel_info\"></div></html>",{headers:{"content-type":"text/html"}})}).send);
+  await call("/hunts",{method:"POST",body:{kind:"mirror",channel:"promos",channelIds:[channel],filters:{}}});
+  await collectMirrors(state.env,net({"t.me/s/promos":()=>new Response("slow down",{status:429})}).send,Date.now()+60_000);
+  expect(db.sqlite.prepare("SELECT error,failures FROM deals_source WHERE id='telegram:promos'").get()).toEqual({error:"RATE_LIMIT",failures:1});
+  expect((await call("/hunts/mirror/check",{method:"POST",body:{channel:"nao_existe"}})).status).toBe(502);
  });
 });

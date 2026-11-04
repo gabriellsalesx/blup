@@ -3,20 +3,45 @@ import {z} from "zod";
 import {validate,opaqueId} from "../validation";
 import {dealsLimits} from "../../shared/pulse-plans";
 import {dealsWrite,type DealsApp} from "./access";
-import {huntFilters,huntKinds,huntSource,feedHunt,huntRow,type HuntKind,type HuntFilters} from "./catalog";
+import {huntFilters,huntKinds,huntSource,feedHunt,huntRow,type HuntFilters} from "./catalog";
 import {usableChannels,affiliateOf,DAY} from "./store";
+import {channelName,mirrorSourceId,fetchChannel} from "./mirror";
+import {FetchError} from "./fetch";
 
 const huntParam=z.object({hunt:opaqueId});
 const channelIds=z.array(opaqueId).min(1).max(dealsLimits.channels);
-// Giveaways take platforms; Nuuvem's sales a country instead, and a price
-// limit only in Brazil (the catalog's reais).
-const fits=(kind:HuntKind,filters:HuntFilters)=>kind==="games_free"?filters.country===undefined&&filters.gamesOnly===undefined&&filters.maxPrice===undefined:!filters.platforms?.length&&(filters.maxPrice===undefined||(filters.country??"br")==="br");
-const names={games_free:"Jogos grátis",nuuvem_deals:"Promoções da Nuuvem"} as const;
-const kinds=huntKinds.map(k=>`'${k}'`).join(",");
-type Row={id:string;kind:string;active:number;channels:string;filters:string;createdAt:number};
-const view=(r:Row)=>({id:r.id,kind:z.enum(huntKinds).parse(r.kind),active:!!r.active,channelIds:z.array(z.string()).catch([]).parse(JSON.parse(r.channels)),filters:huntFilters.catch({}).parse(JSON.parse(r.filters)),createdAt:new Date(r.createdAt).toISOString()});
+// The kinds a person can make: the feeds and mirroring (a public Telegram
+// channel). Giveaways take platforms; Nuuvem's sales a country instead,
+// and a price limit only in Brazil (the catalog's reais); a mirror only
+// the stores it keeps.
+const allKinds=[...huntKinds,"mirror"] as const;
+type Kind=(typeof allKinds)[number];
+const fits=(kind:Kind,filters:HuntFilters)=>{
+ if(kind==="mirror")return Object.keys(filters).every(k=>k==="stores");
+ if(filters.stores!==undefined)return false;
+ return kind==="games_free"?filters.country===undefined&&filters.gamesOnly===undefined&&filters.maxPrice===undefined:!filters.platforms?.length&&(filters.maxPrice===undefined||(filters.country??"br")==="br");
+};
+const names={games_free:"Jogos grátis",nuuvem_deals:"Promoções da Nuuvem",mirror:"Espelhamento"} as const;
+const kinds=allKinds.map(k=>`'${k}'`).join(",");
+type Row={id:string;kind:string;active:number;channels:string;filters:string;createdAt:number;sourceId:string|null;sourceKey:string|null;sourceConfig:string|null;sourceError:string|null};
+// A mirror shows its channel (name, title) and, when the channel can't be
+// read, why.
+const view=(r:Row)=>({id:r.id,kind:z.enum(allKinds).parse(r.kind),active:!!r.active,channelIds:z.array(z.string()).catch([]).parse(JSON.parse(r.channels)),filters:huntFilters.catch({}).parse(JSON.parse(r.filters)),createdAt:new Date(r.createdAt).toISOString(),
+ mirror:r.kind==="mirror"&&r.sourceKey?{channel:r.sourceKey.replace(/^telegram:/,""),title:z.object({title:z.string().max(120).nullable()}).catch({title:null}).parse(JSON.parse(r.sourceConfig??"{}")).title,error:r.sourceError}:null});
+const select=`SELECT h.id,h.kind,h.active,h.channels,h.filters,h.created_at AS createdAt,h.source_id AS sourceId,s.key AS sourceKey,s.config AS sourceConfig,s.error AS sourceError FROM deals_hunt h LEFT JOIN deals_source s ON s.id=h.source_id`;
+// Whether a public channel can be mirrored: its preview opens and shows
+// posts. The answer says why not.
+async function checkChannel(raw:string){
+ const name=channelName.safeParse(raw);if(!name.success)return {code:"CHANNEL_INVALID" as const,status:400 as const};
+ try{
+  const read=await fetchChannel(name.data);
+  if(!read.page)return read.status===404?{code:"CHANNEL_GONE" as const,status:404 as const}:{code:"CHANNEL_REFUSED" as const,status:502 as const};
+  return {name:name.data,title:read.page.title,posts:read.page.posts.length};
+ }catch(e){if(e instanceof FetchError)return {code:"CHANNEL_REFUSED" as const,status:502 as const};throw e;}
+}
 // A new or changed hunt gets the recent matching offers (last 3 days) at
-// once, then whatever new comes in each round.
+// once, then whatever new comes in each round (a mirror, from the
+// channel's next posts).
 async function feedNow(env:Cloudflare.Env,id:string){
  const raw=await env.DB.prepare("SELECT id,user_id AS userId,kind,filters,channels FROM deals_hunt WHERE id=? AND active=1").bind(id).first();
  const hunt=huntRow.safeParse(raw);if(hunt.success)await feedHunt(env,hunt.data,Date.now()-3*DAY);
@@ -24,29 +49,40 @@ async function feedNow(env:Cloudflare.Env,id:string){
 
 export const huntsApi=new Hono<DealsApp>()
  .get("/",async c=>{
-  const rows=await c.env.DB.prepare(`SELECT id,kind,active,channels,filters,created_at AS createdAt FROM deals_hunt WHERE user_id=? AND kind IN(${kinds}) AND (retire_at IS NULL OR retire_at>?) ORDER BY created_at,id LIMIT 50`).bind(c.get("session").user.id,Date.now()).all<Row>();
+  const rows=await c.env.DB.prepare(`${select} WHERE h.user_id=? AND h.kind IN(${kinds}) AND (h.retire_at IS NULL OR h.retire_at>?) ORDER BY h.created_at,h.id LIMIT 50`).bind(c.get("session").user.id,Date.now()).all<Row>();
   return c.json({hunts:rows.results.map(view)});
  })
- .post("/",dealsWrite,validate("json",z.object({kind:z.enum(huntKinds),channelIds,filters:huntFilters}).strict()),async c=>{
+ .post("/mirror/check",dealsWrite,validate("json",z.object({channel:z.string().max(200)}).strict()),async c=>{
+  const checked=await checkChannel(c.req.valid("json").channel);
+  return "code" in checked?c.json({code:checked.code},checked.status):c.json(checked);
+ })
+ .post("/",dealsWrite,validate("json",z.object({kind:z.enum(allKinds),channelIds,filters:huntFilters,channel:z.string().max(200).optional()}).strict()),async c=>{
   const owner=c.get("session").user.id,input=c.req.valid("json"),now=Date.now();
-  if(!fits(input.kind,input.filters))return c.json({code:"INVALID"},400);
+  if(!fits(input.kind,input.filters)||(input.kind==="mirror")!==(input.channel!==undefined))return c.json({code:"INVALID"},400);
   // Nuuvem's sales earn only with the person's Rakuten ID.
   if(input.kind==="nuuvem_deals"&&!await affiliateOf(c.env,owner,"nuuvem"))return c.json({code:"NUUVEM_NOT_CONFIGURED"},409);
   if((await usableChannels(c.env.DB,owner,input.channelIds)).length!==new Set(input.channelIds).size)return c.json({code:"NOT_FOUND"},404);
-  const id=crypto.randomUUID();
-  const row=await c.env.DB.prepare("INSERT INTO deals_hunt(id,user_id,name,kind,source_id,filters,channels,created_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM deals_hunt WHERE user_id=? AND kind<>'mirror' AND (retire_at IS NULL OR retire_at>?))<? RETURNING id").bind(id,owner,names[input.kind],input.kind,huntSource[input.kind],JSON.stringify(input.filters),JSON.stringify([...new Set(input.channelIds)]),now,owner,now,dealsLimits.hunts).first();
-  if(!row)return c.json({code:"QUOTA"},409);
-  await feedNow(c.env,id);
+  let source:string=input.kind==="mirror"?"":huntSource[input.kind];
+  if(input.kind==="mirror"){
+   // One read for everyone who mirrors the same channel.
+   const checked=await checkChannel(input.channel??"");if("code" in checked)return c.json({code:checked.code},checked.status);
+   source=mirrorSourceId(checked.name);
+   await c.env.DB.prepare("INSERT INTO deals_source(id,kind,key,config,next_at,created_at) VALUES(?,'telegram',?,?,0,?) ON CONFLICT(id) DO UPDATE SET config=excluded.config").bind(source,source,JSON.stringify({title:checked.title}),now).run();
+  }
+  const id=crypto.randomUUID(),mirror=input.kind==="mirror";
+  const row=await c.env.DB.prepare(`INSERT INTO deals_hunt(id,user_id,name,kind,source_id,filters,channels,created_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM deals_hunt WHERE user_id=? AND kind${mirror?"=":"<>"}'mirror' AND (retire_at IS NULL OR retire_at>?))<? AND NOT EXISTS(SELECT 1 FROM deals_hunt WHERE user_id=? AND kind='mirror' AND source_id=? AND (retire_at IS NULL OR retire_at>?)) RETURNING id`).bind(id,owner,names[input.kind],input.kind,source,JSON.stringify(input.filters),JSON.stringify([...new Set(input.channelIds)]),now,owner,now,mirror?dealsLimits.mirrors:dealsLimits.hunts,owner,mirror?source:"",now).first();
+  if(!row)return mirror&&await c.env.DB.prepare("SELECT 1 FROM deals_hunt WHERE user_id=? AND kind='mirror' AND source_id=? AND (retire_at IS NULL OR retire_at>?)").bind(owner,source,now).first()?c.json({code:"MIRROR_EXISTS"},409):c.json({code:"QUOTA"},409);
+  if(!mirror)await feedNow(c.env,id);
   return c.json({id},201);
  })
  .patch("/:hunt",dealsWrite,validate("param",huntParam),validate("json",z.object({active:z.boolean().optional(),channelIds:channelIds.optional(),filters:huntFilters.optional()}).strict()),async c=>{
   const owner=c.get("session").user.id,id=c.req.valid("param").hunt,input=c.req.valid("json");
-  const current=await c.env.DB.prepare(`SELECT kind FROM deals_hunt WHERE id=? AND user_id=? AND kind IN(${kinds})`).bind(id,owner).first<{kind:HuntKind}>();
+  const current=await c.env.DB.prepare(`SELECT kind FROM deals_hunt WHERE id=? AND user_id=? AND kind IN(${kinds})`).bind(id,owner).first<{kind:Kind}>();
   if(!current)return c.json({code:"NOT_FOUND"},404);
   if(input.filters&&!fits(current.kind,input.filters))return c.json({code:"INVALID"},400);
   if(input.channelIds&&(await usableChannels(c.env.DB,owner,input.channelIds)).length!==new Set(input.channelIds).size)return c.json({code:"NOT_FOUND"},404);
   await c.env.DB.prepare("UPDATE deals_hunt SET active=coalesce(?,active),channels=coalesce(?,channels),filters=coalesce(?,filters) WHERE id=? AND user_id=?").bind(input.active===undefined?null:input.active?1:0,input.channelIds?JSON.stringify([...new Set(input.channelIds)]):null,input.filters?JSON.stringify(input.filters):null,id,owner).run();
-  if(input.active!==false)await feedNow(c.env,id);
+  if(input.active!==false&&current.kind!=="mirror")await feedNow(c.env,id);
   return c.json({ok:true});
  })
  .delete("/:hunt",validate("param",huntParam),async c=>{

@@ -4,7 +4,7 @@ import {apiJSON} from "./fetch";
 import {cleanLine,priceCents} from "./page";
 import {dealsAccess} from "./access";
 import {enqueue,affiliateOf,DAY} from "./store";
-import {nuuvemLink} from "./links";
+import {nuuvemLink,storeSchema} from "./links";
 import {readNuuvem,rakutenCredentials,isCredit} from "./nuuvem";
 
 // The global catalog: an offer is stored once, whoever finds it, by a hash
@@ -68,8 +68,9 @@ export function nuuvemPage(url:string,country:string){
  const page=new URL(url);page.pathname=page.pathname.replace(/^\/[a-z]{2}-[a-z]{2}(?=\/)/,`/${country}-${nuuvemLanguage(country)}`);return page.href;
 }
 // gamesOnly (Nuuvem) leaves out credits and currency packs; on unless off.
-// maxPrice is in reais, so only for Nuuvem's Brazil store.
-export const huntFilters=z.object({platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(100_000_00).optional(),gamesOnly:z.boolean().optional(),country:z.enum(nuuvemCountries).optional()}).strict();
+// maxPrice is in reais, so only for Nuuvem's Brazil store. stores (a
+// mirror) keeps only the posts of those stores.
+export const huntFilters=z.object({stores:z.array(storeSchema).max(storeSchema.options.length).optional(),platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(100_000_00).optional(),gamesOnly:z.boolean().optional(),country:z.enum(nuuvemCountries).optional()}).strict();
 export type HuntFilters=z.infer<typeof huntFilters>;
 export const huntKinds=["games_free","nuuvem_deals"] as const;
 export type HuntKind=(typeof huntKinds)[number];
