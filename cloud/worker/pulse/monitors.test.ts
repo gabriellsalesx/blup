@@ -9,6 +9,7 @@ vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})
 import {pulseApi} from "./api";
 import {checkDue} from "./scheduler";
 import {publicPage,servePulsePage} from "./public";
+import {renderIncidentHistory} from "./public-html";
 let db:TestD1,storage:TestD1,store:MonitorStore;
 beforeEach(()=>{
  vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
@@ -225,10 +226,21 @@ it("shows the page's logo, links and title choice, and a badge and favicon with 
  const logo=await servePulsePage(new Request(`https://pulse.audit.invalid/acme-status/logo-dark?v=${version}`),state.env);expect(logo?.headers.get("content-type")).toBe("image/webp");expect(logo?.headers.get("cache-control")).toContain("immutable");
  expect((await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/logo-light"),state.env))?.status).toBe(404);
  const badge=await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/badge?theme=dark"),state.env);expect(badge?.headers.get("content-security-policy")).toContain("frame-ancestors *");
- const badgeHtml=await badge?.text()??"";expect(badgeHtml).toContain('href="./" target="_blank"');expect(badgeHtml).toContain("color:#f5f5f5");
+ const badgeHtml=await badge?.text()??"";
+ // The badge speaks the visitor's language, unless the code fixes one.
+ const visitor=(lang:string,query="")=>servePulsePage(new Request(`https://pulse.audit.invalid/acme-status/badge${query}`,{headers:{"accept-language":lang}}),state.env).then(r=>r?.text());
+ expect(await visitor("es-ES,es;q=0.9")).toContain('<html lang="es">');expect(await visitor("es-ES","?lang=pt")).toContain('<html lang="pt">');expect(badge?.headers.get("vary")).toBe("Accept-Language");expect(badgeHtml).toContain('href="./" target="_blank"');expect(badgeHtml).toContain("color:#f5f5f5");
  // A PNG, where the browser could not make WebP.
  const png=new Uint8Array(40);png.set([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82]);new DataView(png.buffer).setUint32(16,200);new DataView(png.buffer).setUint32(20,60);
  const light=pulseApi.fetch(new Request(`https://cloud.audit.invalid/pages/${id}/logo/light`,{method:"PUT",headers:{authorization:"Bearer alice","content-type":"image/png"},body:png}),state.env);expect((await light).status).toBe(201);
  expect((await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/logo-light"),state.env))?.headers.get("content-type")).toBe("image/png");
  expect((await request(`/pages/${id}/logo/dark`,"DELETE")).status).toBe(200);expect((await servePulsePage(new Request(`https://pulse.audit.invalid/acme-status/logo-dark?v=${version}`),state.env))?.status).toBe(404);
+});
+it("folds a month's incidents after the first days, with a show more",()=>{
+ const day=Date.UTC(2026,10,10),incidents=Array.from({length:8},(_,i)=>({id:crypto.randomUUID(),title:`Incident ${i}`,state:"resolved",impact:"degraded",createdAt:new Date(day-i*86_400_000).toISOString(),updatedAt:new Date(day-i*86_400_000).toISOString(),services:[],updates:[]}));
+ const page={title:"Acme",language:"en" as const,historyDays:90,components:[],incidents:[],maintenance:[],showTitle:true,links:[],logos:{light:null,dark:null}};
+ const months=[{key:"2026-11",start:Date.UTC(2026,10,1),end:Date.UTC(2026,11,1)},{key:"2026-10",start:Date.UTC(2026,9,1),end:Date.UTC(2026,10,1)},{key:"2026-09",start:Date.UTC(2026,8,1),end:Date.UTC(2026,9,1)}];
+ const html=renderIncidentHistory(page,{months,older:null,newer:null},incidents,day);
+ const [visible,folded]=html.split('<details class="more">');
+ expect(visible.match(/class="inc"/g)).toHaveLength(5);expect(folded).toContain("Show 3 more incidents");expect(folded.match(/class="inc"/g)).toHaveLength(3);
 });

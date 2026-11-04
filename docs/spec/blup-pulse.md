@@ -805,7 +805,7 @@ Um id que não está na página responde 404.
 A página `incidents` (`/<slug>/incidents`, ou `/incidents` no domínio próprio) mostra os incidentes anteriores em janelas de três meses, do mais novo para o mais antigo:
 - **Janela:** `?to=AAAA-MM` é o último mês; sem ele, ou num mês futuro, vale o atual.
 - **Setas:** a da esquerda vai para os três meses anteriores e a da direita para os seguintes. A da esquerda some quando a janela já chega ao limite que o plano guarda; a da direita, quando a janela já está no mês atual.
-- **Meses:** cada mês é um card. Dentro dele, os dias com incidente, com a contagem ("3 incidentes"), e os mesmos cards da página de status. Um mês vazio diz "Nenhum incidente relatado".
+- **Meses:** cada mês é um card. Mostra os primeiros dias até juntar 5 incidentes; o resto do mês abre em "Mostrar mais N incidentes" (`<details>`, sem script). Dentro dele, os dias com incidente, com a contagem ("3 incidentes"), e os mesmos cards da página de status. Um mês vazio diz "Nenhum incidente relatado".
 - **Acesso:** o card de Incidentes da página de status tem o link "Incidentes anteriores", e "Voltar" na página de um incidente leva a ela.
 
 O histórico e a página de um incidente consultam os incidentes no D1 (`public-incidents.ts`), dentro do que o plano guarda e com a mesma projeção fechada, sem o limite dos 20 da página principal. O histórico mostra até 200 incidentes por janela e até 50 atualizações por incidente.
@@ -829,3 +829,7 @@ Cada serviço de uma página de status pode ter uma explicação opcional: o que
 - **Regras:** até 200 caracteres, numa linha só. A coluna é `pulse_component.description` (migração `0027`, vazia por padrão), e as páginas a aceitam em `components[].description` ao criar e editar.
 - **Na página pública:** quando preenchida, aparece um ícone de informação (Lucide `info`) ao lado do nome do serviço. Ele abre um card com o texto ao passar o mouse, pelo teclado e, no celular, com um toque.
 - **Posição do card:** fica preso à linha do serviço, alinhado à esquerda, para não sair da tela. O texto vai escapado, no card e no `aria-label`.
+
+## Idioma do selo
+
+Um iframe não consegue ler o idioma do site em que foi colocado, então o selo usa o idioma do navegador de quem visita: o `Accept-Language` do pedido, em português, inglês ou espanhol, e inglês para os outros idiomas. `?lang=pt|en|es` no endereço fixa um idioma. Sem nenhum dos dois, vale o idioma da página. A resposta leva `Vary: Accept-Language`. No painel, a prévia do selo usa o idioma do painel, e o código para copiar fica sem `lang`, para se adaptar a cada visitante.

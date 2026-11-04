@@ -1,4 +1,4 @@
-import {languageOf,languageSchema} from "../../shared/language";
+import {languageOf,languageSchema,acceptedLanguage} from "../../shared/language";
 import {pulseAccess,sha256} from "./limits";
 import {z} from "zod";
 import {pageSlug,serviceStatus,maintenanceStateAt} from "./page-rules";
@@ -64,8 +64,10 @@ export async function servePulsePage(req:Request,env:Cloudflare.Env,slugOverride
  const headers={"cache-control":"public, max-age=0, must-revalidate","Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
  const respond=async(body:string,type:string,extra:Record<string,string>={})=>{const etag=`"${await sha256(body)}"`,responseHeaders={...headers,...extra,etag,"content-type":type};return new Response(req.method==="HEAD"||req.headers.get("if-none-match")===etag?null:body,{status:req.headers.get("if-none-match")===etag?304:200,headers:responseHeaders});};
  if(url.pathname.endsWith("status.json")||slugOverride)return respond(JSON.stringify(page),"application/json; charset=utf-8");
- // The badge is meant for other sites' iframes.
- if(url.pathname.endsWith("/badge")){const body=renderBadge(page,badgeTheme.parse(url.searchParams.get("theme")));const etag=`"${await sha256(body)}"`;return new Response(req.method==="HEAD"||req.headers.get("if-none-match")===etag?null:body,{status:req.headers.get("if-none-match")===etag?304:200,headers:{...headers,etag,"content-type":"text/html; charset=utf-8","Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors *; base-uri 'none'; form-action 'none'"}});}
+ // The badge is meant for other sites' iframes. An iframe cannot read the
+ // site's language, so it speaks the visitor's (their browser's), unless
+ // the code fixes one (?lang=); without either, the page's.
+ if(url.pathname.endsWith("/badge")){const asked=req.headers.get("accept-language"),language=languageSchema.safeParse(url.searchParams.get("lang")).data??(asked?acceptedLanguage(asked):page.language);const body=renderBadge(page,badgeTheme.parse(url.searchParams.get("theme")),language);const etag=`"${await sha256(body)}"`;return new Response(req.method==="HEAD"||req.headers.get("if-none-match")===etag?null:body,{status:req.headers.get("if-none-match")===etag?304:200,headers:{...headers,etag,"content-type":"text/html; charset=utf-8",vary:"Accept-Language","Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors *; base-uri 'none'; form-action 'none'"}});}
  const logo=/\/logo-(light|dark)$/.exec(url.pathname);
  if(logo){
   const variant=logoVariant.parse(logo[1]),version=page.logos[variant];if(!version)return new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});

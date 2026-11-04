@@ -102,6 +102,7 @@ h1{font-size:30px;line-height:1.2;margin:22px 0 8px;font-weight:700;letter-spaci
 .inc-top{padding:24px 24px 20px}.inc-top h1{margin:12px 0 6px;font-size:26px;text-align:left}.inc-services{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:16px 24px;border-top:1px solid var(--line)}.inc-services>span{color:var(--muted);margin-right:4px}.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;background:var(--head);border:1px solid var(--line);font-size:14px}
 .history-top{text-align:center;margin-bottom:32px}.history-top h1{margin:0 0 14px}.window{display:inline-flex;align-items:center;gap:14px;color:var(--muted)}.arrow{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px;background:var(--head);border:1px solid var(--line);color:var(--text)}.arrow:hover{background:var(--line)}.arrow.off{opacity:.4}
 .month-day{display:flex;justify-content:space-between;gap:12px;padding:12px 20px;background:var(--head);border-top:1px solid var(--line);color:var(--muted);font-size:14px}.head+.month-day{border-top:0}.month-list{padding:12px 20px}.month-list .inc{margin:0 -12px}
+.more{border-top:1px solid var(--line)}.more>summary{display:block;padding:12px 20px;color:var(--muted);font-size:14px;font-weight:500;text-align:center;cursor:pointer;list-style:none}.more>summary::-webkit-details-marker{display:none}.more>summary:hover{color:var(--text);background:var(--head)}.more[open]>summary{display:none}
 .empty-month{display:flex;align-items:center;justify-content:center;gap:8px;margin:0;padding:40px 20px;color:var(--muted)}
 .head-link{color:var(--muted);font-size:14px;font-weight:500;text-decoration:none}.head-link:hover{color:var(--text)}
 .inc-body{padding:20px 24px 24px;border-top:1px solid var(--line);background:var(--head);border-radius:0 0 12px 12px}.services{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 8px;font-size:13px;color:var(--muted)}.incident h4{margin:0 0 6px;font-size:15px}.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:1px;background:var(--head);border:1px solid var(--line)}
@@ -182,12 +183,13 @@ function headerOf(page:PublicStatus,lang:Language,t:(key:"language"|"theme"|"lig
  return `<header class="site-header"><div class="bar"><a class="brand" href="${page.home?escape(page.home):root||"./"}"${page.showTitle?"":` aria-label="${escape(page.title)}"`}>${logo}${page.showTitle?`<span>${escape(page.title)}</span>`:""}</a>${nav}<div class="actions">${languages}${themes}${menu}</div></div></header>`;
 }
 // The badge for another site (in an iframe): the state's mark and words,
-// linking to the page. Light, dark or following the visitor's screen.
-export function renderBadge(page:PublicStatus,theme:"light"|"dark"|"auto"){
- const state=overallOf(page),label=translate(page.language,state.key);
+// linking to the page. Light, dark or following the visitor's screen, in
+// `language` (the visitor's, chosen when it is served).
+export function renderBadge(page:PublicStatus,theme:"light"|"dark"|"auto",language:Language=page.language){
+ const state=overallOf(page),label=translate(language,state.key);
  const ink={light:"#171717",dark:"#f5f5f5"};
  const color=theme==="auto"?`color:${ink.light}}@media (prefers-color-scheme:dark){a{color:${ink.dark}}`:`color:${ink[theme]}}`;
- return `<!doctype html><html lang="${page.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(label)}</title><style>html,body{margin:0;background:transparent;overflow:hidden}a{display:inline-flex;align-items:center;gap:8px;height:30px;font:500 14px/1 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-decoration:none;white-space:nowrap;-webkit-font-smoothing:antialiased;${color}a:hover span:last-child{text-decoration:underline}.dot{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:999px;background:${toneColor[state.tone]};color:#fff}</style></head><body><a href="./" target="_blank" rel="noopener"><span class="dot">${svg(state.tone,12,3)}</span><span>${escape(label)}</span></a></body></html>`;
+ return `<!doctype html><html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(label)}</title><style>html,body{margin:0;background:transparent;overflow:hidden}a{display:inline-flex;align-items:center;gap:8px;height:30px;font:500 14px/1 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-decoration:none;white-space:nowrap;-webkit-font-smoothing:antialiased;${color}a:hover span:last-child{text-decoration:underline}.dot{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:999px;background:${toneColor[state.tone]};color:#fff}</style></head><body><a href="./" target="_blank" rel="noopener"><span class="dot">${svg(state.tone,12,3)}</span><span>${escape(label)}</span></a></body></html>`;
 }
 // The pieces an incident is drawn with, in the list and on its own page:
 // its pill (resolved in green; open, by its impact) and an update's card.
@@ -232,6 +234,7 @@ export function renderIncidentPage(page:PublicStatus,i:PublicIncident,now=Date.n
 // The page's previous incidents, three months at a time (newest first): a
 // card per month, its incidents by day with how many, or that none was
 // reported; arrows go to the months before and after.
+const MONTH_FIRST=5;
 export type IncidentWindow={months:{key:string;start:number;end:number}[];older:string|null;newer:string|null};
 export function renderIncidentHistory(page:PublicStatus,window:IncidentWindow,incidents:PublicIncident[],now=Date.now(),language:Language=page.language):string{
  const lang=language,t=<K extends MessageKey>(key:K,...args:TranslationArgs<(typeof messages)[K][0]>)=>translate(lang,key,...args);
@@ -241,7 +244,13 @@ export function renderIncidentHistory(page:PublicStatus,window:IncidentWindow,in
  const months=window.months.map(m=>{
   const list=incidents.filter(i=>{const at=Date.parse(i.createdAt);return at>=m.start&&at<m.end;});
   const days=[...new Set(list.map(i=>dayOf(Date.parse(i.createdAt))))].sort((a,b)=>b-a);
-  const body=days.length?days.map(day=>{const items=list.filter(i=>dayOf(Date.parse(i.createdAt))===day);return `<div class="month-day"><span>${escape(dayName.format(new Date(day*DAY)))}</span><span>${escape(items.length===1?t("pulseIncidentOne"):t("pulseIncidentMany",{count:items.length}))}</span></div><div class="month-list">${items.map(incidentCard).join("")}</div>`;}).join(""):`<p class="empty-month">${lucide(marks.done,"",18)}${escape(t("pulseNoIncidentsDay"))}</p>`;
+  const dayBlock=(day:number)=>{const items=list.filter(i=>dayOf(Date.parse(i.createdAt))===day);return `<div class="month-day"><span>${escape(dayName.format(new Date(day*DAY)))}</span><span>${escape(items.length===1?t("pulseIncidentOne"):t("pulseIncidentMany",{count:items.length}))}</span></div><div class="month-list">${items.map(incidentCard).join("")}</div>`;};
+  // The first days until five incidents show; the rest of the month opens
+  // with "Show more" (a details element: no script).
+  let shown=0;const first:number[]=[],rest:number[]=[];
+  for(const day of days){if(shown<MONTH_FIRST){first.push(day);shown+=list.filter(i=>dayOf(Date.parse(i.createdAt))===day).length;}else rest.push(day);}
+  const more=list.length-shown;
+  const body=days.length?first.map(dayBlock).join("")+(rest.length?`<details class="more"><summary>${escape(more===1?t("pulseShowMoreOne"):t("pulseShowMore",{count:more}))}</summary>${rest.map(dayBlock).join("")}</details>`:""):`<p class="empty-month">${lucide(marks.done,"",18)}${escape(t("pulseNoIncidentsDay"))}</p>`;
   return `<section class="card"><div class="head"><h2>${escape(monthName.format(new Date(m.start)))}</h2></div>${body}</section>`;
  }).join("");
  const arrow=(to:string|null,mark:string,label:string)=>to?`<a class="arrow" href="incidents?to=${to}&amp;lang=${lang}" aria-label="${escape(label)}">${lucide(mark,"",18)}</a>`:`<span class="arrow off" aria-hidden="true">${lucide(mark,"",18)}</span>`;
