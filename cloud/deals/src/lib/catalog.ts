@@ -35,17 +35,17 @@ export function magaluFromLink(raw:string):{promoterId:string;showcase:string|nu
  const segment=/(?:^|\.)magazinevoce\.com\.br$/.test(url.hostname)?url.pathname.split("/")[1]:null,showcase=url.searchParams.get("showcase")??segment??null;
  return {promoterId,showcase:showcase&&/^magazine[a-z0-9_-]{1,60}$/i.test(showcase)?showcase:null};
 }
-export type HuntOption={id:HuntKind|"stores"|"mirror";title:PlainMessageKey;help:PlainMessageKey;art:string;soon?:boolean};
+export type HuntOption={id:HuntKind;title:PlainMessageKey;help:PlainMessageKey;art:string;soon?:boolean};
 // Each kind has its own drawing of the coral Blup (by Aquarela); the kind's
 // name always sits beside it, so the image is decorative (alt="").
 export const huntKinds:HuntOption[]=[
  {id:"games_free",title:"dealsGamesFree",help:"dealsGamesFreeHelp",art:gamesFreeArt},
  // Nuuvem's sales use the game-sales drawing.
  {id:"nuuvem_deals",title:"dealsNuuvemDeals",help:"dealsNuuvemDealsHelp",art:gamesDealsArt},
- {id:"stores",title:"dealsStoresKind",help:"dealsStoresKindHelp",art:storesArt,soon:true},
+ {id:"store_deals",title:"dealsStoresKind",help:"dealsStoresKindHelp",art:storesArt},
  {id:"mirror",title:"dealsMirrorKind",help:"dealsMirrorKindHelp",art:mirrorArt},
 ];
-const huntNames={games_free:"dealsGamesFree",nuuvem_deals:"dealsNuuvemDeals",mirror:"dealsMirrorKind"} as const satisfies Record<HuntKind,PlainMessageKey>;
+const huntNames={games_free:"dealsGamesFree",nuuvem_deals:"dealsNuuvemDeals",store_deals:"dealsStoresKind",mirror:"dealsMirrorKind"} as const satisfies Record<HuntKind,PlainMessageKey>;
 export const huntName=(kind:HuntKind)=>huntNames[kind];
 // Nuuvem's stores by country, named in the panel's language. Its catalog
 // is Brazil's (in reais): elsewhere the post gives the discount and the
@@ -64,6 +64,8 @@ export const platforms=[
 ] as const satisfies readonly {id:Platform;label:string}[];
 export const platformsFor=(kind:HuntKind)=>kind==="games_free"?platforms:[];
 export const platformLabel=(id:string)=>platforms.find(p=>p.id===id)?.label??id;
+// The stores a store hunt searches, with the person's own API keys.
+export const shopStores=["shopee","aliexpress"] as const satisfies readonly NonNullable<Hunt["filters"]["store"]>[];
 // What the hunt form gives back (POST /hunts, and PATCH without the kind).
 export type Platform=NonNullable<Hunt["filters"]["platforms"]>[number];
 export type HuntInput={kind:HuntKind;channelIds:string[];filters:Hunt["filters"];channel?:string};

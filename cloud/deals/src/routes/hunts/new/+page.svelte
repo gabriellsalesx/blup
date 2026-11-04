@@ -18,4 +18,4 @@
 
 <div class="mb-4"><BackLink href={resolve("/hunts")} label={t("dealsHunts")}/></div>
 <PageHeader title={t("dealsNewHuntTitle")} lead={t("dealsNewHuntLead")}/>
-<HuntForm channels={data.channels} {busy} submitLabel={t("dealsCreateHunt")} onsubmit={create}/>
+<HuntForm channels={data.channels} configured={data.configured} {busy} submitLabel={t("dealsCreateHunt")} onsubmit={create}/>

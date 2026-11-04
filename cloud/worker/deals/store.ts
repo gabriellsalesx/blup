@@ -48,3 +48,13 @@ export async function enqueue(db:D1Database,input:{owner:string;offerId:string;c
 export async function postsOn(db:D1Database,owner:string,day:string){
  return (await db.prepare("SELECT count(*) AS n FROM deals_post WHERE user_id=? AND day=?").bind(owner,day).first<{n:number}>())?.n??0;
 }
+// Whether the person already posted this product lately: a priced one in
+// the last 30 days at a price not more than 1% above this one, an unpriced
+// one in the last 7 days. The same product comes back only cheaper.
+export async function postedLately(db:D1Database,owner:string,store:string,externalId:string,price:number|null,now=Date.now()){
+ if(price!==null){
+  const best=await db.prepare("SELECT min(o.price) AS price FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id WHERE p.user_id=? AND o.store=? AND o.external_id=? AND p.created_at>?").bind(owner,store,externalId,now-30*DAY).first<{price:number|null}>();
+  return best?.price!=null&&price>=best.price*0.99;
+ }
+ return !!await db.prepare("SELECT 1 FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id WHERE p.user_id=? AND o.store=? AND o.external_id=? AND p.created_at>? LIMIT 1").bind(owner,store,externalId,now-7*DAY).first();
+}

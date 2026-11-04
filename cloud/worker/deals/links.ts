@@ -95,11 +95,13 @@ export function terabyteLink(url:URL,partner:string,utmMedium?:string,utmCampaig
 const hex=(bytes:ArrayBuffer)=>Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
 // Shopee Affiliate Open API (GraphQL, Brazil): the request is signed with
 // SHA256(appId + timestamp + payload + secret).
-export async function shopeeLink(url:URL,appId:string,secret:string,send:typeof fetch=fetch,now=Date.now()):Promise<string>{
- const origin=new URL(url.origin+url.pathname).href,timestamp=Math.floor(now/1000);
- const payload=JSON.stringify({query:"mutation($url:String!){generateShortLink(input:{originUrl:$url,subIds:[\"blupdeals\"]}){shortLink}}",variables:{url:origin}});
+export async function shopeeCall(appId:string,secret:string,query:string,variables:Record<string,unknown>,send:typeof fetch=fetch,now=Date.now()):Promise<unknown>{
+ const timestamp=Math.floor(now/1000),payload=JSON.stringify({query,variables});
  const signature=hex(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(`${appId}${timestamp}${payload}${secret}`)));
- const body=await apiJSON("https://open-api.affiliate.shopee.com.br/graphql",{method:"POST",headers:{"content-type":"application/json",authorization:`SHA256 Credential=${appId}, Timestamp=${timestamp}, Signature=${signature}`},body:payload},send);
+ return apiJSON("https://open-api.affiliate.shopee.com.br/graphql",{method:"POST",headers:{"content-type":"application/json",authorization:`SHA256 Credential=${appId}, Timestamp=${timestamp}, Signature=${signature}`},body:payload},send);
+}
+export async function shopeeLink(url:URL,appId:string,secret:string,send:typeof fetch=fetch,now=Date.now()):Promise<string>{
+ const body=await shopeeCall(appId,secret,"mutation($url:String!){generateShortLink(input:{originUrl:$url,subIds:[\"blupdeals\"]}){shortLink}}",{url:new URL(url.origin+url.pathname).href},send,now);
  const parsed=z.object({data:z.object({generateShortLink:z.object({shortLink:z.url().max(512)})})}).safeParse(body);
  if(!parsed.success||!/^https:\/\/(?:s\.)?shope(?:e\.com\.br|\.ee)\//.test(parsed.data.data.generateShortLink.shortLink))throw new FetchError("FETCH_FAILED");
  return parsed.data.data.generateShortLink.shortLink;
@@ -125,11 +127,15 @@ export const aliexpressResponse=z.object({aliexpress_affiliate_link_generate_res
 export function aliexpressHost(raw:string){
  try{const u=new URL(raw),host=u.hostname.toLowerCase();return u.protocol==="https:"&&!u.username&&!u.password&&!u.port&&(host==="aliexpress.com"||host.endsWith(".aliexpress.com"));}catch{return false;}
 }
+// One signed call to the IOP gateway: the method and its parameters.
+export async function aliexpressCall(appKey:string,appSecret:string,method:string,args:Record<string,string>,send:typeof fetch=fetch,now=Date.now()):Promise<unknown>{
+ const params:Record<string,string>={app_key:appKey,method,sign_method:"sha256",timestamp:String(now),...args};
+ const query=new URLSearchParams({...params,sign:await aliexpressSign(params,appSecret)});
+ return apiJSON(`https://api-sg.aliexpress.com/sync?${query}`,{method:"POST"},send);
+}
 export async function aliexpressLink(url:URL,appKey:string,appSecret:string,trackingId:string,send:typeof fetch=fetch,now=Date.now()):Promise<string>{
  const item=/\/item\/([0-9]{6,24})\.html/.exec(url.pathname)?.[1],source=item?`https://www.aliexpress.com/item/${item}.html`:new URL(url.origin+url.pathname).href;
- const params:Record<string,string>={app_key:appKey,method:"aliexpress.affiliate.link.generate",sign_method:"sha256",timestamp:String(now),promotion_link_type:"0",source_values:source,tracking_id:trackingId};
- const query=new URLSearchParams({...params,sign:await aliexpressSign(params,appSecret)});
- const body=await apiJSON(`https://api-sg.aliexpress.com/sync?${query}`,{method:"POST"},send);
+ const body=await aliexpressCall(appKey,appSecret,"aliexpress.affiliate.link.generate",{promotion_link_type:"0",source_values:source,tracking_id:trackingId},send,now);
  const parsed=aliexpressResponse.safeParse(body);
  const links=parsed.success?parsed.data.aliexpress_affiliate_link_generate_response.resp_result.result.promotion_links:null;
  const link=links?(Array.isArray(links)?links:links.promotion_link)[0].promotion_link:null;

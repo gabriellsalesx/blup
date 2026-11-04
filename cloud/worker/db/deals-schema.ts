@@ -54,7 +54,8 @@ export const dealsOffer=sqliteTable("deals_offer",{
  title:text("title").notNull(),url:text("url").notNull(),imageUrl:text("image_url"),price:integer("price"),originalPrice:integer("original_price"),currency:text("currency"),
  firstSeenAt:integer("first_seen_at").notNull(),lastSeenAt:integer("last_seen_at").notNull(),expiresAt:integer("expires_at"),
  // kind: product (a pasted link), video (a TikTok video's news),
- // game_free (GamerPower) or nuuvem_deal (Nuuvem's catalog). platforms:
+ // game_free (GamerPower), nuuvem_deal (Nuuvem's catalog) or store_deal
+ // (a store hunt's find, Shopee or AliExpress). platforms:
  // JSON list of the panel's platform ids.
  // discount: percent off. credit: the source the post must credit.
  kind:text("kind").notNull().default("product"),platforms:text("platforms").notNull().default("[]"),discount:integer("discount"),credit:text("credit"),

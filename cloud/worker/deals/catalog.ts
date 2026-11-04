@@ -10,7 +10,7 @@ import {readNuuvem,rakutenCredentials,isCredit} from "./nuuvem";
 // The global catalog: an offer is stored once, whoever finds it, by a hash
 // of where it comes from and what it is. Each price change goes to the
 // history (an honest "before" price later).
-export type OfferInput={key:string;store:string;externalId:string|null;sourceId:string|null;title:string;url:string;imageUrl:string|null;price:number|null;originalPrice:number|null;currency:string|null;kind:"product"|"game_free"|"video"|"nuuvem_deal";platforms:string[];discount:number|null;credit:string|null;expiresAt:number|null};
+export type OfferInput={key:string;store:string;externalId:string|null;sourceId:string|null;title:string;url:string;imageUrl:string|null;price:number|null;originalPrice:number|null;currency:string|null;kind:"product"|"game_free"|"video"|"nuuvem_deal"|"store_deal";platforms:string[];discount:number|null;credit:string|null;expiresAt:number|null};
 export type StoredOffer={id:string;isNew:boolean};
 export async function upsertOffer(db:D1Database,o:OfferInput,now=Date.now()):Promise<StoredOffer>{
  const hash=await sha256(o.key);
@@ -68,9 +68,12 @@ export function nuuvemPage(url:string,country:string){
  const page=new URL(url);page.pathname=page.pathname.replace(/^\/[a-z]{2}-[a-z]{2}(?=\/)/,`/${country}-${nuuvemLanguage(country)}`);return page.href;
 }
 // gamesOnly (Nuuvem) leaves out credits and currency packs; on unless off.
-// maxPrice is in reais, so only for Nuuvem's Brazil store. stores (a
-// mirror) keeps only the posts of those stores.
-export const huntFilters=z.object({stores:z.array(storeSchema).max(storeSchema.options.length).optional(),platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(100_000_00).optional(),gamesOnly:z.boolean().optional(),country:z.enum(nuuvemCountries).optional()}).strict();
+// maxPrice is in reais, so only for Nuuvem's Brazil store and the stores'
+// sales. stores (a mirror) keeps only the posts of those stores. store and
+// keywords: the store a store hunt searches (with the person's own API
+// keys) and what it searches for.
+export const shopStores=["shopee","aliexpress"] as const;
+export const huntFilters=z.object({stores:z.array(storeSchema).max(storeSchema.options.length).optional(),store:z.enum(shopStores).optional(),keywords:z.array(z.string().trim().min(2).max(60).regex(/^[^\u0000-\u001f\u007f]+$/)).min(1).max(5).optional(),platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(100_000_00).optional(),gamesOnly:z.boolean().optional(),country:z.enum(nuuvemCountries).optional()}).strict();
 export type HuntFilters=z.infer<typeof huntFilters>;
 export const huntKinds=["games_free","nuuvem_deals"] as const;
 export type HuntKind=(typeof huntKinds)[number];
@@ -159,5 +162,7 @@ export async function dealsCleanup(env:Cloudflare.Env,historyDays:number,now=Dat
   env.DB.prepare("DELETE FROM deals_offer WHERE last_seen_at<? AND NOT EXISTS(SELECT 1 FROM deals_post WHERE offer_id=deals_offer.id)").bind(cutoff),
   env.DB.prepare("DELETE FROM deals_telegram_link WHERE expires_at<?").bind(now-DAY),
   env.DB.prepare("DELETE FROM deals_telegram_update WHERE received_at<?").bind(now-DAY),
+  // A store hunt's own reading goes with the hunt.
+  env.DB.prepare("DELETE FROM deals_source WHERE kind IN('shopee','aliexpress') AND NOT EXISTS(SELECT 1 FROM deals_hunt WHERE source_id=deals_source.id)"),
  ]);
 }

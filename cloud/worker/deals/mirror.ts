@@ -4,7 +4,7 @@ import {cleanLine,decodeEntities,pageInfo,priceCents} from "./page";
 import {convertLink,isShortLink,storeOf,type Store} from "./links";
 import {upsertOffer,huntFilters,type HuntFilters} from "./catalog";
 import {dealsAccess} from "./access";
-import {affiliateOf,enqueue,DAY} from "./store";
+import {affiliateOf,enqueue,postedLately,DAY} from "./store";
 
 // Mirroring a public Telegram channel: its public preview (t.me/s/<name>),
 // with no login, session or userbot, read once for everyone who mirrors
@@ -91,10 +91,7 @@ async function deliver(env:Cloudflare.Env,hunt:Hunt,product:Product,offerId:stri
  if(hunt.filters.stores?.length&&!hunt.filters.stores.includes(product.store))return 0;
  const affiliate=await affiliateOf(env,hunt.userId,product.store);if(!affiliate)return 0;
  const converted=await convertLink(product.url,affiliate,send);if(!converted.affiliate)return 0;
- if(product.price!==null){
-  const best=await env.DB.prepare("SELECT min(o.price) AS price FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id WHERE p.user_id=? AND o.store=? AND o.external_id=? AND p.created_at>?").bind(hunt.userId,product.store,productKey(product.url),now-30*DAY).first<{price:number|null}>();
-  if(best?.price!=null&&product.price>=best.price*0.99)return 0;
- }else if(await env.DB.prepare("SELECT 1 FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id WHERE p.user_id=? AND o.store=? AND o.external_id=? AND p.created_at>? LIMIT 1").bind(hunt.userId,product.store,productKey(product.url),now-7*DAY).first())return 0;
+ if(await postedLately(env.DB,hunt.userId,product.store,productKey(product.url),product.price,now))return 0;
  const queued=await enqueue(env.DB,{owner:hunt.userId,offerId,channels:hunt.channels,link:converted.link,affiliate:true,huntId:hunt.id,sendAt:now,now});
  if(queued)await env.DB.prepare("UPDATE deals_hunt SET last_post_at=? WHERE id=?").bind(now,hunt.id).run();
  return queued;

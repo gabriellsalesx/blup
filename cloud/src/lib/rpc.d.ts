@@ -10168,11 +10168,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 hunts: {
                     id: string;
-                    kind: "games_free" | "nuuvem_deals" | "mirror";
+                    kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     active: boolean;
                     channelIds: string[];
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10183,6 +10185,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     mirror: {
                         channel: string;
                         title: string | null;
+                        error: string | null;
+                    } | null;
+                    shop: {
                         error: string | null;
                     } | null;
                 }[];
@@ -10251,10 +10256,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $post: {
             input: {
                 json: {
-                    kind: "games_free" | "nuuvem_deals" | "mirror";
+                    kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10276,10 +10283,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "nuuvem_deals" | "mirror";
+                    kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10298,10 +10307,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "nuuvem_deals" | "mirror";
+                    kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10319,10 +10330,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "nuuvem_deals" | "mirror";
+                    kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10340,10 +10353,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "nuuvem_deals" | "mirror";
+                    kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10361,10 +10376,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "nuuvem_deals" | "mirror";
+                    kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10382,10 +10399,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "nuuvem_deals" | "mirror";
+                    kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10415,6 +10434,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds?: string[] | undefined;
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10443,6 +10464,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds?: string[] | undefined;
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10468,6 +10491,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds?: string[] | undefined;
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10496,6 +10521,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds?: string[] | undefined;
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10521,6 +10548,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds?: string[] | undefined;
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10545,6 +10574,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds?: string[] | undefined;
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
@@ -10569,6 +10600,34 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds?: string[] | undefined;
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            } & {
+                json: {
+                    active?: boolean | undefined;
+                    channelIds?: string[] | undefined;
+                    filters?: {
+                        stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
+                        store?: "shopee" | "aliexpress" | undefined;
+                        keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;

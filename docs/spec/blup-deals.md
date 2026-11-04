@@ -42,7 +42,7 @@ Filtros de jogos: `minDiscount` é inteiro de 0 a 100; `maxPrice` usa centavos d
 
 O link Telegram abre o chat privado do bot; este oferece botões para adicionar como administrador a canal ou grupo. O candidato não é esse chat privado: é o destino em que a mesma pessoa do Telegram adicionou o bot com status `administrator`. Isso vale para canal, grupo e supergrupo; no canal, `can_post_messages` precisa vir explicitamente `true`. Membro comum, restrito ou admin sem esse direito no canal não vira candidato. Perder esses direitos desativa o destino vinculado com `DESTINATION_DISABLED`.
 
-Coleta global de GamerPower/CheapShark ocorre uma vez por rodada de 30 minutos, com catálogo `deals_offer` e dedupe. O post leva foto quando disponível, título, preços quando conhecidos, link curto e aviso de afiliado quando o post está marcado como afiliado. GamerPower e CheapShark têm crédito com link ativo; CheapShark mantém também seu próprio link principal, sem troca pelo afiliado do usuário. A fila é `deals_post`, com 100 publicações/dia **somadas entre destinos**, intervalo mínimo de dois minutos no mesmo canal e sem repetir a oferta naquele canal. Secrets do bot próprio: `DEALS_TELEGRAM_TOKEN` e `DEALS_TELEGRAM_WEBHOOK_SECRET`, sem valores nos docs. O contrato inicial menciona cupom; a F1 entregue não tem campo ou extração estruturada de cupom.
+Coleta global de GamerPower/CheapShark (a CheapShark foi removida depois, em 04/11/2026) ocorre uma vez por rodada de 30 minutos, com catálogo `deals_offer` e dedupe. O post leva foto quando disponível, título, preços quando conhecidos, link curto e aviso de afiliado quando o post está marcado como afiliado. GamerPower e CheapShark têm crédito com link ativo; CheapShark mantém também seu próprio link principal, sem troca pelo afiliado do usuário. A fila é `deals_post`, com 100 publicações/dia **somadas entre destinos**, intervalo mínimo de dois minutos no mesmo canal e sem repetir a oferta naquele canal. Secrets do bot próprio: `DEALS_TELEGRAM_TOKEN` e `DEALS_TELEGRAM_WEBHOOK_SECRET`, sem valores nos docs. O contrato inicial menciona cupom; a F1 entregue não tem campo ou extração estruturada de cupom.
 
 No painel, F1 cobre destinos Telegram/Discord, cards de Afiliados sem recuperar segredo, fila/enviados/falhas em Ofertas, colar link com prévia e escolha de destinos, caçadas de jogos, gráfico diário e top de cliques. `/start` passa por assunto, canal, IDs opcionais, prévia e ligar; jogos cria as caçadas selecionadas. Lojas e espelhamento ficam para F2 como **Em breve**. As telas e limitações estão na seção 10; schema e migração estão na seção 8.
 
@@ -113,19 +113,19 @@ As fontes abaixo constam da decisão de produto. A coluna de condição distingu
 | CheapShark | Removida em 04/11/2026 | Só tinha preço em dólar das lojas dos EUA; trocada pela Nuuvem (Rakuten). |
 | Amazon | Link manual com a tag da pessoa; automação F3 | Creators API da própria pessoa, com pelo menos 10 vendas qualificadas nos últimos 30 dias; Telegram/Discord não têm aprovação nominal geral confirmada |
 | Mercado Livre | Link manual; caçadas de loja F2 | `matt_word` sozinho não tem contrato oficial de geração de afiliado confirmado na pesquisa inicial; APIs exigem autenticação. Não apresentar um parâmetro montado como comissão validada |
-| Shopee | Converter link colado na F1; caçadas automáticas F2 | API oficial gera até 50 links por lote; a F1 gera um por conversão, com credenciais habilitadas da pessoa; cota depende da conta/região |
-| AliExpress | Converter link colado na F1; caçadas automáticas F2 | Método oficial gera até 50 links por chamada; a F1 gera um por conversão, com App Key/Secret e Tracking ID habilitados |
+| Shopee | Converter link colado na F1; caçada de lojas entregue em 04/11/2026 | API oficial gera até 50 links por lote; a F1 gera um por conversão, com credenciais habilitadas da pessoa; cota depende da conta/região |
+| AliExpress | Converter link colado na F1; caçada de lojas entregue em 04/11/2026 | Método oficial gera até 50 links por chamada; a F1 gera um por conversão, com App Key/Secret e Tracking ID habilitados |
 | Outra loja | Colar link, F1 | Prévia de URL HTTPS pública, com fallback de título; sem editor manual de título/preço e sem conversão para uma loja sem adaptador |
 | Canal Telegram | Espelhamento aberto, F2 | Só canais públicos pela prévia `t.me/s/<canal>`, sem login/userbot; não exige autorização do dono da origem; risco dos termos registrado e assumido pelo dono do Blup |
 | Canal Discord | Espelhamento aberto, F2 | Só servidores onde o bot foi adicionado e canais com permissões técnicas de leitura; não exige autorização adicional do dono da origem; risco dos termos assumido pelo dono do Blup |
 
-O dono decidiu manter CheapShark como fonte, usando os links da própria CheapShark, sem trocar pelo afiliado do usuário. Essa é uma exceção explícita à personalização de afiliados. A regra também vale para uma oferta depois encontrada em outra loja: não usar a integração para descobrir uma promoção e contornar a restrição trocando seu afiliado fora do caminho publicado pela fonte. O risco de coleta automatizada excessiva permanece registrado. [Documentação oficial CheapShark](https://apidocs.cheapshark.com/).
+A exceção da CheapShark (links da própria fonte, sem afiliado do usuário) deixou de existir com a remoção da fonte em 04/11/2026. Fica a regra geral: não usar uma fonte para descobrir uma promoção e trocar o afiliado fora do caminho que ela permite.
 
 ### Jogos: atribuição e coleta
 
 GamerPower permite uso comercial gratuito com atribuição por link ativo. Manter esse crédito no post e na futura importação Studio. O limite publicado de 10 requests/s é teto externo, não frequência desejada do coletor. Cobrar pela ferramenta de automação não deve virar venda de dump dos dados sem permissão. [API e termos GamerPower](https://www.gamerpower.com/api-read).
 
-CheapShark permite assinatura e anúncios, exige User-Agent e os seus links de redirect. Não seguir automaticamente esses redirects para extrair/substituir o destino. Preços usam USD; a atualização costuma ser horária. Não há cota universal numérica publicada: respeitar 429/Retry-After e acertar o volume do catálogo compartilhado antes de ativar coleta sistemática. A documentação alerta para bloqueio por automação excessiva. Essa restrição prevalece sobre uma regra geral de trocar afiliados nos posts. [Usage Notes e Caching](https://apidocs.cheapshark.com/).
+As promoções de jogos pagos vêm da Nuuvem pela Rakuten (seção "Nuuvem"), com o ID de cada cliente.
 
 ### Mercado Livre
 
@@ -163,9 +163,9 @@ Fluxo acordado da F1 para **Colar link**:
 4. A pessoa vê a prévia e escolhe destinos. `POST /offers` recebe `{url,channelIds,sendAt?}`; não recebe título/preço editados nem um ticket de prévia no contrato F1.
 5. O servidor prepara a publicação e enfileira após revalidar dono, direito, canais e cota. O resultado de criação não comprova entrega no Telegram/Discord.
 
-A F1 entregue monta Amazon com `tag` e Mercado Livre com `matt_word`/`matt_tool`, conforme o adaptador de links; o sinal de conversão aplicado não comprova elegibilidade ou comissão reconhecida. As ressalvas de programa da seção 4 e a exceção CheapShark permanecem. Salvar credencial Shopee/AliExpress permite converter o link colado, sem habilitar busca automática de loja antes da F2.
+A F1 entregue monta Amazon com `tag` e Mercado Livre com `matt_word`/`matt_tool`, conforme o adaptador de links; o sinal de conversão aplicado não comprova elegibilidade ou comissão reconhecida. As ressalvas de programa da seção 4 permanecem. Salvar credencial Shopee/AliExpress permite converter o link colado e criar a caçada de lojas.
 
-O fetch da página aceita HTTPS e valida destino público a cada salto. A imagem extraída precisa ter URL HTTPS, mas essa checagem não é a mesma validação DNS aplicada à página: a foto é carregada pelo navegador/Telegram/Discord, sem proxy ou armazenamento R2 no Blup. Links encurtados passam pela validação do fetch; a coleta CheapShark usa o redirect da fonte sem abri-lo para descobrir o destino.
+O fetch da página aceita HTTPS e valida destino público a cada salto. A imagem extraída precisa ter URL HTTPS, mas essa checagem não é a mesma validação DNS aplicada à página: a foto é carregada pelo navegador/Telegram/Discord, sem proxy ou armazenamento R2 no Blup. Links encurtados passam pela validação do fetch.
 
 O [fetch da prévia](../../cloud/worker/deals/fetch.ts) usa até cinco redirects, timeout de oito segundos e mantém até 512 KiB do corpo. A [extração](../../cloud/worker/deals/page.ts) lê Open Graph, título e Product JSON-LD, sem executar JavaScript. Página comum que recusa robôs pode resultar só no domínio como título, sem preço/foto; encurtador que não resolve ou salto bloqueado retorna erro. As verificações de URL/DNS e a flag pública do Worker são a defesa implementada; os gates locais não comprovam proteção universal de rede/DNS rebinding em produção.
 
@@ -362,9 +362,9 @@ Na [F1 entregue](../../cloud/deals/src/routes/start/+page.svelte), o assunto é 
 
 ### Jogos e catálogo compartilhado, F1
 
-O [coletor](../../cloud/worker/deals/catalog.ts) mantém duas fontes globais, GamerPower e CheapShark, com claim em D1. Cada fonte é lida uma vez por rodada de 30 minutos, independentemente do número de caçadas. A primeira leitura só preenche o catálogo. As seguintes atualizam ofertas/preços e alimentam caçadas ativas com novidades. Criar ou editar uma caçada ativa tenta alimentar imediatamente até três ofertas recentes dos últimos três dias que combinem com os filtros.
+O [coletor](../../cloud/worker/deals/catalog.ts) mantém duas fontes globais, GamerPower (rodada de 30 minutos) e Nuuvem (catálogo inteiro a cada 3 horas, algumas páginas por minuto), com claim em D1. Cada fonte é lida uma vez por rodada, independentemente do número de caçadas. A primeira leitura só preenche o catálogo. As seguintes atualizam ofertas/preços e alimentam caçadas ativas com novidades. Criar ou editar uma caçada ativa tenta alimentar imediatamente até três ofertas recentes dos últimos três dias que combinem com os filtros.
 
-GamerPower inclui apenas itens ativos do tipo jogo; preço é zero e o valor de referência, quando disponível, usa USD. CheapShark usa lojas PC mapeadas para Steam, GOG, Ubisoft e Epic, preço em USD e seu próprio redirect. Os filtros são plataformas, desconto mínimo inteiro de 0 a 100 e preço máximo inteiro em centavos de USD. Não há seleção de loja genérica, região, janela de horário ou frequência configurável pelo painel F1. Essas opções pertencem às fases seguintes, se forem implementadas.
+GamerPower inclui apenas itens ativos do tipo jogo; o post diz só "Grátis". Os filtros dos jogos grátis são as plataformas; os da Nuuvem, o país, o desconto mínimo, o preço máximo em reais (só Brasil) e "Só jogos". A caçada de lojas (Shopee e AliExpress) lê por conta própria, com as chaves de cada cliente; ver a seção dela no fim.
 
 Na conversão AliExpress, Zod aceita código exato `200` numérico ou string e a lista direta de links ou o wrapper aceito pelo adaptador, com um a cinquenta itens e URL limitada. O destino retornado precisa ser HTTPS, sem credenciais/porta, em `aliexpress.com` ou subdomínio real; hosts parecidos são recusados. Esse contrato foi validado com resposta simulada conforme o exemplo oficial, sem credencial real.
 
@@ -463,7 +463,7 @@ O limite executado pelo catálogo e contratado para F1 é **100 posts/dia**, ou 
 | Linhas D1 lidas/escritas, incluindo índices e manutenção | 10 milhões / 1 milhão |
 | Armazenamento D1 em regime estável | 0,25 GB |
 
-Cinco minutos é hipótese de cálculo; não estabelece SLA nem licença de coleta. Uma fonte compartilhada é lida uma vez por rodada, não por seguidor. GamerPower/CheapShark são custos globais conforme uso permitido. Credenciais de loja privadas não podem ser compartilhadas entre contas apenas para reduzir custo. Imagens não passam por R2 na F1.
+Cinco minutos é hipótese de cálculo; não estabelece SLA nem licença de coleta. Uma fonte compartilhada é lida uma vez por rodada, não por seguidor. GamerPower e Nuuvem são custos globais conforme uso permitido. Credenciais de loja privadas não podem ser compartilhadas entre contas apenas para reduzir custo. Imagens não passam por R2 na F1.
 
 | Parcela marginal, depois de esgotar as franquias | Conta ilustrativa |
 | --- | --- |
@@ -525,7 +525,7 @@ O saldo incremental é positivo nos quatro cenários, inclusive com o dobro do c
 | Fase aprovada | Escopo | Critério de conclusão proposto |
 | --- | --- | --- |
 | **F0** | Switch Ultra + Deals, variantes sandbox, app com login, shell, cinco abas/estados vazios, sessão/direito e schema inicial D1 | Login/logout e origem exata; sem acesso de outro dono/plano; nenhum post/coletor real; migração local do zero; combinações de plano tipadas e compra sandbox sem produção |
-| **F1** | Destinos Telegram/Discord, afiliados, colar link, jogos automáticos, links curtos e estatísticas de cliques | Prova de controle do destino; prévia fiel; regras de API por fonte e links CheapShark preservados; dedupe/cota atômicos; 429/retry/resultado incerto; dados externos validados; sem promessa de comissão não comprovada |
+| **F1** | Destinos Telegram/Discord, afiliados, colar link, jogos automáticos, links curtos e estatísticas de cliques | Prova de controle do destino; prévia fiel; regras de API por fonte (os links CheapShark preservados valiam até a remoção da fonte, em 04/11/2026); dedupe/cota atômicos; 429/retry/resultado incerto; dados externos validados; sem promessa de comissão não comprovada |
 | **F2** | Caçadas Shopee/AliExpress/Mercado Livre e espelhamento aberto | Credencial individual e regra por loja; coleta compartilhada; sem autorização do dono da origem; limites técnicos, intervalo e risco dos termos registrados; leitura incremental; revisão/pausa/concorrência; arquitetura Discord definida |
 | **F3** | Evolução dos relatórios, conexão Deals com o Studio para gerar a vitrine e Amazon automática | Link curto sem open redirect; exportação autenticada só do dono e sem segredos; publicação da vitrine pelo Studio; agregação explicada; elegibilidade/API Amazon e regras comerciais verificadas |
 
@@ -557,14 +557,14 @@ Riscos prioritários: disponibilidade/licença das fontes; atribuição de afili
 - Medir CPU, escrita, armazenamento e operação da F1 na cota atual de 100 posts/dia. A estimativa histórica marginal de US$ 1,3025 não fecha a capacidade de um banco D1.
 - Homologar a operação externa, validar o catálogo de produção e obter liberação comercial; preços e catálogo sandbox já foram confirmados pelo Maestro, e os gates locais dos dois agentes estão registrados no estado da entrega.
 - Contrato oficial de conversão de afiliado Mercado Livre; elegibilidade e permissão de cada loja para publicar em Telegram/Discord. O simples `matt_word` permanece não confirmado.
-- Volume/cadência de coleta CheapShark e demais fontes; a permanência da CheapShark com seus próprios links já foi decidida.
+- Volume/cadência de coleta das fontes compartilhadas e das buscas da Shopee/AliExpress com contas reais.
 - Método de leitura Discord e eventual infraestrutura da F2; planejar revisão de intents no alcance de 10.000 usuários únicos e verificação para mais de 100 servidores, sem confundir os critérios. Não incluir Gateway persistente silenciosamente no custo F1.
 - Política futura para aceite externo incerto/reembolso de cota e evolução de TTL/teto do catálogo; a F1 conta as linhas no dia previsto e mantém falhas na cota enquanto existirem.
 - Caminho de links curtos, política de contagem HEAD/robôs e limite de cliques; contrato da conexão Deals e Studio, template, atualização e destino da vitrine.
 - Registrar/configurar o bot de nome `DEALS_TELEGRAM_BOT`, verificar permissões e destinos reais e planejar rotação/recifra dos segredos.
 - Cupom estruturado, que consta do contrato inicial, não está implementado na F1 entregue.
 
-Essas pendências técnicas e comerciais não reabrem a decisão de espelhamento aberto ou a permanência da CheapShark com seus próprios links. O risco assumido pelo dono continua registrado sem ser apresentado como autorização das plataformas.
+Essas pendências técnicas e comerciais não reabrem a decisão de espelhamento aberto. O risco assumido pelo dono continua registrado sem ser apresentado como autorização das plataformas.
 
 ## Vídeo novo (TikTok Shop, sem API)
 
@@ -610,3 +610,16 @@ Essas pendências técnicas e comerciais não reabrem a decisão de espelhamento
 - **Limites:** 10 espelhos por conta (`dealsLimits.mirrors`), um por canal de origem (`MIRROR_EXISTS`), contados à parte das 20 caçadas; os posts entram na cota de 100 por dia.
 - **Filtro:** "Lojas que entram" (`filters.stores`); sem nenhuma, todas.
 - **API:** `POST /api/deals/hunts/mirror/check {channel}` devolve `{name,title,posts}`; `POST /api/deals/hunts` com `kind:"mirror"` e `channel`; a lista traz `mirror:{channel,title,error}`.
+
+## F2: caçada de lojas Shopee e AliExpress (entregue)
+
+- **Fonte:** a busca oficial de cada loja, com as chaves de API do próprio cliente (as mesmas de Afiliados): Shopee `productOfferV2` (GraphQL assinado, `sortType:2`, mais vendidos, 50 por busca) e AliExpress `aliexpress.affiliate.product.query` (`sort=LAST_VOLUME_DESC`, `target_currency=BRL`, `target_language=PT`, `ship_to_country=BR`, com o `tracking_id` do cliente). Nada é lido do site das lojas. [Explorer Shopee](https://open-api.affiliate.shopee.com.br/explorer/v2), [método AliExpress](https://open.alitrip.com/docs/api.htm?apiId=45803).
+- **Filtros** (`kind:"store_deals"`): `store` (shopee ou aliexpress), `keywords` (1 a 5 buscas), `minDiscount` e `maxPrice` em centavos de real. Sem as chaves da loja, a criação responde `STORE_NOT_CONFIGURED` (409).
+- **Leitura:** cada caçada tem a sua `deals_source` (`id = key = shop:<id da caçada>`, `kind` = a loja), lida a cada 30 minutos, até 5 por minuto. Já na primeira leitura posta (é a busca do próprio cliente).
+- **O que entra:** só itens com desconto, em reais, com link e imagem das próprias lojas (hosts conferidos). Shopee informa o desconto, mas não o preço "de": o post mostra o preço e o desconto. AliExpress traz o preço de antes.
+- **Link:** o que a API da loja devolve para aquela conta (`offerLink` da Shopee, `promotion_link` do AliExpress), sem mudar.
+- **Ordem e repetição:** as de maior desconto primeiro, até 3 por leitura. O mesmo produto (id da loja) só volta se ficar mais de 1% mais barato que o menor preço já postado em 30 dias, a mesma regra do espelhamento (`postedLately`).
+- **Erros, na lista de caçadas:** `NOT_CONFIGURED` (chaves apagadas), `STORE_REFUSED` (a loja recusou as chaves, espera crescente de 30 minutos), `FETCH_FAILED`. Apagar a caçada apaga a sua fonte; a limpeza diária remove fontes órfãs.
+- **Conta:** entra nas 20 caçadas e na cota de 100 posts por dia.
+- **Validado localmente** com respostas simuladas no formato da documentação; falta testar com chaves reais de uma conta de afiliado aprovada.
+

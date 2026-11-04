@@ -18,4 +18,4 @@
 
 <div class="mb-4"><BackLink href={resolve("/hunts")} label={t("dealsHunts")}/></div>
 <PageHeader title={t("dealsEditHunt")}/>
-{#if data.hunt}{#key data.hunt.id}<HuntForm channels={data.channels} hunt={data.hunt} {busy} submitLabel={t("dealsSave")} onsubmit={save}/>{/key}{/if}
+{#if data.hunt}{#key data.hunt.id}<HuntForm channels={data.channels} configured={data.configured} hunt={data.hunt} {busy} submitLabel={t("dealsSave")} onsubmit={save}/>{/key}{/if}

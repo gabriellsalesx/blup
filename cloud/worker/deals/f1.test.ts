@@ -14,6 +14,7 @@ import {telegramText,discordPayload,sendTelegram} from "./message";
 import {videoOf} from "./video";
 import {readChannel,textPrices,textTitle,channelName,collectMirrors} from "./mirror";
 import {nuuvemOffers,isCredit,NUUVEM_PAGES_PER_RUN} from "./nuuvem";
+import {shopeeOffers,aliexpressOffers,collectShops,ShopRefused} from "./shops";
 import {serveDealsLink} from "./redirect";
 import {panelCorsOrigin} from "../security";
 import {softDelete,purgeAccounts,DAY as LIFE_DAY} from "../lifecycle";
@@ -605,5 +606,53 @@ describe("mirroring a public Telegram channel",()=>{
   await collectMirrors(state.env,net({"t.me/s/promos":()=>new Response("slow down",{status:429})}).send,Date.now()+60_000);
   expect(db.sqlite.prepare("SELECT error,failures FROM deals_source WHERE id='telegram:promos'").get()).toEqual({error:"RATE_LIMIT",failures:1});
   expect((await call("/hunts/mirror/check",{method:"POST",body:{channel:"nao_existe"}})).status).toBe(502);
+ });
+});
+
+describe("store hunts on Shopee and AliExpress",()=>{
+ const node=(id:number,price:string,rate:number|null,over:Record<string,unknown>={})=>({itemId:id,productName:`Produto ${id}`,imageUrl:`https://down-br.img.susercontent.com/file/${id}`,productLink:`https://shopee.com.br/product/1/${id}?sp_atk=x`,offerLink:`https://s.shopee.com.br/off${id}`,priceMin:price,priceDiscountRate:rate,...over});
+ const shopee=(...nodes:unknown[])=>({data:{productOfferV2:{nodes}}});
+ it("takes from Shopee only what is on sale, with its own links",()=>{
+  const found=shopeeOffers(shopee(node(1,"89.90",30),node(2,"50.00",0),node(3,"10.00",20,{offerLink:"https://evil.invalid/x"}),node(4,"5.00",10,{imageUrl:"https://evil.invalid/i.png"})),1000);
+  expect(found.map(f=>[f.offer.externalId,f.link,f.offer.price,f.offer.discount,f.offer.originalPrice,f.offer.imageUrl])).toEqual([["1","https://s.shopee.com.br/off1",8990,30,null,"https://down-br.img.susercontent.com/file/1"],["4","https://s.shopee.com.br/off4",500,10,null,null]]);
+  expect(found[0].offer).toMatchObject({store:"shopee",kind:"store_deal",url:"https://shopee.com.br/product/1/1",currency:"BRL",key:"shopee:1:8990"});
+  expect(()=>shopeeOffers({errors:[{message:"Invalid Signature"}]})).toThrow(ShopRefused);
+ });
+ it("takes from AliExpress the reais price, the price before and the tracked link",()=>{
+  const product=(id:number,over:Record<string,unknown>={})=>({product_id:id,product_title:`Item ${id}`,product_main_image_url:`https://ae01.alicdn.com/kf/${id}.jpg`,promotion_link:`https://s.click.aliexpress.com/e/_${id}`,target_sale_price:"45.90",target_sale_price_currency:"BRL",target_original_price:"91.80",discount:"50%",...over});
+  const found=aliexpressOffers({aliexpress_affiliate_product_query_response:{resp_result:{resp_code:200,result:{products:{product:[product(10),product(11,{target_sale_price_currency:"USD"}),product(12,{promotion_link:"https://aliexpress.com.evil.invalid/x"}),product(13,{target_original_price:"45.90"})]}}}}});
+  expect(found.map(f=>[f.offer.externalId,f.link,f.offer.price,f.offer.originalPrice,f.offer.discount])).toEqual([["10","https://s.click.aliexpress.com/e/_10",4590,9180,50]]);
+  expect(found[0].offer.url).toBe("https://www.aliexpress.com/item/10.html");
+  expect(()=>aliexpressOffers({error_response:{code:"InvalidApiKey"}})).toThrow(ShopRefused);
+  expect(()=>aliexpressOffers({type:"ISV",code:"IncompleteSignature",message:"x"})).toThrow(ShopRefused);
+ });
+ it("searches with the person's keys and posts the biggest discounts, again only when cheaper",async()=>{
+  const channel=await addDiscord();
+  const hunt={kind:"store_deals",channelIds:[channel],filters:{store:"shopee",keywords:["fone bluetooth","air fryer"],minDiscount:20,maxPrice:20000}};
+  expect(await(await call("/hunts",{method:"POST",body:hunt})).json()).toEqual({code:"STORE_NOT_CONFIGURED"});
+  expect((await call("/affiliates/shopee",{method:"PUT",body:{appId:"12345",secret:"s".repeat(32)}})).status).toBe(200);
+  expect((await call("/hunts",{method:"POST",body:{...hunt,filters:{store:"shopee",minDiscount:20}}})).status).toBe(400);
+  expect((await call("/hunts",{method:"POST",body:{...hunt,filters:{...hunt.filters,country:"br"}}})).status).toBe(400);
+  expect((await call("/hunts",{method:"POST",body:{kind:"games_free",channelIds:[channel],filters:{keywords:["x1"]}}})).status).toBe(400);
+  const created=await call("/hunts",{method:"POST",body:hunt});expect(created.status).toBe(201);const id=(await created.json() as {id:string}).id;
+  let fone=node(1,"89.90",30);
+  const asked:string[]=[];
+  const {send,calls}=net({"open-api.affiliate.shopee.com.br":async req=>{const body=await req.json() as {variables:{keyword:string}};asked.push(body.variables.keyword);return Response.json(body.variables.keyword==="fone bluetooth"?shopee(fone,node(2,"300.00",60),node(3,"20.00",10)):shopee(node(4,"150.00",45),fone));}});
+  const t0=Date.now()+1000;
+  await collectShops(state.env,send,t0);
+  expect(asked).toEqual(["fone bluetooth","air fryer"]);
+  expect(calls[0].headers.get("authorization")).toMatch(/^SHA256 Credential=12345, Timestamp=[0-9]+, Signature=[0-9a-f]{64}$/);
+  // Over the price limit (item 2) and under the discount (item 3) stay out.
+  expect(db.sqlite.prepare("SELECT o.external_id AS id,p.link,p.affiliate FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id ORDER BY o.discount DESC").all()).toEqual([{id:"4",link:"https://s.shopee.com.br/off4",affiliate:1},{id:"1",link:"https://s.shopee.com.br/off1",affiliate:1}]);
+  await collectShops(state.env,send,t0+10*60_000);expect(asked).toHaveLength(2);
+  await collectShops(state.env,send,t0+31*60_000);expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(2);
+  fone=node(1,"79.90",38);
+  await collectShops(state.env,send,t0+62*60_000);expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(3);
+  // Refused keys show on the hunt; removing it takes its reading along.
+  await collectShops(state.env,net({"open-api.affiliate.shopee.com.br":()=>Response.json({errors:[{message:"Invalid Credential"}]})}).send,t0+93*60_000);
+  const listed=await(await call("/hunts")).json() as {hunts:{kind:string;shop:{error:string|null}|null}[]};
+  expect(listed.hunts).toEqual([expect.objectContaining({kind:"store_deals",shop:{error:"STORE_REFUSED"}})]);
+  expect((await call(`/hunts/${id}`,{method:"DELETE"})).status).toBe(200);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_source WHERE id=?").get(`shop:${id}`)?.n).toBe(0);
  });
 });
