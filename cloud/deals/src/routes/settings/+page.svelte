@@ -23,6 +23,10 @@
  import {paceOptions,type DealsPace} from "../../lib/pace";
  import {socialMarks} from "../../lib/social-marks";
  import PostPreview from "../../lib/PostPreview.svelte";
+ import artGameFree from "../../lib/assets/preview-game-free.svg";
+ import artNuuvem from "../../lib/assets/preview-nuuvem.svg";
+ import artStore from "../../lib/assets/preview-store.svg";
+ import artProduct from "../../lib/assets/preview-product.svg";
  import {defaultHeadlines,headline,headlineKinds,tokenText,hasAddress,socialNetworks,socialURL,networkOf,HEADLINE_MAX,EXTRA_MAX,type HeadlineKind,type HeadlineToken,type SocialNetwork} from "../../../../shared/deals-post";
  // One setting for all the account's channels: how often the queue sends,
  // the opening line of each kind of deal (a default ready, changeable),
@@ -45,7 +49,8 @@
  const tokens=["name","discount","store"] as const;
  const lineBad=(kind:HeadlineKind)=>!lines[kind].trim()||hasAddress(lines[kind]);
  const linkBad=(l:{network:SocialNetwork;url:string})=>!socialURL(l.network,l.url);
- const invalid=$derived(headlineKinds.some(lineBad)||hasAddress(extra)||links.some(linkBad));
+ // What a switch hides stays kept, and is not in the way of saving.
+ const invalid=$derived(headlineKinds.some(lineBad)||(extraOn&&hasAddress(extra))||(socialsOn&&links.some(linkBad)));
 
  async function addToken(kind:HeadlineKind,token:HeadlineToken){
   const el=document.getElementById(`line-${kind}`) as HTMLInputElement|null,text=tokenText(token,language());
@@ -58,12 +63,12 @@
   links.push({network,url:networkOf(network)?.prefix??""});
   await tick();const el=document.getElementById(`social-${network}`) as HTMLInputElement|null;el?.focus();el?.setSelectionRange(el.value.length,el.value.length);
  }
- // The preview: a made-up deal of each kind.
- const samples:Record<HeadlineKind,{name:string;discount:number|null;store:string;price:number|null}>={
-  game_free:{name:"Dark Mystery",discount:100,store:"GamerPower",price:null},
-  nuuvem_deal:{name:"Hollow Knight",discount:50,store:"Nuuvem",price:2399},
-  store_deal:{name:"Fone Bluetooth",discount:40,store:"Shopee",price:8990},
-  product:{name:"Air Fryer 4L",discount:null,store:"Amazon",price:29990},
+ // The preview: a made-up deal of each kind, with the Blup in its scene.
+ const samples:Record<HeadlineKind,{name:string;discount:number|null;store:string;price:number|null;art:string}>={
+  game_free:{name:"Dark Mystery",discount:100,store:"GamerPower",price:null,art:artGameFree},
+  nuuvem_deal:{name:"Hollow Knight",discount:50,store:"Nuuvem",price:2399,art:artNuuvem},
+  store_deal:{name:"Camiseta oversized",discount:40,store:"Shopee",price:8990,art:artStore},
+  product:{name:"Air Fryer 4L",discount:null,store:"Amazon",price:29990,art:artProduct},
  };
  let previewKind=$state<HeadlineKind>("game_free");
  const previewKinds=$derived(headlineKinds.map(value=>({value,label:t(kindLabel[value])})));
@@ -74,7 +79,7 @@
   if(invalid)return;busy=true;
   try{
    const headlines=Object.fromEntries(headlineKinds.filter(k=>lines[k].trim()!==defaults[k]).map(k=>[k,lines[k].trim()]));
-   await parseResponse(dealsApi.settings.$put({json:{pace:Number(pace) as DealsPace,headlines,extra:{text:extra.trim(),on:extraOn},socials:{links,on:socialsOn}}}));
+   await parseResponse(dealsApi.settings.$put({json:{pace:Number(pace) as DealsPace,headlines,extra:{text:extraOn||!hasAddress(extra)?extra.trim():saved.extra.text,on:extraOn},socials:{links:socialsOn?links:links.filter(l=>!linkBad(l)),on:socialsOn}}}));
    toast(()=>t("dealsSettingsSaved"));
   }catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}
  }
@@ -112,16 +117,17 @@
   <Card title={t("dealsExtra")} help={t("dealsExtraHelp")}>
    <div class="mt-5 grid gap-4">
     <Switch label={t("dealsShowInPosts")} tone="coral" bind:checked={extraOn}/>
-    <div>
+    {#if extraOn}<div>
      <FloatField id="extra-text" surface="bg-white dark:bg-neutral-900" label={t("dealsExtraField")} maxlength={EXTRA_MAX} bind:value={extra} aria-invalid={hasAddress(extra)}/>
      {#if hasAddress(extra)}<p class="mt-1.5 text-sm text-red-700 dark:text-red-400">{t("dealsNoAddress")}</p>{/if}
-    </div>
+    </div>{/if}
    </div>
   </Card>
 
   <Card title={t("dealsSocials")} help={t("dealsSocialsHelp")}>
    <div class="mt-5 grid gap-4">
     <Switch label={t("dealsShowInPosts")} tone="coral" bind:checked={socialsOn}/>
+    {#if socialsOn}
     {#each links as link,i(link.network)}
      {@const net=networkOf(link.network)}
      <div>
@@ -139,6 +145,7 @@
       <button type="button" class="inline-flex items-center gap-2 rounded-full border border-neutral-300 px-3 py-1.5 text-sm font-semibold enabled:hover:border-[#c2410c] enabled:hover:text-[#c2410c] disabled:opacity-40 dark:border-neutral-700" disabled={added} aria-pressed={added} onclick={()=>addNetwork(n.id)}>{@render mark(n.id,"size-4")}{n.name}</button>
      {/each}
     </div>
+    {/if}
    </div>
   </Card>
 
@@ -148,6 +155,6 @@
  <aside class="grid min-w-0 gap-3 lg:sticky lg:top-6">
   <p class="text-sm font-semibold">{t("dealsPreviewOf")}</p>
   <Segmented label={t("dealsPreviewOf")} options={previewKinds} bind:value={previewKind}/>
-  <PostPreview example title={headline(lines[previewKind].trim()||defaults[previewKind],sample)||sample.name} price={sample.price} currency={sample.price===null?null:"BRL"} store={sample.store} affiliate={previewKind!=="game_free"} extra={extraOn&&extra.trim()&&!hasAddress(extra)?extra.trim():null} socials={shownSocials}/>
+  <PostPreview example image={sample.art} title={headline(lines[previewKind].trim()||defaults[previewKind],sample)||sample.name} price={sample.price} currency={sample.price===null?null:"BRL"} store={sample.store} affiliate={previewKind!=="game_free"} extra={extraOn&&extra.trim()&&!hasAddress(extra)?extra.trim():null} socials={shownSocials}/>
  </aside>
 </div>
