@@ -36,11 +36,13 @@ export const shortCodeSchema=z.string().regex(/^[A-Za-z0-9]{8}$/);
 // account and day (the day it goes out) and never the same offer twice in
 // a channel. One D1 batch runs in order, so each insert counts the ones
 // before it. Returns how many were queued.
-export async function enqueue(db:D1Database,input:{owner:string;offerId:string;channels:readonly string[];link:string;affiliate:boolean;huntId:string|null;sendAt:number;now?:number}){
+// priceShown false: the post gives the discount but not the price (a
+// price from another country's store).
+export async function enqueue(db:D1Database,input:{owner:string;offerId:string;channels:readonly string[];link:string;affiliate:boolean;huntId:string|null;sendAt:number;now?:number;priceShown?:boolean}){
  const now=input.now??Date.now(),day=dayOf(input.sendAt);
  if(!input.channels.length)return 0;
- const results=await db.batch(input.channels.map(channel=>db.prepare("INSERT OR IGNORE INTO deals_post(id,user_id,hunt_id,channel_id,offer_id,code,link,affiliate,state,next_at,day,created_at) SELECT ?,?,?,?,?,?,?,?,'queued',?,?,? WHERE (SELECT count(*) FROM deals_post WHERE user_id=? AND day=?)<? AND EXISTS(SELECT 1 FROM deals_channel WHERE id=? AND user_id=? AND active=1 AND plan_disabled=0)")
-  .bind(crypto.randomUUID(),input.owner,input.huntId,channel,input.offerId,shortCode(),input.link,input.affiliate?1:0,input.sendAt,day,now,input.owner,day,dealsLimits.postsPerDay,channel,input.owner)));
+ const results=await db.batch(input.channels.map(channel=>db.prepare("INSERT OR IGNORE INTO deals_post(id,user_id,hunt_id,channel_id,offer_id,code,link,affiliate,price_shown,state,next_at,day,created_at) SELECT ?,?,?,?,?,?,?,?,?,'queued',?,?,? WHERE (SELECT count(*) FROM deals_post WHERE user_id=? AND day=?)<? AND EXISTS(SELECT 1 FROM deals_channel WHERE id=? AND user_id=? AND active=1 AND plan_disabled=0)")
+  .bind(crypto.randomUUID(),input.owner,input.huntId,channel,input.offerId,shortCode(),input.link,input.affiliate?1:0,input.priceShown===false?0:1,input.sendAt,day,now,input.owner,day,dealsLimits.postsPerDay,channel,input.owner)));
  return results.reduce((n,r)=>n+(r.meta.changes??0),0);
 }
 export async function postsOn(db:D1Database,owner:string,day:string){

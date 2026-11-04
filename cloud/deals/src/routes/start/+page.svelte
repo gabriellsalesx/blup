@@ -47,7 +47,8 @@
  // Where it starts: the step and topic in the address (back from linking).
  const first=(()=>({step:data.step,topic:data.topic}))();
  let at=$state(first.step),topic=$state<"games"|"other">(first.topic),busy=$state(false);
- let kinds=$state<Record<Exclude<HuntKind,"nuuvem_deals">,boolean>>({games_free:true,games_deals:true});
+ // Nuuvem's sales need the Rakuten ID, so they start off.
+ let kinds=$state<Record<HuntKind,boolean>>({games_free:true,nuuvem_deals:false});
  // Starts on the active channels; a tick changes it.
  let channelIds=$derived(data.channels.filter(c=>c.active).map(c=>c.id));
  const step=$derived(steps[at]);
@@ -57,7 +58,8 @@
  // Moving between steps puts the focus on the new step's title.
  function go(to:number){at=Math.max(0,Math.min(steps.length-1,to));queueMicrotask(()=>heading?.focus());}
  async function turnOn(){busy=true;try{
-  for(const kind of (["games_free","games_deals"] as const).filter(k=>kinds[k]))await parseResponse(dealsApi.hunts.$post({json:{kind,channelIds,filters:kind==="games_deals"?{minDiscount:50}:{}}}));
+  // Nuuvem first: without the ID it stops here, before anything is made.
+  for(const kind of (["nuuvem_deals","games_free"] as const).filter(k=>kinds[k]))await parseResponse(dealsApi.hunts.$post({json:{kind,channelIds,filters:kind==="nuuvem_deals"?{minDiscount:50}:{}}}));
   void refreshUsage();toast(()=>t("dealsStartDone"));await goto(resolve("/hunts"));
  }catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}}
  const topics=[{id:"games" as const,title:"dealsTopicGames" as const,help:"dealsTopicGamesHelp" as const,Icon:Gamepad2},{id:"other" as const,title:"dealsTopicOther" as const,help:"dealsTopicOtherHelp" as const,Icon:ShoppingBag}];
@@ -110,12 +112,12 @@
       <p class="text-sm font-semibold">{t("dealsStartPickKinds")}</p>
       <div class="mt-3 grid gap-3">
        <Switch label={t("dealsGamesFree")} tone="coral" bind:checked={kinds.games_free}/>
-       <Switch label={t("dealsGamesDeals")} tone="coral" bind:checked={kinds.games_deals}/>
+       <Switch label={t("dealsNuuvemDeals")} tone="coral" bind:checked={kinds.nuuvem_deals}/>
       </div>
       <div class="mt-5"><PostPreview example title={t("dealsSampleTitle")} store="GamerPower" affiliate={false}/></div>
      {:else}<p class="text-sm">{t("dealsStartOtherPreview")}</p>{/if}
     {:else}
-     {#if topic==="games"}<Button {busy} disabled={!hasPlan()||!channelIds.length||(!kinds.games_free&&!kinds.games_deals)} onclick={turnOn}><Power class="size-4"/>{t("dealsTurnOn")}</Button>
+     {#if topic==="games"}<Button {busy} disabled={!hasPlan()||!channelIds.length||(!kinds.games_free&&!kinds.nuuvem_deals)} onclick={turnOn}><Power class="size-4"/>{t("dealsTurnOn")}</Button>
      {:else}<Button disabled={!hasPlan()} onclick={()=>goto(resolve("/offers/new"))}>{t("dealsStartPasteFirst")}</Button>{/if}
     {/if}
    </div>

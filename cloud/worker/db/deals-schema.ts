@@ -27,7 +27,7 @@ export const dealsAffiliate=sqliteTable("deals_affiliate",{
  hint:text("hint"),
 },t=>[primaryKey({columns:[t.userId,t.store]})]);
 
-// A shared source: a feed (GamerPower, CheapShark), a store search or a
+// A shared source: a feed (GamerPower), a store catalog (Nuuvem) or a
 // mirrored public channel. key identifies it (telegram:<channel>), so two
 // accounts mirroring the same channel share one read. cursor is where the
 // last read stopped.
@@ -53,8 +53,9 @@ export const dealsOffer=sqliteTable("deals_offer",{
  id:text("id").primaryKey(),hash:text("hash").notNull().unique(),store:text("store").notNull(),externalId:text("external_id"),sourceId:text("source_id"),
  title:text("title").notNull(),url:text("url").notNull(),imageUrl:text("image_url"),price:integer("price"),originalPrice:integer("original_price"),currency:text("currency"),
  firstSeenAt:integer("first_seen_at").notNull(),lastSeenAt:integer("last_seen_at").notNull(),expiresAt:integer("expires_at"),
- // kind: product (a pasted link), game_free (GamerPower) or game_deal
- // (CheapShark). platforms: JSON list of the panel's platform ids.
+ // kind: product (a pasted link), video (a TikTok video's news),
+ // game_free (GamerPower) or nuuvem_deal (Nuuvem's catalog). platforms:
+ // JSON list of the panel's platform ids.
  // discount: percent off. credit: the source the post must credit.
  kind:text("kind").notNull().default("product"),platforms:text("platforms").notNull().default("[]"),discount:integer("discount"),credit:text("credit"),
 },t=>[index("deals_offer_store_idx").on(t.store,t.externalId),index("deals_offer_seen_idx").on(t.lastSeenAt),index("deals_offer_source_idx").on(t.sourceId,t.lastSeenAt),index("deals_offer_kind_idx").on(t.kind,t.firstSeenAt)]);
@@ -75,6 +76,8 @@ export const dealsPost=sqliteTable("deals_post",{
  sentAt:integer("sent_at"),error:text("error"),createdAt:integer("created_at").notNull(),
  // Whether link carries the person's affiliate ID (the post says so).
  affiliate:integer("affiliate").notNull().default(0),
+ // 0 when the offer's price is another country's (only the discount goes).
+ priceShown:integer("price_shown").notNull().default(1),
 },t=>[uniqueIndex("deals_post_once_idx").on(t.channelId,t.offerId),index("deals_post_due_idx").on(t.state,t.nextAt),index("deals_post_owner_day_idx").on(t.userId,t.day),index("deals_post_created_idx").on(t.createdAt)]);
 
 // Clicks on the short links, added up per post and day (few writes).

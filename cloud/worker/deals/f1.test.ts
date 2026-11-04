@@ -7,7 +7,7 @@ import {dealsApi} from "./api";
 import {safeFetch,FetchError} from "./fetch";
 import {nuuvemLink,rakutenTarget,amazonLink,mercadoLivreLink,shopeeLink,aliexpressLink,aliexpressSign,aliexpressResponse,aliexpressHost,convertLink,storeOf} from "./links";
 import {pageInfo,priceCents} from "./page";
-import {upsertOffer,collectDeals,dealsCleanup,gamerPowerOffers,cheapSharkOffers,type OfferInput} from "./catalog";
+import {upsertOffer,collectDeals,dealsCleanup,gamerPowerOffers,nuuvemPage,type OfferInput} from "./catalog";
 import {enqueue,dayOf,seal} from "./store";
 import {dispatchDeals,DEALS_BUDGET} from "./dispatch";
 import {telegramText,discordPayload,sendTelegram} from "./message";
@@ -263,30 +263,27 @@ describe("pasting a link",()=>{
 
 describe("games, sending and clicks",()=>{
  const gamerPower=[{id:1,title:"Jogo Grátis",worth:"$19.99",image:"https://www.gamerpower.com/a.jpg",open_giveaway_url:"https://www.gamerpower.com/open/jogo",platforms:"PC, Steam",end_date:"N/A",status:"Active",type:"Game"},{id:2,title:"Velho",worth:"N/A",open_giveaway_url:"https://www.gamerpower.com/open/velho",platforms:"PS5",end_date:"2020-01-01 00:00:00",status:"Active",type:"Game"}];
- const cheap=[{dealID:"abc%3D%3D1234",title:"Promo",storeID:"1",salePrice:"4.99",normalPrice:"19.99",savings:"75.03",thumb:"https://cdn.cheapshark.invalid/t.jpg"},{dealID:"zzzz12345678",title:"Outra loja",storeID:"99",salePrice:"1.00",normalPrice:"2.00",savings:"50"}];
- it("parses the sources and keeps CheapShark's own link",()=>{
+ it("parses the giveaways",()=>{
   expect(gamerPowerOffers(gamerPower,Date.parse("2026-11-04T00:00:00Z"))).toEqual([expect.objectContaining({key:"gamerpower:1",kind:"game_free",price:0,originalPrice:1999,platforms:["pc","steam"],credit:"gamerpower"})]);
-  expect(cheapSharkOffers(cheap)).toEqual([expect.objectContaining({key:"cheapshark:abc%3D%3D1234",url:"https://www.cheapshark.com/redirect?dealID=abc%3D%3D1234",price:499,originalPrice:1999,discount:75,platforms:["pc","steam"]})]);
  });
  it("credits the source with an active link on Telegram and Discord",()=>{
   const game={title:"Jogo <x>",image:null,price:0,originalPrice:1999,currency:"USD",discount:100,link:"https://deals.audit.invalid/r/ABCDEFGH",affiliate:false,kind:"game_free",credit:"gamerpower"};
-  const text=telegramText(game,"pt");expect(text).toContain('<a href="https://www.gamerpower.com/">Via GamerPower</a>');expect(text).toContain("<b>Jogo &lt;x&gt;</b>");expect(text).not.toContain("#publi");
+  const text=telegramText(game,"pt");expect(text).toContain('<a href="https://www.gamerpower.com/">Via GamerPower</a>');expect(text).toContain("\nGrátis\n");expect(text).not.toContain("US$");expect(discordPayload(game,"en").embeds[0].description.split("\n")[0]).toBe("Free");expect(text).toContain("<b>Jogo &lt;x&gt;</b>");expect(text).not.toContain("#publi");
   const embed=discordPayload(game,"en").embeds[0];expect(embed.description).toContain("[Via GamerPower](https://www.gamerpower.com/)");expect(embed).not.toHaveProperty("footer");
-  expect(discordPayload({...game,kind:"game_deal",credit:"cheapshark",price:499},"pt").embeds[0].description).toContain("[Via CheapShark](https://www.cheapshark.com/)");
   expect(telegramText({...game,credit:"unknown"},"pt")).not.toContain("Via");expect(telegramText({...game,credit:null},"pt")).not.toContain("Via");
  });
  it("reads each source once per round for everyone, first only filling the catalog",async()=>{
   const channel=await addDiscord(),bobChannel=await addDiscord("bob");
-  const {send,calls}=net({"www.gamerpower.com":()=>Response.json(gamerPower),"www.cheapshark.com":()=>Response.json(cheap)});
+  const {send,calls}=net({"www.gamerpower.com":()=>Response.json(gamerPower)});
   const t0=Date.parse("2026-11-04T10:00:00Z");
-  await collectDeals(state.env,send,t0);expect(calls).toHaveLength(2);expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(0);
-  await collectDeals(state.env,send,t0+60_000);expect(calls).toHaveLength(2);
-  db.sqlite.exec(`INSERT INTO deals_hunt(id,user_id,name,kind,source_id,filters,channels,created_at) VALUES('h1','alice','J','games_free','gamerpower','{"platforms":["steam"]}','["${channel}"]',0),('h2','bob','J','games_free','gamerpower','{"platforms":["xbox"]}','["${bobChannel}"]',0),('h3','alice','P','games_deals','cheapshark','{"minDiscount":80}','["${channel}"]',0)`);
+  await collectDeals(state.env,send,t0);expect(calls).toHaveLength(1);expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(0);
+  await collectDeals(state.env,send,t0+60_000);expect(calls).toHaveLength(1);
+  db.sqlite.exec(`INSERT INTO deals_hunt(id,user_id,name,kind,source_id,filters,channels,created_at) VALUES('h1','alice','J','games_free','gamerpower','{"platforms":["steam"]}','["${channel}"]',0),('h2','bob','J','games_free','gamerpower','{"platforms":["xbox"]}','["${bobChannel}"]',0)`);
   const next=[...gamerPower,{...gamerPower[0],id:3,title:"Novo"}];
-  const later=net({"www.gamerpower.com":()=>Response.json(next),"www.cheapshark.com":()=>Response.json(cheap)});
-  await collectDeals(state.env,later.send,t0+31*60_000);expect(later.calls).toHaveLength(2);
+  const later=net({"www.gamerpower.com":()=>Response.json(next)});
+  await collectDeals(state.env,later.send,t0+31*60_000);expect(later.calls).toHaveLength(1);
   expect(db.sqlite.prepare("SELECT p.user_id AS u,o.title FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id").all()).toEqual([{u:"alice",title:"Novo"}]);
-  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_offer").get()?.n).toBe(3);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_offer").get()?.n).toBe(2);
  });
  it("sends one post per channel at a time and counts real clicks",async()=>{
   const channel=await addDiscord(),now=Date.now();
@@ -512,7 +509,7 @@ describe("Nuuvem's sales through Rakuten",()=>{
   Object.assign(state.env,{DEALS_RAKUTEN_CLIENT_ID:"client-id-123",DEALS_RAKUTEN_CLIENT_SECRET:"client-secret-123",DEALS_RAKUTEN_SID:"1234567"});
   const channel=await addDiscord();await call("/affiliates/nuuvem",{method:"PUT",body:{siteId:"*AbCdEfGh1"}});
   let sales:string[]=[item("1","Ambulance Life","109.99","32.99")];const pages=NUUVEM_PAGES_PER_RUN+2,reads:number[]=[];
-  const {send}=net({"www.gamerpower.com":()=>Response.json([]),"www.cheapshark.com":()=>Response.json([]),
+  const {send}=net({"www.gamerpower.com":()=>Response.json([]),
    "api.linksynergy.com/token":req=>{expect(req.headers.get("authorization")).toBe(`Bearer ${btoa("client-id-123:client-secret-123")}`);return Response.json({token_type:"bearer",expires_in:3600,access_token:"a".repeat(32),refresh_token:"r".repeat(32)});},
    "api.linksynergy.com/productsearch/1.0":req=>{const n=Number(new URL(req.url).searchParams.get("pagenumber"));reads.push(n);return new Response(page(n===pages?sales:[],pages,n),{headers:{"content-type":"application/xml"}});}});
   const t0=Date.parse("2026-11-04T10:00:00Z");
@@ -528,5 +525,22 @@ describe("Nuuvem's sales through Rakuten",()=>{
   await collectDeals(state.env,send,t0+2*60*60_000);expect(reads).toHaveLength(pages);
   for(const at of [3,3.01,3.02])await collectDeals(state.env,send,t0+at*60*60_000);
   expect(db.sqlite.prepare("SELECT o.title,p.link,p.affiliate FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id").all()).toEqual([{title:"Hades",link:"https://click.linksynergy.com/deeplink?id=*AbCdEfGh1&mid=46796&murl=https%3A%2F%2Fwww.nuuvem.com%2Fbr-pt%2Fitem%2Fhades",affiliate:1}]);
+ });
+});
+
+describe("Nuuvem in other countries",()=>{
+ it("links each country's page and gives the price only in Brazil",async()=>{
+  expect(nuuvemPage("https://www.nuuvem.com/br-pt/item/hades","mx")).toBe("https://www.nuuvem.com/mx-es/item/hades");
+  expect(nuuvemPage("https://www.nuuvem.com/br-pt/item/hades","us")).toBe("https://www.nuuvem.com/us-en/item/hades");
+  const channel=await addDiscord();await call("/affiliates/nuuvem",{method:"PUT",body:{siteId:"*AbCdEfGh1"}});
+  expect((await call("/hunts",{method:"POST",body:{kind:"nuuvem_deals",channelIds:[channel],filters:{country:"mx",maxPrice:5000}}})).status).toBe(400);
+  expect((await call("/hunts",{method:"POST",body:{kind:"games_free",channelIds:[channel],filters:{country:"mx"}}})).status).toBe(400);
+  const now=Date.now();
+  await upsertOffer(db.asD1(),offer({key:"n:1",store:"nuuvem",title:"Hades",url:"https://www.nuuvem.com/br-pt/item/hades",price:3699,originalPrice:7399,kind:"nuuvem_deal",discount:50}),now);
+  expect((await call("/hunts",{method:"POST",body:{kind:"nuuvem_deals",channelIds:[channel],filters:{country:"mx",minDiscount:40}}})).status).toBe(201);
+  expect(db.sqlite.prepare("SELECT link,price_shown AS shown FROM deals_post").get()).toEqual({link:"https://click.linksynergy.com/deeplink?id=*AbCdEfGh1&mid=46796&murl=https%3A%2F%2Fwww.nuuvem.com%2Fmx-es%2Fitem%2Fhades",shown:0});
+  const sent:{embeds:{description:string}[]}[]=[];
+  await dispatchDeals(state.env,net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}}).send,Date.now()+1000);
+  expect(sent[0].embeds[0].description.split("\n")[0]).toBe("50% de desconto");expect(sent[0].embeds[0].description).not.toContain("R$");
  });
 });

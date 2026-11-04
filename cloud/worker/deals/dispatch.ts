@@ -5,7 +5,7 @@ import {telegramText,discordPayload,sendTelegram,sendDiscord,type Post} from "./
 import {unseal,CHANNEL_INTERVAL,DAY,dayOf,type ChannelType} from "./store";
 import type {Delivery} from "../pulse/transports";
 
-type Due={id:string;userId:string;channelId:string;code:string;link:string;attempts:number;day:string;platform:string;target:string;channelNext:number;active:number;title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;kind:string;credit:string|null;language:string;affiliate:number;url:string};
+type Due={id:string;userId:string;channelId:string;code:string;link:string;attempts:number;day:string;platform:string;target:string;channelNext:number;active:number;title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;kind:string;credit:string|null;language:string;affiliate:number;priceShown:number;url:string};
 export const shortLink=(env:Cloudflare.Env,code:string)=>`https://${env.DEALS_PUBLIC_HOST||"deals.getblup.site"}/r/${code}`;
 export async function deliverPost(env:Cloudflare.Env,type:ChannelType,target:string,post:Post,language:string|null,send:typeof fetch=fetch):Promise<Delivery>{
  const lang=languageOf(language)??"pt";
@@ -35,7 +35,7 @@ export async function dispatchDeals(env:Cloudflare.Env,send:typeof fetch=fetch,n
  try{
   const due=await env.DB.prepare(`SELECT p.id,p.user_id AS userId,p.channel_id AS channelId,p.code,p.link,p.attempts,p.day,c.platform,c.target,c.next_at AS channelNext,c.active,
    o.title,o.image_url AS image,o.price,o.original_price AS originalPrice,o.currency,o.discount,o.kind,o.credit,o.url,u.language,
-   p.affiliate
+   p.affiliate,p.price_shown AS priceShown
    FROM deals_post p JOIN deals_channel c ON c.id=p.channel_id JOIN deals_offer o ON o.id=p.offer_id JOIN user u ON u.id=p.user_id
    WHERE p.state='queued' AND p.next_at<=? AND p.claim_until<=? ORDER BY p.next_at,p.created_at LIMIT 50`).bind(now,now).all<Due>();
   const access=new Map<string,boolean>(),busy=new Set<string>();
@@ -68,7 +68,7 @@ export async function dispatchDeals(env:Cloudflare.Env,send:typeof fetch=fetch,n
    let result:Delivery;
    try{
     const target=await unseal(env,item.userId,item.channelId,type,item.target);
-    result=await deliverPost(env,type,target,{title:item.title,image:item.image,price:item.price,originalPrice:item.originalPrice,currency:item.currency,discount:item.discount,link:shortLink(env,item.code),affiliate:!!item.affiliate,kind:item.kind,credit:item.credit,watch:item.kind==="video"?item.url:null},item.language,send);
+    result=await deliverPost(env,type,target,{title:item.title,image:item.image,price:item.priceShown?item.price:null,originalPrice:item.priceShown?item.originalPrice:null,currency:item.currency,discount:item.discount,link:shortLink(env,item.code),affiliate:!!item.affiliate,kind:item.kind,credit:item.credit,watch:item.kind==="video"?item.url:null},item.language,send);
    }catch{result={sent:false,permanent:false,code:"CHANNEL_UNAVAILABLE",waitMs:300_000,global:false};}
    if(result.sent){
     await env.DB.batch([

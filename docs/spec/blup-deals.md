@@ -110,7 +110,7 @@ As fontes abaixo constam da decisão de produto. A coluna de condição distingu
 | Fonte | Uso pretendido e fase | Condição de entrada |
 | --- | --- | --- |
 | GamerPower | Jogos grátis, brindes e resgates, sem chave; F1 | Uso comercial permitido com hyperlink ativo de atribuição; até 10 requests/s; não revender o catálogo ou declarar os dados como próprios |
-| CheapShark | Promoções de jogos de PC e histórico; F1 | Fonte mantida por decisão do dono, com os links da própria CheapShark, sem substituir pelo afiliado do usuário; a documentação permite assinatura e proíbe afiliados próprios nas lojas acompanhadas |
+| CheapShark | Removida em 04/11/2026 | Só tinha preço em dólar das lojas dos EUA; trocada pela Nuuvem (Rakuten). |
 | Amazon | Link manual com a tag da pessoa; automação F3 | Creators API da própria pessoa, com pelo menos 10 vendas qualificadas nos últimos 30 dias; Telegram/Discord não têm aprovação nominal geral confirmada |
 | Mercado Livre | Link manual; caçadas de loja F2 | `matt_word` sozinho não tem contrato oficial de geração de afiliado confirmado na pesquisa inicial; APIs exigem autenticação. Não apresentar um parâmetro montado como comissão validada |
 | Shopee | Converter link colado na F1; caçadas automáticas F2 | API oficial gera até 50 links por lote; a F1 gera um por conversão, com credenciais habilitadas da pessoa; cota depende da conta/região |
@@ -542,7 +542,7 @@ Riscos prioritários: disponibilidade/licença das fontes; atribuição de afili
 - Produto para afiliados iniciantes, com Telegram e Discord oficiais, sem WhatsApp na F1.
 - Adicional exclusivo Ultra; combinações Ultra, Ultra + Pulse, Ultra + Deals e Ultra + Pulse + Deals.
 - Espelhamento aberto como fonte dentro de Caçadas, sem exigir autorização do dono da origem; risco dos termos Telegram/Discord registrado e assumido pelo dono do Blup, preservando os limites técnicos.
-- CheapShark mantida como fonte, com os links da própria CheapShark e sem troca pelo afiliado do usuário; risco de coleta excessiva registrado.
+- ~~CheapShark mantida como fonte~~: removida em 04/11/2026 (ver "Moedas e países"); a Nuuvem ocupa o lugar dela.
 - Blup `turma-8`, coral `#ff7a59`, destaque do painel `#c2410c`.
 - Painel `deals.getblup.io`; links curtos F1 em `deals.getblup.site`; vitrine gerada no Studio pela conexão Deals, sem vitrine externa no Deals.
 - Worker/API Cloud, painel estático próprio, sessão comum, D1, coleta compartilhada e outbox; sem DO/R2 na F1.
@@ -589,3 +589,11 @@ Essas pendências técnicas e comerciais não reabrem a decisão de espelhamento
 - As caçadas só recebem quando a volta termina, com o que entrou desde o começo dela, as de maior desconto primeiro (até 3 por volta). A primeira volta só enche o catálogo.
 - Cada post sai com o deep link do cliente (o ID dele da Rakuten). Sem o ID salvo, a caçada não pode ser criada (`NUUVEM_NOT_CONFIGURED`) e, se ele tirar depois, não posta.
 - "Só jogos" (ligado por padrão) tira créditos e moedas (Points, Crystals, Coins, gift cards, pacotes "Jogo - 500 Coins"), que vêm na mesma categoria.
+
+## Moedas e países (decisão de 04/11/2026)
+
+- **CheapShark removida.** Só dava preço em dólar das lojas dos EUA, que não é o que o brasileiro paga (a Steam cobra preço regional). A migração `0031` apaga as caçadas `games_deals`, o que elas ainda tinham na fila e a fonte `cheapshark`. As ofertas antigas saem com a limpeza de sempre.
+- **GamerPower só "Grátis".** O post diz "Grátis", "Free" ou "Gratis", no idioma da conta, sem o "valia US$". O valor continua guardado, mas não aparece.
+- **Nuuvem por país.** A caçada escolhe a loja: Brasil, Argentina, Bolívia, Canadá, Chile, Colômbia, Equador, Estados Unidos, México, Peru ou Uruguai (as páginas `/<país>-<idioma>/` do próprio site; o idioma segue o país: `pt` no Brasil, `en` nos EUA e no Canadá, `es` nos outros).
+- O catálogo da Rakuten é o do Brasil, em reais. No Brasil o post sai com o preço; nos outros países sai só o desconto ("50% de desconto"), e o link abre a página da Nuuvem do país, com o preço de lá (`deals_post.price_shown = 0`). O preço máximo só existe para o Brasil. Nunca há conversão de moeda.
+- Se a Rakuten tiver catálogos da Nuuvem para outros países, cada país passa a ler o seu, com o preço local.

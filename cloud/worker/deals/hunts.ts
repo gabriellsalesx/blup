@@ -3,15 +3,15 @@ import {z} from "zod";
 import {validate,opaqueId} from "../validation";
 import {dealsLimits} from "../../shared/pulse-plans";
 import {dealsWrite,type DealsApp} from "./access";
-import {huntFilters,huntKinds,huntSource,pcPlatforms,feedHunt,huntRow,type HuntKind,type HuntFilters} from "./catalog";
+import {huntFilters,huntKinds,huntSource,feedHunt,huntRow,type HuntKind,type HuntFilters} from "./catalog";
 import {usableChannels,affiliateOf,DAY} from "./store";
 
 const huntParam=z.object({hunt:opaqueId});
 const channelIds=z.array(opaqueId).min(1).max(dealsLimits.channels);
-// CheapShark lists PC stores only: games_deals takes only those platforms;
-// Nuuvem's sales have no platform filter.
-const fits=(kind:HuntKind,filters:HuntFilters)=>kind==="games_free"||(kind==="nuuvem_deals"?!filters.platforms?.length:!filters.platforms?.some(p=>!(pcPlatforms as readonly string[]).includes(p)));
-const names={games_free:"Jogos grátis",games_deals:"Promoções de jogos",nuuvem_deals:"Promoções da Nuuvem"} as const;
+// Giveaways take platforms; Nuuvem's sales a country instead, and a price
+// limit only in Brazil (the catalog's reais).
+const fits=(kind:HuntKind,filters:HuntFilters)=>kind==="games_free"?filters.country===undefined&&filters.gamesOnly===undefined&&filters.maxPrice===undefined:!filters.platforms?.length&&(filters.maxPrice===undefined||(filters.country??"br")==="br");
+const names={games_free:"Jogos grátis",nuuvem_deals:"Promoções da Nuuvem"} as const;
 const kinds=huntKinds.map(k=>`'${k}'`).join(",");
 type Row={id:string;kind:string;active:number;channels:string;filters:string;createdAt:number};
 const view=(r:Row)=>({id:r.id,kind:z.enum(huntKinds).parse(r.kind),active:!!r.active,channelIds:z.array(z.string()).catch([]).parse(JSON.parse(r.channels)),filters:huntFilters.catch({}).parse(JSON.parse(r.filters)),createdAt:new Date(r.createdAt).toISOString()});

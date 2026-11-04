@@ -218,6 +218,13 @@
       "when": 1793757166286,
       "tag": "0030_deals_account",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1793769661940,
+      "tag": "0031_deals_nuuvem_country",
+      "breakpoints": true
     }
   ]
 }

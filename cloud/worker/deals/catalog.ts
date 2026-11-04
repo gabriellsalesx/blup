@@ -10,7 +10,7 @@ import {readNuuvem,rakutenCredentials,isCredit} from "./nuuvem";
 // The global catalog: an offer is stored once, whoever finds it, by a hash
 // of where it comes from and what it is. Each price change goes to the
 // history (an honest "before" price later).
-export type OfferInput={key:string;store:string;externalId:string|null;sourceId:string|null;title:string;url:string;imageUrl:string|null;price:number|null;originalPrice:number|null;currency:string|null;kind:"product"|"game_free"|"game_deal"|"video"|"nuuvem_deal";platforms:string[];discount:number|null;credit:string|null;expiresAt:number|null};
+export type OfferInput={key:string;store:string;externalId:string|null;sourceId:string|null;title:string;url:string;imageUrl:string|null;price:number|null;originalPrice:number|null;currency:string|null;kind:"product"|"game_free"|"video"|"nuuvem_deal";platforms:string[];discount:number|null;credit:string|null;expiresAt:number|null};
 export type StoredOffer={id:string;isNew:boolean};
 export async function upsertOffer(db:D1Database,o:OfferInput,now=Date.now()):Promise<StoredOffer>{
  const hash=await sha256(o.key);
@@ -22,20 +22,16 @@ export async function upsertOffer(db:D1Database,o:OfferInput,now=Date.now()):Pro
  return {id:row.id,isNew:row.firstSeen===now};
 }
 
-// The platform ids the panel offers. games_deals (CheapShark, PC stores)
-// takes only the PC ones; pc stands for every PC store.
+// The platform ids the panel offers; pc stands for every PC store.
 export const platforms=["pc","steam","epic","gog","ubisoft","itchio","playstation","xbox","switch","android","ios"] as const;
-export const pcPlatforms=["pc","steam","epic","gog","ubisoft"] as const;
 const pcFamily=new Set<string>(["pc","steam","epic","gog","ubisoft","itchio"]);
 const gamerPowerPlatforms:[RegExp,string][]=[[/^pc$/,"pc"],[/steam/,"steam"],[/epic/,"epic"],[/gog/,"gog"],[/ubisoft/,"ubisoft"],[/itch/,"itchio"],[/playstation|ps4|ps5/,"playstation"],[/xbox/,"xbox"],[/switch/,"switch"],[/android/,"android"],[/ios/,"ios"]];
 export function gamerPowerPlatformIds(raw:string){
  const out=new Set<string>();for(const part of raw.toLowerCase().split(",").map(s=>s.trim()))for(const [re,id] of gamerPowerPlatforms)if(re.test(part))out.add(id);
  if([...out].some(p=>pcFamily.has(p)))out.add("pc");return [...out];
 }
-const cheapSharkStores:Record<string,string>={"1":"steam","7":"gog","13":"ubisoft","25":"epic"};
 
 const gamerPowerItem=z.object({id:z.number().int().positive(),title:z.string().max(512),worth:z.string().max(32),image:z.string().max(1024).optional(),thumbnail:z.string().max(1024).optional(),open_giveaway_url:z.url().max(1024),platforms:z.string().max(512),end_date:z.string().max(32),status:z.string().max(32),type:z.string().max(32)}).loose();
-const cheapSharkItem=z.object({dealID:z.string().regex(/^[A-Za-z0-9%+/=]{8,256}$/),title:z.string().max(512),storeID:z.string().regex(/^[0-9]{1,4}$/),salePrice:z.string().max(16),normalPrice:z.string().max(16),savings:z.string().max(32),thumb:z.string().max(1024).optional(),gameID:z.string().max(32).optional()}).loose();
 const httpsOnly=(v:string|undefined)=>{if(!v)return null;try{const u=new URL(v);return u.protocol==="https:"?u.href:null;}catch{return null;}};
 export function gamerPowerOffers(value:unknown,now=Date.now()):OfferInput[]{
  const list=z.array(z.unknown()).max(1000).safeParse(value);if(!list.success)return [];
@@ -47,27 +43,14 @@ export function gamerPowerOffers(value:unknown,now=Date.now()):OfferInput[]{
   return [{key:`gamerpower:${g.data.id}`,store:"gamerpower",externalId:String(g.data.id),sourceId:"gamerpower",title,url,imageUrl:httpsOnly(g.data.image??g.data.thumbnail),price:0,originalPrice:worth&&worth>0?worth:null,currency:"USD",kind:"game_free" as const,platforms:gamerPowerPlatformIds(g.data.platforms),discount:100,credit:"gamerpower",expiresAt:Number.isFinite(end)?end:null}];
  });
 }
-export function cheapSharkOffers(value:unknown):OfferInput[]{
- const list=z.array(z.unknown()).max(1000).safeParse(value);if(!list.success)return [];
- return list.data.flatMap(raw=>{
-  const d=cheapSharkItem.safeParse(raw);if(!d.success)return [];
-  const store=cheapSharkStores[d.data.storeID];if(!store)return [];
-  const price=priceCents(d.data.salePrice),original=priceCents(d.data.normalPrice),title=cleanLine(d.data.title,200),discount=Math.round(Number(d.data.savings));
-  if(price===null||!title||!Number.isFinite(discount))return [];
-  // The CheapShark link itself, never an affiliate swap (their terms).
-  return [{key:`cheapshark:${d.data.dealID}`,store:"cheapshark",externalId:d.data.dealID,sourceId:"cheapshark",title,url:`https://www.cheapshark.com/redirect?dealID=${encodeURIComponent(decodeURIComponent(d.data.dealID))}`,imageUrl:httpsOnly(d.data.thumb),price,originalPrice:original,currency:"USD",kind:"game_deal" as const,platforms:["pc",store],discount:Math.max(0,Math.min(100,discount)),credit:"cheapshark",expiresAt:null}];
- });
-}
-
 // The shared sources, each read once per round for every account: the
-// game feeds in one request; Nuuvem's catalog (Rakuten) a few pages a
+// giveaways in one request; Nuuvem's catalog (Rakuten) a few pages a
 // minute, its round complete when the last page is read. A source without
 // what it needs (Rakuten's credentials) is not read.
 type Read={offers:OfferInput[];next:number|null};
 const feed=(url:string,parse:(value:unknown,now:number)=>OfferInput[])=>({round:30*60_000,read:async(_env:Cloudflare.Env,_from:number,send:typeof fetch,now:number):Promise<Read>=>({offers:parse(await apiJSON(url,{headers:{accept:"application/json","user-agent":"BlupDeals/1.0 (+https://getblup.io)"}},send),now),next:null}),ready:(_env:Cloudflare.Env)=>true});
 const sources={
  gamerpower:feed("https://www.gamerpower.com/api/giveaways?type=game",gamerPowerOffers),
- cheapshark:feed("https://www.cheapshark.com/api/1.0/deals?storeID=1,7,13,25&onSale=1&sortBy=Recent&pageSize=60",(v)=>cheapSharkOffers(v)),
  // The catalog changes about once a day; a full read every 3 hours.
  nuuvem:{round:3*60*60_000,read:async(env:Cloudflare.Env,from:number,send:typeof fetch,now:number):Promise<Read>=>{const c=rakutenCredentials(env);if(!c)throw new Error("NOT_CONFIGURED");return readNuuvem(c,from,send,now);},ready:(env:Cloudflare.Env)=>rakutenCredentials(env)!==null},
 } as const;
@@ -76,13 +59,22 @@ type SourceId=keyof typeof sources;
 // round began, so its hunts get what the whole round found.
 const cursor=z.object({page:z.number().int().min(1).max(10_000),started:z.number().int().nonnegative()});
 
+// Nuuvem's stores, by country (its own /<country>-<language>/ pages). Its
+// catalog on Rakuten is Brazil's, in reais: elsewhere the post gives the
+// discount and the link opens that country's page, with its own price.
+export const nuuvemCountries=["br","ar","bo","ca","cl","co","ec","mx","pe","us","uy"] as const;
+const nuuvemLanguage=(country:string)=>country==="br"?"pt":country==="us"||country==="ca"?"en":"es";
+export function nuuvemPage(url:string,country:string){
+ const page=new URL(url);page.pathname=page.pathname.replace(/^\/[a-z]{2}-[a-z]{2}(?=\/)/,`/${country}-${nuuvemLanguage(country)}`);return page.href;
+}
 // gamesOnly (Nuuvem) leaves out credits and currency packs; on unless off.
-export const huntFilters=z.object({platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(100_000_00).optional(),gamesOnly:z.boolean().optional()}).strict();
+// maxPrice is in reais, so only for Nuuvem's Brazil store.
+export const huntFilters=z.object({platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(100_000_00).optional(),gamesOnly:z.boolean().optional(),country:z.enum(nuuvemCountries).optional()}).strict();
 export type HuntFilters=z.infer<typeof huntFilters>;
-export const huntKinds=["games_free","games_deals","nuuvem_deals"] as const;
+export const huntKinds=["games_free","nuuvem_deals"] as const;
 export type HuntKind=(typeof huntKinds)[number];
-const offerKind={games_free:"game_free",games_deals:"game_deal",nuuvem_deals:"nuuvem_deal"} as const;
-export const huntSource={games_free:"gamerpower",games_deals:"cheapshark",nuuvem_deals:"nuuvem"} as const;
+const offerKind={games_free:"game_free",nuuvem_deals:"nuuvem_deal"} as const;
+export const huntSource={games_free:"gamerpower",nuuvem_deals:"nuuvem"} as const;
 type CatalogRow={id:string;title:string;url:string;price:number|null;discount:number|null;platforms:string;kind:string};
 export function matches(filters:HuntFilters,offer:CatalogRow){
  if(offer.kind==="nuuvem_deal"&&filters.gamesOnly!==false&&isCredit(offer.title))return false;
@@ -96,13 +88,15 @@ type Hunt={id:string;userId:string;kind:HuntKind;filters:HuntFilters;channels:st
 const PER_ROUND=3;
 // Sends a hunt the newest matching offers it has not sent yet (at most
 // PER_ROUND each time), to every channel it names. Nuuvem's sales go with
-// the person's own Rakuten ID, the biggest discounts first; without that
+// the person's own Rakuten ID, to the hunt's country page (its price only
+// in Brazil, the catalog's own), the biggest discounts first; without that
 // ID the hunt sends nothing (no commission to earn).
 export async function feedHunt(env:Cloudflare.Env,hunt:Hunt,since:number,now=Date.now()){
- let link=(offer:CatalogRow)=>({link:offer.url,affiliate:false});
+ let link=(offer:CatalogRow)=>({link:offer.url,affiliate:false,priceShown:true});
  if(hunt.kind==="nuuvem_deals"){
   const affiliate=await affiliateOf(env,hunt.userId,"nuuvem");if(affiliate?.store!=="nuuvem")return 0;
-  link=offer=>({link:nuuvemLink(new URL(offer.url),affiliate.siteId),affiliate:true});
+  const country=hunt.filters.country??"br";
+  link=offer=>({link:nuuvemLink(new URL(nuuvemPage(offer.url,country)),affiliate.siteId),affiliate:true,priceShown:country==="br"});
  }
  const order=hunt.kind==="nuuvem_deals"?"coalesce(discount,0) DESC,first_seen_at DESC,id":"first_seen_at DESC,id";
  const rows=await env.DB.prepare(`SELECT id,title,url,price,discount,platforms,kind FROM deals_offer WHERE kind=? AND first_seen_at>=? AND (expires_at IS NULL OR expires_at>?) ORDER BY ${order} LIMIT 200`).bind(offerKind[hunt.kind],since,now).all<CatalogRow>();

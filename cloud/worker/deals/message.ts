@@ -13,17 +13,19 @@ const words={
 } as const;
 export const testText=(language:Language)=>words[language].test;
 // The source a post must credit, as an active link (GamerPower's terms ask
-// for a clickable attribution; CheapShark gets the same).
-export const credits:Record<string,{label:string;url:string}>={gamerpower:{label:"Via GamerPower",url:"https://www.gamerpower.com/"},cheapshark:{label:"Via CheapShark",url:"https://www.cheapshark.com/"}};
+// for a clickable attribution).
+export const credits:Record<string,{label:string;url:string}>={gamerpower:{label:"Via GamerPower",url:"https://www.gamerpower.com/"}};
 const creditOf=(p:Post)=>p.credit&&Object.hasOwn(credits,p.credit)?credits[p.credit]:null;
 export function money(cents:number,currency:string,language:Language){
  try{return new Intl.NumberFormat(languageTag[language],{style:"currency",currency}).format(cents/100);}catch{return `${(cents/100).toFixed(2)} ${currency}`;}
 }
-// The price line: "Grátis" for a giveaway, else the old price and the new.
+// The price line: "Grátis" for a giveaway (its worth is in dollars, so it
+// is left out), else the old price and the new; without a price (another
+// country's), the discount alone.
 function priceLine(p:Post,language:Language,strike:(s:string)=>string){
  const w=words[language];
- if(p.kind==="game_free")return p.originalPrice&&p.currency?`${strike(money(p.originalPrice,p.currency,language))} ${w.free}`:w.free;
- if(p.price===null||!p.currency)return null;
+ if(p.kind==="game_free")return w.free;
+ if(p.price===null||!p.currency)return p.discount&&p.discount>0?`${p.discount}% ${w.off}`:null;
  const now=money(p.price,p.currency,language),before=p.originalPrice&&p.originalPrice>p.price?`${strike(money(p.originalPrice,p.currency,language))} `:"";
  return `${before}${now}${p.discount&&p.discount>0?` (${p.discount}% ${w.off})`:""}`;
 }

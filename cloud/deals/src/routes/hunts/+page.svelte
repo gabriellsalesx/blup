@@ -22,7 +22,7 @@
  import {dealsError} from "../../lib/errors";
  import {refreshUsage} from "../../lib/panel.svelte";
  import {hasPlan} from "../../lib/plan";
- import {huntKinds,huntName,huntCurrency,platformLabel} from "../../lib/catalog";
+ import {huntKinds,huntName,countryName,platformLabel} from "../../lib/catalog";
  import Usage from "../../lib/Usage.svelte";
  // The hunts: what each one looks for, its filters in one line, how many
  // channels it posts to, and a switch to pause it. Stores and mirroring
@@ -31,9 +31,9 @@
  const soon=huntKinds.filter(k=>k.soon);
  const artOf=(kind:Hunt["kind"])=>huntKinds.find(k=>k.id===kind)!.art;
  function summary(hunt:Hunt){
-  const f=hunt.filters,parts=hunt.kind==="nuuvem_deals"?(f.gamesOnly!==false?[t("dealsGamesOnly")]:[]):[f.platforms?.length?f.platforms.map(platformLabel).join(", "):t("dealsAllPlatforms")];
+  const f=hunt.filters,parts=hunt.kind==="nuuvem_deals"?[countryName(f.country??"br",intlLocale()),...(f.gamesOnly!==false?[t("dealsGamesOnly")]:[])]:[f.platforms?.length?f.platforms.map(platformLabel).join(", "):t("dealsAllPlatforms")];
   if(f.minDiscount!==undefined)parts.push(t("dealsDiscountFrom",{percent:String(f.minDiscount)}));
-  if(f.maxPrice!==undefined)parts.push(t("dealsUpTo",{price:money(f.maxPrice,huntCurrency[hunt.kind]??"USD",language())}));
+  if(f.maxPrice!==undefined)parts.push(t("dealsUpTo",{price:money(f.maxPrice,"BRL",language())}));
   const n=hunt.channelIds.length;parts.push(n===1?t("dealsOneChannel"):t("dealsChannelCount",{count:n.toLocaleString(intlLocale())}));
   return parts.join(" · ");
  }

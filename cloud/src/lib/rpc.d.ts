@@ -10119,7 +10119,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 hunts: {
                     id: string;
-                    kind: "games_free" | "games_deals" | "nuuvem_deals";
+                    kind: "games_free" | "nuuvem_deals";
                     active: boolean;
                     channelIds: string[];
                     filters: {
@@ -10127,6 +10127,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     };
                     createdAt: string;
                 }[];
@@ -10140,13 +10141,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $post: {
             input: {
                 json: {
-                    kind: "games_free" | "games_deals" | "nuuvem_deals";
+                    kind: "games_free" | "nuuvem_deals";
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     };
                 };
             };
@@ -10162,13 +10164,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "games_deals" | "nuuvem_deals";
+                    kind: "games_free" | "nuuvem_deals";
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     };
                 };
             };
@@ -10181,13 +10184,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "games_deals" | "nuuvem_deals";
+                    kind: "games_free" | "nuuvem_deals";
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     };
                 };
             };
@@ -10199,13 +10203,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "games_deals" | "nuuvem_deals";
+                    kind: "games_free" | "nuuvem_deals";
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     };
                 };
             };
@@ -10217,13 +10222,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "games_deals" | "nuuvem_deals";
+                    kind: "games_free" | "nuuvem_deals";
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     };
                 };
             };
@@ -10235,13 +10241,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "games_deals" | "nuuvem_deals";
+                    kind: "games_free" | "nuuvem_deals";
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     };
                 };
             };
@@ -10268,6 +10275,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10294,6 +10302,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10317,6 +10326,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10343,6 +10353,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10366,6 +10377,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10388,6 +10400,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10410,6 +10423,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
+                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
                     } | undefined;
                 };
             };
