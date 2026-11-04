@@ -29,7 +29,7 @@
  // come in the next phase and show as such.
  let {data}:PageProps=$props();
  const soon=huntKinds.filter(k=>k.soon);
- const iconOf=(kind:Hunt["kind"])=>huntKinds.find(k=>k.id===kind)!.Icon;
+ const artOf=(kind:Hunt["kind"])=>huntKinds.find(k=>k.id===kind)!.art;
  function summary(hunt:Hunt){
   const f=hunt.filters,parts=[f.platforms?.length?f.platforms.map(platformLabel).join(", "):t("dealsAllPlatforms")];
   if(f.minDiscount!==undefined)parts.push(t("dealsDiscountFrom",{percent:String(f.minDiscount)}));
@@ -52,9 +52,8 @@
 
 <div class="mt-6"><List empty={t("dealsHuntsEmpty")}>
  {#each data.hunts as hunt(hunt.id)}
-  {@const Icon=iconOf(hunt.kind)}
   <ListItem href={hasPlan()?editHref(hunt):undefined} label={t(huntName(hunt.kind))}>
-   <div class="flex items-center gap-3"><Icon class="size-5 shrink-0 text-blup"/><div class="min-w-0"><p class="truncate font-semibold">{t(huntName(hunt.kind))}</p><p class="text-sm text-neutral-500">{summary(hunt)}</p></div></div>
+   <div class="flex items-center gap-3"><img src={artOf(hunt.kind)} alt="" width="40" height="40" class="size-10 shrink-0 transition-opacity {hunt.active?'':'opacity-50 grayscale'}"/><div class="min-w-0"><p class="truncate font-semibold">{t(huntName(hunt.kind))}</p><p class="text-sm text-neutral-500">{summary(hunt)}</p></div></div>
    {#snippet actions()}<div class="relative z-10"><Switch label={hunt.active?t("dealsHuntOn"):t("dealsHuntOff")} tone="coral" checked={hunt.active} disabled={!hasPlan()} onchange={(on)=>void toggle(hunt,on)}/></div>{/snippet}
    {#snippet menu()}<ActionMenu label={t("dealsActions")} items={menuFor(hunt)}/>{/snippet}
   </ListItem>
@@ -63,6 +62,6 @@
 
 <div class="mt-8 grid gap-4 sm:grid-cols-2">
  {#each soon as kind(kind.id)}
-  <Card><div class="flex items-start gap-3"><kind.Icon class="mt-0.5 size-5 shrink-0 text-neutral-400"/><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold">{t(kind.title)}<Badge>{t("dealsComingSoon")}</Badge></p><p class="mt-1 text-sm text-neutral-500">{t(kind.help)}</p></div></div></Card>
+  <Card><div class="flex items-center gap-4"><img src={kind.art} alt="" width="56" height="56" class="size-12 shrink-0 opacity-60 grayscale-[.5] sm:size-14"/><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold">{t(kind.title)}<Badge>{t("dealsComingSoon")}</Badge></p><p class="mt-1 text-sm text-neutral-500">{t(kind.help)}</p></div></div></Card>
  {/each}
 </div>

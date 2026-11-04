@@ -1,8 +1,7 @@
-import type {Component} from "svelte";
-import Gift from "@lucide/svelte/icons/gift";
-import BadgePercent from "@lucide/svelte/icons/badge-percent";
-import Store from "@lucide/svelte/icons/store";
-import Copy from "@lucide/svelte/icons/copy";
+import gamesFreeArt from "./assets/hunt-games-free.svg";
+import gamesDealsArt from "./assets/hunt-games-deals.svg";
+import storesArt from "./assets/hunt-stores.svg";
+import mirrorArt from "./assets/hunt-mirror.svg";
 import type {PlainMessageKey} from "#lib/i18n/catalog.ts";
 import {t} from "#lib/i18n.svelte.ts";
 import type {Hunt,HuntKind,Store as StoreId} from "./api";
@@ -21,12 +20,14 @@ export const stores:{id:StoreId;site:string;steps:PlainMessageKey[];fields:Store
  {id:"shopee",site:"https://affiliate.shopee.com.br/",steps:["dealsShopeeStep1","dealsShopeeStep2","dealsShopeeStep3"],fields:[{id:"appId",label:null,text:"App ID",secret:false},{id:"secret",label:null,text:"Secret",secret:true}]},
  {id:"aliexpress",site:"https://portals.aliexpress.com/",steps:["dealsAliStep1","dealsAliStep2","dealsAliStep3"],fields:[{id:"appKey",label:null,text:"App Key",secret:false},{id:"appSecret",label:null,text:"App Secret",secret:true},{id:"trackingId",label:null,text:"Tracking ID",secret:false}]},
 ];
-export type HuntOption={id:HuntKind|"stores"|"mirror";title:PlainMessageKey;help:PlainMessageKey;Icon:Component<{class?:string}>;soon?:boolean};
+export type HuntOption={id:HuntKind|"stores"|"mirror";title:PlainMessageKey;help:PlainMessageKey;art:string;soon?:boolean};
+// Each kind has its own drawing of the coral Blup (by Aquarela); the kind's
+// name always sits beside it, so the image is decorative (alt="").
 export const huntKinds:HuntOption[]=[
- {id:"games_free",title:"dealsGamesFree",help:"dealsGamesFreeHelp",Icon:Gift},
- {id:"games_deals",title:"dealsGamesDeals",help:"dealsGamesDealsHelp",Icon:BadgePercent},
- {id:"stores",title:"dealsStoresKind",help:"dealsStoresKindHelp",Icon:Store,soon:true},
- {id:"mirror",title:"dealsMirrorKind",help:"dealsMirrorKindHelp",Icon:Copy,soon:true},
+ {id:"games_free",title:"dealsGamesFree",help:"dealsGamesFreeHelp",art:gamesFreeArt},
+ {id:"games_deals",title:"dealsGamesDeals",help:"dealsGamesDealsHelp",art:gamesDealsArt},
+ {id:"stores",title:"dealsStoresKind",help:"dealsStoresKindHelp",art:storesArt,soon:true},
+ {id:"mirror",title:"dealsMirrorKind",help:"dealsMirrorKindHelp",art:mirrorArt,soon:true},
 ];
 export const huntName=(kind:HuntKind)=>kind==="games_free"?"dealsGamesFree" as const:"dealsGamesDeals" as const;
 // The platforms the server accepts; game sales (CheapShark) only the PC ones.

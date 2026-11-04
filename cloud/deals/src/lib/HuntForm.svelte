@@ -39,8 +39,8 @@
   <div class="mt-5 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label={t("dealsHuntKind")}>
    {#each huntKinds as option(option.id)}
     {@const on=option.id===kind}
-    <button type="button" role="radio" aria-checked={on} disabled={option.soon||(!!start&&option.id!==start.kind)} onclick={()=>{if(option.id==="games_free"||option.id==="games_deals")choose(option.id);}} class="flex items-start gap-4 rounded-xl border p-4 text-left transition-colors disabled:opacity-60 {on?'border-blup bg-orange-50/60 dark:bg-orange-950/30':'border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700'}">
-     <option.Icon class="mt-0.5 size-6 shrink-0 text-blup"/>
+    <button type="button" role="radio" aria-checked={on} disabled={option.soon||(!!start&&option.id!==start.kind)} onclick={()=>{if(option.id==="games_free"||option.id==="games_deals")choose(option.id);}} class="flex items-center gap-4 rounded-xl border p-4 text-left transition-colors disabled:opacity-60 {on?'border-blup bg-orange-50/60 dark:bg-orange-950/30':'border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700'}">
+     <img src={option.art} alt="" width="56" height="56" class="size-12 shrink-0 sm:size-14 {option.soon?'grayscale-[.5]':''}"/>
      <span class="min-w-0"><span class="flex flex-wrap items-center gap-2 font-semibold">{t(option.title)}{#if option.soon}<Badge>{t("dealsComingSoon")}</Badge>{/if}</span><span class="mt-0.5 block text-sm text-neutral-500">{t(option.help)}</span></span>
     </button>
    {/each}
