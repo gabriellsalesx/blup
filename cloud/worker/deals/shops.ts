@@ -102,7 +102,7 @@ export async function collectShops(env:Cloudflare.Env,send:typeof fetch=fetch,no
     if(sent>=PER_ROUND)break;
     if(await postedLately(env.DB,hunt.userId,f.offer.store,f.offer.externalId??"",f.offer.price,now))continue;
     const offer=await upsertOffer(env.DB,f.offer,now);
-    const queued=await enqueue(env.DB,{owner:hunt.userId,offerId:offer.id,channels:hunt.channels,link:f.link,affiliate:true,huntId:hunt.id,sendAt:now,now});
+    const queued=await enqueue(env.DB,{owner:hunt.userId,offerId:offer.id,channels:hunt.channels,link:f.link,affiliate:true,huntId:hunt.id,sendAt:now,now,paced:true});
     if(!queued)break;sent++;
    }
    if(sent)await env.DB.prepare("UPDATE deals_hunt SET last_post_at=? WHERE id=?").bind(now,hunt.id).run();

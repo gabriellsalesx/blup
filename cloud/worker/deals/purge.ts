@@ -46,6 +46,7 @@ export async function purgeDealsAccount(env:Cloudflare.Env,userId:string){
   env.DB.prepare("DELETE FROM deals_channel WHERE user_id=?").bind(userId),
   env.DB.prepare("DELETE FROM deals_affiliate WHERE user_id=?").bind(userId),
   env.DB.prepare("DELETE FROM deals_telegram_link WHERE user_id=?").bind(userId),
+  env.DB.prepare("DELETE FROM deals_setting WHERE user_id=?").bind(userId),
   env.DB.prepare("DELETE FROM deals_account WHERE user_id=?").bind(userId),
  ]);
 }

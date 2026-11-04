@@ -79,6 +79,8 @@ export const dealsPost=sqliteTable("deals_post",{
  affiliate:integer("affiliate").notNull().default(0),
  // 0 when the offer's price is another country's (only the discount goes).
  priceShown:integer("price_shown").notNull().default(1),
+ // 1 when it waits its turn in the account's pace (deals_setting.pace).
+ paced:integer("paced").notNull().default(0),
 },t=>[uniqueIndex("deals_post_once_idx").on(t.channelId,t.offerId),index("deals_post_due_idx").on(t.state,t.nextAt),index("deals_post_owner_day_idx").on(t.userId,t.day),index("deals_post_created_idx").on(t.createdAt)]);
 
 // Clicks on the short links, added up per post and day (few writes).
@@ -103,3 +105,14 @@ export const dealsTelegramUpdate=sqliteTable("deals_telegram_update",{
 export const dealsAccount=sqliteTable("deals_account",{
  userId:text("user_id").primaryKey(),lastPlan:text("last_plan").notNull(),readOnlyUntil:integer("read_only_until"),purgeStarted:integer("purge_started"),
 },t=>[index("deals_account_read_only_idx").on(t.readOnlyUntil)]);
+// How an account's posts go out (one setting for all its channels): pace,
+// minutes between two queued posts (0: as soon as found), and paceLast,
+// the time the last one was given; droppedAt, when a hunt last found more
+// than the pace can send in two days (the panel warns). headlines (JSON,
+// per kind, missing: the default line), the extra text and the social
+// networks (JSON [{network,url}]), each with its switch.
+export const dealsSetting=sqliteTable("deals_setting",{
+ userId:text("user_id").primaryKey(),pace:integer("pace").notNull().default(0),paceLast:integer("pace_last").notNull().default(0),droppedAt:integer("dropped_at"),
+ headlines:text("headlines").notNull().default("{}"),extra:text("extra"),extraOn:integer("extra_on").notNull().default(0),
+ socials:text("socials").notNull().default("[]"),socialsOn:integer("socials_on").notNull().default(0),updatedAt:integer("updated_at").notNull().default(0),
+});

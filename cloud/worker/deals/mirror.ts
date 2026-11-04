@@ -92,7 +92,7 @@ async function deliver(env:Cloudflare.Env,hunt:Hunt,product:Product,offerId:stri
  const affiliate=await affiliateOf(env,hunt.userId,product.store);if(!affiliate)return 0;
  const converted=await convertLink(product.url,affiliate,send);if(!converted.affiliate)return 0;
  if(await postedLately(env.DB,hunt.userId,product.store,productKey(product.url),product.price,now))return 0;
- const queued=await enqueue(env.DB,{owner:hunt.userId,offerId,channels:hunt.channels,link:converted.link,affiliate:true,huntId:hunt.id,sendAt:now,now});
+ const queued=await enqueue(env.DB,{owner:hunt.userId,offerId,channels:hunt.channels,link:converted.link,affiliate:true,huntId:hunt.id,sendAt:now,now,paced:true});
  if(queued)await env.DB.prepare("UPDATE deals_hunt SET last_post_at=? WHERE id=?").bind(now,hunt.id).run();
  return queued;
 }

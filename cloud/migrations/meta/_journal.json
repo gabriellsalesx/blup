@@ -225,6 +225,13 @@
       "when": 1793769661940,
       "tag": "0031_deals_nuuvem_country",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1793808662081,
+      "tag": "0032_deals_settings",
+      "breakpoints": true
     }
   ]
 }

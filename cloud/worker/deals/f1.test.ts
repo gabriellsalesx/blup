@@ -675,3 +675,70 @@ describe("store hunts on Shopee and AliExpress",()=>{
   expect(telegramText({title:"Lamp",price:1980,originalPrice:3960,currency:"JPY",discount:50,link:"https://deals.audit.invalid/r/x",affiliate:true,kind:"store_deal",credit:null,image:null},"en")).toContain("¥1,980");
  });
 });
+
+describe("pace, opening lines and networks",()=>{
+ const put=(body:unknown,user="alice")=>call("/settings",{method:"PUT",user,body});
+ const base={pace:0,headlines:{},extra:{text:"",on:false},socials:{links:[],on:false}};
+ it("spaces what the hunts find one pace apart, and again when the pace changes",async()=>{
+  const channel=await addDiscord(),now=Date.parse("2026-11-04T10:00:00Z");
+  expect((await put({...base,pace:30})).status).toBe(200);
+  const ids=[];for(const k of ["a","b","c"])ids.push((await upsertOffer(db.asD1(),offer({key:k,title:k}),now)).id);
+  for(const id of ids)expect(await enqueue(db.asD1(),{owner:"alice",offerId:id,channels:[channel],link:"https://www.amazon.com.br/dp/B000000001",affiliate:false,huntId:"h",sendAt:now,now,paced:true})).toBe(1);
+  const times=()=>db.sqlite.prepare("SELECT next_at AS at FROM deals_post ORDER BY next_at").all().map(r=>Number(r.at));
+  // The first one goes now (nothing went before), the next ones 30 minutes apart.
+  expect(times()).toEqual([now,now+30*60_000,now+60*60_000]);
+  // An offer twice in a channel takes no time.
+  expect(await enqueue(db.asD1(),{owner:"alice",offerId:ids[0],channels:[channel],link:"x",affiliate:false,huntId:"h",sendAt:now,now,paced:true})).toBe(0);
+  expect((await (await call("/settings",{user:"alice"})).json() as {behind:boolean}).behind).toBe(false);
+  // Three hours: the queue spaces again, three hours apart.
+  expect((await put({...base,pace:180})).status).toBe(200);
+  const spaced=times();expect(spaced[1]-spaced[0]).toBe(180*60_000);expect(spaced[2]-spaced[1]).toBe(180*60_000);
+  // What would only go out after two days is left out, and the panel warns.
+  const more=[];for(let i=0;i<20;i++)more.push(await enqueue(db.asD1(),{owner:"alice",offerId:(await upsertOffer(db.asD1(),offer({key:`m${i}`,title:`m${i}`}),Date.now())).id,channels:[channel],link:"x",affiliate:false,huntId:"h",sendAt:Date.now(),paced:true}));
+  expect(more.filter(n=>n===0).length).toBeGreaterThan(0);
+  expect(times().at(-1)!).toBeLessThanOrEqual(Date.now()+2*86_400_000);
+  expect((await (await call("/settings",{user:"alice"})).json() as {behind:boolean}).behind).toBe(true);
+ });
+ it("lets a pasted link go now or wait its turn in the queue",async()=>{
+  const channel=await addDiscord();
+  await put({...base,pace:60});
+  const page=html('<html><head><meta property="og:title" content="Fone"></head></html>');
+  vi.stubGlobal("fetch",net({"www.amazon.com.br":()=>page.clone()}).send);
+  const now=Date.now();
+  expect((await call("/offers",{method:"POST",user:"alice",body:{url:"https://www.amazon.com.br/dp/B000000001",channelIds:[channel]}})).status).toBe(201);
+  for(const id of ["B000000002","B000000003"])expect((await call("/offers",{method:"POST",user:"alice",body:{url:`https://www.amazon.com.br/dp/${id}`,channelIds:[channel],queue:true}})).status).toBe(201);
+  const rows=db.sqlite.prepare("SELECT paced,next_at AS at FROM deals_post ORDER BY created_at,rowid").all() as {paced:number;at:number}[];
+  expect(rows[0].paced).toBe(0);expect(rows[0].at).toBeLessThan(now+5_000);
+  // In the queue: the first one now, the next one an hour later.
+  expect(rows.slice(1).map(r=>r.paced)).toEqual([1,1]);expect(rows[2].at-rows[1].at).toBe(60*60_000);
+  const queued=await (await call("/offers?state=queued",{user:"alice"})).json() as {posts:{sendAt:string|null}[];nextCursor:string|null};
+  expect(queued.posts.map(p=>Date.parse(p.sendAt!))).toEqual([...queued.posts.map(p=>Date.parse(p.sendAt!))].sort((a,b)=>a-b));
+  expect(queued.nextCursor).toBeNull();
+ });
+ it("checks what the person writes and the networks, one of each",async()=>{
+  expect((await put({...base,extra:{text:"Veja www.site.com",on:true}})).status).toBe(400);
+  expect((await put({...base,headlines:{game_free:"Grátis em https://x.com"}})).status).toBe(400);
+  expect((await put({...base,socials:{links:[{network:"instagram",url:"https://evil.example/instagram.com"}],on:true}})).status).toBe(400);
+  expect((await put({...base,socials:{links:[{network:"x",url:"https://x.com/a"},{network:"x",url:"https://x.com/b"}],on:true}})).status).toBe(400);
+  expect((await put({...base,socials:{links:[{network:"instagram",url:"https://www.instagram.com/blup"}],on:true}})).status).toBe(200);
+  expect((await put({...base,socials:{links:[{network:"site",url:"https://loja.exemplo.com.br/"},{network:"twitch",url:"https://www.twitch.tv/blup"},{network:"kick",url:"https://kick.com/blup"}],on:true}})).status).toBe(200);
+  expect((await put({...base,socials:{links:[{network:"site",url:"https://127.0.0.1/"}],on:true}})).status).toBe(400);
+  expect((await put({...base,socials:{links:[{network:"kick",url:"https://twitch.tv/blup"}],on:true}})).status).toBe(400);
+ });
+ it("writes the opening line, the extra text and the networks in each post",async()=>{
+  const channel=await addDiscord(),now=Date.now();
+  await put({...base,headlines:{product:"Corre: {nome} na {loja}!"},extra:{text:"Acompanhe *tudo* [aqui]",on:true},socials:{links:[{network:"instagram",url:"https://instagram.com/blup"},{network:"telegram",url:"https://t.me/blup"}],on:true}});
+  const free=await upsertOffer(db.asD1(),offer({key:"g",title:"Dark Mystery",kind:"game_free",store:"gamerpower",price:0,discount:100,credit:"gamerpower"}),now);
+  const own=await upsertOffer(db.asD1(),offer({key:"p",title:"Fone"}),now);
+  for(const o of [free,own])await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[channel],link:"https://www.amazon.com.br/dp/B000000001",affiliate:false,huntId:null,sendAt:now,now});
+  const sent:{embeds:{title:string;description:string}[]}[]=[];
+  const {send}=net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}});
+  await dispatchDeals(state.env,send,now);await dispatchDeals(state.env,send,now+3*60_000);
+  const titles=sent.map(s=>s.embeds[0].title).sort();
+  expect(titles).toEqual(["Atenção: Dark Mystery está grátis! Aproveite antes que acabe.","Corre: Fone na Amazon!"]);
+  expect(sent[0].embeds[0].description).toContain("Acompanhe \\*tudo\\* \\[aqui\\]");
+  expect(sent[0].embeds[0].description).toContain("[Instagram](https://instagram.com/blup) · [Telegram](https://t.me/blup)");
+  const text=telegramText({title:"Fone",image:null,price:null,originalPrice:null,currency:null,discount:null,link:"https://deals.audit.invalid/r/x",affiliate:false,kind:"product",credit:null,extra:"<b>oi</b>",socials:[{name:"X",url:"https://x.com/a"}]},"pt");
+  expect(text).toContain("&lt;b&gt;oi&lt;/b&gt;");expect(text).toContain('<a href="https://x.com/a">X</a>');
+ });
+});

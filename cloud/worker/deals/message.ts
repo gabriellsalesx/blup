@@ -6,7 +6,9 @@ import {discordWebhook} from "../pulse/channel-crypto";
 
 // One post: the offer as the channel sees it. link is the short link;
 // watch, for a video, is the video itself (Telegram shows it above).
-export type Post={title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;link:string;affiliate:boolean;kind:string;credit:string|null;watch?:string|null};
+// title is the opening line already written; extra, the person's own text,
+// and socials, their networks, go under the link.
+export type Post={title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;link:string;affiliate:boolean;kind:string;credit:string|null;watch?:string|null;extra?:string|null;socials?:readonly {name:string;url:string}[]};
 const words={
  pt:{free:"Grátis",open:"Ver oferta",video:"Vídeo novo",watch:"Ver o vídeo",videoAd:"#publi",ad:"#publi · link de afiliado",off:"de desconto",test:"Teste do Blup Deals: este canal está pronto para receber ofertas."},
  en:{free:"Free",open:"See the deal",video:"New video",watch:"Watch the video",videoAd:"#ad",ad:"#ad · affiliate link",off:"off",test:"Blup Deals test: this channel is ready to get deals."},
@@ -35,6 +37,9 @@ function priceLine(p:Post,language:Language,strike:(s:string)=>string){
  return `${before}${now}${p.discount&&p.discount>0?` (${p.discount}% ${w.off})`:""}`;
 }
 const escapeHTML=(s:string)=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+// Discord reads markdown: the person's text goes as typed, not as markup.
+const escapeMarkdown=(s:string)=>s.replace(/[\\*_~`|>\[\]()<]/g,c=>`\\${c}`).replace(/^([#-])/,"\\$1");
+const markdownURL=(u:string)=>u.replace(/[()\s]/g,c=>encodeURIComponent(c));
 // What a post says, in either platform's markup: a video's news ("New
 // video: the product"), the link's words and the notice.
 function parts(p:Post,language:Language){
@@ -44,12 +49,12 @@ function parts(p:Post,language:Language){
 // Telegram (HTML): at most 1024 characters with a photo.
 export function telegramText(p:Post,language:Language){
  const {title,open,ad}=parts(p,language),price=priceLine(p,language,s=>`<s>${escapeHTML(s)}</s>`);
- const lines=[`<b>${escapeHTML([...title].slice(0,300).join(""))}</b>`,...(price?[price]:[]),`<a href="${escapeHTML(p.link)}">${open}</a>`,...(ad?[ad]:[]),...((c=>c?[`<a href="${c.url}">${c.label}</a>`]:[])(creditOf(p)))];
+ const lines=[`<b>${escapeHTML([...title].slice(0,300).join(""))}</b>`,...(price?[price]:[]),`<a href="${escapeHTML(p.link)}">${open}</a>`,...(p.extra?[escapeHTML(p.extra)]:[]),...(p.socials?.length?[p.socials.map(n=>`<a href="${escapeHTML(n.url)}">${escapeHTML(n.name)}</a>`).join(" · ")]:[]),...(ad?[ad]:[]),...((c=>c?[`<a href="${c.url}">${c.label}</a>`]:[])(creditOf(p)))];
  return lines.join("\n");
 }
 export function discordPayload(p:Post,language:Language){
  const {title,open,ad}=parts(p,language),price=priceLine(p,language,s=>`~~${s}~~`),credit=creditOf(p);
- return {username:"Blup Deals",allowed_mentions:{parse:[]},embeds:[{...(credit?{author:{name:credit.name,url:credit.url}}:{}),title:[...title].slice(0,250).join(""),url:p.link,color:0xc2410c,description:[...(price?[price]:[]),`[${open}](${p.link})`,...(ad?[ad]:[])].join("\n"),...(p.image?{image:{url:p.image}}:{})}]};
+ return {username:"Blup Deals",allowed_mentions:{parse:[]},embeds:[{...(credit?{author:{name:credit.name,url:credit.url}}:{}),title:[...title].slice(0,250).join(""),url:p.link,color:0xc2410c,description:[...(price?[price]:[]),`[${open}](${p.link})`,...(p.extra?[escapeMarkdown(p.extra)]:[]),...(p.socials?.length?[p.socials.map(n=>`[${n.name}](${markdownURL(n.url)})`).join(" · ")]:[]),...(ad?[ad]:[])].join("\n"),...(p.image?{image:{url:p.image}}:{})}]};
 }
 
 export const dealsChatId=z.string().regex(/^-?[1-9][0-9]{0,15}$/).refine(v=>Number.isSafeInteger(Number(v)));

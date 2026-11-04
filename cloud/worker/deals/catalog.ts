@@ -110,7 +110,7 @@ export async function feedHunt(env:Cloudflare.Env,hunt:Hunt,since:number,now=Dat
  for(const offer of rows.results){
   if(sent>=PER_ROUND)break;if(!matches(hunt.filters,offer))continue;
   const fresh=await env.DB.prepare("SELECT 1 FROM deals_offer WHERE id=? AND NOT EXISTS(SELECT 1 FROM deals_post WHERE offer_id=? AND user_id=?)").bind(offer.id,offer.id,hunt.userId).first();if(!fresh)continue;
-  const queued=await enqueue(env.DB,{owner:hunt.userId,offerId:offer.id,channels:hunt.channels,...link(offer),huntId:hunt.id,sendAt:now,now});
+  const queued=await enqueue(env.DB,{owner:hunt.userId,offerId:offer.id,channels:hunt.channels,...link(offer),huntId:hunt.id,sendAt:now,now,paced:true});
   if(queued)sent++;else if(!await env.DB.prepare("SELECT 1 FROM deals_post WHERE offer_id=? AND user_id=?").bind(offer.id,hunt.userId).first())break;
  }
  if(sent)await env.DB.prepare("UPDATE deals_hunt SET last_post_at=? WHERE id=?").bind(now,hunt.id).run();

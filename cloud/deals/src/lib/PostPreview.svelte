@@ -7,8 +7,9 @@
  // short link and, as the server writes it, the affiliate notice only when
  // the link carries the person's ID. `example` marks a made-up one. A
  // video's news (`author` set) shows the video's place on top, as Telegram
- // shows its cover, and says it is a new video.
- let {title,image=null,price=null,currency=null,store,affiliate,example=false,author=null}:{title:string;image?:string|null;price?:number|null;currency?:string|null;store:string;affiliate:boolean;example?:boolean;author?:string|null}=$props();
+ // shows its cover, and says it is a new video. extra and socials are the
+ // account's own text and networks, under the link.
+ let {title,image=null,price=null,currency=null,store,affiliate,example=false,author=null,extra=null,socials=[]}:{title:string;image?:string|null;price?:number|null;currency?:string|null;store:string;affiliate:boolean;example?:boolean;author?:string|null;extra?:string|null;socials?:readonly string[]}=$props();
  let broken=$state(false);
 </script>
 <figure class="max-w-sm overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
@@ -23,6 +24,8 @@
   <p class="font-bold break-words">{author?t("dealsVideoNews",{title}):title}</p>
   {#if price!==null&&currency}<p class="font-semibold">{money(price,currency,language())}</p>{/if}
   <p class="break-all text-blup underline">{#if author}{t("dealsWatchVideo")}{:else}deals.getblup.site/r/…{/if}</p>
+  {#if extra}<p class="break-words">{extra}</p>{/if}
+  {#if socials.length}<p class="break-words text-blup">{socials.join(" · ")}</p>{/if}
   <p class="text-neutral-500">{store}{#if affiliate}{" · "}{author?t("dealsVideoAd"):t("dealsAdNotice")}{/if}</p>
  </figcaption>
 </figure>

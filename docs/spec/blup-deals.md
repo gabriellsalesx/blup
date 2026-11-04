@@ -628,3 +628,15 @@ Essas pendências técnicas e comerciais não reabrem a decisão de espelhamento
   - Os países e moedas ficam em `cloud/shared/deals-markets.ts`, usado pelo servidor e pelo painel. Bandeiras: flag-icons 7.6.0 (MIT), sem alteração.
 - **Validado localmente** com respostas simuladas no formato da documentação (inclusive uma caçada do AliExpress no Japão, em iene, e uma conta Shopee da Malásia, em ringgit); falta testar com chaves reais de uma conta de afiliado aprovada.
 
+
+## Configurações de envio (entregue em 04/11/2026)
+
+Página `/settings` do painel, aberta pelo botão "Configurações" em Ofertas. Uma configuração vale para todos os canais da conta (tabela `deals_setting`, migração `0032`, que também cria `deals_post.paced`). Regras compartilhadas entre servidor e painel em [deals-post.ts](../../cloud/shared/deals-post.ts).
+
+- **Ritmo:** na hora, 30 minutos, 1h, 3h, 5h ou 8h. O que as caçadas acham (jogos grátis, Nuuvem, lojas, espelho) entra na fila com `paced=1` e pega o próximo horário livre: um ritmo depois do último horário dado (`pace_last`), nunca antes de agora. Posts da mesma oferta em vários canais dividem o horário. Mudar o ritmo reorganiza a fila na mesma ordem, a partir de um ritmo depois do último post com ritmo enviado. O intervalo mínimo de 2 minutos por canal e o limite de 100 posts por dia continuam.
+- **Fila cheia:** achado de caçada que só sairia depois de 2 dias não entra; `dropped_at` marca e Ofertas mostra o aviso por 24 horas.
+- **Colar link e Vídeo novo:** "Enviar agora" (fora da fila), "Pôr na fila" (próximo horário livre, até 30 dias; além disso, `QUEUE_FULL`) ou "Agendar".
+- **Frase de abertura:** uma por tipo (jogo grátis, Nuuvem, Shopee e AliExpress, link colado e espelho), com padrão no idioma da conta e botões para `{nome}`, `{desconto}` e `{loja}` (cada idioma tem sua grafia; todas valem). Vídeo mantém "Vídeo novo". Frase vazia depois de trocar as palavras volta ao nome.
+- **Texto extra:** até 200 caracteres, com liga/desliga, no fim do post antes do #publi. Sem endereços (frases também): links só pelas redes.
+- **Redes sociais:** Site, Instagram, TikTok, YouTube, X, Facebook, Threads, WhatsApp, Telegram, Discord, Twitch e Kick (as duas últimas para live), uma de cada, com liga/desliga; o servidor confere se o link é do site da rede (o Site aceita qualquer domínio por nome, nunca IP). No post viram uma linha de nomes clicáveis. Ícones do Simple Icons 16.36.0 e, para o Site, o globo do Lucide; o Kwai não está no Simple Icons e ficou de fora.
+- **Ofertas:** a fila mostra quando cada post sai, na ordem de saída; Enviadas e Falharam vêm do mais novo, 20 por página, com o paginador por cursor já usado no staff. Posts enviados ficam 90 dias.

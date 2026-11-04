@@ -4,6 +4,7 @@ import {channelsApi,telegramApi,telegramWebhookApi} from "./channels";
 import {affiliatesApi} from "./affiliates";
 import {offersApi} from "./offers";
 import {huntsApi,statsApi} from "./hunts";
+import {settingsApi} from "./settings";
 import {DAY,dayOf} from "./store";
 export {dayOf};
 
@@ -27,4 +28,5 @@ export const dealsApi=new Hono<DealsApp>()
  .route("/affiliates",affiliatesApi)
  .route("/offers",offersApi)
  .route("/hunts",huntsApi)
- .route("/stats",statsApi);
+ .route("/stats",statsApi)
+ .route("/settings",settingsApi);

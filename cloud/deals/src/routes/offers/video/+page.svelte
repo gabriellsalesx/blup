@@ -11,8 +11,6 @@
  import Button from "#lib/ui/Button.svelte";
  import Card from "#lib/ui/Card.svelte";
  import FloatField from "#lib/ui/FloatField.svelte";
- import Switch from "#lib/ui/Switch.svelte";
- import DateTimeField from "#lib/ui/DateTimeField.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import BackLink from "#lib/ui/BackLink.svelte";
  import {dealsApi,parseResponse,type VideoPreview} from "../../../lib/api";
@@ -21,6 +19,7 @@
  import {hasPlan} from "../../../lib/plan";
  import PostPreview from "../../../lib/PostPreview.svelte";
  import ChannelPicker from "../../../lib/ChannelPicker.svelte";
+ import SendWhen,{type SendMode} from "../../../lib/SendWhen.svelte";
  // A new TikTok video about a product: the link is checked first (a public
  // video), then the person names the product and, if they want, its
  // price; the preview shows the news as the channels will see it. The
@@ -29,7 +28,7 @@
  let {data}:PageProps=$props();
  let url=$state(""),video=$state<VideoPreview|null>(null),videoOf=$state(""),busy=$state(false);
  let title=$state(""),price=$state("");
- let scheduled=$state(false),sendAt=$state(Math.ceil((Date.now()+3_600_000)/900_000)*900_000);
+ let mode=$state<SendMode>("now"),sendAt=$state(Math.ceil((Date.now()+3_600_000)/900_000)*900_000);
  let channelIds=$derived(data.channels.filter(c=>c.active).map(c=>c.id));
  const stale=$derived(!!video&&videoOf!==url.trim());
  // "89,90", "89.90" or "89" in cents; empty is no price.
@@ -38,7 +37,7 @@
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}}
  async function check(e:SubmitEvent){e.preventDefault();const target=url.trim();if(!target)return;await run(async()=>{video=await parseResponse(dealsApi.offers.video.preview.$post({json:{url:target}}));videoOf=target;});}
  async function announce(){if(!video||stale||!title.trim()||cents===null||!channelIds.length)return;await run(async()=>{
-  await parseResponse(dealsApi.offers.video.$post({json:{url:videoOf,title:title.trim(),...(cents!==undefined?{price:cents}:{}),channelIds,...(scheduled?{sendAt:new Date(sendAt).toISOString()}:{})}}));
+  await parseResponse(dealsApi.offers.video.$post({json:{url:videoOf,title:title.trim(),...(cents!==undefined?{price:cents}:{}),channelIds,...(mode==="schedule"?{sendAt:new Date(sendAt).toISOString()}:mode==="queue"?{queue:true}:{})}}));
   void refreshUsage();toast(()=>t("dealsVideoQueuedToast"));await goto(resolve("/"));
  });}
 </script>
@@ -73,10 +72,8 @@
   <div class="mt-5"><ChannelPicker channels={data.channels} bind:selected={channelIds}/></div>
   {#if !data.channels.length}<a class="mt-3 inline-block text-sm font-semibold text-blup underline" href={resolve("/channels/new")}>{t("dealsNewChannel")}</a>{/if}
   <div class="mt-6 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-   <Switch label={t("dealsSchedule")} tone="coral" bind:checked={scheduled}/>
-   <p class="mt-1 text-sm text-neutral-500">{t("dealsScheduleHelp")}</p>
-   {#if scheduled}<div class="mt-4 max-w-sm"><DateTimeField label={t("dealsSendAt")} surface="bg-white dark:bg-neutral-900" min={minSend} max={maxSend} bind:value={sendAt}/></div>{/if}
+   <SendWhen bind:mode bind:sendAt min={minSend} max={maxSend} pace={data.pace}/>
   </div>
-  <div class="mt-6 flex justify-end"><Button {busy} disabled={!title.trim()||cents===null||!channelIds.length||(scheduled&&(sendAt<minSend||sendAt>maxSend))||!hasPlan()} onclick={announce}><Send class="size-4"/>{t("dealsAnnounce")}</Button></div>
+  <div class="mt-6 flex justify-end"><Button {busy} disabled={!title.trim()||cents===null||!channelIds.length||(mode==="schedule"&&(sendAt<minSend||sendAt>maxSend))||!hasPlan()} onclick={announce}><Send class="size-4"/>{t("dealsAnnounce")}</Button></div>
  </Card></div>
 {/if}

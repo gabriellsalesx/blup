@@ -2,10 +2,19 @@ import {siteLock,unlockSite} from "../quota";
 import {languageOf} from "../../shared/language";
 import {dealsAccess} from "./access";
 import {telegramText,discordPayload,sendTelegram,sendDiscord,type Post} from "./message";
-import {unseal,CHANNEL_INTERVAL,DAY,dayOf,type ChannelType} from "./store";
+import {unseal,settingsOf,headlineOf,socialLinks,CHANNEL_INTERVAL,DAY,dayOf,type ChannelType,type DealsSettings} from "./store";
+import {headline,defaultHeadlines,headlineKinds,storeTitles,type HeadlineKind} from "../../shared/deals-post";
 import type {Delivery} from "../pulse/transports";
 
-type Due={id:string;userId:string;channelId:string;code:string;link:string;attempts:number;day:string;platform:string;target:string;channelNext:number;active:number;title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;kind:string;credit:string|null;language:string;affiliate:number;priceShown:number;url:string};
+type Due={id:string;userId:string;channelId:string;code:string;link:string;attempts:number;day:string;platform:string;target:string;channelNext:number;active:number;title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;kind:string;credit:string|null;language:string;affiliate:number;priceShown:number;url:string;store:string};
+// The post's opening line: the person's (or the default, in the account's
+// language) with the offer's name, discount and store; a video keeps its
+// own. A line that ends up empty falls back to the name.
+export function openingLine(item:{title:string;kind:string;discount:number|null;store:string;language:string|null},own:Pick<DealsSettings,"headlines">){
+ if(!(headlineKinds as readonly string[]).includes(item.kind))return item.title;
+ const template=headlineOf(own,item.kind)??defaultHeadlines[languageOf(item.language)??"pt"][item.kind as HeadlineKind];
+ return headline(template,{name:item.title,discount:item.discount,store:storeTitles[item.store]??""})||item.title;
+}
 export const shortLink=(env:Cloudflare.Env,code:string)=>`https://${env.DEALS_PUBLIC_HOST||"deals.getblup.site"}/r/${code}`;
 export async function deliverPost(env:Cloudflare.Env,type:ChannelType,target:string,post:Post,language:string|null,send:typeof fetch=fetch):Promise<Delivery>{
  const lang=languageOf(language)??"pt";
@@ -34,11 +43,11 @@ export async function dispatchDeals(env:Cloudflare.Env,send:typeof fetch=fetch,n
  const started=Date.now(),clock=()=>now+(Date.now()-started),paused=new Set<ChannelType>();
  try{
   const due=await env.DB.prepare(`SELECT p.id,p.user_id AS userId,p.channel_id AS channelId,p.code,p.link,p.attempts,p.day,c.platform,c.target,c.next_at AS channelNext,c.active,
-   o.title,o.image_url AS image,o.price,o.original_price AS originalPrice,o.currency,o.discount,o.kind,o.credit,o.url,u.language,
+   o.title,o.store,o.image_url AS image,o.price,o.original_price AS originalPrice,o.currency,o.discount,o.kind,o.credit,o.url,u.language,
    p.affiliate,p.price_shown AS priceShown
    FROM deals_post p JOIN deals_channel c ON c.id=p.channel_id JOIN deals_offer o ON o.id=p.offer_id JOIN user u ON u.id=p.user_id
    WHERE p.state='queued' AND p.next_at<=? AND p.claim_until<=? ORDER BY p.next_at,p.created_at LIMIT 50`).bind(now,now).all<Due>();
-  const access=new Map<string,boolean>(),busy=new Set<string>();
+  const access=new Map<string,boolean>(),settings=new Map<string,DealsSettings>(),busy=new Set<string>();
   for(const item of due.results){
    // At most 45 s of work per run, measured on the run itself.
    if(clock()-now>45_000)break;
@@ -68,7 +77,9 @@ export async function dispatchDeals(env:Cloudflare.Env,send:typeof fetch=fetch,n
    let result:Delivery;
    try{
     const target=await unseal(env,item.userId,item.channelId,type,item.target);
-    result=await deliverPost(env,type,target,{title:item.title,image:item.image,price:item.priceShown?item.price:null,originalPrice:item.priceShown?item.originalPrice:null,currency:item.currency,discount:item.discount,link:shortLink(env,item.code),affiliate:!!item.affiliate,kind:item.kind,credit:item.credit,watch:item.kind==="video"?item.url:null},item.language,send);
+    if(!settings.has(item.userId))settings.set(item.userId,await settingsOf(env.DB,item.userId));
+    const own=settings.get(item.userId)!;
+    result=await deliverPost(env,type,target,{title:openingLine(item,own),extra:own.extra.on&&own.extra.text?own.extra.text:null,socials:socialLinks(own),image:item.image,price:item.priceShown?item.price:null,originalPrice:item.priceShown?item.originalPrice:null,currency:item.currency,discount:item.discount,link:shortLink(env,item.code),affiliate:!!item.affiliate,kind:item.kind,credit:item.credit,watch:item.kind==="video"?item.url:null},item.language,send);
    }catch{result={sent:false,permanent:false,code:"CHANNEL_UNAVAILABLE",waitMs:300_000,global:false};}
    if(result.sent){
     await env.DB.batch([

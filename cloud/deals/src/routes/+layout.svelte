@@ -25,7 +25,7 @@
  // The five tabs; a form opened from a tab keeps that tab lit.
  const under=(base:string)=>(path:string)=>path===base||path.startsWith(`${base}/`);
  const links=$derived([
-  {href:resolve("/"),label:t("dealsOffers"),Icon:Tag,match:(path:string)=>path===resolve("/")||path===resolve("/offers/new")||path===resolve("/start")},
+  {href:resolve("/"),label:t("dealsOffers"),Icon:Tag,match:(path:string)=>path===resolve("/")||path===resolve("/offers/new")||path===resolve("/offers/video")||path===resolve("/settings")||path===resolve("/start")},
   {href:resolve("/hunts"),label:t("dealsHunts"),Icon:Crosshair,match:under(resolve("/hunts"))},
   {href:resolve("/channels"),label:t("dealsChannels"),Icon:Send,match:under(resolve("/channels"))},
   {href:resolve("/affiliates"),label:t("dealsAffiliates"),Icon:Handshake},

@@ -9825,6 +9825,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     channelIds: string[];
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -9842,6 +9843,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     channelIds: string[];
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -9856,6 +9858,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     channelIds: string[];
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -9869,6 +9872,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     channelIds: string[];
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -9882,6 +9886,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     channelIds: string[];
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -9895,32 +9900,21 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     url: string;
                     channelIds: string[];
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
-                code: string;
+                code: "DUPLICATE" | "DAILY_LIMIT" | "QUEUE_FULL";
             };
             outputFormat: "json";
-            status: 429;
+            status: 409 | 429;
         } | {
             input: {
                 json: {
                     url: string;
                     channelIds: string[];
                     sendAt?: string | undefined;
-                };
-            };
-            output: {
-                code: string;
-            };
-            outputFormat: "json";
-            status: 409;
-        } | {
-            input: {
-                json: {
-                    url: string;
-                    channelIds: string[];
-                    sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -9996,6 +9990,23 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds: string[];
                     price?: number | undefined;
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
+                };
+            };
+            output: {
+                code: "DUPLICATE" | "DAILY_LIMIT" | "QUEUE_FULL";
+            };
+            outputFormat: "json";
+            status: 409 | 429;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    title: string;
+                    channelIds: string[];
+                    price?: number | undefined;
+                    sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -10015,6 +10026,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds: string[];
                     price?: number | undefined;
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -10031,6 +10043,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds: string[];
                     price?: number | undefined;
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -10046,6 +10059,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds: string[];
                     price?: number | undefined;
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -10061,6 +10075,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds: string[];
                     price?: number | undefined;
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -10076,6 +10091,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds: string[];
                     price?: number | undefined;
                     sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -10091,21 +10107,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channelIds: string[];
                     price?: number | undefined;
                     sendAt?: string | undefined;
-                };
-            };
-            output: {
-                code: string;
-            };
-            outputFormat: "json";
-            status: 429;
-        } | {
-            input: {
-                json: {
-                    url: string;
-                    title: string;
-                    channelIds: string[];
-                    price?: number | undefined;
-                    sendAt?: string | undefined;
+                    queue?: boolean | undefined;
                 };
             };
             output: {
@@ -10122,6 +10124,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 query: {
                     state?: "sent" | "queued" | "failed" | undefined;
+                    cursor?: string | undefined;
                 };
             };
             output: {
@@ -10137,6 +10140,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 query: {
                     state?: "sent" | "queued" | "failed" | undefined;
+                    cursor?: string | undefined;
                 };
             };
             output: {
@@ -10149,6 +10153,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 query: {
                     state?: "sent" | "queued" | "failed" | undefined;
+                    cursor?: string | undefined;
                 };
             };
             output: {
@@ -10161,9 +10166,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     state: "sent" | "queued" | "failed";
                     channelId: string;
                     sentAt: string | null;
+                    sendAt: string | null;
                     clicks: number;
                     lastError: string | null;
                 }[];
+                nextCursor: string | null;
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;
@@ -10771,7 +10778,132 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-}, "/stats">, "/api/deals"> | import("hono/types").MergeSchemaPath<{
+}, "/stats"> | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                pace: 0 | 30 | 60 | 300 | 180 | 480;
+                headlines: {
+                    product?: string | undefined;
+                    game_free?: string | undefined;
+                    nuuvem_deal?: string | undefined;
+                    store_deal?: string | undefined;
+                };
+                extra: {
+                    text: string;
+                    on: boolean;
+                };
+                socials: {
+                    links: {
+                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "x" | "instagram" | "youtube" | "whatsapp";
+                        url: string;
+                    }[];
+                    on: boolean;
+                };
+                behind: boolean;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/": {
+        $put: {
+            input: {
+                json: {
+                    pace: 0 | 30 | 60 | 300 | 180 | 480;
+                    headlines: Partial<Record<"product" | "game_free" | "nuuvem_deal" | "store_deal", string>>;
+                    extra: {
+                        text: string;
+                        on: boolean;
+                    };
+                    socials: {
+                        links: {
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "x" | "instagram" | "youtube" | "whatsapp";
+                            url: string;
+                        }[];
+                        on: boolean;
+                    };
+                };
+            };
+            output: {
+                pace: 0 | 30 | 60 | 300 | 180 | 480;
+                headlines: {
+                    product?: string | undefined;
+                    game_free?: string | undefined;
+                    nuuvem_deal?: string | undefined;
+                    store_deal?: string | undefined;
+                };
+                extra: {
+                    text: string;
+                    on: boolean;
+                };
+                socials: {
+                    links: {
+                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "x" | "instagram" | "youtube" | "whatsapp";
+                        url: string;
+                    }[];
+                    on: boolean;
+                };
+                behind: boolean;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                json: {
+                    pace: 0 | 30 | 60 | 300 | 180 | 480;
+                    headlines: Partial<Record<"product" | "game_free" | "nuuvem_deal" | "store_deal", string>>;
+                    extra: {
+                        text: string;
+                        on: boolean;
+                    };
+                    socials: {
+                        links: {
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "x" | "instagram" | "youtube" | "whatsapp";
+                            url: string;
+                        }[];
+                        on: boolean;
+                    };
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    pace: 0 | 30 | 60 | 300 | 180 | 480;
+                    headlines: Partial<Record<"product" | "game_free" | "nuuvem_deal" | "store_deal", string>>;
+                    extra: {
+                        text: string;
+                        on: boolean;
+                    };
+                    socials: {
+                        links: {
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "x" | "instagram" | "youtube" | "whatsapp";
+                            url: string;
+                        }[];
+                        on: boolean;
+                    };
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        };
+    };
+}, "/settings">, "/api/deals"> | import("hono/types").MergeSchemaPath<{
     "/checkout": {
         $post: {
             input: {
