@@ -13,7 +13,13 @@
  import HuntForm from "../../../lib/HuntForm.svelte";
  let {data}:PageProps=$props();
  let busy=$state(false);
- async function create(input:HuntInput){busy=true;try{await parseResponse(dealsApi.hunts.$post({json:input}));void refreshUsage();toast(()=>t("dealsHuntCreated"));await goto(resolve("/hunts"));}catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}}
+ // Several channels to mirror: one mirror each, in turn; one that fails
+ // (already mirrored, over the limit) is said and the rest still go.
+ async function create({mirrors,...input}:HuntInput){busy=true;try{
+  if(!mirrors){await parseResponse(dealsApi.hunts.$post({json:input}));}
+  else{let made=0;for(const channel of mirrors){try{await parseResponse(dealsApi.hunts.$post({json:{...input,channel}}));made++;}catch(e){toast(`@${channel}: ${dealsError(e)}`,{kind:"error"});}}if(!made)return;}
+  void refreshUsage();toast(()=>t("dealsHuntCreated"));await goto(resolve("/hunts"));
+ }catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}}
 </script>
 
 <div class="mb-4"><BackLink href={resolve("/hunts")} label={t("dealsHunts")}/></div>

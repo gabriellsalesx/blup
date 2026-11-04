@@ -1,7 +1,5 @@
 <script lang="ts">
  import Check from "@lucide/svelte/icons/check";
- import Search from "@lucide/svelte/icons/search";
- import CircleCheck from "@lucide/svelte/icons/circle-check";
  import {untrack} from "svelte";
  import {resolve} from "$app/paths";
  import {t,intlLocale,language} from "#lib/i18n.svelte.ts";
@@ -9,6 +7,7 @@
  import Card from "#lib/ui/Card.svelte";
  import Badge from "#lib/ui/Badge.svelte";
  import FloatField from "#lib/ui/FloatField.svelte";
+ import TagInput from "./TagInput.svelte";
  import Switch from "#lib/ui/Switch.svelte";
  import Select from "#lib/ui/Select.svelte";
  import ChannelPicker from "./ChannelPicker.svelte";
@@ -27,7 +26,8 @@
  // that money and sent in its minor units. Nuuvem's sales take the country of its
  // store, a minimum discount, a price limit only for Brazil (typed in
  // reais, sent in cents) and can leave out game credits. A mirror takes a
- // public Telegram channel (checked before it is saved; fixed after) and
+ // public Telegram channel, or several (each checked as it is added, each
+ // its own mirror; fixed after) and
  // the stores it keeps.
  let {channels,affiliates=[],hunt=null,busy=false,submitLabel,onsubmit}:{channels:Channel[];affiliates?:StoreState[];hunt?:Hunt|null;busy?:boolean;submitLabel:string;onsubmit:(input:HuntInput)=>void}=$props();
  // Starts from the saved hunt, if any; editing stays on this page.
@@ -40,7 +40,7 @@
  let gamesOnly=$state(start?.filters.gamesOnly!==false);
  let country=$state<NuuvemCountry>(start?.filters.country??"br");
  const nuuvemOptions=$derived(countryOptions(nuuvemCountries,intlLocale(),"br"));
- let channel=$state(""),checked=$state<{name:string;title:string|null}|null>(null),checking=$state(false);
+ let mirrors=$state<string[]>([]),checking=$state(false);
  let keep=$state<Store[]>([...(start?.filters.stores??[])]);
  type ShopStore=(typeof shopStores)[number];
  const configured=$derived(affiliates.filter(a=>a.configured).map(a=>a.store));
@@ -49,12 +49,13 @@
  // A new AliExpress hunt starts in the panel's own region.
  let market=$state<AliexpressCountry>(start?.filters.market??untrack(()=>({pt:"br",es:"mx",en:"us"} as const)[language()]));
  const marketOptions=$derived(countryOptions(aliexpressCountries,intlLocale()));
- let keywords=$state(start?.filters.keywords?.join(", ")??"");
+ let words=$state<string[]>([...(start?.filters.keywords??[])]);
  const shopping=$derived(kind==="store_deals"),shopReady=$derived(configured.includes(shop));
- const words=$derived([...new Set(keywords.split(",").map(w=>w.trim().replace(/\s+/g," ")).filter(Boolean))]);
  const wordsOk=$derived(words.length>=1&&words.length<=5&&words.every(w=>w.length>=2&&w.length<=60));
- const mirror=$derived(kind==="mirror"),channelReady=$derived(!!start||(!!checked&&checked.name===channel.trim().replace(/^.*\//,"").replace(/^@/,"")));
- async function checkChannel(){const raw=channel.trim();if(!raw)return;checking=true;try{const r=await parseResponse(dealsApi.hunts.mirror.check.$post({json:{channel:raw}}));checked={name:r.name,title:r.title};channel=r.name;}catch(e){checked=null;toast(dealsError(e),{kind:"error"});}finally{checking=false;}}
+ const mirror=$derived(kind==="mirror"),channelReady=$derived(!!start||mirrors.length>0);
+ // A channel is added only once the server finds it public.
+ async function checkChannel(raw:string){checking=true;try{const r=await parseResponse(dealsApi.hunts.mirror.check.$post({json:{channel:raw}}));return `@${r.name}`;}catch(e){toast(dealsError(e),{kind:"error"});return null;}finally{checking=false;}}
+ const keyword=(w:string)=>w.length>=2&&w.length<=60?w:null;
  function toggleStore(id:Store){keep=keep.includes(id)?keep.filter(s=>s!==id):[...keep,id];}
  let channelIds=$state<string[]>(untrack(()=>[...(start?.channelIds??channels.filter(c=>c.active).slice(0,1).map(c=>c.id))]));
  const options=$derived(platformsFor(kind));
@@ -67,7 +68,7 @@
  const priced=$derived(kind==="nuuvem_deals"||shopping),reais=$derived(shopping||(kind==="nuuvem_deals"&&country==="br"));
  const valid=$derived(channelIds.length>0&&(!mirror||channelReady)&&(!shopping||(wordsOk&&shopReady))&&(!priced||(Number.isInteger(discount)&&discount>=0&&discount<=100&&(!reais||cents===null||(Number.isFinite(cents)&&cents>0)))));
  function submit(e:SubmitEvent){e.preventDefault();if(!valid)return;
-  if(mirror){onsubmit({kind,channelIds,filters:keep.length?{stores:keep}:{},...(!start&&checked?{channel:checked.name}:{})});return;}
+  if(mirror){onsubmit({kind,channelIds,filters:keep.length?{stores:keep}:{},...(!start?{mirrors:mirrors.map(m=>m.replace(/^@/,""))}:{})});return;}
   if(shopping){onsubmit({kind,channelIds,filters:{store:shop,...(shop==="aliexpress"?{market}:{}),keywords:words,minDiscount:discount,...(cents!==null?{maxPrice:cents}:{})}});return;}
   const filters:HuntInput["filters"]={...(picked.length?{platforms:picked}:{}),...(priced?{country,minDiscount:discount,...(reais&&cents!==null?{maxPrice:cents}:{}),...(!gamesOnly?{gamesOnly:false}:{})}:{})};
   onsubmit({kind,channelIds,filters});
@@ -91,11 +92,8 @@
   <Card title={t("dealsMirrorChannel")} help={t("dealsMirrorChannelHelp")}>
    {#if start?.mirror}<p class="mt-4 font-semibold">{t("dealsMirrorFixed",{channel:start.mirror.channel})}{#if start.mirror.title}{" · "}<span class="font-normal text-neutral-500">{start.mirror.title}</span>{/if}</p>
    {:else}
-    <div class="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-     <FloatField id="mirror-channel" surface="bg-white dark:bg-neutral-900" label={t("dealsMirrorChannel")} autocomplete="off" spellcheck={false} maxlength={200} bind:value={channel} onkeydown={(e)=>{if(e.key==="Enter"){e.preventDefault();void checkChannel();}}}/>
-     <Button type="button" variant="secondary" busy={checking} class="h-14" disabled={!channel.trim()} onclick={checkChannel}><Search class="size-4"/>{t("dealsMirrorCheck")}</Button>
-    </div>
-    {#if checked&&channelReady}<p class="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400"><CircleCheck class="size-4 shrink-0"/>{t("dealsMirrorFound",{title:checked.title??`@${checked.name}`})}</p>{/if}
+    <div class="mt-5"><TagInput id="mirror-channel" label={t("dealsMirrorChannel")} bind:tags={mirrors} max={10} maxlength={200} add={checkChannel}/></div>
+    <p class="mt-1.5 text-sm text-neutral-500">{checking?t("dealsMirrorChecking"):t("dealsMirrorTagsHelp")}</p>
    {/if}
   </Card>
  {/if}
@@ -112,7 +110,7 @@
    {:else if shop==="shopee"}<p class="mt-3 text-sm text-neutral-500">{t("dealsShopeeAccount",{country:countryName(account,intlLocale()),currency:currencyName(currency,intlLocale())})}</p>{/if}
    {#if shop==="aliexpress"}<div class="mt-5 max-w-sm"><Select label={t("dealsAliMarket")} surface="bg-white dark:bg-neutral-900" options={marketOptions} bind:value={market}/></div>
     <p class="mt-1.5 text-sm text-neutral-500">{t("dealsAliMarketHelp",{currency:currencyName(currency,intlLocale())})}</p>{/if}
-   <div class="mt-5"><FloatField id="shop-keywords" surface="bg-white dark:bg-neutral-900" label={t("dealsShopKeywords")} autocomplete="off" maxlength={320} required bind:value={keywords}/></div>
+   <div class="mt-5"><TagInput id="shop-keywords" label={t("dealsShopKeywords")} bind:tags={words} max={5} add={keyword}/></div>
    <p class="mt-1.5 text-sm text-neutral-500">{t("dealsShopKeywordsHelp")}</p>
   </Card>
  {/if}

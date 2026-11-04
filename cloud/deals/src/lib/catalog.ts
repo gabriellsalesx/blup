@@ -82,4 +82,5 @@ export const platformLabel=(id:string)=>platforms.find(p=>p.id===id)?.label??id;
 export const shopStores=["shopee","aliexpress"] as const satisfies readonly NonNullable<Hunt["filters"]["store"]>[];
 // What the hunt form gives back (POST /hunts, and PATCH without the kind).
 export type Platform=NonNullable<Hunt["filters"]["platforms"]>[number];
-export type HuntInput={kind:HuntKind;channelIds:string[];filters:Hunt["filters"];channel?:string};
+// mirrors: the channels a new mirror reads (one mirror each).
+export type HuntInput={kind:HuntKind;channelIds:string[];filters:Hunt["filters"];mirrors?:string[]};
