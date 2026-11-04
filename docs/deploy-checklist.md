@@ -61,6 +61,7 @@ npx wrangler d1 migrations list DB --remote --env production
 - [ ] Confirmar que não ficaram migrações pendentes. `0011` prepara carências e sync transacional; `0012` remove `sync_account.previous_key` e `site_domain.disabled_at`, sem consumidor; `0013` cria recibos de webhook e índices; `0014` acrescenta `user.language`, com `pt` nas contas existentes, e precisa vir antes do Worker novo. As migrações anteriores permanecem intactas.
 - [ ] Para um Worker que inclua Pulse, aplicar `0015_pulse_nucleo.sql`, `0016_pulse_monitores_paginas.sql`, `0017_pulse_expiracao_incidentes.sql`, `0018_pulse_avisos.sql` e `0019_pulse_cobranca_dominios.sql` antes do código. Conferir `PULSE_PROJECT`/`PulseProject` e a migração Workers SQLite `v2-pulse`, separada do SQL D1. Os contratos locais das Fases 1 a 4 não confirmam venda ou homologação de produção; acompanhar os [contratos por fase](spec/blup-pulse.md#estado-da-entrega-por-fases).
 - [ ] Aplicar também as migrações novas do Pulse: `0020_pulse_primeiro_evento.sql` (primeiros passos), `0021_pulse_servicos_do_incidente.sql` (estado por serviço), `0022_pulse_manutencao.sql` (manutenção programada) `0023_pulse_source_maps.sql` (chave de envio e source maps) `0024_pulse_monitor_opcoes.sql` (verificação avançada do monitor) `0025_pulse_destino_sempre_em_projeto.sql` (apaga destinos de aviso sem projeto) `0026_pulse_pagina_aparencia.sql` (título, links e logos da página de status) e `0027_pulse_componente_explicacao.sql` (explicação dos serviços), e criar os buckets `blup-pulse-sourcemaps` e `blup-pulse-assets` (logos das páginas de status) antes do deploy.
+- [ ] **BLOQUEANTE para Worker com Deals:** aplicar [0028_deals_base.sql](../cloud/migrations/0028_deals_base.sql) antes do código que consulta o Deals. Cria a base de afiliados, canais, caçadas, fontes, ofertas, preços, posts/fila e cliques diários. Aplicar pela sequência normal do D1, sem pular as migrações anteriores; schema criado não comprova entrega das fases F1 a F3 da [spec Deals](spec/blup-deals.md).
 - [x] Fechamento local Pulse Fase 4 informado pela Lupa: `tsc`, 335/335 Vitest em 34 arquivos, checks/builds Cloud/Pulse aprovados, `go vet`/testes raiz e Studio e frontend Studio zero erros/avisos. As 20 migrações `0000..0019` aplicaram em D1 local vazio; integridade e chaves estrangeiras conferidas no arquivo SQLite em modo somente leitura. `SQLITE_AUTH` no PRAGMA via D1 não foi falha de migração. Testes de bootstrap e dry-runs dos três Workers passaram; isso não comprova bindings remotos ou deploy em conta vazia.
 - [x] Validação UTC complementar informada pela Lupa: 339/339 testes, check zero erros/avisos e builds Cloud/Pulse aprovados. Relógios fixos e regressões de dia/mês/ano e cota dezembro/janeiro corrigem a hipótese do teste; sem bug no `MonitorStore` ou mudança de API. Prévia local simulada não comprova staging ou produção.
 - [x] Validação local da tradução fechada pela Lupa: gates, sequência D1 `0000..0014`, integridade e migração de conta antiga preservando `pt`. A aplicação de `0014` no banco de produção continua obrigatória antes do Worker novo.
@@ -72,7 +73,7 @@ Aplicar SQL versionado é o fluxo de lançamento. Não gerar outro schema Better
 
 - [ ] **BLOQUEANTE para login por e-mail:** em **Compute > Email Service > Email Sending**, fazer **Onboard Domain** de `getblup.io`. Conferir os registros SPF, DKIM, DMARC e de retorno propostos, sua verificação e o remetente `no-reply@getblup.io`. Preservar o serviço de e-mail já usado pelo domínio. [Configuração oficial](https://developers.cloudflare.com/email-service/get-started/send-emails/).
 - [ ] Conferir o binding `EMAIL` de produção com `allowed_sender_addresses` limitado ao remetente do produto, `MAIL_FROM` correspondente e `EMAIL_MODE=send`.
-- [ ] **BLOQUEANTE para login público:** criar widget Turnstile para `cloud.getblup.io` e `pulse.getblup.io` (o Pulse tem o próprio `/sign-in`, com a mesma conta), trocar a site key de teste e guardar o secret correspondente. [Widget e validação](https://developers.cloudflare.com/turnstile/get-started/).
+- [ ] **BLOQUEANTE para login público:** criar widget Turnstile para `cloud.getblup.io`, `pulse.getblup.io` e `deals.getblup.io` (Pulse e Deals têm o próprio `/sign-in`, com a mesma conta), trocar a site key de teste e guardar o secret correspondente. [Widget e validação](https://developers.cloudflare.com/turnstile/get-started/).
 - [ ] **BLOQUEANTE para staff:** criar aplicação Access para o hostname inteiro `staff.getblup.io`, incluindo assets e `/api/staff/*`. Permitir somente identidades da equipe. Guardar URL HTTPS do time e audience em `ACCESS_TEAM_DOMAIN` e `ACCESS_AUD`. [JWT Access](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/).
 - [ ] Definir `STAFF_OWNER_EMAIL` como secret para o administrador inicial. Conferir que sua identidade no Access corresponde; o valor não vai para os docs ou vars públicas.
 
@@ -88,8 +89,16 @@ Aplicar SQL versionado é o fluxo de lançamento. Não gerar outro schema Better
 | Max + Pulse | `blup_max_pulse_mensal` | `blup_max_pulse_anual` |
 | Ultra + Pulse | `blup_ultra_pulse_mensal` | `blup_ultra_pulse_anual` |
 
+- [ ] **Deals, somente sandbox nesta rodada:** preparar os Products/Prices das duas combinações abaixo, com intervalo mensal/anual e `metadata.blup_plan` igual a `ultra_deals` ou `ultra_pulse_deals`. Os valores são **proposta ainda não aprovada pelo dono**; não criar cobrança Deals em produção com base nesta tabela.
+
+| Variante Deals | Mensal proposto e lookup key | Anual proposto e lookup key |
+| --- | --- | --- |
+| Ultra + Deals | R$ 109,90; `blup_ultra_deals_mensal` | R$ 1.099,00; `blup_ultra_deals_anual` |
+| Ultra + Pulse + Deals | R$ 169,90; `blup_ultra_pulse_deals_mensal` | R$ 1.699,00; `blup_ultra_pulse_deals_anual` |
+
+- [ ] **BLOQUEANTE para vender Deals:** obter aprovação dos preços e liberação comercial do dono antes de reproduzir o catálogo em produção. O anual proposto equivale a dez mensalidades. Conferir os dois switches independentes, troca proporcional, retirada de só um adicional e pagamento pendente no sandbox. A [conta incremental](spec/blup-deals.md#saldo-incremental-dos-preços-propostos) usa PTAX de referência R$ 5,4212, custo Cloudflare R$ 7,06/mês e Stripe de 4,69% sobre o acréscimo, sem confundir simulação com tarifa final ou preço aprovado.
 - [ ] Atribuir os lookup keys exatos. `npm run stripe:setup` agora **só confere** o catálogo; não cria produtos/preços nem define valor comercial. Só executá-lo com a chave do ambiente escolhido, recebida pelo gerenciador privado de segredos.
-- [ ] Configurar `metadata.blup_plan` no produto ou Price como `pro`, `max`, `ultra`, `max_pulse` ou `ultra_pulse`. Isso permite reconhecer assinaturas no Price antigo depois de transferir o lookup key; não deduzir o plano do nome comercial.
+- [ ] Configurar `metadata.blup_plan` no produto ou Price como `pro`, `max`, `ultra`, `max_pulse`, `ultra_pulse`, `ultra_deals` ou `ultra_pulse_deals`, conforme o catálogo liberado naquele ambiente. Isso permite reconhecer assinaturas no Price antigo depois de transferir o lookup key; não deduzir o plano do nome comercial. As variantes Deals permanecem somente sandbox nesta rodada.
 - [ ] Conferir `/api/plans`: cada período pago disponível precisa trazer `prices.monthly` ou `prices.yearly` com `unitAmount` e `currency`. `null` desabilita a compra daquele período; Grátis continua gratuito. O cache é de dez minutos por isolate e mantém o último catálogo válido em falha.
 - [ ] Para mudar valor/moeda, criar outro Price e transferir o lookup key com `transfer_lookup_key`. Assinaturas existentes continuam no Price anterior até migração explícita. Conferir painel e Checkout depois de atualizar o catálogo.
 - [ ] **BLOQUEANTE:** ativar o Customer Portal padrão de produção para faturas/meios de pagamento, com atualização de assinatura desabilitada e cancelamento `at_period_end` se habilitado. A API recusa edição de plano ou cancelamento imediato. Mudança de plano usa prévia/confirmar próprios, sem contornar o ticket pelo portal. [Portal](https://docs.stripe.com/customer-management/configure-portal).
@@ -119,6 +128,7 @@ radar.early_fraud_warning.created
 | `getblup.io` | Institucional de outro repositório, preservado neste deploy |
 | `cloud.getblup.io` | Custom Domain do Worker `blup-cloud-production` |
 | `staff.getblup.io` | Mesmo Worker, sempre protegido pelo Access |
+| `deals.getblup.io` | Custom Domain do painel estático definido em [wrangler.deals.jsonc](../cloud/wrangler.deals.jsonc) |
 | `*.getblup.site` | DNS com proxy e rota da zona para `blup-sites-production` |
 
 - [ ] **BLOQUEANTE para sites:** preparar o DNS curinga de `getblup.site`, com registro originless proxied, como AAAA `100::`. Conferir o certificado para `nome.getblup.site`; não presumir cobertura de `www.nome.getblup.site` pelo mesmo wildcard.
@@ -136,6 +146,7 @@ radar.early_fraud_warning.created
 | --- | --- |
 | `APP_URL` | `https://cloud.getblup.io` |
 | `PULSE_APP_URL` | `https://pulse.getblup.io`, origem exata do painel/CORS |
+| `DEALS_APP_URL` | `https://deals.getblup.io`, origem exata do painel Deals/CORS e autenticação |
 | `PULSE_INGEST_HOST` | `ingest.getblup.io`, ingestão sem sessão administrativa |
 | `PULSE_PUBLIC_HOST` | `pulse.getblup.site`, páginas HTML e `status.json` |
 | `PASSKEY_RP_ID` | `getblup.io` |
@@ -174,7 +185,7 @@ No primeiro lançamento, preparar um arquivo JSON de secrets fora do repositóri
 
 ## 9. Ensaiar o bootstrap e publicar os Workers
 
-- [ ] **BLOQUEANTE de staging para primeira conta vazia:** ensaiar o bootstrap. Sites referencia `PulseProject` no Cloud, e Cloud referencia `CachedSite` em Sites. Publicar Sites primeiro sem namespace Cloud existente não é uma ordem validada. A sequência é bootstrap Cloud, Sites com `PULSE_PROJECT` remoto, Cloud completo e painel Pulse. Os arquivos [wrangler.bootstrap.jsonc](../cloud/wrangler.bootstrap.jsonc) e [bootstrap.ts](../cloud/worker/bootstrap.ts) têm bundle e nomes/tags verificados localmente; os três dry-runs passaram. Nenhum deploy remoto confirmou essa ordem.
+- [ ] **BLOQUEANTE de staging para primeira conta vazia:** ensaiar o bootstrap. Sites referencia `PulseProject` no Cloud, e Cloud referencia `CachedSite` em Sites. Publicar Sites primeiro sem namespace Cloud existente não é uma ordem validada. A sequência é bootstrap Cloud, Sites com `PULSE_PROJECT` remoto, Cloud completo e painéis Pulse/Deals. Os arquivos [wrangler.bootstrap.jsonc](../cloud/wrangler.bootstrap.jsonc) e [bootstrap.ts](../cloud/worker/bootstrap.ts) têm bundle e nomes/tags verificados localmente; os três dry-runs passaram. Nenhum deploy remoto confirmou essa ordem.
 - [ ] **BLOQUEANTE:** conferir migrações, vars, secrets e Access antes da publicação completa.
 - [ ] **Somente instalação vazia:** criar previamente o script `blup-cloud-production` e os namespaces `SyncLive/PulseProject` pelo bootstrap abaixo, depois de preparar D1/R2. O bootstrap não usa D1, assets, `SITE_CACHE`, rotas públicas ou cron; responde 503. Não executar sobre Cloud ativo. Preservar nome e tags `v1/v2-pulse` iguais aos do Cloud completo.
 
@@ -182,7 +193,7 @@ No primeiro lançamento, preparar um arquivo JSON de secrets fora do repositóri
 npx wrangler deploy -c wrangler.bootstrap.jsonc
 ```
 
-O comando é para o operador no ensaio de instalação vazia; não foi executado remotamente nesta revisão. Em atualização de uma instalação ativa, pular o bootstrap. Depois dele, publicar os arquivos completos e o painel Pulse na ordem:
+O comando é para o operador no ensaio de instalação vazia; não foi executado remotamente nesta revisão. Em atualização de uma instalação ativa, pular o bootstrap. Depois dele, publicar os arquivos completos e os painéis na ordem:
 
 
 ```sh
@@ -190,10 +201,12 @@ npm run build
 npx wrangler deploy -c wrangler.sites.jsonc --env production --secrets-file '<arquivo-privado-dos-sites.json>'
 npx wrangler deploy --env production --secrets-file '<arquivo-privado-da-conta.json>'
 npx wrangler deploy -c wrangler.pulse.jsonc --env production
+npx wrangler deploy -c wrangler.deals.jsonc --env production
 ```
 
 Se os secrets dos sites não forem necessários ou já estiverem cadastrados, omitir esse `--secrets-file`. Os comandos acima são para o operador executar no lançamento; não foram executados por esta revisão.
 
+- [ ] **Painel Deals:** `npm run build` em `cloud/` inclui `deals:build`. Conferir a saída `cloud/deals/build`, o fallback SPA e o Custom Domain `deals.getblup.io` em [wrangler.deals.jsonc](../cloud/wrangler.deals.jsonc) antes do comando acima. Confirmar `DEALS_APP_URL`, CORS com credenciais/origem exata, Turnstile, passkey e logout. Publicar o shell não libera cobrança de Deals nem comprova as fases F1 a F3. `deals.getblup.site` fica para links curtos F3; a vitrine é gerada pelo Studio, sem vitrine externa no Deals.
 - [ ] Confirmar `PULSE_PROJECT` no Worker dos sites apontando para `PulseProject` de `blup-cloud-production`, namespace previamente criado no bootstrap. Preservar o mesmo D1 e `PULSE_PUBLIC_LIMIT`/`PULSE_PUBLIC_HOST`; ajustar `script_name` se o nome Cloud mudar.
 - [ ] Confirmar `SITE_CACHE -> blup-sites-production`, entrypoint `CachedSite`. O entrypoint alvo precisa existir antes do Cloud completo, depois do bootstrap inicial quando necessário. Não expor esse entrypoint por rota pública.
 - [ ] Conferir Custom Domains de cloud/staff, TLS, `workers_dev=false` e `preview_urls=false`. O script genérico `npm run deploy` não escolhe produção sozinho.

@@ -37,7 +37,7 @@ it("keeps Ultra's Cloud limits and sells each variant by its own Stripe price",(
  expect(planNamed("ultra_pulse_deals").pulse).toEqual(planNamed("ultra_pulse").pulse);expect(planNamed("ultra_deals").pulse).toBeNull();
  expect(PLANS.filter(p=>p.deals).map(p=>p.name)).toEqual(["ultra_deals","ultra_pulse_deals"]);
  expect(planLabel("ultra_pulse_deals","en")).toBe("Ultra + Pulse + Deals");expect(planLabel("ultra_deals","pt")).toBe("Ultra + Deals");
- expect(dealsLimits).toEqual({channels:10,hunts:20,mirrors:10,postsPerDay:300,historyDays:90});
+ expect(dealsLimits).toEqual({channels:10,hunts:20,mirrors:10,postsPerDay:100,historyDays:90});
 });
 
 it("gives Deals to Ultra + Deals subscriptions and to the owner only",async()=>{

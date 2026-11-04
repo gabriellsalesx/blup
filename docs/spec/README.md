@@ -17,6 +17,7 @@ Para a visão entre componentes, consulte [Arquitetura](../arquitetura.md). A op
 | [Notas e sync](notas-e-sync.md) | Notas Markdown, wikilinks, sincronização, conflitos e recuperação em outra máquina |
 | [Blup Cloud e sync cifrado](blup-cloud-sync.md) | Conta, planos, dispositivos, cifra de ponta a ponta, histórico, IA e cobrança |
 | [Blup Pulse](blup-pulse.md) | Fases 1 a 4 com gates locais fechados: ingestão, monitores, páginas, avisos, cobrança e domínio; staging, aceite Studio e liberação comercial pendentes |
+| [Blup Deals](blup-deals.md) | Especificação proposta do adicional Ultra: ofertas, afiliados, jogos, espelhamento, canais, painel e fases F0 a F3 |
 | [Calendário e lembretes](calendario-e-lembretes.md) | Eventos Markdown, recorrência, notificações locais e e-mails Max 50 / Ultra 100 |
 | [Publicação](publicacao.md) | Sites em `getblup.site`, Cloudflare Pages, GitHub Pages e domínio próprio |
 | [Narração e voz](narracao-e-voz.md) | Idioma pela pasta da nota, voz por idioma, OpenRouter, Blup Cloud, MP3 e Kokoro |

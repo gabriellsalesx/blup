@@ -43,7 +43,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     readonly channels: 10;
                     readonly hunts: 20;
                     readonly mirrors: 10;
-                    readonly postsPerDay: 300;
+                    readonly postsPerDay: 100;
                     readonly historyDays: 90;
                 } | null;
                 label: string;
@@ -177,7 +177,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                             readonly channels: 10;
                             readonly hunts: 20;
                             readonly mirrors: 10;
-                            readonly postsPerDay: 300;
+                            readonly postsPerDay: 100;
                             readonly historyDays: 90;
                         } | null;
                     };
@@ -8672,7 +8672,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     readonly channels: 10;
                     readonly hunts: 20;
                     readonly mirrors: 10;
-                    readonly postsPerDay: 300;
+                    readonly postsPerDay: 100;
                     readonly historyDays: 90;
                 } | null;
                 readOnly: boolean;

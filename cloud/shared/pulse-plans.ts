@@ -33,5 +33,5 @@ export const pulseLimits={
 } as const;
 // Blup Deals: destination channels, hunts, mirrored channels, posts sent
 // per day and days of history (offers, prices and clicks).
-export const dealsLimits={channels:10,hunts:20,mirrors:10,postsPerDay:300,historyDays:90} as const;
+export const dealsLimits={channels:10,hunts:20,mirrors:10,postsPerDay:100,historyDays:90} as const;
 export type DealsLimits=typeof dealsLimits;
