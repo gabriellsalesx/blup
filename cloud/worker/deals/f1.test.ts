@@ -5,7 +5,7 @@ vi.mock("cloudflare:workers",()=>({env:state.env,DurableObject:class{}}));
 vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})=>{const id=headers.get("authorization")?.replace("Bearer ","");return id?{user:{id}}:null;}}}}));
 import {dealsApi} from "./api";
 import {safeFetch,FetchError} from "./fetch";
-import {nuuvemLink,rakutenTarget,amazonLink,mercadoLivreLink,shopeeLink,aliexpressLink,aliexpressSign,aliexpressResponse,aliexpressHost,convertLink,storeOf} from "./links";
+import {magaluLink,terabyteLink,nuuvemLink,rakutenTarget,amazonLink,mercadoLivreLink,shopeeLink,aliexpressLink,aliexpressSign,aliexpressResponse,aliexpressHost,convertLink,storeOf} from "./links";
 import {pageInfo,priceCents} from "./page";
 import {upsertOffer,collectDeals,dealsCleanup,gamerPowerOffers,nuuvemPage,type OfferInput} from "./catalog";
 import {enqueue,dayOf,seal} from "./store";
@@ -145,9 +145,9 @@ describe("secrets never come back",()=>{
   expect((await call("/affiliates/amazon",{method:"PUT",body:{appId:"1",secret:"x"}})).status).toBe(400);
   const listed=await(await call("/affiliates")).text();
   expect(listed).not.toContain("S3cretS3cret");expect(listed).not.toContain("minhatag-20");
-  expect(JSON.parse(listed).stores).toEqual([{store:"amazon",configured:true,hint:"…g-20"},{store:"mercadolivre",configured:false,hint:null},{store:"shopee",configured:true,hint:"App ID …3456"},{store:"aliexpress",configured:false,hint:null},{store:"nuuvem",configured:false,hint:null}]);
+  expect(JSON.parse(listed).stores).toEqual([{store:"amazon",configured:true,hint:"…g-20"},{store:"mercadolivre",configured:false,hint:null},{store:"shopee",configured:true,hint:"App ID …3456"},{store:"aliexpress",configured:false,hint:null},{store:"nuuvem",configured:false,hint:null},{store:"magalu",configured:false,hint:null},{store:"terabyte",configured:false,hint:null}]);
   const rows=JSON.stringify(db.sqlite.prepare("SELECT * FROM deals_affiliate").all());expect(rows).not.toContain("S3cretS3cret");expect(rows).not.toContain("minhatag-20");
-  expect(await(await call("/affiliates",{user:"bob"})).json()).toMatchObject({stores:[{configured:false},{configured:false},{configured:false},{configured:false},{configured:false}]});
+  expect(await(await call("/affiliates",{user:"bob"})).json()).toMatchObject({stores:[{configured:false},{configured:false},{configured:false},{configured:false},{configured:false},{configured:false},{configured:false}]});
  });
  it("never sends a channel's webhook back",async()=>{
   const id=await addDiscord();
@@ -542,5 +542,20 @@ describe("Nuuvem in other countries",()=>{
   const sent:{embeds:{description:string}[]}[]=[];
   await dispatchDeals(state.env,net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}}).send,Date.now()+1000);
   expect(sent[0].embeds[0].description.split("\n")[0]).toBe("50% de desconto");expect(sent[0].embeds[0].description).not.toContain("R$");
+ });
+});
+
+describe("Magalu and Terabyte",()=>{
+ it("puts the person's promoter_id and showcase on Magalu and their p= on Terabyte",async()=>{
+  expect(storeOf(new URL("https://www.magazineluiza.com.br/x/p/237849600/te/smxx/"))).toBe("magalu");expect(storeOf(new URL("https://especiais.magazineluiza.com.br/black"))).toBe("magalu");expect(storeOf(new URL("https://www.magazinevoce.com.br/magazineoutra/x/p/1/"))).toBe("magalu");expect(storeOf(new URL("https://www.terabyteshop.com.br/produto/1/x"))).toBe("terabyte");
+  expect(magaluLink(new URL("https://www.magazineluiza.com.br/x/p/237849600/te/smxx/?promoter_id=999&utm_source=a"),"12345","magazineminhaloja")).toBe("https://www.magazineluiza.com.br/x/p/237849600/te/smxx/?promoter_id=12345&showcase=magazineminhaloja");
+  expect(magaluLink(new URL("https://www.magazinevoce.com.br/magazineoutra/x/p/237849600/?promoter_id=999"),"12345","magazineminhaloja")).toBe("https://www.magazinevoce.com.br/magazineminhaloja/x/p/237849600/?promoter_id=12345&showcase=magazineminhaloja");
+  expect(magaluLink(new URL("https://www.magazineluiza.com.br/x/p/1/"),"12345")).toBe("https://www.magazineluiza.com.br/x/p/1/?promoter_id=12345");
+  expect(terabyteLink(new URL("https://www.terabyteshop.com.br/produto/123/placa?p=outro&utm_medium=x#a"),"meucodigo","afiliado","blup")).toBe("https://www.terabyteshop.com.br/produto/123/placa?p=meucodigo&utm_medium=afiliado&utm_campaign=blup");
+  expect((await call("/affiliates/magalu",{method:"PUT",body:{promoterId:"12345",showcase:"magazineminhaloja"}})).status).toBe(200);
+  expect((await call("/affiliates/magalu",{method:"PUT",body:{promoterId:"12345",showcase:"outraloja"}})).status).toBe(400);
+  expect((await call("/affiliates/terabyte",{method:"PUT",body:{partner:"meucodigo"}})).status).toBe(200);
+  const listed=await(await call("/affiliates")).json() as {stores:{store:string;configured:boolean;hint:string|null}[]};
+  expect(listed.stores.filter(s=>s.configured).map(s=>[s.store,s.hint])).toEqual([["magalu","magazineminhaloja"],["terabyte","…digo"]]);
  });
 });

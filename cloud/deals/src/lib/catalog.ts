@@ -7,7 +7,7 @@ import {t} from "#lib/i18n.svelte.ts";
 import type {Hunt,HuntKind,Store as StoreId} from "./api";
 // What the Deals panel knows about stores, hunts and platforms (names,
 // help, which fields a store asks for). Brand names stay as they are.
-export const storeName:Record<StoreId,string>={amazon:"Amazon",mercadolivre:"Mercado Livre",shopee:"Shopee",aliexpress:"AliExpress",nuuvem:"Nuuvem"};
+export const storeName:Record<StoreId,string>={amazon:"Amazon",mercadolivre:"Mercado Livre",shopee:"Shopee",aliexpress:"AliExpress",nuuvem:"Nuuvem",magalu:"Magalu",terabyte:"Terabyte"};
 // The names of every source a post can come from: the affiliate stores,
 // the giveaways and TikTok (a video's news). Only "other" (or one the panel doesn't know yet) is
 // named in the panel's language.
@@ -23,7 +23,18 @@ export const stores:{id:StoreId;site:string;about:PlainMessageKey;keys:boolean;n
  {id:"shopee",site:"https://affiliate.shopee.com.br/",about:"dealsShopeeAbout",keys:true,steps:["dealsShopeeStep1","dealsShopeeStep2","dealsShopeeStep3"],fields:[{id:"appId",label:null,text:"App ID",secret:false},{id:"secret",label:null,text:"Secret",secret:true}]},
  {id:"aliexpress",site:"https://portals.aliexpress.com/",about:"dealsAliAbout",keys:true,steps:["dealsAliStep1","dealsAliStep2","dealsAliStep3"],fields:[{id:"appKey",label:null,text:"App Key",secret:false},{id:"appSecret",label:null,text:"App Secret",secret:true},{id:"trackingId",label:null,text:"Tracking ID",secret:false}]},
  {id:"nuuvem",site:"https://secure.nuuvem.com/lp/pt/nuuvem-coop",about:"dealsNuuvemAbout",keys:false,needs:"dealsNeedsId",steps:["dealsNuuvemStep1","dealsNuuvemStep2","dealsNuuvemStep3"],fields:[{id:"siteId",label:"dealsNuuvemSiteId",secret:false}]},
+ {id:"magalu",site:"https://www.magazinevoce.com.br/",about:"dealsMagaluAbout",keys:false,needs:"dealsNeedsCode",steps:["dealsMagaluStep1","dealsMagaluStep2","dealsMagaluStep3"],fields:[{id:"promoterId",label:"dealsMagaluPromoter",secret:false},{id:"showcase",label:"dealsMagaluShowcase",secret:false,optional:true}]},
+ {id:"terabyte",site:"https://www.terabyteshop.com.br/site/regras-programa-de-parceiros",about:"dealsTerabyteAbout",keys:false,needs:"dealsNeedsCode",steps:["dealsTerabyteStep1","dealsTerabyteStep2","dealsTerabyteStep3"],fields:[{id:"partner",label:"dealsTerabytePartner",secret:false},{id:"utmMedium",label:"dealsTerabyteMedium",secret:false,optional:true},{id:"utmCampaign",label:"dealsTerabyteCampaign",secret:false,optional:true}]},
 ];
+// What one of the person's own Magalu links says about them: the
+// promoter_id and the Magazine Você showcase (the first part of its path,
+// or the showcase parameter). Short links can't be read here.
+export function magaluFromLink(raw:string):{promoterId:string;showcase:string|null}|null{
+ let url:URL;try{url=new URL(raw.trim());}catch{return null;}
+ const promoterId=url.searchParams.get("promoter_id")?.trim();if(!promoterId||!/^[A-Za-z0-9_-]{2,64}$/.test(promoterId))return null;
+ const segment=/(?:^|\.)magazinevoce\.com\.br$/.test(url.hostname)?url.pathname.split("/")[1]:null,showcase=url.searchParams.get("showcase")??segment??null;
+ return {promoterId,showcase:showcase&&/^magazine[a-z0-9_-]{1,60}$/i.test(showcase)?showcase:null};
+}
 export type HuntOption={id:HuntKind|"stores"|"mirror";title:PlainMessageKey;help:PlainMessageKey;art:string;soon?:boolean};
 // Each kind has its own drawing of the coral Blup (by Aquarela); the kind's
 // name always sits beside it, so the image is decorative (alt="").

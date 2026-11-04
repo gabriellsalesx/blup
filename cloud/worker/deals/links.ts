@@ -3,7 +3,7 @@ import {apiJSON,FetchError} from "./fetch";
 
 // The stores Blup knows how to put the person's affiliate ID into. Any
 // other store is "other": the link goes as it is, without commission.
-export const stores=["amazon","mercadolivre","shopee","aliexpress","nuuvem"] as const;
+export const stores=["amazon","mercadolivre","shopee","aliexpress","nuuvem","magalu","terabyte"] as const;
 export const storeSchema=z.enum(stores);
 export type Store=z.infer<typeof storeSchema>;
 
@@ -18,12 +18,18 @@ export const affiliateBody=z.discriminatedUnion("store",[
  // Nuuvem pays through Rakuten Advertising: the person's Rakuten ID (the
  // id= of any of their links, like *AbCdEfGh1).
  z.object({store:z.literal("nuuvem"),siteId:z.string().trim().regex(/^[A-Za-z0-9*/._-]{6,32}$/)}).strict(),
+ // Parceiro Magalu: the promoter_id of the person's links and, for their
+ // own showcase on Magazine Você, its name (magazine<loja>).
+ z.object({store:z.literal("magalu"),promoterId:id(64),showcase:z.string().trim().regex(/^magazine[a-z0-9_-]{1,60}$/i).optional()}).strict(),
+ // Terabyte's partner program: the p= of the person's links and, if they
+ // use them, the program's UTM medium and campaign.
+ z.object({store:z.literal("terabyte"),partner:id(64),utmMedium:id(64).optional(),utmCampaign:id(64).optional()}).strict(),
 ]);
 export type Affiliate=z.infer<typeof affiliateBody>;
 // A few characters so the person recognizes what is saved.
 export function affiliateHint(a:Affiliate):string{
  const tail=(v:string)=>v.length<=4?"…":`…${v.slice(-4)}`;
- switch(a.store){case "amazon":return tail(a.tag);case "mercadolivre":return tail(a.word);case "shopee":return `App ID ${tail(a.appId)}`;case "aliexpress":return `App Key ${tail(a.appKey)}`;case "nuuvem":return tail(a.siteId);}
+ switch(a.store){case "amazon":return tail(a.tag);case "mercadolivre":return tail(a.word);case "shopee":return `App ID ${tail(a.appId)}`;case "aliexpress":return `App Key ${tail(a.appKey)}`;case "nuuvem":return tail(a.siteId);case "magalu":return a.showcase??tail(a.promoterId);case "terabyte":return tail(a.partner);}
 }
 
 const amazonHost=/^(?:www\.|smile\.|m\.)?amazon\.(?:com|com\.br|ca|com\.mx|co\.uk|de|es|fr|it|nl|se|pl|co\.jp|in|com\.au|sg|ae|sa|com\.tr|eg|com\.be)$/;
@@ -31,13 +37,15 @@ const mlHost=/(?:^|\.)(?:mercadolivre\.com\.br|mercadolibre\.com\.(?:ar|mx|co|uy
 const shopeeHost=/(?:^|\.)shopee\.(?:com\.br|com\.my|com\.mx|co\.id|co\.th|com\.co|cl|sg|ph|vn|tw)$/;
 const aliHost=/(?:^|\.)aliexpress\.(?:com|us|ru)$/;
 const nuuvemHost=/(?:^|\.)nuuvem\.com$/;
+const magaluHost=/(?:^|\.)(?:magazineluiza\.com\.br|magazinevoce\.com\.br|magalu\.com)$/;
+const terabyteHost=/(?:^|\.)terabyteshop\.com\.br$/;
 // Short addresses the stores hand out; the preview follows them (safely)
 // to the product before anything is converted.
-const shortHosts=new Set(["amzn.to","a.co","amzn.eu","meli.la","shope.ee","s.shopee.com.br","s.click.aliexpress.com","a.aliexpress.com"]);
+const shortHosts=new Set(["amzn.to","a.co","amzn.eu","meli.la","shope.ee","s.shopee.com.br","s.click.aliexpress.com","a.aliexpress.com","divulgador.magalu.com","magalu.onelink.me"]);
 export const isShortLink=(url:URL)=>shortHosts.has(url.hostname);
 export function storeOf(url:URL):Store|"other"{
  const host=url.hostname.toLowerCase();
- if(amazonHost.test(host))return "amazon";if(mlHost.test(host))return "mercadolivre";if(shopeeHost.test(host))return "shopee";if(aliHost.test(host))return "aliexpress";if(nuuvemHost.test(host))return "nuuvem";return "other";
+ if(amazonHost.test(host))return "amazon";if(mlHost.test(host))return "mercadolivre";if(shopeeHost.test(host))return "shopee";if(aliHost.test(host))return "aliexpress";if(nuuvemHost.test(host))return "nuuvem";if(magaluHost.test(host))return "magalu";if(terabyteHost.test(host))return "terabyte";return "other";
 }
 
 export type Converted={link:string;affiliate:boolean;reason?:"not_configured"|"unsupported_store"|"conversion_failed"};
@@ -67,6 +75,22 @@ export function nuuvemLink(url:URL,siteId:string):string{
  const page=new URL(url.href);page.hash="";
  for(const k of [...page.searchParams.keys()])if(/^(?:utm_|ranmid$|raneaid$|ransiteid$|siteid$)/i.test(k))page.searchParams.delete(k);
  const out=new URL("https://click.linksynergy.com/deeplink");out.searchParams.set("id",siteId);out.searchParams.set("mid",NUUVEM_MID);out.searchParams.set("murl",page.href);return out.href;
+}
+// Magalu: the person's promoter_id (and showcase) on any Magalu page; a
+// Magazine Você page moves to the person's own showcase, keeping the rest
+// of the path (the product, the search).
+export function magaluLink(url:URL,promoterId:string,showcase?:string):string{
+ const out=new URL(url.href);out.hash="";
+ for(const k of [...out.searchParams.keys()])if(/^(?:promoter_id|showcase|partner_id|utm_.+)$/i.test(k))out.searchParams.delete(k);
+ if(showcase&&/(?:^|\.)magazinevoce\.com\.br$/.test(out.hostname)){const parts=out.pathname.split("/");if(parts[1])parts[1]=showcase;else parts.splice(1,0,showcase);out.pathname=parts.join("/");}
+ out.searchParams.set("promoter_id",promoterId);if(showcase)out.searchParams.set("showcase",showcase);return out.href;
+}
+// Terabyte: the partner's p= (and the program's UTMs, when set), without
+// someone else's.
+export function terabyteLink(url:URL,partner:string,utmMedium?:string,utmCampaign?:string):string{
+ const out=new URL(url.href);out.hash="";
+ for(const k of [...out.searchParams.keys()])if(k==="p"||/^utm_/i.test(k))out.searchParams.delete(k);
+ out.searchParams.set("p",partner);if(utmMedium)out.searchParams.set("utm_medium",utmMedium);if(utmCampaign)out.searchParams.set("utm_campaign",utmCampaign);return out.href;
 }
 const hex=(bytes:ArrayBuffer)=>Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
 // Shopee Affiliate Open API (GraphQL, Brazil): the request is signed with
@@ -124,6 +148,8 @@ export async function convertLink(url:URL,affiliate:Affiliate|null,send:typeof f
    case "shopee":return {store,link:await shopeeLink(url,affiliate.appId,affiliate.secret,send),affiliate:true};
    case "aliexpress":return {store,link:await aliexpressLink(url,affiliate.appKey,affiliate.appSecret,affiliate.trackingId,send),affiliate:true};
    case "nuuvem":return {store,link:nuuvemLink(url,affiliate.siteId),affiliate:true};
+   case "magalu":return {store,link:magaluLink(url,affiliate.promoterId,affiliate.showcase),affiliate:true};
+   case "terabyte":return {store,link:terabyteLink(url,affiliate.partner,affiliate.utmMedium,affiliate.utmCampaign),affiliate:true};
   }
  }catch{return plain("conversion_failed");}
 }

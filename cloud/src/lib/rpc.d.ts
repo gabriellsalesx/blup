@@ -9435,7 +9435,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {};
             output: {
                 stores: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                     configured: boolean;
                     hint: string | null;
                 }[];
@@ -9449,7 +9449,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $put: {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                 };
             } & {
                 json: {
@@ -9466,6 +9466,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     trackingId: string;
                 } | {
                     siteId: string;
+                } | {
+                    promoterId: string;
+                    showcase?: string | undefined;
+                } | {
+                    partner: string;
+                    utmMedium?: string | undefined;
+                    utmCampaign?: string | undefined;
                 };
             };
             output: {
@@ -9480,7 +9487,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                 };
             } & {
                 json: {
@@ -9497,6 +9504,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     trackingId: string;
                 } | {
                     siteId: string;
+                } | {
+                    promoterId: string;
+                    showcase?: string | undefined;
+                } | {
+                    partner: string;
+                    utmMedium?: string | undefined;
+                    utmCampaign?: string | undefined;
                 };
             };
             output: {
@@ -9508,7 +9522,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                 };
             } & {
                 json: {
@@ -9525,6 +9539,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     trackingId: string;
                 } | {
                     siteId: string;
+                } | {
+                    promoterId: string;
+                    showcase?: string | undefined;
+                } | {
+                    partner: string;
+                    utmMedium?: string | undefined;
+                    utmCampaign?: string | undefined;
                 };
             };
             output: {
@@ -9539,7 +9560,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                 };
             } & {
                 json: {
@@ -9556,6 +9577,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     trackingId: string;
                 } | {
                     siteId: string;
+                } | {
+                    promoterId: string;
+                    showcase?: string | undefined;
+                } | {
+                    partner: string;
+                    utmMedium?: string | undefined;
+                    utmCampaign?: string | undefined;
                 };
             };
             output: {
@@ -9567,7 +9595,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                 };
             } & {
                 json: {
@@ -9584,6 +9612,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     trackingId: string;
                 } | {
                     siteId: string;
+                } | {
+                    promoterId: string;
+                    showcase?: string | undefined;
+                } | {
+                    partner: string;
+                    utmMedium?: string | undefined;
+                    utmCampaign?: string | undefined;
                 };
             };
             output: {
@@ -9594,7 +9629,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                 };
             } & {
                 json: {
@@ -9611,6 +9646,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     trackingId: string;
                 } | {
                     siteId: string;
+                } | {
+                    promoterId: string;
+                    showcase?: string | undefined;
+                } | {
+                    partner: string;
+                    utmMedium?: string | undefined;
+                    utmCampaign?: string | undefined;
                 };
             };
             output: {
@@ -9621,7 +9663,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                 };
             } & {
                 json: {
@@ -9638,6 +9680,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     trackingId: string;
                 } | {
                     siteId: string;
+                } | {
+                    promoterId: string;
+                    showcase?: string | undefined;
+                } | {
+                    partner: string;
+                    utmMedium?: string | undefined;
+                    utmCampaign?: string | undefined;
                 };
             };
             output: {
@@ -9652,7 +9701,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $delete: {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                 };
             };
             output: {
@@ -9667,7 +9716,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                 };
             };
             output: {
@@ -9679,7 +9728,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                 };
             };
             output: {
@@ -9726,7 +9775,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             output: {
                 reason?: "not_configured" | "unsupported_store" | "conversion_failed" | undefined;
-                store: "other" | "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
+                store: "other" | "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                 title: string;
                 image: string | null;
                 price: number | null;

@@ -13,6 +13,8 @@ const body=z.union([
  z.object({appId:z.string().max(20),secret:z.string().max(128)}).strict(),
  z.object({appKey:z.string().max(20),appSecret:z.string().max(128),trackingId:z.string().max(64)}).strict(),
  z.object({siteId:z.string().max(32)}).strict(),
+ z.object({promoterId:z.string().max(64),showcase:z.string().max(70).optional()}).strict(),
+ z.object({partner:z.string().max(64),utmMedium:z.string().max(64).optional(),utmCampaign:z.string().max(64).optional()}).strict(),
 ]);
 // The IDs and keys are sealed at rest. The panel only ever learns whether
 // a store is configured and a few characters to recognize it.
