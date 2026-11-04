@@ -21,6 +21,9 @@ interface __BaseEnv_CloudflareBindings {
 	DEALS_TELEGRAM_BOT: string;
 	DEALS_TELEGRAM_TOKEN: string;
 	DEALS_TELEGRAM_WEBHOOK_SECRET: string;
+	DEALS_RAKUTEN_CLIENT_ID: string;
+	DEALS_RAKUTEN_CLIENT_SECRET: string;
+	DEALS_RAKUTEN_SID: string;
 	PULSE_INGEST_HOST: string;
 	PULSE_PUBLIC_HOST: string;
 	OTP_LIMIT: RateLimit;
@@ -74,6 +77,9 @@ declare namespace Cloudflare {
 	DEALS_TELEGRAM_BOT: string;
 	DEALS_TELEGRAM_TOKEN: string;
 	DEALS_TELEGRAM_WEBHOOK_SECRET: string;
+	DEALS_RAKUTEN_CLIENT_ID: string;
+	DEALS_RAKUTEN_CLIENT_SECRET: string;
+	DEALS_RAKUTEN_SID: string;
 	PULSE_INGEST_HOST: string;
 	PULSE_PUBLIC_HOST: string;
 	OTP_LIMIT: RateLimit;

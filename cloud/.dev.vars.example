@@ -22,3 +22,9 @@ OPENROUTER_API_KEY=sk-or-v1-coloque_a_sua
 # Telegram manda no webhook (setWebhook secret_token). Vazios: sem Telegram.
 DEALS_TELEGRAM_TOKEN=
 DEALS_TELEGRAM_WEBHOOK_SECRET=
+# Blup Deals: a conta do Blup na Rakuten Advertising (OAuth 2.0 do portal de
+# desenvolvedores e o SID do site), só para ler o catálogo da Nuuvem. Vazios:
+# sem a caçada da Nuuvem.
+DEALS_RAKUTEN_CLIENT_ID=
+DEALS_RAKUTEN_CLIENT_SECRET=
+DEALS_RAKUTEN_SID=

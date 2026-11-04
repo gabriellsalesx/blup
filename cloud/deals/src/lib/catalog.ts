@@ -30,16 +30,22 @@ export type HuntOption={id:HuntKind|"stores"|"mirror";title:PlainMessageKey;help
 export const huntKinds:HuntOption[]=[
  {id:"games_free",title:"dealsGamesFree",help:"dealsGamesFreeHelp",art:gamesFreeArt},
  {id:"games_deals",title:"dealsGamesDeals",help:"dealsGamesDealsHelp",art:gamesDealsArt},
+ // Nuuvem's sales reuse the game-sales drawing until it has its own.
+ {id:"nuuvem_deals",title:"dealsNuuvemDeals",help:"dealsNuuvemDealsHelp",art:gamesDealsArt},
  {id:"stores",title:"dealsStoresKind",help:"dealsStoresKindHelp",art:storesArt,soon:true},
  {id:"mirror",title:"dealsMirrorKind",help:"dealsMirrorKindHelp",art:mirrorArt,soon:true},
 ];
-export const huntName=(kind:HuntKind)=>kind==="games_free"?"dealsGamesFree" as const:"dealsGamesDeals" as const;
-// The platforms the server accepts; game sales (CheapShark) only the PC ones.
+const huntNames={games_free:"dealsGamesFree",games_deals:"dealsGamesDeals",nuuvem_deals:"dealsNuuvemDeals"} as const satisfies Record<HuntKind,PlainMessageKey>;
+export const huntName=(kind:HuntKind)=>huntNames[kind];
+// The kinds with a price filter, and the currency it is in.
+export const huntCurrency:Partial<Record<HuntKind,string>>={games_deals:"USD",nuuvem_deals:"BRL"};
+// The platforms the server accepts; game sales (CheapShark) only the PC
+// ones; Nuuvem's sales none.
 export const platforms=[
  {id:"pc",label:"PC",pc:true},{id:"steam",label:"Steam",pc:true},{id:"epic",label:"Epic Games",pc:true},{id:"gog",label:"GOG",pc:true},{id:"ubisoft",label:"Ubisoft",pc:true},
  {id:"itchio",label:"itch.io",pc:false},{id:"playstation",label:"PlayStation",pc:false},{id:"xbox",label:"Xbox",pc:false},{id:"switch",label:"Nintendo Switch",pc:false},{id:"android",label:"Android",pc:false},{id:"ios",label:"iOS",pc:false},
 ] as const satisfies readonly {id:Platform;label:string;pc:boolean}[];
-export const platformsFor=(kind:HuntKind)=>kind==="games_deals"?platforms.filter(p=>p.pc):platforms;
+export const platformsFor=(kind:HuntKind)=>kind==="nuuvem_deals"?[]:kind==="games_deals"?platforms.filter(p=>p.pc):platforms;
 export const platformLabel=(id:string)=>platforms.find(p=>p.id===id)?.label??id;
 // What the hunt form gives back (POST /hunts, and PATCH without the kind).
 export type Platform=NonNullable<Hunt["filters"]["platforms"]>[number];

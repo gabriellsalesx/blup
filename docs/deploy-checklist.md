@@ -182,9 +182,13 @@ PULSE_TELEGRAM_TOKEN
 PULSE_TELEGRAM_WEBHOOK_SECRET
 DEALS_TELEGRAM_TOKEN
 DEALS_TELEGRAM_WEBHOOK_SECRET
+DEALS_RAKUTEN_CLIENT_ID
+DEALS_RAKUTEN_CLIENT_SECRET
+DEALS_RAKUTEN_SID
 ```
 
 - [ ] **BLOQUEANTE para avisos Pulse:** preparar `PULSE_CHANNEL_KEY` com 32 bytes aleatórios codificados em base64 e preservá-la entre versões; o formato atual não permite trocar a chave sem recifrar destinos. Preparar token do bot e secret do webhook em armazenamento privado. Esses três secrets pertencem somente ao Worker Cloud.
+- [ ] Blup Deals, Nuuvem: criar o app OAuth 2.0 "Blup Deals" no portal de desenvolvedores da Rakuten Advertising (conta do Blup, aprovada no programa da Nuuvem, MID 46796) e salvar `DEALS_RAKUTEN_CLIENT_ID`, `DEALS_RAKUTEN_CLIENT_SECRET` e `DEALS_RAKUTEN_SID` só no Worker Cloud. Vazios, a caçada "Promoções da Nuuvem" não lê nada.
 - [ ] **BLOQUEANTE para destinos Deals F1:** o código reutiliza `PULSE_CHANNEL_KEY` com contexto criptográfico Deals, sem criar outro valor de chave nos docs. Preservar essa chave para ler destinos e credenciais já gravados. Registrar o bot próprio Deals e configurar `DEALS_TELEGRAM_TOKEN`/`DEALS_TELEGRAM_WEBHOOK_SECRET` apenas no Worker Cloud; preparar webhook HTTPS `/api/deals/telegram/webhook` com secret token e updates de mensagem/alteração de membro necessários ao vínculo como administrador. Não enviar esses secrets ao painel estático ou ao Worker dos sites.
 - [ ] Registrar o bot `@BlupPulseBot` pelo BotFather e guardar o token fora de logs/Git. A entrega local não confirma que o nome esteja disponível ou que o bot exista. Os provedores só foram simulados nos testes.
 - [ ] O Worker dos sites recebe `STAFF_OWNER_EMAIL` se a cortesia Ultra do proprietário for usada. Ele não recebe os secrets de auth, Stripe, IA ou `CF_API_TOKEN`.

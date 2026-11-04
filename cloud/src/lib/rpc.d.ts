@@ -10119,13 +10119,14 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 hunts: {
                     id: string;
-                    kind: "games_free" | "games_deals";
+                    kind: "games_free" | "games_deals" | "nuuvem_deals";
                     active: boolean;
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     };
                     createdAt: string;
                 }[];
@@ -10139,12 +10140,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $post: {
             input: {
                 json: {
-                    kind: "games_free" | "games_deals";
+                    kind: "games_free" | "games_deals" | "nuuvem_deals";
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     };
                 };
             };
@@ -10160,12 +10162,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "games_deals";
+                    kind: "games_free" | "games_deals" | "nuuvem_deals";
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     };
                 };
             };
@@ -10178,12 +10181,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "games_deals";
+                    kind: "games_free" | "games_deals" | "nuuvem_deals";
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     };
                 };
             };
@@ -10195,29 +10199,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "games_deals";
+                    kind: "games_free" | "games_deals" | "nuuvem_deals";
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
-                    };
-                };
-            };
-            output: {
-                code: string;
-            };
-            outputFormat: "json";
-            status: 404;
-        } | {
-            input: {
-                json: {
-                    kind: "games_free" | "games_deals";
-                    channelIds: string[];
-                    filters: {
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
-                        minDiscount?: number | undefined;
-                        maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     };
                 };
             };
@@ -10229,12 +10217,31 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    kind: "games_free" | "games_deals";
+                    kind: "games_free" | "games_deals" | "nuuvem_deals";
                     channelIds: string[];
                     filters: {
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
+                    };
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                json: {
+                    kind: "games_free" | "games_deals" | "nuuvem_deals";
+                    channelIds: string[];
+                    filters: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     };
                 };
             };
@@ -10260,6 +10267,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     } | undefined;
                 };
             };
@@ -10285,6 +10293,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     } | undefined;
                 };
             };
@@ -10307,6 +10316,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     } | undefined;
                 };
             };
@@ -10332,6 +10342,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     } | undefined;
                 };
             };
@@ -10354,6 +10365,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     } | undefined;
                 };
             };
@@ -10375,6 +10387,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     } | undefined;
                 };
             };
@@ -10396,6 +10409,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
+                        gamesOnly?: boolean | undefined;
                     } | undefined;
                 };
             };

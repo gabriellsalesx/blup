@@ -4,13 +4,15 @@ import {validate,opaqueId} from "../validation";
 import {dealsLimits} from "../../shared/pulse-plans";
 import {dealsWrite,type DealsApp} from "./access";
 import {huntFilters,huntKinds,huntSource,pcPlatforms,feedHunt,huntRow,type HuntKind,type HuntFilters} from "./catalog";
-import {usableChannels,DAY} from "./store";
+import {usableChannels,affiliateOf,DAY} from "./store";
 
 const huntParam=z.object({hunt:opaqueId});
 const channelIds=z.array(opaqueId).min(1).max(dealsLimits.channels);
-// CheapShark lists PC stores only: games_deals takes only those platforms.
-const fits=(kind:HuntKind,filters:HuntFilters)=>kind==="games_free"||!filters.platforms?.some(p=>!(pcPlatforms as readonly string[]).includes(p));
-const names={games_free:"Jogos grátis",games_deals:"Promoções de jogos"} as const;
+// CheapShark lists PC stores only: games_deals takes only those platforms;
+// Nuuvem's sales have no platform filter.
+const fits=(kind:HuntKind,filters:HuntFilters)=>kind==="games_free"||(kind==="nuuvem_deals"?!filters.platforms?.length:!filters.platforms?.some(p=>!(pcPlatforms as readonly string[]).includes(p)));
+const names={games_free:"Jogos grátis",games_deals:"Promoções de jogos",nuuvem_deals:"Promoções da Nuuvem"} as const;
+const kinds=huntKinds.map(k=>`'${k}'`).join(",");
 type Row={id:string;kind:string;active:number;channels:string;filters:string;createdAt:number};
 const view=(r:Row)=>({id:r.id,kind:z.enum(huntKinds).parse(r.kind),active:!!r.active,channelIds:z.array(z.string()).catch([]).parse(JSON.parse(r.channels)),filters:huntFilters.catch({}).parse(JSON.parse(r.filters)),createdAt:new Date(r.createdAt).toISOString()});
 // A new or changed hunt gets the recent matching offers (last 3 days) at
@@ -22,12 +24,14 @@ async function feedNow(env:Cloudflare.Env,id:string){
 
 export const huntsApi=new Hono<DealsApp>()
  .get("/",async c=>{
-  const rows=await c.env.DB.prepare("SELECT id,kind,active,channels,filters,created_at AS createdAt FROM deals_hunt WHERE user_id=? AND kind IN('games_free','games_deals') AND (retire_at IS NULL OR retire_at>?) ORDER BY created_at,id LIMIT 50").bind(c.get("session").user.id,Date.now()).all<Row>();
+  const rows=await c.env.DB.prepare(`SELECT id,kind,active,channels,filters,created_at AS createdAt FROM deals_hunt WHERE user_id=? AND kind IN(${kinds}) AND (retire_at IS NULL OR retire_at>?) ORDER BY created_at,id LIMIT 50`).bind(c.get("session").user.id,Date.now()).all<Row>();
   return c.json({hunts:rows.results.map(view)});
  })
  .post("/",dealsWrite,validate("json",z.object({kind:z.enum(huntKinds),channelIds,filters:huntFilters}).strict()),async c=>{
   const owner=c.get("session").user.id,input=c.req.valid("json"),now=Date.now();
   if(!fits(input.kind,input.filters))return c.json({code:"INVALID"},400);
+  // Nuuvem's sales earn only with the person's Rakuten ID.
+  if(input.kind==="nuuvem_deals"&&!await affiliateOf(c.env,owner,"nuuvem"))return c.json({code:"NUUVEM_NOT_CONFIGURED"},409);
   if((await usableChannels(c.env.DB,owner,input.channelIds)).length!==new Set(input.channelIds).size)return c.json({code:"NOT_FOUND"},404);
   const id=crypto.randomUUID();
   const row=await c.env.DB.prepare("INSERT INTO deals_hunt(id,user_id,name,kind,source_id,filters,channels,created_at) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM deals_hunt WHERE user_id=? AND kind<>'mirror' AND (retire_at IS NULL OR retire_at>?))<? RETURNING id").bind(id,owner,names[input.kind],input.kind,huntSource[input.kind],JSON.stringify(input.filters),JSON.stringify([...new Set(input.channelIds)]),now,owner,now,dealsLimits.hunts).first();
@@ -37,7 +41,7 @@ export const huntsApi=new Hono<DealsApp>()
  })
  .patch("/:hunt",dealsWrite,validate("param",huntParam),validate("json",z.object({active:z.boolean().optional(),channelIds:channelIds.optional(),filters:huntFilters.optional()}).strict()),async c=>{
   const owner=c.get("session").user.id,id=c.req.valid("param").hunt,input=c.req.valid("json");
-  const current=await c.env.DB.prepare("SELECT kind FROM deals_hunt WHERE id=? AND user_id=? AND kind IN('games_free','games_deals')").bind(id,owner).first<{kind:HuntKind}>();
+  const current=await c.env.DB.prepare(`SELECT kind FROM deals_hunt WHERE id=? AND user_id=? AND kind IN(${kinds})`).bind(id,owner).first<{kind:HuntKind}>();
   if(!current)return c.json({code:"NOT_FOUND"},404);
   if(input.filters&&!fits(current.kind,input.filters))return c.json({code:"INVALID"},400);
   if(input.channelIds&&(await usableChannels(c.env.DB,owner,input.channelIds)).length!==new Set(input.channelIds).size)return c.json({code:"NOT_FOUND"},404);

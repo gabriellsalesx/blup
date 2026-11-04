@@ -47,7 +47,7 @@
  // Where it starts: the step and topic in the address (back from linking).
  const first=(()=>({step:data.step,topic:data.topic}))();
  let at=$state(first.step),topic=$state<"games"|"other">(first.topic),busy=$state(false);
- let kinds=$state<Record<HuntKind,boolean>>({games_free:true,games_deals:true});
+ let kinds=$state<Record<Exclude<HuntKind,"nuuvem_deals">,boolean>>({games_free:true,games_deals:true});
  // Starts on the active channels; a tick changes it.
  let channelIds=$derived(data.channels.filter(c=>c.active).map(c=>c.id));
  const step=$derived(steps[at]);

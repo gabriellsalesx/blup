@@ -12,6 +12,7 @@ import {enqueue,dayOf,seal} from "./store";
 import {dispatchDeals,DEALS_BUDGET} from "./dispatch";
 import {telegramText,discordPayload,sendTelegram} from "./message";
 import {videoOf} from "./video";
+import {nuuvemOffers,isCredit,NUUVEM_PAGES_PER_RUN} from "./nuuvem";
 import {serveDealsLink} from "./redirect";
 import {panelCorsOrigin} from "../security";
 import {softDelete,purgeAccounts,DAY as LIFE_DAY} from "../lifecycle";
@@ -496,5 +497,36 @@ describe("a new TikTok video",()=>{
   const text=telegramText(post,"pt");expect(text).toBe('<b>Vídeo novo: Fone</b>\n<a href="https://deals.audit.invalid/r/ABCDEFGH">Ver o vídeo</a>\n#publi');
   expect((await sendTelegram(state.env,"-1001",text,null,send,"https://www.tiktok.com/@ana/video/7430000000000000001")).sent).toBe(true);
   expect(bodies[0]).toMatchObject({link_preview_options:{url:"https://www.tiktok.com/@ana/video/7430000000000000001",prefer_large_media:true,show_above_text:true}});
+ });
+});
+
+describe("Nuuvem's sales through Rakuten",()=>{
+ const item=(sku:string,name:string,price:string,sale:string,slug=sku)=>`<item><mid>46796</mid><merchantname>Nuuvem</merchantname><linkid>46796${sku}</linkid><sku>${sku}</sku><productname>${name}</productname><price currency="BRL">${price}</price><saleprice currency="BRL">${sale}</saleprice><description><short>x</short></description><linkurl>https://click.linksynergy.com/link?id=BLUP&amp;offerid=1.2&amp;type=15&amp;murl=https%3A%2F%2Fwww.nuuvem.com%2Fbr-pt%2Fitem%2F${slug}</linkurl><imageurl>https://assets.nuuvem.com/i/${sku}.jpg</imageurl></item>`;
+ const page=(items:string[],pages=1,n=1)=>`<result><TotalMatches>${items.length}</TotalMatches><TotalPages>${pages}</TotalPages><PageNumber>${n}</PageNumber>${items.join("")}</result>`;
+ it("takes only the games on sale, with the store page and the list price before",()=>{
+  const offers=nuuvemOffers(page([item("1","Ambulance Life","109.99","32.99","ambulance-life"),item("2","Pine Hearts","38.99","0"),item("3","Caro &amp; Bom","10","12"),`<item><mid>999</mid><sku>4</sku><productname>Outra loja</productname><price currency="BRL">10</price><saleprice currency="BRL">5</saleprice></item>`]),0);
+  expect(offers).toEqual([expect.objectContaining({key:"nuuvem:1:3299",store:"nuuvem",title:"Ambulance Life",url:"https://www.nuuvem.com/br-pt/item/ambulance-life",imageUrl:"https://assets.nuuvem.com/i/1.jpg",price:3299,originalPrice:10999,currency:"BRL",kind:"nuuvem_deal",discount:70})]);
+  expect(isCredit("EA SPORTS FC Mobile - 40 FC POINTS")).toBe(true);expect(isCredit("AFK Journey - 1554 Dragon Crystals")).toBe(true);expect(isCredit("Ambulance Life: A Paramedic Simulator")).toBe(false);
+ });
+ it("reads the catalog a few pages a minute and posts each new sale with the person's own ID",async()=>{
+  Object.assign(state.env,{DEALS_RAKUTEN_CLIENT_ID:"client-id-123",DEALS_RAKUTEN_CLIENT_SECRET:"client-secret-123",DEALS_RAKUTEN_SID:"1234567"});
+  const channel=await addDiscord();await call("/affiliates/nuuvem",{method:"PUT",body:{siteId:"*AbCdEfGh1"}});
+  let sales:string[]=[item("1","Ambulance Life","109.99","32.99")];const pages=NUUVEM_PAGES_PER_RUN+2,reads:number[]=[];
+  const {send}=net({"www.gamerpower.com":()=>Response.json([]),"www.cheapshark.com":()=>Response.json([]),
+   "api.linksynergy.com/token":req=>{expect(req.headers.get("authorization")).toBe(`Bearer ${btoa("client-id-123:client-secret-123")}`);return Response.json({token_type:"bearer",expires_in:3600,access_token:"a".repeat(32),refresh_token:"r".repeat(32)});},
+   "api.linksynergy.com/productsearch/1.0":req=>{const n=Number(new URL(req.url).searchParams.get("pagenumber"));reads.push(n);return new Response(page(n===pages?sales:[],pages,n),{headers:{"content-type":"application/xml"}});}});
+  const t0=Date.parse("2026-11-04T10:00:00Z");
+  // The first full read only fills the catalog.
+  await collectDeals(state.env,send,t0);expect(reads).toEqual(Array.from({length:NUUVEM_PAGES_PER_RUN},(_,i)=>i+1));
+  await collectDeals(state.env,send,t0+30_000);expect(reads).toHaveLength(NUUVEM_PAGES_PER_RUN);
+  await collectDeals(state.env,send,t0+60_000);expect(reads).toHaveLength(pages);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_offer WHERE kind='nuuvem_deal'").get()?.n).toBe(1);
+  expect((await call("/hunts",{method:"POST",user:"bob",body:{kind:"nuuvem_deals",channelIds:[await addDiscord("bob")],filters:{}}})).status).toBe(409);
+  db.sqlite.exec(`INSERT INTO deals_hunt(id,user_id,name,kind,source_id,filters,channels,created_at) VALUES('n1','alice','N','nuuvem_deals','nuuvem','{"minDiscount":50}','["${channel}"]',0)`);
+  sales=[item("1","Ambulance Life","109.99","32.99"),item("5","Hades","73.99","36.99","hades"),item("6","Jogo - 500 Coins","20","5")];
+  // The next round starts 3 hours after the first one began.
+  await collectDeals(state.env,send,t0+2*60*60_000);expect(reads).toHaveLength(pages);
+  for(const at of [3,3.01,3.02])await collectDeals(state.env,send,t0+at*60*60_000);
+  expect(db.sqlite.prepare("SELECT o.title,p.link,p.affiliate FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id").all()).toEqual([{title:"Hades",link:"https://click.linksynergy.com/deeplink?id=*AbCdEfGh1&mid=46796&murl=https%3A%2F%2Fwww.nuuvem.com%2Fbr-pt%2Fitem%2Fhades",affiliate:1}]);
  });
 });

@@ -3,12 +3,14 @@ import {sha256} from "../pulse/limits";
 import {apiJSON} from "./fetch";
 import {cleanLine,priceCents} from "./page";
 import {dealsAccess} from "./access";
-import {enqueue,DAY} from "./store";
+import {enqueue,affiliateOf,DAY} from "./store";
+import {nuuvemLink} from "./links";
+import {readNuuvem,rakutenCredentials,isCredit} from "./nuuvem";
 
 // The global catalog: an offer is stored once, whoever finds it, by a hash
 // of where it comes from and what it is. Each price change goes to the
 // history (an honest "before" price later).
-export type OfferInput={key:string;store:string;externalId:string|null;sourceId:string|null;title:string;url:string;imageUrl:string|null;price:number|null;originalPrice:number|null;currency:string|null;kind:"product"|"game_free"|"game_deal"|"video";platforms:string[];discount:number|null;credit:string|null;expiresAt:number|null};
+export type OfferInput={key:string;store:string;externalId:string|null;sourceId:string|null;title:string;url:string;imageUrl:string|null;price:number|null;originalPrice:number|null;currency:string|null;kind:"product"|"game_free"|"game_deal"|"video"|"nuuvem_deal";platforms:string[];discount:number|null;credit:string|null;expiresAt:number|null};
 export type StoredOffer={id:string;isNew:boolean};
 export async function upsertOffer(db:D1Database,o:OfferInput,now=Date.now()):Promise<StoredOffer>{
  const hash=await sha256(o.key);
@@ -57,22 +59,33 @@ export function cheapSharkOffers(value:unknown):OfferInput[]{
  });
 }
 
-// The shared sources, each read once per round for every account.
+// The shared sources, each read once per round for every account: the
+// game feeds in one request; Nuuvem's catalog (Rakuten) a few pages a
+// minute, its round complete when the last page is read. A source without
+// what it needs (Rakuten's credentials) is not read.
+type Read={offers:OfferInput[];next:number|null};
+const feed=(url:string,parse:(value:unknown,now:number)=>OfferInput[])=>({round:30*60_000,read:async(_env:Cloudflare.Env,_from:number,send:typeof fetch,now:number):Promise<Read>=>({offers:parse(await apiJSON(url,{headers:{accept:"application/json","user-agent":"BlupDeals/1.0 (+https://getblup.io)"}},send),now),next:null}),ready:(_env:Cloudflare.Env)=>true});
 const sources={
- gamerpower:{url:"https://www.gamerpower.com/api/giveaways?type=game",parse:gamerPowerOffers},
- cheapshark:{url:"https://www.cheapshark.com/api/1.0/deals?storeID=1,7,13,25&onSale=1&sortBy=Recent&pageSize=60",parse:cheapSharkOffers},
+ gamerpower:feed("https://www.gamerpower.com/api/giveaways?type=game",gamerPowerOffers),
+ cheapshark:feed("https://www.cheapshark.com/api/1.0/deals?storeID=1,7,13,25&onSale=1&sortBy=Recent&pageSize=60",(v)=>cheapSharkOffers(v)),
+ // The catalog changes about once a day; a full read every 3 hours.
+ nuuvem:{round:3*60*60_000,read:async(env:Cloudflare.Env,from:number,send:typeof fetch,now:number):Promise<Read>=>{const c=rakutenCredentials(env);if(!c)throw new Error("NOT_CONFIGURED");return readNuuvem(c,from,send,now);},ready:(env:Cloudflare.Env)=>rakutenCredentials(env)!==null},
 } as const;
 type SourceId=keyof typeof sources;
-const ROUND=30*60_000;
+// Where a source's round is (Nuuvem's pages): the next page and when the
+// round began, so its hunts get what the whole round found.
+const cursor=z.object({page:z.number().int().min(1).max(10_000),started:z.number().int().nonnegative()});
 
-export const huntFilters=z.object({platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(100_000_00).optional()}).strict();
+// gamesOnly (Nuuvem) leaves out credits and currency packs; on unless off.
+export const huntFilters=z.object({platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(100_000_00).optional(),gamesOnly:z.boolean().optional()}).strict();
 export type HuntFilters=z.infer<typeof huntFilters>;
-export const huntKinds=["games_free","games_deals"] as const;
+export const huntKinds=["games_free","games_deals","nuuvem_deals"] as const;
 export type HuntKind=(typeof huntKinds)[number];
-const offerKind={games_free:"game_free",games_deals:"game_deal"} as const;
-export const huntSource={games_free:"gamerpower",games_deals:"cheapshark"} as const;
-type CatalogRow={id:string;url:string;price:number|null;discount:number|null;platforms:string};
+const offerKind={games_free:"game_free",games_deals:"game_deal",nuuvem_deals:"nuuvem_deal"} as const;
+export const huntSource={games_free:"gamerpower",games_deals:"cheapshark",nuuvem_deals:"nuuvem"} as const;
+type CatalogRow={id:string;title:string;url:string;price:number|null;discount:number|null;platforms:string;kind:string};
 export function matches(filters:HuntFilters,offer:CatalogRow){
+ if(offer.kind==="nuuvem_deal"&&filters.gamesOnly!==false&&isCredit(offer.title))return false;
  const have:string[]=z.array(z.string()).catch([]).parse(JSON.parse(offer.platforms));
  if(filters.platforms?.length&&!filters.platforms.some(p=>have.includes(p)))return false;
  if(filters.minDiscount!==undefined&&(offer.discount??0)<filters.minDiscount)return false;
@@ -82,14 +95,22 @@ export function matches(filters:HuntFilters,offer:CatalogRow){
 type Hunt={id:string;userId:string;kind:HuntKind;filters:HuntFilters;channels:string[]};
 const PER_ROUND=3;
 // Sends a hunt the newest matching offers it has not sent yet (at most
-// PER_ROUND each time), to every channel it names.
+// PER_ROUND each time), to every channel it names. Nuuvem's sales go with
+// the person's own Rakuten ID, the biggest discounts first; without that
+// ID the hunt sends nothing (no commission to earn).
 export async function feedHunt(env:Cloudflare.Env,hunt:Hunt,since:number,now=Date.now()){
- const rows=await env.DB.prepare("SELECT id,url,price,discount,platforms FROM deals_offer WHERE kind=? AND first_seen_at>=? AND (expires_at IS NULL OR expires_at>?) ORDER BY first_seen_at DESC,id LIMIT 200").bind(offerKind[hunt.kind],since,now).all<CatalogRow>();
+ let link=(offer:CatalogRow)=>({link:offer.url,affiliate:false});
+ if(hunt.kind==="nuuvem_deals"){
+  const affiliate=await affiliateOf(env,hunt.userId,"nuuvem");if(affiliate?.store!=="nuuvem")return 0;
+  link=offer=>({link:nuuvemLink(new URL(offer.url),affiliate.siteId),affiliate:true});
+ }
+ const order=hunt.kind==="nuuvem_deals"?"coalesce(discount,0) DESC,first_seen_at DESC,id":"first_seen_at DESC,id";
+ const rows=await env.DB.prepare(`SELECT id,title,url,price,discount,platforms,kind FROM deals_offer WHERE kind=? AND first_seen_at>=? AND (expires_at IS NULL OR expires_at>?) ORDER BY ${order} LIMIT 200`).bind(offerKind[hunt.kind],since,now).all<CatalogRow>();
  let sent=0;
  for(const offer of rows.results){
   if(sent>=PER_ROUND)break;if(!matches(hunt.filters,offer))continue;
   const fresh=await env.DB.prepare("SELECT 1 FROM deals_offer WHERE id=? AND NOT EXISTS(SELECT 1 FROM deals_post WHERE offer_id=? AND user_id=?)").bind(offer.id,offer.id,hunt.userId).first();if(!fresh)continue;
-  const queued=await enqueue(env.DB,{owner:hunt.userId,offerId:offer.id,channels:hunt.channels,link:offer.url,affiliate:false,huntId:hunt.id,sendAt:now,now});
+  const queued=await enqueue(env.DB,{owner:hunt.userId,offerId:offer.id,channels:hunt.channels,...link(offer),huntId:hunt.id,sendAt:now,now});
   if(queued)sent++;else if(!await env.DB.prepare("SELECT 1 FROM deals_post WHERE offer_id=? AND user_id=?").bind(offer.id,hunt.userId).first())break;
  }
  if(sent)await env.DB.prepare("UPDATE deals_hunt SET last_post_at=? WHERE id=?").bind(now,hunt.id).run();
@@ -97,26 +118,34 @@ export async function feedHunt(env:Cloudflare.Env,hunt:Hunt,since:number,now=Dat
 }
 export const huntRow=z.object({id:z.string(),userId:z.string(),kind:z.enum(huntKinds),filters:z.string().transform(v=>huntFilters.catch({}).parse(JSON.parse(v))),channels:z.string().transform(v=>z.array(z.string()).catch([]).parse(JSON.parse(v)))});
 
-// One round: every due source read once, the catalog updated, and each
-// active hunt of that source fed with what is new. The very first read
+// One round: every due source read (Nuuvem one share of its pages), the
+// catalog updated and, when a source's round is complete, each active
+// hunt of that source fed with what the round found. The very first round
 // only fills the catalog (no flood of old offers).
 export async function collectDeals(env:Cloudflare.Env,send:typeof fetch=fetch,now=Date.now()){
- await env.DB.batch((Object.keys(sources) as SourceId[]).map(id=>env.DB.prepare("INSERT OR IGNORE INTO deals_source(id,kind,key,next_at,created_at) VALUES(?,?,?,0,?)").bind(id,id,id,now)));
- for(const id of Object.keys(sources) as SourceId[]){
+ const ids=(Object.keys(sources) as SourceId[]).filter(id=>sources[id].ready(env));
+ if(!ids.length)return;
+ await env.DB.batch(ids.map(id=>env.DB.prepare("INSERT OR IGNORE INTO deals_source(id,kind,key,next_at,created_at) VALUES(?,?,?,0,?)").bind(id,id,id,now)));
+ for(const id of ids){
   const claim=crypto.randomUUID();
-  const source=await env.DB.prepare("UPDATE deals_source SET claim=?,claim_until=? WHERE id=? AND next_at<=? AND claim_until<=? RETURNING last_at AS lastAt").bind(claim,now+120_000,id,now,now).first<{lastAt:number|null}>();
+  const source=await env.DB.prepare("UPDATE deals_source SET claim=?,claim_until=? WHERE id=? AND next_at<=? AND claim_until<=? RETURNING last_at AS lastAt,cursor").bind(claim,now+120_000,id,now,now).first<{lastAt:number|null;cursor:string|null}>();
   if(!source)continue;
   try{
-   const offers=sources[id].parse(await apiJSON(sources[id].url,{headers:{accept:"application/json","user-agent":"BlupDeals/1.0 (+https://getblup.io)"}},send),now);
+   const at=(()=>{try{return cursor.parse(JSON.parse(source.cursor??""));}catch{return {page:1,started:now};}})();
+   const {offers,next}=await sources[id].read(env,at.page,send,now);
    for(const offer of offers)await upsertOffer(env.DB,offer,now);
-   await env.DB.prepare("UPDATE deals_source SET next_at=?,last_at=?,failures=0,error=NULL,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(now+ROUND,now,id,claim).run();
+   if(next!==null){
+    await env.DB.prepare("UPDATE deals_source SET next_at=?,cursor=?,failures=0,error=NULL,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(now+60_000,JSON.stringify({page:next,started:at.started}),id,claim).run();
+    continue;
+   }
+   await env.DB.prepare("UPDATE deals_source SET next_at=?,last_at=?,cursor=NULL,failures=0,error=NULL,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(at.started+sources[id].round,now,id,claim).run();
    if(source.lastAt===null)continue;
    const hunts=await env.DB.prepare("SELECT id,user_id AS userId,kind,filters,channels FROM deals_hunt WHERE source_id=? AND active=1 AND plan_disabled=0 AND (retire_at IS NULL OR retire_at>?) ORDER BY id LIMIT 500").bind(id,now).all();
    const allowed=new Map<string,boolean>();
    for(const raw of hunts.results){
     const hunt=huntRow.safeParse(raw);if(!hunt.success)continue;
     if(!allowed.has(hunt.data.userId))allowed.set(hunt.data.userId,!(await dealsAccess(env,hunt.data.userId)).readOnly);
-    if(allowed.get(hunt.data.userId))await feedHunt(env,hunt.data,now,now);
+    if(allowed.get(hunt.data.userId))await feedHunt(env,hunt.data,at.started,now);
    }
   }catch{
    await env.DB.prepare("UPDATE deals_source SET next_at=?+min(failures+1,6)*600000,failures=failures+1,error='FETCH_FAILED',claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(now,id,claim).run();

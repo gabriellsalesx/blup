@@ -581,3 +581,11 @@ Essas pendências técnicas e comerciais não reabrem a decisão de espelhamento
 - Um link da Rakuten colado (`click.linksynergy.com` com `murl`) é lido pela página de destino, sem ser aberto, para não contar clique para quem o criou.
 - A marca é o ícone oficial do site (`nuuvem.com/favicon-144.png`), sem alteração (não existe no Simple Icons).
 - Depois: a caçada "Jogos em promoção na Nuuvem" pela busca de produtos da Rakuten, com a conta do Blup (credenciais só nos segredos do wrangler). O catálogo é atualizado devagar, então a caçada posta só o que entrou ou mudou de preço desde a última leitura.
+
+### Caçada "Promoções da Nuuvem"
+
+- Fonte `nuuvem`: Product Search da Rakuten (`api.linksynergy.com/productsearch/1.0?mid=46796`), com o token da conta do Blup (`/token`, `client_credentials`, escopo = SID). 100 produtos por página, 8 páginas por minuto até a última (o catálogo tem uns 7.400 produtos, uns 74 por volta); uma volta nova a cada 3 horas, contadas do começo da anterior. O cursor (`page`, `started`) fica em `deals_source.cursor`.
+- Só entra o que está em promoção (`saleprice` > 0 e menor que `price`, em BRL). A chave é `nuuvem:<sku>:<preço promocional>`: uma promoção nova ou mais barata é oferta nova; a mesma não repete. A oferta vence 2 dias depois da última leitura que a viu.
+- As caçadas só recebem quando a volta termina, com o que entrou desde o começo dela, as de maior desconto primeiro (até 3 por volta). A primeira volta só enche o catálogo.
+- Cada post sai com o deep link do cliente (o ID dele da Rakuten). Sem o ID salvo, a caçada não pode ser criada (`NUUVEM_NOT_CONFIGURED`) e, se ele tirar depois, não posta.
+- "Só jogos" (ligado por padrão) tira créditos e moedas (Points, Crystals, Coins, gift cards, pacotes "Jogo - 500 Coins"), que vêm na mesma categoria.
