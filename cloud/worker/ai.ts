@@ -161,7 +161,13 @@ function providerCost(value:unknown,fallback:number) {
 // (/staff/ai): each one's default list, used until an admin changes it.
 // OpenRouter takes the list as models: the first answers, the next ones
 // take over when it fails, and the one that answered is the one charged.
-export const aiFeatures = { deals_describe: ["deepseek/deepseek-v4.1-flash"] } as const satisfies Record<string, readonly string[]>;
+const FLASH = ["deepseek/deepseek-v4.1-flash"] as const;
+// deals_describe: the "write with AI" button and the hunts' descriptions;
+// deals_curate: a store hunt's finds sorted (short names, what fits the
+// search, the category); deals_extract: a mirrored post's coupon and
+// details; deals_suggest: words for a store hunt; deals_translate: a post
+// for a channel in another language.
+export const aiFeatures = { deals_describe: FLASH, deals_curate: FLASH, deals_extract: FLASH, deals_suggest: FLASH, deals_translate: FLASH } as const satisfies Record<string, readonly string[]>;
 export type AIFeature = keyof typeof aiFeatures;
 export const modelId = z.string().regex(/^[a-z0-9][a-z0-9._-]{0,63}\/[a-z0-9][a-z0-9._:-]{0,99}$/);
 export const modelList = z.array(modelId).min(1).max(5).refine((l) => new Set(l).size === l.length);
@@ -194,7 +200,8 @@ export async function chatModels(env: Cloudflare.Env): Promise<Map<string, ChatM
 // dearest model of the list at the most it may write; the charge, what
 // OpenRouter says it cost.
 export type AIText = { text: string; model: string } | { code: "NO_AI" | "AI_MONTH_LIMIT" | "AI_WEEK_LIMIT" | "UNAVAILABLE" | "UPSTREAM"; status: 402 | 429 | 502 | 503 };
-export async function aiText(env: Cloudflare.Env, userId: string, feature: AIFeature, input: { system: string; user: string; maxTokens: number }): Promise<AIText> {
+// json: the answer is a JSON object (OpenRouter's response_format).
+export async function aiText(env: Cloudflare.Env, userId: string, feature: AIFeature, input: { system: string; user: string; maxTokens: number; json?: boolean; temperature?: number }): Promise<AIText> {
 	if (!env.OPENROUTER_API_KEY) return { code: "UNAVAILABLE", status: 503 };
 	const models = await modelsFor(env.DB, feature), catalog = await chatModels(env);
 	// Without the catalog, a generous price per token (US$ 20 per million).
@@ -205,13 +212,13 @@ export async function aiText(env: Cloudflare.Env, userId: string, feature: AIFea
 	if (!admission.hold) return { code: admission.error.code as "NO_AI" | "AI_MONTH_LIMIT" | "AI_WEEK_LIMIT", status: 402 };
 	const hold = admission.hold;
 	try {
-		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(60_000), redirect: "manual", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://getblup.io", "X-Title": "Blup Cloud" }, body: JSON.stringify({ models, temperature: 0.7, max_tokens: input.maxTokens, usage: { include: true }, messages: [{ role: "system", content: input.system }, { role: "user", content: input.user }] }) });
+		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(60_000), redirect: "manual", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://getblup.io", "X-Title": "Blup Cloud" }, body: JSON.stringify({ models, temperature: input.temperature ?? 0.7, max_tokens: input.maxTokens, usage: { include: true }, ...(input.json ? { response_format: { type: "json_object" } } : {}), messages: [{ role: "system", content: input.system }, { role: "user", content: input.user }] }) });
 		const raw: unknown = await res.json().catch(() => null);
 		const cost = providerCost(raw, res.ok ? estimate : 0);
 		if (res.ok || usageSchema.safeParse(raw).success) await settle(env.DB, hold, [env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,?,?,?)").bind(userId, feature, input.maxTokens, cost)]);
 		const out = outputSchema.safeParse(raw), choice = out.success ? out.data.choices?.[0] : undefined;
 		const model = z.object({ model: z.string().max(200) }).safeParse(raw);
-		if (!res.ok || !choice?.message?.content?.trim()) return { code: "UPSTREAM", status: res.status === 429 ? 429 : 502 };
+		if (!res.ok || !choice?.message?.content?.trim() || (input.json && choice.finish_reason === "length")) return { code: "UPSTREAM", status: res.status === 429 ? 429 : 502 };
 		return { text: choice.message.content.trim(), model: model.success ? model.data.model : models[0] };
 	} catch { return { code: "UPSTREAM", status: 502 }; }
 	finally { await release(env.DB, hold); }

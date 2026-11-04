@@ -931,7 +931,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {};
             output: {
                 features: {
-                    feature: "deals_describe";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
                     models: {
                         id: string;
                         name: string | null;
@@ -951,7 +951,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $put: {
             input: {
                 param: {
-                    feature: "deals_describe";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
                 };
             } & {
                 json: {
@@ -970,7 +970,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    feature: "deals_describe";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
                 };
             } & {
                 json: {
@@ -986,7 +986,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    feature: "deals_describe";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
                 };
             } & {
                 json: {
@@ -1005,7 +1005,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    feature: "deals_describe";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
                 };
             } & {
                 json: {
@@ -1021,7 +1021,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    feature: "deals_describe";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
                 };
             } & {
                 json: {
@@ -1037,7 +1037,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    feature: "deals_describe";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
                 };
             } & {
                 json: {
@@ -9096,6 +9096,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     label: string;
                     active: boolean;
                     lastError: string | null;
+                    language: "pt" | "en" | "es" | null;
                     createdAt: string;
                 }[];
             };
@@ -9171,6 +9172,110 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             outputFormat: "json";
             status: 200 | 201;
+        };
+    };
+} & {
+    "/:channel": {
+        $patch: {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    language: "pt" | "en" | "es" | null;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    language: "pt" | "en" | "es" | null;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    language: "pt" | "en" | "es" | null;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    language: "pt" | "en" | "es" | null;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    language: "pt" | "en" | "es" | null;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    language: "pt" | "en" | "es" | null;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
         };
     };
 } & {
@@ -10329,23 +10434,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
-                code: "NO_AI" | "AI_MONTH_LIMIT" | "AI_WEEK_LIMIT" | "UNAVAILABLE" | "UPSTREAM";
-            };
-            outputFormat: "json";
-            status: 402 | 429 | 502 | 503;
-        } | {
-            input: {
-                json: {
-                    title: string;
-                    store?: string | undefined;
-                    price?: string | undefined;
-                };
-            };
-            output: {
                 code: string;
             };
             outputFormat: "json";
-            status: 502;
+            status: 402 | 429 | 502 | 503;
         } | {
             input: {
                 json: {
@@ -10431,6 +10523,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     active: boolean;
                     channelIds: string[];
                     filters: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10451,6 +10546,59 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         error: string | null;
                     } | null;
                 }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/suggest": {
+        $post: {
+            input: {
+                json: {
+                    topic: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    topic: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    topic: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 402 | 429 | 502 | 503;
+        } | {
+            input: {
+                json: {
+                    topic: string;
+                };
+            };
+            output: {
+                searches: string[];
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;
@@ -10519,6 +10667,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10547,6 +10698,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10572,6 +10726,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10596,6 +10753,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10620,6 +10780,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10644,6 +10807,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10668,6 +10834,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     channelIds: string[];
                     filters: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10700,6 +10869,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     active?: boolean | undefined;
                     channelIds?: string[] | undefined;
                     filters?: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10731,6 +10903,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     active?: boolean | undefined;
                     channelIds?: string[] | undefined;
                     filters?: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10759,6 +10934,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     active?: boolean | undefined;
                     channelIds?: string[] | undefined;
                     filters?: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10790,6 +10968,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     active?: boolean | undefined;
                     channelIds?: string[] | undefined;
                     filters?: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10818,6 +10999,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     active?: boolean | undefined;
                     channelIds?: string[] | undefined;
                     filters?: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10845,6 +11029,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     active?: boolean | undefined;
                     channelIds?: string[] | undefined;
                     filters?: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10872,6 +11059,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     active?: boolean | undefined;
                     channelIds?: string[] | undefined;
                     filters?: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -10899,6 +11089,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     active?: boolean | undefined;
                     channelIds?: string[] | undefined;
                     filters?: {
+                        aiFilter?: boolean | undefined;
+                        aiExtract?: boolean | undefined;
+                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11028,6 +11221,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 pace: 0 | 30 | 60 | 300 | 180 | 480;
                 style: "emoji" | "classic";
+                ai: {
+                    titles: boolean;
+                    describe: boolean;
+                };
                 headlines: {
                     product?: string | undefined;
                     game_free?: string | undefined;
@@ -11040,7 +11237,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
                 socials: {
                     links: {
-                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "x" | "instagram" | "youtube" | "whatsapp";
+                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "instagram" | "youtube" | "x" | "whatsapp";
                         url: string;
                     }[];
                     on: boolean;
@@ -11064,17 +11261,25 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     };
                     socials: {
                         links: {
-                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "x" | "instagram" | "youtube" | "whatsapp";
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "instagram" | "youtube" | "x" | "whatsapp";
                             url: string;
                         }[];
                         on: boolean;
                     };
                     style?: "emoji" | "classic" | undefined;
+                    ai?: {
+                        titles: boolean;
+                        describe: boolean;
+                    } | undefined;
                 };
             };
             output: {
                 pace: 0 | 30 | 60 | 300 | 180 | 480;
                 style: "emoji" | "classic";
+                ai: {
+                    titles: boolean;
+                    describe: boolean;
+                };
                 headlines: {
                     product?: string | undefined;
                     game_free?: string | undefined;
@@ -11087,7 +11292,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
                 socials: {
                     links: {
-                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "x" | "instagram" | "youtube" | "whatsapp";
+                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "instagram" | "youtube" | "x" | "whatsapp";
                         url: string;
                     }[];
                     on: boolean;
@@ -11107,12 +11312,16 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     };
                     socials: {
                         links: {
-                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "x" | "instagram" | "youtube" | "whatsapp";
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "instagram" | "youtube" | "x" | "whatsapp";
                             url: string;
                         }[];
                         on: boolean;
                     };
                     style?: "emoji" | "classic" | undefined;
+                    ai?: {
+                        titles: boolean;
+                        describe: boolean;
+                    } | undefined;
                 };
             };
             output: {
@@ -11135,12 +11344,16 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     };
                     socials: {
                         links: {
-                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "x" | "instagram" | "youtube" | "whatsapp";
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "instagram" | "youtube" | "x" | "whatsapp";
                             url: string;
                         }[];
                         on: boolean;
                     };
                     style?: "emoji" | "classic" | undefined;
+                    ai?: {
+                        titles: boolean;
+                        describe: boolean;
+                    } | undefined;
                 };
             };
             output: {

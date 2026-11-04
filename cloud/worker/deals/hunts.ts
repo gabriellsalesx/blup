@@ -9,6 +9,8 @@ import {channelName,mirrorSourceId,fetchChannel} from "./mirror";
 import {shopSourceId} from "./shops";
 import {aliexpressCurrency,shopeeCurrency} from "../../shared/deals-markets";
 import {FetchError} from "./fetch";
+import {suggest} from "./ai";
+import {languageOf} from "../../shared/language";
 
 const huntParam=z.object({hunt:opaqueId});
 const channelIds=z.array(opaqueId).min(1).max(dealsLimits.channels);
@@ -21,9 +23,9 @@ const channelIds=z.array(opaqueId).min(1).max(dealsLimits.channels);
 const allKinds=[...huntKinds,"store_deals","mirror"] as const;
 type Kind=(typeof allKinds)[number];
 const fits=(kind:Kind,filters:HuntFilters)=>{
- if(kind==="mirror")return Object.keys(filters).every(k=>k==="stores");
- if(kind==="store_deals")return !!filters.store&&!!filters.keywords?.length&&(filters.market===undefined||filters.store==="aliexpress")&&Object.keys(filters).every(k=>["store","keywords","market","minDiscount","maxPrice"].includes(k));
- if(filters.stores!==undefined||filters.store!==undefined||filters.keywords!==undefined||filters.market!==undefined)return false;
+ if(kind==="mirror")return Object.keys(filters).every(k=>["stores","aiExtract","categories"].includes(k));
+ if(kind==="store_deals")return !!filters.store&&!!filters.keywords?.length&&(filters.market===undefined||filters.store==="aliexpress")&&Object.keys(filters).every(k=>["store","keywords","market","minDiscount","maxPrice","aiFilter","categories"].includes(k));
+ if(filters.stores!==undefined||filters.store!==undefined||filters.keywords!==undefined||filters.market!==undefined||filters.aiFilter!==undefined||filters.aiExtract!==undefined||filters.categories!==undefined)return false;
  return kind==="games_free"?filters.country===undefined&&filters.gamesOnly===undefined&&filters.maxPrice===undefined:!filters.platforms?.length&&(filters.maxPrice===undefined||(filters.country??"br")==="br");
 };
 const names={games_free:"Jogos grátis",nuuvem_deals:"Promoções da Nuuvem",store_deals:"Promoções de lojas",mirror:"Espelhamento"} as const;
@@ -64,6 +66,12 @@ export const huntsApi=new Hono<DealsApp>()
   const shopeeCountry=shopee?.store==="shopee"?shopee.country??"br":"br";
   const currency=(h:(typeof hunts)[number])=>h.kind==="nuuvem_deals"?"BRL":h.kind!=="store_deals"?null:h.filters.store==="aliexpress"?aliexpressCurrency(h.filters.market??"br"):shopeeCurrency[shopeeCountry];
   return c.json({hunts:hunts.map(h=>({...h,currency:currency(h)}))});
+ })
+ // Words for a store hunt, from what the channel is about (the AI, with
+ // the plan's allowance).
+ .post("/suggest",dealsWrite,validate("json",z.object({topic:z.string().trim().min(2).max(120)}).strict()),async c=>{
+  const out=await suggest(c.env,c.get("session").user.id,c.req.valid("json").topic,languageOf(c.req.header("x-blup-language"))??"pt");
+  return "code" in out?c.json({code:out.code},out.status):c.json({searches:out.searches});
  })
  .post("/mirror/check",dealsWrite,validate("json",z.object({channel:z.string().max(200)}).strict()),async c=>{
   const checked=await checkChannel(c.req.valid("json").channel);

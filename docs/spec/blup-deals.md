@@ -649,3 +649,17 @@ Página `/settings` do painel, aberta pelo botão "Configurações" em Ofertas. 
 - **Escrever com IA** (`POST /api/deals/offers/describe`): uma ou duas frases a partir só do nome, da loja e do preço, sem inventar especificações. Usa a mesma cota de IA do Blup Cloud ([ai.ts](../../cloud/worker/ai.ts) `aiText`), reservada pelo modelo mais caro da lista e cobrada pelo custo que o OpenRouter informa, registrada em `ai_usage` com `kind='deals_describe'`. O painel mostra a porcentagem do mês (`GET /api/deals/ai`); plano sem IA não vê o botão.
 - **Modelos pelo staff** (`/staff/ai`, só admin, tabela `ai_model_setting`): a lista em ordem vai ao OpenRouter como `models`; o primeiro responde e os outros assumem quando ele falha. Cada ID é conferido no catálogo do OpenRouter e a troca fica no registro do staff. Padrão: `deepseek/deepseek-v4.1-flash`. O Auto Router (`openrouter/auto`) não é usado, porque escolhe o modelo sozinho em vez de seguir a lista.
 - **Ainda não feito:** preço no PIX e parcelado (depende de ler as páginas da Amazon e do Mercado Livre).
+
+## IA nas caçadas e nos canais (entregue em 04/11/2026)
+
+Tudo pela cota de IA do plano ([deals/ai.ts](../../cloud/worker/deals/ai.ts)), cada função com a sua lista de modelos em `/staff/ai`. Sem cota ou com falha do modelo, o post segue sem a IA. Migração `0034`.
+
+1. **Nome curto** (Configurações, "IA nos posts das caçadas"): na caçada de lojas e no espelho, a IA dá um nome curto, guardado em `deals_offer.short_title` (um para todos). Nos jogos grátis o "(Epic Games) Giveaway" sai por regra, sem IA.
+2. **Filtro de relevância** (caçada de lojas, ligado por padrão): numa só chamada para as 10 maiores ofertas da rodada, a IA diz o que não combina com a busca (`deals_curate`, em JSON).
+3. **Descrição automática** (Configurações): uma ou duas frases em cada post das caçadas, com o mesmo pedido do "Escrever com IA".
+4. **Leitura do espelho** (no espelhamento, ligado por padrão): cupom que o post traz, descrição com palavras próprias (nunca o texto do outro), nome curto e categoria (`deals_extract`), uma vez por produto em cada leitura do canal.
+5. **Categorias** (caçada de lojas e espelho): 16 categorias, guardadas em `deals_offer.category`; com alguma marcada, só elas entram.
+6. **Sugestão de buscas** (caçada de lojas): o cliente escreve o assunto do canal e a IA sugere 8 buscas, que entram com um clique (`POST /api/deals/hunts/suggest`).
+7. **Idioma do canal** (`deals_channel.language`, na lista de canais): os textos fixos saem no idioma do canal e a IA traduz a frase personalizada, a descrição e o texto extra, uma vez por post para todos os canais daquele idioma.
+
+Sem texto em tempo real (streaming): as respostas são curtas (uma frase, uma lista de buscas) e saem em 1 a 3 segundos; o botão mostra que está trabalhando. As outras funções rodam sozinhas, sem ninguém esperando.

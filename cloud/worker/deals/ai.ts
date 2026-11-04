@@ -1,0 +1,96 @@
+import {z} from "zod";
+import {aiText} from "../ai";
+import {cleanLine} from "./page";
+import {hasAddress,dealCategories,type DealCategory,type PostLanguage} from "../../shared/deals-post";
+
+// What the AI does in Blup Deals, each from the account's plan allowance
+// (ai.ts aiText) and with the staff's list of models: a few words about a
+// product, a store hunt's finds sorted, a mirrored post read, words for a
+// hunt and a post in another language. Each answers null when it can't
+// (no AI in the plan, the month's allowance used, the model failed): the
+// post goes on without it.
+const languageName={pt:"Brazilian Portuguese",en:"English",es:"Spanish (neutral Latin American)"} as const;
+// The first JSON object in an answer (a model may wrap it in a fence).
+function jsonOf(text:string):unknown{const start=text.indexOf("{"),end=text.lastIndexOf("}");if(start<0||end<=start)return null;try{return JSON.parse(text.slice(start,end+1));}catch{return null;}}
+const plain=(text:string,max:number)=>{const line=cleanLine(text.replace(/^["'“”]+|["'“”]+$/g,""),max);return line&&!hasAddress(line)?line:null;};
+
+// 3: a few words about a product, from its name, store and price only.
+const describePrompt=(language:PostLanguage)=>`You write the short description of a deal post for a group of deal hunters, in ${languageName[language]}.
+Rules:
+- One or two short sentences, at most 220 characters, saying who the product is good for or why the deal is worth it.
+- Use only what the product name says. Never invent specifications, prices, coupons, stock, shipping or guarantees.
+- No emoji, hashtags, links, quotes or the product name in capitals.
+- Output only the description.`;
+export async function describe(env:Cloudflare.Env,owner:string,product:{title:string;store?:string|null;price?:string|null},language:PostLanguage):Promise<{text:string}|{code:string;status:402|429|502|503}>{
+ const user=[`Product: ${product.title}`,...(product.store?[`Store: ${product.store}`]:[]),...(product.price?[`Price: ${product.price}`]:[])].join("\n");
+ const out=await aiText(env,owner,"deals_describe",{system:describePrompt(language),user,maxTokens:160});
+ if("code" in out)return out;
+ const text=plain(out.text,300);return text?{text}:{code:"UPSTREAM",status:502};
+}
+
+// 1, 2 and 5 for a store hunt, in one request for all its finds: a short
+// name for each, whether it is what the search asked for (a phone case is
+// not "bluetooth headphones") and its category.
+const curated=z.object({items:z.array(z.object({i:z.number().int().min(0),keep:z.boolean(),title:z.string().max(200),category:z.string().max(40)})).max(60)});
+export type Curated={keep:boolean;title:string|null;category:DealCategory};
+export async function curate(env:Cloudflare.Env,owner:string,searches:readonly string[],titles:readonly string[],language:PostLanguage):Promise<Curated[]|null>{
+ if(!titles.length)return [];
+ const system=`You sort a store's search results for a deal group, in ${languageName[language]}.
+For each numbered product answer:
+- keep: true only if it is what one of the searches asks for (not an accessory, part or unrelated item that only shares a word).
+- title: a short, clear product name (at most 60 characters): brand, model and the one detail that matters; no store words like "original", "promoção", "frete grátis".
+- category: one of ${dealCategories.join(", ")}.
+Answer only with JSON: {"items":[{"i":0,"keep":true,"title":"...","category":"..."}]}`;
+ const user=`Searches: ${searches.join(" | ")}\n${titles.map((t,i)=>`${i}. ${t.slice(0,160)}`).join("\n")}`;
+ const out=await aiText(env,owner,"deals_curate",{system,user,maxTokens:60+titles.length*40,json:true,temperature:0.2});
+ if("code" in out)return null;
+ const parsed=curated.safeParse(jsonOf(out.text));if(!parsed.success)return null;
+ return titles.map((_,i)=>{const r=parsed.data.items.find(x=>x.i===i);return {keep:r?.keep??true,title:r?plain(r.title,80):null,category:dealCategories.find(c=>c===r?.category)??"other"};});
+}
+
+// 1, 4 and 5 for a mirrored post: the short name, the coupon the post
+// gives (only one written in it), a description in the AI's own words
+// (never the other person's text) and the category.
+const extracted=z.object({title:z.string().max(200),coupon:z.string().max(60).nullable().optional(),description:z.string().max(400).nullable().optional(),category:z.string().max(40)});
+export type Extracted={title:string|null;coupon:string|null;description:string|null;category:DealCategory};
+export async function extract(env:Cloudflare.Env,owner:string,product:{title:string;text:string},language:PostLanguage):Promise<Extracted|null>{
+ const system=`You read a deal post from another group and take out its facts, in ${languageName[language]}.
+Answer only with JSON: {"title":"...","coupon":"..." or null,"description":"..." or null,"category":"..."}
+- title: a short, clear product name (at most 60 characters).
+- coupon: the coupon code or coupon the post states (like "AEMEGA2" or "R$ 20 OFF no anúncio"), else null. Never invent one.
+- description: one or two sentences in your own words about why the deal is worth it, at most 200 characters, using only facts in the post; never copy its sentences; null if it says nothing useful.
+- category: one of ${dealCategories.join(", ")}.`;
+ const out=await aiText(env,owner,"deals_extract",{system,user:`Product page title: ${product.title}\nPost:\n${product.text.slice(0,1500)}`,maxTokens:220,json:true,temperature:0.2});
+ if("code" in out)return null;
+ const parsed=extracted.safeParse(jsonOf(out.text));if(!parsed.success)return null;
+ return {title:plain(parsed.data.title,80),coupon:parsed.data.coupon?plain(parsed.data.coupon,60):null,description:parsed.data.description?plain(parsed.data.description,300):null,category:dealCategories.find(c=>c===parsed.data.category)??"other"};
+}
+
+// 6: what to search for, from what the channel is about.
+const suggested=z.object({searches:z.array(z.string().max(80)).max(12)});
+export async function suggest(env:Cloudflare.Env,owner:string,topic:string,language:PostLanguage):Promise<{searches:string[]}|{code:string;status:402|429|502|503}>{
+ const system=`You suggest product searches for a deal channel on Shopee and AliExpress, in ${languageName[language]}.
+Give 8 short searches (2 to 4 words each) people buy a lot and that match the channel's subject, specific enough to avoid unrelated items. Answer only with JSON: {"searches":["..."]}`;
+ const out=await aiText(env,owner,"deals_suggest",{system,user:`Channel subject: ${topic}`,maxTokens:200,json:true,temperature:0.6});
+ if("code" in out)return out;
+ const parsed=suggested.safeParse(jsonOf(out.text));if(!parsed.success)return {code:"UPSTREAM",status:502};
+ const searches=[...new Set(parsed.data.searches.map(s=>plain(s.toLowerCase(),60)).filter((s):s is string=>!!s&&s.length>=2))].slice(0,8);
+ return searches.length?{searches}:{code:"UPSTREAM",status:502};
+}
+
+// 7: a post's own texts (opening line, description, extra text) in the
+// channel's language, in one request; the rest of the post is the
+// platform's words, already in every language.
+const translated=z.object({texts:z.array(z.string().max(600)).max(4)});
+export async function translate(env:Cloudflare.Env,owner:string,texts:readonly string[],to:PostLanguage):Promise<string[]|null>{
+ const system=`You translate the texts of a deal post into ${languageName[to]}. Keep product names, brands, models, numbers, prices and coupon codes as they are. Write naturally, short, as the original. Answer only with JSON: {"texts":["..."]}, one per text, in order.`;
+ const out=await aiText(env,owner,"deals_translate",{system,user:JSON.stringify({texts}),maxTokens:80+texts.join("").length,json:true,temperature:0.2});
+ if("code" in out)return null;
+ const parsed=translated.safeParse(jsonOf(out.text));if(!parsed.success||parsed.data.texts.length!==texts.length)return null;
+ const clean=parsed.data.texts.map(t=>cleanLine(t,600));
+ return clean.every((t,i)=>t&&!hasAddress(t)===!hasAddress(texts[i]))?clean as string[]:null;
+}
+
+// GamerPower's titles end with the store and "Giveaway": the game's name
+// is what comes before (no AI needed).
+export const gameTitle=(title:string)=>title.replace(/\s*\((?:[^()]*)\)\s*(?:Giveaway|Key Giveaway)?\s*$/i,"").replace(/\s+(?:Steam\s+)?(?:Key\s+)?Giveaway\s*$/i,"").trim()||title;

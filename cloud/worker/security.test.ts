@@ -19,6 +19,7 @@ import { sendDue, forgetOld } from "./reminders";
 import { staffApi } from "./staff";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
 import { voicePrice, aiText } from "./ai";
+import { curate, extract, suggest, translate } from "./deals/ai";
 import { cleanUp } from "./cleanup";
 import { pulseCorsPath, dealsCorsPath, panelCorsOrigin, mutationOriginAllowed } from "./security";
 import { cleanSites } from "./sites-cleanup";
@@ -272,6 +273,22 @@ describe("atomic resource admission and publish regressions",()=>{
 		expect((calls.find(c=>c.url.endsWith("/chat/completions"))?.body as {models:string[]}).models).toEqual(["deepseek/deepseek-v4.1-flash","google/gemini-4-flash"]);
 		expect(d1.sqlite.prepare("SELECT kind,cost_micros AS cost FROM ai_usage").get()).toEqual({kind:"deals_describe",cost:40});
 		expect(await aiText(state.env,"free","deals_describe",{system:"s",user:"u",maxTokens:160})).toEqual({code:"NO_AI",status:402});
+	});
+	it("reads the AI's JSON for the hunts, and refuses what it shouldn't say",async()=>{
+		Object.assign(state.env,{OPENROUTER_API_KEY:"audit-only-placeholder",OPENROUTER_URL:"https://upstream.audit.invalid"});
+		let answer="";const bodies:{response_format?:unknown}[]=[];
+		vi.stubGlobal("fetch",vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>String(url).endsWith("/models")?Response.json({data:[]}):(bodies.push(JSON.parse(String(init?.body))),Response.json({choices:[{message:{content:answer},finish_reason:"stop"}],usage:{cost:0.00001}}))));
+		answer='```json\n{"items":[{"i":0,"keep":false,"title":"Capinha","category":"phones"},{"i":1,"keep":true,"title":"Fone Bluetooth 5.3","category":"gadgets"}]}\n```';
+		expect(await curate(state.env,"alice",["fone"],["Capa","Fone De Ouvido"],"pt")).toEqual([{keep:false,title:"Capinha",category:"phones"},{keep:true,title:"Fone Bluetooth 5.3",category:"other"}]);
+		expect(bodies[0].response_format).toEqual({type:"json_object"});
+		answer='{"title":"Controle GameSir G8+","coupon":"AEMEGA2","description":"Veja em www.loja.com","category":"games"}';
+		expect(await extract(state.env,"alice",{title:"x",text:"post"},"pt")).toEqual({title:"Controle GameSir G8+",coupon:"AEMEGA2",description:null,category:"games"});
+		answer='{"searches":["Air Fryer","air fryer","panela elétrica","x"]}';
+		expect(await suggest(state.env,"alice","cozinha","pt")).toEqual({searches:["air fryer","panela elétrica"]});
+		answer='{"texts":["Good"]}';
+		expect(await translate(state.env,"alice",["Bom","Siga"],"en")).toBeNull();
+		answer="not json";
+		expect(await curate(state.env,"alice",["fone"],["Fone"],"pt")).toBeNull();
 	});
 	it("an incomplete translation still has a provider cost to account for",async()=>{
 		Object.assign(state.env,{OPENROUTER_API_KEY:"audit-only-placeholder",OPENROUTER_URL:"https://upstream.audit.invalid"});

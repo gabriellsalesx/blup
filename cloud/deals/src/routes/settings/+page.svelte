@@ -33,7 +33,7 @@
  // the extra text and the social networks (one of each), with a preview
  // of the post as it will read.
  let {data}:PageProps=$props();
- const saved:Settings=untrack(()=>data.settings)??{pace:0,style:"classic",headlines:{},extra:{text:"",on:false},socials:{links:[],on:false},behind:false};
+ const saved:Settings=untrack(()=>data.settings)??{pace:0,style:"classic",ai:{titles:false,describe:false},headlines:{},extra:{text:"",on:false},socials:{links:[],on:false},behind:false};
  const defaults=$derived(defaultHeadlines[language()]);
  let pace=$state(String(saved.pace)),style=$state<"classic"|"emoji">(saved.style);
  const styles=$derived([{value:"classic" as const,label:t("dealsStyleClassic")},{value:"emoji" as const,label:t("dealsStyleEmoji")}]);
@@ -43,6 +43,7 @@
  let extra=$state(saved.extra.text||untrack(()=>t("dealsExtraSample"))),extraOn=$state(saved.extra.on);
  let links=$state<{network:SocialNetwork;url:string}[]>(saved.socials.links.map(l=>({network:l.network,url:l.url})));
  let socialsOn=$state(saved.socials.on),busy=$state(false);
+ let aiTitles=$state(saved.ai.titles),aiDescribe=$state(saved.ai.describe);
 
  const paces=$derived(paceOptions().map(o=>({value:String(o.value),label:o.label})));
  const kindLabel:Record<HeadlineKind,PlainMessageKey>={game_free:"dealsHeadlineGameFree",nuuvem_deal:"dealsHeadlineNuuvem",store_deal:"dealsHeadlineStore",product:"dealsHeadlineProduct"};
@@ -80,7 +81,7 @@
   if(invalid)return;busy=true;
   try{
    const headlines=Object.fromEntries(headlineKinds.filter(k=>lines[k].trim()!==defaults[k]).map(k=>[k,lines[k].trim()]));
-   await parseResponse(dealsApi.settings.$put({json:{pace:Number(pace) as DealsPace,style,headlines,extra:{text:extraOn||!hasAddress(extra)?extra.trim():saved.extra.text,on:extraOn},socials:{links:socialsOn?links:links.filter(l=>!linkBad(l)),on:socialsOn}}}));
+   await parseResponse(dealsApi.settings.$put({json:{pace:Number(pace) as DealsPace,style,ai:{titles:aiTitles,describe:aiDescribe},headlines,extra:{text:extraOn||!hasAddress(extra)?extra.trim():saved.extra.text,on:extraOn},socials:{links:socialsOn?links:links.filter(l=>!linkBad(l)),on:socialsOn}}}));
    toast(()=>t("dealsSettingsSaved"));
   }catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}
  }
@@ -116,6 +117,13 @@
       </div>
      </div>
     {/each}
+   </div>
+  </Card>
+
+  <Card title={t("dealsAICard")} help={t("dealsAICardHelp")}>
+   <div class="mt-5 grid gap-4">
+    <div><Switch label={t("dealsAITitles")} tone="coral" bind:checked={aiTitles}/><p class="mt-1 text-sm text-neutral-500">{t("dealsAITitlesHelp")}</p></div>
+    <div><Switch label={t("dealsAIDescribe")} tone="coral" bind:checked={aiDescribe}/><p class="mt-1 text-sm text-neutral-500">{t("dealsAIDescribeHelp")}</p></div>
    </div>
   </Card>
 

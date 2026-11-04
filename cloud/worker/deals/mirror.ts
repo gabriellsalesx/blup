@@ -4,7 +4,9 @@ import {cleanLine,decodeEntities,pageInfo,priceCents} from "./page";
 import {convertLink,isShortLink,storeOf,type Store} from "./links";
 import {upsertOffer,huntFilters,type HuntFilters} from "./catalog";
 import {dealsAccess} from "./access";
-import {affiliateOf,enqueue,postedLately,DAY} from "./store";
+import {affiliateOf,enqueue,postedLately,settingsOf,accountLanguage,DAY} from "./store";
+import {extract,describe,type Extracted} from "./ai";
+import {storeTitles} from "../../shared/deals-post";
 
 // Mirroring a public Telegram channel: its public preview (t.me/s/<name>),
 // with no login, session or userbot, read once for everyone who mirrors
@@ -86,13 +88,28 @@ async function productOf(post:ChannelPost,send:typeof fetch):Promise<Product|nul
 type Hunt={id:string;userId:string;filters:HuntFilters;channels:string[]};
 // One product to one hunt: the person's own link (or nothing, if they have
 // no ID for that store), once per product unless it got cheaper (more
-// than 1%), within the daily cap.
-async function deliver(env:Cloudflare.Env,hunt:Hunt,product:Product,offerId:string,send:typeof fetch,now:number){
+// than 1%), within the daily cap. When asked, the AI reads the post (its
+// coupon, what it says about the product in its own words, a short name
+// and the category), once per product in a run, paid by the first account
+// that asks; the categories the hunt keeps need it.
+type Reading=Map<string,Promise<Extracted|null>>;
+async function deliver(env:Cloudflare.Env,hunt:Hunt,product:Product,post:ChannelPost,offerId:string,reading:Reading,send:typeof fetch,now:number){
  if(hunt.filters.stores?.length&&!hunt.filters.stores.includes(product.store))return 0;
  const affiliate=await affiliateOf(env,hunt.userId,product.store);if(!affiliate)return 0;
  const converted=await convertLink(product.url,affiliate,send);if(!converted.affiliate)return 0;
  if(await postedLately(env.DB,hunt.userId,product.store,productKey(product.url),product.price,now))return 0;
- const queued=await enqueue(env.DB,{owner:hunt.userId,offerId,channels:hunt.channels,link:converted.link,affiliate:true,huntId:hunt.id,sendAt:now,now,paced:true});
+ const own=await settingsOf(env.DB,hunt.userId),cats=hunt.filters.categories;
+ let read:Extracted|null=null,description:string|null=null;
+ if(hunt.filters.aiExtract||cats||own.ai.titles){
+  const language=await accountLanguage(env.DB,hunt.userId);
+  if(!reading.has(offerId))reading.set(offerId,extract(env,hunt.userId,{title:product.title,text:post.text},language).catch(()=>null));
+  read=await reading.get(offerId)!;
+  if(read)await env.DB.prepare("UPDATE deals_offer SET short_title=coalesce(?,short_title),category=? WHERE id=?").bind(read.title,read.category,offerId).run();
+ }
+ if(cats&&read&&!cats.includes(read.category))return 0;
+ if(hunt.filters.aiExtract&&read?.description)description=read.description;
+ else if(own.ai.describe){const words=await describe(env,hunt.userId,{title:read?.title??product.title,store:storeTitles[product.store]??null},await accountLanguage(env.DB,hunt.userId));if("text" in words)description=words.text;}
+ const queued=await enqueue(env.DB,{owner:hunt.userId,offerId,channels:hunt.channels,link:converted.link,affiliate:true,huntId:hunt.id,sendAt:now,now,paced:true,description,coupon:hunt.filters.aiExtract?read?.coupon??null:null});
  if(queued)await env.DB.prepare("UPDATE deals_hunt SET last_post_at=? WHERE id=?").bind(now,hunt.id).run();
  return queued;
 }
@@ -121,12 +138,12 @@ export async function collectMirrors(env:Cloudflare.Env,send:typeof fetch=fetch,
    const fresh=source.lastAt===null?[]:read.page.posts.filter(p=>p.id>last&&now-p.at<=FRESH).sort((a,b)=>a.id-b.id).slice(-MAX_POSTS);
    if(fresh.length){
     const hunts=(await env.DB.prepare("SELECT id,user_id AS userId,filters,channels FROM deals_hunt WHERE source_id=? AND kind='mirror' AND active=1 AND plan_disabled=0 AND (retire_at IS NULL OR retire_at>?) ORDER BY id LIMIT 500").bind(source.id,now).all()).results.flatMap(r=>{const h=huntRow.safeParse(r);return h.success?[h.data]:[];});
-    const allowed=new Map<string,boolean>();
+    const allowed=new Map<string,boolean>(),reading:Reading=new Map();
     for(const hunt of hunts)if(!allowed.has(hunt.userId))allowed.set(hunt.userId,!(await dealsAccess(env,hunt.userId)).readOnly);
     for(const post of fresh){
      const product=await productOf(post,send);if(!product)continue;
      const offer=await upsertOffer(env.DB,{key:`mirror:${product.store}:${productKey(product.url)}:${product.price??"?"}`,store:product.store,externalId:productKey(product.url),sourceId:source.id,title:product.title,url:product.url.href,imageUrl:product.image,price:product.price,originalPrice:product.before,currency:product.price===null?null:"BRL",kind:"product",platforms:[],discount:product.before&&product.price?Math.round((1-product.price/product.before)*100):null,credit:null,expiresAt:now+DAY},now);
-     for(const hunt of hunts)if(allowed.get(hunt.userId))await deliver(env,hunt,product,offer.id,send,now).catch(()=>0);
+     for(const hunt of hunts)if(allowed.get(hunt.userId))await deliver(env,hunt,product,post,offer.id,reading,send,now).catch(()=>0);
     }
    }
    await env.DB.prepare("UPDATE deals_source SET next_at=?,last_at=?,cursor=?,config=?,failures=0,error=NULL,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(now+ROUND,now,String(newest),JSON.stringify({title:read.page.title}),source.id,claim).run();

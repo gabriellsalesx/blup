@@ -15,7 +15,9 @@
  import {toast} from "#lib/toast.svelte.ts";
  import {dealsApi,parseResponse} from "./api";
  import {dealsError} from "./errors";
- import {huntKinds,platformsFor,nuuvemCountries,countryName,countryOptions,stores,storeName,shopStores,aliexpressCountries,currencyDigits,currencyName,shopCurrency,type HuntInput,type Platform,type NuuvemCountry,type AliexpressCountry,type ShopeeCountry} from "./catalog";
+ import Sparkles from "@lucide/svelte/icons/sparkles";
+ import Plus from "@lucide/svelte/icons/plus";
+ import {categoryLabel,dealCategories,type DealCategory,huntKinds,platformsFor,nuuvemCountries,countryName,countryOptions,stores,storeName,shopStores,aliexpressCountries,currencyDigits,currencyName,shopCurrency,type HuntInput,type Platform,type NuuvemCountry,type AliexpressCountry,type ShopeeCountry} from "./catalog";
  import type {Channel,Hunt,HuntKind,Store,StoreState} from "./api";
  // A hunt's form (new and edit): what to hunt, its filters and the
  // channels it posts to. The kind of a saved hunt can't change. A store
@@ -67,9 +69,18 @@
  const cents=$derived(maxPrice.trim()?Math.round(Number(maxPrice.replace(",","."))*10**digits):null);
  const priced=$derived(kind==="nuuvem_deals"||shopping),reais=$derived(shopping||(kind==="nuuvem_deals"&&country==="br"));
  const valid=$derived(channelIds.length>0&&(!mirror||channelReady)&&(!shopping||(wordsOk&&shopReady))&&(!priced||(Number.isInteger(discount)&&discount>=0&&discount<=100&&(!reais||cents===null||(Number.isFinite(cents)&&cents>0)))));
+ // The AI's part: what doesn't fit the search goes (store hunts), the
+ // mirrored post is read (coupon, details), and only some categories go.
+ let aiFilter=$state(start?.filters.aiFilter??true),aiExtract=$state(start?.filters.aiExtract??true);
+ let categories=$state<DealCategory[]>([...(start?.filters.categories??[])]);
+ const toggleCategory=(c:DealCategory)=>categories=categories.includes(c)?categories.filter(x=>x!==c):[...categories,c];
+ // Searches the AI suggests from the channel's subject; one click adds one.
+ let topic=$state(""),suggestions=$state<string[]>([]),suggesting=$state(false);
+ async function suggestSearches(){const about=topic.trim();if(about.length<2)return;suggesting=true;try{suggestions=(await parseResponse(dealsApi.hunts.suggest.$post({json:{topic:about}}))).searches.filter(s=>!words.includes(s));}catch(e){toast(dealsError(e),{kind:"error"});}finally{suggesting=false;}}
+ function useSuggestion(s:string){if(words.length<5&&!words.includes(s))words.push(s);suggestions=suggestions.filter(x=>x!==s);}
  function submit(e:SubmitEvent){e.preventDefault();if(!valid)return;
-  if(mirror){onsubmit({kind,channelIds,filters:keep.length?{stores:keep}:{},...(!start?{mirrors:mirrors.map(m=>m.replace(/^@/,""))}:{})});return;}
-  if(shopping){onsubmit({kind,channelIds,filters:{store:shop,...(shop==="aliexpress"?{market}:{}),keywords:words,minDiscount:discount,...(cents!==null?{maxPrice:cents}:{})}});return;}
+  if(mirror){onsubmit({kind,channelIds,filters:{...(keep.length?{stores:keep}:{}),aiExtract,...(categories.length?{categories}:{})},...(!start?{mirrors:mirrors.map(m=>m.replace(/^@/,""))}:{})});return;}
+  if(shopping){onsubmit({kind,channelIds,filters:{store:shop,...(shop==="aliexpress"?{market}:{}),keywords:words,minDiscount:discount,...(cents!==null?{maxPrice:cents}:{}),aiFilter,...(categories.length?{categories}:{})}});return;}
   const filters:HuntInput["filters"]={...(picked.length?{platforms:picked}:{}),...(priced?{country,minDiscount:discount,...(reais&&cents!==null?{maxPrice:cents}:{}),...(!gamesOnly?{gamesOnly:false}:{})}:{})};
   onsubmit({kind,channelIds,filters});
  }
@@ -112,6 +123,12 @@
     <p class="mt-1.5 text-sm text-neutral-500">{t("dealsAliMarketHelp",{currency:currencyName(currency,intlLocale())})}</p>{/if}
    <div class="mt-5"><TagInput id="shop-keywords" label={t("dealsShopKeywords")} bind:tags={words} max={5} add={keyword}/></div>
    <p class="mt-1.5 text-sm text-neutral-500">{t("dealsShopKeywordsHelp")}</p>
+   <div class="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    <FloatField id="suggest-topic" surface="bg-white dark:bg-neutral-900" label={t("dealsSuggestTopic")} autocomplete="off" maxlength={120} bind:value={topic} onkeydown={(e)=>{if(e.key==="Enter"){e.preventDefault();void suggestSearches();}}}/>
+    <Button type="button" variant="secondary" busy={suggesting} class="h-14" disabled={topic.trim().length<2||words.length>=5} onclick={suggestSearches}><Sparkles class="size-4"/>{t("dealsSuggest")}</Button>
+   </div>
+   <p class="mt-1.5 text-sm text-neutral-500">{t("dealsSuggestHelp")}</p>
+   {#if suggestions.length}<div class="mt-3 flex flex-wrap gap-2">{#each suggestions as s(s)}<button type="button" class="inline-flex items-center gap-1 rounded-full border border-dashed border-neutral-400 px-3 py-1 text-sm font-semibold hover:border-blup hover:text-blup disabled:opacity-40 dark:border-neutral-600" disabled={words.length>=5} aria-label={t("dealsSuggestAdd",{search:s})} onclick={()=>useSuggestion(s)}><Plus class="size-3.5"/>{s}</button>{/each}</div>{/if}
   </Card>
  {/if}
 
@@ -126,7 +143,17 @@
     </div>
    </fieldset>
    <p class="mt-4 text-sm text-neutral-500">{t("dealsMirrorHow")}</p>
+   <div class="mt-5"><Switch label={t("dealsAIExtract")} tone="coral" bind:checked={aiExtract}/><p class="mt-1 text-sm text-neutral-500">{t("dealsAIExtractHelp")}</p></div>
   {/if}
+  {#if shopping}<div class="mt-5"><Switch label={t("dealsAIFilter")} tone="coral" bind:checked={aiFilter}/><p class="mt-1 text-sm text-neutral-500">{t("dealsAIFilterHelp")}</p></div>{/if}
+  {#if mirror||shopping}<fieldset class="mt-5"><legend class="font-semibold">{t("dealsCategories")}</legend><p class="text-sm text-neutral-500">{t("dealsCategoriesHelp")}</p>
+   <div class="mt-3 flex flex-wrap gap-2">
+    {#each dealCategories as c(c)}
+     {@const on=categories.includes(c)}
+     <button type="button" role="checkbox" aria-checked={on} onclick={()=>toggleCategory(c)} class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors {on?'border-blup bg-blup text-white':'border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800'}">{t(categoryLabel[c])}</button>
+    {/each}
+   </div>
+  </fieldset>{/if}
   {#if options.length}<fieldset class="mt-5"><legend class="font-semibold">{t("dealsPlatforms")}</legend><p class="text-sm text-neutral-500">{t("dealsPlatformsHelp")}</p>
    <div class="mt-3 flex flex-wrap gap-2">
     {#each options as platform(platform.id)}

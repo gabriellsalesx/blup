@@ -16,6 +16,9 @@ export const dealsChannel=sqliteTable("deals_channel",{
  // interval between two posts in the channel; lastError is the last
  // delivery code.
  targetHash:text("target_hash"),nextAt:integer("next_at").notNull().default(0),lastError:text("last_error"),
+ // The language the channel's posts go out in (null: the account's); a
+ // post in another language is translated by the AI.
+ language:text("language"),
 },t=>[index("deals_channel_owner_idx").on(t.userId,t.id),uniqueIndex("deals_channel_target_idx").on(t.userId,t.platform,t.target),index("deals_channel_retire_idx").on(t.retireAt),index("deals_channel_hash_idx").on(t.targetHash)]);
 
 // The account's ID or tag at each store (matt_word, tag...) and, for the
@@ -59,6 +62,9 @@ export const dealsOffer=sqliteTable("deals_offer",{
  // JSON list of the panel's platform ids.
  // discount: percent off. credit: the source the post must credit.
  kind:text("kind").notNull().default("product"),platforms:text("platforms").notNull().default("[]"),discount:integer("discount"),credit:text("credit"),
+ // What the AI made of the product, once for everyone: a short name and
+ // its category (shared/deals-post.ts dealCategories).
+ shortTitle:text("short_title"),category:text("category"),
 },t=>[index("deals_offer_store_idx").on(t.store,t.externalId),index("deals_offer_seen_idx").on(t.lastSeenAt),index("deals_offer_source_idx").on(t.sourceId,t.lastSeenAt),index("deals_offer_kind_idx").on(t.kind,t.firstSeenAt)]);
 
 // Price history, for an honest discount (the price before the sale, not
@@ -114,9 +120,11 @@ export const dealsAccount=sqliteTable("deals_account",{
 // than the pace can send in two days (the panel warns). headlines (JSON,
 // per kind, missing: the default line), the extra text and the social
 // networks (JSON [{network,url}]), each with its switch; style, how the
-// post is laid out (classic, or emoji: a line and a mark for each part).
+// post is laid out (classic, or emoji: a line and a mark for each part);
+// aiTitles and aiDescribe, whether the AI shortens the names and writes a
+// description in the hunts' posts (from the plan's AI allowance).
 export const dealsSetting=sqliteTable("deals_setting",{
  userId:text("user_id").primaryKey(),pace:integer("pace").notNull().default(0),paceLast:integer("pace_last").notNull().default(0),droppedAt:integer("dropped_at"),
  headlines:text("headlines").notNull().default("{}"),extra:text("extra"),extraOn:integer("extra_on").notNull().default(0),
- socials:text("socials").notNull().default("[]"),socialsOn:integer("socials_on").notNull().default(0),style:text("style").notNull().default("classic"),updatedAt:integer("updated_at").notNull().default(0),
+ socials:text("socials").notNull().default("[]"),socialsOn:integer("socials_on").notNull().default(0),style:text("style").notNull().default("classic"),aiTitles:integer("ai_titles").notNull().default(0),aiDescribe:integer("ai_describe").notNull().default(0),updatedAt:integer("updated_at").notNull().default(0),
 });

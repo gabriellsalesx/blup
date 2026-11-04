@@ -9,7 +9,7 @@ import {convertLink,isShortLink,storeOf,rakutenTarget,type Converted,type Store}
 import {upsertOffer} from "./catalog";
 import {affiliateOf,enqueue,postsOn,usableChannels,dayOf,DAY} from "./store";
 import {tiktokVideo,VideoError,type Video} from "./video";
-import {aiText} from "../ai";
+import {describe} from "./ai";
 import {hasAddress} from "../../shared/deals-post";
 import {languageOf} from "../../shared/language";
 
@@ -41,14 +41,6 @@ const PAGE=20;
 // coupon, as typed, with no address (the link is the post's own).
 const written=(max:number)=>z.string().trim().max(max).refine(t=>!hasAddress(t),{message:"ADDRESS"});
 const extras={description:written(300).optional(),coupon:written(60).optional()};
-const languageName={pt:"Brazilian Portuguese",en:"English",es:"Spanish (neutral Latin American)"} as const;
-// The AI's few words about a product: only from its name, store and price.
-const describePrompt=(language:keyof typeof languageName)=>`You write the short description of a deal post for a group of deal hunters, in ${languageName[language]}.
-Rules:
-- One or two short sentences, at most 220 characters, saying who the product is good for or why the deal is worth it.
-- Use only what the product name says. Never invent specifications, prices, coupons, stock, shipping or guarantees.
-- No emoji, hashtags, links, quotes or the product name in capitals.
-- Output only the description.`;
 
 type Channels=Awaited<ReturnType<typeof usableChannels>>;
 // What every post checks before it is queued: a time from now up to 30
@@ -124,12 +116,8 @@ export const offersApi=new Hono<DealsApp>()
  // allowance (the Cloud's, in percent of the month).
  .post("/describe",dealsWrite,validate("json",z.object({title:z.string().trim().min(1).max(200),store:z.string().trim().max(40).optional(),price:z.string().trim().max(40).optional()}).strict()),async c=>{
   const input=c.req.valid("json"),language=languageOf(c.req.header("x-blup-language"))??"pt";
-  const user=[`Product: ${input.title}`,...(input.store?[`Store: ${input.store}`]:[]),...(input.price?[`Price: ${input.price}`]:[])].join("\n");
-  const out=await aiText(c.env,c.get("session").user.id,"deals_describe",{system:describePrompt(language),user,maxTokens:160});
-  if("code" in out)return c.json({code:out.code},out.status);
-  const text=cleanLine(out.text.replace(/^["'“”]+|["'“”]+$/g,""),300);
-  if(!text||hasAddress(text))return c.json({code:"UPSTREAM"},502);
-  return c.json({text});
+  const out=await describe(c.env,c.get("session").user.id,input,language);
+  return "code" in out?c.json({code:out.code},out.status):c.json({text:out.text});
  })
  .get("/",validate("query",z.object({state:z.enum(["queued","sent","failed"]).optional(),cursor:cursor.optional()})),async c=>{
   const owner=c.get("session").user.id,{state,cursor:after}=c.req.valid("query"),up=state==="queued";

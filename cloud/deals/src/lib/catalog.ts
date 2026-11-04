@@ -84,3 +84,6 @@ export const shopStores=["shopee","aliexpress"] as const satisfies readonly NonN
 export type Platform=NonNullable<Hunt["filters"]["platforms"]>[number];
 // mirrors: the channels a new mirror reads (one mirror each).
 export type HuntInput={kind:HuntKind;channelIds:string[];filters:Hunt["filters"];mirrors?:string[]};
+// The AI's categories, in the panel's words.
+export {dealCategories,type DealCategory} from "../../../shared/deals-post";
+export const categoryLabel:Record<import("../../../shared/deals-post").DealCategory,PlainMessageKey>={electronics:"dealsCatElectronics",computers:"dealsCatComputers",phones:"dealsCatPhones",games:"dealsCatGames",home:"dealsCatHome",kitchen:"dealsCatKitchen",fashion:"dealsCatFashion",beauty:"dealsCatBeauty",sports:"dealsCatSports",kids:"dealsCatKids",pets:"dealsCatPets",books:"dealsCatBooks",tools:"dealsCatTools",auto:"dealsCatAuto",food:"dealsCatFood",other:"dealsCatOther"};

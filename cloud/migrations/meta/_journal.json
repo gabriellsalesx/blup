@@ -239,6 +239,13 @@
       "when": 1793811747822,
       "tag": "0033_deals_ai",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1793813068563,
+      "tag": "0034_deals_ai_more",
+      "breakpoints": true
     }
   ]
 }

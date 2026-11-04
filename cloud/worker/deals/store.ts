@@ -40,6 +40,8 @@ const written=z.string().trim().refine(t=>!hasAddress(t),{message:"ADDRESS"});
 export const postStyles=["classic","emoji"] as const;
 export const settingsBody=z.object({
  pace:z.literal(dealsPaces),style:z.enum(postStyles).default("classic"),
+ // The AI in the hunts' posts: short names and a description.
+ ai:z.object({titles:z.boolean(),describe:z.boolean()}).strict().default({titles:false,describe:false}),
  headlines:z.partialRecord(z.enum(headlineKinds),written.pipe(z.string().min(1).max(HEADLINE_MAX))),
  extra:z.object({text:written.pipe(z.string().max(EXTRA_MAX)),on:z.boolean()}).strict(),
  socials:z.object({links:z.array(z.object({network:z.enum(socialIds),url:z.string().max(300)}).strict()).max(socialNetworks.length)
@@ -49,12 +51,12 @@ export const settingsBody=z.object({
 export type DealsSettings=z.infer<typeof settingsBody>&{paceLast:number;droppedAt:number|null};
 const savedHeadlines=z.partialRecord(z.enum(headlineKinds),z.string()).catch({});
 const savedSocials=z.array(z.object({network:z.enum(socialIds),url:z.string()})).catch([]);
-type SettingRow={pace:number;style:string;paceLast:number;droppedAt:number|null;headlines:string;extra:string|null;extraOn:number;socials:string;socialsOn:number};
+type SettingRow={pace:number;style:string;aiTitles:number;aiDescribe:number;paceLast:number;droppedAt:number|null;headlines:string;extra:string|null;extraOn:number;socials:string;socialsOn:number};
 const json=(v:string)=>{try{return JSON.parse(v) as unknown;}catch{return null;}};
 export async function settingsOf(db:D1Database,owner:string):Promise<DealsSettings>{
- const r=await db.prepare("SELECT pace,style,pace_last AS paceLast,dropped_at AS droppedAt,headlines,extra,extra_on AS extraOn,socials,socials_on AS socialsOn FROM deals_setting WHERE user_id=?").bind(owner).first<SettingRow>();
+ const r=await db.prepare("SELECT pace,style,ai_titles AS aiTitles,ai_describe AS aiDescribe,pace_last AS paceLast,dropped_at AS droppedAt,headlines,extra,extra_on AS extraOn,socials,socials_on AS socialsOn FROM deals_setting WHERE user_id=?").bind(owner).first<SettingRow>();
  const pace=dealsPaces.find(p=>p===r?.pace)??0;
- return {pace,style:postStyles.find(v=>v===r?.style)??"classic",paceLast:r?.paceLast??0,droppedAt:r?.droppedAt??null,headlines:r?savedHeadlines.parse(json(r.headlines)):{},extra:{text:r?.extra??"",on:!!r?.extraOn},socials:{links:r?savedSocials.parse(json(r.socials)):[],on:!!r?.socialsOn}};
+ return {pace,style:postStyles.find(v=>v===r?.style)??"classic",ai:{titles:!!r?.aiTitles,describe:!!r?.aiDescribe},paceLast:r?.paceLast??0,droppedAt:r?.droppedAt??null,headlines:r?savedHeadlines.parse(json(r.headlines)):{},extra:{text:r?.extra??"",on:!!r?.extraOn},socials:{links:r?savedSocials.parse(json(r.socials)):[],on:!!r?.socialsOn}};
 }
 export const headlineOf=(s:Pick<DealsSettings,"headlines">,kind:string)=>(headlineKinds as readonly string[]).includes(kind)?s.headlines[kind as HeadlineKind]??null:null;
 export const socialLinks=(s:Pick<DealsSettings,"socials">)=>s.socials.on?s.socials.links.flatMap(l=>{const net=socialNetworks.find(n=>n.id===l.network);return net&&socialURL(l.network as SocialNetwork,l.url)?[{name:net.name,url:l.url}]:[];}):[];
@@ -108,6 +110,12 @@ export async function respace(db:D1Database,owner:string,pace:number,now=Date.no
  for(const ids of groups.values()){updates.push(db.prepare("UPDATE deals_post SET next_at=?,day=? WHERE user_id=? AND state='queued' AND id IN(SELECT value FROM json_each(?))").bind(at,dayOf(at),owner,JSON.stringify(ids)));given=at;if(step)at+=step;}
  updates.push(db.prepare("UPDATE deals_setting SET pace_last=? WHERE user_id=?").bind(given,owner));
  for(let i=0;i<updates.length;i+=50)await db.batch(updates.slice(i,i+50));
+}
+// The account's language (its posts' words and the AI's), Portuguese
+// when unknown.
+export async function accountLanguage(db:D1Database,owner:string):Promise<"pt"|"en"|"es">{
+ const l=(await db.prepare("SELECT language FROM user WHERE id=?").bind(owner).first<{language:string|null}>())?.language;
+ return l==="en"||l==="es"?l:"pt";
 }
 export async function postsOn(db:D1Database,owner:string,day:string){
  return (await db.prepare("SELECT count(*) AS n FROM deals_post WHERE user_id=? AND day=?").bind(owner,day).first<{n:number}>())?.n??0;

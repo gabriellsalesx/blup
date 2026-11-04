@@ -76,3 +76,9 @@ export function socialURL(network:SocialNetwork,raw:string):string|null{
 
 // The names {store} gives each store.
 export const storeTitles:Record<string,string>={amazon:"Amazon",mercadolivre:"Mercado Livre",shopee:"Shopee",aliexpress:"AliExpress",nuuvem:"Nuuvem",magalu:"Magalu",terabyte:"Terabyte",gamerpower:"GamerPower"};
+
+// The categories the AI gives each product, for the hunts that keep only
+// some of them.
+export const dealCategories=["electronics","computers","phones","games","home","kitchen","fashion","beauty","sports","kids","pets","books","tools","auto","food","other"] as const;
+export type DealCategory=(typeof dealCategories)[number];
+export const postLanguages=["pt","en","es"] as const;

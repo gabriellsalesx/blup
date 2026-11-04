@@ -18,7 +18,11 @@
 	let { data }: PageProps = $props();
 	let ai = $state<AIModels | null>(untrack(() => data.ai));
 	const names: Record<AIFeature, { title: string; help: string }> = {
-		deals_describe: { title: "Blup Deals: descrição do post", help: "O botão \"Escrever com IA\" do Colar link e do Vídeo novo. Texto curto: um modelo barato basta." },
+		deals_describe: { title: "Blup Deals: descrição do post", help: "O botão \"Escrever com IA\" do Colar link e do Vídeo novo, e a descrição automática nas caçadas. Texto curto: um modelo barato basta." },
+		deals_curate: { title: "Blup Deals: triagem da caçada de lojas", help: "Nome curto, se combina com a busca e categoria, para até 10 ofertas de uma vez. Responde em JSON: o modelo precisa seguir o formato." },
+		deals_extract: { title: "Blup Deals: leitura do espelho", help: "Cupom, descrição com palavras próprias, nome curto e categoria de um post espelhado. Responde em JSON." },
+		deals_suggest: { title: "Blup Deals: sugestão de buscas", help: "Oito buscas a partir do assunto do canal. Responde em JSON." },
+		deals_translate: { title: "Blup Deals: tradução do post", help: "A frase, a descrição e o texto extra para um canal em outro idioma. Responde em JSON." },
 	};
 	// The list being edited, per feature (ids only), and the one being added.
 	let lists = $state<Record<string, string[]>>(untrack(() => Object.fromEntries((data.ai?.features ?? []).map((f) => [f.feature, f.models.map((m) => m.id)]))));

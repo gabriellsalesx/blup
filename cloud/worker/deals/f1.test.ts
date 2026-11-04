@@ -2,6 +2,14 @@ import {beforeEach,afterEach,it,expect,vi,describe} from "vitest";
 import {TestD1,TestBucket,seedUser} from "../security-test-support";
 const state=vi.hoisted(()=>({env:{} as Cloudflare.Env}));
 vi.mock("cloudflare:workers",()=>({env:state.env,DurableObject:class{}}));
+// The AI's answers, set per test (null: the real helper, which has no
+// plan allowance here).
+const fakeAI=vi.hoisted(()=>({curate:null as null|((...a:unknown[])=>unknown),extract:null as null|((...a:unknown[])=>unknown),describe:null as null|((...a:unknown[])=>unknown),translate:null as null|((...a:unknown[])=>unknown)}));
+vi.mock("./ai",async orig=>{const real=await orig<typeof import("./ai")>();return {...real,
+ curate:(...a:Parameters<typeof real.curate>)=>fakeAI.curate?fakeAI.curate(...a):real.curate(...a),
+ extract:(...a:Parameters<typeof real.extract>)=>fakeAI.extract?fakeAI.extract(...a):real.extract(...a),
+ describe:(...a:Parameters<typeof real.describe>)=>fakeAI.describe?fakeAI.describe(...a):real.describe(...a),
+ translate:(...a:Parameters<typeof real.translate>)=>fakeAI.translate?fakeAI.translate(...a):real.translate(...a)};});
 vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})=>{const id=headers.get("authorization")?.replace("Bearer ","");return id?{user:{id}}:null;}}}}));
 import {dealsApi} from "./api";
 import {safeFetch,FetchError} from "./fetch";
@@ -20,6 +28,7 @@ import {panelCorsOrigin} from "../security";
 import {softDelete,purgeAccounts,DAY as LIFE_DAY} from "../lifecycle";
 import {dealsLifecycle} from "./purge";
 import {dealsAccess} from "./access";
+import {gameTitle} from "./ai";
 
 let db:TestD1;
 const KEY=btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
@@ -28,7 +37,7 @@ beforeEach(()=>{
  db=new TestD1();seedUser(db,"alice","ultra_deals");seedUser(db,"bob","ultra_pulse_deals");seedUser(db,"plain","ultra");
  Object.assign(state.env,{DB:db.asD1(),STAFF_OWNER_EMAIL:"",PULSE_CHANNEL_KEY:KEY,DEALS_PUBLIC_HOST:"deals.audit.invalid",DEALS_TELEGRAM_BOT:"BlupDealsBot",DEALS_TELEGRAM_TOKEN:"123456:"+"b".repeat(30),DEALS_TELEGRAM_WEBHOOK_SECRET:"hook-secret"});
 });
-afterEach(()=>{db.close();vi.unstubAllGlobals();vi.restoreAllMocks();});
+afterEach(()=>{fakeAI.curate=fakeAI.extract=fakeAI.describe=fakeAI.translate=null;db.close();vi.unstubAllGlobals();vi.restoreAllMocks();});
 const call=(path:string,init:{method?:string;body?:unknown;user?:string|null;headers?:Record<string,string>}={})=>dealsApi.fetch(new Request(`https://cloud.audit.invalid${path}`,{method:init.method??"GET",headers:{...(init.user===null?{}:{authorization:`Bearer ${init.user??"alice"}`}),...(init.body!==undefined?{"content-type":"application/json"}:{}),...init.headers},body:init.body===undefined?undefined:JSON.stringify(init.body)}),state.env);
 // A fake Internet: public DNS answers, then the page or API by address.
 function net(routes:Record<string,(req:Request)=>Response|Promise<Response>>,ip="93.184.216.34"){
@@ -760,5 +769,60 @@ describe("pace, opening lines and networks",()=>{
   const classic=telegramText({title:"Fone",image:null,price:null,originalPrice:null,currency:null,discount:null,link:"https://deals.audit.invalid/r/x",affiliate:false,kind:"product",credit:null,description:"Bom",coupon:"BLUP10"},"pt");
   expect(classic.split("\n")).toEqual(["<b>Fone</b>","Bom","Cupom: BLUP10",'<a href="https://deals.audit.invalid/r/x">Ver oferta</a>']);
   expect((await call("/offers",{method:"POST",user:"alice",body:{url:"https://www.amazon.com.br/dp/B000000001",channelIds:[channel],coupon:"veja em www.site.com"}})).status).toBe(400);
+ });
+});
+
+describe("the AI in the hunts and the channels",()=>{
+ const base={pace:0,style:"classic",headlines:{},extra:{text:"",on:false},socials:{links:[],on:false}};
+ const node=(id:number,name:string,rate:number)=>({itemId:id,productName:name,imageUrl:`https://down-br.img.susercontent.com/file/${id}`,productLink:`https://shopee.com.br/product/1/${id}`,offerLink:`https://s.shopee.com.br/off${id}`,priceMin:"89.90",priceDiscountRate:rate});
+ it("keeps what fits the search and its categories, with a short name and a description",async()=>{
+  const channel=await addDiscord();
+  expect((await call("/settings",{method:"PUT",body:{...base,ai:{titles:true,describe:true}}})).status).toBe(200);
+  expect((await call("/affiliates/shopee",{method:"PUT",body:{appId:"12345",secret:"s".repeat(32)}})).status).toBe(200);
+  expect((await call("/hunts",{method:"POST",body:{kind:"store_deals",channelIds:[channel],filters:{store:"shopee",keywords:["fone bluetooth"],minDiscount:20,aiFilter:true,categories:["electronics"]}}})).status).toBe(201);
+  expect((await call("/hunts",{method:"POST",body:{kind:"games_free",channelIds:[channel],filters:{aiFilter:true}}})).status).toBe(400);
+  const asked:unknown[][]=[];
+  fakeAI.curate=async(...a)=>{asked.push(a);return [{keep:false,title:"Capinha",category:"phones"},{keep:true,title:"Fone Bluetooth 5.3",category:"electronics"},{keep:true,title:"Air fryer",category:"kitchen"}];};
+  fakeAI.describe=async()=>({text:"Bom para treinar."});
+  const {send}=net({"open-api.affiliate.shopee.com.br":()=>Response.json({data:{productOfferV2:{nodes:[node(1,"Capa Para Fone Bluetooth",60),node(2,"Fone De Ouvido Bluetooth 5.3 TWS Original Preto",50),node(3,"Air Fryer 4L Promoção",40)]}}})});
+  const now=Date.now()+1000;
+  await collectShops(state.env,send,now);
+  expect(asked[0]?.[2]).toEqual(["fone bluetooth"]);
+  expect(db.sqlite.prepare("SELECT o.external_id AS id,o.short_title AS short,o.category,p.description FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id").all()).toEqual([{id:"2",short:"Fone Bluetooth 5.3",category:"electronics",description:"Bom para treinar."}]);
+  const sent:{embeds:{title:string;description:string}[]}[]=[];
+  await dispatchDeals(state.env,net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}}).send,now);
+  expect(sent[0].embeds[0].title).toBe("Achado do dia: Fone Bluetooth 5.3 com 50% de desconto.");
+  expect(sent[0].embeds[0].description.split("\n")[0]).toBe("Bom para treinar.");
+ });
+ it("goes on without the AI when it can't answer",async()=>{
+  const channel=await addDiscord();
+  await call("/affiliates/shopee",{method:"PUT",body:{appId:"12345",secret:"s".repeat(32)}});
+  await call("/hunts",{method:"POST",body:{kind:"store_deals",channelIds:[channel],filters:{store:"shopee",keywords:["fone"],minDiscount:20,aiFilter:true}}});
+  fakeAI.curate=async()=>null;
+  await collectShops(state.env,net({"open-api.affiliate.shopee.com.br":()=>Response.json({data:{productOfferV2:{nodes:[node(5,"Fone X",50)]}}})}).send,Date.now()+1000);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(1);
+ });
+ it("translates a post for a channel in another language, once for its channels",async()=>{
+  const a=await addDiscord(),b=(await (await call("/channels",{method:"POST",body:{type:"discord",webhook:HOOK.replace("123456789012345678","223456789012345678")}})).json() as {id:string}).id,now=Date.now();
+  expect((await call(`/channels/${a}`,{method:"PATCH",body:{language:"en"}})).status).toBe(200);
+  expect((await call(`/channels/${b}`,{method:"PATCH",body:{language:"en"}})).status).toBe(200);
+  expect((await call(`/channels/${a}`,{method:"PATCH",body:{language:"fr"}})).status).toBe(400);
+  await call("/settings",{method:"PUT",body:{...base,extra:{text:"Siga nossas redes",on:true}}});
+  const o=await upsertOffer(db.asD1(),offer({key:"t",title:"Fone"}),now);
+  await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[a,b],link:"https://www.amazon.com.br/dp/B000000001",affiliate:false,huntId:null,sendAt:now,now,description:"Bom e barato"});
+  let calls=0;fakeAI.translate=async(_env:unknown,_owner:unknown,texts:unknown)=>{calls++;return (texts as string[]).map(t=>t==="Bom e barato"?"Good and cheap":"Follow us");};
+  const sent:{embeds:{title:string;description:string}[]}[]=[];
+  const {send}=net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}});
+  await dispatchDeals(state.env,send,now);
+  expect(calls).toBe(1);expect(sent).toHaveLength(2);
+  expect(sent[0].embeds[0].title).toBe("Deal of the day: Fone");
+  expect(sent[0].embeds[0].description.split("\n")).toEqual(["Good and cheap","R$100.00","[See the deal](https://deals.audit.invalid/r/"+sent[0].embeds[0].description.split("/r/")[1].slice(0,8)+")","Follow us"]);
+  const listed=await (await call("/channels")).json() as {channels:{language:string|null}[]};
+  expect(listed.channels.map(c=>c.language)).toEqual(["en","en"]);
+ });
+ it("cleans the free games' names without the AI",()=>{
+  expect(gameTitle("Dark Mystery (Epic Games) Giveaway")).toBe("Dark Mystery");
+  expect(gameTitle("Letter Quest: Grimm's Journey Remastered Steam Key Giveaway")).toBe("Letter Quest: Grimm's Journey Remastered");
+  expect(gameTitle("Hades")).toBe("Hades");
  });
 });

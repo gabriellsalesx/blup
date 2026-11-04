@@ -5,6 +5,7 @@ import {discordWebhook,sameSecret} from "../pulse/channel-crypto";
 import {publicKey,sha256} from "../pulse/limits";
 import {languageOf,type Language} from "../../shared/language";
 import {dealsLimits} from "../../shared/pulse-plans";
+import {postLanguages} from "../../shared/deals-post";
 import {dealsWrite,type DealsApp} from "./access";
 import {cleanLine} from "./page";
 import {dealsChatId,testText,sendTelegram,sendDiscord} from "./message";
@@ -15,8 +16,8 @@ const linkParam=z.object({link:opaqueId});
 const LINK_TTL=15*60_000;
 const botReady=(env:Cloudflare.Env)=>!!env.DEALS_TELEGRAM_TOKEN&&!!env.DEALS_TELEGRAM_WEBHOOK_SECRET&&!!env.PULSE_CHANNEL_KEY;
 const botName=(env:Cloudflare.Env)=>/^[A-Za-z0-9_]{5,32}$/.test(env.DEALS_TELEGRAM_BOT??"")?env.DEALS_TELEGRAM_BOT:"BlupDealsBot";
-type Row={id:string;platform:string;name:string;active:number;lastError:string|null;createdAt:number};
-const view=(r:Row)=>({id:r.id,type:z.enum(["telegram","discord"]).parse(r.platform),label:r.name,active:!!r.active,lastError:r.lastError,createdAt:new Date(r.createdAt).toISOString()});
+type Row={id:string;platform:string;name:string;active:number;lastError:string|null;createdAt:number;language:string|null};
+const view=(r:Row)=>({id:r.id,type:z.enum(["telegram","discord"]).parse(r.platform),label:r.name,active:!!r.active,lastError:r.lastError,language:languageOf(r.language),createdAt:new Date(r.createdAt).toISOString()});
 
 // Saves a channel (target sealed), unless the account already has it or
 // is at its limit. Returns the channel id, or null at the limit.
@@ -31,7 +32,7 @@ async function addChannel(env:Cloudflare.Env,owner:string,type:ChannelType,targe
 
 export const channelsApi=new Hono<DealsApp>()
  .get("/",async c=>{
-  const rows=await c.env.DB.prepare("SELECT id,platform,name,active,last_error AS lastError,created_at AS createdAt FROM deals_channel WHERE user_id=? ORDER BY created_at,id LIMIT 50").bind(c.get("session").user.id).all<Row>();
+  const rows=await c.env.DB.prepare("SELECT id,platform,name,active,last_error AS lastError,created_at AS createdAt,language FROM deals_channel WHERE user_id=? ORDER BY created_at,id LIMIT 50").bind(c.get("session").user.id).all<Row>();
   return c.json({channels:rows.results.map(view)});
  })
  .post("/",dealsWrite,validate("json",z.object({type:z.literal("discord"),webhook:discordWebhook}).strict()),async c=>{
@@ -39,6 +40,11 @@ export const channelsApi=new Hono<DealsApp>()
   let saved:Awaited<ReturnType<typeof addChannel>>;try{saved=await addChannel(c.env,owner,"discord",hook.url,hook.label);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
   if(!saved)return c.json({code:"QUOTA"},409);
   return c.json({id:saved.id,label:hook.label},saved.created?201:200);
+ })
+ // The language the channel's posts go out in (null: the account's).
+ .patch("/:channel",dealsWrite,validate("param",channelParam),validate("json",z.object({language:z.enum(postLanguages).nullable()}).strict()),async c=>{
+  const row=await c.env.DB.prepare("UPDATE deals_channel SET language=? WHERE id=? AND user_id=? RETURNING id").bind(c.req.valid("json").language,c.req.valid("param").channel,c.get("session").user.id).first();
+  return row?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
  })
  .delete("/:channel",validate("param",channelParam),async c=>{
   const owner=c.get("session").user.id,id=c.req.valid("param").channel;

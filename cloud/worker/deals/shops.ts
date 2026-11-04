@@ -4,7 +4,10 @@ import {shopeeCall,aliexpressCall,aliexpressHost,shopeeLinkHost,type Affiliate} 
 import {shopeeCurrency,aliexpressCurrency,aliexpressLanguage,currencyDigits,type ShopeeCountry,type AliexpressCountry} from "../../shared/deals-markets";
 import {upsertOffer,huntFilters,type HuntFilters,type OfferInput} from "./catalog";
 import {dealsAccess} from "./access";
-import {affiliateOf,enqueue,postedLately,DAY} from "./store";
+import {affiliateOf,enqueue,postedLately,settingsOf,accountLanguage,DAY} from "./store";
+import {curate,describe} from "./ai";
+import {money} from "./message";
+import {storeTitles} from "../../shared/deals-post";
 
 // A store hunt: Shopee's or AliExpress's own search, with the person's own
 // API keys, for the words they chose, sorted by sales, in the money of
@@ -16,6 +19,8 @@ import {affiliateOf,enqueue,postedLately,DAY} from "./store";
 // shop:<hunt id>), every 30 minutes.
 const ROUND=30*60_000;
 const PER_ROUND=3;
+// How many finds the AI looks at each round, for the PER_ROUND that go.
+const CANDIDATES=10;
 const PAGE=50;
 export const shopSourceId=(hunt:string)=>`shop:${hunt}`;
 // The store refused the keys (or the account): shown on the hunt.
@@ -97,12 +102,25 @@ export async function collectShops(env:Cloudflare.Env,send:typeof fetch=fetch,no
    if(!affiliate){await done("NOT_CONFIGURED",ROUND);continue;}
    const found=new Map<string,Found>();
    for(const keyword of hunt.filters.keywords)for(const f of await searchShop(affiliate,keyword,hunt.filters.market??"br",send,now))if(fitsHunt(hunt.filters,f.offer)&&!found.has(f.offer.externalId??""))found.set(f.offer.externalId??"",f);
-   let sent=0;
+   // The biggest discounts not posted lately; the AI (when asked) gives
+   // each a short name and a category and leaves out what is not what the
+   // search asked for. Without it (no allowance left), they go as found.
+   const fresh:Found[]=[];
    for(const f of [...found.values()].sort((a,b)=>(b.offer.discount??0)-(a.offer.discount??0))){
+    if(fresh.length>=CANDIDATES)break;
+    if(!await postedLately(env.DB,hunt.userId,f.offer.store,f.offer.externalId??"",f.offer.price,now))fresh.push(f);
+   }
+   const own=await settingsOf(env.DB,hunt.userId),language=await accountLanguage(env.DB,hunt.userId),cats=hunt.filters.categories;
+   const sorted=fresh.length&&(hunt.filters.aiFilter||cats||own.ai.titles)?await curate(env,hunt.userId,hunt.filters.keywords,fresh.map(f=>f.offer.title),language):null;
+   let sent=0;
+   for(const [i,f] of fresh.entries()){
     if(sent>=PER_ROUND)break;
-    if(await postedLately(env.DB,hunt.userId,f.offer.store,f.offer.externalId??"",f.offer.price,now))continue;
+    const ai=sorted?.[i];
+    if(ai&&((hunt.filters.aiFilter&&!ai.keep)||(cats&&!cats.includes(ai.category))))continue;
     const offer=await upsertOffer(env.DB,f.offer,now);
-    const queued=await enqueue(env.DB,{owner:hunt.userId,offerId:offer.id,channels:hunt.channels,link:f.link,affiliate:true,huntId:hunt.id,sendAt:now,now,paced:true});
+    if(ai)await env.DB.prepare("UPDATE deals_offer SET short_title=coalesce(?,short_title),category=? WHERE id=?").bind(ai.title,ai.category,offer.id).run();
+    const words=own.ai.describe?await describe(env,hunt.userId,{title:ai?.title??f.offer.title,store:storeTitles[f.offer.store]??null,price:f.offer.price!==null&&f.offer.currency?money(f.offer.price,f.offer.currency,language):null},language):null;
+    const queued=await enqueue(env.DB,{owner:hunt.userId,offerId:offer.id,channels:hunt.channels,link:f.link,affiliate:true,huntId:hunt.id,sendAt:now,now,paced:true,description:words&&"text" in words?words.text:null});
     if(!queued)break;sent++;
    }
    if(sent)await env.DB.prepare("UPDATE deals_hunt SET last_post_at=? WHERE id=?").bind(now,hunt.id).run();
