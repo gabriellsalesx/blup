@@ -12,10 +12,13 @@ export function publicHTTPS(raw:string):URL{
  return url;
 }
 export type Fetched={url:URL;status:number;contentType:string;text:string};
-type Options={maxBytes?:number;timeoutMs?:number;hops?:number;body?:boolean;send?:typeof fetch};
-export async function safeFetch(raw:string,{maxBytes=512*1024,timeoutMs=8_000,hops=5,body=true,send=fetch}:Options={}):Promise<Fetched>{
+// until stops at the first address it accepts, without opening it (a
+// short link followed only as far as where it points).
+type Options={maxBytes?:number;timeoutMs?:number;hops?:number;body?:boolean;until?:(url:URL)=>boolean;send?:typeof fetch};
+export async function safeFetch(raw:string,{maxBytes=512*1024,timeoutMs=8_000,hops=5,body=true,until,send=fetch}:Options={}):Promise<Fetched>{
  let url=publicHTTPS(raw);const signal=AbortSignal.timeout(timeoutMs);
  for(let hop=0;hop<=hops;hop++){
+  if(hop>0&&until?.(url))return {url,status:0,contentType:"",text:""};
   try{await publicDNS(url.hostname,signal,send);}catch{throw new FetchError("FETCH_BLOCKED");}
   let res:Response;
   try{res=await send(url,{redirect:"manual",signal,headers:{"user-agent":"Mozilla/5.0 (compatible; BlupDeals/1.0; +https://getblup.io)",accept:"text/html,application/xhtml+xml;q=0.9,*/*;q=0.5","accept-language":"pt-BR,pt;q=0.9,en;q=0.8"}});}

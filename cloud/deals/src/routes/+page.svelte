@@ -3,6 +3,7 @@
  import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
  import ClipboardPaste from "@lucide/svelte/icons/clipboard-paste";
+ import Clapperboard from "@lucide/svelte/icons/clapperboard";
  import Rocket from "@lucide/svelte/icons/rocket";
  import Tag from "@lucide/svelte/icons/tag";
  import ExternalLink from "@lucide/svelte/icons/external-link";
@@ -18,8 +19,9 @@
  import {failureText} from "../lib/errors";
  import Usage from "../lib/Usage.svelte";
  // The deals of the account: those waiting in the queue, those sent (with
- // their clicks) and those that failed (with why). Pasting a link adds one;
- // without a channel yet, the first steps come first.
+ // their clicks) and those that failed (with why). Pasting a link adds one,
+ // and so does a new TikTok video; without a channel yet, the first steps
+ // come first.
  let {data}:PageProps=$props();
  const states=$derived([{value:"queued" as const,label:t("dealsQueued")},{value:"sent" as const,label:t("dealsSent")},{value:"failed" as const,label:t("dealsFailed")}]);
  const empty=$derived({queued:t("dealsQueueEmpty"),sent:t("dealsOffersEmpty"),failed:t("dealsFailedEmpty")}[data.state]);
@@ -29,7 +31,7 @@
 </script>
 
 <PageHeader title={t("dealsOffers")} lead={t("dealsOffersLead")}>
- {#snippet aside()}{#if hasPlan()}<div class="flex flex-wrap gap-2">{#if !data.channels.length}<Button variant="secondary" onclick={()=>goto(resolve("/start"))}><Rocket class="size-4"/>{t("dealsStart")}</Button>{/if}<Button onclick={()=>goto(resolve("/offers/new"))}><ClipboardPaste class="size-4"/>{t("dealsPasteLink")}</Button></div>{/if}{/snippet}
+ {#snippet aside()}{#if hasPlan()}<div class="flex flex-wrap gap-2">{#if !data.channels.length}<Button variant="secondary" onclick={()=>goto(resolve("/start"))}><Rocket class="size-4"/>{t("dealsStart")}</Button>{/if}<Button variant="secondary" onclick={()=>goto(resolve("/offers/video"))}><Clapperboard class="size-4"/>{t("dealsNewVideo")}</Button><Button onclick={()=>goto(resolve("/offers/new"))}><ClipboardPaste class="size-4"/>{t("dealsPasteLink")}</Button></div>{/if}{/snippet}
 </PageHeader>
 
 <div class="mt-6"><Usage kind="posts"/></div>

@@ -9788,36 +9788,23 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
-                code: string;
+                code: "INVALID" | "NOT_FOUND" | "DAILY_LIMIT";
+            };
+            outputFormat: "json";
+            status: 404 | 400 | 429;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    channelIds: string[];
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: "FETCH_BLOCKED";
             };
             outputFormat: "json";
             status: 400;
-        } | {
-            input: {
-                json: {
-                    url: string;
-                    channelIds: string[];
-                    sendAt?: string | undefined;
-                };
-            };
-            output: {
-                code: string;
-            };
-            outputFormat: "json";
-            status: 404;
-        } | {
-            input: {
-                json: {
-                    url: string;
-                    channelIds: string[];
-                    sendAt?: string | undefined;
-                };
-            };
-            output: {
-                code: string;
-            };
-            outputFormat: "json";
-            status: 429;
         } | {
             input: {
                 json: {
@@ -9843,12 +9830,210 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: string;
             };
             outputFormat: "json";
+            status: 429;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    channelIds: string[];
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
             status: 409;
         } | {
             input: {
                 json: {
                     url: string;
                     channelIds: string[];
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                id: string;
+                queued: number;
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+} & {
+    "/video/preview": {
+        $post: {
+            input: {
+                json: {
+                    url: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                };
+            };
+            output: {
+                code: "FETCH_BLOCKED" | "FETCH_FAILED" | "NOT_A_VIDEO" | "VIDEO_NOT_FOUND";
+            };
+            outputFormat: "json";
+            status: 404 | 400 | 502;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                };
+            };
+            output: {
+                id: string;
+                author: string;
+                url: string;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/video": {
+        $post: {
+            input: {
+                json: {
+                    url: string;
+                    title: string;
+                    channelIds: string[];
+                    price?: number | undefined;
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    title: string;
+                    channelIds: string[];
+                    price?: number | undefined;
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    title: string;
+                    channelIds: string[];
+                    price?: number | undefined;
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    title: string;
+                    channelIds: string[];
+                    price?: number | undefined;
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: "INVALID" | "NOT_FOUND" | "DAILY_LIMIT";
+            };
+            outputFormat: "json";
+            status: 404 | 400 | 429;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    title: string;
+                    channelIds: string[];
+                    price?: number | undefined;
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: "FETCH_BLOCKED" | "FETCH_FAILED" | "NOT_A_VIDEO" | "VIDEO_NOT_FOUND";
+            };
+            outputFormat: "json";
+            status: 404 | 400 | 502;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    title: string;
+                    channelIds: string[];
+                    price?: number | undefined;
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    title: string;
+                    channelIds: string[];
+                    price?: number | undefined;
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 429;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    title: string;
+                    channelIds: string[];
+                    price?: number | undefined;
                     sendAt?: string | undefined;
                 };
             };

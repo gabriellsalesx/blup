@@ -8,7 +8,7 @@ import {enqueue,DAY} from "./store";
 // The global catalog: an offer is stored once, whoever finds it, by a hash
 // of where it comes from and what it is. Each price change goes to the
 // history (an honest "before" price later).
-export type OfferInput={key:string;store:string;externalId:string|null;sourceId:string|null;title:string;url:string;imageUrl:string|null;price:number|null;originalPrice:number|null;currency:string|null;kind:"product"|"game_free"|"game_deal";platforms:string[];discount:number|null;credit:string|null;expiresAt:number|null};
+export type OfferInput={key:string;store:string;externalId:string|null;sourceId:string|null;title:string;url:string;imageUrl:string|null;price:number|null;originalPrice:number|null;currency:string|null;kind:"product"|"game_free"|"game_deal"|"video";platforms:string[];discount:number|null;credit:string|null;expiresAt:number|null};
 export type StoredOffer={id:string;isNew:boolean};
 export async function upsertOffer(db:D1Database,o:OfferInput,now=Date.now()):Promise<StoredOffer>{
  const hash=await sha256(o.key);

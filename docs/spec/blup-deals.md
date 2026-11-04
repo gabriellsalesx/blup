@@ -565,3 +565,11 @@ Riscos prioritários: disponibilidade/licença das fontes; atribuição de afili
 - Cupom estruturado, que consta do contrato inicial, não está implementado na F1 entregue.
 
 Essas pendências técnicas e comerciais não reabrem a decisão de espelhamento aberto ou a permanência da CheapShark com seus próprios links. O risco assumido pelo dono continua registrado sem ser apresentado como autorização das plataformas.
+
+## Vídeo novo (TikTok Shop, sem API)
+
+- O criador cola o link do vídeo do TikTok (`/offers/video`). O servidor aceita `tiktok.com/@autor/video/<id>` e os links curtos `vm.tiktok.com`/`vt.tiktok.com` (seguidos com o fetch seguro só até o endereço do vídeo) e confere pelo oEmbed público do TikTok que o vídeo existe e é público (`embed_product_id` igual ao id).
+- O TikTok não diz qual é o produto sem a API: o criador escreve o nome e, se quiser, o preço em reais.
+- O post é `kind: "video"`, `store: "tiktok"`, um por vídeo e conta (`VIDEO_ANNOUNCED`). O clique vai para o vídeo, onde o TikTok Shop vende e paga a comissão. O aviso leva `#publi`.
+- Telegram: texto com a prévia do próprio vídeo em cima (`link_preview_options.url`). Discord: o embed de sempre, sem imagem.
+- A API oficial de afiliados do TikTok Shop (pautas de produto, vitrine, comissões) fica para depois, se o TikTok aprovar o acesso de parceiro.

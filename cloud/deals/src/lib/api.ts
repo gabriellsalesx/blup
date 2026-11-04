@@ -14,6 +14,7 @@ export type Channel=InferResponseType<typeof dealsApi.channels.$get,200>["channe
 export type StoreState=InferResponseType<typeof dealsApi.affiliates.$get,200>["stores"][number];
 export type Store=StoreState["store"];
 export type Preview=InferResponseType<typeof dealsApi.offers.preview.$post,200>;
+export type VideoPreview=InferResponseType<typeof dealsApi.offers.video.preview.$post,200>;
 export type Post=InferResponseType<typeof dealsApi.offers.$get,200>["posts"][number];
 export type PostState=Post["state"];
 export type Hunt=InferResponseType<typeof dealsApi.hunts.$get,200>["hunts"][number];

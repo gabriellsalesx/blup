@@ -8,10 +8,10 @@ import type {Hunt,HuntKind,Store as StoreId} from "./api";
 // What the Deals panel knows about stores, hunts and platforms (names,
 // help, which fields a store asks for). Brand names stay as they are.
 export const storeName:Record<StoreId,string>={amazon:"Amazon",mercadolivre:"Mercado Livre",shopee:"Shopee",aliexpress:"AliExpress"};
-// The names of every source a post can come from: the affiliate stores
-// and the game feeds. Only "other" (or one the panel doesn't know yet) is
+// The names of every source a post can come from: the affiliate stores,
+// the game feeds and TikTok (a video's news). Only "other" (or one the panel doesn't know yet) is
 // named in the panel's language.
-const sourceName:Record<string,string>={...storeName,gamerpower:"GamerPower",cheapshark:"CheapShark"};
+const sourceName:Record<string,string>={...storeName,gamerpower:"GamerPower",cheapshark:"CheapShark",tiktok:"TikTok"};
 export const storeLabel=(store:string)=>Object.hasOwn(sourceName,store)?sourceName[store]:t("dealsOtherStore");
 export type StoreField={id:string;label:PlainMessageKey|null;text?:string;secret:boolean;optional?:boolean};
 // `about` says what connecting does; `keys` marks the stores that take

@@ -10,7 +10,8 @@ import {pageInfo,priceCents} from "./page";
 import {upsertOffer,collectDeals,dealsCleanup,gamerPowerOffers,cheapSharkOffers,type OfferInput} from "./catalog";
 import {enqueue,dayOf,seal} from "./store";
 import {dispatchDeals,DEALS_BUDGET} from "./dispatch";
-import {telegramText,discordPayload} from "./message";
+import {telegramText,discordPayload,sendTelegram} from "./message";
+import {videoOf} from "./video";
 import {serveDealsLink} from "./redirect";
 import {panelCorsOrigin} from "../security";
 import {softDelete,purgeAccounts,DAY as LIFE_DAY} from "../lifecycle";
@@ -444,5 +445,38 @@ describe("the bot's sending budget",()=>{
   expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post WHERE state='sent'").get()?.n).toBe(2);
   // Discord has its own budget: a Telegram pause does not hold it.
   expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_delivery_budget WHERE key=?").get(DEALS_BUDGET.discord.key)?.n).toBe(0);
+ });
+});
+
+describe("a new TikTok video",()=>{
+ const oembed=(id:string)=>()=>Response.json({version:"1.0",type:"video",provider_name:"TikTok",embed_product_id:id,embed_type:"video"});
+ it("reads the video by its address and drops what the app adds",()=>{
+  expect(videoOf(new URL("https://m.tiktok.com/@loja.da_ana/video/7430000000000000001?is_from_webapp=1&sender_device=pc"))).toEqual({id:"7430000000000000001",author:"loja.da_ana",url:"https://www.tiktok.com/@loja.da_ana/video/7430000000000000001"});
+  for(const raw of ["https://www.tiktok.com/@ana/photo/7430000000000000001","https://tiktok.com.evil.invalid/@ana/video/7430000000000000001","https://www.tiktok.com/@ana"])expect(videoOf(new URL(raw))).toBeNull();
+ });
+ it("follows a short link, checks the video and queues the news to the channels",async()=>{
+  const channel=await addDiscord();
+  vi.stubGlobal("fetch",net({"vm.tiktok.com":()=>new Response(null,{status:301,headers:{location:"https://www.tiktok.com/@ana/video/7430000000000000001?_r=1"}}),"www.tiktok.com/oembed":oembed("7430000000000000001")}).send);
+  expect(await(await call("/offers/video/preview",{method:"POST",body:{url:"https://vm.tiktok.com/ZMabc123/"}})).json()).toEqual({id:"7430000000000000001",author:"ana",url:"https://www.tiktok.com/@ana/video/7430000000000000001"});
+  const created=await call("/offers/video",{method:"POST",body:{url:"https://vm.tiktok.com/ZMabc123/",title:"Fone sem fio",price:8990,channelIds:[channel]}});expect(created.status).toBe(201);
+  expect((await call("/offers/video",{method:"POST",body:{url:"https://www.tiktok.com/@ana/video/7430000000000000001",title:"Outro",channelIds:[channel]}})).status).toBe(409);
+  expect(db.sqlite.prepare("SELECT o.store,o.kind,o.title,o.price,o.currency,p.link,p.affiliate FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id").get()).toEqual({store:"tiktok",kind:"video",title:"Fone sem fio",price:8990,currency:"BRL",link:"https://www.tiktok.com/@ana/video/7430000000000000001",affiliate:1});
+  const sent:{embeds:{title:string;description:string}[]}[]=[];
+  await dispatchDeals(state.env,net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}}).send,Date.now());
+  expect(sent[0].embeds[0].title).toBe("Vídeo novo: Fone sem fio");expect(sent[0].embeds[0].description).toContain("Ver o vídeo");expect(sent[0].embeds[0].description).toContain("#publi");expect(sent[0].embeds[0].description).not.toContain("link de afiliado");
+ });
+ it("refuses what is not a public TikTok video",async()=>{
+  vi.stubGlobal("fetch",net({"www.tiktok.com/oembed":()=>new Response("{}",{status:400})}).send);
+  expect(await(await call("/offers/video/preview",{method:"POST",body:{url:"https://www.amazon.com.br/dp/B0ABCDEF12"}})).json()).toEqual({code:"NOT_A_VIDEO"});
+  const missing=await call("/offers/video/preview",{method:"POST",body:{url:"https://www.tiktok.com/@ana/video/7430000000000000009"}});expect(missing.status).toBe(404);expect(await missing.json()).toEqual({code:"VIDEO_NOT_FOUND"});
+  expect((await call("/offers/video",{method:"POST",user:"plain",body:{url:"https://www.tiktok.com/@ana/video/7430000000000000001",title:"X",channelIds:["c"]}})).status).toBe(403);
+ });
+ it("shows the video above the text on Telegram",async()=>{
+  const bodies:Record<string,unknown>[]=[];
+  const send=vi.fn(async(_url:RequestInfo|URL,init?:RequestInit)=>{bodies.push(JSON.parse(String(init?.body)));return Response.json({ok:true,result:{message_id:1}});}) as unknown as typeof fetch;
+  const post={title:"Fone",image:null,price:null,originalPrice:null,currency:null,discount:null,link:"https://deals.audit.invalid/r/ABCDEFGH",affiliate:true,kind:"video",credit:null};
+  const text=telegramText(post,"pt");expect(text).toBe('<b>Vídeo novo: Fone</b>\n<a href="https://deals.audit.invalid/r/ABCDEFGH">Ver o vídeo</a>\n#publi');
+  expect((await sendTelegram(state.env,"-1001",text,null,send,"https://www.tiktok.com/@ana/video/7430000000000000001")).sent).toBe(true);
+  expect(bodies[0]).toMatchObject({link_preview_options:{url:"https://www.tiktok.com/@ana/video/7430000000000000001",prefer_large_media:true,show_above_text:true}});
  });
 });
