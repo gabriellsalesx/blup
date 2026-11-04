@@ -573,3 +573,11 @@ Essas pendências técnicas e comerciais não reabrem a decisão de espelhamento
 - O post é `kind: "video"`, `store: "tiktok"`, um por vídeo e conta (`VIDEO_ANNOUNCED`). O clique vai para o vídeo, onde o TikTok Shop vende e paga a comissão. O aviso leva `#publi`.
 - Telegram: texto com a prévia do próprio vídeo em cima (`link_preview_options.url`). Discord: o embed de sempre, sem imagem.
 - A API oficial de afiliados do TikTok Shop (pautas de produto, vitrine, comissões) fica para depois, se o TikTok aprovar o acesso de parceiro.
+
+## Nuuvem (Rakuten Advertising)
+
+- A Nuuvem paga pelo programa Nuuvem Co-op, na Rakuten Advertising (anunciante MID 46796). Na Rakuten, a Nuuvem tem Catálogo de Produtos e Deep Links ligados; Atualizações Aceleradas de Ofertas, não.
+- O cliente salva o ID dele da Rakuten (o `id=` de qualquer link dele). O Blup monta o deep link: `https://click.linksynergy.com/deeplink?id=<ID>&mid=46796&murl=<página do jogo>`, tirando marcas de rastreio de outros.
+- Um link da Rakuten colado (`click.linksynergy.com` com `murl`) é lido pela página de destino, sem ser aberto, para não contar clique para quem o criou.
+- A marca é o ícone oficial do site (`nuuvem.com/favicon-144.png`), sem alteração (não existe no Simple Icons).
+- Depois: a caçada "Jogos em promoção na Nuuvem" pela busca de produtos da Rakuten, com a conta do Blup (credenciais só nos segredos do wrangler). O catálogo é atualizado devagar, então a caçada posta só o que entrou ou mudou de preço desde a última leitura.

@@ -3,7 +3,7 @@ import {apiJSON,FetchError} from "./fetch";
 
 // The stores Blup knows how to put the person's affiliate ID into. Any
 // other store is "other": the link goes as it is, without commission.
-export const stores=["amazon","mercadolivre","shopee","aliexpress"] as const;
+export const stores=["amazon","mercadolivre","shopee","aliexpress","nuuvem"] as const;
 export const storeSchema=z.enum(stores);
 export type Store=z.infer<typeof storeSchema>;
 
@@ -15,25 +15,29 @@ export const affiliateBody=z.discriminatedUnion("store",[
  z.object({store:z.literal("mercadolivre"),word:id(64),tool:z.string().trim().regex(/^[0-9]{1,20}$/).optional()}).strict(),
  z.object({store:z.literal("shopee"),appId:z.string().trim().regex(/^[0-9]{3,20}$/),secret:z.string().trim().regex(/^[A-Za-z0-9]{16,128}$/)}).strict(),
  z.object({store:z.literal("aliexpress"),appKey:z.string().trim().regex(/^[0-9]{3,20}$/),appSecret:z.string().trim().regex(/^[A-Za-z0-9]{16,128}$/),trackingId:id(64)}).strict(),
+ // Nuuvem pays through Rakuten Advertising: the person's Rakuten ID (the
+ // id= of any of their links, like *AbCdEfGh1).
+ z.object({store:z.literal("nuuvem"),siteId:z.string().trim().regex(/^[A-Za-z0-9*/._-]{6,32}$/)}).strict(),
 ]);
 export type Affiliate=z.infer<typeof affiliateBody>;
 // A few characters so the person recognizes what is saved.
 export function affiliateHint(a:Affiliate):string{
  const tail=(v:string)=>v.length<=4?"…":`…${v.slice(-4)}`;
- switch(a.store){case "amazon":return tail(a.tag);case "mercadolivre":return tail(a.word);case "shopee":return `App ID ${tail(a.appId)}`;case "aliexpress":return `App Key ${tail(a.appKey)}`;}
+ switch(a.store){case "amazon":return tail(a.tag);case "mercadolivre":return tail(a.word);case "shopee":return `App ID ${tail(a.appId)}`;case "aliexpress":return `App Key ${tail(a.appKey)}`;case "nuuvem":return tail(a.siteId);}
 }
 
 const amazonHost=/^(?:www\.|smile\.|m\.)?amazon\.(?:com|com\.br|ca|com\.mx|co\.uk|de|es|fr|it|nl|se|pl|co\.jp|in|com\.au|sg|ae|sa|com\.tr|eg|com\.be)$/;
 const mlHost=/(?:^|\.)(?:mercadolivre\.com\.br|mercadolibre\.com\.(?:ar|mx|co|uy|pe|ve|ec|bo|py|do|cr|gt|hn|ni|pa|sv)|mercadolibre\.cl)$/;
 const shopeeHost=/(?:^|\.)shopee\.(?:com\.br|com\.my|com\.mx|co\.id|co\.th|com\.co|cl|sg|ph|vn|tw)$/;
 const aliHost=/(?:^|\.)aliexpress\.(?:com|us|ru)$/;
+const nuuvemHost=/(?:^|\.)nuuvem\.com$/;
 // Short addresses the stores hand out; the preview follows them (safely)
 // to the product before anything is converted.
 const shortHosts=new Set(["amzn.to","a.co","amzn.eu","meli.la","shope.ee","s.shopee.com.br","s.click.aliexpress.com","a.aliexpress.com"]);
 export const isShortLink=(url:URL)=>shortHosts.has(url.hostname);
 export function storeOf(url:URL):Store|"other"{
  const host=url.hostname.toLowerCase();
- if(amazonHost.test(host))return "amazon";if(mlHost.test(host))return "mercadolivre";if(shopeeHost.test(host))return "shopee";if(aliHost.test(host))return "aliexpress";return "other";
+ if(amazonHost.test(host))return "amazon";if(mlHost.test(host))return "mercadolivre";if(shopeeHost.test(host))return "shopee";if(aliHost.test(host))return "aliexpress";if(nuuvemHost.test(host))return "nuuvem";return "other";
 }
 
 export type Converted={link:string;affiliate:boolean;reason?:"not_configured"|"unsupported_store"|"conversion_failed"};
@@ -49,6 +53,20 @@ export function mercadoLivreLink(url:URL,word:string,tool?:string):string{
  const out=new URL(url.href);out.hash="";
  for(const k of [...out.searchParams.keys()])if(/^matt_/.test(k)||k==="tracking_id"||k==="forceInApp")out.searchParams.delete(k);
  out.searchParams.set("matt_word",word);if(tool)out.searchParams.set("matt_tool",tool);return out.href;
+}
+// A Rakuten Advertising link (someone's, pasted again) carries the store
+// page in murl; that page is what gets the person's own ID.
+export function rakutenTarget(url:URL):URL|null{
+ if(url.hostname.toLowerCase()!=="click.linksynergy.com")return null;
+ try{const target=new URL(url.searchParams.get("murl")??"");return target.protocol==="https:"?target:null;}catch{return null;}
+}
+// Rakuten's deep link: the person's ID, Nuuvem's advertiser number and
+// the page, without the tracking someone else added to it.
+export const NUUVEM_MID="46796";
+export function nuuvemLink(url:URL,siteId:string):string{
+ const page=new URL(url.href);page.hash="";
+ for(const k of [...page.searchParams.keys()])if(/^(?:utm_|ranmid$|raneaid$|ransiteid$|siteid$)/i.test(k))page.searchParams.delete(k);
+ const out=new URL("https://click.linksynergy.com/deeplink");out.searchParams.set("id",siteId);out.searchParams.set("mid",NUUVEM_MID);out.searchParams.set("murl",page.href);return out.href;
 }
 const hex=(bytes:ArrayBuffer)=>Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
 // Shopee Affiliate Open API (GraphQL, Brazil): the request is signed with
@@ -105,6 +123,7 @@ export async function convertLink(url:URL,affiliate:Affiliate|null,send:typeof f
    case "mercadolivre":return {store,link:mercadoLivreLink(url,affiliate.word,affiliate.tool),affiliate:true};
    case "shopee":return {store,link:await shopeeLink(url,affiliate.appId,affiliate.secret,send),affiliate:true};
    case "aliexpress":return {store,link:await aliexpressLink(url,affiliate.appKey,affiliate.appSecret,affiliate.trackingId,send),affiliate:true};
+   case "nuuvem":return {store,link:nuuvemLink(url,affiliate.siteId),affiliate:true};
   }
  }catch{return plain("conversion_failed");}
 }

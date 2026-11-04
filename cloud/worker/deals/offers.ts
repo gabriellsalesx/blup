@@ -5,16 +5,18 @@ import {dealsLimits} from "../../shared/pulse-plans";
 import {dealsWrite,type DealsApp} from "./access";
 import {safeFetch,publicHTTPS,FetchError} from "./fetch";
 import {pageInfo,cleanLine} from "./page";
-import {convertLink,isShortLink,storeOf,type Converted,type Store} from "./links";
+import {convertLink,isShortLink,storeOf,rakutenTarget,type Converted,type Store} from "./links";
 import {upsertOffer} from "./catalog";
 import {affiliateOf,enqueue,postsOn,usableChannels,dayOf,DAY} from "./store";
 import {tiktokVideo,VideoError,type Video} from "./video";
 
 export type Preview={store:Store|"other";title:string;image:string|null;price:number|null;currency:string|null;link:string;affiliate:boolean;reason?:Converted["reason"];url:string};
 // Reads the pasted page (safely, following short links), takes what it
-// says about the product and puts the person's ID into the link.
+// says about the product and puts the person's ID into the link. A pasted
+// Rakuten link is read for its store page (never opened, so it counts no
+// click for whoever made it).
 export async function previewOffer(env:Cloudflare.Env,owner:string,raw:string,send:typeof fetch=fetch):Promise<Preview>{
- const start=publicHTTPS(raw);let final=start,info={title:null as string|null,image:null as string|null,price:null as number|null,currency:null as string|null};
+ const pasted=publicHTTPS(raw),start=rakutenTarget(pasted)??pasted;let final=start,info={title:null as string|null,image:null as string|null,price:null as number|null,currency:null as string|null};
  try{
   const page=await safeFetch(start.href,{send});final=page.url;
   if(page.status>=200&&page.status<300&&/html/i.test(page.contentType))info=pageInfo(page.text,page.url);

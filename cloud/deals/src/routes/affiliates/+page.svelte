@@ -29,7 +29,7 @@
     <StoreLogo store={info.id}/>
     <div class="min-w-0 flex-1">
      <h2 class="truncate text-lg font-semibold">{storeName[info.id]}</h2>
-     <p class="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-neutral-500">{#if on}<CircleCheck class="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"/><span class="font-medium text-emerald-700 dark:text-emerald-400">{t("dealsConfigured")}</span><span aria-hidden="true">·</span>{/if}<span>{info.keys?t("dealsNeedsKeys"):t("dealsNeedsTag")}</span><span aria-hidden="true">·</span><span>{t("dealsFree")}</span></p>
+     <p class="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-neutral-500">{#if on}<CircleCheck class="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"/><span class="font-medium text-emerald-700 dark:text-emerald-400">{t("dealsConfigured")}</span><span aria-hidden="true">·</span>{/if}<span>{info.keys?t("dealsNeedsKeys"):t(info.needs??"dealsNeedsTag")}</span><span aria-hidden="true">·</span><span>{t("dealsFree")}</span></p>
     </div>
     <span class="hidden shrink-0 sm:block">{@render action(on,href)}</span>
    </div>

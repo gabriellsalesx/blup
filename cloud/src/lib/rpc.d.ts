@@ -9435,7 +9435,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {};
             output: {
                 stores: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                     configured: boolean;
                     hint: string | null;
                 }[];
@@ -9449,7 +9449,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $put: {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                 };
             } & {
                 json: {
@@ -9464,6 +9464,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     appKey: string;
                     appSecret: string;
                     trackingId: string;
+                } | {
+                    siteId: string;
                 };
             };
             output: {
@@ -9478,7 +9480,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                 };
             } & {
                 json: {
@@ -9493,6 +9495,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     appKey: string;
                     appSecret: string;
                     trackingId: string;
+                } | {
+                    siteId: string;
                 };
             };
             output: {
@@ -9504,7 +9508,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                 };
             } & {
                 json: {
@@ -9519,6 +9523,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     appKey: string;
                     appSecret: string;
                     trackingId: string;
+                } | {
+                    siteId: string;
                 };
             };
             output: {
@@ -9533,7 +9539,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                 };
             } & {
                 json: {
@@ -9548,6 +9554,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     appKey: string;
                     appSecret: string;
                     trackingId: string;
+                } | {
+                    siteId: string;
                 };
             };
             output: {
@@ -9559,7 +9567,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                 };
             } & {
                 json: {
@@ -9574,6 +9582,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     appKey: string;
                     appSecret: string;
                     trackingId: string;
+                } | {
+                    siteId: string;
                 };
             };
             output: {
@@ -9584,7 +9594,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                 };
             } & {
                 json: {
@@ -9599,6 +9609,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     appKey: string;
                     appSecret: string;
                     trackingId: string;
+                } | {
+                    siteId: string;
                 };
             };
             output: {
@@ -9609,7 +9621,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                 };
             } & {
                 json: {
@@ -9624,6 +9636,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     appKey: string;
                     appSecret: string;
                     trackingId: string;
+                } | {
+                    siteId: string;
                 };
             };
             output: {
@@ -9638,7 +9652,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $delete: {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                 };
             };
             output: {
@@ -9653,7 +9667,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                 };
             };
             output: {
@@ -9665,7 +9679,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                 };
             };
             output: {
@@ -9712,7 +9726,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             output: {
                 reason?: "not_configured" | "unsupported_store" | "conversion_failed" | undefined;
-                store: "other" | "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                store: "other" | "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem";
                 title: string;
                 image: string | null;
                 price: number | null;

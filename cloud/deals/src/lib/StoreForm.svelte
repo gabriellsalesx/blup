@@ -21,6 +21,7 @@
    case "mercadolivre":return {word:v("word"),...(v("tool")?{tool:v("tool")}:{})};
    case "shopee":return {appId:v("appId"),secret:v("secret")};
    case "aliexpress":return {appKey:v("appKey"),appSecret:v("appSecret"),trackingId:v("trackingId")};
+   case "nuuvem":return {siteId:v("siteId")};
   }
  }
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}}

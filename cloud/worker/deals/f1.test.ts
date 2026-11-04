@@ -5,7 +5,7 @@ vi.mock("cloudflare:workers",()=>({env:state.env,DurableObject:class{}}));
 vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})=>{const id=headers.get("authorization")?.replace("Bearer ","");return id?{user:{id}}:null;}}}}));
 import {dealsApi} from "./api";
 import {safeFetch,FetchError} from "./fetch";
-import {amazonLink,mercadoLivreLink,shopeeLink,aliexpressLink,aliexpressSign,aliexpressResponse,aliexpressHost,convertLink,storeOf} from "./links";
+import {nuuvemLink,rakutenTarget,amazonLink,mercadoLivreLink,shopeeLink,aliexpressLink,aliexpressSign,aliexpressResponse,aliexpressHost,convertLink,storeOf} from "./links";
 import {pageInfo,priceCents} from "./page";
 import {upsertOffer,collectDeals,dealsCleanup,gamerPowerOffers,cheapSharkOffers,type OfferInput} from "./catalog";
 import {enqueue,dayOf,seal} from "./store";
@@ -98,6 +98,24 @@ describe("link conversion by store",()=>{
  });
 });
 
+describe("Nuuvem through Rakuten",()=>{
+ it("makes Rakuten's deep link with the person's ID and drops someone else's",()=>{
+  expect(storeOf(new URL("https://www.nuuvem.com/br-pt/item/pine-hearts"))).toBe("nuuvem");
+  expect(nuuvemLink(new URL("https://www.nuuvem.com/br-pt/item/pine-hearts?utm_source=x&ranSiteID=outro#top"),"*AbCdEfGh1")).toBe("https://click.linksynergy.com/deeplink?id=*AbCdEfGh1&mid=46796&murl=https%3A%2F%2Fwww.nuuvem.com%2Fbr-pt%2Fitem%2Fpine-hearts");
+  expect(rakutenTarget(new URL("https://click.linksynergy.com/deeplink?id=*Outro0000&mid=46796&murl=https%3A%2F%2Fwww.nuuvem.com%2Fbr-pt%2Fitem%2Fpine-hearts"))?.href).toBe("https://www.nuuvem.com/br-pt/item/pine-hearts");
+  expect(rakutenTarget(new URL("https://click.linksynergy.com/deeplink?murl=http%3A%2F%2Fx.invalid"))).toBeNull();
+ });
+ it("reads the game from its page without opening the other person's link",async()=>{
+  await call("/affiliates/nuuvem",{method:"PUT",body:{siteId:"*AbCdEfGh1"}});
+  expect((await call("/affiliates/nuuvem",{method:"PUT",body:{siteId:"<x>"}})).status).toBe(400);
+  const {send,calls}=net({"www.nuuvem.com":()=>html('<meta property="og:title" content="Pine Hearts"><meta property="og:image" content="https://assets.nuuvem.com/x.jpg"><meta itemprop="priceCurrency" content="BRL" /><meta itemprop="price" content="38.99" />')});
+  vi.stubGlobal("fetch",send);
+  const preview=await(await call("/offers/preview",{method:"POST",body:{url:"https://click.linksynergy.com/deeplink?id=*Outro0000&mid=46796&murl=https%3A%2F%2Fwww.nuuvem.com%2Fbr-pt%2Fitem%2Fpine-hearts"}})).json();
+  expect(preview).toEqual({store:"nuuvem",title:"Pine Hearts",image:"https://assets.nuuvem.com/x.jpg",price:3899,currency:"BRL",link:"https://click.linksynergy.com/deeplink?id=*AbCdEfGh1&mid=46796&murl=https%3A%2F%2Fwww.nuuvem.com%2Fbr-pt%2Fitem%2Fpine-hearts",affiliate:true});
+  expect(calls.some(r=>new URL(r.url).hostname==="click.linksynergy.com")).toBe(false);
+ });
+});
+
 describe("safe fetch",()=>{
  it.each(["http://example.com/","https://127.0.0.1/","https://10.0.0.5/","https://[::1]/","https://localhost/","https://cloud.getblup.io/api/me","https://169.254.169.254/latest","ftp://example.com/"])("refuses %s",async url=>{
   const {send,calls}=net({});await expect(safeFetch(url,{send})).rejects.toMatchObject({code:"FETCH_BLOCKED"});expect(calls.filter(c=>!c.url.startsWith("https://cloudflare-dns.com"))).toHaveLength(0);
@@ -126,9 +144,9 @@ describe("secrets never come back",()=>{
   expect((await call("/affiliates/amazon",{method:"PUT",body:{appId:"1",secret:"x"}})).status).toBe(400);
   const listed=await(await call("/affiliates")).text();
   expect(listed).not.toContain("S3cretS3cret");expect(listed).not.toContain("minhatag-20");
-  expect(JSON.parse(listed).stores).toEqual([{store:"amazon",configured:true,hint:"…g-20"},{store:"mercadolivre",configured:false,hint:null},{store:"shopee",configured:true,hint:"App ID …3456"},{store:"aliexpress",configured:false,hint:null}]);
+  expect(JSON.parse(listed).stores).toEqual([{store:"amazon",configured:true,hint:"…g-20"},{store:"mercadolivre",configured:false,hint:null},{store:"shopee",configured:true,hint:"App ID …3456"},{store:"aliexpress",configured:false,hint:null},{store:"nuuvem",configured:false,hint:null}]);
   const rows=JSON.stringify(db.sqlite.prepare("SELECT * FROM deals_affiliate").all());expect(rows).not.toContain("S3cretS3cret");expect(rows).not.toContain("minhatag-20");
-  expect(await(await call("/affiliates",{user:"bob"})).json()).toMatchObject({stores:[{configured:false},{configured:false},{configured:false},{configured:false}]});
+  expect(await(await call("/affiliates",{user:"bob"})).json()).toMatchObject({stores:[{configured:false},{configured:false},{configured:false},{configured:false},{configured:false}]});
  });
  it("never sends a channel's webhook back",async()=>{
   const id=await addDiscord();
