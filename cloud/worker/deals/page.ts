@@ -24,15 +24,19 @@ function meta(html:string,names:string[]):string|null{
  return null;
 }
 // "1.299,90", "1,299.90", "1299.9" or "R$ 59" in minor units.
-export function priceCents(raw:unknown):number|null{
- if(typeof raw==="number")return Number.isFinite(raw)&&raw>=0&&raw<1e9?Math.round(raw*100):null;
+export function priceCents(raw:unknown):number|null{return priceMinor(raw,2);}
+// The same in a currency's minor units (digits: currencyDigits): 1500 yen
+// is 1500, 15.90 dollars 1590. Big amounts (rupiah, dong) fit.
+export function priceMinor(raw:unknown,digits:number):number|null{
+ const scale=10**digits;
+ if(typeof raw==="number")return Number.isFinite(raw)&&raw>=0&&raw<1e12?Math.round(raw*scale):null;
  if(typeof raw!=="string")return null;
  let v=raw.replace(/[^0-9.,]/g,"");if(!v)return null;
  const comma=v.lastIndexOf(","),dot=v.lastIndexOf(".");
  if(comma>dot)v=v.slice(0,comma).replace(/[.,]/g,"")+"."+v.slice(comma+1);
  else if(dot>comma&&v.length-dot-1!==3)v=v.slice(0,dot).replace(/[.,]/g,"")+"."+v.slice(dot+1);
  else v=v.replace(/[.,]/g,"");
- const n=Number(v);return Number.isFinite(n)&&n>=0&&n<1e9?Math.round(n*100):null;
+ const n=Number(v);return Number.isFinite(n)&&n>=0&&n<1e12&&(digits===2?n<1e9:true)?Math.round(n*scale):null;
 }
 const currency=z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/);
 const offer=z.object({price:z.union([z.string(),z.number()]).optional(),lowPrice:z.union([z.string(),z.number()]).optional(),priceCurrency:z.string().optional()}).loose();

@@ -1,18 +1,23 @@
 <script lang="ts">
- import {t} from "#lib/i18n.svelte.ts";
+ import {untrack} from "svelte";
+ import {t,intlLocale} from "#lib/i18n.svelte.ts";
  import {toast} from "#lib/toast.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
  import FloatField from "#lib/ui/FloatField.svelte";
+ import Select from "#lib/ui/Select.svelte";
  import {dealsApi,parseResponse,type Store,type StoreState} from "./api";
  import {dealsError} from "./errors";
- import {stores,magaluFromLink} from "./catalog";
+ import {stores,magaluFromLink,shopeeCountries,countryOptions,type ShopeeCountry} from "./catalog";
  // One store's affiliate fields: what was saved never comes back (only a
  // hint the server chooses), so they start empty and saving replaces it.
  // `oncancel` closes a form not saved yet. Magalu's fields can be filled
- // from one of the person's own links, pasted above them.
+ // from one of the person's own links, pasted above them. Shopee asks the
+ // country of the account (each country has its own program).
  let {store,saved,writable,onchange,oncancel}:{store:Store;saved:StoreState|undefined;writable:boolean;onchange:()=>void;oncancel?:()=>void}=$props();
  const info=$derived(stores.find(s=>s.id===store)!);
  let values=$state<Record<string,string>>({}),busy=$state(false);
+ let shopeeCountry=$state<ShopeeCountry>(untrack(()=>(saved?.country as ShopeeCountry|null)??"br"));
+ const shopeeOptions=$derived(countryOptions(shopeeCountries,intlLocale(),"br"));
  const ready=$derived(info.fields.every(f=>f.optional||(values[f.id]??"").trim()));
  const v=(id:string)=>(values[id]??"").trim();
  // The body the server expects for each store.
@@ -20,7 +25,7 @@
   switch(store){
    case "amazon":return {tag:v("tag")};
    case "mercadolivre":return {word:v("word"),...(v("tool")?{tool:v("tool")}:{})};
-   case "shopee":return {appId:v("appId"),secret:v("secret")};
+   case "shopee":return {appId:v("appId"),secret:v("secret"),country:shopeeCountry};
    case "aliexpress":return {appKey:v("appKey"),appSecret:v("appSecret"),trackingId:v("trackingId")};
    case "nuuvem":return {siteId:v("siteId")};
    case "magalu":return {promoterId:v("promoterId"),...(v("showcase")?{showcase:v("showcase")}:{})};
@@ -39,6 +44,7 @@
   <div><FloatField id="magalu-link" surface="bg-white dark:bg-neutral-900" label={t("dealsMagaluPaste")} type="url" inputmode="url" autocomplete="off" spellcheck={false} maxlength={2048} disabled={!writable} bind:value={pasted} oninput={detect}/>
   {#if found!==null}<p class="mt-1.5 text-sm {found?"text-emerald-700 dark:text-emerald-400":"text-amber-800 dark:text-amber-300"}">{found?t("dealsMagaluFound"):t("dealsMagaluNotFound")}</p>{/if}</div>
  {/if}
+ {#if store==="shopee"}<div><Select label={t("dealsShopeeCountry")} surface="bg-white dark:bg-neutral-900" options={shopeeOptions} disabled={!writable} bind:value={shopeeCountry}/><p class="mt-1.5 text-sm text-neutral-500">{t("dealsShopeeCountryHelp")}</p></div>{/if}
  {#each info.fields as field(field.id)}
   <FloatField id="{store}-{field.id}" surface="bg-white dark:bg-neutral-900" label={field.label?t(field.label):field.text??field.id} type={field.secret?"password":"text"} autocomplete="off" spellcheck={false} maxlength={200} required={!field.optional} disabled={!writable} bind:value={() => values[field.id] ?? "", (next) => (values[field.id] = next)}/>
  {/each}

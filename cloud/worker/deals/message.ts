@@ -1,5 +1,6 @@
 import {z} from "zod";
 import {languageTag,type Language} from "../../shared/language";
+import {currencyDigits} from "../../shared/deals-markets";
 import {success,failure,wait,json,type Delivery} from "../pulse/transports";
 import {discordWebhook} from "../pulse/channel-crypto";
 
@@ -16,8 +17,11 @@ export const testText=(language:Language)=>words[language].test;
 // for a clickable attribution).
 export const credits:Record<string,{label:string;url:string}>={gamerpower:{label:"Via GamerPower",url:"https://www.gamerpower.com/"}};
 const creditOf=(p:Post)=>p.credit&&Object.hasOwn(credits,p.credit)?credits[p.credit]:null;
-export function money(cents:number,currency:string,language:Language){
- try{return new Intl.NumberFormat(languageTag[language],{style:"currency",currency}).format(cents/100);}catch{return `${(cents/100).toFixed(2)} ${currency}`;}
+// Money in minor units, as many decimals as the currency has (none for
+// the yen), the same as the panel.
+export function money(minor:number,currency:string,language:Language){
+ const digits=currencyDigits(currency);
+ try{return new Intl.NumberFormat(languageTag[language],{style:"currency",currency}).format(minor/10**digits);}catch{return `${(minor/10**digits).toFixed(digits)} ${currency}`;}
 }
 // The price line: "Grátis" for a giveaway (its worth is in dollars, so it
 // is left out), else the old price and the new; without a price (another

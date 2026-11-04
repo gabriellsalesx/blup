@@ -147,7 +147,7 @@ describe("secrets never come back",()=>{
   expect((await call("/affiliates/amazon",{method:"PUT",body:{appId:"1",secret:"x"}})).status).toBe(400);
   const listed=await(await call("/affiliates")).text();
   expect(listed).not.toContain("S3cretS3cret");expect(listed).not.toContain("minhatag-20");
-  expect(JSON.parse(listed).stores).toEqual([{store:"amazon",configured:true,hint:"…g-20"},{store:"mercadolivre",configured:false,hint:null},{store:"shopee",configured:true,hint:"App ID …3456"},{store:"aliexpress",configured:false,hint:null},{store:"nuuvem",configured:false,hint:null},{store:"magalu",configured:false,hint:null},{store:"terabyte",configured:false,hint:null}]);
+  expect(JSON.parse(listed).stores).toEqual([{store:"amazon",configured:true,hint:"…g-20",country:null},{store:"mercadolivre",configured:false,hint:null,country:null},{store:"shopee",configured:true,hint:"App ID …3456 · BR",country:"br"},{store:"aliexpress",configured:false,hint:null,country:null},{store:"nuuvem",configured:false,hint:null,country:null},{store:"magalu",configured:false,hint:null,country:null},{store:"terabyte",configured:false,hint:null,country:null}]);
   const rows=JSON.stringify(db.sqlite.prepare("SELECT * FROM deals_affiliate").all());expect(rows).not.toContain("S3cretS3cret");expect(rows).not.toContain("minhatag-20");
   expect(await(await call("/affiliates",{user:"bob"})).json()).toMatchObject({stores:[{configured:false},{configured:false},{configured:false},{configured:false},{configured:false},{configured:false},{configured:false}]});
  });
@@ -615,7 +615,7 @@ describe("store hunts on Shopee and AliExpress",()=>{
  it("takes from Shopee only what is on sale, with its own links",()=>{
   const found=shopeeOffers(shopee(node(1,"89.90",30),node(2,"50.00",0),node(3,"10.00",20,{offerLink:"https://evil.invalid/x"}),node(4,"5.00",10,{imageUrl:"https://evil.invalid/i.png"})),1000);
   expect(found.map(f=>[f.offer.externalId,f.link,f.offer.price,f.offer.discount,f.offer.originalPrice,f.offer.imageUrl])).toEqual([["1","https://s.shopee.com.br/off1",8990,30,null,"https://down-br.img.susercontent.com/file/1"],["4","https://s.shopee.com.br/off4",500,10,null,null]]);
-  expect(found[0].offer).toMatchObject({store:"shopee",kind:"store_deal",url:"https://shopee.com.br/product/1/1",currency:"BRL",key:"shopee:1:8990"});
+  expect(found[0].offer).toMatchObject({store:"shopee",kind:"store_deal",url:"https://shopee.com.br/product/1/1",currency:"BRL",key:"shopee:br:1:8990"});
   expect(()=>shopeeOffers({errors:[{message:"Invalid Signature"}]})).toThrow(ShopRefused);
  });
  it("takes from AliExpress the reais price, the price before and the tracked link",()=>{
@@ -654,5 +654,24 @@ describe("store hunts on Shopee and AliExpress",()=>{
   expect(listed.hunts).toEqual([expect.objectContaining({kind:"store_deals",shop:{error:"STORE_REFUSED"}})]);
   expect((await call(`/hunts/${id}`,{method:"DELETE"})).status).toBe(200);
   expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_source WHERE id=?").get(`shop:${id}`)?.n).toBe(0);
+ });
+ it("sells in the money of each country: Shopee by the account, AliExpress by the hunt",async()=>{
+  const channel=await addDiscord();
+  expect((await call("/affiliates/shopee",{method:"PUT",body:{appId:"12345",secret:"s".repeat(32),country:"my"}})).status).toBe(200);
+  expect((await call("/affiliates/aliexpress",{method:"PUT",body:{appKey:"123456",appSecret:"a".repeat(32),trackingId:"meutrack"}})).status).toBe(200);
+  expect((await call("/hunts",{method:"POST",body:{kind:"store_deals",channelIds:[channel],filters:{store:"shopee",market:"us",keywords:["lamp"]}}})).status).toBe(400);
+  expect((await call("/hunts",{method:"POST",body:{kind:"store_deals",channelIds:[channel],filters:{store:"shopee",keywords:["lamp"],minDiscount:10}}})).status).toBe(201);
+  expect((await call("/hunts",{method:"POST",body:{kind:"store_deals",channelIds:[channel],filters:{store:"aliexpress",market:"jp",keywords:["lamp"],minDiscount:10,maxPrice:5000}}})).status).toBe(201);
+  const aliAsked:URLSearchParams[]=[];
+  const {send,calls}=net({
+   "open-api.affiliate.shopee.com.my":()=>Response.json(shopee(node(7,"25.90",20,{productLink:"https://shopee.com.my/product/1/7",offerLink:"https://s.shopee.com.my/x7"}))),
+   "api-sg.aliexpress.com":req=>{const q=new URL(req.url).searchParams;aliAsked.push(q);return Response.json({aliexpress_affiliate_product_query_response:{resp_result:{resp_code:200,result:{products:{product:[{product_id:55,product_title:"Lamp",promotion_link:"https://s.click.aliexpress.com/e/_55",target_sale_price:"1980",target_sale_price_currency:"JPY",target_original_price:"3960",discount:"50%"},{product_id:56,product_title:"Big lamp",promotion_link:"https://s.click.aliexpress.com/e/_56",target_sale_price:"6000",target_sale_price_currency:"JPY",target_original_price:"9000",discount:"33%"}]}}}}});},
+  });
+  await collectShops(state.env,send,Date.now()+1000);
+  expect(calls.some(c=>c.url==="https://open-api.affiliate.shopee.com.my/graphql")).toBe(true);
+  expect(Object.fromEntries(["target_currency","ship_to_country","target_language","tracking_id"].map(k=>[k,aliAsked[0].get(k)]))).toEqual({target_currency:"JPY",ship_to_country:"JP",target_language:"JA",tracking_id:"meutrack"});
+  // The yen has no decimals: 1980 yen is 1980, and over the limit (5000 yen) stays out.
+  expect(db.sqlite.prepare("SELECT o.store,o.price,o.original_price AS before,o.currency,p.link FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id ORDER BY o.store").all()).toEqual([{store:"aliexpress",price:1980,before:3960,currency:"JPY",link:"https://s.click.aliexpress.com/e/_55"},{store:"shopee",price:2590,before:null,currency:"MYR",link:"https://s.shopee.com.my/x7"}]);
+  expect(telegramText({title:"Lamp",price:1980,originalPrice:3960,currency:"JPY",discount:50,link:"https://deals.audit.invalid/r/x",affiliate:true,kind:"store_deal",credit:null,image:null},"en")).toContain("¥1,980");
  });
 });

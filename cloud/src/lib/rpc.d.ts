@@ -9438,6 +9438,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
                     configured: boolean;
                     hint: string | null;
+                    country: "id" | "th" | "br" | "my" | "sg" | "vn" | "ph" | "tw" | null;
                 }[];
             };
             outputFormat: "json";
@@ -9460,6 +9461,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 } | {
                     appId: string;
                     secret: string;
+                    country?: string | undefined;
                 } | {
                     appKey: string;
                     appSecret: string;
@@ -9498,6 +9500,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 } | {
                     appId: string;
                     secret: string;
+                    country?: string | undefined;
                 } | {
                     appKey: string;
                     appSecret: string;
@@ -9533,6 +9536,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 } | {
                     appId: string;
                     secret: string;
+                    country?: string | undefined;
                 } | {
                     appKey: string;
                     appSecret: string;
@@ -9571,6 +9575,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 } | {
                     appId: string;
                     secret: string;
+                    country?: string | undefined;
                 } | {
                     appKey: string;
                     appSecret: string;
@@ -9606,6 +9611,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 } | {
                     appId: string;
                     secret: string;
+                    country?: string | undefined;
                 } | {
                     appKey: string;
                     appSecret: string;
@@ -9640,6 +9646,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 } | {
                     appId: string;
                     secret: string;
+                    country?: string | undefined;
                 } | {
                     appKey: string;
                     appSecret: string;
@@ -9674,6 +9681,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 } | {
                     appId: string;
                     secret: string;
+                    country?: string | undefined;
                 } | {
                     appKey: string;
                     appSecret: string;
@@ -10167,6 +10175,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {};
             output: {
                 hunts: {
+                    currency: string | null;
                     id: string;
                     kind: "games_free" | "nuuvem_deals" | "store_deals" | "mirror";
                     active: boolean;
@@ -10174,12 +10183,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     };
                     createdAt: string;
                     mirror: {
@@ -10261,12 +10271,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     };
                     channel?: string | undefined;
                 };
@@ -10288,12 +10299,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     };
                     channel?: string | undefined;
                 };
@@ -10312,12 +10324,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     };
                     channel?: string | undefined;
                 };
@@ -10335,12 +10348,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     };
                     channel?: string | undefined;
                 };
@@ -10358,12 +10372,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     };
                     channel?: string | undefined;
                 };
@@ -10381,12 +10396,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     };
                     channel?: string | undefined;
                 };
@@ -10404,12 +10420,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     };
                     channel?: string | undefined;
                 };
@@ -10435,12 +10452,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10465,12 +10483,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10492,12 +10511,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10522,12 +10542,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10549,12 +10570,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10575,12 +10597,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10601,12 +10624,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     } | undefined;
                 };
             };
@@ -10627,12 +10651,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
+                        market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
                         platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
-                        country?: "br" | "ar" | "bo" | "ca" | "cl" | "co" | "ec" | "mx" | "pe" | "us" | "uy" | undefined;
+                        country?: "br" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "bo" | "ec" | "uy" | undefined;
                     } | undefined;
                 };
             };

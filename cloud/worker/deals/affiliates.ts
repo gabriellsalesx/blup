@@ -3,26 +3,30 @@ import {z} from "zod";
 import {validate} from "../validation";
 import {dealsWrite,type DealsApp} from "./access";
 import {stores,storeSchema,affiliateBody,affiliateHint} from "./links";
-import {seal} from "./store";
+import {seal,affiliateOf} from "./store";
 
 const storeParam=z.object({store:storeSchema});
 // The body of each store, as the panel sends it (the store is in the path).
 const body=z.union([
  z.object({tag:z.string().max(64)}).strict(),
  z.object({word:z.string().max(64),tool:z.string().max(20).optional()}).strict(),
- z.object({appId:z.string().max(20),secret:z.string().max(128)}).strict(),
+ z.object({appId:z.string().max(20),secret:z.string().max(128),country:z.string().max(2).optional()}).strict(),
  z.object({appKey:z.string().max(20),appSecret:z.string().max(128),trackingId:z.string().max(64)}).strict(),
  z.object({siteId:z.string().max(32)}).strict(),
  z.object({promoterId:z.string().max(64),showcase:z.string().max(70).optional()}).strict(),
  z.object({partner:z.string().max(64),utmMedium:z.string().max(64).optional(),utmCampaign:z.string().max(64).optional()}).strict(),
 ]);
 // The IDs and keys are sealed at rest. The panel only ever learns whether
-// a store is configured and a few characters to recognize it.
+// a store is configured, a few characters to recognize it and, for
+// Shopee, the country of the account (its currency, in the hunt form).
 export const affiliatesApi=new Hono<DealsApp>()
  .get("/",async c=>{
-  const rows=await c.env.DB.prepare("SELECT store,hint,credentials IS NOT NULL AS configured FROM deals_affiliate WHERE user_id=?").bind(c.get("session").user.id).all<{store:string;hint:string|null;configured:number}>();
+  const owner=c.get("session").user.id;
+  const rows=await c.env.DB.prepare("SELECT store,hint,credentials IS NOT NULL AS configured FROM deals_affiliate WHERE user_id=?").bind(owner).all<{store:string;hint:string|null;configured:number}>();
   const saved=new Map(rows.results.map(r=>[r.store,r]));
-  return c.json({stores:stores.map(store=>({store,configured:!!saved.get(store)?.configured,hint:saved.get(store)?.hint??null}))});
+  const shopee=saved.get("shopee")?.configured?await affiliateOf(c.env,owner,"shopee"):null;
+  const country=shopee?.store==="shopee"?shopee.country??"br":null;
+  return c.json({stores:stores.map(store=>({store,configured:!!saved.get(store)?.configured,hint:saved.get(store)?.hint??null,country:store==="shopee"?country:null}))});
  })
  .put("/:store",dealsWrite,validate("param",storeParam),validate("json",body),async c=>{
   const owner=c.get("session").user.id,store=c.req.valid("param").store,parsed=affiliateBody.safeParse({...c.req.valid("json"),store});

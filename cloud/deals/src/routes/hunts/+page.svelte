@@ -31,9 +31,9 @@
  const soon=huntKinds.filter(k=>k.soon);
  const artOf=(kind:Hunt["kind"])=>huntKinds.find(k=>k.id===kind)!.art;
  function summary(hunt:Hunt){
-  const f=hunt.filters,parts=hunt.kind==="mirror"?[`@${hunt.mirror?.channel??""}`,f.stores?.length?f.stores.map(s=>storeName[s]).join(", "):t("dealsAllStores")]:hunt.kind==="store_deals"?[f.store?storeName[f.store]:"",(f.keywords??[]).join(", ")]:hunt.kind==="nuuvem_deals"?[countryName(f.country??"br",intlLocale()),...(f.gamesOnly!==false?[t("dealsGamesOnly")]:[])]:[f.platforms?.length?f.platforms.map(platformLabel).join(", "):t("dealsAllPlatforms")];
+  const f=hunt.filters,parts=hunt.kind==="mirror"?[`@${hunt.mirror?.channel??""}`,f.stores?.length?f.stores.map(s=>storeName[s]).join(", "):t("dealsAllStores")]:hunt.kind==="store_deals"?[f.store?storeName[f.store]:"",...(f.store==="aliexpress"?[countryName(f.market??"br",intlLocale())]:[]),(f.keywords??[]).join(", ")]:hunt.kind==="nuuvem_deals"?[countryName(f.country??"br",intlLocale()),...(f.gamesOnly!==false?[t("dealsGamesOnly")]:[])]:[f.platforms?.length?f.platforms.map(platformLabel).join(", "):t("dealsAllPlatforms")];
   if(f.minDiscount!==undefined)parts.push(t("dealsDiscountFrom",{percent:String(f.minDiscount)}));
-  if(f.maxPrice!==undefined)parts.push(t("dealsUpTo",{price:money(f.maxPrice,"BRL",language())}));
+  if(f.maxPrice!==undefined)parts.push(t("dealsUpTo",{price:money(f.maxPrice,hunt.currency??"BRL",language())}));
   const n=hunt.channelIds.length;parts.push(n===1?t("dealsOneChannel"):t("dealsChannelCount",{count:n.toLocaleString(intlLocale())}));
   return parts.join(" · ");
  }

@@ -1,5 +1,6 @@
 import {z} from "zod";
 import {apiJSON,FetchError} from "./fetch";
+import {shopeeCountries,shopeeApi,type ShopeeCountry} from "../../shared/deals-markets";
 
 // The stores Blup knows how to put the person's affiliate ID into. Any
 // other store is "other": the link goes as it is, without commission.
@@ -13,7 +14,9 @@ const id=(max:number)=>z.string().trim().regex(new RegExp(`^[A-Za-z0-9_-]{2,${ma
 export const affiliateBody=z.discriminatedUnion("store",[
  z.object({store:z.literal("amazon"),tag:id(64)}).strict(),
  z.object({store:z.literal("mercadolivre"),word:id(64),tool:z.string().trim().regex(/^[0-9]{1,20}$/).optional()}).strict(),
- z.object({store:z.literal("shopee"),appId:z.string().trim().regex(/^[0-9]{3,20}$/),secret:z.string().trim().regex(/^[A-Za-z0-9]{16,128}$/)}).strict(),
+ // Shopee: the keys of the person's account and its country (each country
+ // has its own program and API; Brazil when not said).
+ z.object({store:z.literal("shopee"),appId:z.string().trim().regex(/^[0-9]{3,20}$/),secret:z.string().trim().regex(/^[A-Za-z0-9]{16,128}$/),country:z.enum(shopeeCountries).optional()}).strict(),
  z.object({store:z.literal("aliexpress"),appKey:z.string().trim().regex(/^[0-9]{3,20}$/),appSecret:z.string().trim().regex(/^[A-Za-z0-9]{16,128}$/),trackingId:id(64)}).strict(),
  // Nuuvem pays through Rakuten Advertising: the person's Rakuten ID (the
  // id= of any of their links, like *AbCdEfGh1).
@@ -29,7 +32,7 @@ export type Affiliate=z.infer<typeof affiliateBody>;
 // A few characters so the person recognizes what is saved.
 export function affiliateHint(a:Affiliate):string{
  const tail=(v:string)=>v.length<=4?"…":`…${v.slice(-4)}`;
- switch(a.store){case "amazon":return tail(a.tag);case "mercadolivre":return tail(a.word);case "shopee":return `App ID ${tail(a.appId)}`;case "aliexpress":return `App Key ${tail(a.appKey)}`;case "nuuvem":return tail(a.siteId);case "magalu":return a.showcase??tail(a.promoterId);case "terabyte":return tail(a.partner);}
+ switch(a.store){case "amazon":return tail(a.tag);case "mercadolivre":return tail(a.word);case "shopee":return `App ID ${tail(a.appId)} · ${(a.country??"br").toUpperCase()}`;case "aliexpress":return `App Key ${tail(a.appKey)}`;case "nuuvem":return tail(a.siteId);case "magalu":return a.showcase??tail(a.promoterId);case "terabyte":return tail(a.partner);}
 }
 
 const amazonHost=/^(?:www\.|smile\.|m\.)?amazon\.(?:com|com\.br|ca|com\.mx|co\.uk|de|es|fr|it|nl|se|pl|co\.jp|in|com\.au|sg|ae|sa|com\.tr|eg|com\.be)$/;
@@ -41,7 +44,7 @@ const magaluHost=/(?:^|\.)(?:magazineluiza\.com\.br|magazinevoce\.com\.br|magalu
 const terabyteHost=/(?:^|\.)terabyteshop\.com\.br$/;
 // Short addresses the stores hand out; the preview follows them (safely)
 // to the product before anything is converted.
-const shortHosts=new Set(["amzn.to","a.co","amzn.eu","meli.la","shope.ee","s.shopee.com.br","s.click.aliexpress.com","a.aliexpress.com","divulgador.magalu.com","magalu.onelink.me"]);
+const shortHosts=new Set(["amzn.to","a.co","amzn.eu","meli.la","shope.ee","shp.ee","s.shopee.com.br","s.shopee.com.my","s.shopee.sg","s.shopee.co.th","s.shopee.co.id","s.shopee.vn","s.shopee.ph","s.shopee.tw","s.click.aliexpress.com","a.aliexpress.com","divulgador.magalu.com","magalu.onelink.me"]);
 export const isShortLink=(url:URL)=>shortHosts.has(url.hostname);
 export function storeOf(url:URL):Store|"other"{
  const host=url.hostname.toLowerCase();
@@ -95,16 +98,20 @@ export function terabyteLink(url:URL,partner:string,utmMedium?:string,utmCampaig
 const hex=(bytes:ArrayBuffer)=>Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
 // Shopee Affiliate Open API (GraphQL, Brazil): the request is signed with
 // SHA256(appId + timestamp + payload + secret).
-export async function shopeeCall(appId:string,secret:string,query:string,variables:Record<string,unknown>,send:typeof fetch=fetch,now=Date.now()):Promise<unknown>{
+// The country's own API.
+export async function shopeeCall(appId:string,secret:string,query:string,variables:Record<string,unknown>,send:typeof fetch=fetch,now=Date.now(),country:ShopeeCountry="br"):Promise<unknown>{
  const timestamp=Math.floor(now/1000),payload=JSON.stringify({query,variables});
  const signature=hex(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(`${appId}${timestamp}${payload}${secret}`)));
- return apiJSON("https://open-api.affiliate.shopee.com.br/graphql",{method:"POST",headers:{"content-type":"application/json",authorization:`SHA256 Credential=${appId}, Timestamp=${timestamp}, Signature=${signature}`},body:payload},send);
+ return apiJSON(shopeeApi(country),{method:"POST",headers:{"content-type":"application/json",authorization:`SHA256 Credential=${appId}, Timestamp=${timestamp}, Signature=${signature}`},body:payload},send);
 }
-export async function shopeeLink(url:URL,appId:string,secret:string,send:typeof fetch=fetch,now=Date.now()):Promise<string>{
- const body=await shopeeCall(appId,secret,"mutation($url:String!){generateShortLink(input:{originUrl:$url,subIds:[\"blupdeals\"]}){shortLink}}",{url:new URL(url.origin+url.pathname).href},send,now);
+// A Shopee address of any country (its store or its short links).
+export const shopeeLinkHost=/^(?:(?:[a-z0-9-]+\.)*shopee\.(?:com\.br|com\.my|sg|co\.th|co\.id|vn|ph|tw)|shope\.ee|shp\.ee)$/;
+export async function shopeeLink(url:URL,appId:string,secret:string,send:typeof fetch=fetch,now=Date.now(),country:ShopeeCountry="br"):Promise<string>{
+ const body=await shopeeCall(appId,secret,"mutation($url:String!){generateShortLink(input:{originUrl:$url,subIds:[\"blupdeals\"]}){shortLink}}",{url:new URL(url.origin+url.pathname).href},send,now,country);
  const parsed=z.object({data:z.object({generateShortLink:z.object({shortLink:z.url().max(512)})})}).safeParse(body);
- if(!parsed.success||!/^https:\/\/(?:s\.)?shope(?:e\.com\.br|\.ee)\//.test(parsed.data.data.generateShortLink.shortLink))throw new FetchError("FETCH_FAILED");
- return parsed.data.data.generateShortLink.shortLink;
+ const link=parsed.success?new URL(parsed.data.data.generateShortLink.shortLink):null;
+ if(!link||link.protocol!=="https:"||link.username||link.password||link.port||!shopeeLinkHost.test(link.hostname))throw new FetchError("FETCH_FAILED");
+ return link.href;
 }
 // AliExpress Open Platform (IOP, /sync): parameters sorted by name, each
 // name and value joined, signed with HMAC-SHA256 under the app secret,
@@ -151,7 +158,7 @@ export async function convertLink(url:URL,affiliate:Affiliate|null,send:typeof f
   switch(affiliate.store){
    case "amazon":return {store,link:amazonLink(url,affiliate.tag),affiliate:true};
    case "mercadolivre":return {store,link:mercadoLivreLink(url,affiliate.word,affiliate.tool),affiliate:true};
-   case "shopee":return {store,link:await shopeeLink(url,affiliate.appId,affiliate.secret,send),affiliate:true};
+   case "shopee":return {store,link:await shopeeLink(url,affiliate.appId,affiliate.secret,send,Date.now(),affiliate.country),affiliate:true};
    case "aliexpress":return {store,link:await aliexpressLink(url,affiliate.appKey,affiliate.appSecret,affiliate.trackingId,send),affiliate:true};
    case "nuuvem":return {store,link:nuuvemLink(url,affiliate.siteId),affiliate:true};
    case "magalu":return {store,link:magaluLink(url,affiliate.promoterId,affiliate.showcase),affiliate:true};

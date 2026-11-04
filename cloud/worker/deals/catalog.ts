@@ -6,6 +6,7 @@ import {dealsAccess} from "./access";
 import {enqueue,affiliateOf,DAY} from "./store";
 import {nuuvemLink,storeSchema} from "./links";
 import {readNuuvem,rakutenCredentials,isCredit} from "./nuuvem";
+import {aliexpressCountries} from "../../shared/deals-markets";
 
 // The global catalog: an offer is stored once, whoever finds it, by a hash
 // of where it comes from and what it is. Each price change goes to the
@@ -71,9 +72,10 @@ export function nuuvemPage(url:string,country:string){
 // maxPrice is in reais, so only for Nuuvem's Brazil store and the stores'
 // sales. stores (a mirror) keeps only the posts of those stores. store and
 // keywords: the store a store hunt searches (with the person's own API
-// keys) and what it searches for.
+// keys) and what it searches for; market the country AliExpress sells to
+// (its currency). maxPrice is in the minor units of the hunt's currency.
 export const shopStores=["shopee","aliexpress"] as const;
-export const huntFilters=z.object({stores:z.array(storeSchema).max(storeSchema.options.length).optional(),store:z.enum(shopStores).optional(),keywords:z.array(z.string().trim().min(2).max(60).regex(/^[^\u0000-\u001f\u007f]+$/)).min(1).max(5).optional(),platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(100_000_00).optional(),gamesOnly:z.boolean().optional(),country:z.enum(nuuvemCountries).optional()}).strict();
+export const huntFilters=z.object({stores:z.array(storeSchema).max(storeSchema.options.length).optional(),store:z.enum(shopStores).optional(),market:z.enum(aliexpressCountries).optional(),keywords:z.array(z.string().trim().min(2).max(60).regex(/^[^\u0000-\u001f\u007f]+$/)).min(1).max(5).optional(),platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(1e13).optional(),gamesOnly:z.boolean().optional(),country:z.enum(nuuvemCountries).optional()}).strict();
 export type HuntFilters=z.infer<typeof huntFilters>;
 export const huntKinds=["games_free","nuuvem_deals"] as const;
 export type HuntKind=(typeof huntKinds)[number];

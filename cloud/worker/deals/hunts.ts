@@ -7,6 +7,7 @@ import {huntFilters,huntKinds,huntSource,feedHunt,huntRow,type HuntFilters} from
 import {usableChannels,affiliateOf,DAY} from "./store";
 import {channelName,mirrorSourceId,fetchChannel} from "./mirror";
 import {shopSourceId} from "./shops";
+import {aliexpressCurrency,shopeeCurrency} from "../../shared/deals-markets";
 import {FetchError} from "./fetch";
 
 const huntParam=z.object({hunt:opaqueId});
@@ -15,13 +16,14 @@ const channelIds=z.array(opaqueId).min(1).max(dealsLimits.channels);
 // channel). Giveaways take platforms; Nuuvem's sales a country instead,
 // and a price limit only in Brazil (the catalog's reais); a mirror only
 // the stores it keeps; a store hunt (Shopee or AliExpress, with the
-// person's API keys) its store, its words, a discount and a price limit.
+// person's API keys) its store, its words, a discount and a price limit
+// (in its currency), and for AliExpress the country it sells to.
 const allKinds=[...huntKinds,"store_deals","mirror"] as const;
 type Kind=(typeof allKinds)[number];
 const fits=(kind:Kind,filters:HuntFilters)=>{
  if(kind==="mirror")return Object.keys(filters).every(k=>k==="stores");
- if(kind==="store_deals")return !!filters.store&&!!filters.keywords?.length&&Object.keys(filters).every(k=>["store","keywords","minDiscount","maxPrice"].includes(k));
- if(filters.stores!==undefined||filters.store!==undefined||filters.keywords!==undefined)return false;
+ if(kind==="store_deals")return !!filters.store&&!!filters.keywords?.length&&(filters.market===undefined||filters.store==="aliexpress")&&Object.keys(filters).every(k=>["store","keywords","market","minDiscount","maxPrice"].includes(k));
+ if(filters.stores!==undefined||filters.store!==undefined||filters.keywords!==undefined||filters.market!==undefined)return false;
  return kind==="games_free"?filters.country===undefined&&filters.gamesOnly===undefined&&filters.maxPrice===undefined:!filters.platforms?.length&&(filters.maxPrice===undefined||(filters.country??"br")==="br");
 };
 const names={games_free:"Jogos grátis",nuuvem_deals:"Promoções da Nuuvem",store_deals:"Promoções de lojas",mirror:"Espelhamento"} as const;
@@ -53,8 +55,15 @@ async function feedNow(env:Cloudflare.Env,id:string){
 
 export const huntsApi=new Hono<DealsApp>()
  .get("/",async c=>{
-  const rows=await c.env.DB.prepare(`${select} WHERE h.user_id=? AND h.kind IN(${kinds}) AND (h.retire_at IS NULL OR h.retire_at>?) ORDER BY h.created_at,h.id LIMIT 50`).bind(c.get("session").user.id,Date.now()).all<Row>();
-  return c.json({hunts:rows.results.map(view)});
+  const owner=c.get("session").user.id;
+  const rows=await c.env.DB.prepare(`${select} WHERE h.user_id=? AND h.kind IN(${kinds}) AND (h.retire_at IS NULL OR h.retire_at>?) ORDER BY h.created_at,h.id LIMIT 50`).bind(owner,Date.now()).all<Row>();
+  const hunts=rows.results.map(view);
+  // The money of each hunt's prices: Nuuvem's catalog is in reais;
+  // AliExpress's is the country's it sells to; Shopee's the account's.
+  const shopee=hunts.some(h=>h.filters.store==="shopee")?await affiliateOf(c.env,owner,"shopee"):null;
+  const shopeeCountry=shopee?.store==="shopee"?shopee.country??"br":"br";
+  const currency=(h:(typeof hunts)[number])=>h.kind==="nuuvem_deals"?"BRL":h.kind!=="store_deals"?null:h.filters.store==="aliexpress"?aliexpressCurrency(h.filters.market??"br"):shopeeCurrency[shopeeCountry];
+  return c.json({hunts:hunts.map(h=>({...h,currency:currency(h)}))});
  })
  .post("/mirror/check",dealsWrite,validate("json",z.object({channel:z.string().max(200)}).strict()),async c=>{
   const checked=await checkChannel(c.req.valid("json").channel);

@@ -5,6 +5,8 @@ import mirrorArt from "./assets/hunt-mirror.svg";
 import type {PlainMessageKey} from "#lib/i18n/catalog.ts";
 import {t} from "#lib/i18n.svelte.ts";
 import type {Hunt,HuntKind,Store as StoreId} from "./api";
+import {aliexpressCurrency,shopeeCurrency,type ShopeeCountry} from "../../../shared/deals-markets";
+export {aliexpressCountries,shopeeCountries,currencyDigits,type AliexpressCountry,type ShopeeCountry} from "../../../shared/deals-markets";
 // What the Deals panel knows about stores, hunts and platforms (names,
 // help, which fields a store asks for). Brand names stay as they are.
 export const storeName:Record<StoreId,string>={amazon:"Amazon",mercadolivre:"Mercado Livre",shopee:"Shopee",aliexpress:"AliExpress",nuuvem:"Nuuvem",magalu:"Magalu",terabyte:"Terabyte"};
@@ -52,11 +54,23 @@ export const huntName=(kind:HuntKind)=>huntNames[kind];
 // link opens that country's page, with its own price.
 export type NuuvemCountry=NonNullable<Hunt["filters"]["country"]>;
 export const nuuvemCountries=["br","ar","bo","ca","cl","co","ec","mx","pe","us","uy"] as const satisfies readonly NuuvemCountry[];
-// Each country's flag, from flag-icons 7.6.0 (MIT, assets/flags/LICENSE),
-// unchanged.
+// Each country's flag (Nuuvem's, Shopee's and AliExpress's countries),
+// from flag-icons 7.6.0 (MIT, assets/flags/LICENSE), unchanged.
 const flagFiles=import.meta.glob<string>("./assets/flags/*.svg",{eager:true,import:"default"});
-export const countryFlag=(country:NuuvemCountry)=>flagFiles[`./assets/flags/${country}.svg`];
-export function countryName(country:NuuvemCountry,locale:string){try{return new Intl.DisplayNames([locale],{type:"region"}).of(country.toUpperCase())??country;}catch{return country.toUpperCase();}}
+export const countryFlag=(country:string):string|undefined=>flagFiles[`./assets/flags/${country}.svg`];
+// Countries for a Select: named in the panel's language, with flags, in
+// alphabetical order with `first` on top.
+export const countryOptions=<T extends string>(list:readonly T[],locale:string,first?:T)=>list.map(value=>({value,label:countryName(value,locale),image:countryFlag(value)})).sort((a,b)=>a.value===first?-1:b.value===first?1:a.label.localeCompare(b.label,locale));
+// A currency's name inside a sentence: "iene japonês" in Portuguese and
+// Spanish, which write it in lower case; English keeps its capitals.
+export function currencyName(currency:string,locale:string){
+ let name=currency;try{name=new Intl.DisplayNames([locale],{type:"currency"}).of(currency)??currency;}catch{/* the code itself */}
+ return /^(?:pt|es)\b/.test(locale)&&name!==currency?name.charAt(0).toLocaleLowerCase(locale)+name.slice(1):name;
+}
+// The money a store hunt's prices come in: Shopee's account country's,
+// AliExpress's country's (its market).
+export const shopCurrency=(store:"shopee"|"aliexpress",market:Parameters<typeof aliexpressCurrency>[0],account:ShopeeCountry)=>store==="shopee"?shopeeCurrency[account]:aliexpressCurrency(market);
+export function countryName(country:string,locale:string){try{return new Intl.DisplayNames([locale],{type:"region"}).of(country.toUpperCase())??country;}catch{return country.toUpperCase();}}
 // The platforms the server accepts (giveaways); Nuuvem's sales take none.
 export const platforms=[
  {id:"pc",label:"PC"},{id:"steam",label:"Steam"},{id:"epic",label:"Epic Games"},{id:"gog",label:"GOG"},{id:"ubisoft",label:"Ubisoft"},
