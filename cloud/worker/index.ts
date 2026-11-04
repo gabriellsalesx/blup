@@ -38,6 +38,11 @@ import {pulseMaintenance} from "./pulse/cleanup";
 import {servePulsePage} from "./pulse/public";
 import {pulseApi} from "./pulse/api";
 import {dealsApi} from "./deals/api";
+import {serveDealsLink} from "./deals/redirect";
+import {collectDeals,dealsCleanup} from "./deals/catalog";
+import {dealsLifecycle} from "./deals/purge";
+import {dispatchDeals} from "./deals/dispatch";
+import {dealsLimits} from "../shared/pulse-plans";
 import {pulseIngest} from "./pulse/ingest";
 
 type App = { Bindings: Cloudflare.Env; Variables: { session: Session } };
@@ -261,6 +266,7 @@ export default {
 		const url = new URL(req.url);
 		if(url.hostname===env.PULSE_INGEST_HOST)return secure(await pulseIngest(req,env));
 		if(url.hostname===env.PULSE_PUBLIC_HOST)return secure(await servePulsePage(req,env)??new Response("Not found",{status:404}));
+		if(env.DEALS_PUBLIC_HOST&&url.hostname===env.DEALS_PUBLIC_HOST)return secure(await serveDealsLink(req,env));
 		const corsOrigin=panelCorsOrigin(env,req.headers.get("origin"),url.pathname);
 		if(corsOrigin&&req.method==="OPTIONS")return secure(new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":corsOrigin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Methods":"GET, POST, PUT, PATCH, DELETE, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-Blup-Language, X-Captcha-Response","Access-Control-Max-Age":"600",Vary:"Origin"}}));
 		const staffApi = url.pathname.startsWith("/api/staff");
@@ -280,8 +286,8 @@ export default {
 	// Every 5 minutes, the calendar's reminders by e-mail; once a day, the
 	// clean-up of old versions and unused blocks.
 	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
-		if(controller.cron==="* * * * *"){ctx.waitUntil(checkDue(env).then(()=>reconcileAlerts(env)).then(()=>dispatchAlerts(env)));return;}
-		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([pulseMaintenance(env,true),cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))]));
+		if(controller.cron==="* * * * *"){ctx.waitUntil(Promise.all([checkDue(env).then(()=>reconcileAlerts(env)).then(()=>dispatchAlerts(env)),collectDeals(env).then(()=>dispatchDeals(env))]));return;}
+		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([pulseMaintenance(env,true),dealsCleanup(env,dealsLimits.historyDays),dealsLifecycle(env),cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))]));
 		else ctx.waitUntil(Promise.all([pulseMaintenance(env),sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)]).then(()=>flushSitePurges(env)));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>;

@@ -204,6 +204,20 @@
       "when": 1793754348621,
       "tag": "0028_deals_base",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1793756220103,
+      "tag": "0029_deals_f1",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1793757166286,
+      "tag": "0030_deals_account",
+      "breakpoints": true
     }
   ]
 }

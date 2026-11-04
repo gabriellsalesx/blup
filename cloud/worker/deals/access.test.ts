@@ -41,10 +41,10 @@ it("keeps Ultra's Cloud limits and sells each variant by its own Stripe price",(
 });
 
 it("gives Deals to Ultra + Deals subscriptions and to the owner only",async()=>{
- expect(await dealsAccess(state.env,"deals")).toEqual({plan:"ultra_deals",limits:dealsLimits,readOnly:false});
- expect(await dealsAccess(state.env,"both")).toEqual({plan:"ultra_pulse_deals",limits:dealsLimits,readOnly:false});
+ expect(await dealsAccess(state.env,"deals")).toEqual({plan:"ultra_deals",limits:dealsLimits,readOnly:false,readable:true,readOnlyUntil:null});
+ expect(await dealsAccess(state.env,"both")).toEqual({plan:"ultra_pulse_deals",limits:dealsLimits,readOnly:false,readable:true,readOnlyUntil:null});
  expect((await dealsAccess(state.env,"owner")).plan).toBe("ultra_pulse_deals");
- for(const id of ["ultra","pulse","max","free","nobody"])expect(await dealsAccess(state.env,id)).toEqual({plan:null,limits:null,readOnly:true});
+ for(const id of ["ultra","pulse","max","free","nobody"])expect(await dealsAccess(state.env,id)).toEqual({plan:null,limits:null,readOnly:true,readable:false,readOnlyUntil:null});
 });
 
 it("ends with the subscription and with a banned or deleted account",async()=>{

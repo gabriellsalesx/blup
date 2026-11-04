@@ -1,5 +1,5 @@
 <script lang="ts">
- // How much of a plan limit is used, as on the Projects page: a line of text
+ // How much of a plan limit is used (Pulse and Deals): a line of text
  // and a bar (red from 90%).
  let {text,used,limit}:{text:string;used:number;limit:number}=$props();
  const share=$derived(limit>0?Math.min(100,used/limit*100):0);

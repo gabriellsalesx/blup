@@ -16,7 +16,7 @@
  import List from "#lib/ui/List.svelte";
  import ListItem from "#lib/ui/ListItem.svelte";
  import StatusDot from "#lib/ui/StatusDot.svelte";
- import UsageMeter from "../lib/UsageMeter.svelte";
+ import UsageMeter from "#lib/ui/UsageMeter.svelte";
  import {confirm} from "#lib/confirm.svelte.ts";
  import {toast} from "#lib/toast.svelte.ts";
  import {platforms} from "../../../shared/pulse-platforms";

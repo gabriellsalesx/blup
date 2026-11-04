@@ -18,7 +18,7 @@
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import UptimeBars from "#lib/ui/UptimeBars.svelte";
  import {panel} from "../../lib/panel.svelte";
- import UsageMeter from "../../lib/UsageMeter.svelte";
+ import UsageMeter from "#lib/ui/UsageMeter.svelte";
  import {stateOf,stateName,stateColor,since,bars,type Monitor} from "../../lib/monitor";
  // Each monitor is one row: its state as the color of its edge and address,
  // its name,

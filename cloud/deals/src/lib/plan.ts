@@ -1,3 +1,4 @@
 import {panel} from "./panel.svelte";
-// Actions (new hunt, connect channel...) show only with the Deals plan on.
-export const hasPlan=()=>!!panel.usage?.plan;
+// Changes (a new hunt, a channel, a post) show only with the Deals plan on
+// and the panel not read-only.
+export const hasPlan=()=>!!panel.usage?.plan&&!panel.usage.readOnly;

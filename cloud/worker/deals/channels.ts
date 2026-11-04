@@ -1,0 +1,134 @@
+import {Hono} from "hono";
+import {z} from "zod";
+import {validate,opaqueId} from "../validation";
+import {discordWebhook,sameSecret} from "../pulse/channel-crypto";
+import {publicKey,sha256} from "../pulse/limits";
+import {languageOf,type Language} from "../../shared/language";
+import {dealsLimits} from "../../shared/pulse-plans";
+import {dealsWrite,type DealsApp} from "./access";
+import {cleanLine} from "./page";
+import {dealsChatId,testText,sendTelegram,sendDiscord} from "./message";
+import {seal,unseal,targetHash,type ChannelType} from "./store";
+
+const channelParam=z.object({channel:opaqueId});
+const linkParam=z.object({link:opaqueId});
+const LINK_TTL=15*60_000;
+const botReady=(env:Cloudflare.Env)=>!!env.DEALS_TELEGRAM_TOKEN&&!!env.DEALS_TELEGRAM_WEBHOOK_SECRET&&!!env.PULSE_CHANNEL_KEY;
+const botName=(env:Cloudflare.Env)=>/^[A-Za-z0-9_]{5,32}$/.test(env.DEALS_TELEGRAM_BOT??"")?env.DEALS_TELEGRAM_BOT:"BlupDealsBot";
+type Row={id:string;platform:string;name:string;active:number;lastError:string|null;createdAt:number};
+const view=(r:Row)=>({id:r.id,type:z.enum(["telegram","discord"]).parse(r.platform),label:r.name,active:!!r.active,lastError:r.lastError,createdAt:new Date(r.createdAt).toISOString()});
+
+// Saves a channel (target sealed), unless the account already has it or
+// is at its limit. Returns the channel id, or null at the limit.
+async function addChannel(env:Cloudflare.Env,owner:string,type:ChannelType,target:string,label:string,now=Date.now()){
+ const hash=await targetHash(type,target);
+ const existing=await env.DB.prepare("SELECT id FROM deals_channel WHERE user_id=? AND target_hash=?").bind(owner,hash).first<{id:string}>();
+ if(existing){await env.DB.prepare("UPDATE deals_channel SET active=1,last_error=NULL,name=? WHERE id=?").bind(label,existing.id).run();return {id:existing.id,created:false};}
+ const id=crypto.randomUUID(),sealed=await seal(env,owner,id,type,target);
+ const row=await env.DB.prepare("INSERT INTO deals_channel(id,user_id,platform,name,target,target_hash,created_at) SELECT ?,?,?,?,?,?,? WHERE (SELECT count(*) FROM deals_channel WHERE user_id=?)<? RETURNING id").bind(id,owner,type,label,sealed,hash,now,owner,dealsLimits.channels).first<{id:string}>();
+ return row?{id:row.id,created:true}:null;
+}
+
+export const channelsApi=new Hono<DealsApp>()
+ .get("/",async c=>{
+  const rows=await c.env.DB.prepare("SELECT id,platform,name,active,last_error AS lastError,created_at AS createdAt FROM deals_channel WHERE user_id=? ORDER BY created_at,id LIMIT 50").bind(c.get("session").user.id).all<Row>();
+  return c.json({channels:rows.results.map(view)});
+ })
+ .post("/",dealsWrite,validate("json",z.object({type:z.literal("discord"),webhook:discordWebhook}).strict()),async c=>{
+  const owner=c.get("session").user.id,hook=c.req.valid("json").webhook;
+  let saved:Awaited<ReturnType<typeof addChannel>>;try{saved=await addChannel(c.env,owner,"discord",hook.url,hook.label);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
+  if(!saved)return c.json({code:"QUOTA"},409);
+  return c.json({id:saved.id,label:hook.label},saved.created?201:200);
+ })
+ .delete("/:channel",validate("param",channelParam),async c=>{
+  const owner=c.get("session").user.id,id=c.req.valid("param").channel;
+  const [removed]=await c.env.DB.batch([
+   c.env.DB.prepare("DELETE FROM deals_channel WHERE id=? AND user_id=? RETURNING id").bind(id,owner),
+   c.env.DB.prepare("DELETE FROM deals_post WHERE channel_id=? AND user_id=? AND state='queued'").bind(id,owner),
+   c.env.DB.prepare("UPDATE deals_hunt SET channels=(SELECT json_group_array(value) FROM json_each(deals_hunt.channels) WHERE value<>?) WHERE user_id=? AND EXISTS(SELECT 1 FROM json_each(deals_hunt.channels) WHERE value=?)").bind(id,owner,id),
+  ]);
+  return removed.results.length?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
+ })
+ .post("/:channel/test",dealsWrite,validate("param",channelParam),validate("json",z.object({}).strict()),async c=>{
+  const owner=c.get("session").user.id,id=c.req.valid("param").channel;
+  const row=await c.env.DB.prepare("SELECT c.platform,c.target,u.language FROM deals_channel c JOIN user u ON u.id=c.user_id WHERE c.id=? AND c.user_id=?").bind(id,owner).first<{platform:string;target:string;language:string|null}>();
+  if(!row)return c.json({code:"NOT_FOUND"},404);
+  const language:Language=languageOf(row.language)??"pt",type=row.platform==="telegram"?"telegram":"discord";
+  let target:string;try{target=await unseal(c.env,owner,id,type,row.target);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
+  const result=type==="telegram"?await sendTelegram(c.env,target,testText(language),null):await sendDiscord(target,{username:"Blup Deals",allowed_mentions:{parse:[]},content:testText(language)});
+  await c.env.DB.prepare(`UPDATE deals_channel SET last_error=?${result.sent?",active=1":result.code==="DESTINATION_DISABLED"?",active=0":""} WHERE id=? AND user_id=?`).bind(result.sent?null:result.code,id,owner).run();
+  return c.json({ok:result.sent,code:result.code},202);
+ });
+
+// Linking Telegram: the panel opens the bot in private with a one-time
+// code; the bot answers with buttons to add it as admin to a channel or a
+// group; the chat where that same Telegram user adds it is the candidate.
+export const telegramApi=new Hono<DealsApp>()
+ .post("/link",dealsWrite,validate("json",z.object({}).strict()),async c=>{
+  if(!botReady(c.env))return c.json({code:"CHANNEL_UNAVAILABLE"},503);
+  const owner=c.get("session").user.id,id=crypto.randomUUID(),code=publicKey(),now=Date.now();
+  await c.env.DB.batch([c.env.DB.prepare("DELETE FROM deals_telegram_link WHERE user_id=? AND state<>'confirmed'").bind(owner),c.env.DB.prepare("INSERT INTO deals_telegram_link(id,user_id,hash,expires_at) VALUES(?,?,?,?)").bind(id,owner,await sha256(code),now+LINK_TTL)]);
+  return c.json({id,url:`https://t.me/${botName(c.env)}?start=${code}`,expiresAt:new Date(now+LINK_TTL).toISOString()},201);
+ })
+ .get("/link/:link",validate("param",linkParam),async c=>{
+  const row=await c.env.DB.prepare("SELECT state,expires_at AS expiresAt,chat_label AS label,chat_id AS chatId,channel_id AS channelId FROM deals_telegram_link WHERE id=? AND user_id=?").bind(c.req.valid("param").link,c.get("session").user.id).first<{state:string;expiresAt:number;label:string|null;chatId:string|null;channelId:string|null}>();
+  if(!row)return c.json({code:"NOT_FOUND"},404);
+  const state=row.state==="confirmed"?"confirmed":row.expiresAt<=Date.now()?"expired":row.state==="candidate"?"candidate":"pending";
+  return c.json({state:z.enum(["pending","candidate","expired","confirmed"]).parse(state),candidate:state==="candidate"&&row.chatId?{id:row.chatId,label:row.label??"Telegram"}:null,channelId:row.channelId});
+ })
+ .post("/link/:link/confirm",dealsWrite,validate("param",linkParam),validate("json",z.object({}).strict()),async c=>{
+  const owner=c.get("session").user.id,id=c.req.valid("param").link,now=Date.now();
+  const link=await c.env.DB.prepare("SELECT state,expires_at AS expiresAt,chat_id AS chatId,chat_label AS label,channel_id AS channelId FROM deals_telegram_link WHERE id=? AND user_id=?").bind(id,owner).first<{state:string;expiresAt:number;chatId:string|null;label:string|null;channelId:string|null}>();
+  if(!link)return c.json({code:"NOT_FOUND"},404);
+  if(link.state==="confirmed"&&link.channelId)return c.json({id:link.channelId},200);
+  const chat=dealsChatId.safeParse(link.chatId);
+  if(link.state!=="candidate"||link.expiresAt<=now||!chat.success)return c.json({code:"LINK_EXPIRED"},409);
+  let saved:Awaited<ReturnType<typeof addChannel>>;try{saved=await addChannel(c.env,owner,"telegram",chat.data,link.label??"Telegram",now);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
+  if(!saved)return c.json({code:"QUOTA"},409);
+  await c.env.DB.prepare("UPDATE deals_telegram_link SET state='confirmed',channel_id=? WHERE id=? AND user_id=?").bind(saved.id,id,owner).run();
+  return c.json({id:saved.id},201);
+ });
+
+const chatSchema=z.object({id:z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER),type:z.string().max(32),title:z.string().max(256).optional(),username:z.string().max(64).optional(),first_name:z.string().max(128).optional()});
+const fromSchema=z.object({id:z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),is_bot:z.boolean()});
+const telegramUpdate=z.object({
+ update_id:z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+ message:z.object({text:z.string().max(4096).optional(),chat:chatSchema,from:fromSchema.optional()}).optional(),
+ my_chat_member:z.object({chat:chatSchema,from:fromSchema,new_chat_member:z.object({status:z.string().max(32),can_post_messages:z.boolean().optional()})}).optional(),
+});
+const replies={
+ pt:{text:"Quase lá! Agora adicione o Blup Deals como administrador do canal ou grupo que vai receber as ofertas.",channel:"Adicionar a um canal",group:"Adicionar a um grupo"},
+ en:{text:"Almost there! Now add Blup Deals as an admin of the channel or group that will get the deals.",channel:"Add to a channel",group:"Add to a group"},
+ es:{text:"¡Casi listo! Ahora agrega Blup Deals como administrador del canal o grupo que recibirá las ofertas.",channel:"Agregar a un canal",group:"Agregar a un grupo"},
+} as const;
+// Telegram calls this (secret in the header). The answer may carry one
+// Bot API call, which is how the private reply goes without a request.
+export const telegramWebhookApi=new Hono<{Bindings:Cloudflare.Env}>()
+ .post("/webhook",async(c,next)=>{const token=z.string().min(1).max(256).safeParse(c.req.header("x-telegram-bot-api-secret-token"));if(!token.success||!sameSecret(token.data,c.env.DEALS_TELEGRAM_WEBHOOK_SECRET??""))return c.json({code:"UNAUTHORIZED"},401);return next();},validate("json",telegramUpdate),async c=>{
+  const update=c.req.valid("json"),now=Date.now();
+  const fresh=await c.env.DB.prepare("INSERT OR IGNORE INTO deals_telegram_update(id,received_at,applied) VALUES(?,?,1) RETURNING id").bind(update.update_id,now).first();
+  if(!fresh)return c.json({ok:true});
+  const message=update.message;
+  if(message?.from&&!message.from.is_bot&&message.chat.type==="private"&&message.from.id===message.chat.id){
+   const match=new RegExp(`^/start(?:@${botName(c.env)})? ([a-f0-9]{48})$`).exec(message.text??"");if(!match)return c.json({ok:true});
+   const started=await c.env.DB.prepare("UPDATE deals_telegram_link SET state='started',telegram_user=? WHERE hash=? AND state IN('pending','started') AND expires_at>? RETURNING user_id AS userId").bind(String(message.from.id),await sha256(match[1]),now).first<{userId:string}>();
+   if(!started)return c.json({ok:true});
+   const language=languageOf((await c.env.DB.prepare("SELECT language FROM user WHERE id=?").bind(started.userId).first<{language:string|null}>())?.language)??"pt",r=replies[language],bot=botName(c.env);
+   return c.json({method:"sendMessage",chat_id:message.chat.id,text:r.text,reply_markup:{inline_keyboard:[[{text:r.channel,url:`https://t.me/${bot}?startchannel&admin=post_messages`}],[{text:r.group,url:`https://t.me/${bot}?startgroup&admin=post_messages`}]]}});
+  }
+  const member=update.my_chat_member;
+  if(member&&!member.from.is_bot&&["channel","group","supergroup"].includes(member.chat.type)){
+   const chatId=String(member.chat.id),status=member.new_chat_member.status;
+   // Only an admin bot posts (the panel asks for that): in a channel it must
+   // also have the right to post, stated, not just not denied.
+   const canPost=status==="administrator"&&(member.chat.type!=="channel"||member.new_chat_member.can_post_messages===true);
+   if(!canPost){
+    // Removed, demoted to member or without the right to post: every
+    // account's channel there stops, and it is not a candidate.
+    await c.env.DB.prepare("UPDATE deals_channel SET active=0,last_error='DESTINATION_DISABLED' WHERE target_hash=?").bind(await targetHash("telegram",chatId)).run();return c.json({ok:true});
+   }
+   const label=cleanLine(member.chat.title??(member.chat.username?`@${member.chat.username}`:"Telegram"),80)||"Telegram";
+   await c.env.DB.prepare("UPDATE deals_telegram_link SET state='candidate',chat_id=?,chat_label=? WHERE id=(SELECT id FROM deals_telegram_link WHERE telegram_user=? AND state IN('started','candidate') AND expires_at>? ORDER BY expires_at DESC LIMIT 1)").bind(chatId,label,String(member.from.id),now).run();
+  }
+  return c.json({ok:true});
+ });

@@ -70,6 +70,8 @@
 		"SITES_CNAME_TARGET": "",
 		"PULSE_APP_URL": "https://pulse.getblup.io",
 		"DEALS_APP_URL": "https://deals.getblup.io",
+		"DEALS_PUBLIC_HOST": "deals.getblup.site",
+		"DEALS_TELEGRAM_BOT": "BlupDealsBot",
 		"PULSE_INGEST_HOST": "ingest.getblup.io",
 		"PULSE_PUBLIC_HOST": "pulse.getblup.site"
 	},
@@ -87,6 +89,7 @@
 				{ "pattern": "cloud.getblup.io", "custom_domain": true },
 				{ "pattern": "ingest.getblup.io", "custom_domain": true },
 				{ "pattern": "pulse.getblup.site", "custom_domain": true },
+				{ "pattern": "deals.getblup.site", "custom_domain": true },
 				{ "pattern": "staff.getblup.io", "custom_domain": true }
 			],
 			"d1_databases": [
@@ -131,6 +134,8 @@
 				"SITES_CNAME_TARGET": "",
 		"PULSE_APP_URL": "https://pulse.getblup.io",
 		"DEALS_APP_URL": "https://deals.getblup.io",
+		"DEALS_PUBLIC_HOST": "deals.getblup.site",
+		"DEALS_TELEGRAM_BOT": "BlupDealsBot",
 		"PULSE_INGEST_HOST": "ingest.getblup.io",
 		"PULSE_PUBLIC_HOST": "pulse.getblup.site"
 			}

@@ -18,3 +18,7 @@ STAFF_OWNER_EMAIL=voce@example.com
 STAFF_DEV_EMAIL=voce@example.com
 # Narração pelo Blup Cloud (planos pagos): a chave do OpenRouter do Blup.
 OPENROUTER_API_KEY=sk-or-v1-coloque_a_sua
+# Blup Deals: o token do bot do Deals (do BotFather) e o segredo que o
+# Telegram manda no webhook (setWebhook secret_token). Vazios: sem Telegram.
+DEALS_TELEGRAM_TOKEN=
+DEALS_TELEGRAM_WEBHOOK_SECRET=

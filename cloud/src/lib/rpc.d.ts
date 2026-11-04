@@ -8676,6 +8676,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     readonly historyDays: 90;
                 } | null;
                 readOnly: boolean;
+                readOnlyUntil: string | null;
                 used: {
                     channels: number;
                     hunts: number;
@@ -8688,7 +8689,1628 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-}, "/api/deals"> | import("hono/types").MergeSchemaPath<{
+} | (import("hono/types").MergeSchemaPath<{
+    "/webhook": {
+        $post: {
+            input: {
+                json: {
+                    update_id: number;
+                    message?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            title?: string | undefined;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        text?: string | undefined;
+                        from?: {
+                            id: number;
+                            is_bot: boolean;
+                        } | undefined;
+                    } | undefined;
+                    my_chat_member?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            title?: string | undefined;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        from: {
+                            id: number;
+                            is_bot: boolean;
+                        };
+                        new_chat_member: {
+                            status: string;
+                            can_post_messages?: boolean | undefined;
+                        };
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 401;
+        } | {
+            input: {
+                json: {
+                    update_id: number;
+                    message?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            title?: string | undefined;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        text?: string | undefined;
+                        from?: {
+                            id: number;
+                            is_bot: boolean;
+                        } | undefined;
+                    } | undefined;
+                    my_chat_member?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            title?: string | undefined;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        from: {
+                            id: number;
+                            is_bot: boolean;
+                        };
+                        new_chat_member: {
+                            status: string;
+                            can_post_messages?: boolean | undefined;
+                        };
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    update_id: number;
+                    message?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            title?: string | undefined;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        text?: string | undefined;
+                        from?: {
+                            id: number;
+                            is_bot: boolean;
+                        } | undefined;
+                    } | undefined;
+                    my_chat_member?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            title?: string | undefined;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        from: {
+                            id: number;
+                            is_bot: boolean;
+                        };
+                        new_chat_member: {
+                            status: string;
+                            can_post_messages?: boolean | undefined;
+                        };
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    update_id: number;
+                    message?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            title?: string | undefined;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        text?: string | undefined;
+                        from?: {
+                            id: number;
+                            is_bot: boolean;
+                        } | undefined;
+                    } | undefined;
+                    my_chat_member?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            title?: string | undefined;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        from: {
+                            id: number;
+                            is_bot: boolean;
+                        };
+                        new_chat_member: {
+                            status: string;
+                            can_post_messages?: boolean | undefined;
+                        };
+                    } | undefined;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                json: {
+                    update_id: number;
+                    message?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            title?: string | undefined;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        text?: string | undefined;
+                        from?: {
+                            id: number;
+                            is_bot: boolean;
+                        } | undefined;
+                    } | undefined;
+                    my_chat_member?: {
+                        chat: {
+                            id: number;
+                            type: string;
+                            title?: string | undefined;
+                            username?: string | undefined;
+                            first_name?: string | undefined;
+                        };
+                        from: {
+                            id: number;
+                            is_bot: boolean;
+                        };
+                        new_chat_member: {
+                            status: string;
+                            can_post_messages?: boolean | undefined;
+                        };
+                    } | undefined;
+                };
+            };
+            output: {
+                method: string;
+                chat_id: number;
+                text: "Quase lá! Agora adicione o Blup Deals como administrador do canal ou grupo que vai receber as ofertas." | "Almost there! Now add Blup Deals as an admin of the channel or group that will get the deals." | "¡Casi listo! Ahora agrega Blup Deals como administrador del canal o grupo que recibirá las ofertas.";
+                reply_markup: {
+                    inline_keyboard: ({
+                        text: "Adicionar a um canal" | "Add to a channel" | "Agregar a un canal";
+                        url: string;
+                    }[] | {
+                        text: "Adicionar a um grupo" | "Add to a group" | "Agregar a un grupo";
+                        url: string;
+                    }[])[];
+                };
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/telegram"> & {
+    "/usage": {
+        $get: {
+            input: {};
+            output: {
+                plan: "ultra_deals" | "ultra_pulse_deals" | null;
+                limits: {
+                    readonly channels: 10;
+                    readonly hunts: 20;
+                    readonly mirrors: 10;
+                    readonly postsPerDay: 100;
+                    readonly historyDays: 90;
+                } | null;
+                readOnly: boolean;
+                readOnlyUntil: string | null;
+                used: {
+                    channels: number;
+                    hunts: number;
+                    mirrors: number;
+                    postsToday: number;
+                };
+                resetsAt: string;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}) | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                channels: {
+                    id: string;
+                    type: "discord" | "telegram";
+                    label: string;
+                    active: boolean;
+                    lastError: string | null;
+                    createdAt: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    type: "discord";
+                    webhook: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    type: "discord";
+                    webhook: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    type: "discord";
+                    webhook: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                json: {
+                    type: "discord";
+                    webhook: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                json: {
+                    type: "discord";
+                    webhook: string;
+                };
+            };
+            output: {
+                id: string;
+                label: string;
+            };
+            outputFormat: "json";
+            status: 200 | 201;
+        };
+    };
+} & {
+    "/:channel": {
+        $delete: {
+            input: {
+                param: {
+                    channel: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        };
+    };
+} & {
+    "/:channel/test": {
+        $post: {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                ok: boolean;
+                code: string | null;
+            };
+            outputFormat: "json";
+            status: 202;
+        };
+    };
+}, "/channels"> | import("hono/types").MergeSchemaPath<{
+    "/link": {
+        $post: {
+            input: {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                json: Record<string, never>;
+            };
+            output: {
+                id: string;
+                url: string;
+                expiresAt: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+} & {
+    "/link/:link": {
+        $get: {
+            input: {
+                param: {
+                    link: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            };
+            output: {
+                state: "pending" | "expired" | "candidate" | "confirmed";
+                candidate: {
+                    id: string;
+                    label: string;
+                } | null;
+                channelId: string | null;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/link/:link/confirm": {
+        $post: {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                id: string;
+            };
+            outputFormat: "json";
+            status: 200;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                param: {
+                    link: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                id: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+}, "/telegram"> | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                stores: {
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                    configured: boolean;
+                    hint: string | null;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:store": {
+        $put: {
+            input: {
+                param: {
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                };
+            } & {
+                json: {
+                    tag: string;
+                } | {
+                    word: string;
+                    tool?: string | undefined;
+                } | {
+                    appId: string;
+                    secret: string;
+                } | {
+                    appKey: string;
+                    appSecret: string;
+                    trackingId: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                };
+            } & {
+                json: {
+                    tag: string;
+                } | {
+                    word: string;
+                    tool?: string | undefined;
+                } | {
+                    appId: string;
+                    secret: string;
+                } | {
+                    appKey: string;
+                    appSecret: string;
+                    trackingId: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                };
+            } & {
+                json: {
+                    tag: string;
+                } | {
+                    word: string;
+                    tool?: string | undefined;
+                } | {
+                    appId: string;
+                    secret: string;
+                } | {
+                    appKey: string;
+                    appSecret: string;
+                    trackingId: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                };
+            } & {
+                json: {
+                    tag: string;
+                } | {
+                    word: string;
+                    tool?: string | undefined;
+                } | {
+                    appId: string;
+                    secret: string;
+                } | {
+                    appKey: string;
+                    appSecret: string;
+                    trackingId: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                };
+            } & {
+                json: {
+                    tag: string;
+                } | {
+                    word: string;
+                    tool?: string | undefined;
+                } | {
+                    appId: string;
+                    secret: string;
+                } | {
+                    appKey: string;
+                    appSecret: string;
+                    trackingId: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                };
+            } & {
+                json: {
+                    tag: string;
+                } | {
+                    word: string;
+                    tool?: string | undefined;
+                } | {
+                    appId: string;
+                    secret: string;
+                } | {
+                    appKey: string;
+                    appSecret: string;
+                    trackingId: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                param: {
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                };
+            } & {
+                json: {
+                    tag: string;
+                } | {
+                    word: string;
+                    tool?: string | undefined;
+                } | {
+                    appId: string;
+                    secret: string;
+                } | {
+                    appKey: string;
+                    appSecret: string;
+                    trackingId: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:store": {
+        $delete: {
+            input: {
+                param: {
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    store: "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/affiliates"> | import("hono/types").MergeSchemaPath<{
+    "/preview": {
+        $post: {
+            input: {
+                json: {
+                    url: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                };
+            };
+            output: {
+                reason?: "not_configured" | "unsupported_store" | "conversion_failed" | undefined;
+                store: "other" | "amazon" | "mercadolivre" | "shopee" | "aliexpress";
+                title: string;
+                image: string | null;
+                price: number | null;
+                currency: string | null;
+                link: string;
+                affiliate: boolean;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                };
+            };
+            output: {
+                code: "FETCH_BLOCKED";
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                };
+            };
+            output: {
+                code: "FETCH_FAILED";
+            };
+            outputFormat: "json";
+            status: 502;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    url: string;
+                    channelIds: string[];
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    channelIds: string[];
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    channelIds: string[];
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    channelIds: string[];
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    channelIds: string[];
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 429;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    channelIds: string[];
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: "FETCH_FAILED";
+            };
+            outputFormat: "json";
+            status: 502;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    channelIds: string[];
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                json: {
+                    url: string;
+                    channelIds: string[];
+                    sendAt?: string | undefined;
+                };
+            };
+            output: {
+                id: string;
+                queued: number;
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+} & {
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    state?: "sent" | "queued" | "failed" | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                query: {
+                    state?: "sent" | "queued" | "failed" | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                query: {
+                    state?: "sent" | "queued" | "failed" | undefined;
+                };
+            };
+            output: {
+                posts: {
+                    id: string;
+                    title: string;
+                    image: string | null;
+                    store: string;
+                    link: string;
+                    state: "sent" | "queued" | "failed";
+                    channelId: string;
+                    sentAt: string | null;
+                    clicks: number;
+                    lastError: string | null;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/offers"> | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                hunts: {
+                    id: string;
+                    kind: "games_free" | "games_deals";
+                    active: boolean;
+                    channelIds: string[];
+                    filters: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    };
+                    createdAt: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    kind: "games_free" | "games_deals";
+                    channelIds: string[];
+                    filters: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    };
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    kind: "games_free" | "games_deals";
+                    channelIds: string[];
+                    filters: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    };
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    kind: "games_free" | "games_deals";
+                    channelIds: string[];
+                    filters: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    };
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    kind: "games_free" | "games_deals";
+                    channelIds: string[];
+                    filters: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    };
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                json: {
+                    kind: "games_free" | "games_deals";
+                    channelIds: string[];
+                    filters: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    };
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                json: {
+                    kind: "games_free" | "games_deals";
+                    channelIds: string[];
+                    filters: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    };
+                };
+            };
+            output: {
+                id: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+} & {
+    "/:hunt": {
+        $patch: {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            } & {
+                json: {
+                    active?: boolean | undefined;
+                    channelIds?: string[] | undefined;
+                    filters?: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            } & {
+                json: {
+                    active?: boolean | undefined;
+                    channelIds?: string[] | undefined;
+                    filters?: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            } & {
+                json: {
+                    active?: boolean | undefined;
+                    channelIds?: string[] | undefined;
+                    filters?: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            } & {
+                json: {
+                    active?: boolean | undefined;
+                    channelIds?: string[] | undefined;
+                    filters?: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            } & {
+                json: {
+                    active?: boolean | undefined;
+                    channelIds?: string[] | undefined;
+                    filters?: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            } & {
+                json: {
+                    active?: boolean | undefined;
+                    channelIds?: string[] | undefined;
+                    filters?: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            } & {
+                json: {
+                    active?: boolean | undefined;
+                    channelIds?: string[] | undefined;
+                    filters?: {
+                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        minDiscount?: number | undefined;
+                        maxPrice?: number | undefined;
+                    } | undefined;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/:hunt": {
+        $delete: {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                param: {
+                    hunt: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        };
+    };
+}, "/hunts"> | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    days?: "7" | "30" | "90" | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                query: {
+                    days?: "7" | "30" | "90" | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                query: {
+                    days?: "7" | "30" | "90" | undefined;
+                };
+            };
+            output: {
+                days: {
+                    day: string;
+                    clicks: number;
+                    posts: number;
+                }[];
+                top: {
+                    title: string;
+                    clicks: number;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/stats">, "/api/deals"> | import("hono/types").MergeSchemaPath<{
     "/checkout": {
         $post: {
             input: {

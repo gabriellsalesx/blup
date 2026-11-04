@@ -11,13 +11,20 @@ export const dealsChannel=sqliteTable("deals_channel",{
  id:text("id").primaryKey(),userId:text("user_id").notNull(),platform:text("platform").notNull(),name:text("name").notNull(),target:text("target").notNull(),guildId:text("guild_id"),
  active:integer("active").notNull().default(1),verifiedAt:integer("verified_at"),createdAt:integer("created_at").notNull(),
  planDisabled:integer("plan_disabled").notNull().default(0),retireAt:integer("retire_at"),
-},t=>[index("deals_channel_owner_idx").on(t.userId,t.id),uniqueIndex("deals_channel_target_idx").on(t.userId,t.platform,t.target),index("deals_channel_retire_idx").on(t.retireAt)]);
+ // target is sealed (like a Pulse destination); targetHash finds the same
+ // chat again (the bot removed, the same webhook twice). nextAt keeps the
+ // interval between two posts in the channel; lastError is the last
+ // delivery code.
+ targetHash:text("target_hash"),nextAt:integer("next_at").notNull().default(0),lastError:text("last_error"),
+},t=>[index("deals_channel_owner_idx").on(t.userId,t.id),uniqueIndex("deals_channel_target_idx").on(t.userId,t.platform,t.target),index("deals_channel_retire_idx").on(t.retireAt),index("deals_channel_hash_idx").on(t.targetHash)]);
 
 // The account's ID or tag at each store (matt_word, tag...) and, for the
 // stores searched with the account's own API key, that key sealed like a
 // Pulse destination (never shown back).
 export const dealsAffiliate=sqliteTable("deals_affiliate",{
  userId:text("user_id").notNull(),store:text("store").notNull(),tag:text("tag"),credentials:text("credentials"),level:text("level"),createdAt:integer("created_at").notNull(),updatedAt:integer("updated_at").notNull(),
+ // What the panel may show: a few characters of the ID, never the secret.
+ hint:text("hint"),
 },t=>[primaryKey({columns:[t.userId,t.store]})]);
 
 // A shared source: a feed (GamerPower, CheapShark), a store search or a
@@ -46,7 +53,11 @@ export const dealsOffer=sqliteTable("deals_offer",{
  id:text("id").primaryKey(),hash:text("hash").notNull().unique(),store:text("store").notNull(),externalId:text("external_id"),sourceId:text("source_id"),
  title:text("title").notNull(),url:text("url").notNull(),imageUrl:text("image_url"),price:integer("price"),originalPrice:integer("original_price"),currency:text("currency"),
  firstSeenAt:integer("first_seen_at").notNull(),lastSeenAt:integer("last_seen_at").notNull(),expiresAt:integer("expires_at"),
-},t=>[index("deals_offer_store_idx").on(t.store,t.externalId),index("deals_offer_seen_idx").on(t.lastSeenAt),index("deals_offer_source_idx").on(t.sourceId,t.lastSeenAt)]);
+ // kind: product (a pasted link), game_free (GamerPower) or game_deal
+ // (CheapShark). platforms: JSON list of the panel's platform ids.
+ // discount: percent off. credit: the source the post must credit.
+ kind:text("kind").notNull().default("product"),platforms:text("platforms").notNull().default("[]"),discount:integer("discount"),credit:text("credit"),
+},t=>[index("deals_offer_store_idx").on(t.store,t.externalId),index("deals_offer_seen_idx").on(t.lastSeenAt),index("deals_offer_source_idx").on(t.sourceId,t.lastSeenAt),index("deals_offer_kind_idx").on(t.kind,t.firstSeenAt)]);
 
 // Price history, for an honest discount (the price before the sale, not
 // the one the store shows crossed out).
@@ -62,9 +73,29 @@ export const dealsPost=sqliteTable("deals_post",{
  code:text("code").notNull().unique(),link:text("link").notNull(),state:text("state").notNull().default("queued"),attempts:integer("attempts").notNull().default(0),
  nextAt:integer("next_at").notNull(),claim:text("claim"),claimUntil:integer("claim_until").notNull().default(0),day:text("day").notNull(),
  sentAt:integer("sent_at"),error:text("error"),createdAt:integer("created_at").notNull(),
+ // Whether link carries the person's affiliate ID (the post says so).
+ affiliate:integer("affiliate").notNull().default(0),
 },t=>[uniqueIndex("deals_post_once_idx").on(t.channelId,t.offerId),index("deals_post_due_idx").on(t.state,t.nextAt),index("deals_post_owner_day_idx").on(t.userId,t.day),index("deals_post_created_idx").on(t.createdAt)]);
 
 // Clicks on the short links, added up per post and day (few writes).
 export const dealsClickDay=sqliteTable("deals_click_day",{
  postId:text("post_id").notNull(),userId:text("user_id").notNull(),day:text("day").notNull(),clicks:integer("clicks").notNull().default(0),
 },t=>[primaryKey({columns:[t.postId,t.day]}),index("deals_click_owner_day_idx").on(t.userId,t.day)]);
+
+// Linking a Telegram channel or group: the person opens the bot in private
+// (/start code), then adds the bot as admin where the posts go; that chat
+// becomes the candidate the panel confirms.
+export const dealsTelegramLink=sqliteTable("deals_telegram_link",{
+ id:text("id").primaryKey(),userId:text("user_id").notNull(),hash:text("hash").notNull().unique(),state:text("state").notNull().default("pending"),expiresAt:integer("expires_at").notNull(),
+ telegramUser:text("telegram_user"),chatId:text("chat_id"),chatLabel:text("chat_label"),channelId:text("channel_id"),
+},t=>[index("deals_telegram_link_owner_idx").on(t.userId),index("deals_telegram_link_user_idx").on(t.telegramUser,t.state)]);
+// Telegram updates already applied (it may send one twice).
+export const dealsTelegramUpdate=sqliteTable("deals_telegram_update",{
+ id:integer("id").primaryKey(),receivedAt:integer("received_at").notNull(),applied:integer("applied").notNull().default(0),
+},t=>[index("deals_telegram_update_received_idx").on(t.receivedAt)]);
+// Whether an account has had Deals, to follow it when the plan goes (like
+// pulse_account): readOnlyUntil is set the first time the plan is missing
+// (14 days to read and export), then the private Deals data is purged.
+export const dealsAccount=sqliteTable("deals_account",{
+ userId:text("user_id").primaryKey(),lastPlan:text("last_plan").notNull(),readOnlyUntil:integer("read_only_until"),purgeStarted:integer("purge_started"),
+},t=>[index("deals_account_read_only_idx").on(t.readOnlyUntil)]);

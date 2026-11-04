@@ -4,9 +4,57 @@ Especificação de produto e técnica baseada na nota conectada **Blup Deals- de
 
 ## Estado da entrega por fases
 
-**Especificação inicial, com pesquisa incorporada.** A nota define F0 a F3. Este documento não atribui gates ou funcionalidades entregues a nenhuma fase sem um handoff e conferência do código correspondente. Incorpora a nota conectada **Blup Deals- pesquisa**, lida integralmente: a Lupa conferiu documentação oficial, incluindo o MCP Cloudflare Docs, sem executar integrações de negócio. Tarifas são referências em USD; cadências, consumo estimado e contratos propostos continuam identificados como tal.
+**F1 entregue localmente, com servidor e painel conferidos após os handoffs do Prumo e da Confete.** A nota **Blup Deals- F1 contrato**, incluindo seu resultado real do servidor, antecipa links curtos e estatísticas de cliques para a F1 e fixa 100 posts/dia. Os preços estão aprovados pelo dono e os quatro Prices foram criados no Stripe sandbox pelo Maestro. Os gates locais informados estão registrados abaixo; não comprovam deploy, venda ou homologação dos bots/APIs de loja. A pesquisa da Lupa permanece como referência para regras de fontes e custos estimados.
 
 As bases já existentes que podem ser aproveitadas são [API Cloud](../../cloud/worker/index.ts), [autenticação](../../cloud/worker/auth-options.ts), [cobrança](../../cloud/worker/billing-api.ts), [fila Pulse](../../cloud/worker/pulse/outbox.ts), [transportes Pulse](../../cloud/worker/pulse/transports.ts), [cliente RPC Pulse](../../cloud/pulse/src/lib/api.ts), [PanelShell](../../cloud/src/lib/ui/PanelShell.svelte), [SignInForm](../../cloud/src/lib/ui/SignInForm.svelte), [SignInFrame](../../cloud/src/lib/ui/SignInFrame.svelte) e [SetupGuide](../../cloud/pulse/src/lib/SetupGuide.svelte). Reutilizar essas peças exige adaptar seus contratos: um alerta privado Pulse e uma oferta publicada em canal têm conteúdo, permissões e limites diferentes.
+
+### F1: contrato acordado
+
+O contrato abaixo substitui as propostas iniciais de rotas F1 e incorpora o resultado real do servidor. A API fica sob `/api/deals`, com Hono, Zod e RPC tipado em `cloud/src/lib/rpc.d.ts`. Fontes: [montagem](../../cloud/worker/deals/api.ts), [canais/Telegram](../../cloud/worker/deals/channels.ts), [afiliados](../../cloud/worker/deals/affiliates.ts), [ofertas](../../cloud/worker/deals/offers.ts) e [caçadas/estatísticas](../../cloud/worker/deals/hunts.ts). Rotas administrativas usam a sessão Cloud e o dono; webhook Telegram e redirect público têm autorização própria ou são públicos, conforme indicado.
+
+| Método e caminho relativo | Contrato F1 acordado |
+| --- | --- |
+| `GET /channels` | `{channels:[{id,type,label,active,lastError,createdAt}]}`, tipo `telegram/discord` |
+| `POST /channels` | `{type:"discord",webhook}`; valida o webhook como no Pulse; `201 {id,label}` se novo ou `200 {id,label}` se já salvo; acima de dez destinos, `409 QUOTA` |
+| `POST /telegram/link` | `{}`; `201 {id,url,expiresAt}` |
+| `GET /telegram/link/:link` | `{state,candidate,channelId}`; estado `pending/candidate/expired/confirmed`; candidato `{id,label}` ou `null`, `channelId` string ou `null` |
+| `POST /telegram/link/:link/confirm` | `{}`; `201 {id}` ou `200 {id}` se já confirmado; `409 LINK_EXPIRED` ou `409 QUOTA` quando aplicável |
+| `POST /telegram/webhook` | Update do bot Deals, fora da sessão; secret no header; candidato é o canal/grupo em que o bot foi adicionado como administrador, não o chat privado |
+| `DELETE /channels/:channel` | Remove o destino do dono |
+| `POST /channels/:channel/test` | `{}`; tentativa imediata de envio, fora da outbox; `202 {ok,code}`. `ok:false` é falha, mesmo com 202 |
+| `GET /affiliates` | `{stores:[{store,configured,hint}]}`; `hint` é string ou `null`; lojas `amazon/mercadolivre/shopee/aliexpress` |
+| `PUT /affiliates/:store` | Body por loja: Amazon `{tag}`; Mercado Livre `{word,tool?}`; Shopee `{appId,secret}`; AliExpress `{appKey,appSecret,trackingId}`; `{ok:true}` |
+| `DELETE /affiliates/:store` | Remove a configuração da loja do dono |
+| `POST /offers/preview` | `{url}`; `{store,title,image,price,currency,link,affiliate,reason?}`; busca só HTTPS público, com timeout, teto de bytes e redirects manuais; usa metadados quando disponíveis |
+| `POST /offers` | `{url,channelIds,sendAt?}`; `201 {id,queued}`, ID da oferta e quantidade efetivamente enfileirada; `sendAt` ISO até 30 dias; `409 DUPLICATE` se já estiver em todos os destinos, `429 DAILY_LIMIT` sem cota |
+| `GET /offers` | Query opcional `state=queued/sent/failed`; `{posts:[{id,title,image,store,link,state,channelId,sentAt,clicks,lastError}]}`, até 100; sem cursor nesta fase |
+| `GET /hunts` | `{hunts:[{id,kind,active,channelIds,filters,createdAt}]}` |
+| `POST /hunts` | `{kind,channelIds,filters}`; kind `games_free/games_deals`; filtros opcionais `platforms:string[]`, `minDiscount:number`, `maxPrice:number`; `201 {id}` |
+| `PATCH /hunts/:hunt` | `{active?,channelIds?,filters?}` |
+| `DELETE /hunts/:hunt` | Remove a caçada do dono |
+| `GET /stats` | Query `days=7/30/90`, padrão 7; `{days:[{day,clicks,posts}],top:[{title,clicks}]}`; dias UTC do mais antigo até hoje, com zeros nos vazios e até cinco ofertas no top |
+
+O redirect público acordado é `GET https://deals.getblup.site/r/:code`, fora da sessão: `302` para o link final e incremento agregado de `deals_click_day`, sem guardar IP. A vitrine continua para a conexão Studio na F3.
+
+O detalhe combinado entre servidor e painel fixa `title:string` mesmo sem metadados, usando o domínio como fallback; `image`, `price` e `currency` podem ser `null`. `price` usa centavos e `currency` informa a moeda ISO. Preview identifica `amazon/mercadolivre/shopee/aliexpress/other`; `reason` opcional usa `not_configured/unsupported_store/conversion_failed`. No post, `sentAt` é ISO ou `null` e `lastError` é código de falha ou `null`.
+
+Filtros de jogos: `minDiscount` é inteiro de 0 a 100; `maxPrice` usa centavos de USD. Plataformas aceitas: `pc`, `steam`, `epic`, `gog`, `ubisoft`, `itchio`, `playstation`, `xbox`, `switch`, `android`, `ios`. `games_deals` aceita apenas `pc/steam/epic/gog/ubisoft`; `pc` representa todas as opções de PC. As demais plataformas nesse tipo retornam `INVALID`.
+
+O link Telegram abre o chat privado do bot; este oferece botões para adicionar como administrador a canal ou grupo. O candidato não é esse chat privado: é o destino em que a mesma pessoa do Telegram adicionou o bot como administrador. O contrato exige que a confirmação preserve esse vínculo de identidade.
+
+Coleta global de GamerPower/CheapShark ocorre uma vez por rodada de 30 minutos, com catálogo `deals_offer` e dedupe. O post leva foto quando disponível, título, preços quando conhecidos, link curto e aviso de afiliado quando o post está marcado como afiliado. GamerPower mantém crédito; CheapShark mantém seu próprio link, sem troca pelo afiliado do usuário. A fila é `deals_post`, com 100 publicações/dia **somadas entre destinos**, intervalo mínimo de dois minutos no mesmo canal e sem repetir a oferta naquele canal. Secrets do bot próprio: `DEALS_TELEGRAM_TOKEN` e `DEALS_TELEGRAM_WEBHOOK_SECRET`, sem valores nos docs. O contrato inicial menciona cupom; a F1 entregue não tem campo ou extração estruturada de cupom.
+
+No painel, F1 cobre destinos Telegram/Discord, cards de Afiliados sem recuperar segredo, fila/enviados/falhas em Ofertas, colar link com prévia e escolha de destinos, caçadas de jogos, gráfico diário e top de cliques. `/start` passa por assunto, canal, IDs opcionais, prévia e ligar; jogos cria as caçadas selecionadas. Lojas e espelhamento ficam para F2 como **Em breve**. As telas e limitações estão na seção 10; schema e migração estão na seção 8.
+
+### Fechamento local e limites da verificação
+
+O Prumo informou `npm run check` sem erros e Vitest com **457 testes em 39 arquivos** após a correção do agendamento. A [regressão de +3 dias](../../cloud/worker/deals/f1.test.ts) confirma que a validade usa o dia previsto de envio, sem expirar pela data de criação. A documentação conferiu o código e os testes, sem repetir esses gates pesados.
+
+No fechamento complementar, o Prumo informou **462 testes** após integrar a purga dos dados privados Deals, bloquear links de contas excluídas/banidas e acrescentar a carência própria de 14 dias com a migração `0030`. Os blocos `account deletion` e `losing the Deals plan` em [f1.test.ts](../../cloud/worker/deals/f1.test.ts) cobrem retirada da conta, preservação do catálogo compartilhado, retorno ao plano e purga após a janela. A documentação conferiu essa atualização no código; não repetiu a suíte nem afirma aplicação remota.
+
+A Confete informou check completo Cloud/Pulse/Deals com **zero erros e avisos**, builds Deals/Pulse aprovados e autofixer MCP Svelte nos componentes novos/alterados. Nos complementos do teste de canal e do aviso `readOnlyUntil`, check completo, build Deals e autofixer também passaram. O teste só mostra sucesso com `ok:true`; o aviso de carência mostra a data e tem prioridade sobre plano ausente. Fontes: [cliente RPC](../../cloud/deals/src/lib/api.ts), [erros](../../cloud/deals/src/lib/errors.ts) e [Canais](../../cloud/deals/src/routes/channels/+page.svelte).
+
+Os provedores externos nos testes foram simulados. O handoff do painel não inclui navegador contra API real; a auditoria local da Lupa é uma validação separada, sem converter prévia simulada em homologação de produção. Permanecem F2/F3, configuração real dos bots/lojas e liberação comercial.
 
 ## 1. Produto e público
 
@@ -29,17 +77,17 @@ Deals é um adicional **somente do Ultra**. O card do Ultra tem o switch **Adici
 
 As variantes preservam os direitos do Ultra: 10 GiB de notas, arquivos de até 100 MiB, 10 sites, computadores sem limite de quantidade e os demais direitos da [spec Cloud](blup-cloud-sync.md#planos-executados). Posts, fontes e cliques do Deals não são notas sincronizadas nem consomem sites Hugo. Deals não concede Pulse quando o respectivo switch está desligado.
 
-| Limite da nota, ainda proposto | Ultra com Deals |
+| Limite do catálogo atual | Ultra com Deals |
 | --- | --- |
 | Canais de destino ativos | 10 no total, somando Telegram e Discord |
-| Caçadas | 20 no total |
-| Espelhos | 10, contados também dentro das 20 caçadas |
+| Caçadas sem espelho | 20; F1 permite apenas os dois tipos de jogos |
+| Espelhos | 10 previstos para F2; não há criação de espelho na F1 |
 | Posts por dia | 100 no total da conta (decisão do dono, 04/11/2026) |
 | Histórico | 90 dias |
 
-A nota pede validar esses limites com custos. A definição proposta de post é uma publicação em **um destino**: enviar a mesma oferta a três canais consome três unidades. Repetir a tentativa da mesma entrega não cria três novas reservas. Usar dia civil UTC, sem acumular saldo; exibir o horário de renovação no painel. Testes devem cobrir meia-noite, virada de mês/ano e mudança de assinatura sem zerar consumo. Essa semântica precisa ser confirmada antes de vender.
+Os limites estão em [dealsLimits](../../cloud/shared/pulse-plans.ts), incluindo `postsPerDay:100`. A [admissão](../../cloud/worker/deals/store.ts) conta registros por conta e **dia previsto de envio em UTC**, antes de enfileirar. Enviar a mesma oferta a três canais consome até três unidades. O batch confere os inserts anteriores e pode enfileirar só a parte que cabe; a resposta informa `queued`. Retry da mesma linha não cria outra reserva. Linhas com falha continuam na contagem enquanto existirem; não há reembolso automático de cota por falha. O painel mostra uso do dia atual e próxima meia-noite UTC.
 
-Reservar a cota em D1 antes de enfileirar, sob condição atômica. Uma reserva não entregue deve ser concluída ou liberada uma única vez, com recibo que impeça recriar entregas para contornar a cota. A escolha de cobrar ou liberar uma tentativa cujo aceite pelo provedor ficou incerto é uma pendência explícita. Limites de leitura das fontes e dos bots são adicionais à cota comercial.
+A cota limita admissões para o dia previsto, sem acumular saldo ou multiplicar por destino. Não há uma tabela separada de recibos/reservas no modelo F1: a própria `deals_post` faz esse papel. Limites de leitura das fontes e dos bots são adicionais à cota comercial; uma tentativa cujo aceite externo ficou incerto ainda pode ser reenviada, sem garantia de entrega exatamente uma vez.
 
 ## 3. Blup, cor e domínios
 
@@ -48,7 +96,7 @@ Reservar a cota em D1 antes de enfileirar, sob condição atômica. Uma reserva 
 | Blup do produto | `turma-8`, coral `#ff7a59` |
 | Destaque do painel | `--color-blup: #c2410c`, para texto branco com contraste AA |
 | Painel privado | `https://deals.getblup.io` |
-| Links curtos, F3 | `https://deals.getblup.site` |
+| Links curtos, F1 | `https://deals.getblup.site` |
 | Vitrine, F3 | Gerada e publicada pelo Blup Studio a partir da conexão Deals; sem vitrine externa no Deals |
 
 Reaproveitar o shell, temas claro/escuro, foco de teclado e componentes do Cloud. Interface e mensagens usam `pt/en/es`; os caminhos ficam em inglês. Nomes e textos de ofertas mantêm o idioma da fonte, salvo edição explícita. Ícones funcionais vêm do Lucide; marcas, quando necessárias, usam os arquivos Simple Icons CC0 permitidos pelo projeto. Não desenhar marcas nem usar emoji como ícone de interface.
@@ -65,9 +113,9 @@ As fontes abaixo constam da decisão de produto. A coluna de condição distingu
 | CheapShark | Promoções de jogos de PC e histórico; F1 | Fonte mantida por decisão do dono, com os links da própria CheapShark, sem substituir pelo afiliado do usuário; a documentação permite assinatura e proíbe afiliados próprios nas lojas acompanhadas |
 | Amazon | Link manual com a tag da pessoa; automação F3 | Creators API da própria pessoa, com pelo menos 10 vendas qualificadas nos últimos 30 dias; Telegram/Discord não têm aprovação nominal geral confirmada |
 | Mercado Livre | Link manual; caçadas de loja F2 | `matt_word` sozinho não tem contrato oficial de geração de afiliado confirmado na pesquisa inicial; APIs exigem autenticação. Não apresentar um parâmetro montado como comissão validada |
-| Shopee | Caçadas com credencial da própria pessoa, F2 | API oficial gera até 50 links por lote; habilitação e cota dependem da conta/região |
-| AliExpress | Caçadas com credencial da própria pessoa, F2 | Método oficial gera até 50 links por chamada; exige App Key, assinatura e Tracking ID habilitados |
-| Outra loja | Colar link, F1 | Aceitar URL pública válida, com edição manual do post; não inventar conversão de afiliado para uma loja sem adaptador |
+| Shopee | Converter link colado na F1; caçadas automáticas F2 | API oficial gera até 50 links por lote; a F1 gera um por conversão, com credenciais habilitadas da pessoa; cota depende da conta/região |
+| AliExpress | Converter link colado na F1; caçadas automáticas F2 | Método oficial gera até 50 links por chamada; a F1 gera um por conversão, com App Key/Secret e Tracking ID habilitados |
+| Outra loja | Colar link, F1 | Prévia de URL HTTPS pública, com fallback de título; sem editor manual de título/preço e sem conversão para uma loja sem adaptador |
 | Canal Telegram | Espelhamento aberto, F2 | Só canais públicos pela prévia `t.me/s/<canal>`, sem login/userbot; não exige autorização do dono da origem; risco dos termos registrado e assumido pelo dono do Blup |
 | Canal Discord | Espelhamento aberto, F2 | Só servidores onde o bot foi adicionado e canais com permissões técnicas de leitura; não exige autorização adicional do dono da origem; risco dos termos assumido pelo dono do Blup |
 
@@ -107,17 +155,19 @@ Não combinar preços de moedas, edições, plataformas ou regiões diferentes p
 
 O formulário Afiliados apresenta a situação por loja: sem identificador, identificador salvo, API não configurada, aguardando aprovação, conexão válida ou falha de conexão. ID público de afiliado e segredo de API são campos distintos. Salvar um ID não comprova que a conta pode usar uma API ou receber comissão.
 
-Fluxo proposto de **Colar link**:
+Fluxo acordado da F1 para **Colar link**:
 
-1. Validar a URL, identificar a loja e remover apenas parâmetros que o adaptador conhece como rastreio anterior.
-2. Expandir link curto somente por adaptador permitido, com limite de redirects e validação de cada destino público. Não fazer fetch irrestrito de uma URL colada.
-3. Consultar metadados apenas pelo método permitido da loja. Sem acesso, pedir título, texto, preço opcional e imagem opcional à pessoa.
-4. Gerar o link afiliado pelo contrato da loja. Sem suporte ou credencial, preservar um link de produto limpo e avisar **Sem comissão configurada**; a pessoa pode fornecer seu link já emitido pelo programa, quando permitido.
-5. Mostrar a prévia com destino, título, imagem, preço/moeda, condições e indicação de link afiliado. Só publicar após confirmação, salvo uma caçada ativada explicitamente.
+1. O painel envia somente `{url}` a `POST /offers/preview`. O servidor admite HTTPS público e busca metadados com timeout, limite de bytes e redirects manuais validados.
+2. A prévia informa loja, título, imagem/preço/moeda opcionais, link final e situação de afiliado. Sem título conhecido, usa o domínio; ausência de preço/imagem permanece `null`.
+3. O adaptador aplica a configuração da pessoa conforme a loja. Falta de configuração, loja não suportada ou falha de conversão aparecem como `reason`, sem inventar comissão.
+4. A pessoa vê a prévia e escolhe destinos. `POST /offers` recebe `{url,channelIds,sendAt?}`; não recebe título/preço editados nem um ticket de prévia no contrato F1.
+5. O servidor prepara a publicação e enfileira após revalidar dono, direito, canais e cota. O resultado de criação não comprova entrega no Telegram/Discord.
 
-A instrução original da nota de montar Amazon/Mercado Livre apenas com `tag`/`matt_word` fica como intenção de simplificar o cadastro. A implementação precisa seguir a pesquisa oficial por loja. Não aplicar uma troca genérica de query string a links assinados, cupons, encurtadores ou caminhos de atribuição de outro programa.
+A F1 entregue monta Amazon com `tag` e Mercado Livre com `matt_word`/`matt_tool`, conforme o adaptador de links; o sinal de conversão aplicado não comprova elegibilidade ou comissão reconhecida. As ressalvas de programa da seção 4 e a exceção CheapShark permanecem. Salvar credencial Shopee/AliExpress permite converter o link colado, sem habilitar busca automática de loja antes da F2.
 
-URLs só podem usar HTTP(S), sem usuário/senha, caracteres de controle ou esquema executável. Fetchs do Worker exigem destino público, timeout, teto de bytes e política de redirects por adaptador. Não buscar imagens arbitrárias em rede privada. A URL da loja vai direto ao `sendPhoto` ou embed quando seu uso for autorizado; a F1 não baixa nem guarda imagens em R2.
+O fetch da página aceita HTTPS e valida destino público a cada salto. A imagem extraída precisa ter URL HTTPS, mas essa checagem não é a mesma validação DNS aplicada à página: a foto é carregada pelo navegador/Telegram/Discord, sem proxy ou armazenamento R2 no Blup. Links encurtados passam pela validação do fetch; a coleta CheapShark usa o redirect da fonte sem abri-lo para descobrir o destino.
+
+O [fetch da prévia](../../cloud/worker/deals/fetch.ts) usa até cinco redirects, timeout de oito segundos e mantém até 512 KiB do corpo. A [extração](../../cloud/worker/deals/page.ts) lê Open Graph, título e Product JSON-LD, sem executar JavaScript. Página comum que recusa robôs pode resultar só no domínio como título, sem preço/foto; encurtador que não resolve ou salto bloqueado retorna erro. As verificações de URL/DNS e a flag pública do Worker são a defesa implementada; os gates locais não comprovam proteção universal de rede/DNS rebinding em produção.
 
 ## 6. Espelhamento: funcionamento, limites e cuidados
 
@@ -169,7 +219,7 @@ flowchart LR
   Cron --> Fila[Despachante persistente]
   D1 --> Fila
   Fila --> Bots[Telegram e Discord]
-  Visitante[Visitante, F3] --> Publico[deals.getblup.site]
+  Visitante[Visitante, F1] --> Publico[deals.getblup.site]
   Publico --> D1
   API --> Studio[Conexao autenticada com o Studio, F3]
   Studio --> Site[Site da vitrine gerado pelo Studio]
@@ -201,102 +251,100 @@ Contrato proposto da conexão: leitura paginada de ofertas permitidas do própri
 
 Não conceder sites adicionais por ligar Deals. A vitrine segue o destino de publicação escolhido no Studio e as regras desse destino. Template, formato das notas importadas, frequência de atualização e eventual sincronização automática serão definidos na F3.
 
-## 8. Modelo de dados proposto
+## 8. Dados: base atual e evolução
 
-Os nomes abaixo são proposta de schema, não migração já gerada. Todas as relações privadas são verificadas pelo dono da sessão. Identidade Cloud e assinatura continuam nas tabelas existentes.
+A base conferida está em [deals-schema.ts](../../cloud/worker/db/deals-schema.ts), criada por [0028_deals_base.sql](../../cloud/migrations/0028_deals_base.sql) e ampliada por [0029_deals_f1.sql](../../cloud/migrations/0029_deals_f1.sql) e [0030_deals_account.sql](../../cloud/migrations/0030_deals_account.sql). A existência do schema e os gates locais não confirmam aplicação remota.
 
-| Tabela proposta | Campos e finalidade |
+| Tabela da base atual | Campos e finalidade |
 | --- | --- |
-| `deals_account` | `user_id` único, revisão, pausa geral, preferências e eventual prazo de retirada do produto |
-| `deals_channel` | ID, dono, tipo Telegram/Discord, rótulo, destino cifrado, estado/permissões, última falha genérica e datas |
-| `deals_channel_link` | Dono, hash de código de vínculo, expiração, candidato e confirmação; sem guardar o código em claro |
-| `deals_affiliate` | Dono + loja únicos, ID público, região, nível declarado/verificado, estado e datas de verificação |
-| `deals_credential` | Dono + provedor, credencial cifrada/versionada, escopo, expiração e estado; sem recuperar o segredo na API de leitura |
-| `deals_source` | Tipo, identidade canônica, região, estado, lease, revisão, cursor, `next_poll_at`, última coleta e erro genérico |
-| `deals_offer` | Origem + ID externo únicos, produto/edição/plataforma, loja, URL canônica, título, imagem autorizada, moeda, preço em unidade menor ou `null`, validade e timestamps |
-| `deals_price` | Oferta/produto, fonte, região/moeda, valor e instante observado; índices por produto e tempo; retenção limitada pelo contrato da fonte |
-| `deals_hunt` | Dono, nome, tipo de fonte, filtros tipados, intervalo, janela de horário, região/moeda, estado e revisão |
-| `deals_hunt_source` | Vínculo caçada/fonte; índice reverso para uma coleta alimentar várias caçadas |
-| `deals_hunt_channel` | Vínculo caçada/destino, sem canal de outro dono; chave única do par |
-| `deals_delivery` | Dono, canal, oferta/ocorrência, chave de dedupe única, estado, horário, lease, tentativas, ID externo e erro genérico |
-| `deals_day` | Dono + dia UTC únicos; totais/reservas de posts e controle de cota atômico |
-| `deals_short_link`, F3 | Código público aleatório único, dono, oferta, destino já validado, estado e expiração; sem aceitar URL livre no redirect |
-| `deals_click_day`, F3 | Link + dia UTC únicos e contagem agregada; sem tabela permanente de cliques individuais |
-| `deals_studio_export`, F3, se necessário | Dono, seleção de ofertas/caçadas e cursor/revisão para a conexão Studio; sem hospedar uma vitrine no Deals |
+| `deals_channel` | Dono, plataforma, nome, destino, guild opcional, ativo, verificação, criação, `plan_disabled` e `retire_at`; índices por dono, destino único por dono/plataforma e expiração |
+| `deals_affiliate` | Chave dono + loja; tag, credenciais, nível e datas; a F1 exige proteção dos dados sensíveis e não devolve segredos ao painel |
+| `deals_source` | Fonte global com chave canônica única, kind, config, cursor, próxima/última coleta, falhas, claim e lease |
+| `deals_hunt` | Dono, nome, kind, fonte, filtros e canais como JSON, intervalo, ativo, última publicação e campos de retirada |
+| `deals_offer` | Catálogo global com hash único, loja/ID externo/fonte, título, URL, imagem, preço/antigo/moeda opcionais, primeira/última observação e validade |
+| `deals_price` | Chave oferta + instante, preço e moeda; índice de expiração por instante |
+| `deals_post` | Outbox por dono, caçada opcional, canal/oferta, código curto único, link final, estado, tentativas, data de tentativa, claim/lease, dia UTC, envio e falha; oferta única por canal |
+| `deals_click_day` | Chave post + dia UTC, dono e total de cliques; sem histórico individual de visitantes |
+| `deals_account` | Dono como chave, último plano, `read_only_until` e `purge_started`; índice do prazo de leitura para a rotina diária |
 
-Adicionar índices para `(state,next_poll_at)`, fila por `(state,not_before,id)`, expiração e vínculos por dono. Paginação usa timestamp + ID para preservar empates. Medir o custo dos índices: D1 também conta escritas de manutenção desses índices. Migrações são geradas pelo Drizzle, revisadas e aplicadas antes do Worker que consulta o novo schema. Não reservar neste documento um número de migração que outra área possa consumir.
+A base guarda timestamps em milissegundos e dinheiro em unidade menor da moeda. O contrato público F1 exige datas ISO 8601 em string. `null` é preservado quando preço, imagem ou envio não existem. Filtros/canais lidos de JSON precisam de validação antes do uso, sem confiar só no tipo TypeScript declarado.
+
+A migração F1 `0029` acrescenta `deals_telegram_link` para vínculo/candidato/expiração e `deals_telegram_update` para dedupe de updates; também adiciona `hint` em afiliados, `target_hash`, `next_at` e `last_error` no canal, kind/plataformas/desconto/crédito nas ofertas e o sinal `affiliate` no post. A `0030` cria `deals_account` e seu índice de carência. Destinos e configurações de afiliado são cifrados antes de persistir. Aplicar `0028`, `0029` e `0030` antes deste Worker F1.
+
+O código curto é campo de `deals_post`; não há tabela separada `deals_short_link`. Tampouco há `deals_delivery`, `deals_day`, `deals_credential` ou as tabelas de junção sugeridas no desenho inicial. A fila faz a contagem de cota, e `deals_affiliate.credentials` guarda a configuração cifrada por loja. Uma eventual seleção persistente para exportar ao Studio é evolução F3, sem tabela de vitrine hospedada no Deals.
+
+As migrações seguem o Drizzle e devem ser aplicadas antes do Worker que consulta o novo schema. Medir leituras/escritas e o efeito dos índices, além do tamanho do banco.
 
 ### Retenção e retirada
 
-Os 90 dias da nota são proposta para histórico de atividade e estatísticas. Não autorizam guardar conteúdo de uma API por 90 dias quando sua licença exige TTL menor. Separar conteúdo de oferta, observação permitida de preço, recibo técnico de dedupe/cota e agregado diário de clique. Consultas devem filtrar expirados antes da limpeza física, feita em lotes.
+O catálogo tem `historyDays:90`. A [limpeza diária](../../cloud/worker/deals/catalog.ts) remove cliques e preços antigos, posts não enfileirados com criação anterior à janela e ofertas antigas sem referência de post; também limpa vínculos/updates Telegram antigos. Fila vencida pelo dia previsto vira `failed/EXPIRED`. Essa rotina SQL não é prova de execução remota e não altera TTLs exigidos pelas licenças das fontes. A F1 não implementa limites específicos de retenção de conteúdo Amazon, cuja automação continua F3.
 
-Perda do direito Deals deve interromper novas coletas privadas, reservas e envios, inclusive os já enfileirados. Revalidar o direito antes de cada envio. Prazo de leitura, purga após retirar Deals e comportamento da vitrine ainda não foram aprovados. Exclusão da conta Cloud segue bloqueio imediato e a [retenção de 30 dias](../seguranca.md), integrando os dados Deals na purga e revogando vínculos externos quando aplicável. Não presumir que a carência Pulse de 14 dias foi aprovada também para Deals.
+### Retirar apenas o plano Deals
+
+O direito continua enquanto a assinatura mantém a variante Deals durante o período pago. Ao observar sua perda, a [regra de acesso](../../cloud/worker/deals/access.ts) inicia **14 dias só leitura** para uma conta com registro Deals: novos envios/configurações retornam `403 PLAN`, as caçadas deixam de alimentar a conta e a fila pendente vira `failed/PLAN`. As leituras privadas do dono continuam disponíveis enquanto os dados existem; a rotina diária faz a retirada ao vencer a janela.
+
+O prazo é gravado na primeira observação da ausência do direito, pelo acesso ou por [dealsLifecycle](../../cloud/worker/deals/purge.ts) no cron diário; visitas posteriores não renovam o mesmo prazo. Não é calculado por um `paid_until` salvo no Deals. O cron também inicia a janela para quem não abre o painel e seleciona até 25 contas vencidas por rodada, reivindicando a purga antes de apagar.
+
+Se o direito voltar antes de começar a purga, o estado de leitura é limpo e os dados ainda existentes são preservados. Isso não recupera dados já apagados nem reenfileira automaticamente posts que viraram `failed/PLAN`. A purga de Deals retira seus dados privados e preserva a conta Cloud e os demais produtos. Uma conta que nunca teve registro Deals não recebe uma nova janela por apenas abrir o painel sem plano.
+
+### Excluir ou bloquear a conta Cloud
+
+Conta excluída ou banida perde acesso administrativo e seus links curtos passam a 404 imediatamente. Na purga definitiva do ciclo Cloud de 30 dias, [purgeAccounts](../../cloud/worker/lifecycle.ts) chama `purgeDealsAccount`. Saem afiliados/credenciais, canais, caçadas, posts, cliques, vínculos Telegram e `deals_account` daquele dono. A antiga pendência de integração está resolvida no código conferido.
+
+O catálogo global permanece. Produtos colados do tipo `product` que só aquela conta publicou são removidos com seus preços; produtos referenciados por outra conta e jogos compartilhados ficam. Recibos técnicos `deals_telegram_update`, sem corpo da mensagem ou vínculo de dono, seguem a limpeza diária própria. Essa retenção é distinta dos 14 dias após retirar apenas Deals e dos 90 dias de histórico.
 
 ## 9. API Hono tipada
 
-**Contrato proposto.** Todas as rotas privadas ficam sob `/api/deals`, com sessão Cloud e dono. Criação, ativação, prévias que consultam provedores e envio exigem direito gravável. `/usage` pode explicar `enabled:false`; revogar/remover um vínculo continua permitido ao dono sem Deals. Demais leituras após retirada dependem do prazo ainda a definir. A F0 implementa apenas a base necessária para telas vazias e uso; demais rotas seguem sua fase. IDs são strings opacas no padrão do Cloud, validadas em params. Não aceitar `userId`, preço Stripe, plano ou limite como autoridade do cliente.
+O [contrato F1 acordado](#f1-contrato-acordado) no estado da entrega substitui a tabela inicial de endpoints propostos. A F1 usa `POST /offers`, `GET /offers`, `POST /telegram/link` e Discord por webhook de canal. Não há, nesse contrato, `POST /offers/publish`, ticket de prévia, `/deliveries`, OAuth Discord ou prefixo `/channels/telegram`.
 
-Usar TypeScript estrito, Zod para body/query/params e respostas de provedores, com JSON de entrada estrito e tamanho limitado. Frontend importa o AppType/RPC e infere DTOs, sem duplicá-los manualmente ou converter `unknown` por cast. Middleware global de erro não aparece automaticamente na inferência RPC: tratar o envelope comum também no cliente. [RPC Hono](https://hono.dev/docs/guides/rpc), [validação Hono](https://hono.dev/docs/guides/validation) e [schemas Zod](https://zod.dev/api).
+Todas as rotas privadas usam sessão Cloud e dono. Criar/ativar/enviar exige direito gravável; leituras continuam restritas ao próprio dono e as rotas de remoção de canal, afiliado ou caçada não exigem direito gravável. Não aceitar `userId`, preço Stripe, plano ou limite como autoridade do cliente.
 
-| Método e caminho relativo | Contrato proposto | Fase |
-| --- | --- | --- |
-| `GET /usage` | `{enabled,limits,day,posts,reserved,channels,hunts,mirrors}`; valores inteiros não negativos, `limits:null` quando não aplicável | F0 |
-| `GET /offers` | Filtros `source,store,q,cursor,limit`; lista fechada `{offers,nextCursor}` | F1 |
-| `POST /offers/preview` | `{url,title?,text?,price?,currency?,imageUrl?}`; retorna prévia sanitizada, situação do afiliado e ticket curto, sem publicar | F1 |
-| `POST /offers/publish` | `{ticket,channelIds}` distintos; reconfere dono, configuração, validade e cota; `202 {deliveries}` | F1 |
-| `GET /deliveries` | Filtros de estado/canal/cursor; `{deliveries,nextCursor}` com falha genérica, sem segredo de destino | F1 |
-| `DELETE /deliveries/:delivery` | Cancela uma entrega ainda não enviada; conflito se o envio já foi reivindicado/concluído | F1 |
-| `GET /channels` | `{channels}` com ID, tipo, rótulo e estado; nunca devolve token/webhook completo | F1 |
-| `POST /channels/telegram/link` | `{}`; código temporário por link oficial do bot, com expiração | F1 |
-| `GET /channels/telegram/link/:link` | Estado/candidato permitido, sem devolver segredo do vínculo | F1 |
-| `POST /channels/telegram/link/:link/confirm` | Confirma destino depois de provar controle e permissão do bot | F1 |
-| `POST /channels/discord/link` | Inicia instalação/confirmação por OAuth2 oficial com state temporário | F1 |
-| `GET /channels/discord/callback` | Valida code/state e conclui verificação do canal permitido, sem redirect arbitrário | F1 |
-| `DELETE /channels/:channel` | Desativa, cancela pendências e remove o vínculo; `{ok:true}` | F1 |
-| `POST /channels/:channel/test` | `{}`; teste explícito e limitado; `202 {queued:true}`, não confirmação de entrega | F1 |
-| `GET /affiliates` | `{affiliates}` com loja, ID público e estado da credencial; sem segredo | F1 |
-| `PUT /affiliates/:store` | União discriminada por loja: identificador/região e campos permitidos; credenciais são só de escrita | F1/F2 |
-| `DELETE /affiliates/:store` | Remove configuração e revoga/pausa caçadas dependentes | F1/F2 |
-| `POST /affiliates/:store/test` | `{}`; verificação explícita por adaptador, sem consumir uma compra ou simular venda | F2 |
-| `GET/POST /hunts` | Listagem com cursor ou criação com fonte discriminada, filtros, destinos e intervalo | F1/F2 |
-| `GET/PATCH/DELETE /hunts/:hunt` | Detalhe, edição parcial estrita com revisão, pausa/exclusão e cancelamento das pendências | F1/F2 |
-| `POST /hunts/:hunt/preview` | `{}`; amostra sanitizada sem publicar, informando atraso/limite da fonte | F1/F2 |
-| `GET /sources` | Opções permitidas/estado global, sem credenciais ou dados privados de outros donos | F1/F2 |
-| `POST /sources/check` | Verifica a fonte candidata de espelho sob limite, sem ativar coleta contínua | F2 |
-| `GET /stats` | Query validada de período/canal/caçada, limitada aos 90 dias aprovados para estatísticas | F3 |
-| `GET /studio/offers` | Exportação autenticada e paginada da seleção do dono para o Studio, com DTO publicável e sem credenciais; mecanismo de conexão ainda a definir | F3 |
+O endpoint de uso é `GET /api/deals/usage`: `{plan,limits,readOnly,readOnlyUntil,used:{channels,hunts,mirrors,postsToday},resetsAt}`. Sem direito Deals, plano/limites são `null` e `readOnly:true`; `readOnlyUntil` é ISO ou `null`, sem acrescentar prazo quando a conta nunca teve Deals. `resetsAt` aponta a próxima meia-noite UTC em ISO. Fontes: [API](../../cloud/worker/deals/api.ts) e [acesso](../../cloud/worker/deals/access.ts).
 
-Os exemplos de shape são propostas, não bindings já publicados. Limite sugerido de página: padrão 20, máximo 50; datas ISO UTC, valores ausentes `null`, listas vazias `[]` e preços em inteiros na unidade menor da moeda. Não usar número em ponto flutuante para armazenar dinheiro. Lista de lojas, fontes, tipos de canal e estados é enum/união discriminada, com refinamentos por adaptador.
+Usar TypeScript estrito, Zod para body/query/params e respostas de provedores, com JSON de entrada estrito e tamanho limitado. Frontend importa AppType/RPC e infere DTOs, sem duplicá-los manualmente ou converter `unknown` por cast. Middleware global de erro não aparece automaticamente na inferência RPC: tratar o envelope comum também no cliente. [RPC Hono](https://hono.dev/docs/guides/rpc), [validação Hono](https://hono.dev/docs/guides/validation) e [schemas Zod](https://zod.dev/api).
 
-Erros seguem o formato Cloud `{code,message?}`, sem ecoar corpo, URL secreta ou stack. Usar 400 para entrada inválida, 401 sem sessão, 403 sem direito/permissão, 404 para recurso alheio ou ausente, 409 para cota/conflito e 429 para excesso de chamadas com espera informada. Cota de posts e rate limit de tráfego têm códigos diferentes. Falha transitória de provedor não deve aparecer como identificador de afiliado inválido.
+Datas do contrato F1 são strings ISO 8601. Preço é inteiro em unidade menor, com moeda explícita ou `null`; título é string, imagem e envio podem ser `null`. O detalhe acordado entre Prumo e Confete exige `lastError:string|null` em cada post e erros `{code}`. Códigos previstos: `UNAUTHORIZED` 401, `PLAN` 403, `INVALID` 400, `NOT_FOUND` 404, `QUOTA` 409 para quantidade de recursos, `DAILY_LIMIT` 429 para posts/dia, `LINK_EXPIRED` 409, `CHANNEL_UNAVAILABLE` 503, `FETCH_BLOCKED` 400 e `FETCH_FAILED` 502. O resultado real também usa `DUPLICATE` 409 quando uma oferta já está em todos os destinos escolhidos. Não ecoar corpo, URL secreta ou stack.
 
-Webhooks de bots são exceções à sessão do painel: validar assinatura/secret e esquema do provedor antes de aceitar. Proposta `POST /api/deals/telegram/webhook` para updates Telegram; callback/interações Discord exigem os mecanismos oficiais próprios. Repetição do mesmo update/interação é idempotente. Credencial do bot não autoriza administrar a conta Cloud.
+As rotas de lojas automáticas, fontes de espelho e exportação Studio continuam evoluções F2/F3. Seus bodies, paginação e paths ainda não são contrato implementado; a F1 não deve expor um cadastro que pareça ativar espelhamento ou busca de loja.
 
-### Rotas públicas da F3
+### Redirect público e cliques, F1
 
-Proposta `GET/HEAD https://deals.getblup.site/r/:code` para redirect temporário ao destino salvo e validado. O caminho final ainda precisa ser fechado pelo dono da implementação. Não aceitar `?url=` como destino. Rate limit, cache e indisponibilidade do agregado não devem abrir redirect livre ou impedir a navegação normal quando o link continua válido. A vitrine é gerada pelo Studio, sem rota pública de vitrine no Deals.
+O contrato fixa `GET https://deals.getblup.site/r/:code`, fora da sessão, com resposta 302 para o link final salvo e soma em `deals_click_day`, sem guardar IP. Não aceitar `?url=` como destino livre. A vitrine permanece gerada pelo Studio na F3, sem rota pública de vitrine no Deals.
 
-Contagem significa acesso ao link, não pessoa única, compra ou comissão. Pré-busca, robôs e prévias de Telegram/Discord podem contar; HEAD deve seguir a política documentada de contagem. Agregação em memória de um isolate é aproximada e pode perder dados; se for usada, o painel precisa assumir essa limitação, sem chamar a métrica de auditável.
+Contagem significa acesso ao link, não pessoa única, compra ou comissão. O [redirect](../../cloud/worker/deals/redirect.ts) atende GET/HEAD e não conta HEAD nem User-Agents identificados como robôs/prévias, incluindo Telegram/Discord. Essa heurística não identifica toda automação nem torna o total uma métrica de pessoas únicas. Cada GET contabilizado faz UPSERT no agregado D1 do dia UTC; não depende de flush de memória. Código inválido, post ausente, conta banida/excluída ou destino sem HTTPS retorna 404, sem registrar clique. O redirect não tem cache nem aceita destino livre na query. Retirar apenas Deals não bloqueia o link de imediato: ele pode continuar até a remoção do post, incluindo a purga após a carência.
 
 ## 10. Telas e rotas do painel
 
 | Rota | Tela e conteúdo |
 | --- | --- |
 | `/sign-in` | Login comum com lado coral; retorno fixo permitido |
-| `/` | **Ofertas**: catálogo, busca, filtros, idade do preço, origem, prévia e colar link |
-| `/hunts` | **Caçadas**: fontes, status, próxima rodada, últimos resultados e pausa |
-| `/channels` | **Canais**: destinos confirmados, permissão do bot, teste e remoção |
-| `/affiliates` | **Afiliados**: IDs por loja, chaves privadas, nível e instruções de cadastro |
-| `/stats` | **Cliques**: estado vazio até F3; depois totais agregados, período e limites da medição |
-| `/start` | Assistente inicial e progresso retomável |
-| `/offers/new` | Colar link, completar campos, escolher destinos e confirmar prévia |
+| `/` | **Ofertas**, F1: fila e posts enviados/com falha, imagem, destino, horário, cliques e acesso a colar link |
+| `/hunts` | **Caçadas**: tipos de jogos, filtros/destinos, estado, pausa, edição e remoção |
+| `/channels` | **Canais**: destinos confirmados, tipo/estado, teste e remoção |
+| `/affiliates` | **Afiliados**: IDs/chaves por loja, instruções, configuração/hint e remoção |
+| `/stats` | **Cliques**, F1: gráfico por dia e top de ofertas; períodos de 7, 30 ou 90 dias |
+| `/start` | Assistente inicial, com etapa/assunto retomáveis por query |
+| `/offers/new` | Colar link, conferir prévia, escolher destinos e enviar/agendar |
 | `/hunts/new` | Criar caçada de jogos, loja ou espelho, conforme a fase entregue |
-| `/hunts/[id]` | Fonte, filtros, janela, destinos, prévia, histórico e pausa/exclusão |
-| `/channels/new` | Escolher Telegram/Discord, instalar bot e provar controle |
+| `/hunts/[id]` | Editar filtros e destinos de uma caçada existente, preservando seu tipo |
+| `/channels/new` | Telegram pelo vínculo do bot como administrador; Discord por webhook do canal; sem OAuth Discord no contrato F1 |
 
 São cinco abas. Formulários auxiliares não criam uma navegação paralela de cobrança ou uma aba exclusiva para espelhos. No início, mostrar estados vazios úteis, sem números de exemplo que pareçam dados reais. Recursos de fases futuras ficam identificados como ainda indisponíveis, sem aceitar configuração que nunca será executada.
 
-O SetupGuide mostra etapas reais, sem concluir uma etapa apenas por abrir a página. Sem direito Deals, o painel explica o adicional e leva aos planos Cloud. Idioma usa a preferência comum `pt/en/es`, com troca sem recarregar. Textos de configuração, mensagens de erro e prévias seguem o idioma do painel; textos originais de ofertas não são traduzidos automaticamente.
+Sem direito Deals, o painel explica o adicional e leva aos planos Cloud. Idioma usa a preferência comum `pt/en/es`, com troca sem recarregar. Textos de configuração, mensagens de erro e prévias seguem o idioma do painel; textos originais de ofertas não são traduzidos automaticamente. O assistente é a rota `/start`; citar SetupGuide na decisão inicial não significa que o componente Pulse foi incorporado sem alterações.
+
+### Comportamento conferido no painel F1
+
+- [Ofertas](../../cloud/deals/src/routes/+page.svelte) tem abas por `?state=queued/sent/failed`, medidor diário com horário de renovação, foto/loja/canal/data, cliques nas enviadas, motivo nas falhas e link externo. São os posts do dono, não um navegador do catálogo global.
+- [Colar link](../../cloud/deals/src/routes/offers/new/+page.svelte) exige nova prévia se a URL mudar, mostra os motivos de ausência de afiliado, permite escolher canais e agendar de agora até 30 dias. O DateTimeField usa o horário do navegador e envia ISO ao servidor.
+- [Caçadas](../../cloud/deals/src/routes/hunts/+page.svelte) resume filtros/destinos e permite pausar, editar e apagar. [Criar](../../cloud/deals/src/routes/hunts/new/+page.svelte) e [editar](../../cloud/deals/src/routes/hunts/[id]/+page.svelte) usam HuntForm; o tipo fica fixo na edição. Preço máximo é mostrado em US$ e enviado em centavos. Lojas e Espelhamento aparecem como **Em breve**.
+- [Canais](../../cloud/deals/src/routes/channels/+page.svelte) mostra uso, estado, teste e remoção. [Novo canal](../../cloud/deals/src/routes/channels/new/+page.svelte) recebe webhook Discord ou conduz o vínculo Telegram; consulta o estado a cada cinco segundos, confirma o candidato e usa `?next=` interno para voltar ao assistente.
+- [Afiliados](../../cloud/deals/src/routes/affiliates/+page.svelte) usa um card por loja com instruções, link do programa, campos, selo Configurado, hint e remoção. Os campos ficam vazios depois de salvar, sem recuperar o segredo.
+- [Cliques](../../cloud/deals/src/routes/stats/+page.svelte) usa `?days=7/30/90`, totais, gráfico de colunas com dica por dia, tabela e top de ofertas.
+
+O [cliente](../../cloud/deals/src/lib/api.ts) infere Channel, StoreState, Preview, Post, Hunt e Stats do RPC por `InferResponseType`. O [layout](../../cloud/deals/src/routes/+layout.svelte) prioriza o aviso âmbar de `usage.readOnlyUntil`, com data por extenso no idioma atual, informação de retirada de canais/caçadas/IDs/ofertas e link da assinatura. Sem essa data, trata plano ausente e só leitura genérica; as ações de escrita ficam desabilitadas por `hasPlan`. O texto comunica a data de retirada, cuja execução física cabe à rotina diária descrita na seção 8. Títulos de aba acompanham a rota. Fotos externas são permitidas pela CSP somente em `img-src`, sem liberar scripts externos por isso.
+
+A [prévia visual](../../cloud/deals/src/lib/PostPreview.svelte) usa `deals.getblup.site/r/…`: o código curto real só existe depois que o servidor cria a oferta na fila. É uma representação do post, sem comprovar URL curta, cupom ou entrega. O aviso visual de publicidade não substitui o sinal `affiliate` e o conteúdo efetivamente gerado pelo servidor.
 
 ### Assistente `/start`
 
@@ -306,69 +354,89 @@ O SetupGuide mostra etapas reais, sem concluir uma etapa apenas por abrir a pág
 4. **Prévia**: escolher uma oferta/link, revisar procedência, preço/condições, destino e identificação de publicidade.
 5. **Ligar**: ação explícita que ativa a caçada ou confirma a publicação. Antes desse passo nenhum post de teste ou oferta é enviado sem confirmação própria.
 
-O progresso deve sobreviver à volta da tela. Permitir revisar e desligar depois. Falha na conexão de um bot mantém o assistente no destino; não marcar publicação pronta com base apenas no retorno do OAuth ou no clique no link do Telegram.
+O destino precisa estar confirmado antes de avançar nessa etapa. Abrir o chat privado do bot não equivale a vincular o canal. Discord F1 usa webhook, sem retorno OAuth.
+
+Na [F1 entregue](../../cloud/deals/src/routes/start/+page.svelte), o assunto é Jogos ou Outro. Etapa/assunto podem voltar por `?step=&topic=` ao cadastrar um canal; isso não é persistência integral de todo formulário na conta. IDs dessa tela cobrem Amazon e Mercado Livre e podem ser pulados; Shopee/AliExpress ficam em Afiliados. Jogos mostra um exemplo marcado e permite selecionar grátis/promoções; **Ligar** cria as caçadas selecionadas, com desconto mínimo inicial de 50% nas promoções. Outro leva a colar o primeiro link, sem criar uma caçada de loja automática. A seleção final do assistente não envia o exemplo fictício.
 
 ## 11. Coleta, caçadas e entrega
 
-Uma caçada associa fonte, filtros e destinos: assunto/palavras, loja/plataforma, região/moeda, preço máximo opcional, desconto mínimo quando calculável, horário e intervalo. Não permitir filtros que a fonte não oferece sem indicar que serão aplicados depois da coleta. Intervalos efetivos respeitam a cadência global e os limites externos; criar vinte caçadas não multiplica a frequência permitida da API.
+### Jogos e catálogo compartilhado, F1
 
-Estados propostos da entrega: `queued`, `leased`, `sent`, `retry`, `cancelled`, `failed`, `uncertain`. Antes de enviar, conferir plano, canal, caçada/revisão, oferta ainda válida e reserva. Lease vencida precisa de recibo e tratamento de resultado incerto, sem afirmar entrega exatamente uma vez em Telegram/Discord. Guardar ID da mensagem retornada e horários, não o corpo integral da resposta externa.
+O [coletor](../../cloud/worker/deals/catalog.ts) mantém duas fontes globais, GamerPower e CheapShark, com claim em D1. Cada fonte é lida uma vez por rodada de 30 minutos, independentemente do número de caçadas. A primeira leitura só preenche o catálogo. As seguintes atualizam ofertas/preços e alimentam caçadas ativas com novidades. Criar ou editar uma caçada ativa tenta alimentar imediatamente até três ofertas recentes dos últimos três dias que combinem com os filtros.
 
-Reaproveitar a estrutura de outbox e orçamentos dos transportes Pulse, criando payload específico de oferta. Telegram usa `sendMessage` ou `sendPhoto`, com legenda limitada e fallback para texto sem inventar sucesso. Discord usa mensagem/embed do bot autorizado, sem menções em massa. Imagem inválida não deve causar repetição infinita ou envio repetido do texto.
+GamerPower inclui apenas itens ativos do tipo jogo; preço é zero e o valor de referência, quando disponível, usa USD. CheapShark usa lojas PC mapeadas para Steam, GOG, Ubisoft e Epic, preço em USD e seu próprio redirect. Os filtros são plataformas, desconto mínimo inteiro de 0 a 100 e preço máximo inteiro em centavos de USD. Não há seleção de loja genérica, região, janela de horário ou frequência configurável pelo painel F1. Essas opções pertencem às fases seguintes, se forem implementadas.
 
-Respeitar 429, `Retry-After`, `retry_after` e os buckets aplicáveis de cada plataforma. O limite de 100 posts/dia não substitui limites por chat, bot, rota ou servidor. Tentativas usam espera persistida e limite de idade, sem `sleep` longo segurando o Worker. Escalonar dez destinos para não criar rajada a cada cron.
+O catálogo usa hash da chave da oferta e atualiza observações; o histórico de preço só ganha registro quando o valor muda. Um post de link manual guarda o link final da pessoa, separado da oferta compartilhada. O sinal `affiliate` indica conversão aplicada pelo código, sem comprovar comissão reconhecida pela loja. Amazon troca a tag do link; Mercado Livre troca `matt_word` e `matt_tool` quando informado; Shopee/AliExpress chamam a geração oficial com as credenciais salvas. Faltas/falhas retornam os motivos da prévia. Fontes: [conversões](../../cloud/worker/deals/links.ts) e [ofertas](../../cloud/worker/deals/offers.ts). As ressalvas comerciais da seção 4 continuam valendo.
 
-| Plataforma | Limites e permissões oficiais a respeitar |
+### Fila, agendamento e falhas
+
+Estados persistidos na F1 são `queued`, `sent` e `failed`. Claim/lease é controle interno da linha, sem criar estado público `leased`. A [admissão](../../cloud/worker/deals/store.ts) usa batch condicionado à cota e canal ativo, e a chave única canal/oferta impede reenfileirar a mesma oferta no canal. A quantidade retornada em `queued` pode ser menor que a seleção quando só parte cabe.
+
+O agendamento manual recebe `sendAt` ISO até 30 dias; o servidor tolera até um minuto no passado e normaliza para agora. A validade usa o **dia previsto UTC**, não a data de criação: uma linha prevista para o dia D ainda cabe na janela até D+2; em D+3, vira `failed` com `EXPIRED`. Essa correção tem regressão de agendamento +3 dias. Reenvios não estendem essa janela, e há no máximo cinco tentativas. Falha definitiva encerra antes desse teto.
+
+O [despachante](../../cloud/worker/deals/dispatch.ts) roda no cron por minuto depois da coleta, com lease global, lote de até 50 pendências e orçamento de 45 segundos de execução do laço. Confere direito Deals e estado do canal, reivindica a linha e envia no máximo uma por canal em cada rodada. O canal mantém intervalo mínimo de **dois minutos**, ampliado se a espera do provedor for maior. Retry persiste novo horário; não usa sleep longo no Worker.
+
+Perder o plano ou encontrar destino desativado encerra a pendência com o código correspondente. Excluir canal remove seus posts ainda na fila e o retira das caçadas; excluir caçada remove as pendências dela. Apenas pausar uma caçada interrompe a alimentação de novas ofertas, sem cancelar as que já estavam na fila. A F1 não oferece endpoint para cancelar individualmente um post.
+
+### Conteúdo e provedores
+
+[Mensagens e transportes](../../cloud/worker/deals/message.ts) geram texto Telegram/HTML ou embed Discord, com título, preço conhecido, preço antigo quando aplicável, desconto, link curto e crédito de fonte. Aviso de afiliado é incluído quando o post tem `affiliate:true`; não há campo estruturado de cupom na F1. O idioma vem de `user.language`, com fallback português. A prévia do painel é uma representação, sem executar o envio.
+
+Telegram usa o bot Deals e tenta `sendPhoto` quando há imagem. Se o provedor responder erro 400 para a foto, tenta texto; outros erros seguem o tratamento de falha. Discord usa webhook com `wait=true` e sem menções em massa. Os dois transportes têm timeout de dez segundos e tratam 429/espera. Falha permanente de destino o desativa; resposta perdida pode causar repetição, sem promessa de entrega exatamente uma vez.
+
+| Plataforma | Limites oficiais além da cota Deals |
 | --- | --- |
 | Telegram | Evitar mais de uma mensagem/s no mesmo chat; grupos, até 20/min; broadcast gratuito em torno de 30 mensagens/s por bot, compartilhadas entre contas |
-| Telegram em canal | Bot adicionado com `can_post_messages`; texto até 4.096 caracteres ou legenda de foto até 1.024, depois do processamento das entidades |
-| Discord HTTP do bot | Limite global normal de 50 requests/s, além dos buckets por rota/recurso; observar Bucket, Remaining, Reset-After e Retry-After/retry_after |
+| Telegram em canal | Bot administrador com `can_post_messages`; texto até 4.096 caracteres ou legenda de foto até 1.024 após processar entidades |
+| Discord | Buckets por rota/recurso e limites globais aplicáveis; ler espera/Remaining/Reset-After em vez de fixar uma regra universal para todo webhook |
 
-Não fixar uma regra universal de cinco envios a cada dois segundos para webhooks Discord. Webhook de entrada pode simplificar só a postagem F1, como alternativa técnica a fechar, com URL secreta e `wait=true`; não concede leitura para espelhos. O produto continua sem self-bot/token de usuário. [Telegram FAQ](https://core.telegram.org/bots/faq), [Bot API](https://core.telegram.org/bots/api), [rate limits Discord](https://docs.discord.com/developers/topics/rate-limits) e [webhooks Discord](https://docs.discord.com/developers/resources/webhook).
+A espera de cada canal não comprova um limitador global de todos os clientes do bot. Manter paid broadcasts desligado e medir capacidade antes de escalar. A 10.000 contas no teto de 100 posts/dia, a média contínua seria cerca de 11,6 envios/s, sem incluir rajadas e testes manuais. Fontes: [Telegram FAQ](https://core.telegram.org/bots/faq), [Bot API](https://core.telegram.org/bots/api), [rate limits Discord](https://docs.discord.com/developers/topics/rate-limits) e [webhooks](https://docs.discord.com/developers/resources/webhook).
 
-Manter paid broadcasts Telegram desligado: trata-se de recurso cobrado, não capacidade gratuita implícita do plano. A 10.000 contas consumindo 300 envios/dia cada, a média contínua já seria cerca de 34,7 envios/s; capacidade do bot e distribuição de horários precisam ser revistas antes dessa escala. Limites publicados não garantem entrega imediata.
+### Teste de canal
+
+O teste é imediato, fora da fila e da cota de ofertas. Retorna `202 {ok,code}`. `ok:true` religa o canal e limpa a falha; `ok:false` informa `DESTINATION_DISABLED`, `CHANNEL_UNAVAILABLE`, `RATE_LIMIT` ou `PROVIDER` conforme o caso. O painel só mostra **Teste enviado** no sucesso e atualiza a lista depois da tentativa. HTTP 202 sozinho não é sucesso de entrega.
 
 ## 12. Privacidade, permissões e dados sensíveis
 
 Deals não tem cifra de ponta a ponta: o servidor precisa ler filtros, identificadores e ofertas para personalizar e publicar. Telegram, Discord e lojas recebem os campos exigidos por suas integrações. As notas do Studio não são fonte automática de ofertas, e o aceite de IA/Pulse não autoriza usar conteúdo das notas no Deals.
 
-Credenciais de lojas, destinos de webhook e tokens temporários ficam cifrados no servidor com Web Crypto AES-GCM, nonce aleatório por gravação e AAD contendo dono, recurso e finalidade. Chave do serviço fica em secret, com versão para rotação; não usar o ID público de afiliado como chave. Nome proposto: `DEALS_CHANNEL_KEY`, sem valor neste documento. Decidir separação de chaves por finalidade antes da implementação. APIs de leitura retornam estado/rótulo, nunca o segredo gravado.
+A F1 cifra destinos e configurações de afiliados com AES-GCM usando a secret existente `PULSE_CHANNEL_KEY` de 32 bytes. O contexto AAD é `blup-deals`, separado de `blup-pulse`, com versão, dono, ID e tipo; IV aleatório de 12 bytes por gravação. A leitura devolve estado/rótulo ou hint dos últimos caracteres, nunca a configuração em claro. Não existe `DEALS_CHANNEL_KEY` no contrato entregue. Preservar a chave atual: trocar seu valor sem recifrar rompe a leitura dos dados. Fontes: [armazenamento Deals](../../cloud/worker/deals/store.ts) e [cifra compartilhada](../../cloud/worker/pulse/channel-crypto.ts).
 
-Bots usam credenciais do serviço, guardadas como secrets, e permissões mínimas. O cadastro precisa provar que a pessoa administra o destino; colar um ID de canal não basta. Essa prova vale para publicar no destino, sem exigir autorização do dono da origem espelhada. Para Telegram, confirmar permissões administrativas de publicação no canal. Para Discord, validar o servidor, canal e permissão do usuário e do bot, protegendo OAuth por state com prazo e uso único.
+Bots usam credenciais do serviço, guardadas como secrets, e permissões mínimas. Colar um ID de canal não basta para provar controle do destino. No Telegram F1, o vínculo associa a pessoa que abriu o bot ao canal/grupo em que ela o adicionou como administrador. Discord F1 recebe um webhook válido do canal, tratado como segredo, sem fluxo OAuth. Essa confirmação de destino não exige autorização do dono da origem espelhada. Leitura por bot para espelhamento Discord será outro fluxo F2, com permissões próprias.
 
 Tratar HTML, títulos, imagens e mensagens como conteúdo externo: escape de saída, limites, proibição de scripts e menções, nenhum HTML arbitrário no painel/vitrine. Logs usam códigos de erro e IDs internos, sem URLs com credenciais, cabeçalhos de autorização, conteúdo privado ou tokens de OAuth. Não coletar listas de membros nem mensagens privadas para montar uma oferta.
 
-Cliques da F3 usam contagem diária agregada, sem perfil individual, fingerprint de navegador ou cookie de afiliado criado pelo Blup. IP pode ser observado pela infraestrutura para segurança; não o guardar no relatório comercial como identificador de visitante. Identificar claramente links de afiliados e a procedência, conforme as regras de cada programa.
+Cliques da F1 usam contagem diária agregada, sem perfil individual, fingerprint de navegador ou cookie de afiliado criado pelo Blup. IP pode ser observado pela infraestrutura para segurança; não o guardar no relatório comercial como identificador de visitante. Identificar claramente links de afiliados e a procedência, conforme as regras de cada programa.
 
 ## 13. Switch e cobrança Stripe
 
-**Somente sandbox nesta rodada.** O switch Deals acrescenta `ultra_deals` ou `ultra_pulse_deals` ao catálogo existente. Proposta: uma assinatura e um item recorrente que representam a combinação, como o contrato atual do Pulse. Não abrir uma segunda assinatura para o mesmo adicional.
+**Somente sandbox nesta rodada.** O switch Deals seleciona `ultra_deals` ou `ultra_pulse_deals` no catálogo tipado. O fluxo comum usa uma assinatura e um item recorrente que representam a combinação, como no Pulse, sem segunda assinatura para o mesmo adicional.
 
-| Nova variante proposta | Lookup key mensal proposta | Lookup key anual proposta |
+| Variante aprovada | Lookup key mensal | Lookup key anual |
 | --- | --- | --- |
 | Ultra + Deals | `blup_ultra_deals_mensal` | `blup_ultra_deals_anual` |
 | Ultra + Pulse + Deals | `blup_ultra_pulse_deals_mensal` | `blup_ultra_pulse_deals_anual` |
 
 Com as cinco variantes pagas existentes, são sete variantes pagas e quatorze lookup keys no total, se essa organização for mantida. Valores/moedas vêm do Price Stripe validado; período sem preço válido permanece indisponível para compra.
 
-### Preços propostos, ainda sem aprovação do dono
+### Preços aprovados pelo dono e criados no Stripe sandbox
 
-| Variante | Mensal proposto | Anual proposto, cobrado uma vez |
+| Variante | Mensal aprovado | Anual aprovado, cobrado uma vez |
 | --- | --- | --- |
 | Ultra + Deals | R$ 109,90 | R$ 1.099,00 |
 | Ultra + Pulse + Deals | R$ 169,90 | R$ 1.699,00 |
 
-As bases informadas pelo Maestro são Ultra a R$ 59,90/mês e Ultra + Pulse a R$ 129,90/mês. O acréscimo proposto do Deals é R$ 50,00/mês sobre Ultra ou R$ 40,00/mês sobre Ultra + Pulse. Anual equivale a dez mensalidades: bases R$ 599,00 e R$ 1.299,00, com acréscimos de R$ 500,00 e R$ 400,00. Esses valores são proposta para avaliação e ensaio sandbox, sem autorização para cobrar em produção.
+O Maestro confirmou a aprovação do dono e a criação dos quatro Prices no Stripe sandbox, com os lookup keys da tabela anterior. As bases informadas são Ultra a R$ 59,90/mês e Ultra + Pulse a R$ 129,90/mês. O acréscimo do Deals é R$ 50,00/mês sobre Ultra ou R$ 40,00/mês sobre Ultra + Pulse. Anual equivale a dez mensalidades: bases R$ 599,00 e R$ 1.299,00, com acréscimos de R$ 500,00 e R$ 400,00. Aprovação e catálogo sandbox não confirmam catálogo de produção ou liberação de cobrança real.
 
-Proposta de `/me.plan`: preservar `name:"ultra"`, manter `billingName` da variante completa e acrescentar `deals:{enabled,limits}` sem inferir direito só pelo prefixo do nome. `/plans` precisa representar Pulse e Deals de forma independente. Confirmar o shape com a Lupa antes de criar consumidores ou afirmar contrato final.
+O [código atual](../../cloud/worker/index.ts) de `/me.plan` preserva `name:"ultra"`, usa `billingName` da variante completa e inclui `deals:{enabled,limits}`. `/plans` representa Pulse e Deals de forma independente. O servidor resolve o direito pela variante de plano, sem confiar no nome recebido do navegador. A cortesia do dono, conferida por identidade verificada, usa `ultra_pulse_deals`; não é um plano grátis público.
 
-Estender as rotas próprias `/api/billing/checkout`, `/preview`, `/confirm` e `/state`, sem criar cobrança mutável paralela no plugin Better Auth. Adicionar Deals usa prévia e confirmação com proporcionalidade; retirar Deals ou reduzir o plano deve seguir o fim pago, com efeito e retenção explícitos. O webhook assinado e a reconciliação do estado atual continuam concedendo direitos; página de sucesso não concede acesso. A [spec Pulse](blup-pulse.md#11-switch-e-cobrança-stripe) descreve o mecanismo existente, que ainda precisa ser estendido e testado para as novas combinações.
+As rotas próprias `/api/billing/checkout`, `/preview`, `/confirm` e `/state` usam o catálogo tipado, sem cobrança mutável paralela no plugin Better Auth. Adicionar Deals usa prévia e confirmação com proporcionalidade; a [classificação de cobrança](../../cloud/worker/billing-flow.ts) agenda retirada de Deals/redução para o fim pago. O webhook assinado e a reconciliação do estado atual concedem direitos; página de sucesso não concede acesso. A [spec Pulse](blup-pulse.md#11-switch-e-cobrança-stripe) descreve o mecanismo comum. O ensaio financeiro sandbox e a liberação de produção são verificações separadas dos gates locais da F1.
 
-Não modificar Prices de clientes existentes em massa. Criar Prices sandbox próprios e metadata da variante completa; testar troca entre as quatro combinações Ultra, pagamento pendente, retirada de só um adicional, cancelamento, retorno e webhook repetido/fora de ordem. Produção depende de preço aprovado, catálogo real validado e liberação do dono.
+Não modificar Prices de clientes existentes em massa. Os Prices sandbox já criados usam a variante completa; conferir metadata e testar troca entre as quatro combinações Ultra, pagamento pendente, retirada de só um adicional, cancelamento, retorno e webhook repetido/fora de ordem. Produção continua dependendo de catálogo real validado e liberação comercial do dono.
 
 ## 14. Custos e viabilidade
 
-Estimativa da pesquisa da Lupa, com aritmética conferida para 30 dias. É um orçamento do **adicional Deals**, sem o consumo do Ultra/Cloud/Pulse. Nenhum preço de venda do Deals foi aprovado na nota; portanto não há margem comercial fechada. Tarifas em USD, sem impostos ou câmbio, sujeitas a nova conferência antes de vender.
+Estimativa da pesquisa da Lupa, com aritmética conferida para 30 dias. É um orçamento do **adicional Deals**, sem o consumo do Ultra/Cloud/Pulse. Os preços foram aprovados posteriormente pelo dono; o consumo continua estimado, sem margem operacional medida. Tarifas em USD, sem impostos ou câmbio, sujeitas a nova conferência antes de vender.
 
 ### Tarifas oficiais
 
@@ -378,7 +446,7 @@ D1 Paid inclui 25 bilhões de linhas lidas/mês, 50 milhões escritas/mês e 5 G
 
 ### Cenário por cliente
 
-O limite de posts passou a 100 por dia por decisão do dono. O cenário abaixo foi calculado com 300 envios por dia e fica mantido como teto conservador, três vezes o limite atual: o custo real por cliente tende a ser menor, e os saldos da proposta de preço, maiores.
+O limite executado pelo catálogo e contratado para F1 é **100 posts/dia**, ou 3.000 publicações em 30 dias e cerca de 9.000 registros em 90 dias no teto. O cenário histórico abaixo usa 300 envios/dia e permanece como envelope conservador de dimensionamento, três vezes a cota de posts atual. Não é um limite disponível ao assinante nem custo máximo garantido. Coleta, cliques e CPU não caem necessariamente na mesma proporção dos posts; medir a F1 antes de reduzir a estimativa de US$ 1,3025.
 
 | Premissa de cálculo, não cota contratada | Quantidade em 30 dias |
 | --- | --- |
@@ -418,7 +486,7 @@ Essas simulações supõem as franquias ainda livres para esse workload; Cloud/P
 
 ### Sensibilidade, cliques e importação Studio
 
-Se 300 significasse ofertas replicadas em dez canais, seriam 90.000 envios/mês, dez vezes o cenário. Os 81.000 extras, com dez linhas escritas por envio como hipótese, acrescentariam US$ 0,81 de escrita, além de CPU, leitura e armazenamento. A viabilidade proposta pressupõe **300 envios totais**.
+A cota atual é de **100 envios totais/dia**, não cem ofertas replicadas livremente em dez canais. O cenário histórico de 300/dia produziria 90.000 envios/mês se fosse multiplicado por dez destinos; essa interpretação fica fora tanto da cota atual quanto do envelope de 9.000 envios/mês da pesquisa. Não multiplicar a cota por canal.
 
 Cada 1.000 cliques/dia adicionais gera 30.000 requests/mês: US$ 0,009 marginal em requests e US$ 0,03 em escrita se houver um UPDATE cobrado por clique, fora CPU/índices. Agregar por dia reduz registros, mas não elimina escritas se cada clique atualiza o contador. Não anunciar poucas escritas sem um mecanismo persistente de agrupamento medido; memória de isolate pode perder incrementos.
 
@@ -430,7 +498,7 @@ Manter outbox D1 na implementação inicial. Queues é opção futura se atraso,
 
 Ficam fora da estimativa Cloudflare: direitos já usados do Ultra, APIs comerciais, Stripe, impostos, suporte, IA, logs excessivos e proxy de mídia. Deals não acrescenta armazenamento R2 na F1, mas o Ultra continua tendo custo próprio de notas/sites/operações. O cálculo incremental abaixo não trata US$ 1,3025 como custo total de Ultra + Deals.
 
-### Saldo incremental dos preços propostos
+### Saldo incremental dos preços aprovados
 
 Usar a referência PTAX informada pelo Maestro, **R$ 5,4212 por US$ 1**, sem apresentá-la como cotação do dia: `US$ 1,3025 × 5,4212 = R$ 7,061113`, arredondado a **R$ 7,06/mês**. Com custo Cloudflare em dobro, são R$ 14,12/mês. O cálculo mantém a precisão completa e arredonda apenas os resultados exibidos.
 
@@ -448,16 +516,16 @@ O anual cobra dez mensalidades, mas presta serviço por doze meses. Por isso o c
 | Sobre Ultra | R$ 500,00 | R$ 23,45 | R$ 84,73 | **R$ 391,82** | **R$ 307,08** |
 | Sobre Ultra + Pulse | R$ 400,00 | R$ 18,76 | R$ 84,73 | **R$ 296,51** | **R$ 211,77** |
 
-O saldo incremental é positivo nos quatro cenários, inclusive com o dobro do custo Cloudflare. É uma simulação da contribuição adicional do Deals antes dos demais custos excluídos, sem afirmar lucro total do plano ou aprovar os preços.
+O saldo incremental é positivo nos quatro cenários, inclusive com o dobro do custo Cloudflare. A conta usa os preços aprovados e o envelope histórico de 300 posts/dia, mantendo o custo estimado apesar da cota atual de 100. É uma simulação da contribuição adicional do Deals antes dos demais custos excluídos, sem afirmar lucro total do plano.
 
 ## 15. Riscos, fases e critérios de aceite
 
 | Fase aprovada | Escopo | Critério de conclusão proposto |
 | --- | --- | --- |
 | **F0** | Switch Ultra + Deals, variantes sandbox, app com login, shell, cinco abas/estados vazios, sessão/direito e schema inicial D1 | Login/logout e origem exata; sem acesso de outro dono/plano; nenhum post/coletor real; migração local do zero; combinações de plano tipadas e compra sandbox sem produção |
-| **F1** | Destinos Telegram/Discord, IDs de afiliados, colar link e jogos automáticos | Prova de controle do destino; prévia fiel; regras de API por fonte e links CheapShark preservados; dedupe/cota atômicos; 429/retry/resultado incerto; dados externos validados; sem promessa de comissão não comprovada |
+| **F1** | Destinos Telegram/Discord, afiliados, colar link, jogos automáticos, links curtos e estatísticas de cliques | Prova de controle do destino; prévia fiel; regras de API por fonte e links CheapShark preservados; dedupe/cota atômicos; 429/retry/resultado incerto; dados externos validados; sem promessa de comissão não comprovada |
 | **F2** | Caçadas Shopee/AliExpress/Mercado Livre e espelhamento aberto | Credencial individual e regra por loja; coleta compartilhada; sem autorização do dono da origem; limites técnicos, intervalo e risco dos termos registrados; leitura incremental; revisão/pausa/concorrência; arquitetura Discord definida |
-| **F3** | Cliques/relatórios, conexão Deals com o Studio para gerar a vitrine e Amazon automática | Link curto sem open redirect; exportação autenticada só do dono e sem segredos; publicação da vitrine pelo Studio; agregação explicada; elegibilidade/API Amazon e regras comerciais verificadas |
+| **F3** | Evolução dos relatórios, conexão Deals com o Studio para gerar a vitrine e Amazon automática | Link curto sem open redirect; exportação autenticada só do dono e sem segredos; publicação da vitrine pelo Studio; agregação explicada; elegibilidade/API Amazon e regras comerciais verificadas |
 
 Aceitar uma fase por testes normais, sem `it.fails`. Cobrir schema estrito, respostas externas ausentes/nulas, dono errado, código de vínculo repetido/expirado, assinatura removida entre fila e envio, mesma oferta em duas fontes, lease vencida durante fetch/envio, virada UTC e limite conjunto da conta. Injetar sentinelas de segredos para verificar ausência em logs, DTOs públicos e mensagens.
 
@@ -474,21 +542,24 @@ Riscos prioritários: disponibilidade/licença das fontes; atribuição de afili
 - Espelhamento aberto como fonte dentro de Caçadas, sem exigir autorização do dono da origem; risco dos termos Telegram/Discord registrado e assumido pelo dono do Blup, preservando os limites técnicos.
 - CheapShark mantida como fonte, com os links da própria CheapShark e sem troca pelo afiliado do usuário; risco de coleta excessiva registrado.
 - Blup `turma-8`, coral `#ff7a59`, destaque do painel `#c2410c`.
-- Painel `deals.getblup.io`; links curtos F3 em `deals.getblup.site`; vitrine gerada no Studio pela conexão Deals, sem vitrine externa no Deals.
+- Painel `deals.getblup.io`; links curtos F1 em `deals.getblup.site`; vitrine gerada no Studio pela conexão Deals, sem vitrine externa no Deals.
 - Worker/API Cloud, painel estático próprio, sessão comum, D1, coleta compartilhada e outbox; sem DO/R2 na F1.
 - Cinco abas, rotas em inglês, assistente assunto, destino, IDs opcionais, prévia e ligar.
-- Entregas em F0 a F3; Stripe apenas sandbox nesta rodada.
+- Entregas em F0 a F3; links curtos e cliques antecipados para a F1 pelo contrato entre servidor e painel; vitrine Studio continua F3.
+- Preços aprovados pelo dono e quatro Prices criados pelo Maestro no Stripe sandbox: Ultra + Deals R$ 109,90/mês ou R$ 1.099/ano; Ultra + Pulse + Deals R$ 169,90/mês ou R$ 1.699/ano. Cobrança real não foi liberada por esse registro.
+- Cota conjunta de 100 posts/dia, já presente em `dealsLimits`; demais limites do catálogo: 10 canais, 20 caçadas, 10 espelhos e 90 dias de histórico.
+- Carência Deals implementada: 14 dias só leitura após observar perda do direito e purga diária dos dados privados; retorno ao plano preserva o que ainda existir antes da purga. Migração `0030`, campo `readOnlyUntil` em `/usage` e integração à purga definitiva da conta Cloud conferidos.
 
 ### Falta fechar
 
-- Confirmar os limites à luz da pesquisa: 10 canais, 20 caçadas, 10 espelhos, **100 envios somados por dia** e histórico de 90 dias; medir CPU, escrita e armazenamento do protótipo. A estimativa marginal de US$ 1,3025 não fecha a capacidade de um banco D1.
-- Aprovar ou revisar a proposta de preços: Ultra + Deals R$ 109,90/mês ou R$ 1.099/ano; Ultra + Pulse + Deals R$ 169,90/mês ou R$ 1.699/ano. Regras de cortesia e futura liberação comercial também continuam pendentes.
+- Medir CPU, escrita, armazenamento e operação da F1 na cota atual de 100 posts/dia. A estimativa histórica marginal de US$ 1,3025 não fecha a capacidade de um banco D1.
+- Homologar a operação externa, validar o catálogo de produção e obter liberação comercial; preços e catálogo sandbox já foram confirmados pelo Maestro, e os gates locais dos dois agentes estão registrados no estado da entrega.
 - Contrato oficial de conversão de afiliado Mercado Livre; elegibilidade e permissão de cada loja para publicar em Telegram/Discord. O simples `matt_word` permanece não confirmado.
 - Volume/cadência de coleta CheapShark e demais fontes; a permanência da CheapShark com seus próprios links já foi decidida.
 - Método de leitura Discord e eventual infraestrutura da F2; planejar revisão de intents no alcance de 10.000 usuários únicos e verificação para mais de 100 servidores, sem confundir os critérios. Não incluir Gateway persistente silenciosamente no custo F1.
-- Prazo e purga ao retirar Deals; efeito sobre vitrine/links e recibos de cota, sem importar automaticamente a carência Pulse.
-- Semântica final de reserva/contagem de post em resultado incerto, teto/TTL do catálogo e intervalo mínimo das caçadas.
+- Política futura para aceite externo incerto/reembolso de cota e evolução de TTL/teto do catálogo; a F1 conta as linhas no dia previsto e mantém falhas na cota enquanto existirem.
 - Caminho de links curtos, política de contagem HEAD/robôs e limite de cliques; contrato da conexão Deals e Studio, template, atualização e destino da vitrine.
-- Nomes finais dos bots, credenciais de serviço, escopos mínimos, rotação de segredos e ensaios externos autorizados.
+- Registrar/configurar o bot de nome `DEALS_TELEGRAM_BOT`, verificar permissões e destinos reais e planejar rotação/recifra dos segredos.
+- Cupom estruturado, que consta do contrato inicial, não está implementado na F1 entregue.
 
 Essas pendências técnicas e comerciais não reabrem a decisão de espelhamento aberto ou a permanência da CheapShark com seus próprios links. O risco assumido pelo dono continua registrado sem ser apresentado como autorização das plataformas.

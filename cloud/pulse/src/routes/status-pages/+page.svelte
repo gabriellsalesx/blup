@@ -19,7 +19,7 @@
  import Badge from "#lib/ui/Badge.svelte";
  import {pulseApi,parseResponse} from "../../lib/api";
  import {panel} from "../../lib/panel.svelte";
- import UsageMeter from "../../lib/UsageMeter.svelte";
+ import UsageMeter from "#lib/ui/UsageMeter.svelte";
  import {getPages,type StatusPage} from "../../lib/status-pages";
  // The status pages: a button on top makes a new one; each card opens,
  // goes live or offline, or is deleted.

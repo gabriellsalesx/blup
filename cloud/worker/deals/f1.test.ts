@@ -1,0 +1,448 @@
+import {beforeEach,afterEach,it,expect,vi,describe} from "vitest";
+import {TestD1,TestBucket,seedUser} from "../security-test-support";
+const state=vi.hoisted(()=>({env:{} as Cloudflare.Env}));
+vi.mock("cloudflare:workers",()=>({env:state.env,DurableObject:class{}}));
+vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})=>{const id=headers.get("authorization")?.replace("Bearer ","");return id?{user:{id}}:null;}}}}));
+import {dealsApi} from "./api";
+import {safeFetch,FetchError} from "./fetch";
+import {amazonLink,mercadoLivreLink,shopeeLink,aliexpressLink,aliexpressSign,aliexpressResponse,aliexpressHost,convertLink,storeOf} from "./links";
+import {pageInfo,priceCents} from "./page";
+import {upsertOffer,collectDeals,dealsCleanup,gamerPowerOffers,cheapSharkOffers,type OfferInput} from "./catalog";
+import {enqueue,dayOf,seal} from "./store";
+import {dispatchDeals,DEALS_BUDGET} from "./dispatch";
+import {telegramText,discordPayload} from "./message";
+import {serveDealsLink} from "./redirect";
+import {panelCorsOrigin} from "../security";
+import {softDelete,purgeAccounts,DAY as LIFE_DAY} from "../lifecycle";
+import {dealsLifecycle} from "./purge";
+import {dealsAccess} from "./access";
+
+let db:TestD1;
+const KEY=btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
+const HOOK="https://discord.com/api/webhooks/123456789012345678/"+"a".repeat(68);
+beforeEach(()=>{
+ db=new TestD1();seedUser(db,"alice","ultra_deals");seedUser(db,"bob","ultra_pulse_deals");seedUser(db,"plain","ultra");
+ Object.assign(state.env,{DB:db.asD1(),STAFF_OWNER_EMAIL:"",PULSE_CHANNEL_KEY:KEY,DEALS_PUBLIC_HOST:"deals.audit.invalid",DEALS_TELEGRAM_BOT:"BlupDealsBot",DEALS_TELEGRAM_TOKEN:"123456:"+"b".repeat(30),DEALS_TELEGRAM_WEBHOOK_SECRET:"hook-secret"});
+});
+afterEach(()=>{db.close();vi.unstubAllGlobals();vi.restoreAllMocks();});
+const call=(path:string,init:{method?:string;body?:unknown;user?:string|null;headers?:Record<string,string>}={})=>dealsApi.fetch(new Request(`https://cloud.audit.invalid${path}`,{method:init.method??"GET",headers:{...(init.user===null?{}:{authorization:`Bearer ${init.user??"alice"}`}),...(init.body!==undefined?{"content-type":"application/json"}:{}),...init.headers},body:init.body===undefined?undefined:JSON.stringify(init.body)}),state.env);
+// A fake Internet: public DNS answers, then the page or API by address.
+function net(routes:Record<string,(req:Request)=>Response|Promise<Response>>,ip="93.184.216.34"){
+ const calls:Request[]=[];
+ const send=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+  const req=new Request(input instanceof URL?input.href:input,init);calls.push(req);const url=new URL(req.url);
+  if(url.hostname==="cloudflare-dns.com")return Response.json({Status:0,Answer:[{type:url.searchParams.get("type")==="A"?1:28,data:url.searchParams.get("type")==="A"?ip:"2606:4700::1"}]});
+  const route=routes[`${url.hostname}${url.pathname}`]??routes[url.hostname];
+  if(!route)throw new Error(`unexpected ${req.url}`);
+  return route(req);
+ }) as unknown as typeof fetch;
+ return {send,calls};
+}
+const html=(body:string)=>new Response(body,{headers:{"content-type":"text/html; charset=utf-8"}});
+async function addDiscord(user="alice"){const r=await call("/channels",{method:"POST",user,body:{type:"discord",webhook:HOOK}});return (await r.json() as {id:string}).id;}
+const offer=(over:Partial<OfferInput>={}):OfferInput=>({key:"k1",store:"amazon",externalId:null,sourceId:null,title:"Fone",url:"https://www.amazon.com.br/dp/B000000001",imageUrl:null,price:10000,originalPrice:null,currency:"BRL",kind:"product",platforms:[],discount:null,credit:null,expiresAt:null,...over});
+
+describe("link conversion by store",()=>{
+ it("knows the stores by address",()=>{
+  expect(storeOf(new URL("https://www.amazon.com.br/x"))).toBe("amazon");expect(storeOf(new URL("https://produto.mercadolivre.com.br/MLB-1"))).toBe("mercadolivre");
+  expect(storeOf(new URL("https://shopee.com.br/p-i.1.2"))).toBe("shopee");expect(storeOf(new URL("https://pt.aliexpress.com/item/1005001.html"))).toBe("aliexpress");
+  expect(storeOf(new URL("https://amazon.com.br.evil.invalid/x"))).toBe("other");expect(storeOf(new URL("https://notmercadolivre.com.br/x"))).toBe("other");
+ });
+ it("puts the Amazon tag on the product and drops someone else's",()=>{
+  expect(amazonLink(new URL("https://www.amazon.com.br/Fone-X/dp/B0ABCDEF12/ref=sr_1_1?tag=outro-20&keywords=fone"),"meu-20")).toBe("https://www.amazon.com.br/dp/B0ABCDEF12?tag=meu-20");
+  expect(amazonLink(new URL("https://www.amazon.com.br/s?k=fone&tag=outro-20&ascsubtag=x"),"meu-20")).toBe("https://www.amazon.com.br/s?k=fone&tag=meu-20");
+ });
+ it("puts the Mercado Livre word and tool, dropping old ones",()=>{
+  const out=new URL(mercadoLivreLink(new URL("https://produto.mercadolivre.com.br/MLB-123-fone?matt_word=outro&matt_tool=1&color=azul"),"minhaloja","98765"));
+  expect(out.searchParams.get("matt_word")).toBe("minhaloja");expect(out.searchParams.get("matt_tool")).toBe("98765");expect(out.searchParams.get("color")).toBe("azul");expect(out.searchParams.getAll("matt_word")).toHaveLength(1);
+ });
+ it("asks Shopee for the short link with the signed request",async()=>{
+  const {send,calls}=net({"open-api.affiliate.shopee.com.br":()=>Response.json({data:{generateShortLink:{shortLink:"https://s.shopee.com.br/abc"}}})});
+  expect(await shopeeLink(new URL("https://shopee.com.br/Fone-i.1.2?sp_atk=x"),"12345","s".repeat(32),send,1_800_000_000_000)).toBe("https://s.shopee.com.br/abc");
+  const auth=calls[0].headers.get("authorization")??"",body=await calls[0].text();
+  const expected=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(`12345${1_800_000_000}${body}${"s".repeat(32)}`))),b=>b.toString(16).padStart(2,"0")).join("");
+  expect(auth).toBe(`SHA256 Credential=12345, Timestamp=1800000000, Signature=${expected}`);expect(body).toContain("https://shopee.com.br/Fone-i.1.2");expect(body).not.toContain("sp_atk");
+ });
+ it("asks AliExpress with the HMAC signature and takes only its own links",async()=>{
+  expect(await aliexpressSign({b:"2",a:"1"},"secret")).toMatch(/^[0-9A-F]{64}$/);
+  const ok=net({"api-sg.aliexpress.com":()=>Response.json({aliexpress_affiliate_link_generate_response:{resp_result:{resp_code:200,result:{promotion_links:{promotion_link:[{promotion_link:"https://s.click.aliexpress.com/e/_abc"}]}}}}})});
+  expect(await aliexpressLink(new URL("https://pt.aliexpress.com/item/1005001234567.html?spm=x"),"5000","k".repeat(32),"meu",ok.send,1)).toBe("https://s.click.aliexpress.com/e/_abc");
+  const query=new URL(ok.calls[0].url).searchParams;expect(query.get("source_values")).toBe("https://www.aliexpress.com/item/1005001234567.html");expect(query.get("tracking_id")).toBe("meu");
+  const {sign,...params}=Object.fromEntries(query);expect(sign).toBe(await aliexpressSign(params,"k".repeat(32)));
+  const evil=net({"api-sg.aliexpress.com":()=>Response.json({aliexpress_affiliate_link_generate_response:{resp_result:{resp_code:200,result:{promotion_links:{promotion_link:[{promotion_link:"https://evil.invalid/x"}]}}}}})});
+  expect(await convertLink(new URL("https://pt.aliexpress.com/item/1005001234567.html"),{store:"aliexpress",appKey:"5000",appSecret:"k".repeat(32),trackingId:"meu"},evil.send)).toMatchObject({affiliate:false,reason:"conversion_failed"});
+ });
+ it("takes AliExpress's documented answer and only its own hosts",async()=>{
+  // The shape of the official example (resp_code "200", promotion_links as a list).
+  const official={aliexpress_affiliate_link_generate_response:{resp_result:{resp_code:"200",resp_msg:"success",result:{promotion_link_type:0,total_result_count:1,tracking_id:"meu",promotion_links:[{source_value:"https://www.aliexpress.com/item/1005001234567.html",promotion_link:"https://s.click.aliexpress.com/e/_official"}]}},request_id:"x"}};
+  const ok=net({"api-sg.aliexpress.com":()=>Response.json(official)});
+  expect(await aliexpressLink(new URL("https://pt.aliexpress.com/item/1005001234567.html"),"5000","k".repeat(32),"meu",ok.send,1)).toBe("https://s.click.aliexpress.com/e/_official");
+  for(const bad of [{...official,aliexpress_affiliate_link_generate_response:{resp_result:{resp_code:"2000",result:official.aliexpress_affiliate_link_generate_response.resp_result.result}}},{aliexpress_affiliate_link_generate_response:{resp_result:{resp_code:"200",result:{promotion_links:[]}}}},{aliexpress_affiliate_link_generate_response:{resp_result:{resp_code:"200",result:{promotion_links:Array.from({length:51},()=>({promotion_link:"https://s.click.aliexpress.com/e/_x"}))}}}}])expect(aliexpressResponse.safeParse(bad).success).toBe(false);
+  for(const host of ["https://evilaliexpress.com/e/_x","https://aliexpress.com.evil.invalid/e/_x","http://s.click.aliexpress.com/e/_x","https://user@s.click.aliexpress.com/e/_x"]){
+   expect(aliexpressHost(host)).toBe(false);
+   const lookalike=net({"api-sg.aliexpress.com":()=>Response.json({...official,aliexpress_affiliate_link_generate_response:{resp_result:{resp_code:"200",result:{promotion_links:[{promotion_link:host}]}}}})});
+   await expect(aliexpressLink(new URL("https://pt.aliexpress.com/item/1005001234567.html"),"5000","k".repeat(32),"meu",lookalike.send,1)).rejects.toBeInstanceOf(FetchError);
+  }
+  expect(aliexpressHost("https://aliexpress.com/x")).toBe(true);expect(aliexpressHost("https://s.click.aliexpress.com/e/_x")).toBe(true);
+ });
+ it("says why a link stays as it is",async()=>{
+  expect(await convertLink(new URL("https://loja.example.com.br/p"),null)).toMatchObject({store:"other",affiliate:false,reason:"unsupported_store"});
+  expect(await convertLink(new URL("https://www.amazon.com.br/dp/B0ABCDEF12"),null)).toMatchObject({store:"amazon",affiliate:false,reason:"not_configured"});
+ });
+ it("reads the product from the page and prices in minor units",()=>{
+  const info=pageInfo(`<title>Velho</title><meta property="og:title" content="Fone &amp; Cia &lt;b&gt;"><meta property="og:image" content="/img.jpg"><script type="application/ld+json">{"@type":"Product","offers":{"price":"1299.90","priceCurrency":"brl"}}</script>`,new URL("https://loja.example.com.br/p"));
+  expect(info).toEqual({title:"Fone & Cia",image:"https://loja.example.com.br/img.jpg",price:129990,currency:"BRL"});
+  expect(priceCents("R$ 1.299,90")).toBe(129990);expect(priceCents("$19.99")).toBe(1999);expect(priceCents("N/A")).toBeNull();
+  expect(pageInfo(`<meta property="og:image" content="http://insecure.invalid/a.jpg">`,new URL("https://a.example.com")).image).toBeNull();
+ });
+});
+
+describe("safe fetch",()=>{
+ it.each(["http://example.com/","https://127.0.0.1/","https://10.0.0.5/","https://[::1]/","https://localhost/","https://cloud.getblup.io/api/me","https://169.254.169.254/latest","ftp://example.com/"])("refuses %s",async url=>{
+  const {send,calls}=net({});await expect(safeFetch(url,{send})).rejects.toMatchObject({code:"FETCH_BLOCKED"});expect(calls.filter(c=>!c.url.startsWith("https://cloudflare-dns.com"))).toHaveLength(0);
+ });
+ it("refuses a name that points to a private address",async()=>{
+  const {send,calls}=net({"shop.example.com":()=>html("x")},"10.1.2.3");
+  await expect(safeFetch("https://shop.example.com/p",{send})).rejects.toMatchObject({code:"FETCH_BLOCKED"});expect(calls.some(c=>new URL(c.url).hostname==="shop.example.com")).toBe(false);
+ });
+ it("checks every redirect again and stops at a private one",async()=>{
+  const {send}=net({"amzn.to":()=>new Response(null,{status:301,headers:{location:"https://127.0.0.1/admin"}})});
+  await expect(safeFetch("https://amzn.to/abc",{send})).rejects.toBeInstanceOf(FetchError);
+  const ok=net({"amzn.to":()=>new Response(null,{status:301,headers:{location:"https://www.amazon.com.br/dp/B0ABCDEF12"}}),"www.amazon.com.br":()=>html("<title>Fone</title>")});
+  const page=await safeFetch("https://amzn.to/abc",{send:ok.send});expect(page.url.href).toBe("https://www.amazon.com.br/dp/B0ABCDEF12");expect(page.text).toContain("Fone");
+  expect(ok.calls.filter(c=>!c.url.startsWith("https://cloudflare-dns.com")).every(c=>c.redirect==="manual")).toBe(true);
+ });
+ it("keeps only the first bytes and gives up after too many hops",async()=>{
+  const big=net({"big.example.com":()=>html("a".repeat(100_000))});expect((await safeFetch("https://big.example.com/",{send:big.send,maxBytes:1000})).text).toHaveLength(1000);
+  const loop=net({"loop.example.com":()=>new Response(null,{status:302,headers:{location:"https://loop.example.com/"}})});await expect(safeFetch("https://loop.example.com/",{send:loop.send})).rejects.toMatchObject({code:"FETCH_FAILED"});
+ });
+});
+
+describe("secrets never come back",()=>{
+ it("keeps store IDs and keys sealed and shows only a hint",async()=>{
+  expect((await call("/affiliates/shopee",{method:"PUT",body:{appId:"123456",secret:"S3cretS3cretS3cretS3cret"}})).status).toBe(200);
+  expect((await call("/affiliates/amazon",{method:"PUT",body:{tag:"minhatag-20"}})).status).toBe(200);
+  expect((await call("/affiliates/amazon",{method:"PUT",body:{appId:"1",secret:"x"}})).status).toBe(400);
+  const listed=await(await call("/affiliates")).text();
+  expect(listed).not.toContain("S3cretS3cret");expect(listed).not.toContain("minhatag-20");
+  expect(JSON.parse(listed).stores).toEqual([{store:"amazon",configured:true,hint:"…g-20"},{store:"mercadolivre",configured:false,hint:null},{store:"shopee",configured:true,hint:"App ID …3456"},{store:"aliexpress",configured:false,hint:null}]);
+  const rows=JSON.stringify(db.sqlite.prepare("SELECT * FROM deals_affiliate").all());expect(rows).not.toContain("S3cretS3cret");expect(rows).not.toContain("minhatag-20");
+  expect(await(await call("/affiliates",{user:"bob"})).json()).toMatchObject({stores:[{configured:false},{configured:false},{configured:false},{configured:false}]});
+ });
+ it("never sends a channel's webhook back",async()=>{
+  const id=await addDiscord();
+  const listed=await(await call("/channels")).text();expect(listed).not.toContain("a".repeat(68));expect(JSON.parse(listed).channels).toEqual([expect.objectContaining({id,type:"discord",active:true,lastError:null})]);
+  expect(JSON.stringify(db.sqlite.prepare("SELECT * FROM deals_channel").all())).not.toContain("a".repeat(68));
+  expect(await(await call("/channels",{user:"bob"})).json()).toEqual({channels:[]});
+  expect((await call(`/channels/${id}`,{method:"DELETE",user:"bob"})).status).toBe(404);
+ });
+});
+
+describe("session, plan and CORS",()=>{
+ it("needs a session and the plan to change anything",async()=>{
+  for(const path of ["/channels","/affiliates","/offers","/hunts","/stats?days=7"])expect((await call(path,{user:null})).status).toBe(401);
+  expect((await call("/channels",{method:"POST",user:"plain",body:{type:"discord",webhook:HOOK}})).status).toBe(403);
+  expect((await call("/hunts",{method:"POST",user:"plain",body:{kind:"games_free",channelIds:["x"],filters:{}}})).status).toBe(403);
+ });
+ it("lets only the Deals panel read its routes across origins",()=>{
+  const env={PULSE_APP_URL:"https://pulse.audit.invalid",DEALS_APP_URL:"https://deals.audit.invalid"};
+  for(const path of ["/api/deals/channels","/api/deals/offers/preview","/api/deals/stats"])expect(panelCorsOrigin(env,env.DEALS_APP_URL,path)).toBe(env.DEALS_APP_URL);
+  expect(panelCorsOrigin(env,env.PULSE_APP_URL,"/api/deals/channels")).toBeNull();
+ });
+ it("takes Telegram's webhook only with its secret",async()=>{
+  expect((await call("/telegram/webhook",{method:"POST",user:null,body:{update_id:1}})).status).toBe(401);
+  expect((await call("/telegram/webhook",{method:"POST",user:null,headers:{"x-telegram-bot-api-secret-token":"wrong"},body:{update_id:1}})).status).toBe(401);
+ });
+});
+
+describe("Telegram linking",()=>{
+ it("takes only a bot that is admin (and, in a channel, may post)",async()=>{
+  const hook=(body:object)=>call("/telegram/webhook",{method:"POST",user:null,headers:{"x-telegram-bot-api-secret-token":"hook-secret"},body});
+  const start=async(update:number,from:number)=>{const link=await(await call("/telegram/link",{method:"POST",body:{}})).json() as {id:string;url:string};await hook({update_id:update,message:{text:`/start ${/start=([a-f0-9]{48})$/.exec(link.url)?.[1]}`,chat:{id:from,type:"private"},from:{id:from,is_bot:false}}});return link.id;};
+  const state=async(id:string)=>(await(await call(`/telegram/link/${id}`)).json() as {state:string}).state;
+  let id=await start(100,777);
+  await hook({update_id:101,my_chat_member:{chat:{id:-2001,type:"supergroup",title:"Grupo"},from:{id:777,is_bot:false},new_chat_member:{status:"member"}}});
+  await hook({update_id:102,my_chat_member:{chat:{id:-2002,type:"group",title:"Grupo 2"},from:{id:777,is_bot:false},new_chat_member:{status:"restricted"}}});
+  await hook({update_id:103,my_chat_member:{chat:{id:-1004,type:"channel",title:"Sem post"},from:{id:777,is_bot:false},new_chat_member:{status:"administrator"}}});
+  await hook({update_id:104,my_chat_member:{chat:{id:-1005,type:"channel",title:"Negado"},from:{id:777,is_bot:false},new_chat_member:{status:"administrator",can_post_messages:false}}});
+  expect(await state(id)).toBe("pending");
+  await hook({update_id:105,my_chat_member:{chat:{id:-2001,type:"supergroup",title:"Grupo"},from:{id:777,is_bot:false},new_chat_member:{status:"administrator"}}});
+  expect(await(await call(`/telegram/link/${id}`)).json()).toMatchObject({state:"candidate",candidate:{id:"-2001",label:"Grupo"}});
+  const channel=(await(await call(`/telegram/link/${id}/confirm`,{method:"POST",body:{}})).json() as {id:string}).id;
+  // Demoted to member later: the channel stops.
+  await hook({update_id:106,my_chat_member:{chat:{id:-2001,type:"supergroup"},from:{id:777,is_bot:false},new_chat_member:{status:"member"}}});
+  expect((await(await call("/channels")).json() as {channels:{id:string;active:boolean}[]}).channels.find(c=>c.id===channel)).toMatchObject({active:false});
+  id=await start(107,778);
+  await hook({update_id:108,my_chat_member:{chat:{id:-1006,type:"channel",title:"Pode postar"},from:{id:778,is_bot:false},new_chat_member:{status:"administrator",can_post_messages:true}}});
+  expect(await state(id)).toBe("candidate");
+ });
+ it("links the channel where the same person added the bot as admin",async()=>{
+  const link=await(await call("/telegram/link",{method:"POST",body:{}})).json() as {id:string;url:string};
+  const code=/start=([a-f0-9]{48})$/.exec(link.url)?.[1];expect(link.url).toMatch(/^https:\/\/t\.me\/BlupDealsBot\?start=/);
+  const hook=(body:object)=>call("/telegram/webhook",{method:"POST",user:null,headers:{"x-telegram-bot-api-secret-token":"hook-secret"},body});
+  const reply=await(await hook({update_id:10,message:{text:`/start ${code}`,chat:{id:555,type:"private"},from:{id:555,is_bot:false}}})).json() as {method:string;reply_markup:{inline_keyboard:{url:string}[][]}};
+  expect(reply.method).toBe("sendMessage");expect(reply.reply_markup.inline_keyboard.flat().map(b=>b.url)).toEqual(["https://t.me/BlupDealsBot?startchannel&admin=post_messages","https://t.me/BlupDealsBot?startgroup&admin=post_messages"]);
+  // Someone else adding the bot somewhere is not this link's candidate.
+  await hook({update_id:11,my_chat_member:{chat:{id:-1001,type:"channel",title:"Outro"},from:{id:999,is_bot:false},new_chat_member:{status:"administrator",can_post_messages:true}}});
+  expect(await(await call(`/telegram/link/${link.id}`)).json()).toMatchObject({state:"pending",candidate:null});
+  await hook({update_id:12,my_chat_member:{chat:{id:-1002,type:"channel",title:"Ofertas <b>"},from:{id:555,is_bot:false},new_chat_member:{status:"administrator",can_post_messages:true}}});
+  await hook({update_id:12,my_chat_member:{chat:{id:-1003,type:"channel",title:"Repetido"},from:{id:555,is_bot:false},new_chat_member:{status:"administrator",can_post_messages:true}}});
+  expect(await(await call(`/telegram/link/${link.id}`)).json()).toMatchObject({state:"candidate",candidate:{id:"-1002",label:"Ofertas"}});
+  expect((await call(`/telegram/link/${link.id}`,{user:"bob"})).status).toBe(404);
+  const confirmed=await call(`/telegram/link/${link.id}/confirm`,{method:"POST",body:{}});expect(confirmed.status).toBe(201);
+  const {id}=await confirmed.json() as {id:string};expect((await(await call("/channels")).json() as {channels:{id:string;type:string;label:string}[]}).channels).toEqual([expect.objectContaining({id,type:"telegram",label:"Ofertas"})]);
+  await hook({update_id:13,my_chat_member:{chat:{id:-1002,type:"channel"},from:{id:555,is_bot:false},new_chat_member:{status:"left"}}});
+  expect((await(await call("/channels")).json() as {channels:{active:boolean;lastError:string|null}[]}).channels[0]).toMatchObject({active:false,lastError:"DESTINATION_DISABLED"});
+ });
+});
+
+describe("the daily cap and dedupe",()=>{
+ it("queues at most 100 posts a day per account",async()=>{
+  const channel=await addDiscord(),now=Date.parse("2026-11-04T12:00:00Z");
+  for(let i=0;i<100;i++){const o=await upsertOffer(db.asD1(),offer({key:`k${i}`}),now);expect(await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now,now})).toBe(1);}
+  const extra=await upsertOffer(db.asD1(),offer({key:"extra"}),now);
+  expect(await enqueue(db.asD1(),{owner:"alice",offerId:extra.id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now,now})).toBe(0);
+  expect(await enqueue(db.asD1(),{owner:"alice",offerId:extra.id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now+86_400_000,now})).toBe(1);
+  db.sqlite.prepare("UPDATE deals_post SET day=? WHERE user_id='alice'").run(dayOf());
+  vi.stubGlobal("fetch",net({}).send);
+  expect((await call("/offers",{method:"POST",body:{url:"https://www.amazon.com.br/dp/B0ABCDEF12",channelIds:[channel]}})).status).toBe(429);
+ });
+ it("splits the cap across channels inside one batch",async()=>{
+  const channels:string[]=[];for(let i=0;i<3;i++){const r=await call("/channels",{method:"POST",body:{type:"discord",webhook:`https://discord.com/api/webhooks/12345678901234567${i}/${"c".repeat(68)}`}});channels.push((await r.json() as {id:string}).id);}
+  const now=Date.now();for(let i=0;i<99;i++){const o=await upsertOffer(db.asD1(),offer({key:`f${i}`}),now);await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[channels[0]],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now,now});}
+  const last=await upsertOffer(db.asD1(),offer({key:"last"}),now);
+  expect(await enqueue(db.asD1(),{owner:"alice",offerId:last.id,channels,link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now,now})).toBe(1);
+ });
+ it("stores an offer once and its price only when it changes",async()=>{
+  const a=await upsertOffer(db.asD1(),offer(),1000),b=await upsertOffer(db.asD1(),offer({price:9000}),2000),c=await upsertOffer(db.asD1(),offer({price:9000}),3000);
+  expect(a).toEqual({id:a.id,isNew:true});expect(b).toEqual({id:a.id,isNew:false});expect(c.id).toBe(a.id);
+  expect(db.sqlite.prepare("SELECT price FROM deals_price ORDER BY at").all().map(r=>r.price)).toEqual([10000,9000]);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_offer").get()?.n).toBe(1);
+ });
+ it("never posts the same offer twice in a channel",async()=>{
+  const channel=await addDiscord(),o=await upsertOffer(db.asD1(),offer());
+  const input={owner:"alice",offerId:o.id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:Date.now()};
+  expect(await enqueue(db.asD1(),input)).toBe(1);expect(await enqueue(db.asD1(),input)).toBe(0);
+ });
+});
+
+describe("pasting a link",()=>{
+ it("previews with the person's ID and queues it to the chosen channels",async()=>{
+  const channel=await addDiscord();await call("/affiliates/amazon",{method:"PUT",body:{tag:"minhatag-20"}});
+  vi.stubGlobal("fetch",net({"amzn.to":()=>new Response(null,{status:301,headers:{location:"https://www.amazon.com.br/Fone/dp/B0ABCDEF12?tag=outro-20"}}),"www.amazon.com.br":()=>html(`<meta property="og:title" content="Fone Bom"><meta property="og:image" content="https://m.media-amazon.com/x.jpg"><meta property="product:price:amount" content="199.90"><meta property="product:price:currency" content="BRL">`)}).send);
+  const preview=await(await call("/offers/preview",{method:"POST",body:{url:"https://amzn.to/abc"}})).json();
+  expect(preview).toEqual({store:"amazon",title:"Fone Bom",image:"https://m.media-amazon.com/x.jpg",price:19990,currency:"BRL",link:"https://www.amazon.com.br/dp/B0ABCDEF12?tag=minhatag-20",affiliate:true});
+  const created=await call("/offers",{method:"POST",body:{url:"https://amzn.to/abc",channelIds:[channel]}});expect(created.status).toBe(201);expect(await created.json()).toMatchObject({queued:1});
+  expect((await call("/offers",{method:"POST",body:{url:"https://amzn.to/abc",channelIds:[channel]}})).status).toBe(409);
+  expect((await call("/offers",{method:"POST",body:{url:"https://amzn.to/abc",channelIds:["not-mine"]}})).status).toBe(404);
+  const posts=await(await call("/offers?state=queued")).json() as {posts:{title:string;link:string;state:string;clicks:number;lastError:string|null;sentAt:string|null}[]};
+  expect(posts.posts).toEqual([expect.objectContaining({title:"Fone Bom",link:"https://www.amazon.com.br/dp/B0ABCDEF12?tag=minhatag-20",state:"queued",clicks:0,lastError:null,sentAt:null})]);
+  expect((await call("/offers/preview",{method:"POST",body:{url:"https://192.168.0.1/x"}})).status).toBe(400);
+ });
+});
+
+describe("games, sending and clicks",()=>{
+ const gamerPower=[{id:1,title:"Jogo Grátis",worth:"$19.99",image:"https://www.gamerpower.com/a.jpg",open_giveaway_url:"https://www.gamerpower.com/open/jogo",platforms:"PC, Steam",end_date:"N/A",status:"Active",type:"Game"},{id:2,title:"Velho",worth:"N/A",open_giveaway_url:"https://www.gamerpower.com/open/velho",platforms:"PS5",end_date:"2020-01-01 00:00:00",status:"Active",type:"Game"}];
+ const cheap=[{dealID:"abc%3D%3D1234",title:"Promo",storeID:"1",salePrice:"4.99",normalPrice:"19.99",savings:"75.03",thumb:"https://cdn.cheapshark.invalid/t.jpg"},{dealID:"zzzz12345678",title:"Outra loja",storeID:"99",salePrice:"1.00",normalPrice:"2.00",savings:"50"}];
+ it("parses the sources and keeps CheapShark's own link",()=>{
+  expect(gamerPowerOffers(gamerPower,Date.parse("2026-11-04T00:00:00Z"))).toEqual([expect.objectContaining({key:"gamerpower:1",kind:"game_free",price:0,originalPrice:1999,platforms:["pc","steam"],credit:"gamerpower"})]);
+  expect(cheapSharkOffers(cheap)).toEqual([expect.objectContaining({key:"cheapshark:abc%3D%3D1234",url:"https://www.cheapshark.com/redirect?dealID=abc%3D%3D1234",price:499,originalPrice:1999,discount:75,platforms:["pc","steam"]})]);
+ });
+ it("credits the source with an active link on Telegram and Discord",()=>{
+  const game={title:"Jogo <x>",image:null,price:0,originalPrice:1999,currency:"USD",discount:100,link:"https://deals.audit.invalid/r/ABCDEFGH",affiliate:false,kind:"game_free",credit:"gamerpower"};
+  const text=telegramText(game,"pt");expect(text).toContain('<a href="https://www.gamerpower.com/">Via GamerPower</a>');expect(text).toContain("<b>Jogo &lt;x&gt;</b>");expect(text).not.toContain("#publi");
+  const embed=discordPayload(game,"en").embeds[0];expect(embed.description).toContain("[Via GamerPower](https://www.gamerpower.com/)");expect(embed).not.toHaveProperty("footer");
+  expect(discordPayload({...game,kind:"game_deal",credit:"cheapshark",price:499},"pt").embeds[0].description).toContain("[Via CheapShark](https://www.cheapshark.com/)");
+  expect(telegramText({...game,credit:"unknown"},"pt")).not.toContain("Via");expect(telegramText({...game,credit:null},"pt")).not.toContain("Via");
+ });
+ it("reads each source once per round for everyone, first only filling the catalog",async()=>{
+  const channel=await addDiscord(),bobChannel=await addDiscord("bob");
+  const {send,calls}=net({"www.gamerpower.com":()=>Response.json(gamerPower),"www.cheapshark.com":()=>Response.json(cheap)});
+  const t0=Date.parse("2026-11-04T10:00:00Z");
+  await collectDeals(state.env,send,t0);expect(calls).toHaveLength(2);expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(0);
+  await collectDeals(state.env,send,t0+60_000);expect(calls).toHaveLength(2);
+  db.sqlite.exec(`INSERT INTO deals_hunt(id,user_id,name,kind,source_id,filters,channels,created_at) VALUES('h1','alice','J','games_free','gamerpower','{"platforms":["steam"]}','["${channel}"]',0),('h2','bob','J','games_free','gamerpower','{"platforms":["xbox"]}','["${bobChannel}"]',0),('h3','alice','P','games_deals','cheapshark','{"minDiscount":80}','["${channel}"]',0)`);
+  const next=[...gamerPower,{...gamerPower[0],id:3,title:"Novo"}];
+  const later=net({"www.gamerpower.com":()=>Response.json(next),"www.cheapshark.com":()=>Response.json(cheap)});
+  await collectDeals(state.env,later.send,t0+31*60_000);expect(later.calls).toHaveLength(2);
+  expect(db.sqlite.prepare("SELECT p.user_id AS u,o.title FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id").all()).toEqual([{u:"alice",title:"Novo"}]);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_offer").get()?.n).toBe(3);
+ });
+ it("sends one post per channel at a time and counts real clicks",async()=>{
+  const channel=await addDiscord(),now=Date.now();
+  const a=await upsertOffer(db.asD1(),offer({key:"a",title:"Primeiro"}),now),b=await upsertOffer(db.asD1(),offer({key:"b",title:"Segundo"}),now);
+  for(const o of [a,b])await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[channel],link:"https://www.amazon.com.br/dp/B000000001?tag=minhatag-20",affiliate:true,huntId:null,sendAt:now,now});
+  const sent:{embeds:{title:string;url:string;description:string}[]}[]=[];
+  const {send}=net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}});
+  await dispatchDeals(state.env,send,now);
+  expect(sent).toHaveLength(1);expect(sent[0].embeds[0].url).toMatch(/^https:\/\/deals\.audit\.invalid\/r\/[A-Za-z0-9]{8}$/);expect(sent[0].embeds[0].description).toContain("#publi");
+  await dispatchDeals(state.env,send,now+1000);expect(sent).toHaveLength(1);
+  await dispatchDeals(state.env,send,now+3*60_000);expect(sent).toHaveLength(2);
+  const code=/\/r\/([A-Za-z0-9]{8})$/.exec(sent[0].embeds[0].url)?.[1];
+  const go=(ua:string)=>serveDealsLink(new Request(`https://deals.audit.invalid/r/${code}`,{headers:{"user-agent":ua}}),state.env);
+  const res=await go("Mozilla/5.0");expect(res.status).toBe(302);expect(res.headers.get("location")).toBe("https://www.amazon.com.br/dp/B000000001?tag=minhatag-20");
+  await go("TelegramBot (like TwitterBot)");await go("Mozilla/5.0");
+  expect(db.sqlite.prepare("SELECT sum(clicks) AS n FROM deals_click_day").get()?.n).toBe(2);
+  expect((await serveDealsLink(new Request("https://deals.audit.invalid/r/nope"),state.env)).status).toBe(404);
+  const stats=await(await call("/stats?days=7")).json() as {days:{clicks:number;posts:number}[];top:{title:string;clicks:number}[]};
+  expect(stats.days).toHaveLength(7);expect(stats.days.at(-1)).toMatchObject({clicks:2,posts:2});expect(stats.top[0]).toMatchObject({clicks:2});
+ });
+ it("stops a channel Discord no longer accepts and fails its posts",async()=>{
+  const channel=await addDiscord(),now=Date.now(),o=await upsertOffer(db.asD1(),offer(),now);
+  await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now,now});
+  await dispatchDeals(state.env,net({"discord.com":()=>new Response(null,{status:404})}).send,now);
+  expect(db.sqlite.prepare("SELECT state,error FROM deals_post").get()).toEqual({state:"failed",error:"DESTINATION_DISABLED"});
+  expect(db.sqlite.prepare("SELECT active,last_error AS e FROM deals_channel").get()).toEqual({active:0,e:"DESTINATION_DISABLED"});
+ });
+ it("sends a post scheduled days ahead when its time comes, and expires it only two days after",async()=>{
+  const channel=await addDiscord(),now=Date.parse("2026-11-04T12:00:00Z"),at=now+3*86_400_000;
+  vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(now);
+  vi.stubGlobal("fetch",net({"www.amazon.com.br":()=>html("<title>Fone</title>")}).send);
+  expect((await call("/offers",{method:"POST",body:{url:"https://www.amazon.com.br/dp/B0ABCDEF12",channelIds:[channel],sendAt:new Date(at).toISOString()}})).status).toBe(201);
+  expect(db.sqlite.prepare("SELECT day,next_at AS nextAt FROM deals_post").get()).toEqual({day:"2026-11-07",nextAt:at});
+  const sent:unknown[]=[],discord=net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}}).send;
+  vi.setSystemTime(at-60_000);await dispatchDeals(state.env,discord,at-60_000);expect(sent).toHaveLength(0);
+  await dealsCleanup(state.env,90,at);expect(db.sqlite.prepare("SELECT state FROM deals_post").get()?.state).toBe("queued");
+  vi.setSystemTime(at);await dispatchDeals(state.env,discord,at);expect(sent).toHaveLength(1);
+  expect(db.sqlite.prepare("SELECT state FROM deals_post").get()?.state).toBe("sent");
+  // Another one, due the same day, that could not go for two days.
+  const o=await upsertOffer(db.asD1(),offer({key:"late"}),at);await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:at,now:at});
+  const late=at+2*86_400_000;vi.setSystemTime(late);await dispatchDeals(state.env,discord,late);expect(sent).toHaveLength(2);
+  db.sqlite.exec("UPDATE deals_post SET state='queued',next_at=0,claim_until=0 WHERE offer_id='"+o.id+"'");
+  const expired=at+3*86_400_000;vi.setSystemTime(expired);await dispatchDeals(state.env,discord,expired);
+  expect(db.sqlite.prepare("SELECT state,error FROM deals_post WHERE offer_id=?").get(o.id)).toEqual({state:"failed",error:"EXPIRED"});expect(sent).toHaveLength(2);
+  vi.useRealTimers();
+ });
+ it("does not send for an account that lost the plan",async()=>{
+  const channel=await addDiscord(),now=Date.now(),o=await upsertOffer(db.asD1(),offer(),now);
+  await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now,now});
+  db.sqlite.exec("UPDATE subscription SET status='canceled' WHERE reference_id='alice'");
+  const {send,calls}=net({});await dispatchDeals(state.env,send,now);
+  expect(calls).toHaveLength(0);expect(db.sqlite.prepare("SELECT state,error FROM deals_post").get()).toEqual({state:"failed",error:"PLAN"});
+ });
+});
+
+describe("account deletion",()=>{
+ it("stops the short links at deletion and purges the account's Deals data, keeping the shared catalog",async()=>{
+  Object.assign(state.env,{NOTES:new TestBucket().asR2(),SITES:new TestBucket().asR2(),SYNC_LIVE:{getByName:()=>({revoke:async()=>{}})}});
+  const now=Date.now(),mine=await addDiscord("alice"),theirs=await addDiscord("bob");
+  await call("/affiliates/shopee",{method:"PUT",body:{appId:"123456",secret:"S3cretS3cretS3cretS3cret"}});
+  await call("/telegram/link",{method:"POST",body:{}});
+  db.sqlite.exec(`INSERT INTO deals_hunt(id,user_id,name,kind,source_id,channels,created_at) VALUES('ha','alice','J','games_free','gamerpower','["${mine}"]',0),('hb','bob','J','games_free','gamerpower','["${theirs}"]',0)`);
+  const solo=await upsertOffer(db.asD1(),offer({key:"solo",title:"Só da Alice"}),now),shared=await upsertOffer(db.asD1(),offer({key:"shared",title:"Dos dois"}),now),game=await upsertOffer(db.asD1(),offer({key:"g",kind:"game_free",title:"Jogo"}),now);
+  for(const o of [solo,shared,game])await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[mine],link:"https://www.amazon.com.br/dp/B000000001?tag=a-20",affiliate:true,huntId:null,sendAt:now,now});
+  for(const o of [shared,game])await enqueue(db.asD1(),{owner:"bob",offerId:o.id,channels:[theirs],link:"https://www.amazon.com.br/dp/B000000001?tag=b-20",affiliate:true,huntId:null,sendAt:now,now});
+  const code=(owner:string,id:string)=>String(db.sqlite.prepare("SELECT code FROM deals_post WHERE user_id=? AND offer_id=?").get(owner,id)?.code);
+  const go=(c:string)=>serveDealsLink(new Request(`https://deals.audit.invalid/r/${c}`,{headers:{"user-agent":"Mozilla/5.0"}}),state.env);
+  expect((await go(code("alice",solo.id))).status).toBe(302);
+  await softDelete(state.env,"alice",now);
+  expect((await go(code("alice",solo.id))).status).toBe(404);expect((await go(code("bob",shared.id))).status).toBe(302);
+  db.sqlite.exec("UPDATE resource_quota SET billing_cancel_pending=0 WHERE user_id='alice'");
+  await purgeAccounts(state.env,now+31*LIFE_DAY);
+  for(const table of ["deals_affiliate","deals_channel","deals_hunt","deals_post","deals_click_day","deals_telegram_link"])expect(db.sqlite.prepare(`SELECT count(*) AS n FROM ${table} WHERE user_id='alice'`).get()?.n,table).toBe(0);
+  expect(db.sqlite.prepare("SELECT title FROM deals_offer ORDER BY title").all().map(r=>r.title)).toEqual(["Dos dois","Jogo"]);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_price WHERE offer_id=?").get(solo.id)?.n).toBe(0);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post WHERE user_id='bob'").get()?.n).toBe(2);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_channel WHERE user_id='bob'").get()?.n).toBe(1);
+  expect((await go(code("bob",shared.id))).status).toBe(302);
+ });
+ it("stops a banned account's short links",async()=>{
+  const channel=await addDiscord(),now=Date.now(),o=await upsertOffer(db.asD1(),offer(),now);
+  await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[channel],link:"https://www.amazon.com.br/dp/B000000001",affiliate:false,huntId:null,sendAt:now,now});
+  const c=String(db.sqlite.prepare("SELECT code FROM deals_post").get()?.code);
+  db.sqlite.exec("UPDATE user SET banned=1 WHERE id='alice'");
+  expect((await serveDealsLink(new Request(`https://deals.audit.invalid/r/${c}`),state.env)).status).toBe(404);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_click_day").get()?.n).toBe(0);
+ });
+});
+
+describe("losing the Deals plan",()=>{
+ it("reads for 14 days without sending, comes back with the plan, then purges only the private data",async()=>{
+  const t0=Date.parse("2026-11-04T12:00:00Z");vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(t0);
+  const mine=await addDiscord("alice"),theirs=await addDiscord("bob");
+  await call("/affiliates/amazon",{method:"PUT",body:{tag:"minhatag-20"}});
+  const shared=await upsertOffer(db.asD1(),offer({key:"shared",title:"Dos dois"}),t0),solo=await upsertOffer(db.asD1(),offer({key:"solo",title:"Só da Alice"}),t0);
+  for(const o of [shared,solo])await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[mine],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:t0+3_600_000,now:t0});
+  await enqueue(db.asD1(),{owner:"bob",offerId:shared.id,channels:[theirs],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:t0,now:t0});
+  // The paid period ends: Stripe cancels the subscription.
+  db.sqlite.exec("UPDATE subscription SET status='canceled' WHERE reference_id='alice'");
+  const usage=await(await call("/usage")).json() as {plan:null;readOnly:boolean;readOnlyUntil:string};
+  expect(usage).toMatchObject({plan:null,readOnly:true,readOnlyUntil:new Date(t0+14*LIFE_DAY).toISOString()});
+  expect(db.sqlite.prepare("SELECT state,error FROM deals_post WHERE user_id='alice'").all()).toEqual([{state:"failed",error:"PLAN"},{state:"failed",error:"PLAN"}]);
+  expect((await call("/channels")).status).toBe(200);expect((await call("/channels",{method:"POST",body:{type:"discord",webhook:HOOK}})).status).toBe(403);
+  const {send,calls}=net({"discord.com":()=>Response.json({id:"1"})});await dispatchDeals(state.env,send,t0+4_000_000);
+  expect(calls.length).toBe(1);expect(db.sqlite.prepare("SELECT state FROM deals_post WHERE user_id='bob'").get()?.state).toBe("sent");
+  // Back on the plan inside the window: nothing is lost.
+  db.sqlite.exec("UPDATE subscription SET status='active' WHERE reference_id='alice'");
+  expect(await dealsAccess(state.env,"alice",t0+LIFE_DAY)).toMatchObject({readOnly:false,readOnlyUntil:null});
+  await dealsLifecycle(state.env,t0+20*LIFE_DAY);expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_channel WHERE user_id='alice'").get()?.n).toBe(1);
+  // Lost again, and never opens the panel: the daily run starts the window and purges after it.
+  db.sqlite.exec("UPDATE subscription SET status='canceled' WHERE reference_id='alice'");
+  const t1=t0+21*LIFE_DAY;await dealsLifecycle(state.env,t1);
+  expect(db.sqlite.prepare("SELECT read_only_until AS u FROM deals_account WHERE user_id='alice'").get()?.u).toBe(t1+14*LIFE_DAY);
+  await dealsLifecycle(state.env,t1+13*LIFE_DAY);expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_affiliate WHERE user_id='alice'").get()?.n).toBe(1);
+  await dealsLifecycle(state.env,t1+14*LIFE_DAY);await dealsLifecycle(state.env,t1+14*LIFE_DAY);
+  for(const table of ["deals_affiliate","deals_channel","deals_hunt","deals_post","deals_click_day","deals_telegram_link","deals_account"])expect(db.sqlite.prepare(`SELECT count(*) AS n FROM ${table} WHERE user_id='alice'`).get()?.n,table).toBe(0);
+  expect(db.sqlite.prepare("SELECT title FROM deals_offer ORDER BY title").all().map(r=>r.title)).toEqual(["Dos dois"]);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_channel WHERE user_id='bob'").get()?.n).toBe(1);
+  // The user and the Cloud account stay: only Deals went.
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM user WHERE id='alice'").get()?.n).toBe(1);
+  vi.useRealTimers();
+ });
+ it("leaves alone accounts that never had Deals and the owner's gift",async()=>{
+  Object.assign(state.env,{STAFF_OWNER_EMAIL:"plain@audit.invalid"});
+  await addDiscord("plain");await dealsAccess(state.env,"plain");
+  await dealsLifecycle(state.env,Date.now()+60*LIFE_DAY);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_channel WHERE user_id='plain'").get()?.n).toBe(1);
+  expect(db.sqlite.prepare("SELECT read_only_until AS u FROM deals_account WHERE user_id='plain'").get()?.u).toBeNull();
+ });
+});
+
+describe("the bot's sending budget",()=>{
+ async function telegramChannels(n:number){
+  const ids:string[]=[];
+  for(let i=0;i<n;i++){const id=crypto.randomUUID();db.sqlite.prepare("INSERT INTO deals_channel(id,user_id,platform,name,target,target_hash,created_at) VALUES(?,?,?,?,?,?,0)").run(id,"alice","telegram",`Canal ${i}`,await seal(state.env,"alice",id,"telegram",`-100${i+1}`),`h${i}`);ids.push(id);}
+  for(const [i,id] of ids.entries()){const o=await upsertOffer(db.asD1(),offer({key:`b${i}`}),Date.now());await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[id],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:Date.now(),now:Date.now()});}
+  db.sqlite.exec("UPDATE deals_post SET next_at=0");
+  return ids;
+ }
+ const budget=()=>Number(db.sqlite.prepare("SELECT next_at AS n FROM pulse_delivery_budget WHERE key=?").get(DEALS_BUDGET.telegram.key)?.n);
+ it("keeps Telegram messages at least 40 ms apart across channels",async()=>{
+  await telegramChannels(3);const at:number[]=[];
+  const {send}=net({"api.telegram.org":()=>{at.push(performance.now());return Response.json({ok:true,result:{message_id:1}});}});
+  const now=Date.now();await dispatchDeals(state.env,send,now);
+  expect(at).toHaveLength(3);for(let i=1;i<at.length;i++)expect(at[i]-at[i-1]).toBeGreaterThanOrEqual(35);
+  expect(budget()).toBeGreaterThanOrEqual(now+120);
+ });
+ it("still sends every channel in the run when the timer wakes a little early",async()=>{
+  await telegramChannels(4);let calls=0;
+  const real=globalThis.setTimeout;vi.stubGlobal("setTimeout",((fn:()=>void,ms?:number)=>real(fn,Math.max(0,(ms??0)-1))) as unknown as typeof setTimeout);
+  const {send}=net({"api.telegram.org":()=>{calls++;return Response.json({ok:true,result:{message_id:1}});}});
+  const now=Date.now();await dispatchDeals(state.env,send,now);
+  expect(calls).toBe(4);expect(budget()).toBeGreaterThanOrEqual(now+160);
+ });
+ it("runs on the clock it is given, whatever the real time",async()=>{
+  await telegramChannels(2);let calls=0;
+  const {send}=net({"api.telegram.org":()=>{calls++;return Response.json({ok:true,result:{message_id:1}});}});
+  // An hour behind the real clock (and far ahead, below): the 45 s cut and
+  // the send times follow the run's own clock.
+  const behind=Date.now()-3_600_000;await dispatchDeals(state.env,send,behind);expect(calls).toBe(2);
+  const sent=db.sqlite.prepare("SELECT sent_at AS at FROM deals_post WHERE state='sent'").all().map(r=>Number(r.at));
+  for(const at of sent){expect(at).toBeGreaterThanOrEqual(behind);expect(at).toBeLessThan(behind+45_000);}
+  db.sqlite.exec("UPDATE deals_post SET state='queued',next_at=0,claim_until=0");db.sqlite.exec("UPDATE deals_channel SET next_at=0");db.sqlite.exec("UPDATE pulse_delivery_budget SET next_at=0");
+  await dispatchDeals(state.env,send,Date.now()+3_600_000);expect(calls).toBe(4);
+ });
+ it("pauses every Telegram channel after a global 429 until Retry-After",async()=>{
+  await telegramChannels(3);let calls=0,limited=true;
+  const {send}=net({"api.telegram.org":()=>{calls++;if(limited){limited=false;return Response.json({ok:false,error_code:429,parameters:{retry_after:30}},{status:429});}return Response.json({ok:true,result:{message_id:1}});}});
+  const t=Date.now();
+  await dispatchDeals(state.env,send,t);
+  expect(calls).toBe(1);expect(budget()).toBeGreaterThanOrEqual(t+30_000);
+  expect(db.sqlite.prepare("SELECT state,error FROM deals_post WHERE error IS NOT NULL").all()).toEqual([{state:"queued",error:"RATE_LIMIT"}]);
+  await dispatchDeals(state.env,send,t+10_000);expect(calls).toBe(1);
+  await dispatchDeals(state.env,send,t+31_000);expect(calls).toBe(3);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post WHERE state='sent'").get()?.n).toBe(2);
+  // Discord has its own budget: a Telegram pause does not hold it.
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_delivery_budget WHERE key=?").get(DEALS_BUDGET.discord.key)?.n).toBe(0);
+ });
+});

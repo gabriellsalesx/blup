@@ -5,10 +5,10 @@ import {discordPayload,telegramPayload,slackPayload,webhookPayload,webhookSignat
 import {webhookTarget} from "./channel-crypto";
 import {monitorURL,publicDNS} from "./monitor-http";
 export type Delivery={sent:boolean;permanent:boolean;code:string|null;waitMs:number;global:boolean};
-const success=(waitMs=0):Delivery=>({sent:true,permanent:false,code:null,waitMs,global:false});
-const failure=(code:string,waitMs=15_000,permanent=false,global=false):Delivery=>({sent:false,permanent,code,waitMs,global});
-const wait=(value:unknown)=>{if(value===null||value===undefined)return 15_000;const parsed=z.coerce.number().finite().min(0).max(86400).safeParse(value);return parsed.success?Math.max(500,Math.ceil(parsed.data*1000)):15_000;};
-async function json(res:Response):Promise<unknown>{const init={method:"POST",body:res.body,duplex:"half"};const bytes=await boundedBody(new Request("https://provider-response.invalid",init),64*1024);try{return JSON.parse(new TextDecoder().decode(bytes)) as unknown;}catch{return null;}}
+export const success=(waitMs=0):Delivery=>({sent:true,permanent:false,code:null,waitMs,global:false});
+export const failure=(code:string,waitMs=15_000,permanent=false,global=false):Delivery=>({sent:false,permanent,code,waitMs,global});
+export const wait=(value:unknown)=>{if(value===null||value===undefined)return 15_000;const parsed=z.coerce.number().finite().min(0).max(86400).safeParse(value);return parsed.success?Math.max(500,Math.ceil(parsed.data*1000)):15_000;};
+export async function json(res:Response):Promise<unknown>{const init={method:"POST",body:res.body,duplex:"half"};const bytes=await boundedBody(new Request("https://provider-response.invalid",init),64*1024);try{return JSON.parse(new TextDecoder().decode(bytes)) as unknown;}catch{return null;}}
 export async function deliverDiscord(target:string,message:AlertMessage):Promise<Delivery>{
  const parsed=discordWebhook.safeParse(target);if(!parsed.success)return failure("INVALID_TARGET",0,true);
  const url=new URL(parsed.data.url);url.searchParams.set("wait","true");
