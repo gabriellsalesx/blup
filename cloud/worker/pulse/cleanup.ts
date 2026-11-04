@@ -1,3 +1,4 @@
+import {plansWithPulse,sqlPlans} from "../../shared/pulse-plans";
 import {dropSourcemaps,SOURCEMAP_KEEP_MS} from "./sourcemap-store";
 import {dropPageAssets} from "./page-asset-store";
 import {observePulseEntitlements} from "./entitlements";
@@ -41,7 +42,7 @@ export async function purgePulseAccount(env:Cloudflare.Env,userId:string,keepAdm
 }
 export async function pulseMaintenance(env:Cloudflare.Env,daily=false,now=Date.now()){
  // Recover missed application work without rescanning all event data.
- const changes=await env.DB.prepare("SELECT user_id AS id FROM pulse_selection WHERE applied_at IS NULL AND effective_at<=? UNION SELECT a.user_id AS id FROM pulse_account a WHERE a.read_only_until IS NULL AND NOT EXISTS(SELECT 1 FROM subscription s WHERE s.reference_id=a.user_id AND s.plan IN('max_pulse','ultra_pulse') AND s.status IN('active','trialing','past_due')) LIMIT 25").bind(now).all<{id:string}>();
+ const changes=await env.DB.prepare(`SELECT user_id AS id FROM pulse_selection WHERE applied_at IS NULL AND effective_at<=? UNION SELECT a.user_id AS id FROM pulse_account a WHERE a.read_only_until IS NULL AND NOT EXISTS(SELECT 1 FROM subscription s WHERE s.reference_id=a.user_id AND s.plan IN(${sqlPlans(plansWithPulse())}) AND s.status IN('active','trialing','past_due')) LIMIT 25`).bind(now).all<{id:string}>();
  for(const account of changes.results)await observePulseEntitlements(env,account.id,now);
  await expirePulseDomains(env);
  const retired=await env.DB.prepare("SELECT id,object_name AS objectName FROM pulse_project WHERE retire_at<=? ORDER BY retire_at LIMIT 25").bind(now).all<{id:string;objectName:string}>();

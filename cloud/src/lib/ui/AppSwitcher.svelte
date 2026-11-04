@@ -5,15 +5,17 @@
 	import { t } from "#lib/i18n.svelte.ts";
 	import BlupLogo from "./BlupLogo.svelte";
 
-	// The logo of the account and Pulse panels: a click opens both panels
-	// and picks the other one, like switching organizations.
-	type App = "cloud" | "pulse";
-	let { current, links }: { current: App; links: Record<App, string> } = $props();
+	// The logo of the account, Pulse and Deals panels: a click opens the
+	// panels and picks another one, like switching organizations. Deals is
+	// listed only when its link is given.
+	type App = "cloud" | "pulse" | "deals";
+	let { current, links }: { current: App; links: { cloud: string; pulse: string; deals?: string } } = $props();
 	const id = $props.id();
 	let open = $state(false);
 	const apps = $derived([
-		{ id: "cloud" as const, tag: "Cloud", hint: t("appCloudHint"), mint: false, color: "text-[#3b82f6]" },
-		{ id: "pulse" as const, tag: "Pulse", hint: t("appPulseHint"), mint: true, color: "text-[#16846b]" },
+		{ id: "cloud" as const, tag: "Cloud", hint: t("appCloudHint"), mint: false, coral: false, color: "text-[#3b82f6]", href: links.cloud },
+		{ id: "pulse" as const, tag: "Pulse", hint: t("appPulseHint"), mint: true, coral: false, color: "text-[#16846b]", href: links.pulse },
+		...(links.deals ? [{ id: "deals" as const, tag: "Deals", hint: t("appDealsHint"), mint: false, coral: true, color: "text-[#c2410c]", href: links.deals }] : []),
 	]);
 	const here = $derived(apps.find((a) => a.id === current) ?? apps[0]);
 </script>
@@ -28,7 +30,7 @@
 	class="-mx-2 -my-1.5 flex items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-900 {open ? 'bg-neutral-100 dark:bg-neutral-900' : ''}"
 >
 	<span class="inline-flex flex-col items-start gap-1">
-		<BlupLogo mint={here.mint} class="h-8 w-auto text-[#0e1b45] dark:text-white" />
+		<BlupLogo mint={here.mint} coral={here.coral} class="h-8 w-auto text-[#0e1b45] dark:text-white" />
 		<span class="text-xs font-bold tracking-wider uppercase {here.color}">{here.tag}</span>
 	</span>
 	{#if open}<ChevronsDownUp class="size-4 shrink-0 text-neutral-400" />{:else}<ChevronsUpDown class="size-4 shrink-0 text-neutral-400" />{/if}
@@ -45,12 +47,12 @@
 	{#each apps as app (app.id)}
 		<a
 			role="menuitem"
-			href={links[app.id]}
+			href={app.href}
 			aria-current={app.id === current ? "page" : undefined}
 			class="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-800"
 		>
 			<span class="inline-flex w-20 shrink-0 flex-col items-start gap-0.5">
-				<BlupLogo mint={app.mint} class="h-5 w-auto text-[#0e1b45] dark:text-white" />
+				<BlupLogo mint={app.mint} coral={app.coral} class="h-5 w-auto text-[#0e1b45] dark:text-white" />
 				<span class="text-[11px] font-bold tracking-wider uppercase {app.color}">{app.tag}</span>
 			</span>
 			<span class="min-w-0 flex-1 text-sm text-neutral-500">{app.hint}</span>

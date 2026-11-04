@@ -1,14 +1,15 @@
 <script lang="ts">
 	// A switch that turns something on and off (role=switch), with its label
-	// beside it. `tone` is the color when on: the Blup blue or the Pulse mint.
+	// beside it. `tone` is the color when on: the Blup blue, the Pulse mint
+	// or the Deals coral (#c2410c: white text on it passes AA).
 	let { label, checked = $bindable(false), tone = "blup", disabled = false, onchange }: {
 		label: string;
 		checked?: boolean;
-		tone?: "blup" | "mint";
+		tone?: "blup" | "mint" | "coral";
 		disabled?: boolean;
 		onchange?: (checked: boolean) => void;
 	} = $props();
-	const on = { blup: "bg-blup", mint: "bg-emerald-600" };
+	const on = { blup: "bg-blup", mint: "bg-emerald-600", coral: "bg-[#c2410c]" };
 </script>
 
 <button

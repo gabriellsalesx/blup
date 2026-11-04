@@ -1,7 +1,7 @@
 import {languageTag,type Language} from "./language.ts";
-import {basePlanName,pulsePlanSchema,pulseLimits,type PlanName} from "./pulse-plans.ts";
+import {basePlanName,pulsePlanOf,pulseLimits,hasDeals,dealsLimits,type PlanName} from "./pulse-plans.ts";
 type PlanLimits={storageMB:number;maxFileMB:number;sites:number;devices:number;customDomain:boolean;historyDays:number;reminderEmails:number};
-export function planLabel(name:PlanName,language:Language){const base=basePlanName(name),label=base==="free"?{pt:"Grátis",en:"Free",es:"Gratis"}[language]:{pro:"Pro",max:"Max",ultra:"Ultra"}[base];return name.endsWith("_pulse")?`${label} + Pulse`:label;}
+export function planLabel(name:PlanName,language:Language){const base=basePlanName(name),label=base==="free"?{pt:"Grátis",en:"Free",es:"Gratis"}[language]:{pro:"Pro",max:"Max",ultra:"Ultra"}[base];return `${label}${pulsePlanOf(name)?" + Pulse":""}${hasDeals(name)?" + Deals":""}`;}
 export function planPerks(language:Language,name:PlanName,limits:PlanLimits):string[]{
  const base=basePlanName(name);
  const n=(v:number)=>new Intl.NumberFormat(languageTag[language]).format(v);
@@ -13,7 +13,9 @@ export function planPerks(language:Language,name:PlanName,limits:PlanLimits):str
   es:{manual:`${size} de notas, sincronizadas cuando lo elijas`,live:`${size} de notas, sincronizadas en tiempo real`,devices:limits.devices===1?"1 ordenador conectado":`${n(limits.devices)} ordenadores conectados`,unlimited:"Ordenadores sin límite",file:`Archivos de hasta ${n(limits.maxFileMB)} MB`,encryption:"Cifrado de extremo a extremo",history:months===1?"1 mes de historial de versiones":`${n(months)} meses de historial de versiones`,sites:limits.sites===1?"1 sitio alojado por Blup en tusitio.getblup.site":`${n(limits.sites)} sitios alojados por Blup, con dominio propio`,reminders:`${n(limits.reminderEmails)} avisos de calendario por correo al mes`,priority:"Soporte prioritario y acceso anticipado"},
  }[language];
  const cloud=base==="free"?[descriptions.manual,descriptions.devices,descriptions.file,descriptions.encryption]:[descriptions.live,limits.devices<0?descriptions.unlimited:descriptions.devices,descriptions.file,descriptions.history,descriptions.sites,...(limits.reminderEmails?[descriptions.reminders]:[]),...(base==="ultra"?[descriptions.priority]:[])];
- const variant=pulsePlanSchema.safeParse(name);if(!variant.success)return cloud;const p=pulseLimits[variant.data];
+ const variant=pulsePlanOf(name),d=dealsLimits;
+ const deals=hasDeals(name)?{pt:["Blup Deals incluído",`${n(d.channels)} canais no Telegram e no Discord`,`${n(d.hunts)} caçadas de ofertas e ${n(d.mirrors)} canais espelhados`,`${n(d.postsPerDay)} posts por dia`,`${n(d.historyDays)} dias de histórico de preços e cliques`],en:["Blup Deals included",`${n(d.channels)} Telegram and Discord channels`,`${n(d.hunts)} deal hunts and ${n(d.mirrors)} mirrored channels`,`${n(d.postsPerDay)} posts per day`,`${n(d.historyDays)} days of price and click history`],es:["Blup Deals incluido",`${n(d.channels)} canales de Telegram y Discord`,`${n(d.hunts)} búsquedas de ofertas y ${n(d.mirrors)} canales espejados`,`${n(d.postsPerDay)} publicaciones al día`,`${n(d.historyDays)} días de historial de precios y clics`]}[language]:[];
+ if(!variant)return [...cloud,...deals];const p=pulseLimits[variant];
  const pulse={pt:["Blup Pulse incluído",`${n(p.projects)} projetos e ${n(p.events)} erros por mês`,`${n(p.monitors)} monitores, a partir de ${n(p.intervalMinutes)} minutos`,`${n(p.retentionDays)} dias de retenção`,p.customDomain?`${n(p.pages)} páginas de status com domínio próprio`:"1 página de status","Avisos por Discord e Telegram"],en:["Blup Pulse included",`${n(p.projects)} projects and ${n(p.events)} errors per month`,`${n(p.monitors)} monitors, from ${n(p.intervalMinutes)} minutes`,`${n(p.retentionDays)} days of retention`,p.customDomain?`${n(p.pages)} status pages with custom domains`:"1 status page","Discord and Telegram alerts"],es:["Blup Pulse incluido",`${n(p.projects)} proyectos y ${n(p.events)} errores al mes`,`${n(p.monitors)} monitores, desde ${n(p.intervalMinutes)} minutos`,`${n(p.retentionDays)} días de retención`,p.customDomain?`${n(p.pages)} páginas de estado con dominio propio`:"1 página de estado","Avisos por Discord y Telegram"]}[language];
- return [...cloud,...pulse];
+ return [...cloud,...pulse,...deals];
 }

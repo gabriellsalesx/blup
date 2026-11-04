@@ -1,0 +1,7 @@
+{
+ "$schema":"node_modules/wrangler/config-schema.json",
+ "name":"blup-deals-panel",
+ "compatibility_date":"2026-10-28",
+ "assets":{"directory":"deals/build","not_found_handling":"single-page-application"},
+ "env":{"production":{"workers_dev":false,"preview_urls":false,"routes":[{"pattern":"deals.getblup.io","custom_domain":true}]}}
+}

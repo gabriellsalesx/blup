@@ -3,7 +3,7 @@ import { GIFT_PLAN, ownerMatches, planNamed } from "./plans";
 
 describe("the owner's gift", () => {
 	it("is the top plan, with 10 sites", () => {
-		expect(planNamed(GIFT_PLAN).name).toBe("ultra_pulse");
+		expect(planNamed(GIFT_PLAN).name).toBe("ultra_pulse_deals");
 		expect(planNamed(GIFT_PLAN).limits.sites).toBe(10);
 	});
 	it("goes only to the owner's verified e-mail", () => {

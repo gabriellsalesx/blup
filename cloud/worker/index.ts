@@ -31,12 +31,13 @@ import { isStudio, usageOf } from "./usage";
 import {user as userTable, session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
 import { turnstileOk } from "./turnstile";
-import { mutationOriginAllowed, pulseCorsPath } from "./security";
+import { mutationOriginAllowed, panelCorsOrigin } from "./security";
 import {reconcileAlerts,dispatchAlerts} from "./pulse/outbox";
 import {checkDue} from "./pulse/scheduler";
 import {pulseMaintenance} from "./pulse/cleanup";
 import {servePulsePage} from "./pulse/public";
 import {pulseApi} from "./pulse/api";
+import {dealsApi} from "./deals/api";
 import {pulseIngest} from "./pulse/ingest";
 
 type App = { Bindings: Cloudflare.Env; Variables: { session: Session } };
@@ -57,7 +58,7 @@ app.use("*",async(c,next)=>{
 });
 
 app.use("*", async (c, next) => {
-	if (!mutationOriginAllowed(c.req.raw,[c.env.PULSE_APP_URL].filter(Boolean))) return c.json(requestError(c.req.path,"ORIGIN_NOT_ALLOWED","Origem não permitida."),403);
+	if (!mutationOriginAllowed(c.req.raw,[c.env.PULSE_APP_URL,c.env.DEALS_APP_URL].filter(Boolean))) return c.json(requestError(c.req.path,"ORIGIN_NOT_ALLOWED","Origem não permitida."),403);
 	await next();
 	// A WebSocket (101) goes as it is: copying the response would drop the socket.
 	if (c.res.status !== 101 && !c.res.headers.has("cache-control")) c.header("cache-control", "no-store");
@@ -119,8 +120,8 @@ app.post("/auth/delete-user",validate("json",z.object({}).strict()),async c=>{
 // transfer has storage quotas and a separate 500/10s per-account fuse.
 app.use("*",async(c,next)=>{
  const path=c.req.path,method=c.req.method;
- const costly=((c.req.path.startsWith("/api/pulse/")||c.req.path.startsWith("/api/billing/"))&&!["GET","HEAD"].includes(method))||(method==="POST"&&/^\/api\/(?:ai\/(?:audio\/speech|translate)|sites\/?|sync\/vaults)$/.test(path)) || /\/api\/sites\/[^/]+\/domain$/.test(path) || method==="GET"&&path==="/api/sites/check" || method==="PUT"&&/^\/api\/reminders\/?$/.test(path) || /\/api\/sync\/vaults\/[^/]+\/(?:prepare|history)$/.test(path) || method==="PUT"&&path==="/api/sites/retained" || method==="DELETE"&&/^\/api\/sites\/[^/]+$/.test(path);
- const bulk=!costly&&(path.startsWith("/api/pulse/")||/^\/api\/sync\//.test(path)||/^\/api\/sites\/[^/]+\/(?:files|missing|deploys)(?:\/|$)/.test(path));
+ const costly=((c.req.path.startsWith("/api/pulse/")||c.req.path.startsWith("/api/deals/")||c.req.path.startsWith("/api/billing/"))&&!["GET","HEAD"].includes(method))||(method==="POST"&&/^\/api\/(?:ai\/(?:audio\/speech|translate)|sites\/?|sync\/vaults)$/.test(path)) || /\/api\/sites\/[^/]+\/domain$/.test(path) || method==="GET"&&path==="/api/sites/check" || method==="PUT"&&/^\/api\/reminders\/?$/.test(path) || /\/api\/sync\/vaults\/[^/]+\/(?:prepare|history)$/.test(path) || method==="PUT"&&path==="/api/sites/retained" || method==="DELETE"&&/^\/api\/sites\/[^/]+$/.test(path);
+ const bulk=!costly&&(path.startsWith("/api/pulse/")||path.startsWith("/api/deals/")||/^\/api\/sync\//.test(path)||/^\/api\/sites\/[^/]+\/(?:files|missing|deploys)(?:\/|$)/.test(path));
  if(!costly&&!bulk)return next();
  const s=await auth.api.getSession({headers:c.req.raw.headers});if(!s)return next();
  const binding=costly?c.env.ABUSE_LIMIT:c.env.BULK_LIMIT;
@@ -173,7 +174,7 @@ const routes = app
 			email: hasEmail(user.email) ? user.email : null,
 			name: user.name,
 			createdAt: user.createdAt,
-			plan: { name: plan.basePlan,billingName:plan.name,billingInterval:z.enum(["month","year"]).nullable().catch(null).parse(sub?.billingInterval??null),pulse:{enabled:plan.pulse!==null,limits:plan.pulse}, label: planLabel(plan.name,requestLanguage(c.req.raw.headers)), limits: plan.limits, gift, status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
+			plan: { name: plan.basePlan,billingName:plan.name,billingInterval:z.enum(["month","year"]).nullable().catch(null).parse(sub?.billingInterval??null),pulse:{enabled:plan.pulse!==null,limits:plan.pulse},deals:{enabled:plan.deals!==null,limits:plan.deals}, label: planLabel(plan.name,requestLanguage(c.req.raw.headers)), limits: plan.limits, gift, status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
 		});
 	})
 	// The Blup Studio installs signed in (each is a session), to see and
@@ -203,6 +204,7 @@ const routes = app
 	.route("/reminders",remindersApi)
 	.route("/ai",aiApi)
 	.route("/pulse",pulseApi)
+	.route("/deals",dealsApi)
  .route("/billing",billingApi);
 
 app.notFound((c) => c.json({ code: "NOT_FOUND" }, 404));
@@ -259,9 +261,8 @@ export default {
 		const url = new URL(req.url);
 		if(url.hostname===env.PULSE_INGEST_HOST)return secure(await pulseIngest(req,env));
 		if(url.hostname===env.PULSE_PUBLIC_HOST)return secure(await servePulsePage(req,env)??new Response("Not found",{status:404}));
-		const origin=req.headers.get("origin"),pulseOrigin=env.PULSE_APP_URL;
-		const pulseCors=origin===pulseOrigin&&!!pulseOrigin&&pulseCorsPath(url.pathname);
-		if(pulseCors&&req.method==="OPTIONS")return secure(new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":pulseOrigin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Methods":"GET, POST, PUT, PATCH, DELETE, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-Blup-Language, X-Captcha-Response","Access-Control-Max-Age":"600",Vary:"Origin"}}));
+		const corsOrigin=panelCorsOrigin(env,req.headers.get("origin"),url.pathname);
+		if(corsOrigin&&req.method==="OPTIONS")return secure(new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":corsOrigin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Methods":"GET, POST, PUT, PATCH, DELETE, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-Blup-Language, X-Captcha-Response","Access-Control-Max-Age":"600",Vary:"Origin"}}));
 		const staffApi = url.pathname.startsWith("/api/staff");
 		const staffPage = url.pathname === "/staff" || url.pathname.startsWith("/staff/");
 		if (env.STAFF_HOST) {
@@ -271,7 +272,7 @@ export default {
 		}
 		if (url.pathname.startsWith("/api/")){
 		 const response=secure(await app.fetch(req, env, ctx));
-		 if(pulseCors){response.headers.set("Access-Control-Allow-Origin",pulseOrigin);response.headers.set("Access-Control-Allow-Credentials","true");response.headers.append("Vary","Origin");}
+		 if(corsOrigin){response.headers.set("Access-Control-Allow-Origin",corsOrigin);response.headers.set("Access-Control-Allow-Credentials","true");response.headers.append("Vary","Origin");}
 		 return response;
 		}
 		return secure(await env.ASSETS.fetch(req));

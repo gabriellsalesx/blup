@@ -62,7 +62,7 @@ export async function buildQuote(db:D1Database,stripe:Stripe,sub:FlowSubscriptio
  if(sub.pending_update)throw new BillingFlowError("BILLING_PENDING");
  const resources=await resourceChoices(db,userId),rank={free:0,pro:1,max:2,ultra:3};
  const same=target.name===current.name&&annual===(item.price.recurring.interval==="year");
- const mode=target.name==="free"?"cancel":same&&(sub.cancel_at_period_end||sub.cancel_at)?"restore":rank[target.basePlan]<rank[current.basePlan]||current.pulse&&!target.pulse||item.price.recurring.interval==="year"&&!annual?"scheduled":"immediate";
+ const mode=target.name==="free"?"cancel":same&&(sub.cancel_at_period_end||sub.cancel_at)?"restore":rank[target.basePlan]<rank[current.basePlan]||current.pulse&&!target.pulse||current.deals&&!target.deals||item.price.recurring.interval==="year"&&!annual?"scheduled":"immediate";
  // Never credit an unpaid period into a plan change. Cancellation and
  // restoring the existing price do not create a proration or new credit.
  if((mode==="immediate"||mode==="scheduled")&&(sub.status==="past_due"||sub.latest_invoice!==null&&(typeof sub.latest_invoice==="string"||sub.latest_invoice.status!=="paid")))throw new BillingFlowError("BILLING_PAYMENT_REQUIRED");

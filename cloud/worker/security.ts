@@ -15,7 +15,19 @@ export function mutationOriginAllowed(req: Request,trustedOrigins:readonly strin
 	return true;
 }
 
-// What the Pulse panel (another subdomain) may call with its cookies: its
-// own API, who is signed in, and the sign-in itself (code or passkey).
-const pulseCorsPaths=/^\/api\/(?:pulse(?:\/|$)|me(?:\/language)?$|config$|auth\/(?:get-session|sign-out|email-otp\/send-verification-otp|sign-in\/email-otp|passkey\/(?:generate-authenticate-options|verify-authentication|generate-register-options|verify-registration))$)/;
+// What the Pulse and Deals panels (other subdomains) may call with their
+// cookies: their own API, who is signed in, and the sign-in itself (code
+// or passkey).
+const sharedCorsPaths=String.raw`me(?:\/language)?$|config$|auth\/(?:get-session|sign-out|email-otp\/send-verification-otp|sign-in\/email-otp|passkey\/(?:generate-authenticate-options|verify-authentication|generate-register-options|verify-registration))$`;
+const dealsCorsPaths=new RegExp(String.raw`^\/api\/(?:deals(?:\/|$)|`+sharedCorsPaths+")");
+export const dealsCorsPath=(pathname:string)=>dealsCorsPaths.test(pathname);
+const pulseCorsPaths=new RegExp(String.raw`^\/api\/(?:pulse(?:\/|$)|`+sharedCorsPaths+")");
 export const pulseCorsPath=(pathname:string)=>pulseCorsPaths.test(pathname);
+// The panel allowed to call this path from this origin (with cookies), if
+// any: each panel only reaches its own API and the shared sign-in.
+export function panelCorsOrigin(env:{PULSE_APP_URL?:string;DEALS_APP_URL?:string},origin:string|null,pathname:string):string|null{
+ if(!origin)return null;
+ if(env.PULSE_APP_URL&&origin===env.PULSE_APP_URL&&pulseCorsPath(pathname))return origin;
+ if(env.DEALS_APP_URL&&origin===env.DEALS_APP_URL&&dealsCorsPath(pathname))return origin;
+ return null;
+}

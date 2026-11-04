@@ -20,7 +20,7 @@ import { staffApi } from "./staff";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
 import { voicePrice } from "./ai";
 import { cleanUp } from "./cleanup";
-import { pulseCorsPath } from "./security";
+import { pulseCorsPath, dealsCorsPath, panelCorsOrigin, mutationOriginAllowed } from "./security";
 import { cleanSites } from "./sites-cleanup";
 import { DAY,softDelete,restoreAccount,purgeAccounts,cancelDeletedBilling,observePlan } from "./lifecycle";
 import { serveSite } from "./serve-site";
@@ -567,4 +567,31 @@ it("records a narration usage.cost from an invalid JSON audio response",async()=
 describe("Pulse panel cross-origin paths",()=>{
 	it.each(["/api/pulse","/api/pulse/monitors","/api/me","/api/me/language","/api/config","/api/auth/get-session","/api/auth/sign-out","/api/auth/email-otp/send-verification-otp","/api/auth/sign-in/email-otp","/api/auth/passkey/generate-authenticate-options","/api/auth/passkey/verify-authentication","/api/auth/passkey/generate-register-options","/api/auth/passkey/verify-registration"])("allows %s",path=>expect(pulseCorsPath(path)).toBe(true));
 	it.each(["/api/auth/passkey/list-user-passkeys","/api/auth/passkey/delete-passkey","/api/auth/delete-user","/api/auth/change-email","/api/auth/device/approve","/api/billing/state","/api/staff/users","/api/me/export","/api/configx","/api/pulsex"])("refuses %s",path=>expect(pulseCorsPath(path)).toBe(false));
+});
+describe("Deals panel cross-origin",()=>{
+	const pulse="https://pulse.audit.invalid",deals="https://deals.audit.invalid";
+	it.each(["/api/deals","/api/deals/usage","/api/me","/api/me/language","/api/config","/api/auth/get-session","/api/auth/sign-out","/api/auth/email-otp/send-verification-otp","/api/auth/sign-in/email-otp","/api/auth/passkey/generate-authenticate-options","/api/auth/passkey/verify-authentication","/api/auth/passkey/generate-register-options","/api/auth/passkey/verify-registration"])("allows %s",path=>expect(dealsCorsPath(path)).toBe(true));
+	it.each(["/api/pulse/usage","/api/billing/state","/api/staff/users","/api/me/export","/api/auth/delete-user","/api/dealsx","/api/sync/vaults"])("refuses %s",path=>expect(dealsCorsPath(path)).toBe(false));
+	it("lets each panel reach only its own API",()=>{
+		const env={PULSE_APP_URL:pulse,DEALS_APP_URL:deals};
+		expect(panelCorsOrigin(env,deals,"/api/deals/usage")).toBe(deals);expect(panelCorsOrigin(env,pulse,"/api/pulse/usage")).toBe(pulse);
+		expect(panelCorsOrigin(env,deals,"/api/pulse/usage")).toBeNull();expect(panelCorsOrigin(env,pulse,"/api/deals/usage")).toBeNull();
+		expect(panelCorsOrigin(env,"https://evil.audit.invalid","/api/deals/usage")).toBeNull();expect(panelCorsOrigin(env,null,"/api/deals/usage")).toBeNull();
+		expect(panelCorsOrigin({PULSE_APP_URL:pulse,DEALS_APP_URL:""},"","/api/deals/usage")).toBeNull();
+	});
+	it("answers the preflight and the read with the Deals origin, never another",async()=>{
+		Object.assign(state.env,{PULSE_APP_URL:pulse,DEALS_APP_URL:deals});
+		const preflight=await worker.fetch(new Request("https://cloud.audit.invalid/api/deals/usage",{method:"OPTIONS",headers:{origin:deals,"access-control-request-method":"GET"}}),state.env,ctx);
+		expect(preflight.status).toBe(204);expect(preflight.headers.get("access-control-allow-origin")).toBe(deals);expect(preflight.headers.get("access-control-allow-credentials")).toBe("true");
+		const read=await request("/deals/usage","GET",undefined,"alice",{origin:deals});
+		expect(read.status).toBe(200);expect(read.headers.get("access-control-allow-origin")).toBe(deals);expect(await read.json()).toMatchObject({plan:null,readOnly:true});
+		const other=await request("/pulse/usage","GET",undefined,"alice",{origin:deals});expect(other.headers.get("access-control-allow-origin")).toBeNull();
+		const evil=await request("/deals/usage","GET",undefined,"alice",{origin:"https://evil.audit.invalid"});expect(evil.headers.get("access-control-allow-origin")).toBeNull();
+		expect((await request("/deals/usage","GET",undefined,"")).status).toBe(401);
+	});
+	it("accepts changes from the Deals panel and refuses other origins",()=>{
+		const post=(origin:string)=>new Request("https://cloud.audit.invalid/api/deals/usage",{method:"POST",headers:{origin,cookie:"s=1"}});
+		expect(mutationOriginAllowed(post(deals),[pulse,deals])).toBe(true);
+		expect(mutationOriginAllowed(post("https://evil.audit.invalid"),[pulse,deals])).toBe(false);
+	});
 });

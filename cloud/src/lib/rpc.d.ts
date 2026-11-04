@@ -16,7 +16,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $get: {
             input: {};
             output: {
-                name: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                name: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
                 basePlan: "free" | "pro" | "max" | "ultra";
                 pulse: {
                     readonly projects: 3;
@@ -38,6 +38,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     readonly customDomain: true;
                     readonly projectBytes: number;
                     readonly burst: 300;
+                } | null;
+                deals: {
+                    readonly channels: 10;
+                    readonly hunts: 20;
+                    readonly mirrors: 10;
+                    readonly postsPerDay: 300;
+                    readonly historyDays: 90;
                 } | null;
                 label: string;
                 limits: {
@@ -138,7 +145,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 createdAt: string;
                 plan: {
                     name: "free" | "pro" | "max" | "ultra";
-                    billingName: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    billingName: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
                     billingInterval: "year" | "month" | null;
                     pulse: {
                         enabled: boolean;
@@ -162,6 +169,16 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                             readonly customDomain: true;
                             readonly projectBytes: number;
                             readonly burst: 300;
+                        } | null;
+                    };
+                    deals: {
+                        enabled: boolean;
+                        limits: {
+                            readonly channels: 10;
+                            readonly hunts: 20;
+                            readonly mirrors: 10;
+                            readonly postsPerDay: 300;
+                            readonly historyDays: 90;
                         } | null;
                     };
                     label: string;
@@ -4387,7 +4404,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
-                days: 90 | 30;
+                days: 30 | 90;
                 open: number;
                 resolved: number;
                 ignored: number;
@@ -8646,11 +8663,37 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 }, "/telegram">, "/api/pulse"> | import("hono/types").MergeSchemaPath<{
+    "/usage": {
+        $get: {
+            input: {};
+            output: {
+                plan: "ultra_deals" | "ultra_pulse_deals" | null;
+                limits: {
+                    readonly channels: 10;
+                    readonly hunts: 20;
+                    readonly mirrors: 10;
+                    readonly postsPerDay: 300;
+                    readonly historyDays: 90;
+                } | null;
+                readOnly: boolean;
+                used: {
+                    channels: number;
+                    hunts: number;
+                    mirrors: number;
+                    postsToday: number;
+                };
+                resetsAt: string;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/api/deals"> | import("hono/types").MergeSchemaPath<{
     "/checkout": {
         $post: {
             input: {
                 json: {
-                    plan: "max_pulse" | "ultra_pulse" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "pro" | "max" | "ultra";
                     annual: boolean;
                 };
             };
@@ -8666,7 +8709,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    plan: "max_pulse" | "ultra_pulse" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "pro" | "max" | "ultra";
                     annual: boolean;
                 };
             };
@@ -8679,7 +8722,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    plan: "max_pulse" | "ultra_pulse" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "pro" | "max" | "ultra";
                     annual: boolean;
                 };
             };
@@ -8731,7 +8774,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $post: {
             input: {
                 json: {
-                    plan: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
                     annual: boolean;
                 };
             };
@@ -8747,7 +8790,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    plan: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
                     annual: boolean;
                 };
             };
@@ -8760,7 +8803,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    plan: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
                     annual: boolean;
                 };
             };
@@ -8769,7 +8812,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 expiresAt: string;
                 quote: {
                     mode: "cancel" | "restore" | "scheduled" | "immediate";
-                    target: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    target: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
                     annual: boolean;
                     currency: string;
                     amountDue: number;
@@ -8877,11 +8920,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 paymentUrl: string | null;
                 change: {
-                    plan: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
                     effectiveAt: string;
                 } | null;
                 checkout: {
-                    plan: "max_pulse" | "ultra_pulse" | "free" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
                     url: string;
                     expiresAt: string;
                 } | null;

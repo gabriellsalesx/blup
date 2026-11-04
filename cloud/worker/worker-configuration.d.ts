@@ -16,6 +16,7 @@ interface __BaseEnv_CloudflareBindings {
 	PULSE_TELEGRAM_TOKEN: string;
 	PULSE_TELEGRAM_WEBHOOK_SECRET: string;
 	PULSE_APP_URL: string;
+	DEALS_APP_URL: string;
 	PULSE_INGEST_HOST: string;
 	PULSE_PUBLIC_HOST: string;
 	OTP_LIMIT: RateLimit;
@@ -64,6 +65,7 @@ declare namespace Cloudflare {
 	PULSE_TELEGRAM_TOKEN: string;
 	PULSE_TELEGRAM_WEBHOOK_SECRET: string;
 	PULSE_APP_URL: string;
+	DEALS_APP_URL: string;
 	PULSE_INGEST_HOST: string;
 	PULSE_PUBLIC_HOST: string;
 	OTP_LIMIT: RateLimit;

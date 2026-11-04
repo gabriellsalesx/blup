@@ -1,0 +1,70 @@
+import {sqliteTable,text,integer,index,primaryKey,uniqueIndex} from "drizzle-orm/sqlite-core";
+
+// Blup Deals. Sources and offers are shared by every account (each source
+// is read once per round for everyone); channels, store IDs, hunts and the
+// send queue belong to one account. Times are milliseconds, money is in the
+// currency's minor unit.
+
+// Where the posts go: a Telegram channel or a Discord channel the Blup bot
+// was added to. target is the chat or channel id.
+export const dealsChannel=sqliteTable("deals_channel",{
+ id:text("id").primaryKey(),userId:text("user_id").notNull(),platform:text("platform").notNull(),name:text("name").notNull(),target:text("target").notNull(),guildId:text("guild_id"),
+ active:integer("active").notNull().default(1),verifiedAt:integer("verified_at"),createdAt:integer("created_at").notNull(),
+ planDisabled:integer("plan_disabled").notNull().default(0),retireAt:integer("retire_at"),
+},t=>[index("deals_channel_owner_idx").on(t.userId,t.id),uniqueIndex("deals_channel_target_idx").on(t.userId,t.platform,t.target),index("deals_channel_retire_idx").on(t.retireAt)]);
+
+// The account's ID or tag at each store (matt_word, tag...) and, for the
+// stores searched with the account's own API key, that key sealed like a
+// Pulse destination (never shown back).
+export const dealsAffiliate=sqliteTable("deals_affiliate",{
+ userId:text("user_id").notNull(),store:text("store").notNull(),tag:text("tag"),credentials:text("credentials"),level:text("level"),createdAt:integer("created_at").notNull(),updatedAt:integer("updated_at").notNull(),
+},t=>[primaryKey({columns:[t.userId,t.store]})]);
+
+// A shared source: a feed (GamerPower, CheapShark), a store search or a
+// mirrored public channel. key identifies it (telegram:<channel>), so two
+// accounts mirroring the same channel share one read. cursor is where the
+// last read stopped.
+export const dealsSource=sqliteTable("deals_source",{
+ id:text("id").primaryKey(),kind:text("kind").notNull(),key:text("key").notNull().unique(),config:text("config").notNull().default("{}"),
+ cursor:text("cursor"),nextAt:integer("next_at").notNull(),lastAt:integer("last_at"),failures:integer("failures").notNull().default(0),error:text("error"),
+ claim:text("claim"),claimUntil:integer("claim_until").notNull().default(0),createdAt:integer("created_at").notNull(),
+},t=>[index("deals_source_due_idx").on(t.nextAt)]);
+
+// An account's hunt: what it wants from a source (filters as JSON) and the
+// channels that receive it (JSON list of deals_channel ids). kind mirror
+// counts toward the mirror limit.
+export const dealsHunt=sqliteTable("deals_hunt",{
+ id:text("id").primaryKey(),userId:text("user_id").notNull(),name:text("name").notNull(),kind:text("kind").notNull(),sourceId:text("source_id"),
+ filters:text("filters").notNull().default("{}"),channels:text("channels").notNull().default("[]"),intervalMinutes:integer("interval_minutes").notNull().default(30),
+ active:integer("active").notNull().default(1),lastPostAt:integer("last_post_at"),createdAt:integer("created_at").notNull(),
+ planDisabled:integer("plan_disabled").notNull().default(0),retireAt:integer("retire_at"),
+},t=>[index("deals_hunt_owner_idx").on(t.userId,t.id),index("deals_hunt_source_idx").on(t.sourceId),index("deals_hunt_retire_idx").on(t.retireAt)]);
+
+// The global catalog: one row per offer, whoever found it. hash (store and
+// product, normalized) keeps the same offer from coming in twice.
+export const dealsOffer=sqliteTable("deals_offer",{
+ id:text("id").primaryKey(),hash:text("hash").notNull().unique(),store:text("store").notNull(),externalId:text("external_id"),sourceId:text("source_id"),
+ title:text("title").notNull(),url:text("url").notNull(),imageUrl:text("image_url"),price:integer("price"),originalPrice:integer("original_price"),currency:text("currency"),
+ firstSeenAt:integer("first_seen_at").notNull(),lastSeenAt:integer("last_seen_at").notNull(),expiresAt:integer("expires_at"),
+},t=>[index("deals_offer_store_idx").on(t.store,t.externalId),index("deals_offer_seen_idx").on(t.lastSeenAt),index("deals_offer_source_idx").on(t.sourceId,t.lastSeenAt)]);
+
+// Price history, for an honest discount (the price before the sale, not
+// the one the store shows crossed out).
+export const dealsPrice=sqliteTable("deals_price",{
+ offerId:text("offer_id").notNull(),at:integer("at").notNull(),price:integer("price").notNull(),currency:text("currency").notNull(),
+},t=>[primaryKey({columns:[t.offerId,t.at]}),index("deals_price_at_idx").on(t.at)]);
+
+// The send queue (an outbox, like Pulse's alerts). One offer goes to a
+// channel once; day (YYYY-MM-DD, UTC) counts the posts per day. code is the
+// short link that counts clicks.
+export const dealsPost=sqliteTable("deals_post",{
+ id:text("id").primaryKey(),userId:text("user_id").notNull(),huntId:text("hunt_id"),channelId:text("channel_id").notNull(),offerId:text("offer_id").notNull(),
+ code:text("code").notNull().unique(),link:text("link").notNull(),state:text("state").notNull().default("queued"),attempts:integer("attempts").notNull().default(0),
+ nextAt:integer("next_at").notNull(),claim:text("claim"),claimUntil:integer("claim_until").notNull().default(0),day:text("day").notNull(),
+ sentAt:integer("sent_at"),error:text("error"),createdAt:integer("created_at").notNull(),
+},t=>[uniqueIndex("deals_post_once_idx").on(t.channelId,t.offerId),index("deals_post_due_idx").on(t.state,t.nextAt),index("deals_post_owner_day_idx").on(t.userId,t.day),index("deals_post_created_idx").on(t.createdAt)]);
+
+// Clicks on the short links, added up per post and day (few writes).
+export const dealsClickDay=sqliteTable("deals_click_day",{
+ postId:text("post_id").notNull(),userId:text("user_id").notNull(),day:text("day").notNull(),clicks:integer("clicks").notNull().default(0),
+},t=>[primaryKey({columns:[t.postId,t.day]}),index("deals_click_owner_day_idx").on(t.userId,t.day)]);

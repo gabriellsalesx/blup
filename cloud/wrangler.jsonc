@@ -69,6 +69,7 @@
 		"CF_ZONE_ID": "",
 		"SITES_CNAME_TARGET": "",
 		"PULSE_APP_URL": "https://pulse.getblup.io",
+		"DEALS_APP_URL": "https://deals.getblup.io",
 		"PULSE_INGEST_HOST": "ingest.getblup.io",
 		"PULSE_PUBLIC_HOST": "pulse.getblup.site"
 	},
@@ -129,6 +130,7 @@
 				"CF_ZONE_ID": "",
 				"SITES_CNAME_TARGET": "",
 		"PULSE_APP_URL": "https://pulse.getblup.io",
+		"DEALS_APP_URL": "https://deals.getblup.io",
 		"PULSE_INGEST_HOST": "ingest.getblup.io",
 		"PULSE_PUBLIC_HOST": "pulse.getblup.site"
 			}

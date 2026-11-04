@@ -1,3 +1,4 @@
+import {plansWithPulse,sqlPlans} from "../../shared/pulse-plans";
 import {DomainError,removeDomainProvider} from "../domain-provider";
 import {releaseHostname} from "../hostname-claim";
 import {siteLock,unlockSite} from "../quota";
@@ -9,7 +10,7 @@ export async function disablePulseDomain(env:Cloudflare.Env,page:string,remove=f
   const row=await read(env,page);if(!row)return;
   if(onlyIneligible){
    const owner=(env.STAFF_OWNER_EMAIL??" ").trim().toLowerCase();
-   const claimed=await env.DB.prepare("UPDATE pulse_page_domain SET status='disabled',ssl='pending' WHERE page_id=? AND EXISTS(SELECT 1 FROM pulse_page p JOIN user u ON u.id=p.user_id LEFT JOIN resource_quota q ON q.user_id=u.id WHERE p.id=? AND (p.plan_disabled=1 OR u.banned=1 OR q.deleted_at IS NOT NULL OR NOT(u.email_verified=1 AND lower(u.email)=?) AND NOT EXISTS(SELECT 1 FROM subscription s WHERE s.reference_id=u.id AND s.plan='ultra_pulse' AND s.status IN('active','trialing','past_due')))) RETURNING page_id").bind(page,page,owner).first();if(!claimed)return;
+   const claimed=await env.DB.prepare(`UPDATE pulse_page_domain SET status='disabled',ssl='pending' WHERE page_id=? AND EXISTS(SELECT 1 FROM pulse_page p JOIN user u ON u.id=p.user_id LEFT JOIN resource_quota q ON q.user_id=u.id WHERE p.id=? AND (p.plan_disabled=1 OR u.banned=1 OR q.deleted_at IS NOT NULL OR NOT(u.email_verified=1 AND lower(u.email)=?) AND NOT EXISTS(SELECT 1 FROM subscription s WHERE s.reference_id=u.id AND s.plan IN(${sqlPlans(plansWithPulse("ultra_pulse"))}) AND s.status IN('active','trialing','past_due')))) RETURNING page_id`).bind(page,page,owner).first();if(!claimed)return;
   }
   // Stop serving first. Preserve the provider ID until deletion succeeds.
   await env.DB.prepare("UPDATE pulse_page_domain SET status='disabled',ssl='pending' WHERE page_id=?").bind(page).run();
@@ -19,6 +20,6 @@ export async function disablePulseDomain(env:Cloudflare.Env,page:string,remove=f
 }
 export async function expirePulseDomains(env:Cloudflare.Env){
  const owner=(env.STAFF_OWNER_EMAIL??"").trim().toLowerCase();
- const rows=await env.DB.prepare("SELECT d.page_id AS id FROM pulse_page_domain d JOIN pulse_page p ON p.id=d.page_id JOIN user u ON u.id=p.user_id LEFT JOIN resource_quota q ON q.user_id=u.id WHERE (d.status<>'disabled' OR d.provider_id IS NOT NULL) AND (p.plan_disabled=1 OR u.banned=1 OR q.deleted_at IS NOT NULL OR NOT(u.email_verified=1 AND lower(u.email)=?) AND NOT EXISTS(SELECT 1 FROM subscription s WHERE s.reference_id=u.id AND s.plan='ultra_pulse' AND s.status IN('active','trialing','past_due'))) LIMIT 25").bind(owner).all<{id:string}>();
+ const rows=await env.DB.prepare(`SELECT d.page_id AS id FROM pulse_page_domain d JOIN pulse_page p ON p.id=d.page_id JOIN user u ON u.id=p.user_id LEFT JOIN resource_quota q ON q.user_id=u.id WHERE (d.status<>'disabled' OR d.provider_id IS NOT NULL) AND (p.plan_disabled=1 OR u.banned=1 OR q.deleted_at IS NOT NULL OR NOT(u.email_verified=1 AND lower(u.email)=?) AND NOT EXISTS(SELECT 1 FROM subscription s WHERE s.reference_id=u.id AND s.plan IN(${sqlPlans(plansWithPulse("ultra_pulse"))}) AND s.status IN('active','trialing','past_due'))) LIMIT 25`).bind(owner).all<{id:string}>();
  for(const row of rows.results)await disablePulseDomain(env,row.id,false,true);
 }

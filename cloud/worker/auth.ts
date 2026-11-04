@@ -14,6 +14,7 @@ export const auth = betterAuth(
 	authOptions(db, schema, {
 		appUrl: env.APP_URL,
 		pulseUrl:env.PULSE_APP_URL,
+		dealsUrl:env.DEALS_APP_URL,
 		rpID: env.PASSKEY_RP_ID,
 		secret: env.BETTER_AUTH_SECRET,
 		turnstileSecret: env.TURNSTILE_SECRET_KEY,

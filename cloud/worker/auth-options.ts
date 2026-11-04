@@ -23,6 +23,7 @@ const STUDIO_CLIENT_ID = "blup-studio";
 type AuthConfig = {
 	appUrl: string;
 	pulseUrl?:string;
+	dealsUrl?:string;
 	rpID: string;
 	secret: string;
 	turnstileSecret: string;
@@ -56,7 +57,7 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 		// handler must never write an older event after that reconciliation.
 		disabledPaths: ["/stripe/webhook","/subscription/success","/subscription/upgrade","/subscription/billing-portal","/subscription/cancel","/subscription/restore"],
 		secret: cfg.secret,
-		trustedOrigins: [cfg.appUrl,...(cfg.pulseUrl?[cfg.pulseUrl]:[])],
+		trustedOrigins: [cfg.appUrl,...[cfg.pulseUrl,cfg.dealsUrl].filter((url):url is string=>!!url)],
 		database: drizzleAdapter(db, { provider: "sqlite", schema }),
 		// UUIDv7 (RFC 9562): time-ordered, so new rows land at the end of the
 		// D1 index, and not guessable. The uuid package keeps a counter within
@@ -105,8 +106,8 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 			passkey({
 				rpID: cfg.rpID,
 				rpName: "Blup Cloud",
-				// Both panels sign in with the same passkeys (rpID is getblup.io).
-				origin: [cfg.appUrl, ...(cfg.pulseUrl ? [cfg.pulseUrl] : [])],
+				// Every panel signs in with the same passkeys (rpID is getblup.io).
+				origin: [cfg.appUrl, ...[cfg.pulseUrl, cfg.dealsUrl].filter((url): url is string => !!url)],
 				// Passkey-first: an account can start with a passkey alone. The
 				// user is created only after the WebAuthn ceremony succeeds.
 				registration: {

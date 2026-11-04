@@ -36,6 +36,6 @@ describe("bounded file intake",()=>{
 		await expect(boundedBody(req,5)).rejects.toMatchObject({status:413});
 	});
 	it("uses the approved 10/25/50/100 MiB file caps",()=>{
-		expect(PLANS.filter(p=>!p.pulse).map(p=>p.limits.maxFileMB)).toEqual([10,25,50,100]);
+		expect(PLANS.filter(p=>p.name===p.basePlan).map(p=>p.limits.maxFileMB)).toEqual([10,25,50,100]);
 	});
 });
