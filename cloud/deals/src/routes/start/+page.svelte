@@ -26,7 +26,9 @@
  import {hasPlan} from "../../lib/plan";
  import ChannelPicker from "../../lib/ChannelPicker.svelte";
  import PostPreview from "../../lib/PostPreview.svelte";
- import StoreCard from "../../lib/StoreCard.svelte";
+ import StoreForm from "../../lib/StoreForm.svelte";
+ import StoreLogo from "../../lib/StoreLogo.svelte";
+ import {storeName} from "../../lib/catalog";
  // The first-run assistant: the channel's topic, where to post, the
  // affiliate IDs (can be skipped), a preview and turning it on. With games
  // as the topic, turning on creates the game hunts; another topic goes on
@@ -94,9 +96,14 @@
      {#if !data.channels.length}<p class="mt-2 text-sm text-neutral-500">{t("dealsStartNoChannel")}</p>{/if}
      {#if hasPlan()}<a class="mt-4 inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-semibold hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800" href={linkHref}><Plus class="size-4"/>{t("dealsNewChannel")}</a>{/if}
     {:else if step.id==="ids"}
-     <div class="grid gap-4 lg:grid-cols-2">
-      <StoreCard store="amazon" saved={data.stores.find(s=>s.store==="amazon")} writable={hasPlan()} onchange={()=>void invalidateAll()}/>
-      <StoreCard store="mercadolivre" saved={data.stores.find(s=>s.store==="mercadolivre")} writable={hasPlan()} onchange={()=>void invalidateAll()}/>
+     <div class="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
+      {#each ["amazon","mercadolivre"] as const as store(store)}
+       {@const saved=data.stores.find(s=>s.store===store)}
+       <section class="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+        <div class="mb-4 flex items-center gap-3"><StoreLogo {store} class="size-10"/><h3 class="font-semibold">{storeName[store]}</h3>{#if saved?.configured}<span class="ml-auto inline-flex items-center gap-1 text-sm font-medium text-emerald-700 dark:text-emerald-400"><CircleCheck class="size-4"/>{t("dealsConfigured")}</span>{/if}</div>
+        <StoreForm {store} {saved} writable={hasPlan()} onchange={()=>void invalidateAll()}/>
+       </section>
+      {/each}
      </div>
     {:else if step.id==="preview"}
      {#if topic==="games"}
