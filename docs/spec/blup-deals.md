@@ -69,6 +69,8 @@ O produto inclui jogos, links colados e espelhamento. O Blup ajuda a preparar e 
 
 Deals é um adicional **somente do Ultra**. O card do Ultra tem o switch **Adicionar Blup Deals**, independente do switch Pulse. Não haverá Deals avulso ou adicional de Grátis, Pro ou Max nesta proposta.
 
+Preços (Stripe, mantidos pelo dono em 05/11/2026; o anual vale 10 meses): **Ultra + Deals R$ 109,90 por mês ou R$ 1.099 por ano** (`blup_ultra_deals_mensal`, `blup_ultra_deals_anual`) e **Ultra + Pulse + Deals R$ 169,90 por mês ou R$ 1.699 por ano** (`blup_ultra_pulse_deals_mensal`, `blup_ultra_pulse_deals_anual`).
+
 | Variante Ultra | Pulse | Deals |
 | --- | --- | --- |
 | `ultra` | Não | Não |
