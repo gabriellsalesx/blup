@@ -41,7 +41,7 @@ export async function bridge(env:Cloudflare.Env,method:"GET"|"POST"|"DELETE",pat
 // id) and once every 30 minutes per Canal. A photo's own bytes (an
 // example's picture) go as they are.
 export async function sendWhatsapp(env:Cloudflare.Env,session:string,channel:string,key:string,text:string,image:string|null,send:typeof fetch=fetch,photo:Uint8Array|null=null):Promise<Delivery>{
- if(!bridgeReady(env))return failure("CHANNEL_UNAVAILABLE",300_000);
+ if(!bridgeReady(env))return failure("WHATSAPP_UNAVAILABLE",300_000);
  let picture:string|null=photo&&isJpegOrPng(photo)?base64(photo):null;
  if(image&&!picture){
   const got=await safeImage(image,{send});

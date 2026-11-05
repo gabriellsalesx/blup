@@ -98,7 +98,7 @@ export const channelsApi=new Hono<DealsApp>()
 // group; the chat where that same Telegram user adds it is the candidate.
 export const telegramApi=new Hono<DealsApp>()
  .post("/link",dealsWrite,validate("json",z.object({}).strict()),async c=>{
-  if(!botReady(c.env))return c.json({code:"CHANNEL_UNAVAILABLE"},503);
+  if(!botReady(c.env))return c.json({code:"TELEGRAM_UNAVAILABLE"},503);
   const owner=c.get("session").user.id,id=crypto.randomUUID(),code=publicKey(),now=Date.now();
   await c.env.DB.batch([c.env.DB.prepare("DELETE FROM deals_telegram_link WHERE user_id=? AND state<>'confirmed'").bind(owner),c.env.DB.prepare("INSERT INTO deals_telegram_link(id,user_id,hash,expires_at) VALUES(?,?,?,?)").bind(id,owner,await sha256(code),now+LINK_TTL)]);
   return c.json({id,url:`https://t.me/${botName(c.env)}?start=${code}`,expiresAt:new Date(now+LINK_TTL).toISOString()},201);

@@ -138,7 +138,7 @@ function photoForm(fields:Record<string,string>,name:string,bytes:Uint8Array){co
 // photo's bytes go as a file.
 export async function sendTelegram(env:Cloudflare.Env,target:string,text:string,image:string|null,send:typeof fetch=fetch,watch:string|null=null,photo:Uint8Array|null=null):Promise<Delivery>{
  const chat=dealsChatId.safeParse(target);if(!chat.success)return failure("INVALID_TARGET",0,true);
- const token=botToken(env);if(!token)return failure("CHANNEL_UNAVAILABLE",300_000);
+ const token=botToken(env);if(!token)return failure("TELEGRAM_UNAVAILABLE",300_000);
  try{
   const preview=watch?{url:watch,prefer_large_media:true,show_above_text:true}:{is_disabled:true};
   let {res,result}=photo?await telegramCall(token,"sendPhoto",photoForm({chat_id:chat.data,caption:text,parse_mode:"HTML"},"photo",photo),send):image?await telegramCall(token,"sendPhoto",{chat_id:chat.data,photo:image,caption:text,parse_mode:"HTML"},send):await telegramCall(token,"sendMessage",{chat_id:chat.data,text,parse_mode:"HTML",link_preview_options:preview},send);

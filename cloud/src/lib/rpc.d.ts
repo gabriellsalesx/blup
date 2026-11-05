@@ -9888,6 +9888,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 qr: string | null;
                 qrExpiresAt: string | null;
                 ready: boolean;
+                reachable: boolean;
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;
@@ -9908,6 +9909,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 qr: string | null;
                 qrExpiresAt: string | null;
                 ready: boolean;
+                reachable: boolean;
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;

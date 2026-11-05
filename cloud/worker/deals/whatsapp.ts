@@ -22,10 +22,11 @@ export const whatsappError=(state:string)=>`WHATSAPP_${state.toUpperCase()}`;
 
 type Row={id:string;state:string;phoneEnd:string|null};
 // What the panel gets about the connection, always the same shape (none:
-// never connected; ready: the Bridge is set up).
+// never connected; ready: the Bridge is set up; reachable false: the Bridge
+// did not answer now, so state is the last one known).
 type State=(typeof states)[number];
 const stateOf=(s:string):State=>z.enum(states).catch("logged_out").parse(s);
-const out=(state:State|"none",ready:boolean,v:{phoneEnd?:string|null;qr?:string;qrExpiresAt?:string}={})=>({state,phoneEnd:v.phoneEnd??null,qr:v.qr??null,qrExpiresAt:v.qrExpiresAt??null,ready});
+const out=(state:State|"none",ready:boolean,v:{phoneEnd?:string|null;qr?:string;qrExpiresAt?:string}={},reachable=true)=>({state,phoneEnd:v.phoneEnd??null,qr:v.qr??null,qrExpiresAt:v.qrExpiresAt??null,ready,reachable});
 const rowOf=(db:D1Database,owner:string)=>db.prepare("SELECT id,state,phone_end AS phoneEnd FROM deals_whatsapp WHERE user_id=?").bind(owner).first<Row>();
 // A new state from the Bridge: kept, and the Canais of that WhatsApp show
 // it (or go back to normal once it connects again).
@@ -47,10 +48,10 @@ export const whatsappApi=new Hono<DealsApp>()
   const ready=bridgeReady(c.env);
   if(!row)return c.json(out("none",ready));
   if(!ready||ended.has(row.state))return c.json(out(stateOf(row.state),ready,row));
-  let answer:Answer;try{answer=await bridge(c.env,"GET",`/v1/sessions/${row.id}`);}catch{return c.json(out(stateOf(row.state),true,row));}
+  let answer:Answer;try{answer=await bridge(c.env,"GET",`/v1/sessions/${row.id}`);}catch{return c.json(out(stateOf(row.state),true,row,false));}
   // The Bridge forgot it (its data was lost): connect again.
   const view=answer.status===404?{state:"logged_out" as const}:bridgeView.safeParse(answer.data).data;
-  if(!view)return c.json(out(stateOf(row.state),true,row));
+  if(!view)return c.json(out(stateOf(row.state),true,row,false));
   const phoneEnd="phoneEnd" in view?view.phoneEnd:undefined;
   if(view.state!==row.state||(phoneEnd&&phoneEnd!==row.phoneEnd))await keep(c.env.DB,row.id,view.state,phoneEnd);
   return c.json(out(view.state,true,{...view,phoneEnd:phoneEnd??row.phoneEnd}));
@@ -60,7 +61,7 @@ export const whatsappApi=new Hono<DealsApp>()
  // unless fresh asks for a new start while it waits for the QR (only the
  // first QR of a connection lasts a minute; the next ones, 20 seconds).
  .post("/session",dealsWrite,validate("json",z.object({acceptRisk:z.literal(true),fresh:z.boolean().optional()}).strict()),async c=>{
-  if(!bridgeReady(c.env))return c.json({code:"CHANNEL_UNAVAILABLE"},503);
+  if(!bridgeReady(c.env))return c.json({code:"WHATSAPP_UNAVAILABLE"},503);
   const owner=c.get("session").user.id,now=Date.now();
   let row=await rowOf(c.env.DB,owner);
   if(row&&(ended.has(row.state)||(c.req.valid("json").fresh&&row.state==="pairing"))){
@@ -76,12 +77,12 @@ export const whatsappApi=new Hono<DealsApp>()
    const id=crypto.randomUUID();
    await c.env.DB.prepare("INSERT INTO deals_whatsapp(id,user_id,state,risk_accepted_at,created_at,updated_at) VALUES(?,?,'pairing',?,?,?) ON CONFLICT(user_id) DO NOTHING").bind(id,owner,now,now,now).run();
    row=await rowOf(c.env.DB,owner);
-   if(!row)return c.json({code:"CHANNEL_UNAVAILABLE"},503);
+   if(!row)return c.json({code:"WHATSAPP_UNAVAILABLE"},503);
   }
-  let answer:Answer;try{answer=await bridge(c.env,"POST",`/v1/sessions/${row.id}`,{});}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
+  let answer:Answer;try{answer=await bridge(c.env,"POST",`/v1/sessions/${row.id}`,{});}catch{return c.json({code:"WHATSAPP_UNAVAILABLE"},503);}
   if(answer.status===503)return c.json({code:"BRIDGE_BUSY"},503);
   const view=bridgeView.safeParse(answer.data);
-  if(answer.status!==200||!view.success)return c.json({code:"CHANNEL_UNAVAILABLE"},503);
+  if(answer.status!==200||!view.success)return c.json({code:"WHATSAPP_UNAVAILABLE"},503);
   await keep(c.env.DB,row.id,view.data.state,view.data.phoneEnd,now);
   return c.json(out(view.data.state,true,view.data));
  })
@@ -100,7 +101,7 @@ export const whatsappApi=new Hono<DealsApp>()
   const owner=c.get("session").user.id,row=await rowOf(c.env.DB,owner);
   if(!row||row.state!=="connected"||!bridgeReady(c.env))return c.json({code:"NOT_CONNECTED"},409);
   const list=await bridgeList(c.env,row.id);
-  if(!list)return c.json({code:"CHANNEL_UNAVAILABLE"},503);
+  if(!list)return c.json({code:"WHATSAPP_UNAVAILABLE"},503);
   const added=await c.env.DB.prepare("SELECT target_hash AS hash FROM deals_channel WHERE user_id=? AND platform='whatsapp'").bind(owner).all<{hash:string}>();
   const have=new Set(added.results.map(r=>r.hash));
   return c.json({channels:await Promise.all(list.map(async ch=>({id:ch.id,name:ch.name||"Canal",role:ch.role,added:have.has(await targetHash("whatsapp",ch.id))})))});
@@ -110,7 +111,7 @@ export const whatsappApi=new Hono<DealsApp>()
   if(!row||row.state!=="connected"||!bridgeReady(c.env))return c.json({code:"NOT_CONNECTED"},409);
   // The name comes from WhatsApp, never from the request.
   const list=await bridgeList(c.env,row.id),pick=list?.find(ch=>ch.id===c.req.valid("json").channel);
-  if(!list)return c.json({code:"CHANNEL_UNAVAILABLE"},503);
+  if(!list)return c.json({code:"WHATSAPP_UNAVAILABLE"},503);
   if(!pick)return c.json({code:"NOT_FOUND"},404);
   let saved:Awaited<ReturnType<typeof addChannel>>;
   try{saved=await addChannel(c.env,owner,"whatsapp",pick.id,cleanLine(pick.name,80)||"WhatsApp",Date.now(),row.id);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}

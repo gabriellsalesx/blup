@@ -87,6 +87,15 @@ describe("connecting WhatsApp",()=>{
   expect(await (await call("/whatsapp/session")).json()).toMatchObject({state:"connected",phoneEnd:"5443",qr:null});
   expect(session()).toMatchObject({state:"connected",phoneEnd:"5443"});
  });
+ it("says when the Bridge is down, and keeps the last state",async()=>{
+  await connected();
+  reply=()=>{throw new TypeError("fetch failed");};
+  expect(await (await call("/whatsapp/session")).json()).toMatchObject({state:"connected",phoneEnd:"5443",reachable:false});
+  const r=await call("/whatsapp/channels");expect(r.status).toBe(503);expect(await r.json()).toEqual({code:"WHATSAPP_UNAVAILABLE"});
+  expect((await (await call("/whatsapp/session",{method:"POST",body:{acceptRisk:true}})).json() as {code:string}).code).toBe("WHATSAPP_UNAVAILABLE");
+  reply=bridgeOK;
+  expect(await (await call("/whatsapp/session")).json()).toMatchObject({state:"connected",reachable:true});
+ });
  it("is not there without the Bridge, nor without Deals",async()=>{
   state.env.DEALS_BRIDGE_SECRET="curta";
   expect(await (await call("/whatsapp/session")).json()).toMatchObject({state:"none",ready:false});

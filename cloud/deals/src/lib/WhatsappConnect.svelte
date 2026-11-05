@@ -18,7 +18,9 @@
  // The QR on screen stays the same while its time counts down; when it runs
  // out, it blurs and a new one is a tap away. Meanwhile the state is asked
  // every few seconds, to see it connect; then the Canais the number owns
- // or runs. onadded runs once a Canal is in Blup Deals.
+ // or runs. When the Bridge does not answer (it restarted, or is down), a
+ // notice and "Try again", and it keeps asking. onadded runs once a Canal
+ // is in Blup Deals.
  let {onadded}:{onadded:()=>void|Promise<void>}=$props();
  type View=InferResponseType<typeof dealsApi.whatsapp.session.$get,200>;
  type Channels=InferResponseType<typeof dealsApi.whatsapp.channels.$get,200>["channels"];
@@ -35,7 +37,7 @@
  const endedText={expired:"dealsWhatsappExpired",logged_out:"dealsWhatsappLoggedOut",banned:"dealsWhatsappBanned",replaced:"dealsWhatsappReplaced",outdated:"dealsWhatsappOutdated"} as const;
  const ended=(state:string):state is keyof typeof endedText=>Object.hasOwn(endedText,state);
  // The action running: only its button spins; the others wait, locked.
- type Action="load"|"generate"|"refresh"|"add"|"disconnect";
+ type Action="load"|"generate"|"refresh"|"add"|"disconnect"|"retry";
  let pending=$state<Action|null>(null);
  async function run(action:Action,fn:()=>Promise<void>){pending=action;try{await fn();}catch(e){toast(dealsError(e),{kind:"error"});}finally{pending=null;}}
  // From the QR read to the Canais on screen: "Connecting", with the
@@ -43,11 +45,13 @@
  // looking for the Canais). If the Canais can't be read, the list shows
  // with Refresh.
  let loadingChannels=false,channelsFailed=$state(false);
- const connecting=$derived(view?.state==="linking"||(view?.state==="connected"&&channels===null&&!channelsFailed));
+ const down=$derived(view?.reachable===false);
+ const connecting=$derived(!down&&(view?.state==="linking"||(view?.state==="connected"&&channels===null&&!channelsFailed)));
  const progress=$derived(view?.state==="linking"?45:85);
  async function load(){
   view=await parseResponse(dealsApi.whatsapp.session.$get());
-  if(view.state==="pairing"||view.state==="linking"||view.state==="disconnected")startPolling();else stopPolling();
+  if(!view.reachable||view.state==="pairing"||view.state==="linking"||view.state==="disconnected")startPolling();else stopPolling();
+  if(!view.reachable)return;
   if(view.state==="linking")shown=null;
   if(view.state==="connected"){shown=null;if(channels===null&&!loadingChannels){loadingChannels=true;try{await loadChannels();}catch(e){channelsFailed=true;toast(dealsError(e),{kind:"error"});}finally{loadingChannels=false;}}}
  }
@@ -72,6 +76,7 @@
   if(next.qr&&next.qrExpiresAt){now=Date.now();const until=Date.parse(next.qrExpiresAt);shown={qr:next.qr,until,total:Math.max(1000,until-now)};}
   startPolling();
  });
+ const retry=()=>run("retry",async()=>{channelsFailed=false;await load();if(view&&!view.reachable)toast(()=>t("dealsWhatsappDown"),{kind:"error"});});
  const refresh=()=>run("refresh",async()=>{await loadChannels();channelsFailed=false;});
  const add=(id:string)=>{adding=id;void run("add",async()=>{try{await parseResponse(dealsApi.whatsapp.channels.$post({json:{channel:id}}));await onadded();}finally{adding=null;}});};
  async function disconnect(){
@@ -95,6 +100,11 @@
 <div>
  {#if !view}<p class="text-sm text-neutral-500">{t("dealsWhatsappQRWait")}</p>
  {:else if !view.ready}<p class="text-sm text-neutral-500">{t("dealsWhatsappUnavailable")}</p>
+ {:else if down}
+  <div class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="status">
+   <p class="flex items-center gap-2 font-semibold"><TriangleAlert class="size-4 shrink-0"/>{t("dealsWhatsappDown")}</p>
+  </div>
+  <div class="mt-5 flex justify-end"><Button variant="secondary" onclick={retry} busy={pending==="retry"} disabled={pending!==null}>{#if pending!=="retry"}<RefreshCw class="size-4"/>{/if}{t("dealsWhatsappRetry")}</Button></div>
  {:else if connecting}
   <div class="flex flex-col items-center gap-4 py-2 text-center" role="status">
    <img src={connectingArt} alt="" width="320" height="180" class="h-auto w-full max-w-80"/>
