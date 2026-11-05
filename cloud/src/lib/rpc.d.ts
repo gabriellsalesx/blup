@@ -11207,6 +11207,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 }[];
                 top: {
                     title: string;
+                    image: string | null;
                     clicks: number;
                 }[];
             };

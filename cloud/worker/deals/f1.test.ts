@@ -312,8 +312,8 @@ describe("games, sending and clicks",()=>{
   await go("TelegramBot (like TwitterBot)");await go("Mozilla/5.0");
   expect(db.sqlite.prepare("SELECT sum(clicks) AS n FROM deals_click_day").get()?.n).toBe(2);
   expect((await serveDealsLink(new Request("https://deals.audit.invalid/r/nope"),state.env)).status).toBe(404);
-  const stats=await(await call("/stats?days=7")).json() as {days:{clicks:number;posts:number}[];top:{title:string;clicks:number}[]};
-  expect(stats.days).toHaveLength(7);expect(stats.days.at(-1)).toMatchObject({clicks:2,posts:2});expect(stats.top[0]).toMatchObject({clicks:2});
+  const stats=await(await call("/stats?days=7")).json() as {days:{clicks:number;posts:number}[];top:{title:string;image:string|null;clicks:number}[]};
+  expect(stats.days).toHaveLength(7);expect(stats.days.at(-1)).toMatchObject({clicks:2,posts:2});expect(stats.top[0]).toMatchObject({clicks:2,image:null});
  });
  it("stops a channel Discord no longer accepts and fails its posts",async()=>{
   const channel=await addDiscord(),now=Date.now(),o=await upsertOffer(db.asD1(),offer(),now);

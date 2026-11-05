@@ -129,9 +129,9 @@ export const statsApi=new Hono<DealsApp>()
   const first=new Date(Math.floor(now/DAY)*DAY-(count-1)*DAY),from=first.toISOString().slice(0,10);
   const clicks=await c.env.DB.prepare("SELECT day,sum(clicks) AS n FROM deals_click_day WHERE user_id=? AND day>=? GROUP BY day").bind(owner,from).all<{day:string;n:number}>();
   const posts=await c.env.DB.prepare("SELECT strftime('%Y-%m-%d',sent_at/1000,'unixepoch') AS day,count(*) AS n FROM deals_post WHERE user_id=? AND state='sent' AND sent_at>=? GROUP BY day").bind(owner,first.getTime()).all<{day:string;n:number}>();
-  const top=await c.env.DB.prepare("SELECT o.title,sum(k.clicks) AS clicks FROM deals_click_day k JOIN deals_post p ON p.id=k.post_id JOIN deals_offer o ON o.id=p.offer_id WHERE k.user_id=? AND k.day>=? GROUP BY o.id ORDER BY clicks DESC,o.title LIMIT 5").bind(owner,from).all<{title:string;clicks:number}>();
+  const top=await c.env.DB.prepare("SELECT o.title,o.image_url AS image,sum(k.clicks) AS clicks FROM deals_click_day k JOIN deals_post p ON p.id=k.post_id JOIN deals_offer o ON o.id=p.offer_id WHERE k.user_id=? AND k.day>=? GROUP BY o.id ORDER BY clicks DESC,o.title LIMIT 5").bind(owner,from).all<{title:string;image:string|null;clicks:number}>();
   const byDay=(rows:{day:string;n:number}[])=>new Map(rows.map(r=>[r.day,r.n]));
   const c1=byDay(clicks.results),p1=byDay(posts.results);
   const days=Array.from({length:count},(_,i)=>{const day=new Date(first.getTime()+i*DAY).toISOString().slice(0,10);return {day,clicks:c1.get(day)??0,posts:p1.get(day)??0};});
-  return c.json({days,top:top.results.map(t=>({title:t.title,clicks:t.clicks}))});
+  return c.json({days,top:top.results.map(t=>({title:t.title,image:t.image,clicks:t.clicks}))});
  });

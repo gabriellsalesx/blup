@@ -8,10 +8,11 @@
  import Card from "#lib/ui/Card.svelte";
  import List from "#lib/ui/List.svelte";
  import ListItem from "#lib/ui/ListItem.svelte";
+ import Tag from "@lucide/svelte/icons/tag";
  import type {Range} from "./+page";
  import ClicksChart from "../../lib/ClicksChart.svelte";
- // The clicks of the period: the totals, a column per day and the deals
- // clicked the most.
+ // The clicks of the period: the totals, a column per day and the five
+ // deals clicked the most, with their picture.
  let {data}:PageProps=$props();
  const ranges=$derived([{value:"7" as const,label:t("dealsLast7")},{value:"30" as const,label:t("dealsLast30")},{value:"90" as const,label:t("dealsLast90")}]);
  const n=(v:number)=>v.toLocaleString(intlLocale());
@@ -35,7 +36,7 @@
 <h2 class="mt-10 text-lg font-bold">{t("dealsTopOffers")}</h2>
 <div class="mt-4"><List empty={t("dealsStatsEmpty")}>
  {#each data.stats.top as offer,i(i)}
-  <ListItem label={offer.title}><div class="flex items-center gap-3"><span class="w-6 shrink-0 text-right text-sm font-bold text-neutral-400 tabular-nums">{i+1}</span><p class="min-w-0 flex-1 truncate font-semibold">{offer.title}</p><span class="shrink-0 text-sm font-semibold tabular-nums">{n(offer.clicks)}</span></div></ListItem>
+  <ListItem label={offer.title}><div class="flex items-center gap-3"><span class="w-6 shrink-0 text-right text-sm font-bold text-neutral-400 tabular-nums">{i+1}</span>{#if offer.image}<img src={offer.image} alt="" class="size-10 shrink-0 rounded-lg bg-neutral-100 object-cover dark:bg-neutral-800" referrerpolicy="no-referrer" loading="lazy"/>{:else}<span class="grid size-10 shrink-0 place-items-center rounded-lg bg-neutral-100 text-neutral-400 dark:bg-neutral-800" aria-hidden="true"><Tag class="size-5"/></span>{/if}<p class="min-w-0 flex-1 truncate font-semibold">{offer.title}</p><span class="shrink-0 text-sm font-semibold tabular-nums">{n(offer.clicks)}</span></div></ListItem>
  {/each}
 </List></div>
 
