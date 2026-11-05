@@ -22,7 +22,7 @@
  let {onadded}:{onadded:()=>void|Promise<void>}=$props();
  type View=InferResponseType<typeof dealsApi.whatsapp.session.$get,200>;
  type Channels=InferResponseType<typeof dealsApi.whatsapp.channels.$get,200>["channels"];
- let view=$state<View|null>(null),accepted=$state(false),busy=$state(false),channels=$state<Channels|null>(null),adding=$state<string|null>(null);
+ let view=$state<View|null>(null),accepted=$state(false),channels=$state<Channels|null>(null),adding=$state<string|null>(null);
  // The QR shown and until when it is good; now ticks every second for the
  // count.
  let shown=$state<{qr:string;until:number}|null>(null),now=$state(Date.now());
@@ -32,7 +32,10 @@
  // What a connection that ended says.
  const endedText={expired:"dealsWhatsappExpired",logged_out:"dealsWhatsappLoggedOut",banned:"dealsWhatsappBanned",replaced:"dealsWhatsappReplaced",outdated:"dealsWhatsappOutdated"} as const;
  const ended=(state:string):state is keyof typeof endedText=>Object.hasOwn(endedText,state);
- async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}}
+ // The action running: only its button spins; the others wait, locked.
+ type Action="load"|"generate"|"refresh"|"add"|"disconnect";
+ let pending=$state<Action|null>(null);
+ async function run(action:Action,fn:()=>Promise<void>){pending=action;try{await fn();}catch(e){toast(dealsError(e),{kind:"error"});}finally{pending=null;}}
  // From the QR read to the Canais on screen: "Connecting", with the
  // Blup's animation and a bar in two steps (signing in to WhatsApp, then
  // looking for the Canais). If the Canais can't be read, the list shows
@@ -57,7 +60,7 @@
  // (the Bridge may take a moment to make the first one). Once one ran out,
  // a new connection: its first QR lasts a whole minute.
  const fresh=(v:View)=>v.state==="pairing"&&!!v.qr&&!!v.qrExpiresAt&&Date.parse(v.qrExpiresAt)-Date.now()>5000;
- const generate=()=>run(async()=>{
+ const generate=()=>run("generate",async()=>{
   channels=null;
   const again=shown!==null;
   let next=again?null:await parseResponse(dealsApi.whatsapp.session.$get());
@@ -67,11 +70,11 @@
   if(next.qr&&next.qrExpiresAt){shown={qr:next.qr,until:Date.parse(next.qrExpiresAt)};now=Date.now();}
   startPolling();
  });
- const refresh=()=>run(async()=>{await loadChannels();channelsFailed=false;});
- const add=(id:string)=>{adding=id;void run(async()=>{try{await parseResponse(dealsApi.whatsapp.channels.$post({json:{channel:id}}));await onadded();}finally{adding=null;}});};
+ const refresh=()=>run("refresh",async()=>{await loadChannels();channelsFailed=false;});
+ const add=(id:string)=>{adding=id;void run("add",async()=>{try{await parseResponse(dealsApi.whatsapp.channels.$post({json:{channel:id}}));await onadded();}finally{adding=null;}});};
  async function disconnect(){
   if(!await confirm({title:t("dealsWhatsappDisconnect"),message:t("dealsWhatsappDisconnectConfirm"),danger:true}))return;
-  await run(async()=>{await parseResponse(dealsApi.whatsapp.session.$delete());channels=null;accepted=false;await load();});
+  await run("disconnect",async()=>{await parseResponse(dealsApi.whatsapp.session.$delete());channels=null;accepted=false;await load();});
  }
  // While the QR waits, or the connection comes back, the state is asked
  // every three seconds (five minutes at most).
@@ -82,7 +85,7 @@
   timer=setInterval(()=>{if(++polls>100){stopPolling();return;}void load().catch(()=>{});},3000);
  }
  let tick:ReturnType<typeof setInterval>|undefined;
- onMount(()=>{void run(load);tick=setInterval(()=>{now=Date.now();},1000);});
+ onMount(()=>{void run("load",load);tick=setInterval(()=>{now=Date.now();},1000);});
  onDestroy(()=>{stopPolling();clearInterval(tick);});
 </script>
 
@@ -104,7 +107,7 @@
   {#if view.state==="disconnected"}<p class="mt-2 text-sm text-amber-700 dark:text-amber-300">{t("dealsWhatsappReconnecting")}</p>{/if}
   <div class="mt-5 flex items-center justify-between gap-3">
    <h3 class="font-semibold">{t("dealsWhatsappPick")}</h3>
-   <Button variant="secondary" small onclick={refresh} {busy}><RefreshCw class="size-4"/>{t("dealsWhatsappRefresh")}</Button>
+   <Button variant="secondary" small onclick={refresh} busy={pending==="refresh"} disabled={pending!==null}>{#if pending!=="refresh"}<RefreshCw class="size-4"/>{/if}{t("dealsWhatsappRefresh")}</Button>
   </div>
   {#if channels&&!channels.length}<p class="mt-3 text-sm text-neutral-500">{t("dealsWhatsappNoChannels")}</p>
   {:else if channels}
@@ -113,18 +116,18 @@
      <li class="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800">
       <span class="min-w-0"><span class="block truncate font-semibold">{channel.name}</span><span class="block text-sm text-neutral-500">{channel.role==="owner"?t("dealsWhatsappOwner"):t("dealsWhatsappAdmin")}</span></span>
       {#if channel.added}<span class="shrink-0 text-sm text-neutral-500">{t("dealsWhatsappAdded")}</span>
-      {:else}<Button small busy={adding===channel.id} disabled={busy||!hasPlan()} onclick={()=>add(channel.id)}>{t("dealsWhatsappAdd")}</Button>{/if}
+      {:else}<Button small busy={adding===channel.id} disabled={pending!==null||!hasPlan()} onclick={()=>add(channel.id)}>{t("dealsWhatsappAdd")}</Button>{/if}
      </li>
     {/each}
    </ul>
   {/if}
-  <div class="mt-6 flex justify-end"><Button variant="secondary" onclick={disconnect} {busy}>{t("dealsWhatsappDisconnect")}</Button></div>
+  <div class="mt-6 flex justify-end"><Button variant="secondary" onclick={disconnect} busy={pending==="disconnect"} disabled={pending!==null}>{t("dealsWhatsappDisconnect")}</Button></div>
  {:else if shown}
   <ol class="grid list-decimal gap-1.5 pl-5 text-sm text-neutral-600 dark:text-neutral-300"><li>{t("dealsWhatsappStep1")}</li><li>{t("dealsWhatsappStep2")}</li><li>{t("dealsWhatsappStep3")}</li></ol>
   <div class="mt-5 flex flex-col items-center gap-3">
    <div class="relative">
     <img src={shown.qr} alt={t("dealsWhatsappQRAlt")} width="256" height="256" class="size-64 rounded-xl bg-white p-3 transition {stale?'opacity-40 blur-sm':''}"/>
-    {#if stale}<div class="absolute inset-0 grid place-items-center"><Button onclick={generate} {busy}><RefreshCw class="size-4"/>{t("dealsWhatsappRegenerate")}</Button></div>{/if}
+    {#if stale}<div class="absolute inset-0 grid place-items-center"><Button onclick={generate} busy={pending==="generate"} disabled={pending!==null}>{#if pending!=="generate"}<RefreshCw class="size-4"/>{/if}{t("dealsWhatsappRegenerate")}</Button></div>{/if}
    </div>
    {#if stale}<p class="text-sm text-neutral-500" role="status">{t("dealsWhatsappQRExpired")}</p>
    {:else}<p class="text-sm text-neutral-500 tabular-nums">{t("dealsWhatsappExpiresIn",{time:clock(left)})}</p>{/if}
@@ -136,6 +139,6 @@
    <ul class="mt-2 grid list-disc gap-1.5 pl-5"><li>{t("dealsWhatsappRisk1")}</li><li>{t("dealsWhatsappRisk2")}</li><li>{t("dealsWhatsappRisk3")}</li><li>{t("dealsWhatsappRisk4")}</li></ul>
   </div>
   <div class="mt-4"><Switch label={t("dealsWhatsappAccept")} tone="coral" bind:checked={accepted}/></div>
-  <div class="mt-5 flex justify-end"><Button onclick={generate} {busy} disabled={!accepted||!hasPlan()}>{t("dealsWhatsappGenerate")}</Button></div>
+  <div class="mt-5 flex justify-end"><Button onclick={generate} busy={pending==="generate"} disabled={pending!==null||!accepted||!hasPlan()}>{t("dealsWhatsappGenerate")}</Button></div>
  {/if}
 </div>
