@@ -9706,6 +9706,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     acceptRisk: true;
+                    fresh?: boolean | undefined;
                 };
             };
             output: {
@@ -9721,6 +9722,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     acceptRisk: true;
+                    fresh?: boolean | undefined;
                 };
             };
             output: {
@@ -9736,6 +9738,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     acceptRisk: true;
+                    fresh?: boolean | undefined;
                 };
             };
             output: {
@@ -9748,6 +9751,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     acceptRisk: true;
+                    fresh?: boolean | undefined;
                 };
             };
             output: {

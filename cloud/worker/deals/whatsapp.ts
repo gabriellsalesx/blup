@@ -56,12 +56,14 @@ export const whatsappApi=new Hono<DealsApp>()
   return c.json(out(view.state,true,{...view,phoneEnd:phoneEnd??row.phoneEnd}));
  })
  // A new QR (the person accepted the risk). A connection that ended starts
- // over with a new name at the Bridge; one still alive is shown as it is.
- .post("/session",dealsWrite,validate("json",z.object({acceptRisk:z.literal(true)}).strict()),async c=>{
+ // over with a new name at the Bridge; one still alive is shown as it is,
+ // unless fresh asks for a new start while it waits for the QR (only the
+ // first QR of a connection lasts a minute; the next ones, 20 seconds).
+ .post("/session",dealsWrite,validate("json",z.object({acceptRisk:z.literal(true),fresh:z.boolean().optional()}).strict()),async c=>{
   if(!bridgeReady(c.env))return c.json({code:"CHANNEL_UNAVAILABLE"},503);
   const owner=c.get("session").user.id,now=Date.now();
   let row=await rowOf(c.env.DB,owner);
-  if(row&&ended.has(row.state)){
+  if(row&&(ended.has(row.state)||(c.req.valid("json").fresh&&row.state==="pairing"))){
    try{await bridge(c.env,"DELETE",`/v1/sessions/${row.id}`);}catch{}
    const next=crypto.randomUUID();
    await c.env.DB.batch([

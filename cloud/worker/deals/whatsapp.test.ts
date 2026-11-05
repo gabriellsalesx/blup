@@ -77,6 +77,12 @@ describe("connecting WhatsApp",()=>{
   expect(await r.json()).toMatchObject({state:"pairing",qr:"data:image/png;base64,AAAA",ready:true});
   const s=session();expect(s?.state).toBe("pairing");
   expect(calls[0]).toMatchObject({method:"POST",path:`/v1/sessions/${s?.id}`});
+  // A new start while it waits: a new name at the Bridge (its first QR
+  // lasts a minute).
+  const first=s?.id;calls=[];
+  await call("/whatsapp/session",{method:"POST",body:{acceptRisk:true,fresh:true}});
+  expect(session()?.id).not.toBe(first);
+  expect(calls.map(c=>`${c.method} ${c.path}`)).toEqual([`DELETE /v1/sessions/${first}`,`POST /v1/sessions/${session()?.id}`]);
   // Read again: the Bridge says it connected; only the number's end is kept.
   expect(await (await call("/whatsapp/session")).json()).toMatchObject({state:"connected",phoneEnd:"5443",qr:null});
   expect(session()).toMatchObject({state:"connected",phoneEnd:"5443"});

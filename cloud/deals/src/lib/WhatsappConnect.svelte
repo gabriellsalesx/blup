@@ -13,13 +13,21 @@
  import {dealsError} from "./errors";
  import {hasPlan} from "./plan";
  // Connecting the account's WhatsApp to post in its Canais (the unofficial
- // way): the risks and the person's yes first, then the QR (asked again
- // every few seconds while it waits), then the Canais the number owns or
- // runs. onadded runs once a Canal is in Blup Deals.
+ // way): the risks and the person's yes first, then "Generate QR code".
+ // The QR on screen stays the same while its time counts down; when it runs
+ // out, it blurs and a new one is a tap away. Meanwhile the state is asked
+ // every few seconds, to see it connect; then the Canais the number owns
+ // or runs. onadded runs once a Canal is in Blup Deals.
  let {onadded}:{onadded:()=>void|Promise<void>}=$props();
  type View=InferResponseType<typeof dealsApi.whatsapp.session.$get,200>;
  type Channels=InferResponseType<typeof dealsApi.whatsapp.channels.$get,200>["channels"];
  let view=$state<View|null>(null),accepted=$state(false),busy=$state(false),channels=$state<Channels|null>(null),adding=$state<string|null>(null);
+ // The QR shown and until when it is good; now ticks every second for the
+ // count.
+ let shown=$state<{qr:string;until:number}|null>(null),now=$state(Date.now());
+ const left=$derived(shown?Math.max(0,Math.ceil((shown.until-now)/1000)):0);
+ const stale=$derived(!!shown&&(left===0||view?.state==="expired"));
+ const clock=(s:number)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
  // What a connection that ended says.
  const endedText={expired:"dealsWhatsappExpired",logged_out:"dealsWhatsappLoggedOut",banned:"dealsWhatsappBanned",replaced:"dealsWhatsappReplaced",outdated:"dealsWhatsappOutdated"} as const;
  const ended=(state:string):state is keyof typeof endedText=>Object.hasOwn(endedText,state);
@@ -27,10 +35,23 @@
  async function load(){
   view=await parseResponse(dealsApi.whatsapp.session.$get());
   if(view.state==="pairing"||view.state==="disconnected")startPolling();else stopPolling();
-  if(view.state==="connected"&&channels===null)await loadChannels();
+  if(view.state==="connected"){shown=null;if(channels===null)await loadChannels();}
  }
  async function loadChannels(){channels=(await parseResponse(dealsApi.whatsapp.channels.$get())).channels;}
- const connect=()=>run(async()=>{channels=null;view=await parseResponse(dealsApi.whatsapp.session.$post({json:{acceptRisk:true}}));startPolling();});
+ // A QR with time left: the one the Bridge has now, or a new connection
+ // (the Bridge may take a moment to make the first one). Once one ran out,
+ // a new connection: its first QR lasts a whole minute.
+ const fresh=(v:View)=>v.state==="pairing"&&!!v.qr&&!!v.qrExpiresAt&&Date.parse(v.qrExpiresAt)-Date.now()>5000;
+ const generate=()=>run(async()=>{
+  channels=null;
+  const again=shown!==null;
+  let next=again?null:await parseResponse(dealsApi.whatsapp.session.$get());
+  if(!next||!fresh(next))next=await parseResponse(dealsApi.whatsapp.session.$post({json:{acceptRisk:true,fresh:again}}));
+  for(let i=0;i<5&&next.state==="pairing"&&!fresh(next);i++){await new Promise(r=>setTimeout(r,1500));next=await parseResponse(dealsApi.whatsapp.session.$get());}
+  view=next;
+  if(next.qr&&next.qrExpiresAt){shown={qr:next.qr,until:Date.parse(next.qrExpiresAt)};now=Date.now();}
+  startPolling();
+ });
  const refresh=()=>run(loadChannels);
  const add=(id:string)=>{adding=id;void run(async()=>{try{await parseResponse(dealsApi.whatsapp.channels.$post({json:{channel:id}}));await onadded();}finally{adding=null;}});};
  async function disconnect(){
@@ -45,22 +66,17 @@
   if(timer!==undefined)return;polls=0;
   timer=setInterval(()=>{if(++polls>100){stopPolling();return;}void load().catch(()=>{});},3000);
  }
- onMount(()=>{void run(load);});
- onDestroy(stopPolling);
+ let tick:ReturnType<typeof setInterval>|undefined;
+ onMount(()=>{void run(load);tick=setInterval(()=>{now=Date.now();},1000);});
+ onDestroy(()=>{stopPolling();clearInterval(tick);});
 </script>
 
-<div aria-live="polite">
+<!-- Only the states are announced, not the count. -->
+<div>
  {#if !view}<p class="text-sm text-neutral-500">{t("dealsWhatsappQRWait")}</p>
  {:else if !view.ready}<p class="text-sm text-neutral-500">{t("dealsWhatsappUnavailable")}</p>
- {:else if view.state==="pairing"}
-  <ol class="grid list-decimal gap-1.5 pl-5 text-sm text-neutral-600 dark:text-neutral-300"><li>{t("dealsWhatsappStep1")}</li><li>{t("dealsWhatsappStep2")}</li><li>{t("dealsWhatsappStep3")}</li></ol>
-  <div class="mt-5 flex flex-col items-center gap-2">
-   <!-- The QR renews itself while it waits: no deadline to show. -->
-   {#if view.qr}<img src={view.qr} alt={t("dealsWhatsappQRAlt")} width="256" height="256" class="size-64 rounded-xl bg-white p-3"/>
-   {:else}<p class="py-24 text-sm text-neutral-500">{t("dealsWhatsappQRWait")}</p>{/if}
-  </div>
  {:else if view.state==="connected"||view.state==="disconnected"}
-  <p class="flex items-center gap-2 text-sm font-semibold"><Check class="size-4 text-emerald-600 dark:text-emerald-400"/>{t("dealsWhatsappConnected",{end:view.phoneEnd??"----"})}</p>
+  <p class="flex items-center gap-2 text-sm font-semibold" role="status"><Check class="size-4 text-emerald-600 dark:text-emerald-400"/>{t("dealsWhatsappConnected",{end:view.phoneEnd??"----"})}</p>
   {#if view.state==="disconnected"}<p class="mt-2 text-sm text-amber-700 dark:text-amber-300">{t("dealsWhatsappReconnecting")}</p>{/if}
   <div class="mt-5 flex items-center justify-between gap-3">
    <h3 class="font-semibold">{t("dealsWhatsappPick")}</h3>
@@ -79,6 +95,16 @@
    </ul>
   {/if}
   <div class="mt-6 flex justify-end"><Button variant="secondary" onclick={disconnect} {busy}>{t("dealsWhatsappDisconnect")}</Button></div>
+ {:else if shown}
+  <ol class="grid list-decimal gap-1.5 pl-5 text-sm text-neutral-600 dark:text-neutral-300"><li>{t("dealsWhatsappStep1")}</li><li>{t("dealsWhatsappStep2")}</li><li>{t("dealsWhatsappStep3")}</li></ol>
+  <div class="mt-5 flex flex-col items-center gap-3">
+   <div class="relative">
+    <img src={shown.qr} alt={t("dealsWhatsappQRAlt")} width="256" height="256" class="size-64 rounded-xl bg-white p-3 transition {stale?'opacity-40 blur-sm':''}"/>
+    {#if stale}<div class="absolute inset-0 grid place-items-center"><Button onclick={generate} {busy}><RefreshCw class="size-4"/>{t("dealsWhatsappRegenerate")}</Button></div>{/if}
+   </div>
+   {#if stale}<p class="text-sm text-neutral-500" role="status">{t("dealsWhatsappQRExpired")}</p>
+   {:else}<p class="text-sm text-neutral-500 tabular-nums">{t("dealsWhatsappExpiresIn",{time:clock(left)})}</p>{/if}
+  </div>
  {:else}
   {#if ended(view.state)}<p class="mb-4 text-sm font-semibold text-amber-700 dark:text-amber-300">{t(endedText[view.state])}</p>{/if}
   <div class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
@@ -86,6 +112,6 @@
    <ul class="mt-2 grid list-disc gap-1.5 pl-5"><li>{t("dealsWhatsappRisk1")}</li><li>{t("dealsWhatsappRisk2")}</li><li>{t("dealsWhatsappRisk3")}</li><li>{t("dealsWhatsappRisk4")}</li></ul>
   </div>
   <div class="mt-4"><Switch label={t("dealsWhatsappAccept")} tone="coral" bind:checked={accepted}/></div>
-  <div class="mt-5 flex justify-end"><Button onclick={connect} {busy} disabled={!accepted||!hasPlan()}>{view.state==="none"?t("dealsWhatsappConnect"):t("dealsWhatsappNewQR")}</Button></div>
+  <div class="mt-5 flex justify-end"><Button onclick={generate} {busy} disabled={!accepted||!hasPlan()}>{t("dealsWhatsappGenerate")}</Button></div>
  {/if}
 </div>
