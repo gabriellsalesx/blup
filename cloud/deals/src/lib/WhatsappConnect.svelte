@@ -23,10 +23,12 @@
  type View=InferResponseType<typeof dealsApi.whatsapp.session.$get,200>;
  type Channels=InferResponseType<typeof dealsApi.whatsapp.channels.$get,200>["channels"];
  let view=$state<View|null>(null),accepted=$state(false),channels=$state<Channels|null>(null),adding=$state<string|null>(null);
- // The QR shown and until when it is good; now ticks every second for the
- // count.
- let shown=$state<{qr:string;until:number}|null>(null),now=$state(Date.now());
+ // The QR shown, until when it is good and how long it had; now ticks
+ // every second for the count and the bar that empties with it (the
+ // opposite of the "Connecting" bar, which fills).
+ let shown=$state<{qr:string;until:number;total:number}|null>(null),now=$state(Date.now());
  const left=$derived(shown?Math.max(0,Math.ceil((shown.until-now)/1000)):0);
+ const remaining=$derived(shown?Math.min(100,Math.max(0,(shown.until-now)/shown.total*100)):0);
  const stale=$derived(!!shown&&(left===0||view?.state==="expired"));
  const clock=(s:number)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
  // What a connection that ended says.
@@ -67,7 +69,7 @@
   if(!next||!fresh(next))next=await parseResponse(dealsApi.whatsapp.session.$post({json:{acceptRisk:true,fresh:again}}));
   for(let i=0;i<5&&next.state==="pairing"&&!fresh(next);i++){await new Promise(r=>setTimeout(r,1500));next=await parseResponse(dealsApi.whatsapp.session.$get());}
   view=next;
-  if(next.qr&&next.qrExpiresAt){shown={qr:next.qr,until:Date.parse(next.qrExpiresAt)};now=Date.now();}
+  if(next.qr&&next.qrExpiresAt){now=Date.now();const until=Date.parse(next.qrExpiresAt);shown={qr:next.qr,until,total:Math.max(1000,until-now)};}
   startPolling();
  });
  const refresh=()=>run("refresh",async()=>{await loadChannels();channelsFailed=false;});
@@ -128,6 +130,9 @@
    <div class="relative">
     <img src={shown.qr} alt={t("dealsWhatsappQRAlt")} width="256" height="256" class="size-64 rounded-xl bg-white p-3 transition {stale?'opacity-40 blur-sm':''}"/>
     {#if stale}<div class="absolute inset-0 grid place-items-center"><Button onclick={generate} busy={pending==="generate"} disabled={pending!==null}>{#if pending!=="generate"}<RefreshCw class="size-4"/>{/if}{t("dealsWhatsappRegenerate")}</Button></div>{/if}
+   </div>
+   <div class="h-2 w-64 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800" role="progressbar" aria-label={t("dealsWhatsappQRTime")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(stale?0:remaining)}>
+    <div class="h-full rounded-full bg-[#c2410c] transition-[width] duration-1000 ease-linear motion-reduce:transition-none" style:width="{stale?0:remaining}%"></div>
    </div>
    {#if stale}<p class="text-sm text-neutral-500" role="status">{t("dealsWhatsappQRExpired")}</p>
    {:else}<p class="text-sm text-neutral-500 tabular-nums">{t("dealsWhatsappExpiresIn",{time:clock(left)})}</p>{/if}
