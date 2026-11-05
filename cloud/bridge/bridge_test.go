@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"image"
+	"image/jpeg"
 	"io"
 	"log/slog"
 	"net/http"
@@ -158,6 +160,22 @@ func TestSentOnceAndForget(t *testing.T) {
 	}
 	if _, ok, _ := l.sent(ctx, "post:1"); ok {
 		t.Fatal("posts da sessão ficaram")
+	}
+}
+
+// A miniatura respeita a proporção e cabe em 100 pixels.
+func TestThumbnail(t *testing.T) {
+	pic := image.NewRGBA(image.Rect(0, 0, 640, 360))
+	small, err := jpeg.Decode(bytes.NewReader(thumbnail(pic)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := small.Bounds(); b.Dx() != 100 || b.Dy() != 56 {
+		t.Fatalf("tamanho %v", b)
+	}
+	tall, _ := jpeg.Decode(bytes.NewReader(thumbnail(image.NewRGBA(image.Rect(0, 0, 300, 600)))))
+	if b := tall.Bounds(); b.Dx() != 50 || b.Dy() != 100 {
+		t.Fatalf("em pé %v", b)
 	}
 }
 

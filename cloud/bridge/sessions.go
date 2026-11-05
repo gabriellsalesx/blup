@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	_ "image/jpeg"
+	"image/jpeg"
 	_ "image/png"
 	"log/slog"
 	"strings"
@@ -22,6 +22,7 @@ import (
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
+	"golang.org/x/image/draw"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -440,8 +441,10 @@ func (m *manager) send(ctx context.Context, ss *session, p Post) (Sent, error) {
 			Caption: proto.String(p.Text), Mimetype: proto.String(imageType(p.Image)),
 			URL: &up.URL, DirectPath: &up.DirectPath, FileSHA256: up.FileSHA256, FileLength: &up.FileLength,
 		}
-		if cfg, _, err := image.DecodeConfig(bytes.NewReader(p.Image)); err == nil {
-			img.Width, img.Height = proto.Uint32(uint32(cfg.Width)), proto.Uint32(uint32(cfg.Height))
+		if pic, _, err := image.Decode(bytes.NewReader(p.Image)); err == nil {
+			b := pic.Bounds()
+			img.Width, img.Height = proto.Uint32(uint32(b.Dx())), proto.Uint32(uint32(b.Dy()))
+			img.JPEGThumbnail = thumbnail(pic)
 		}
 		msg = &waE2E.Message{ImageMessage: img}
 		extra = append(extra, whatsmeow.SendRequestExtra{MediaHandle: up.Handle})
@@ -484,6 +487,30 @@ func (m *manager) Close() {
 	for _, ss := range m.all {
 		ss.cli.Disconnect()
 	}
+}
+
+// thumbnail é a miniatura que vai dentro do post: sem ela, o WhatsApp mostra
+// o post sem a imagem até alguém tocar para baixar. JPEG pequeno, com o lado
+// maior em 100 pixels.
+func thumbnail(pic image.Image) []byte {
+	const side = 100
+	b := pic.Bounds()
+	w, h := b.Dx(), b.Dy()
+	if w <= 0 || h <= 0 {
+		return nil
+	}
+	if w >= h {
+		w, h = side, max(1, h*side/w)
+	} else {
+		w, h = max(1, w*side/h), side
+	}
+	small := image.NewRGBA(image.Rect(0, 0, w, h))
+	draw.CatmullRom.Scale(small, small.Bounds(), pic, b, draw.Src, nil)
+	var out bytes.Buffer
+	if err := jpeg.Encode(&out, small, &jpeg.Options{Quality: 70}); err != nil {
+		return nil
+	}
+	return out.Bytes()
 }
 
 func imageType(b []byte) string {

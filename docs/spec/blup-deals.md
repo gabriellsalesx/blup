@@ -673,7 +673,7 @@ A [Ponte](../../cloud/bridge/README.md) é um serviço Go próprio, em módulo s
 
 - Lista só os Canais em que a sessão é `owner` ou `admin`; grupos não existem para ela.
 - Modo segurança: no máximo um post a cada 30 minutos por Canal, conferido também na Ponte (`429 TOO_SOON`), mesmo que o Blup Cloud peça antes.
-- O post vai como imagem com legenda (ou texto). A imagem chega do Blup Cloud, que a baixa com o `safeFetch`; nada é salvo, e a Ponte não busca endereços de fora. Workers não cobra transferência de dados.
+- O post vai como imagem com legenda (ou texto), com a miniatura JPEG embutida (`JPEGThumbnail`, lado maior de 100 px), a largura e a altura: sem a miniatura o Canal mostrava o post sem a imagem até tocar para baixar (corrigido e conferido no BuildFeed em 05/11/2026). A imagem chega do Blup Cloud, que a baixa com o `safeFetch`; nada é salvo, e a Ponte não busca endereços de fora. Workers não cobra transferência de dados.
 - Uma chave por post: o pedido repetido não publica duas vezes.
 
 Teste real em 05/11/2026 com o Canal BuildFeed do dono: QR, lista de Canais (papel dono), imagem com legenda e texto chegaram, com negrito e link clicável; pela Ponte, a sessão voltou sozinha ao subir, o pedido sem assinatura foi recusado e o segundo post logo depois recebeu `429` com 1799 segundos de espera.
