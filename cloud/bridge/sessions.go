@@ -16,6 +16,7 @@ import (
 
 	"github.com/skip2/go-qrcode"
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/proto/waCompanionReg"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
@@ -98,18 +99,32 @@ type manager struct {
 	log    *slog.Logger
 	notify func(id, state string)
 	gap    time.Duration
-	now    func() time.Time
-	mu     sync.Mutex
-	all    map[string]*session
+	// Entre posts do mesmo número, em qualquer Canal dele.
+	sessionGap time.Duration
+	now        func() time.Time
+	mu         sync.Mutex
+	all        map[string]*session
 }
 
 const maxPairing = 20
 
-func newManager(box *sqlstore.Container, db *ledger, log *slog.Logger, notify func(id, state string), gap time.Duration, deviceName string) *manager {
-	store.SetOSInfo(deviceName, [3]uint32{1, 0, 0})
+// platforms são os ícones que o WhatsApp mostra ao lado do nome em
+// "Aparelhos conectados"; não aceita um ícone próprio.
+var platforms = map[string]waCompanionReg.DeviceProps_PlatformType{
+	"desktop": waCompanionReg.DeviceProps_DESKTOP,
+	"chrome":  waCompanionReg.DeviceProps_CHROME,
+	"firefox": waCompanionReg.DeviceProps_FIREFOX,
+	"edge":    waCompanionReg.DeviceProps_EDGE,
+	"safari":  waCompanionReg.DeviceProps_SAFARI,
+}
+
+func newManager(box *sqlstore.Container, db *ledger, log *slog.Logger, notify func(id, state string), cfg Config) *manager {
+	store.SetOSInfo(cfg.DeviceName, [3]uint32{1, 0, 0})
+	// O ícone só vale para aparelhos conectados depois da troca.
+	store.DeviceProps.PlatformType = platforms[cfg.DevicePlatform].Enum()
 	// A Ponte só publica: não precisa do histórico das conversas.
 	store.DeviceProps.RequireFullSync = proto.Bool(false)
-	return &manager{box: box, db: db, log: log, notify: notify, gap: gap, now: time.Now, all: map[string]*session{}}
+	return &manager{box: box, db: db, log: log, notify: notify, gap: cfg.MinGap, sessionGap: cfg.SessionGap, now: time.Now, all: map[string]*session{}}
 }
 
 func (m *manager) client(device *store.Device, id string) *whatsmeow.Client {
@@ -397,7 +412,8 @@ func (m *manager) canPost(ctx context.Context, ss *session, channel string) erro
 }
 
 // Publish publica no Canal, uma vez por chave e no máximo um post a cada
-// gap: a segunda trava do modo segurança, mesmo que o Blup Cloud erre.
+// gap: a segunda trava do modo segurança, mesmo que o Blup Cloud erre. Os
+// Canais do mesmo número também esperam sessionGap entre um post e outro.
 func (m *manager) Publish(ctx context.Context, id string, p Post) (Sent, error) {
 	if done, ok, err := m.db.sent(ctx, p.Key); err != nil || ok {
 		return done, err
@@ -417,9 +433,18 @@ func (m *manager) Publish(ctx context.Context, id string, p Post) (Sent, error) 
 	if !ok {
 		return Sent{}, TooSoon{Wait: wait}
 	}
+	ok, wait, prevAny, err := m.db.claim(ctx, id, anyChannel, now, m.sessionGap)
+	if err != nil || !ok {
+		_ = m.db.release(context.Background(), id, p.Channel, now, prev)
+		if err != nil {
+			return Sent{}, err
+		}
+		return Sent{}, TooSoon{Wait: wait}
+	}
 	sent, err := m.send(ctx, ss, p)
 	if err != nil {
 		_ = m.db.release(context.Background(), id, p.Channel, now, prev)
+		_ = m.db.release(context.Background(), id, anyChannel, now, prevAny)
 		return Sent{}, err
 	}
 	if err := m.db.markSent(ctx, p.Key, id, sent); err != nil {

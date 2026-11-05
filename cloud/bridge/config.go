@@ -20,21 +20,25 @@ type Config struct {
 	CallbackURL    string        // CALLBACK_URL: para onde vão os avisos de sessão
 	CallbackSecret []byte        // CALLBACK_SECRET: assina os avisos
 	MinGap         time.Duration // MIN_GAP: o intervalo mínimo entre posts no mesmo Canal
+	SessionGap     time.Duration // SESSION_GAP: o intervalo mínimo entre posts do mesmo número
 	DeviceName     string        // DEVICE_NAME: o nome em "Aparelhos conectados"
+	DevicePlatform string        // DEVICE_PLATFORM: o ícone ao lado do nome
 }
 
 const minSecret = 32
 
 func loadConfig(get func(string) string) (Config, error) {
 	c := Config{
-		Host:        or(get("HOST"), "127.0.0.1"),
-		Port:        or(get("PORT"), "8080"),
-		DataDir:     or(get("DATA_DIR"), "data"),
-		DatabaseURL: get("DATABASE_URL"),
-		Secret:      []byte(get("BRIDGE_SECRET")),
-		CallbackURL: get("CALLBACK_URL"),
-		DeviceName:  or(get("DEVICE_NAME"), "Blup Deals"),
-		MinGap:      30 * time.Minute,
+		Host:           or(get("HOST"), "127.0.0.1"),
+		Port:           or(get("PORT"), "8080"),
+		DataDir:        or(get("DATA_DIR"), "data"),
+		DatabaseURL:    get("DATABASE_URL"),
+		Secret:         []byte(get("BRIDGE_SECRET")),
+		CallbackURL:    get("CALLBACK_URL"),
+		DeviceName:     or(get("DEVICE_NAME"), "Blup Deals"),
+		MinGap:         30 * time.Minute,
+		SessionGap:     5 * time.Minute,
+		DevicePlatform: or(get("DEVICE_PLATFORM"), "desktop"),
 	}
 	c.CallbackSecret = []byte(get("CALLBACK_SECRET"))
 	if len(c.Secret) < minSecret {
@@ -56,6 +60,17 @@ func loadConfig(get func(string) string) (Config, error) {
 			return c, errors.New("MIN_GAP precisa ser uma duração de 30m ou mais")
 		}
 		c.MinGap = d
+	}
+	if v := get("SESSION_GAP"); v != "" {
+		d, err := time.ParseDuration(v)
+		// Canais do mesmo número nunca recebem posts no mesmo instante.
+		if err != nil || d < 5*time.Minute {
+			return c, errors.New("SESSION_GAP precisa ser uma duração de 5m ou mais")
+		}
+		c.SessionGap = d
+	}
+	if _, ok := platforms[c.DevicePlatform]; !ok {
+		return c, errors.New("DEVICE_PLATFORM aceita desktop, chrome, firefox, edge ou safari")
 	}
 	if len(c.DeviceName) > 40 {
 		return c, errors.New("DEVICE_NAME aceita até 40 caracteres")

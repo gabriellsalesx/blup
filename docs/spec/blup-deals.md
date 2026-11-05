@@ -672,7 +672,8 @@ Decisão do dono: publicar no **Canal** do WhatsApp (newsletter), só Canal, nun
 A [Ponte](../../cloud/bridge/README.md) é um serviço Go próprio, em módulo separado (`cloud/bridge`), sobre a biblioteca [whatsmeow](https://github.com/tulir/whatsmeow) (MPL-2.0), a mesma que o WAHA usa por baixo; não usa o WAHA. Roda em qualquer servidor (binário estático ou Docker), com configuração só por variáveis de ambiente; numa VPS fica atrás de um Cloudflare Tunnel. Não acessa o D1: o Blup Cloud continua dono de tudo do negócio e fala com ela por pedidos assinados (HMAC com momento e nonce, nos dois sentidos). Ela guarda só as chaves das sessões, em SQLite (Postgres opcional).
 
 - Lista só os Canais em que a sessão é `owner` ou `admin`; grupos não existem para ela.
-- Modo segurança: no máximo um post a cada 30 minutos por Canal, conferido também na Ponte (`429 TOO_SOON`), mesmo que o Blup Cloud peça antes.
+- Modo segurança: no máximo um post a cada 30 minutos por Canal e 5 minutos entre posts do mesmo número em Canais diferentes, conferido também na Ponte (`429 TOO_SOON`), mesmo que o Blup Cloud peça antes.
+- Em "Aparelhos conectados" aparece "Blup Deals", com o ícone de computador (`DESKTOP`). Decisão do dono: não se passar por navegador, porque o nome não muda a detecção do WhatsApp e um "Chrome" desconhecido faria o cliente desconectar achando que é invasão.
 - O post vai como imagem com legenda (ou texto), com a miniatura JPEG embutida (`JPEGThumbnail`, lado maior de 100 px), a largura e a altura: sem a miniatura o Canal mostrava o post sem a imagem até tocar para baixar (corrigido e conferido no BuildFeed em 05/11/2026). A imagem chega do Blup Cloud, que a baixa com o `safeFetch`; nada é salvo, e a Ponte não busca endereços de fora. Workers não cobra transferência de dados.
 - Uma chave por post: o pedido repetido não publica duas vezes.
 

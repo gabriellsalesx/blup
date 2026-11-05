@@ -55,7 +55,7 @@ func run(log *slog.Logger) error {
 	}
 
 	tell := newNotifier(cfg, log)
-	m := newManager(box, st, log, tell.send, cfg.MinGap, cfg.DeviceName)
+	m := newManager(box, st, log, tell.send, cfg)
 	if err := m.resume(ctx); err != nil {
 		return fmt.Errorf("religar as sessões: %w", err)
 	}

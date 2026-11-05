@@ -53,6 +53,10 @@ func (s *ledger) q(query string) string {
 	return b.String()
 }
 
+// anyChannel guarda, na mesma tabela, o último post do número em qualquer
+// Canal (um ID de Canal é só dígitos, então não colide).
+const anyChannel = "*"
+
 type savedSession struct{ ID, JID string }
 
 func (s *ledger) sessions(ctx context.Context) ([]savedSession, error) {

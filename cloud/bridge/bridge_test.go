@@ -94,6 +94,17 @@ func TestConfigRefusesWeakSettings(t *testing.T) {
 	if c, err := loadConfig(get(map[string]string{"MIN_GAP": "1h"})); err != nil || c.MinGap != time.Hour {
 		t.Fatalf("1h: %v", err)
 	}
+	if c.SessionGap != 5*time.Minute || c.DevicePlatform != "desktop" {
+		t.Fatalf("padrão do número: %v %s", c.SessionGap, c.DevicePlatform)
+	}
+	for name, over := range map[string]map[string]string{
+		"número a cada minuto": {"SESSION_GAP": "1m"},
+		"ícone que não existe": {"DEVICE_PLATFORM": "blup"},
+	} {
+		if _, err := loadConfig(get(over)); err == nil {
+			t.Errorf("%s: aceitou", name)
+		}
+	}
 }
 
 func testLedger(t *testing.T) *ledger {

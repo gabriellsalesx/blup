@@ -17,7 +17,7 @@ Se a pasta de dados se perder, ninguém perde o Canal: cada cliente só precisa 
 
 ## Modo segurança
 
-No máximo **um post a cada 30 minutos por Canal**. O Blup Cloud já espaça a fila assim, e a Ponte confere de novo: mesmo que o Blup Cloud peça antes, ela responde `429 TOO_SOON` com quanto falta. `MIN_GAP` só aumenta esse intervalo, nunca diminui.
+No máximo **um post a cada 30 minutos por Canal**, e **5 minutos entre posts do mesmo número**, mesmo em Canais diferentes (um número com três Canais nunca publica nos três no mesmo instante). O Blup Cloud já espaça a fila assim, e a Ponte confere de novo: mesmo que o Blup Cloud peça antes, ela responde `429 TOO_SOON` com quanto falta. `MIN_GAP` e `SESSION_GAP` só aumentam esses intervalos, nunca diminuem.
 
 ## Configuração
 
@@ -33,7 +33,9 @@ Tudo por variáveis de ambiente:
 | `DATA_DIR` | `data` | a pasta do SQLite |
 | `DATABASE_URL` | (vazia) | um Postgres no lugar do SQLite |
 | `MIN_GAP` | `30m` | o intervalo mínimo por Canal; aceita `30m` ou mais |
+| `SESSION_GAP` | `5m` | o intervalo mínimo entre posts do mesmo número; aceita `5m` ou mais |
 | `DEVICE_NAME` | `Blup Deals` | o nome em "Aparelhos conectados" |
+| `DEVICE_PLATFORM` | `desktop` | o ícone ao lado do nome: `desktop`, `chrome`, `firefox`, `edge` ou `safari` (o WhatsApp não aceita um ícone próprio; vale para quem conectar depois da troca) |
 
 Gere as senhas com `openssl rand -hex 32`. Elas ficam só nas variáveis do servidor e nos secrets do Blup Cloud, nunca no repositório.
 
