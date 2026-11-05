@@ -31,9 +31,9 @@ const made:Record<"store_deal"|"product"|"game_free"|"nuuvem_deal",Record<Langua
   es:{title:"Smartwatch con GPS y monitor cardíaco",store:"amazon",link:"https://www.amazon.com/",price:5999,originalPrice:7999,currency:"USD",discount:25,description:null,coupon:null},
  },
  game_free:{
-  pt:{title:"Aventura Estelar",store:"gamerpower",link:"https://www.gamerpower.com/",price:0,originalPrice:0,currency:"USD",discount:0,description:null,coupon:null},
-  en:{title:"Star Adventure",store:"gamerpower",link:"https://www.gamerpower.com/",price:0,originalPrice:0,currency:"USD",discount:0,description:null,coupon:null},
-  es:{title:"Aventura Estelar",store:"gamerpower",link:"https://www.gamerpower.com/",price:0,originalPrice:0,currency:"USD",discount:0,description:null,coupon:null},
+  pt:{title:"Aventura Estelar",store:"gamerpower",link:"https://www.gamerpower.com/",price:0,originalPrice:1999,currency:"USD",discount:100,description:null,coupon:null},
+  en:{title:"Star Adventure",store:"gamerpower",link:"https://www.gamerpower.com/",price:0,originalPrice:1999,currency:"USD",discount:100,description:null,coupon:null},
+  es:{title:"Aventura Estelar",store:"gamerpower",link:"https://www.gamerpower.com/",price:0,originalPrice:1999,currency:"USD",discount:100,description:null,coupon:null},
  },
  nuuvem_deal:{
   pt:{title:"Cidade Neon",store:"nuuvem",link:"https://www.nuuvem.com/",price:4999,originalPrice:9999,currency:"BRL",discount:50,description:null,coupon:null},
@@ -49,6 +49,6 @@ const made:Record<"store_deal"|"product"|"game_free"|"nuuvem_deal",Record<Langua
 export async function samplePost(db:D1Database,owner:string,kind:Exclude<SampleKind,"test">,lang:Language,account:Language,origin:string):Promise<Post>{
  const own=await settingsOf(db,owner),fake=made[kind][lang],free=kind==="game_free";
  const custom=headlineOf(own,kind)!==null;
- const title=openingLine({title:fake.title,kind,discount:free?null:fake.discount,store:fake.store,language:custom?account:lang},own);
- return {sample:true,store:fake.store,title,extra:own.extra.on&&own.extra.text?own.extra.text:null,socials:socialLinks(own),style:own.style,description:fake.description,coupon:fake.coupon,image:`${origin}/api/deals/samples/${pictures[kind]}.jpg`,photo:sampleImage(pictures[kind]),price:free?null:fake.price,originalPrice:free?null:fake.originalPrice,currency:free?null:fake.currency,discount:free?null:fake.discount,link:fake.link,affiliate:false,kind,credit:free?"gamerpower":null};
+ const title=openingLine({title:fake.title,kind,discount:fake.discount,store:fake.store,language:custom?account:lang},own);
+ return {sample:true,store:fake.store,title,extra:own.extra.on&&own.extra.text?own.extra.text:null,socials:socialLinks(own),style:own.style,description:fake.description,coupon:fake.coupon,image:`${origin}/api/deals/samples/${pictures[kind]}.jpg`,photo:sampleImage(pictures[kind]),price:fake.price,originalPrice:fake.originalPrice,currency:fake.currency,discount:fake.discount,link:fake.link,affiliate:false,kind,credit:free?"gamerpower":null};
 }
