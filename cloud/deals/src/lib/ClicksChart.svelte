@@ -6,7 +6,7 @@
  // in the dark theme so it stays clear of the surface). Columns grow from
  // the baseline, at most 24px wide with rounded tops; each one opens its
  // day (clicks and posts) on hover, focus or tap. The top line marks the
- // highest day. A table with the same numbers sits under it.
+ // highest day.
  let {days}:{days:Stats["days"]}=$props();
  const max=$derived(Math.max(1,...days.map(d=>d.clicks)));
  const n=(v:number)=>v.toLocaleString(intlLocale());
@@ -33,12 +33,3 @@
  </div>
 </figure>
 
-<details class="mt-4 text-sm">
- <summary class="cursor-pointer font-semibold text-neutral-600 dark:text-neutral-300">{t("dealsTableView")}</summary>
- <div class="mt-3 max-h-72 overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-  <table class="w-full text-left tabular-nums">
-   <thead class="sticky top-0 bg-neutral-50 dark:bg-neutral-900"><tr><th scope="col" class="px-3 py-2">{t("dealsDay")}</th><th scope="col" class="px-3 py-2 text-right">{t("dealsTotalClicks")}</th><th scope="col" class="px-3 py-2 text-right">{t("dealsTotalPosts")}</th></tr></thead>
-   <tbody>{#each days as day(day.day)}<tr class="border-t border-neutral-200 dark:border-neutral-800"><th scope="row" class="px-3 py-1.5 font-normal">{date(day.day)}</th><td class="px-3 py-1.5 text-right">{n(day.clicks)}</td><td class="px-3 py-1.5 text-right">{n(day.posts)}</td></tr>{/each}</tbody>
-  </table>
- </div>
-</details>
