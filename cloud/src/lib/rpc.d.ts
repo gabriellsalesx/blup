@@ -9690,7 +9690,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $get: {
             input: {};
             output: {
-                state: "banned" | "pairing" | "none" | "expired" | "disconnected" | "connected" | "logged_out" | "replaced" | "outdated";
+                state: "banned" | "pairing" | "none" | "expired" | "disconnected" | "linking" | "connected" | "logged_out" | "replaced" | "outdated";
                 phoneEnd: string | null;
                 qr: string | null;
                 qrExpiresAt: string | null;
@@ -9710,7 +9710,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
-                state: "banned" | "pairing" | "none" | "expired" | "disconnected" | "connected" | "logged_out" | "replaced" | "outdated";
+                state: "banned" | "pairing" | "none" | "expired" | "disconnected" | "linking" | "connected" | "logged_out" | "replaced" | "outdated";
                 phoneEnd: string | null;
                 qr: string | null;
                 qrExpiresAt: string | null;

@@ -12,6 +12,7 @@
  import {dealsApi,parseResponse} from "./api";
  import {dealsError} from "./errors";
  import {hasPlan} from "./plan";
+ import connectingArt from "./assets/whatsapp-connecting.svg";
  // Connecting the account's WhatsApp to post in its Canais (the unofficial
  // way): the risks and the person's yes first, then "Generate QR code".
  // The QR on screen stays the same while its time counts down; when it runs
@@ -32,12 +33,26 @@
  const endedText={expired:"dealsWhatsappExpired",logged_out:"dealsWhatsappLoggedOut",banned:"dealsWhatsappBanned",replaced:"dealsWhatsappReplaced",outdated:"dealsWhatsappOutdated"} as const;
  const ended=(state:string):state is keyof typeof endedText=>Object.hasOwn(endedText,state);
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}}
+ // From the QR read to the Canais on screen: "Connecting", with the
+ // Blup's animation and a bar in two steps (signing in to WhatsApp, then
+ // looking for the Canais). If the Canais can't be read, the list shows
+ // with Refresh.
+ let loadingChannels=false,channelsFailed=$state(false);
+ const connecting=$derived(view?.state==="linking"||(view?.state==="connected"&&channels===null&&!channelsFailed));
+ const progress=$derived(view?.state==="linking"?45:85);
  async function load(){
   view=await parseResponse(dealsApi.whatsapp.session.$get());
-  if(view.state==="pairing"||view.state==="disconnected")startPolling();else stopPolling();
-  if(view.state==="connected"){shown=null;if(channels===null)await loadChannels();}
+  if(view.state==="pairing"||view.state==="linking"||view.state==="disconnected")startPolling();else stopPolling();
+  if(view.state==="linking")shown=null;
+  if(view.state==="connected"){shown=null;if(channels===null&&!loadingChannels){loadingChannels=true;try{await loadChannels();}catch(e){channelsFailed=true;toast(dealsError(e),{kind:"error"});}finally{loadingChannels=false;}}}
  }
- async function loadChannels(){channels=(await parseResponse(dealsApi.whatsapp.channels.$get())).channels;}
+ // Right after the QR is read WhatsApp may still be finishing: a few tries.
+ async function loadChannels(){
+  for(let tries=0;;tries++){
+   try{channels=(await parseResponse(dealsApi.whatsapp.channels.$get())).channels;return;}
+   catch(e){if(tries>=3)throw e;await new Promise(r=>setTimeout(r,2000));}
+  }
+ }
  // A QR with time left: the one the Bridge has now, or a new connection
  // (the Bridge may take a moment to make the first one). Once one ran out,
  // a new connection: its first QR lasts a whole minute.
@@ -52,7 +67,7 @@
   if(next.qr&&next.qrExpiresAt){shown={qr:next.qr,until:Date.parse(next.qrExpiresAt)};now=Date.now();}
   startPolling();
  });
- const refresh=()=>run(loadChannels);
+ const refresh=()=>run(async()=>{await loadChannels();channelsFailed=false;});
  const add=(id:string)=>{adding=id;void run(async()=>{try{await parseResponse(dealsApi.whatsapp.channels.$post({json:{channel:id}}));await onadded();}finally{adding=null;}});};
  async function disconnect(){
   if(!await confirm({title:t("dealsWhatsappDisconnect"),message:t("dealsWhatsappDisconnectConfirm"),danger:true}))return;
@@ -75,6 +90,15 @@
 <div>
  {#if !view}<p class="text-sm text-neutral-500">{t("dealsWhatsappQRWait")}</p>
  {:else if !view.ready}<p class="text-sm text-neutral-500">{t("dealsWhatsappUnavailable")}</p>
+ {:else if connecting}
+  <div class="flex flex-col items-center gap-4 py-2 text-center" role="status">
+   <img src={connectingArt} alt="" width="320" height="180" class="h-auto w-full max-w-80"/>
+   <p class="font-semibold">{t("dealsWhatsappConnecting")}</p>
+   <div class="h-2 w-full max-w-sm overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800" role="progressbar" aria-label={t("dealsWhatsappConnecting")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+    <div class="h-full rounded-full bg-[#c2410c] transition-[width] duration-700 motion-reduce:transition-none" style:width="{progress}%"></div>
+   </div>
+   <p class="text-sm text-neutral-500">{view.state==="linking"?t("dealsWhatsappLinking"):t("dealsWhatsappLoadingChannels")}</p>
+  </div>
  {:else if view.state==="connected"||view.state==="disconnected"}
   <p class="flex items-center gap-2 text-sm font-semibold" role="status"><Check class="size-4 text-emerald-600 dark:text-emerald-400"/>{t("dealsWhatsappConnected",{end:view.phoneEnd??"----"})}</p>
   {#if view.state==="disconnected"}<p class="mt-2 text-sm text-amber-700 dark:text-amber-300">{t("dealsWhatsappReconnecting")}</p>{/if}

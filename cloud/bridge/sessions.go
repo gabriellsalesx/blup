@@ -30,6 +30,7 @@ import (
 // Os estados de uma sessão, como o Blup Cloud os vê.
 const (
 	statePairing      = "pairing"      // esperando ler o QR
+	stateLinking      = "linking"      // QR lido, entrando no WhatsApp
 	stateConnected    = "connected"    // pronta para publicar
 	stateDisconnected = "disconnected" // caiu e está voltando sozinha
 	stateExpired      = "expired"      // o QR venceu sem ser lido
@@ -262,16 +263,28 @@ func (m *manager) events(ss *session) func(any) {
 	return func(evt any) {
 		switch e := evt.(type) {
 		case *events.PairSuccess:
+			// Lido o QR, o aparelho é salvo e a sessão fica "entrando";
+			// "conectada" só quando o WhatsApp terminar de entrar (o
+			// Connected logo depois), e aí os Canais já podem ser lidos.
 			if err := m.db.saveSession(context.Background(), ss.id, e.ID.String(), m.now()); err != nil {
 				m.log.Error("não salvou a sessão", "session", ss.id, "err", err)
 			}
-			m.set(ss, stateConnected, true)
+			m.set(ss, stateLinking, false)
 		case *events.Connected:
 			if ss.cli.Store.ID != nil {
-				m.set(ss, stateConnected, false)
+				ss.mu.Lock()
+				first := ss.state == statePairing || ss.state == stateLinking
+				ss.mu.Unlock()
+				m.set(ss, stateConnected, first)
 			}
 		case *events.Disconnected:
-			m.set(ss, stateDisconnected, false)
+			// Logo depois do QR o WhatsApp reconecta: segue "entrando".
+			ss.mu.Lock()
+			linking := ss.state == stateLinking
+			ss.mu.Unlock()
+			if !linking {
+				m.set(ss, stateDisconnected, false)
+			}
 		case *events.LoggedOut:
 			m.end(ss, stateLoggedOut)
 		case *events.TemporaryBan:

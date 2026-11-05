@@ -13,7 +13,7 @@ import {bridge,bridgeReady,signature,MIN_SECRET,type Answer} from "./bridge";
 // everything else (channels, queue, posts) stays here, in D1. Each request
 // to it is signed (HMAC with time and nonce), and so is each notice it
 // sends back. Only Canais: groups don't exist for the Bridge.
-const states=["pairing","connected","disconnected","expired","logged_out","banned","replaced","outdated"] as const;
+const states=["pairing","linking","connected","disconnected","expired","logged_out","banned","replaced","outdated"] as const;
 const bridgeView=z.object({state:z.enum(states),qr:z.string().startsWith("data:image/png;base64,").max(200_000).optional(),qrExpiresAt:z.string().max(64).optional(),phoneEnd:z.string().regex(/^[0-9]{4}$/).optional()});
 const bridgeChannels=z.object({channels:z.array(z.object({id:z.string().regex(/^[0-9]{6,32}$/),name:z.string().max(200),role:z.enum(["owner","admin"])})).max(200)});
 // The states a person has to act on: the Canais wait until they reconnect.

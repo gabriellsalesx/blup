@@ -85,7 +85,7 @@ A sessão (`{id}`) é o ID que o Blup Cloud escolhe, de 8 a 64 caracteres `A-Z a
 | `POST /v1/sessions/{id}/posts` | publica `{channel, key, text, image?}`; `image` é JPEG ou PNG em base64, até 5 MB; `text` até 4096 caracteres; responde `{id, at}`. A mesma `key` não publica duas vezes |
 | `DELETE /v1/sessions/{id}` | desconecta o aparelho e apaga a sessão (`204`) |
 
-Estados: `pairing`, `connected`, `disconnected` (caiu e volta sozinha), `expired` (o QR venceu), `logged_out` (desconectado pelo celular), `banned`, `replaced` (a sessão abriu em outro lugar) e `outdated` (o whatsmeow precisa de atualização). O aviso em `CALLBACK_URL` é `{session, state, at}`, enviado quando a sessão conecta pela primeira vez ou entra num estado que exige ação.
+Estados: `pairing`, `linking` (o QR foi lido e o WhatsApp está terminando de entrar), `connected`, `disconnected` (caiu e volta sozinha), `expired` (o QR venceu), `logged_out` (desconectado pelo celular), `banned`, `replaced` (a sessão abriu em outro lugar) e `outdated` (o whatsmeow precisa de atualização). O aviso em `CALLBACK_URL` é `{session, state, at}`, enviado quando a sessão conecta pela primeira vez ou entra num estado que exige ação.
 
 Erros: `400 BAD_REQUEST`, `401 UNAUTHORIZED`, `403 NOT_ADMIN` (o Canal não é dela), `404 NOT_FOUND`, `409 NOT_CONNECTED`, `413 TOO_LARGE`, `429 TOO_SOON` (com `retryAfter` em segundos e `Retry-After`), `502 UPSTREAM` e `503 BUSY` (QRs demais esperando ao mesmo tempo).
 
