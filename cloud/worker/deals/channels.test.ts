@@ -83,10 +83,10 @@ describe("webhooks",()=>{
 
 describe("examples",()=>{
  it("serves the pictures in public, and nothing else",async()=>{
-  const r=await dealsApi.fetch(new Request("https://cloud.audit.invalid/samples/store.jpg"),state.env);
+  const r=await dealsApi.fetch(new Request("https://cloud.audit.invalid/samples/store.pt.jpg"),state.env);
   expect(r.status).toBe(200);expect(r.headers.get("content-type")).toBe("image/jpeg");
   expect(new Uint8Array(await r.arrayBuffer()).slice(0,2)).toEqual(new Uint8Array([0xff,0xd8]));
-  expect((await dealsApi.fetch(new Request("https://cloud.audit.invalid/samples/outra.jpg"),state.env)).status).toBe(404);
+  for(const path of ["store.jpg","outra.pt.jpg","store.fr.jpg"])expect((await dealsApi.fetch(new Request(`https://cloud.audit.invalid/samples/${path}`),state.env)).status).not.toBe(200);
  });
  it("sends the fixed examples, marked, in the account's layout, once a minute",async()=>{
   const {id}=await (await call("/channels",{method:"POST",body:{type:"discord",webhook:HOOK}})).json() as {id:string};

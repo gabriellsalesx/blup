@@ -9058,7 +9058,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 }, "/whatsapp">) & {
-    "/samples/:name{[a-z-]{1,20}\\.jpg}": {
+    "/samples/:name{[a-z-]{1,20}\\.(?:pt|en|es)\\.jpg}": {
         $get: {
             input: {
                 param: {

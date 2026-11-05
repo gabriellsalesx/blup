@@ -12,9 +12,11 @@ export const sampleKinds=["test","game_free","nuuvem_deal","store_deal","product
 export type SampleKind=(typeof sampleKinds)[number];
 
 // All made up and fixed: the same examples every time, never a real offer
-// (nor another account's), each with its own picture (drawn for Blup,
-// sent as a file; served at /api/deals/samples/<name>.jpg for webhooks).
-const pictures:Record<Exclude<SampleKind,"test">,SampleImage>={game_free:"game-free",nuuvem_deal:"nuuvem",store_deal:"store",product:"product"};
+// (nor another account's), each with its own picture (drawn for Blup, with
+// an EXEMPLO seal in the channel's language so no one takes it for a real
+// game or product; sent as a file; served at
+// /api/deals/samples/<name>.<language>.jpg for webhooks).
+const pictures:Record<Exclude<SampleKind,"test">,string>={game_free:"game-free",nuuvem_deal:"nuuvem",store_deal:"store",product:"product"};
 const decoded=new Map<SampleImage,Uint8Array<ArrayBuffer>>();
 export function sampleImage(name:SampleImage){let bytes=decoded.get(name);if(!bytes){bytes=Uint8Array.from(atob(sampleImages[name]),c=>c.charCodeAt(0));decoded.set(name,bytes);}return bytes;}
 export const isSampleImage=(name:string):name is SampleImage=>Object.hasOwn(sampleImages,name);
@@ -50,5 +52,5 @@ export async function samplePost(db:D1Database,owner:string,kind:Exclude<SampleK
  const own=await settingsOf(db,owner),fake=made[kind][lang],free=kind==="game_free";
  const custom=headlineOf(own,kind)!==null;
  const title=openingLine({title:fake.title,kind,discount:fake.discount,store:fake.store,language:custom?account:lang},own);
- return {sample:true,store:fake.store,title,extra:own.extra.on&&own.extra.text?own.extra.text:null,socials:socialLinks(own),style:own.style,description:fake.description,coupon:fake.coupon,image:`${origin}/api/deals/samples/${pictures[kind]}.jpg`,photo:sampleImage(pictures[kind]),price:fake.price,originalPrice:fake.originalPrice,currency:fake.currency,discount:fake.discount,link:fake.link,affiliate:false,kind,credit:free?"gamerpower":null};
+ return {sample:true,store:fake.store,title,extra:own.extra.on&&own.extra.text?own.extra.text:null,socials:socialLinks(own),style:own.style,description:fake.description,coupon:fake.coupon,image:`${origin}/api/deals/samples/${pictures[kind]}.${lang}.jpg`,photo:sampleImage(`${pictures[kind]}.${lang}` as SampleImage),price:fake.price,originalPrice:fake.originalPrice,currency:fake.currency,discount:fake.discount,link:fake.link,affiliate:false,kind,credit:free?"gamerpower":null};
 }

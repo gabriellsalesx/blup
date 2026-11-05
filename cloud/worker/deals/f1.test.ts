@@ -28,7 +28,7 @@ import {panelCorsOrigin} from "../security";
 import {softDelete,purgeAccounts,DAY as LIFE_DAY} from "../lifecycle";
 import {dealsLifecycle} from "./purge";
 import {dealsAccess} from "./access";
-import {gameTitle} from "./ai";
+import {gameTitle,giveawayTitle} from "./ai";
 
 let db:TestD1;
 const KEY=btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
@@ -824,5 +824,11 @@ describe("the AI in the hunts and the channels",()=>{
   expect(gameTitle("Dark Mystery (Epic Games) Giveaway")).toBe("Dark Mystery");
   expect(gameTitle("Letter Quest: Grimm's Journey Remastered Steam Key Giveaway")).toBe("Letter Quest: Grimm's Journey Remastered");
   expect(gameTitle("Hades")).toBe("Hades");
+  // Without the AI, the post keeps where the game is, without "Giveaway".
+  expect(giveawayTitle("Flotsam (Epic Games) Giveaway")).toBe("Flotsam (Epic Games)");
+  expect(giveawayTitle("Letter Quest: Grimm's Journey Remastered Steam Key Giveaway")).toBe("Letter Quest: Grimm's Journey Remastered (Steam)");
+  expect(giveawayTitle("Chants of Sennaar (Mobile) Giveaway")).toBe("Chants of Sennaar (Mobile)");
+  expect(giveawayTitle("Giveaway")).toBe("Giveaway");
+  expect(gameTitle(giveawayTitle("Letter Quest: Grimm's Journey Remastered Steam Key Giveaway"))).toBe("Letter Quest: Grimm's Journey Remastered");
  });
 });

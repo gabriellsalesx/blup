@@ -134,4 +134,8 @@ ${DATA_RULE}`;
 
 // GamerPower's titles end with the store and "Giveaway": the game's name
 // is what comes before (no AI needed).
+// The title a post shows: without the "Giveaway" at the end, keeping where
+// the game is ("Flotsam (Epic Games)"; "X Steam Key Giveaway" becomes
+// "X (Steam)").
+export const giveawayTitle=(title:string)=>title.replace(/\s+(?:(Steam|GOG|Epic Games|Itch\.io|Origin|Ubisoft|Battle\.net|Xbox|PlayStation)\s+)?(?:Key\s+)?Giveaway\s*$/i,(_,store:string|undefined)=>store?` (${store})`:"").trim()||title;
 export const gameTitle=(title:string)=>title.replace(/\s*\((?:[^()]*)\)\s*(?:Giveaway|Key Giveaway)?\s*$/i,"").replace(/\s+(?:Steam\s+)?(?:Key\s+)?Giveaway\s*$/i,"").trim()||title;

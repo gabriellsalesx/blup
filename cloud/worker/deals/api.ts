@@ -20,7 +20,7 @@ export {dayOf};
 export const dealsApi=new Hono<DealsApp>()
  .route("/telegram",telegramWebhookApi)
  .route("/whatsapp",whatsappCallbackApi)
- .get("/samples/:name{[a-z-]{1,20}\\.jpg}",c=>{const name=c.req.param("name").slice(0,-4);if(!isSampleImage(name))return c.json({code:"NOT_FOUND"},404);return c.body(sampleImage(name),200,{"content-type":"image/jpeg","cache-control":"public, max-age=86400","x-content-type-options":"nosniff"});})
+ .get("/samples/:name{[a-z-]{1,20}\\.(?:pt|en|es)\\.jpg}",c=>{const name=c.req.param("name").slice(0,-4);if(!isSampleImage(name))return c.json({code:"NOT_FOUND"},404);return c.body(sampleImage(name),200,{"content-type":"image/jpeg","cache-control":"public, max-age=86400","x-content-type-options":"nosniff"});})
  .use("*",dealsSession)
  .get("/usage",async c=>{
   const owner=c.get("session").user.id,access=c.get("access"),now=Date.now();

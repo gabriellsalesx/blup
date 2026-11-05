@@ -5,7 +5,7 @@ import {apiJSON} from "./fetch";
 import {cleanLine,priceCents} from "./page";
 import {dealsAccess} from "./access";
 import {enqueue,affiliateOf,settingsOf,accountLanguage,DAY} from "./store";
-import {describe,gameTitle} from "./ai";
+import {describe,gameTitle,giveawayTitle} from "./ai";
 import {nuuvemLink,storeSchema} from "./links";
 import {readNuuvem,rakutenCredentials,isCredit} from "./nuuvem";
 import {aliexpressCountries} from "../../shared/deals-markets";
@@ -41,7 +41,7 @@ export function gamerPowerOffers(value:unknown,now=Date.now()):OfferInput[]{
  return list.data.flatMap(raw=>{
   const g=gamerPowerItem.safeParse(raw);if(!g.success||g.data.status.toLowerCase()!=="active"||g.data.type.toLowerCase()!=="game")return [];
   const url=httpsOnly(g.data.open_giveaway_url);if(!url)return [];
-  const end=Date.parse(g.data.end_date.replace(" ","T")+"Z"),title=cleanLine(g.data.title,200);if(!title||Number.isFinite(end)&&end<=now)return [];
+  const end=Date.parse(g.data.end_date.replace(" ","T")+"Z"),title=cleanLine(giveawayTitle(g.data.title),200);if(!title||Number.isFinite(end)&&end<=now)return [];
   const worth=priceCents(g.data.worth);
   return [{key:`gamerpower:${g.data.id}`,store:"gamerpower",externalId:String(g.data.id),sourceId:"gamerpower",title,url,imageUrl:httpsOnly(g.data.image??g.data.thumbnail),price:0,originalPrice:worth&&worth>0?worth:null,currency:"USD",kind:"game_free" as const,platforms:gamerPowerPlatformIds(g.data.platforms),discount:100,credit:"gamerpower",expiresAt:Number.isFinite(end)?end:null}];
  });

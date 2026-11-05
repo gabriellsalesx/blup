@@ -1,10 +1,12 @@
 // Writes worker/deals/sample-images.ts from the example pictures in
-// worker/deals/samples/*.jpg (the examples the panel sends to a channel):
+// worker/deals/samples/<name>.<language>.jpg (the examples the panel sends
+// to a channel, each with the EXEMPLO seal in the channel's language; the
+// <name>.jpg ones are the drawings without it):
 // the Worker keeps them in its own code, so they go as files, with no
 // address to fetch. Run after changing a picture:
 //   node scripts/deals-samples.mjs
 import {readFileSync,writeFileSync} from "node:fs";
-const names=["game-free","nuuvem","store","product"];
+const names=["game-free","nuuvem","store","product"].flatMap(n=>["pt","en","es"].map(l=>`${n}.${l}`));
 const dir=new URL("../worker/deals/samples/",import.meta.url);
 const lines=names.map(n=>{
  const bytes=readFileSync(new URL(`${n}.jpg`,dir));
