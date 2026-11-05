@@ -80,13 +80,29 @@ export function discordPayload(p:Post,language:Language){
  return {username:"Blup Deals",allowed_mentions:{parse:[]},embeds:[{...(credit?{author:{name:credit.name,url:credit.url}}:{}),title:[...headTitle(p,title)].slice(0,250).join(""),url:p.link,color:0xc2410c,description,...(p.image?{image:{url:p.image}}:{})}]};
 }
 
-// WhatsApp (its own marks: *bold*, ~strike~; addresses go as they are,
-// WhatsApp makes them clickable). The person's text as typed.
+// WhatsApp (its own marks: *bold*, _italic_, ~strike~; addresses go as
+// they are, WhatsApp makes them clickable), in blocks with a blank line
+// between them, as WhatsApp posts read best: the title; the description;
+// the price (the new one in bold) and the coupon; the link; the person's
+// own text, networks (one a line) and the notice; and, last, that it is
+// an example and the credit. The emoji layout gives each line its mark.
+// The person's text as typed (WhatsApp marks it alone).
 export function whatsappText(p:Post,language:Language){
- const {title}=parts(p,language);
- const link=(t:string,u:string)=>u.endsWith(t)?u:`${t}: ${u}`;
- const lines=[`*${[...headTitle(p,title)].slice(0,300).join("").replace(/\*/g,"")}*`,...bodyLines(p,language,{esc:s=>s,link,strike:s=>`~${s}~`}),...((c=>c?[`${c.label}: ${c.url}`]:[])(creditOf(p)))];
- return lines.join("\n").slice(0,4000);
+ const w=words[language],{title,open,ad}=parts(p,language),emoji=p.style==="emoji",clean=(t:string)=>t.replace(/[*_~]/g,"");
+ let price:string|null=null;
+ if(p.kind==="game_free")price=`*${w.free}*`;
+ else if(p.price!==null&&p.currency){const before=p.originalPrice&&p.originalPrice>p.price?`~${money(p.originalPrice,p.currency,language)}~ `:"";price=`${before}*${money(p.price,p.currency,language)}*${p.discount&&p.discount>0?` (${p.discount}% ${w.off})`:""}`;}
+ else if(p.discount&&p.discount>0)price=`*${p.discount}% ${w.off}*`;
+ const credit=creditOf(p);
+ const blocks=[
+  [`*${clean([...headTitle(p,title)].slice(0,300).join(""))}*`],
+  p.description?[p.description]:[],
+  [...(price?[emoji?`💵 ${w.value}: ${price}`:price]:[]),...(p.coupon?[`${emoji?"🧾 ":""}${w.coupon}: *${clean(p.coupon)}*`]:[])],
+  [`${emoji?`📌 ${p.kind==="video"?w.watch:w.link}`:open}: ${p.link}`],
+  [...(p.extra?[p.extra]:[]),...(p.socials??[]).map(n=>`${n.name}: ${n.url}`),...(ad?[ad]:[])],
+  [...(p.sample?[`_${w.sample}_`]:[]),...(credit?[`${credit.label}: ${credit.url}`]:[])],
+ ];
+ return blocks.filter(b=>b.length).map(b=>b.join("\n")).join("\n\n").slice(0,4000);
 }
 
 // Plain text, for webhooks: no marks, each address after its words.
