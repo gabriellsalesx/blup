@@ -14,6 +14,6 @@ export function dealsError(error:unknown):string{
 }
 // Why a post or a channel test did not go through (the delivery's code),
 // in words.
-const delivery={DESTINATION_DISABLED:"dealsDeliveryDisabled",RATE_LIMIT:"dealsDeliveryRate",PROVIDER:"dealsDeliveryProvider",EXPIRED:"dealsDeliveryExpired",TOO_SOON:"dealsDeliveryTooSoon",WHATSAPP_DISCONNECTED:"dealsWhatsappLoggedOut",WHATSAPP_LOGGED_OUT:"dealsWhatsappLoggedOut",WHATSAPP_EXPIRED:"dealsWhatsappLoggedOut",WHATSAPP_BANNED:"dealsWhatsappBanned",WHATSAPP_REPLACED:"dealsWhatsappReplaced",WHATSAPP_OUTDATED:"dealsWhatsappOutdated"} as const satisfies Record<string,PlainMessageKey>;
+const delivery={DESTINATION_DISABLED:"dealsDeliveryDisabled",RATE_LIMIT:"dealsDeliveryRate",PROVIDER:"dealsDeliveryProvider",BRIDGE_UNAVAILABLE:"dealsWhatsappDown",EXPIRED:"dealsDeliveryExpired",TOO_SOON:"dealsDeliveryTooSoon",WHATSAPP_DISCONNECTED:"dealsWhatsappLoggedOut",WHATSAPP_LOGGED_OUT:"dealsWhatsappLoggedOut",WHATSAPP_EXPIRED:"dealsWhatsappLoggedOut",WHATSAPP_BANNED:"dealsWhatsappBanned",WHATSAPP_REPLACED:"dealsWhatsappReplaced",WHATSAPP_OUTDATED:"dealsWhatsappOutdated"} as const satisfies Record<string,PlainMessageKey>;
 const isDelivery=(code:string):code is keyof typeof delivery=>Object.hasOwn(delivery,code);
 export const failureText=(code:string|null,fallback:PlainMessageKey="dealsNotSent")=>!code?t(fallback):isDelivery(code)?t(delivery[code]):isOwn(code)?t(own[code]):t(fallback);

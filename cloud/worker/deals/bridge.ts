@@ -41,14 +41,16 @@ export async function bridge(env:Cloudflare.Env,method:"GET"|"POST"|"DELETE",pat
 // id) and once every 30 minutes per Canal. A photo's own bytes (an
 // example's picture) go as they are.
 export async function sendWhatsapp(env:Cloudflare.Env,session:string,channel:string,key:string,text:string,image:string|null,send:typeof fetch=fetch,photo:Uint8Array|null=null):Promise<Delivery>{
- if(!bridgeReady(env))return failure("WHATSAPP_UNAVAILABLE",300_000);
+// BRIDGE_UNAVAILABLE: the Bridge is not set up or did not answer (the
+// connection is fine, nothing to reconnect: the WHATSAPP_ codes say that).
+ if(!bridgeReady(env))return failure("BRIDGE_UNAVAILABLE",300_000);
  let picture:string|null=photo&&isJpegOrPng(photo)?base64(photo):null;
  if(image&&!picture){
   const got=await safeImage(image,{send});
   if(got&&isJpegOrPng(got.bytes))picture=base64(got.bytes);
  }
  let answer:Answer;
- try{answer=await bridge(env,"POST",`/v1/sessions/${session}/posts`,{channel,key:`deals:${key}`,text,...(picture?{image:picture}:{})},send);}catch{return failure("PROVIDER",60_000);}
+ try{answer=await bridge(env,"POST",`/v1/sessions/${session}/posts`,{channel,key:`deals:${key}`,text,...(picture?{image:picture}:{})},send);}catch{return failure("BRIDGE_UNAVAILABLE",60_000);}
  if(answer.status===200)return success(0);
  if(answer.status===429){const p=z.object({retryAfter:z.number().int().min(1).max(86_400)}).safeParse(answer.data);return failure("TOO_SOON",(p.success?p.data.retryAfter:60)*1000);}
  if(answer.status===403)return failure("DESTINATION_DISABLED",0,true);

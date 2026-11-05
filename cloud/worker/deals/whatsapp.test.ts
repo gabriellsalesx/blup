@@ -93,6 +93,10 @@ describe("connecting WhatsApp",()=>{
   expect(await (await call("/whatsapp/session")).json()).toMatchObject({state:"connected",phoneEnd:"5443",reachable:false});
   const r=await call("/whatsapp/channels");expect(r.status).toBe(503);expect(await r.json()).toEqual({code:"WHATSAPP_UNAVAILABLE"});
   expect((await (await call("/whatsapp/session",{method:"POST",body:{acceptRisk:true}})).json() as {code:string}).code).toBe("WHATSAPP_UNAVAILABLE");
+  // An example then: the Bridge is down, the Canal is not to blame.
+  const channel=(await (await call("/channels")).json() as {channels:{id:string}[]}).channels[0].id;
+  expect(await (await call(`/channels/${channel}/test`,{method:"POST",body:{kinds:["test"]}})).json()).toMatchObject({ok:false,code:"BRIDGE_UNAVAILABLE"});
+  expect(await (await call("/channels")).json()).toMatchObject({channels:[{lastError:null,active:true}]});
   reply=bridgeOK;
   expect(await (await call("/whatsapp/session")).json()).toMatchObject({state:"connected",reachable:true});
  });

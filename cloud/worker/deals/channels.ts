@@ -89,7 +89,9 @@ export const channelsApi=new Hono<DealsApp>()
   }
   // WhatsApp's turn: after a post, 30 minutes; a "too soon", what is left.
   const again=type!=="whatsapp"?now+TEST_GAP:result.code==="TOO_SOON"?now+Math.max(TEST_GAP,result.waitMs):result.sent?now+WHATSAPP_INTERVAL:now+TEST_GAP;
-  await c.env.DB.prepare(`UPDATE deals_channel SET test_at=?${result.code==="TOO_SOON"?"":`,last_error=?${result.sent?",active=1":result.code==="DESTINATION_DISABLED"?",active=0":""}`} WHERE id=? AND user_id=?`).bind(...(result.code==="TOO_SOON"?[again]:[again,result.sent?null:result.code]),id,owner).run();
+  // A "too soon" or the Bridge down says nothing about the channel itself.
+  const keep=result.code==="TOO_SOON"||result.code==="BRIDGE_UNAVAILABLE";
+  await c.env.DB.prepare(`UPDATE deals_channel SET test_at=?${keep?"":`,last_error=?${result.sent?",active=1":result.code==="DESTINATION_DISABLED"?",active=0":""}`} WHERE id=? AND user_id=?`).bind(...(keep?[again]:[again,result.sent?null:result.code]),id,owner).run();
   return c.json({ok:result.sent,code:result.code,sent,testAgainAt:again},202);
  });
 
