@@ -1,7 +1,7 @@
 <script lang="ts">
  import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
- import {onDestroy} from "svelte";
+ import {onDestroy,untrack} from "svelte";
  import {goto} from "$app/navigation";
  import {type InferResponseType} from "hono/client";
  import {t,formatDate} from "#lib/i18n.svelte.ts";
@@ -17,17 +17,18 @@
  import {dealsError} from "../../../lib/errors";
  import {refreshUsage} from "../../../lib/panel.svelte";
  import {hasPlan} from "../../../lib/plan";
+ import WhatsappConnect from "../../../lib/WhatsappConnect.svelte";
  // A new destination, as Pulse's alerts: paste a Discord channel's
- // webhook, or link a Telegram channel or group through the Deals bot
- // (the bot is added there as an admin, then the channel is confirmed
- // here).
+ // webhook, link a Telegram channel or group through the Deals bot (the
+ // bot is added there as an admin, then the channel is confirmed here), or
+ // connect a WhatsApp by QR and pick its Canais (?kind=whatsapp opens it).
  let {data}:PageProps=$props();
  const linkGET=dealsApi.telegram.link[":link"].$get;
  type LinkStatus=InferResponseType<typeof linkGET,200>;
  type Link=InferResponseType<typeof dealsApi.telegram.link.$post,201>;
- type Kind="telegram"|"discord";
- let kind=$state<Kind>("telegram"),webhook=$state(""),busy=$state(false),link=$state<Link|null>(null),linkStatus=$state<LinkStatus|null>(null);
- const kinds=$derived([{value:"telegram" as const,label:"Telegram",help:t("dealsTelegramHow")},{value:"discord" as const,label:"Discord",help:t("dealsDiscordHow")}]);
+ type Kind="telegram"|"discord"|"whatsapp";
+ let kind=$state<Kind>(untrack(()=>data.kind)),webhook=$state(""),busy=$state(false),link=$state<Link|null>(null),linkStatus=$state<LinkStatus|null>(null);
+ const kinds=$derived([{value:"telegram" as const,label:"Telegram",help:t("dealsTelegramHow")},{value:"discord" as const,label:"Discord",help:t("dealsDiscordHow")},{value:"whatsapp" as const,label:"WhatsApp",help:t("dealsWhatsappHow")}]);
  const back=$derived(data.next??resolve("/channels"));
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}}
  async function done(){void refreshUsage();toast(()=>t("dealsLinked"));await goto(back);}
@@ -54,7 +55,7 @@
 <PageHeader title={t("dealsNewChannelTitle")} lead={t("dealsChannelsPrivacy")}/>
 
 <div class="mt-8"><Card title={t("dealsChooseKind")}>
- <div class="mt-5 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label={t("dealsChooseKind")}>
+ <div class="mt-5 grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label={t("dealsChooseKind")}>
   {#each kinds as option(option.value)}
    <button type="button" role="radio" aria-checked={kind===option.value} class="flex items-center gap-4 rounded-xl border p-4 text-left transition-colors {kind===option.value?'border-blup bg-orange-50/60 dark:bg-orange-950/30':'border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700'}" onclick={()=>choose(option.value)}>
     <ChannelIcon type={option.value} class="size-8"/><span class="min-w-0"><span class="block font-semibold">{option.label}</span><span class="block text-sm text-neutral-500">{option.help}</span></span>
@@ -63,7 +64,9 @@
  </div>
 
  <div class="mt-6 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-  {#if kind==="discord"}
+  {#if kind==="whatsapp"}
+   <WhatsappConnect onadded={done}/>
+  {:else if kind==="discord"}
    <form class="grid grid-cols-[minmax(0,1fr)] gap-4" onsubmit={discord}>
     <p class="text-sm text-neutral-500">{t("dealsDiscordHelp")}</p>
     <FloatField id="channel-webhook" surface="bg-white dark:bg-neutral-900" label={t("dealsDiscordWebhook")} type="password" autocomplete="off" maxlength={2048} required bind:value={webhook}/>

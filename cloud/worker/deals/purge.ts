@@ -1,4 +1,5 @@
 import {sqlPlans,plansWithDeals} from "../../shared/pulse-plans";
+import {forgetWhatsapp} from "./bridge";
 
 export const READ_ONLY_DAYS=14;
 const DAY=86_400_000;
@@ -32,10 +33,12 @@ export async function dealsLifecycle(env:Cloudflare.Env,now=Date.now()){
  }
 }
 // The account's own Deals data, when the account is purged for good: store
-// IDs and keys, channels, hunts, posts, clicks and Telegram links. The
+// IDs and keys, channels, hunts, posts, clicks, Telegram links and the
+// WhatsApp connection (logged out at the Bridge first). The
 // shared catalog stays; only pasted products and videos nobody else posted go (and
 // their prices), since they came from this account alone.
 export async function purgeDealsAccount(env:Cloudflare.Env,userId:string){
+ await forgetWhatsapp(env,userId);
  const orphan="kind IN('product','video') AND id IN(SELECT offer_id FROM deals_post WHERE user_id=?) AND NOT EXISTS(SELECT 1 FROM deals_post p WHERE p.offer_id=deals_offer.id AND p.user_id<>?)";
  await env.DB.batch([
   env.DB.prepare(`DELETE FROM deals_price WHERE offer_id IN(SELECT id FROM deals_offer WHERE ${orphan})`).bind(userId,userId),
@@ -46,6 +49,7 @@ export async function purgeDealsAccount(env:Cloudflare.Env,userId:string){
   env.DB.prepare("DELETE FROM deals_channel WHERE user_id=?").bind(userId),
   env.DB.prepare("DELETE FROM deals_affiliate WHERE user_id=?").bind(userId),
   env.DB.prepare("DELETE FROM deals_telegram_link WHERE user_id=?").bind(userId),
+  env.DB.prepare("DELETE FROM deals_whatsapp WHERE user_id=?").bind(userId),
   env.DB.prepare("DELETE FROM deals_setting WHERE user_id=?").bind(userId),
   env.DB.prepare("DELETE FROM deals_account WHERE user_id=?").bind(userId),
  ]);

@@ -5,16 +5,19 @@ import {affiliatesApi} from "./affiliates";
 import {offersApi} from "./offers";
 import {huntsApi,statsApi} from "./hunts";
 import {settingsApi} from "./settings";
+import {whatsappApi,whatsappCallbackApi} from "./whatsapp";
 import {DAY,dayOf} from "./store";
 import {aiUsageOf} from "../ai";
 import {planOf} from "../account";
 export {dayOf};
 
-// /api/deals: the Deals panel's API. The Telegram webhook comes first and
-// outside the session (Telegram signs it with its secret header); every
-// other route needs a session, and changes go behind dealsWrite.
+// /api/deals: the Deals panel's API. The Telegram webhook and the WhatsApp
+// Bridge's notices come first and outside the session (each signed with
+// its own secret); every other route needs a session, and changes go
+// behind dealsWrite.
 export const dealsApi=new Hono<DealsApp>()
  .route("/telegram",telegramWebhookApi)
+ .route("/whatsapp",whatsappCallbackApi)
  .use("*",dealsSession)
  .get("/usage",async c=>{
   const owner=c.get("session").user.id,access=c.get("access"),now=Date.now();
@@ -33,6 +36,7 @@ export const dealsApi=new Hono<DealsApp>()
  })
  .route("/channels",channelsApi)
  .route("/telegram",telegramApi)
+ .route("/whatsapp",whatsappApi)
  .route("/affiliates",affiliatesApi)
  .route("/offers",offersApi)
  .route("/hunts",huntsApi)

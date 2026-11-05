@@ -13,15 +13,32 @@ export function publicHTTPS(raw:string):URL{
 }
 export type Fetched={url:URL;status:number;contentType:string;text:string};
 // until stops at the first address it accepts, without opening it (a
-// short link followed only as far as where it points).
-type Options={maxBytes?:number;timeoutMs?:number;hops?:number;body?:boolean;until?:(url:URL)=>boolean;send?:typeof fetch};
-export async function safeFetch(raw:string,{maxBytes=512*1024,timeoutMs=8_000,hops=5,body=true,until,send=fetch}:Options={}):Promise<Fetched>{
+// short link followed only as far as where it points). read takes the
+// body itself (an image's bytes) instead of the text.
+type Options={maxBytes?:number;timeoutMs?:number;hops?:number;body?:boolean;until?:(url:URL)=>boolean;send?:typeof fetch;accept?:string};
+export async function safeFetch(raw:string,options:Options={}):Promise<Fetched>{
+ const got=await safeResponse(raw,options);
+ if(!got.res)return {...got,text:""};
+ return {url:got.url,status:got.status,contentType:got.contentType,text:new TextDecoder().decode((await cappedBytes(got.res,options.maxBytes??512*1024)).bytes)};
+}
+// An image a post shows (WhatsApp wants the file itself): the same guard,
+// at most maxBytes; null when it is bigger, not an image or not there.
+export async function safeImage(raw:string,{maxBytes=5*1024*1024,send=fetch}:{maxBytes?:number;send?:typeof fetch}={}):Promise<{bytes:Uint8Array;contentType:string}|null>{
+ try{
+  const got=await safeResponse(raw,{send,accept:"image/jpeg,image/png;q=0.9,image/*;q=0.5",timeoutMs:10_000});
+  if(!got.res)return null;
+  if(got.status!==200||!got.contentType.startsWith("image/")){await got.res.body?.cancel().catch(()=>{});return null;}
+  const {bytes,full}=await cappedBytes(got.res,maxBytes);
+  return full&&bytes.byteLength?{bytes,contentType:got.contentType}:null;
+ }catch{return null;}
+}
+async function safeResponse(raw:string,{timeoutMs=8_000,hops=5,body=true,until,send=fetch,accept="text/html,application/xhtml+xml;q=0.9,*/*;q=0.5"}:Options):Promise<{url:URL;status:number;contentType:string;res:Response|null}>{
  let url=publicHTTPS(raw);const signal=AbortSignal.timeout(timeoutMs);
  for(let hop=0;hop<=hops;hop++){
-  if(hop>0&&until?.(url))return {url,status:0,contentType:"",text:""};
+  if(hop>0&&until?.(url))return {url,status:0,contentType:"",res:null};
   try{await publicDNS(url.hostname,signal,send);}catch{throw new FetchError("FETCH_BLOCKED");}
   let res:Response;
-  try{res=await send(url,{redirect:"manual",signal,headers:{"user-agent":"Mozilla/5.0 (compatible; BlupDeals/1.0; +https://getblup.io)",accept:"text/html,application/xhtml+xml;q=0.9,*/*;q=0.5","accept-language":"pt-BR,pt;q=0.9,en;q=0.8"}});}
+  try{res=await send(url,{redirect:"manual",signal,headers:{"user-agent":"Mozilla/5.0 (compatible; BlupDeals/1.0; +https://getblup.io)",accept,"accept-language":"pt-BR,pt;q=0.9,en;q=0.8"}});}
   catch{throw new FetchError("FETCH_FAILED");}
   if(res.status>=300&&res.status<400){
    const location=res.headers.get("location");await res.body?.cancel().catch(()=>{});
@@ -30,21 +47,26 @@ export async function safeFetch(raw:string,{maxBytes=512*1024,timeoutMs=8_000,ho
    url=publicHTTPS(next.href);continue;
   }
   const contentType=res.headers.get("content-type")??"";
-  if(!body){await res.body?.cancel().catch(()=>{});return {url,status:res.status,contentType,text:""};}
-  return {url,status:res.status,contentType,text:await capped(res,maxBytes)};
+  if(!body){await res.body?.cancel().catch(()=>{});return {url,status:res.status,contentType,res:null};}
+  return {url,status:res.status,contentType,res};
  }
  throw new FetchError("FETCH_FAILED");
 }
 // The first maxBytes of the body as text; the rest is let go.
 export async function capped(res:Response,maxBytes:number):Promise<string>{
- const reader=res.body?.getReader();if(!reader)return "";
+ return new TextDecoder().decode((await cappedBytes(res,maxBytes)).bytes);
+}
+// The first maxBytes of the body; full says nothing was left out.
+async function cappedBytes(res:Response,maxBytes:number):Promise<{bytes:Uint8Array;full:boolean}>{
+ const reader=res.body?.getReader();if(!reader)return {bytes:new Uint8Array(),full:true};
+ let full=false;
  const chunks:Uint8Array[]=[];let size=0;
- try{while(size<maxBytes){const {done,value}=await reader.read();if(done)break;chunks.push(value);size+=value.byteLength;}}
+ try{while(size<=maxBytes){const {done,value}=await reader.read();if(done){full=true;break;}chunks.push(value);size+=value.byteLength;}}
  catch{throw new FetchError("FETCH_FAILED");}
  finally{await reader.cancel().catch(()=>{});}
  const bytes=new Uint8Array(Math.min(size,maxBytes));let at=0;
  for(const c of chunks){const part=c.subarray(0,bytes.length-at);bytes.set(part,at);at+=part.byteLength;if(at>=bytes.length)break;}
- return new TextDecoder().decode(bytes);
+ return {bytes,full:full&&size<=maxBytes};
 }
 // A fixed public API (GamerPower, CheapShark, the stores' affiliate APIs):
 // no redirects, a timeout and a cap, JSON out.

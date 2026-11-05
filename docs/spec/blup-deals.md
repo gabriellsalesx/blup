@@ -679,4 +679,14 @@ A [Ponte](../../cloud/bridge/README.md) é um serviço Go próprio, em módulo s
 
 Teste real em 05/11/2026 com o Canal BuildFeed do dono: QR, lista de Canais (papel dono), imagem com legenda e texto chegaram, com negrito e link clicável; pela Ponte, a sessão voltou sozinha ao subir, o pedido sem assinatura foi recusado e o segundo post logo depois recebeu `429` com 1799 segundos de espera.
 
-Falta: o lado do Blup Cloud (tipo de canal `whatsapp`, aceite do risco, tela do QR, escolha do Canal, envio com o modo segurança, aviso de sessão caída, limpeza ao remover o canal ou apagar a conta) e o aviso na landing page.
+No servidor e no painel do Deals (05/11/2026):
+
+- Canais → Ligar um canal → **WhatsApp** (`/channels/new?kind=whatsapp`): o aviso dos riscos e a chave "Entendo os riscos e quero conectar" vêm antes do QR (`POST /api/deals/whatsapp/session` exige `acceptRisk: true`). O QR é a imagem da Ponte, consultada a cada 3 segundos enquanto espera. Conectado, lista só os Canais em que o número é dono ou administrador (`GET /api/deals/whatsapp/channels`); o nome do Canal vem do WhatsApp, nunca do pedido.
+- Uma conexão por conta (`deals_whatsapp`, migração `0035`, com o momento do aceite do risco); cada Canal é um `deals_channel` com `platform='whatsapp'` e `session_id`, o ID do Canal selado como os outros destinos.
+- Envio pela fila: 30 minutos entre posts de um Canal (`WHATSAPP_INTERVAL`); enquanto o WhatsApp não está conectado, os posts esperam (até os dois dias de validade), sem falhar. O "cedo demais" da Ponte (`429 TOO_SOON`) é uma vez, não uma falha: o post espera e a tentativa não conta. `403 NOT_ADMIN` desliga o Canal. O texto usa as marcas do WhatsApp (`*negrito*`, `~riscado~`, endereços como texto, que o WhatsApp torna clicáveis), e a imagem só vai se for JPEG ou PNG de até 5 MB, baixada pelo `safeImage` (a mesma proteção do `safeFetch`).
+- Avisos da Ponte em `POST /api/deals/whatsapp/callback`, fora da sessão, assinados com `DEALS_BRIDGE_CALLBACK_SECRET` e dentro de cinco minutos: desconectado pelo celular, suspenso, aberto em outro lugar ou versão velha marcam os Canais com `WHATSAPP_<ESTADO>`, e a lista de Canais mostra o motivo e "Reconectar WhatsApp". Um QR novo troca o nome da sessão na Ponte (a antiga é apagada lá) e mantém os mesmos Canais.
+- Desconectar (`DELETE /api/deals/whatsapp/session`) tira o Blup Deals dos aparelhos conectados e deixa os Canais esperando. Apagar a conta (`purgeDealsAccount`) desconecta na Ponte antes de apagar os dados.
+- Configuração: `DEALS_BRIDGE_URL` (https, ou `127.0.0.1` só para testes locais), `DEALS_BRIDGE_SECRET` e `DEALS_BRIDGE_CALLBACK_SECRET`, com 32 caracteres ou mais. Sem eles, a tela diz que o WhatsApp ainda não está disponível.
+- Testes: `worker/deals/whatsapp.test.ts` (12), com uma Ponte falsa que confere cada assinatura, e um exemplo fixo de assinatura igual nos testes do Go e do TypeScript.
+
+Falta: o teste de ponta a ponta pelo painel com o WhatsApp do dono, publicar a Ponte num servidor e o aviso de riscos na landing page.

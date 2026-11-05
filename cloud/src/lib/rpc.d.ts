@@ -8788,34 +8788,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: 503;
         };
     };
-}, "/telegram">, "/api/pulse"> | import("hono/types").MergeSchemaPath<(({
-    "/usage": {
-        $get: {
-            input: {};
-            output: {
-                plan: "ultra_deals" | "ultra_pulse_deals" | null;
-                limits: {
-                    readonly channels: 10;
-                    readonly hunts: 20;
-                    readonly mirrors: 10;
-                    readonly postsPerDay: 100;
-                    readonly historyDays: 90;
-                } | null;
-                readOnly: boolean;
-                readOnlyUntil: string | null;
-                used: {
-                    channels: number;
-                    hunts: number;
-                    mirrors: number;
-                    postsToday: number;
-                };
-                resetsAt: string;
-            };
-            outputFormat: "json";
-            status: import("hono/utils/http-status").ContentfulStatusCode;
-        };
-    };
-} | (import("hono/types").MergeSchemaPath<{
+}, "/telegram">, "/api/pulse"> | import("hono/types").MergeSchemaPath<(((import("hono/types").BlankSchema | import("hono/types").MergeSchemaPath<{
     "/webhook": {
         $post: {
             input: {
@@ -9045,7 +9018,46 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-}, "/telegram"> & {
+}, "/telegram"> | import("hono/types").MergeSchemaPath<{
+    "/callback": {
+        $post: {
+            input: {};
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {};
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 413;
+        } | {
+            input: {};
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 401;
+        } | {
+            input: {};
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {};
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/whatsapp">) & {
     "/usage": {
         $get: {
             input: {};
@@ -9072,7 +9084,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-})) & {
+}) & {
     "/ai": {
         $get: {
             input: {};
@@ -9092,7 +9104,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 channels: {
                     id: string;
-                    type: "discord" | "telegram";
+                    type: "discord" | "telegram" | "whatsapp";
                     label: string;
                     active: boolean;
                     lastError: string | null;
@@ -9674,6 +9686,201 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 }, "/telegram"> | import("hono/types").MergeSchemaPath<{
+    "/session": {
+        $get: {
+            input: {};
+            output: {
+                state: "banned" | "pairing" | "none" | "expired" | "disconnected" | "connected" | "logged_out" | "replaced" | "outdated";
+                phoneEnd: string | null;
+                qr: string | null;
+                qrExpiresAt: string | null;
+                ready: boolean;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/session": {
+        $post: {
+            input: {
+                json: {
+                    acceptRisk: true;
+                };
+            };
+            output: {
+                state: "banned" | "pairing" | "none" | "expired" | "disconnected" | "connected" | "logged_out" | "replaced" | "outdated";
+                phoneEnd: string | null;
+                qr: string | null;
+                qrExpiresAt: string | null;
+                ready: boolean;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                json: {
+                    acceptRisk: true;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    acceptRisk: true;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    acceptRisk: true;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        };
+    };
+} & {
+    "/session": {
+        $delete: {
+            input: {};
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {};
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/channels": {
+        $get: {
+            input: {};
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {};
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {};
+            output: {
+                channels: {
+                    id: string;
+                    name: string;
+                    role: "admin" | "owner";
+                    added: boolean;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/channels": {
+        $post: {
+            input: {
+                json: {
+                    channel: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    channel: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    channel: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                json: {
+                    channel: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                json: {
+                    channel: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                json: {
+                    channel: string;
+                };
+            };
+            output: {
+                id: string;
+            };
+            outputFormat: "json";
+            status: 200 | 201;
+        };
+    };
+}, "/whatsapp"> | import("hono/types").MergeSchemaPath<{
     "/": {
         $get: {
             input: {};
@@ -11238,7 +11445,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
                 socials: {
                     links: {
-                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "instagram" | "youtube" | "x" | "whatsapp";
+                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "threads" | "instagram" | "youtube" | "x" | "whatsapp";
                         url: string;
                     }[];
                     on: boolean;
@@ -11262,7 +11469,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     };
                     socials: {
                         links: {
-                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "instagram" | "youtube" | "x" | "whatsapp";
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "threads" | "instagram" | "youtube" | "x" | "whatsapp";
                             url: string;
                         }[];
                         on: boolean;
@@ -11293,7 +11500,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
                 socials: {
                     links: {
-                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "instagram" | "youtube" | "x" | "whatsapp";
+                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "threads" | "instagram" | "youtube" | "x" | "whatsapp";
                         url: string;
                     }[];
                     on: boolean;
@@ -11313,7 +11520,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     };
                     socials: {
                         links: {
-                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "instagram" | "youtube" | "x" | "whatsapp";
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "threads" | "instagram" | "youtube" | "x" | "whatsapp";
                             url: string;
                         }[];
                         on: boolean;
@@ -11345,7 +11552,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     };
                     socials: {
                         links: {
-                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "threads" | "telegram" | "instagram" | "youtube" | "x" | "whatsapp";
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "threads" | "instagram" | "youtube" | "x" | "whatsapp";
                             url: string;
                         }[];
                         on: boolean;

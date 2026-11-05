@@ -67,6 +67,15 @@ func TestSignatureRefusesTampering(t *testing.T) {
 	}
 }
 
+// O mesmo exemplo fixo do lado do Blup Cloud (worker/deals/whatsapp.test.ts):
+// os dois lados assinam igual.
+func TestSignatureVector(t *testing.T) {
+	got := signature([]byte(strings.Repeat("s", 40)), 1_800_000_000, strings.Repeat("0", 32), "POST", "/v1/sessions/abcdefgh/posts", []byte(`{"a":1}`))
+	if got != "d026d2376be2159559d677c68ec1776e3e5cd20a8c343d25082c9b0d3e9701b9" {
+		t.Fatal(got)
+	}
+}
+
 func TestConfigRefusesWeakSettings(t *testing.T) {
 	base := map[string]string{"BRIDGE_SECRET": string(secret)}
 	get := func(over map[string]string) func(string) string {

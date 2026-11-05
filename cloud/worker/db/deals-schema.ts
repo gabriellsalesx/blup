@@ -19,6 +19,9 @@ export const dealsChannel=sqliteTable("deals_channel",{
  // The language the channel's posts go out in (null: the account's); a
  // post in another language is translated by the AI.
  language:text("language"),
+ // A WhatsApp Canal: the account's WhatsApp connection (deals_whatsapp)
+ // that posts in it.
+ sessionId:text("session_id"),
 },t=>[index("deals_channel_owner_idx").on(t.userId,t.id),uniqueIndex("deals_channel_target_idx").on(t.userId,t.platform,t.target),index("deals_channel_retire_idx").on(t.retireAt),index("deals_channel_hash_idx").on(t.targetHash)]);
 
 // The account's ID or tag at each store (matt_word, tag...) and, for the
@@ -128,3 +131,14 @@ export const dealsSetting=sqliteTable("deals_setting",{
  headlines:text("headlines").notNull().default("{}"),extra:text("extra"),extraOn:integer("extra_on").notNull().default(0),
  socials:text("socials").notNull().default("[]"),socialsOn:integer("socials_on").notNull().default(0),style:text("style").notNull().default("classic"),aiTitles:integer("ai_titles").notNull().default(0),aiDescribe:integer("ai_describe").notNull().default(0),updatedAt:integer("updated_at").notNull().default(0),
 });
+
+// The account's WhatsApp, connected to the Bridge (cloud/bridge) by QR: id
+// is the session's name at the Bridge, which keeps the keys (only them).
+// state is the Bridge's (pairing, connected, logged_out, banned...),
+// phoneEnd the number's last four digits; the person accepted the risk of
+// the unofficial way at riskAcceptedAt. One per account; each of its
+// Canais is a deals_channel with this sessionId.
+export const dealsWhatsapp=sqliteTable("deals_whatsapp",{
+ id:text("id").primaryKey(),userId:text("user_id").notNull(),state:text("state").notNull().default("pairing"),phoneEnd:text("phone_end"),
+ riskAcceptedAt:integer("risk_accepted_at").notNull(),createdAt:integer("created_at").notNull(),updatedAt:integer("updated_at").notNull(),
+},t=>[uniqueIndex("deals_whatsapp_user_idx").on(t.userId)]);

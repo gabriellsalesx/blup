@@ -72,6 +72,7 @@
 		"DEALS_APP_URL": "https://deals.getblup.io",
 		"DEALS_PUBLIC_HOST": "deals.getblup.site",
 		"DEALS_TELEGRAM_BOT": "BlupDealsBot",
+		"DEALS_BRIDGE_URL": "",
 		"PULSE_INGEST_HOST": "ingest.getblup.io",
 		"PULSE_PUBLIC_HOST": "pulse.getblup.site"
 	},
@@ -136,6 +137,7 @@
 		"DEALS_APP_URL": "https://deals.getblup.io",
 		"DEALS_PUBLIC_HOST": "deals.getblup.site",
 		"DEALS_TELEGRAM_BOT": "BlupDealsBot",
+		"DEALS_BRIDGE_URL": "",
 		"PULSE_INGEST_HOST": "ingest.getblup.io",
 		"PULSE_PUBLIC_HOST": "pulse.getblup.site"
 			}

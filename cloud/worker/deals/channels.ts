@@ -4,35 +4,24 @@ import {validate,opaqueId} from "../validation";
 import {discordWebhook,sameSecret} from "../pulse/channel-crypto";
 import {publicKey,sha256} from "../pulse/limits";
 import {languageOf,type Language} from "../../shared/language";
-import {dealsLimits} from "../../shared/pulse-plans";
 import {postLanguages} from "../../shared/deals-post";
 import {dealsWrite,type DealsApp} from "./access";
 import {cleanLine} from "./page";
 import {dealsChatId,testText,sendTelegram,sendDiscord} from "./message";
-import {seal,unseal,targetHash,type ChannelType} from "./store";
+import {unseal,addChannel,channelTypes,targetHash} from "./store";
+import {sendWhatsapp} from "./bridge";
 
 const channelParam=z.object({channel:opaqueId});
 const linkParam=z.object({link:opaqueId});
 const LINK_TTL=15*60_000;
 const botReady=(env:Cloudflare.Env)=>!!env.DEALS_TELEGRAM_TOKEN&&!!env.DEALS_TELEGRAM_WEBHOOK_SECRET&&!!env.PULSE_CHANNEL_KEY;
 const botName=(env:Cloudflare.Env)=>/^[A-Za-z0-9_]{5,32}$/.test(env.DEALS_TELEGRAM_BOT??"")?env.DEALS_TELEGRAM_BOT:"BlupDealsBot";
-type Row={id:string;platform:string;name:string;active:number;lastError:string|null;createdAt:number;language:string|null};
-const view=(r:Row)=>({id:r.id,type:z.enum(["telegram","discord"]).parse(r.platform),label:r.name,active:!!r.active,lastError:r.lastError,language:languageOf(r.language),createdAt:new Date(r.createdAt).toISOString()});
-
-// Saves a channel (target sealed), unless the account already has it or
-// is at its limit. Returns the channel id, or null at the limit.
-async function addChannel(env:Cloudflare.Env,owner:string,type:ChannelType,target:string,label:string,now=Date.now()){
- const hash=await targetHash(type,target);
- const existing=await env.DB.prepare("SELECT id FROM deals_channel WHERE user_id=? AND target_hash=?").bind(owner,hash).first<{id:string}>();
- if(existing){await env.DB.prepare("UPDATE deals_channel SET active=1,last_error=NULL,name=? WHERE id=?").bind(label,existing.id).run();return {id:existing.id,created:false};}
- const id=crypto.randomUUID(),sealed=await seal(env,owner,id,type,target);
- const row=await env.DB.prepare("INSERT INTO deals_channel(id,user_id,platform,name,target,target_hash,created_at) SELECT ?,?,?,?,?,?,? WHERE (SELECT count(*) FROM deals_channel WHERE user_id=?)<? RETURNING id").bind(id,owner,type,label,sealed,hash,now,owner,dealsLimits.channels).first<{id:string}>();
- return row?{id:row.id,created:true}:null;
-}
+type Row={id:string;platform:string;name:string;active:number;lastError:string|null;createdAt:number;language:string|null;sessionId:string|null};
+const view=(r:Row)=>({id:r.id,type:z.enum(channelTypes).parse(r.platform),label:r.name,active:!!r.active,lastError:r.lastError,language:languageOf(r.language),createdAt:new Date(r.createdAt).toISOString()});
 
 export const channelsApi=new Hono<DealsApp>()
  .get("/",async c=>{
-  const rows=await c.env.DB.prepare("SELECT id,platform,name,active,last_error AS lastError,created_at AS createdAt,language FROM deals_channel WHERE user_id=? ORDER BY created_at,id LIMIT 50").bind(c.get("session").user.id).all<Row>();
+  const rows=await c.env.DB.prepare("SELECT id,platform,name,active,last_error AS lastError,created_at AS createdAt,language,session_id AS sessionId FROM deals_channel WHERE user_id=? ORDER BY created_at,id LIMIT 50").bind(c.get("session").user.id).all<Row>();
   return c.json({channels:rows.results.map(view)});
  })
  .post("/",dealsWrite,validate("json",z.object({type:z.literal("discord"),webhook:discordWebhook}).strict()),async c=>{
@@ -57,12 +46,14 @@ export const channelsApi=new Hono<DealsApp>()
  })
  .post("/:channel/test",dealsWrite,validate("param",channelParam),validate("json",z.object({}).strict()),async c=>{
   const owner=c.get("session").user.id,id=c.req.valid("param").channel;
-  const row=await c.env.DB.prepare("SELECT c.platform,c.target,u.language FROM deals_channel c JOIN user u ON u.id=c.user_id WHERE c.id=? AND c.user_id=?").bind(id,owner).first<{platform:string;target:string;language:string|null}>();
+  const row=await c.env.DB.prepare("SELECT c.platform,c.target,c.session_id AS sessionId,u.language FROM deals_channel c JOIN user u ON u.id=c.user_id WHERE c.id=? AND c.user_id=?").bind(id,owner).first<{platform:string;target:string;sessionId:string|null;language:string|null}>();
   if(!row)return c.json({code:"NOT_FOUND"},404);
-  const language:Language=languageOf(row.language)??"pt",type=row.platform==="telegram"?"telegram":"discord";
+  const language:Language=languageOf(row.language)??"pt",type=z.enum(channelTypes).parse(row.platform);
   let target:string;try{target=await unseal(c.env,owner,id,type,row.target);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
-  const result=type==="telegram"?await sendTelegram(c.env,target,testText(language),null):await sendDiscord(target,{username:"Blup Deals",allowed_mentions:{parse:[]},content:testText(language)});
-  await c.env.DB.prepare(`UPDATE deals_channel SET last_error=?${result.sent?",active=1":result.code==="DESTINATION_DISABLED"?",active=0":""} WHERE id=? AND user_id=?`).bind(result.sent?null:result.code,id,owner).run();
+  // On WhatsApp the test is a post like any other: it takes the Canal's
+  // 30-minute turn too.
+  const result=type==="telegram"?await sendTelegram(c.env,target,testText(language),null):type==="discord"?await sendDiscord(target,{username:"Blup Deals",allowed_mentions:{parse:[]},content:testText(language)}):row.sessionId?await sendWhatsapp(c.env,row.sessionId,target,`test:${id}:${Date.now()}`,testText(language),null):{sent:false,permanent:false,code:"WHATSAPP_DISCONNECTED",waitMs:0,global:false};
+  if(result.code!=="TOO_SOON")await c.env.DB.prepare(`UPDATE deals_channel SET last_error=?${result.sent?",active=1":result.code==="DESTINATION_DISABLED"?",active=0":""} WHERE id=? AND user_id=?`).bind(result.sent?null:result.code,id,owner).run();
   return c.json({ok:result.sent,code:result.code},202);
  });
 

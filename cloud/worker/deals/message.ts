@@ -78,6 +78,15 @@ export function discordPayload(p:Post,language:Language){
  return {username:"Blup Deals",allowed_mentions:{parse:[]},embeds:[{...(credit?{author:{name:credit.name,url:credit.url}}:{}),title:[...headTitle(p,title)].slice(0,250).join(""),url:p.link,color:0xc2410c,description,...(p.image?{image:{url:p.image}}:{})}]};
 }
 
+// WhatsApp (its own marks: *bold*, ~strike~; addresses go as they are,
+// WhatsApp makes them clickable). The person's text as typed.
+export function whatsappText(p:Post,language:Language){
+ const {title}=parts(p,language);
+ const link=(t:string,u:string)=>u.endsWith(t)?u:`${t}: ${u}`;
+ const lines=[`*${[...headTitle(p,title)].slice(0,300).join("").replace(/\*/g,"")}*`,...bodyLines(p,language,{esc:s=>s,link,strike:s=>`~${s}~`}),...((c=>c?[`${c.label}: ${c.url}`]:[])(creditOf(p)))];
+ return lines.join("\n").slice(0,4000);
+}
+
 export const dealsChatId=z.string().regex(/^-?[1-9][0-9]{0,15}$/).refine(v=>Number.isSafeInteger(Number(v)));
 const botToken=(env:Cloudflare.Env)=>/^[0-9]+:[A-Za-z0-9_-]{20,200}$/.test(env.DEALS_TELEGRAM_TOKEN??"")?env.DEALS_TELEGRAM_TOKEN:null;
 const telegramResult=z.discriminatedUnion("ok",[z.object({ok:z.literal(true),result:z.object({message_id:z.number().int().nonnegative()})}),z.object({ok:z.literal(false),error_code:z.number().int(),parameters:z.object({retry_after:z.number().int().nonnegative().optional()}).optional()})]);
