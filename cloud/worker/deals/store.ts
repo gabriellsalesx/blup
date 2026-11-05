@@ -7,7 +7,7 @@ import {dealsPaces,headlineKinds,socialIds,socialNetworks,socialURL,hasAddress,H
 
 export const DAY=86_400_000;
 export const dayOf=(now=Date.now())=>new Date(now).toISOString().slice(0,10);
-export const channelTypes=["telegram","discord","whatsapp"] as const;
+export const channelTypes=["telegram","discord","whatsapp","webhook"] as const;
 export type ChannelType=(typeof channelTypes)[number];
 // The shortest wait between two posts in the same channel.
 export const CHANNEL_INTERVAL=2*60_000;
@@ -20,12 +20,14 @@ export const unseal=(env:Cloudflare.Env,owner:string,id:string,type:string,value
 export const targetHash=(type:ChannelType,target:string)=>sha256(`deals:${type}:${target}`);
 
 // Saves a channel (target sealed), unless the account already has it or
-// is at its limit. Returns the channel id, or null at the limit. A
-// WhatsApp Canal also keeps the connection that posts in it (session).
-export async function addChannel(env:Cloudflare.Env,owner:string,type:ChannelType,target:string,label:string,now=Date.now(),session:string|null=null){
- const hash=await targetHash(type,target);
+// is at its limit (then it takes the new target: a webhook's new secret).
+// Returns the channel id, or null at the limit. A WhatsApp Canal also
+// keeps the connection that posts in it (session); same is what makes two
+// targets the same channel (a webhook's address, without its secret).
+export async function addChannel(env:Cloudflare.Env,owner:string,type:ChannelType,target:string,label:string,now=Date.now(),session:string|null=null,same=target){
+ const hash=await targetHash(type,same);
  const existing=await env.DB.prepare("SELECT id FROM deals_channel WHERE user_id=? AND target_hash=?").bind(owner,hash).first<{id:string}>();
- if(existing){await env.DB.prepare("UPDATE deals_channel SET active=1,last_error=NULL,name=?,session_id=coalesce(?,session_id) WHERE id=?").bind(label,session,existing.id).run();return {id:existing.id,created:false};}
+ if(existing){await env.DB.prepare("UPDATE deals_channel SET active=1,last_error=NULL,name=?,target=?,session_id=coalesce(?,session_id) WHERE id=?").bind(label,await seal(env,owner,existing.id,type,target),session,existing.id).run();return {id:existing.id,created:false};}
  const id=crypto.randomUUID(),sealed=await seal(env,owner,id,type,target);
  const row=await env.DB.prepare("INSERT INTO deals_channel(id,user_id,platform,name,target,target_hash,created_at,session_id) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM deals_channel WHERE user_id=?)<? RETURNING id").bind(id,owner,type,label,sealed,hash,now,session,owner,dealsLimits.channels).first<{id:string}>();
  return row?{id:row.id,created:true}:null;

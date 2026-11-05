@@ -46,16 +46,18 @@ export async function deliverSlack(target:string,message:AlertMessage):Promise<D
 // The person's own system: signed JSON to a public HTTPS address, checked
 // again before each request (no private networks, no redirects followed).
 // 2xx is delivered; 410 stops the destination; 429 waits; the rest retry.
-export async function deliverWebhook(target:string,message:AlertMessage,now=Date.now()):Promise<Delivery>{
+// Blup Deals posts to its webhooks the same way (agent says which).
+export async function postSigned(target:string,event:string,payload:object,agent:string,now=Date.now(),send:typeof fetch=fetch):Promise<Delivery>{
  let parsed:ReturnType<typeof webhookTarget.parse>;try{parsed=webhookTarget.parse(JSON.parse(target));}catch{return failure("INVALID_TARGET",0,true);}
  const signal=AbortSignal.timeout(10_000);
  try{
-  const url=monitorURL(parsed.url);await publicDNS(url.hostname,signal);
-  const body=JSON.stringify(webhookPayload(message,now));
-  const res=await fetch(url,{method:"POST",redirect:"manual",signal,headers:{"content-type":"application/json","user-agent":"BlupPulse/1.0 (+https://getblup.io)","x-blup-event":message.event,"x-blup-signature":await webhookSignature(parsed.secret,body,now)},body});await res.body?.cancel();
+  const url=monitorURL(parsed.url);await publicDNS(url.hostname,signal,send);
+  const body=JSON.stringify(payload);
+  const res=await send(url,{method:"POST",redirect:"manual",signal,headers:{"content-type":"application/json","user-agent":agent,"x-blup-event":event,"x-blup-signature":await webhookSignature(parsed.secret,body,now)},body});await res.body?.cancel();
   if(res.status===429)return failure("RATE_LIMIT",wait(res.headers.get("retry-after")));
   if(res.status===410)return failure("DESTINATION_DISABLED",0,true);
   return res.ok?success():failure("PROVIDER");
  }catch(e){return e instanceof Error&&e.message==="INVALID_TARGET"?failure("INVALID_TARGET",0,true):failure("PROVIDER");}
 }
+export const deliverWebhook=(target:string,message:AlertMessage,now=Date.now())=>postSigned(target,message.event,webhookPayload(message,now),"BlupPulse/1.0 (+https://getblup.io)",now);
 

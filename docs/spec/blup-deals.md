@@ -14,14 +14,15 @@ O contrato abaixo substitui as propostas iniciais de rotas F1 e incorpora o resu
 
 | Método e caminho relativo | Contrato F1 acordado |
 | --- | --- |
-| `GET /channels` | `{channels:[{id,type,label,active,lastError,createdAt}]}`, tipo `telegram/discord` |
-| `POST /channels` | `{type:"discord",webhook}`; valida o webhook como no Pulse; `201 {id,label}` se novo ou `200 {id,label}` se já salvo; acima de dez destinos, `409 QUOTA` |
+| `GET /channels` | `{channels:[{id,type,label,active,lastError,language,createdAt,testAgainAt}]}`, tipo `telegram/discord/whatsapp/webhook`; `testAgainAt` é quando pode receber exemplos de novo (`0`: já pode) |
+| `POST /channels` | `{type:"discord",webhook}` ou `{type:"webhook",url}`; valida como no Pulse (webhook próprio: HTTPS público, sem rede privada nem endereço do Blup); `201 {id,label,secret}` se novo ou `200` se já salvo; `secret` só existe no webhook próprio, aparece uma vez e o mesmo endereço de novo ganha outro; acima de dez destinos, `409 QUOTA` |
+| `POST /channels/:channel/secret` | `{}`; só webhook próprio: nova chave de assinatura, `200 {secret}`; a antiga para na hora |
 | `POST /telegram/link` | `{}`; `201 {id,url,expiresAt}` |
 | `GET /telegram/link/:link` | `{state,candidate,channelId}`; estado `pending/candidate/expired/confirmed`; candidato `{id,label}` ou `null`, `channelId` string ou `null` |
 | `POST /telegram/link/:link/confirm` | `{}`; `201 {id}` ou `200 {id}` se já confirmado; `409 LINK_EXPIRED` ou `409 QUOTA` quando aplicável |
 | `POST /telegram/webhook` | Update do bot Deals, fora da sessão; secret no header; candidato é o canal/grupo em que o bot foi adicionado como administrador, não o chat privado |
 | `DELETE /channels/:channel` | Remove o destino do dono |
-| `POST /channels/:channel/test` | `{}`; tentativa imediata de envio, fora da outbox; `202 {ok,code}`. `ok:false` é falha, mesmo com 202 |
+| `POST /channels/:channel/test` | `{kinds}`, de `test`, `game_free`, `nuuvem_deal`, `store_deal`, `product`; exemplos fixos (nunca uma oferta real nem de outra conta), no layout e textos da conta, marcados como exemplo; envio imediato, fora da outbox; uma rodada por minuto por canal (`429 TOO_SOON {testAgainAt}`); no WhatsApp um exemplo por vez, e a próxima rodada espera a vez de 30 minutos do Canal; `202 {ok,code,sent,testAgainAt}`. `ok:false` é falha, mesmo com 202 |
 | `GET /affiliates` | `{stores:[{store,configured,hint}]}`; `hint` é string ou `null`; lojas `amazon/mercadolivre/shopee/aliexpress` |
 | `PUT /affiliates/:store` | Body por loja: Amazon `{tag}`; Mercado Livre `{word,tool?}`; Shopee `{appId,secret}`; AliExpress `{appKey,appSecret,trackingId}`; `{ok:true}` |
 | `DELETE /affiliates/:store` | Remove a configuração da loja do dono |
@@ -320,14 +321,15 @@ Contagem significa acesso ao link, não pessoa única, compra ou comissão. O [r
 | `/sign-in` | Login comum com lado coral; retorno fixo permitido |
 | `/` | **Ofertas**, F1: fila e posts enviados/com falha, imagem, destino, horário, cliques e acesso a colar link |
 | `/hunts` | **Caçadas**: tipos de jogos, filtros/destinos, estado, pausa, edição e remoção |
-| `/channels` | **Canais**: destinos confirmados, tipo/estado, teste e remoção |
+| `/channels` | **Canais**: destinos confirmados, tipo/estado, idioma e remoção; o clique no card abre os detalhes |
+| `/channels/[channel]` | Detalhes do canal, como os avisos do Pulse: estado, exemplos para enviar (teste simples, jogo grátis, Nuuvem, AliExpress, link colado) com contagem até a próxima rodada; no webhook próprio, nova chave de assinatura e o JSON de exemplo; remoção |
 | `/affiliates` | **Afiliados**: IDs/chaves por loja, instruções, configuração/hint e remoção |
 | `/stats` | **Cliques**, F1: gráfico por dia e top de ofertas; períodos de 7, 30 ou 90 dias |
 | `/start` | Assistente inicial, com etapa/assunto retomáveis por query |
 | `/offers/new` | Colar link, conferir prévia, escolher destinos e enviar/agendar |
 | `/hunts/new` | Criar caçada de jogos, loja ou espelho, conforme a fase entregue |
 | `/hunts/[id]` | Editar filtros e destinos de uma caçada existente, preservando seu tipo |
-| `/channels/new` | Telegram pelo vínculo do bot como administrador; Discord por webhook do canal; sem OAuth Discord no contrato F1 |
+| `/channels/new` | Telegram pelo vínculo do bot como administrador; Discord por webhook do canal; WhatsApp por QR; webhook próprio (JSON assinado com `X-Blup-Signature`, como o Pulse; o segredo aparece uma vez); sem OAuth Discord no contrato F1 |
 
 São cinco abas. Formulários auxiliares não criam uma navegação paralela de cobrança ou uma aba exclusiva para espelhos. No início, mostrar estados vazios úteis, sem números de exemplo que pareçam dados reais. Recursos de fases futuras ficam identificados como ainda indisponíveis, sem aceitar configuração que nunca será executada.
 

@@ -9104,12 +9104,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 channels: {
                     id: string;
-                    type: "discord" | "telegram" | "whatsapp";
+                    type: "webhook" | "discord" | "telegram" | "whatsapp";
                     label: string;
                     active: boolean;
                     lastError: string | null;
                     language: "pt" | "en" | "es" | null;
                     createdAt: string;
+                    testAgainAt: number;
                 }[];
             };
             outputFormat: "json";
@@ -9123,6 +9124,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     type: "discord";
                     webhook: string;
+                } | {
+                    type: "webhook";
+                    url: string;
                 };
             };
             output: {
@@ -9139,6 +9143,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     type: "discord";
                     webhook: string;
+                } | {
+                    type: "webhook";
+                    url: string;
                 };
             };
             output: {
@@ -9152,6 +9159,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     type: "discord";
                     webhook: string;
+                } | {
+                    type: "webhook";
+                    url: string;
                 };
             };
             output: {
@@ -9164,6 +9174,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     type: "discord";
                     webhook: string;
+                } | {
+                    type: "webhook";
+                    url: string;
                 };
             };
             output: {
@@ -9176,14 +9189,123 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 json: {
                     type: "discord";
                     webhook: string;
+                } | {
+                    type: "webhook";
+                    url: string;
                 };
             };
             output: {
                 id: string;
                 label: string;
+                secret: string | null;
             };
             outputFormat: "json";
             status: 200 | 201;
+        };
+    };
+} & {
+    "/:channel/secret": {
+        $post: {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: Record<string, never>;
+            };
+            output: {
+                secret: string;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
 } & {
@@ -9351,7 +9473,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    kinds: ("product" | "test" | "game_free" | "nuuvem_deal" | "store_deal")[];
+                };
             };
             output: {
                 code: string;
@@ -9368,7 +9492,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    kinds: ("product" | "test" | "game_free" | "nuuvem_deal" | "store_deal")[];
+                };
             };
             output: {
                 code: string;
@@ -9382,7 +9508,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    kinds: ("product" | "test" | "game_free" | "nuuvem_deal" | "store_deal")[];
+                };
             };
             output: {
                 code: string;
@@ -9399,7 +9527,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    kinds: ("product" | "test" | "game_free" | "nuuvem_deal" | "store_deal")[];
+                };
             };
             output: {
                 code: string;
@@ -9413,7 +9543,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    kinds: ("product" | "test" | "game_free" | "nuuvem_deal" | "store_deal")[];
+                };
             };
             output: {
                 code: string;
@@ -9426,7 +9558,40 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    kinds: ("product" | "test" | "game_free" | "nuuvem_deal" | "store_deal")[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    kinds: ("product" | "test" | "game_free" | "nuuvem_deal" | "store_deal")[];
+                };
+            };
+            output: {
+                code: string;
+                testAgainAt: number;
+            };
+            outputFormat: "json";
+            status: 429;
+        } | {
+            input: {
+                param: {
+                    channel: string;
+                };
+            } & {
+                json: {
+                    kinds: ("product" | "test" | "game_free" | "nuuvem_deal" | "store_deal")[];
+                };
             };
             output: {
                 code: string;
@@ -9439,11 +9604,15 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     channel: string;
                 };
             } & {
-                json: Record<string, never>;
+                json: {
+                    kinds: ("product" | "test" | "game_free" | "nuuvem_deal" | "store_deal")[];
+                };
             };
             output: {
                 ok: boolean;
                 code: string | null;
+                sent: number;
+                testAgainAt: number;
             };
             outputFormat: "json";
             status: 202;
@@ -9690,7 +9859,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $get: {
             input: {};
             output: {
-                state: "banned" | "pairing" | "none" | "expired" | "disconnected" | "linking" | "connected" | "logged_out" | "replaced" | "outdated";
+                state: "banned" | "pairing" | "none" | "expired" | "disconnected" | "connected" | "linking" | "logged_out" | "replaced" | "outdated";
                 phoneEnd: string | null;
                 qr: string | null;
                 qrExpiresAt: string | null;
@@ -9710,7 +9879,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
-                state: "banned" | "pairing" | "none" | "expired" | "disconnected" | "linking" | "connected" | "logged_out" | "replaced" | "outdated";
+                state: "banned" | "pairing" | "none" | "expired" | "disconnected" | "connected" | "linking" | "logged_out" | "replaced" | "outdated";
                 phoneEnd: string | null;
                 qr: string | null;
                 qrExpiresAt: string | null;

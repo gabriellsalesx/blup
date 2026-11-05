@@ -13,6 +13,7 @@
  import BackLink from "#lib/ui/BackLink.svelte";
  import BrandIcon from "#lib/ui/BrandIcon.svelte";
  import ChannelIcon from "#lib/ui/ChannelIcon.svelte";
+ import CodeBlock from "#lib/ui/CodeBlock.svelte";
  import {dealsApi,parseResponse} from "../../../lib/api";
  import {dealsError} from "../../../lib/errors";
  import {refreshUsage} from "../../../lib/panel.svelte";
@@ -21,17 +22,25 @@
  // A new destination, as Pulse's alerts: paste a Discord channel's
  // webhook, link a Telegram channel or group through the Deals bot (the
  // bot is added there as an admin, then the channel is confirmed here), or
- // connect a WhatsApp by QR and pick its Canais (?kind=whatsapp opens it).
+ // connect a WhatsApp by QR and pick its Canais (?kind=whatsapp opens it),
+ // or give a webhook address of the person's own system (its signing
+ // secret is shown once, here).
  let {data}:PageProps=$props();
  const linkGET=dealsApi.telegram.link[":link"].$get;
  type LinkStatus=InferResponseType<typeof linkGET,200>;
  type Link=InferResponseType<typeof dealsApi.telegram.link.$post,201>;
- type Kind="telegram"|"discord"|"whatsapp";
- let kind=$state<Kind>(untrack(()=>data.kind)),webhook=$state(""),busy=$state(false),link=$state<Link|null>(null),linkStatus=$state<LinkStatus|null>(null);
- const kinds=$derived([{value:"telegram" as const,label:"Telegram",help:t("dealsTelegramHow")},{value:"discord" as const,label:"Discord",help:t("dealsDiscordHow")},{value:"whatsapp" as const,label:"WhatsApp",help:t("dealsWhatsappHow")}]);
+ type Kind="telegram"|"discord"|"whatsapp"|"webhook";
+ let kind=$state<Kind>(untrack(()=>data.kind)),webhook=$state(""),secret=$state<string|null>(null),busy=$state(false),link=$state<Link|null>(null),linkStatus=$state<LinkStatus|null>(null);
+ const kinds=$derived([{value:"telegram" as const,label:"Telegram",help:t("dealsTelegramHow")},{value:"discord" as const,label:"Discord",help:t("dealsDiscordHow")},{value:"whatsapp" as const,label:"WhatsApp",help:t("dealsWhatsappHow")},{value:"webhook" as const,label:"Webhook",help:t("dealsWebhookHow")}]);
+ // How the person's system checks a request came from Blup Deals (Node).
+ const verifySample=`// X-Blup-Signature: t=<seconds>,v1=<hex>
+const [t, v1] = header.split(",").map((p) => p.split("=")[1]);
+const mac = crypto.createHmac("sha256", process.env.DEALS_WEBHOOK_SECRET).update(\`\${t}.\${rawBody}\`).digest("hex");
+const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now() / 1000 - Number(t) < 300;`;
  const back=$derived(data.next??resolve("/channels"));
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}}
  async function done(){void refreshUsage();toast(()=>t("dealsLinked"));await goto(back);}
+ async function own(e:SubmitEvent){e.preventDefault();await run(async()=>{const made=await parseResponse(dealsApi.channels.$post({json:{type:"webhook",url:webhook.trim()}}));webhook="";secret=made.secret;void refreshUsage();toast(()=>t("dealsLinked"));});}
  async function discord(e:SubmitEvent){e.preventDefault();await run(async()=>{await parseResponse(dealsApi.channels.$post({json:{type:"discord",webhook:webhook.trim()}}));webhook="";await done();});}
  async function telegram(){await run(async()=>{link=await parseResponse(dealsApi.telegram.link.$post({json:{}}));linkStatus=null;startPolling(link);});}
  async function confirmChat(){const current=link;if(!current)return;await run(async()=>{await parseResponse(dealsApi.telegram.link[":link"].confirm.$post({param:{link:current.id},json:{}}));stopPolling();link=null;linkStatus=null;await done();});}
@@ -55,17 +64,32 @@
 <PageHeader title={t("dealsNewChannelTitle")} lead={t("dealsChannelsPrivacy")}/>
 
 <div class="mt-8"><Card title={t("dealsChooseKind")}>
- <div class="mt-5 grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label={t("dealsChooseKind")}>
+ <div class="mt-5 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label={t("dealsChooseKind")}>
   {#each kinds as option(option.value)}
-   <button type="button" role="radio" aria-checked={kind===option.value} class="flex items-center gap-4 rounded-xl border p-4 text-left transition-colors {kind===option.value?'border-blup bg-orange-50/60 dark:bg-orange-950/30':'border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700'}" onclick={()=>choose(option.value)}>
+   <button type="button" role="radio" aria-checked={kind===option.value} disabled={!!secret} class="flex items-center gap-4 rounded-xl border p-4 text-left transition-colors {kind===option.value?'border-blup bg-orange-50/60 dark:bg-orange-950/30':'border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700'}" onclick={()=>choose(option.value)}>
     <ChannelIcon type={option.value} class="size-8"/><span class="min-w-0"><span class="block font-semibold">{option.label}</span><span class="block text-sm text-neutral-500">{option.help}</span></span>
    </button>
   {/each}
  </div>
 
  <div class="mt-6 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-  {#if kind==="whatsapp"}
+  {#if secret}
+   <div class="grid grid-cols-[minmax(0,1fr)] gap-4">
+    <p class="font-semibold">{t("dealsWebhookReady")}</p>
+    <CodeBlock code={secret}/>
+    <p class="text-sm text-neutral-500">{t("dealsWebhookSecretOnce")}</p>
+    <p class="text-sm">{t("dealsWebhookVerify")}</p>
+    <CodeBlock code={verifySample}/>
+    <div class="flex justify-end"><Button onclick={()=>goto(back)}>{t("dealsDone")}</Button></div>
+   </div>
+  {:else if kind==="whatsapp"}
    <WhatsappConnect onadded={done}/>
+  {:else if kind==="webhook"}
+   <form class="grid grid-cols-[minmax(0,1fr)] gap-4" onsubmit={own}>
+    <p class="text-sm text-neutral-500">{t("dealsWebhookHelp")}</p>
+    <FloatField id="channel-webhook" surface="bg-white dark:bg-neutral-900" label={t("dealsWebhookURL")} type="url" autocomplete="off" maxlength={2048} required bind:value={webhook}/>
+    <div class="flex justify-end"><Button {busy} disabled={!hasPlan()}>{t("dealsAddWebhook")}</Button></div>
+   </form>
   {:else if kind==="discord"}
    <form class="grid grid-cols-[minmax(0,1fr)] gap-4" onsubmit={discord}>
     <p class="text-sm text-neutral-500">{t("dealsDiscordHelp")}</p>

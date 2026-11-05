@@ -1,0 +1,1 @@
+ALTER TABLE `deals_channel` ADD `test_at` integer DEFAULT 0 NOT NULL;

@@ -1,7 +1,7 @@
 import {Hono} from "hono";
 import {z} from "zod";
 import {validate,opaqueId} from "../validation";
-import {discordWebhook,slackWebhook,customWebhook,sealTarget,openTarget,webhookTarget,channelType} from "./channel-crypto";
+import {discordWebhook,slackWebhook,customWebhook,sealTarget,openTarget,webhookTarget,channelType,newSecret} from "./channel-crypto";
 import {pulseWrite,ownedProject,type PulseApp} from "./access";
 import {projectId} from "./limits";
 const channelParam=z.object({channel:opaqueId});
@@ -17,7 +17,6 @@ const testRequest=z.union([z.object({}).strict(),z.object({projectId,kinds:z.arr
 // One test per destination a minute; the dispatcher sends at each minute.
 export const TEST_SPACING_MS=60_000;
 const nextRound=(now:number)=>Math.floor(now/60_000)*60_000+60_000;
-const newSecret=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,"0")).join("");
 // A destination's new address, read by its own kind's rules.
 const addressOf={discord:discordWebhook,slack:slackWebhook,webhook:customWebhook} as const;
 type Stored={type:string;target:string};

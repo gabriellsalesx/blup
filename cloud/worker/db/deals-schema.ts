@@ -22,6 +22,9 @@ export const dealsChannel=sqliteTable("deals_channel",{
  // A WhatsApp Canal: the account's WhatsApp connection (deals_whatsapp)
  // that posts in it.
  sessionId:text("session_id"),
+ // When the panel may send examples to it again (one round a minute; on
+ // WhatsApp, the Canal's turn).
+ testAt:integer("test_at").notNull().default(0),
 },t=>[index("deals_channel_owner_idx").on(t.userId,t.id),uniqueIndex("deals_channel_target_idx").on(t.userId,t.platform,t.target),index("deals_channel_retire_idx").on(t.retireAt),index("deals_channel_hash_idx").on(t.targetHash)]);
 
 // The account's ID or tag at each store (matt_word, tag...) and, for the

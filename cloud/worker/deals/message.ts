@@ -1,7 +1,7 @@
 import {z} from "zod";
 import {languageTag,type Language} from "../../shared/language";
 import {currencyDigits} from "../../shared/deals-markets";
-import {success,failure,wait,json,type Delivery} from "../pulse/transports";
+import {success,failure,wait,json,postSigned,type Delivery} from "../pulse/transports";
 import {discordWebhook} from "../pulse/channel-crypto";
 
 // One post: the offer as the channel sees it. link is the short link;
@@ -9,12 +9,13 @@ import {discordWebhook} from "../pulse/channel-crypto";
 // title is the opening line already written; extra, the person's own text,
 // and socials, their networks, go under the link.
 // description and coupon are the person's own for this post; style, the
-// account's layout (classic, or emoji: a mark for each part).
-export type Post={title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;link:string;affiliate:boolean;kind:string;credit:string|null;watch?:string|null;extra?:string|null;socials?:readonly {name:string;url:string}[];description?:string|null;coupon?:string|null;style?:"classic"|"emoji"};
+// account's layout (classic, or emoji: a mark for each part). store goes to
+// webhooks; sample marks an example sent from the panel.
+export type Post={store?:string|null;sample?:boolean;title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;link:string;affiliate:boolean;kind:string;credit:string|null;watch?:string|null;extra?:string|null;socials?:readonly {name:string;url:string}[];description?:string|null;coupon?:string|null;style?:"classic"|"emoji"};
 const words={
- pt:{free:"Grátis",open:"Ver oferta",video:"Vídeo novo",watch:"Ver o vídeo",videoAd:"#publi",ad:"#publi · link de afiliado",off:"de desconto",value:"Valor",coupon:"Cupom",link:"Link",test:"Teste do Blup Deals: este canal está pronto para receber ofertas."},
- en:{free:"Free",open:"See the deal",video:"New video",watch:"Watch the video",videoAd:"#ad",ad:"#ad · affiliate link",off:"off",value:"Price",coupon:"Coupon",link:"Link",test:"Blup Deals test: this channel is ready to get deals."},
- es:{free:"Gratis",open:"Ver oferta",video:"Video nuevo",watch:"Ver el video",videoAd:"#publi",ad:"#publi · enlace de afiliado",off:"de descuento",value:"Precio",coupon:"Cupón",link:"Enlace",test:"Prueba de Blup Deals: este canal está listo para recibir ofertas."},
+ pt:{free:"Grátis",open:"Ver oferta",video:"Vídeo novo",watch:"Ver o vídeo",videoAd:"#publi",ad:"#publi · link de afiliado",off:"de desconto",value:"Valor",coupon:"Cupom",link:"Link",test:"Teste do Blup Deals: este canal está pronto para receber ofertas.",sample:"Exemplo do Blup Deals: é assim que as ofertas chegam aqui."},
+ en:{free:"Free",open:"See the deal",video:"New video",watch:"Watch the video",videoAd:"#ad",ad:"#ad · affiliate link",off:"off",value:"Price",coupon:"Coupon",link:"Link",test:"Blup Deals test: this channel is ready to get deals.",sample:"Blup Deals example: this is how deals arrive here."},
+ es:{free:"Gratis",open:"Ver oferta",video:"Video nuevo",watch:"Ver el video",videoAd:"#publi",ad:"#publi · enlace de afiliado",off:"de descuento",value:"Precio",coupon:"Cupón",link:"Enlace",test:"Prueba de Blup Deals: este canal está listo para recibir ofertas.",sample:"Ejemplo de Blup Deals: así llegan las ofertas aquí."},
 } as const;
 export const testText=(language:Language)=>words[language].test;
 // The source a post must credit, as an active link (GamerPower's terms ask
@@ -52,12 +53,12 @@ function parts(p:Post,language:Language){
 // person's text as typed; link; strike). Classic: description, price,
 // coupon, the link's words; emoji: each part on its own line with its mark
 // and the address itself, as the deal groups write. Then the person's
-// extra text and networks, and the notice.
+// extra text and networks, the notice and, on an example, that it is one.
 type Markup={esc:(s:string)=>string;link:(text:string,url:string)=>string;strike:(s:string)=>string};
 function bodyLines(p:Post,language:Language,m:Markup){
  const w=words[language],{open,ad}=parts(p,language),price=priceLine(p,language,m.strike);
  const desc=p.description?m.esc(p.description):null,coupon=p.coupon?m.esc(p.coupon):null;
- const tail=[...(p.extra?[m.esc(p.extra)]:[]),...(p.socials?.length?[p.socials.map(n=>m.link(m.esc(n.name),n.url)).join(" · ")]:[]),...(ad?[ad]:[])];
+ const tail=[...(p.extra?[m.esc(p.extra)]:[]),...(p.socials?.length?[p.socials.map(n=>m.link(m.esc(n.name),n.url)).join(" · ")]:[]),...(ad?[ad]:[]),...(p.sample?[w.sample]:[])];
  if(p.style!=="emoji")return [...(desc?[desc]:[]),...(price?[price]:[]),...(coupon?[`${w.coupon}: ${coupon}`]:[]),m.link(open,p.link),...tail];
  const lines=[...(desc?["",desc]:[]),"",...(price?[`💵 ${w.value}: ${price}`]:[]),...(coupon?[`🧾 ${w.coupon}: ${coupon}`]:[]),...(price||coupon?[""]:[]),`📌 ${p.kind==="video"?w.watch:w.link}: ${m.link(m.esc(p.link.replace(/^https:\/\//,"")),p.link)}`,...(tail.length?["",...tail]:[])];
  // No blank line twice or at the end (the first one parts it from the title).
@@ -85,6 +86,24 @@ export function whatsappText(p:Post,language:Language){
  const link=(t:string,u:string)=>u.endsWith(t)?u:`${t}: ${u}`;
  const lines=[`*${[...headTitle(p,title)].slice(0,300).join("").replace(/\*/g,"")}*`,...bodyLines(p,language,{esc:s=>s,link,strike:s=>`~${s}~`}),...((c=>c?[`${c.label}: ${c.url}`]:[])(creditOf(p)))];
  return lines.join("\n").slice(0,4000);
+}
+
+// Plain text, for webhooks: no marks, each address after its words.
+function plainText(p:Post,language:Language){
+ const {title}=parts(p,language);
+ return [[...headTitle(p,title)].slice(0,300).join(""),...bodyLines(p,language,{esc:s=>s,link:(t,u)=>u.endsWith(t)?u:`${t}: ${u}`,strike:s=>s}),...((c=>c?[`${c.label}: ${c.url}`]:[])(creditOf(p)))].join("\n").slice(0,4000);
+}
+// The person's own system: the post as data and as plain text (null: the
+// plain test message), signed like Pulse's webhooks (X-Blup-Signature).
+// event "deal" is an offer (test: true on an example); "test", the test.
+export function dealsWebhookPayload(p:Post|null,language:Language,sentAt:number){
+ return {version:1 as const,source:"blup-deals" as const,event:p?"deal" as const:"test" as const,test:!p||p.sample===true,language,text:p?plainText(p,language):testText(language),
+  deal:p?{title:parts(p,language).title,kind:p.kind,store:p.store??null,price:p.price,originalPrice:p.originalPrice,currency:p.currency,discount:p.discount,link:p.link,image:p.image,video:p.watch??null,description:p.description??null,coupon:p.coupon??null,affiliate:p.affiliate,credit:creditOf(p)?.name??null}:null,
+  sentAt:new Date(sentAt).toISOString()};
+}
+export function sendWebhook(target:string,p:Post|null,language:Language,send:typeof fetch=fetch,now=Date.now()){
+ const payload=dealsWebhookPayload(p,language,now);
+ return postSigned(target,payload.event,payload,"BlupDeals/1.0 (+https://getblup.io)",now,send);
 }
 
 export const dealsChatId=z.string().regex(/^-?[1-9][0-9]{0,15}$/).refine(v=>Number.isSafeInteger(Number(v)));

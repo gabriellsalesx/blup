@@ -1,9 +1,9 @@
 import {siteLock,unlockSite} from "../quota";
 import {languageOf} from "../../shared/language";
 import {dealsAccess} from "./access";
-import {telegramText,discordPayload,whatsappText,sendTelegram,sendDiscord,type Post} from "./message";
+import {telegramText,discordPayload,whatsappText,sendTelegram,sendDiscord,sendWebhook,type Post} from "./message";
 import {sendWhatsapp,WHATSAPP_INTERVAL} from "./bridge";
-import {unseal,settingsOf,headlineOf,socialLinks,CHANNEL_INTERVAL,DAY,dayOf,type ChannelType,type DealsSettings} from "./store";
+import {unseal,settingsOf,headlineOf,socialLinks,channelTypes,CHANNEL_INTERVAL,DAY,dayOf,type ChannelType,type DealsSettings} from "./store";
 import {headline,defaultHeadlines,headlineKinds,storeTitles,type HeadlineKind} from "../../shared/deals-post";
 import {translate,gameTitle} from "./ai";
 import type {Delivery} from "../pulse/transports";
@@ -21,6 +21,7 @@ export const shortLink=(env:Cloudflare.Env,code:string)=>`https://${env.DEALS_PU
 // key is the post's own: the WhatsApp Bridge publishes it only once.
 export async function deliverPost(env:Cloudflare.Env,type:ChannelType,target:string,post:Post,language:string|null,send:typeof fetch=fetch,whatsapp?:{session:string;key:string}):Promise<Delivery>{
  const lang=languageOf(language)??"pt";
+ if(type==="webhook")return sendWebhook(target,post,lang,send);
  if(type==="whatsapp")return whatsapp?sendWhatsapp(env,whatsapp.session,target,whatsapp.key,whatsappText(post,lang),post.image,send):{sent:false,permanent:false,code:"WHATSAPP_DISCONNECTED",waitMs:300_000,global:false};
  return type==="telegram"?sendTelegram(env,target,telegramText(post,lang),post.image,send,post.watch??null):sendDiscord(target,discordPayload(post,lang),send);
 }
@@ -31,8 +32,9 @@ const intervalOf=(type:ChannelType)=>type==="whatsapp"?WHATSAPP_INTERVAL:CHANNEL
 // uses, under other keys) so every run and every account shares it:
 // Telegram at most one message every 40 ms (25 per second, under the
 // about 30 per second Telegram allows a bot), Discord every 100 ms. A
-// global 429 pauses the whole platform for its Retry-After.
-export const DEALS_BUDGET={telegram:{key:"deals-telegram",spacing:40},discord:{key:"deals-discord",spacing:100},whatsapp:{key:"deals-whatsapp",spacing:200}} as const;
+// global 429 pauses the whole platform for its Retry-After. Webhooks go
+// to many systems, each its own: only a light spacing.
+export const DEALS_BUDGET={telegram:{key:"deals-telegram",spacing:40},discord:{key:"deals-discord",spacing:100},whatsapp:{key:"deals-whatsapp",spacing:200},webhook:{key:"deals-webhook",spacing:20}} as const;
 async function slot(db:D1Database,type:ChannelType,at:number){
  const {key,spacing}=DEALS_BUDGET[type];
  await db.prepare("INSERT OR IGNORE INTO pulse_delivery_budget(key,next_at) VALUES(?,0)").bind(key).run();
@@ -68,7 +70,7 @@ export async function dispatchDeals(env:Cloudflare.Env,send:typeof fetch=fetch,n
    // however far ahead it was scheduled; retries keep their own cap.
    if(item.day<dayOf(now-2*DAY)){await fail("EXPIRED");continue;}
    if(busy.has(item.channelId))continue;
-   const type:ChannelType=item.platform==="telegram"?"telegram":item.platform==="whatsapp"?"whatsapp":"discord";
+   const type:ChannelType=channelTypes.find(t=>t===item.platform)??"discord";
    // A Canal whose WhatsApp is not connected waits (until it reconnects,
    // or the two days run out).
    if(type==="whatsapp"&&item.whatsappState!=="connected")continue;
@@ -105,7 +107,7 @@ export async function dispatchDeals(env:Cloudflare.Env,send:typeof fetch=fetch,n
      const done=texts.length?await translations.get(key)!:null;
      if(done){let k=0;if(custom)title=done[k++];if(description)description=done[k++];if(extra)extra=done[k++];}
     }
-    result=await deliverPost(env,type,target,{title,extra,socials:socialLinks(own),style:own.style,description,coupon:item.coupon,image:item.image,price:item.priceShown?item.price:null,originalPrice:item.priceShown?item.originalPrice:null,currency:item.currency,discount:item.discount,link:shortLink(env,item.code),affiliate:!!item.affiliate,kind:item.kind,credit:item.credit,watch:item.kind==="video"?item.url:null},lang,send,item.sessionId?{session:item.sessionId,key:item.id}:undefined);
+    result=await deliverPost(env,type,target,{store:item.store,title,extra,socials:socialLinks(own),style:own.style,description,coupon:item.coupon,image:item.image,price:item.priceShown?item.price:null,originalPrice:item.priceShown?item.originalPrice:null,currency:item.currency,discount:item.discount,link:shortLink(env,item.code),affiliate:!!item.affiliate,kind:item.kind,credit:item.credit,watch:item.kind==="video"?item.url:null},lang,send,item.sessionId?{session:item.sessionId,key:item.id}:undefined);
    }catch{result={sent:false,permanent:false,code:"CHANNEL_UNAVAILABLE",waitMs:300_000,global:false};}
    if(result.sent){
     await env.DB.batch([

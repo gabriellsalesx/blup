@@ -1,34 +1,54 @@
 import {Hono} from "hono";
 import {z} from "zod";
 import {validate,opaqueId} from "../validation";
-import {discordWebhook,sameSecret} from "../pulse/channel-crypto";
+import {discordWebhook,customWebhook,webhookTarget,newSecret,sameSecret} from "../pulse/channel-crypto";
 import {publicKey,sha256} from "../pulse/limits";
 import {languageOf,type Language} from "../../shared/language";
 import {postLanguages} from "../../shared/deals-post";
 import {dealsWrite,type DealsApp} from "./access";
 import {cleanLine} from "./page";
-import {dealsChatId,testText,sendTelegram,sendDiscord} from "./message";
-import {unseal,addChannel,channelTypes,targetHash} from "./store";
-import {sendWhatsapp} from "./bridge";
+import {dealsChatId,testText,sendTelegram,sendDiscord,sendWebhook} from "./message";
+import {seal,unseal,addChannel,channelTypes,targetHash} from "./store";
+import {sendWhatsapp,WHATSAPP_INTERVAL} from "./bridge";
+import {deliverPost} from "./dispatch";
+import {samplePost,sampleKinds} from "./samples";
+import type {Delivery} from "../pulse/transports";
 
 const channelParam=z.object({channel:opaqueId});
 const linkParam=z.object({link:opaqueId});
 const LINK_TTL=15*60_000;
 const botReady=(env:Cloudflare.Env)=>!!env.DEALS_TELEGRAM_TOKEN&&!!env.DEALS_TELEGRAM_WEBHOOK_SECRET&&!!env.PULSE_CHANNEL_KEY;
 const botName=(env:Cloudflare.Env)=>/^[A-Za-z0-9_]{5,32}$/.test(env.DEALS_TELEGRAM_BOT??"")?env.DEALS_TELEGRAM_BOT:"BlupDealsBot";
-type Row={id:string;platform:string;name:string;active:number;lastError:string|null;createdAt:number;language:string|null;sessionId:string|null};
-const view=(r:Row)=>({id:r.id,type:z.enum(channelTypes).parse(r.platform),label:r.name,active:!!r.active,lastError:r.lastError,language:languageOf(r.language),createdAt:new Date(r.createdAt).toISOString()});
+// One round of examples a minute per channel.
+const TEST_GAP=60_000;
+type Row={id:string;platform:string;name:string;active:number;lastError:string|null;createdAt:number;language:string|null;sessionId:string|null;testAt:number};
+const view=(r:Row,now=Date.now())=>({id:r.id,type:z.enum(channelTypes).parse(r.platform),label:r.name,active:!!r.active,lastError:r.lastError,language:languageOf(r.language),createdAt:new Date(r.createdAt).toISOString(),testAgainAt:r.testAt>now?r.testAt:0});
 
 export const channelsApi=new Hono<DealsApp>()
  .get("/",async c=>{
-  const rows=await c.env.DB.prepare("SELECT id,platform,name,active,last_error AS lastError,created_at AS createdAt,language,session_id AS sessionId FROM deals_channel WHERE user_id=? ORDER BY created_at,id LIMIT 50").bind(c.get("session").user.id).all<Row>();
-  return c.json({channels:rows.results.map(view)});
+  const rows=await c.env.DB.prepare("SELECT id,platform,name,active,last_error AS lastError,created_at AS createdAt,language,session_id AS sessionId,test_at AS testAt FROM deals_channel WHERE user_id=? ORDER BY created_at,id LIMIT 50").bind(c.get("session").user.id).all<Row>();
+  return c.json({channels:rows.results.map(r=>view(r))});
  })
- .post("/",dealsWrite,validate("json",z.object({type:z.literal("discord"),webhook:discordWebhook}).strict()),async c=>{
-  const owner=c.get("session").user.id,hook=c.req.valid("json").webhook;
-  let saved:Awaited<ReturnType<typeof addChannel>>;try{saved=await addChannel(c.env,owner,"discord",hook.url,hook.label);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
+ // A Discord webhook, or a webhook of the person's own system: its
+ // signing secret is shown once, here (the same address again gets a new
+ // one).
+ .post("/",dealsWrite,validate("json",z.discriminatedUnion("type",[z.object({type:z.literal("discord"),webhook:discordWebhook}).strict(),z.object({type:z.literal("webhook"),url:customWebhook}).strict()])),async c=>{
+  const owner=c.get("session").user.id,input=c.req.valid("json");
+  const secret=input.type==="webhook"?newSecret():null;
+  const label=input.type==="webhook"?input.url.label:input.webhook.label;
+  let saved:Awaited<ReturnType<typeof addChannel>>;
+  try{saved=input.type==="webhook"?await addChannel(c.env,owner,"webhook",JSON.stringify({url:input.url.url,secret}),label,Date.now(),null,input.url.url):await addChannel(c.env,owner,"discord",input.webhook.url,label);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
   if(!saved)return c.json({code:"QUOTA"},409);
-  return c.json({id:saved.id,label:hook.label},saved.created?201:200);
+  return c.json({id:saved.id,label,secret},saved.created?201:200);
+ })
+ // A webhook's new signing secret, shown once; the old one stops at once.
+ .post("/:channel/secret",dealsWrite,validate("param",channelParam),validate("json",z.object({}).strict()),async c=>{
+  const owner=c.get("session").user.id,id=c.req.valid("param").channel;
+  const row=await c.env.DB.prepare("SELECT target FROM deals_channel WHERE id=? AND user_id=? AND platform='webhook'").bind(id,owner).first<{target:string}>();
+  if(!row)return c.json({code:"NOT_FOUND"},404);
+  const secret=newSecret();
+  try{const current=webhookTarget.parse(JSON.parse(await unseal(c.env,owner,id,"webhook",row.target)));await c.env.DB.prepare("UPDATE deals_channel SET target=? WHERE id=? AND user_id=?").bind(await seal(c.env,owner,id,"webhook",JSON.stringify({url:current.url,secret})),id,owner).run();}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
+  return c.json({secret});
  })
  // The language the channel's posts go out in (null: the account's).
  .patch("/:channel",dealsWrite,validate("param",channelParam),validate("json",z.object({language:z.enum(postLanguages).nullable()}).strict()),async c=>{
@@ -44,17 +64,33 @@ export const channelsApi=new Hono<DealsApp>()
   ]);
   return removed.results.length?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
  })
- .post("/:channel/test",dealsWrite,validate("param",channelParam),validate("json",z.object({}).strict()),async c=>{
-  const owner=c.get("session").user.id,id=c.req.valid("param").channel;
-  const row=await c.env.DB.prepare("SELECT c.platform,c.target,c.session_id AS sessionId,u.language FROM deals_channel c JOIN user u ON u.id=c.user_id WHERE c.id=? AND c.user_id=?").bind(id,owner).first<{platform:string;target:string;sessionId:string|null;language:string|null}>();
+ // Examples, right away: the plain test and posts of each kind (as they
+ // would really go out, marked as examples), one round a minute. On
+ // WhatsApp one at a time: each takes the Canal's 30-minute turn. The
+ // answer says whether all arrived (else why) and when it can go again.
+ .post("/:channel/test",dealsWrite,validate("param",channelParam),validate("json",z.object({kinds:z.array(z.enum(sampleKinds)).min(1).max(sampleKinds.length).refine(k=>new Set(k).size===k.length)}).strict()),async c=>{
+  const owner=c.get("session").user.id,id=c.req.valid("param").channel,kinds=c.req.valid("json").kinds,now=Date.now();
+  const row=await c.env.DB.prepare("SELECT c.platform,c.target,c.session_id AS sessionId,c.language AS channelLanguage,c.test_at AS testAt,u.language FROM deals_channel c JOIN user u ON u.id=c.user_id WHERE c.id=? AND c.user_id=?").bind(id,owner).first<{platform:string;target:string;sessionId:string|null;channelLanguage:string|null;testAt:number;language:string|null}>();
   if(!row)return c.json({code:"NOT_FOUND"},404);
-  const language:Language=languageOf(row.language)??"pt",type=z.enum(channelTypes).parse(row.platform);
+  const type=z.enum(channelTypes).parse(row.platform);
+  if(type==="whatsapp"&&kinds.length>1)return c.json({code:"BAD_REQUEST"},400);
+  // The round is taken atomically: two clicks never send twice.
+  if(!await c.env.DB.prepare("UPDATE deals_channel SET test_at=? WHERE id=? AND user_id=? AND test_at<=? RETURNING id").bind(now+TEST_GAP,id,owner,now).first())return c.json({code:"TOO_SOON",testAgainAt:row.testAt},429);
+  const account:Language=languageOf(row.language)??"pt",lang:Language=languageOf(row.channelLanguage)??account;
   let target:string;try{target=await unseal(c.env,owner,id,type,row.target);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
-  // On WhatsApp the test is a post like any other: it takes the Canal's
-  // 30-minute turn too.
-  const result=type==="telegram"?await sendTelegram(c.env,target,testText(language),null):type==="discord"?await sendDiscord(target,{username:"Blup Deals",allowed_mentions:{parse:[]},content:testText(language)}):row.sessionId?await sendWhatsapp(c.env,row.sessionId,target,`test:${id}:${Date.now()}`,testText(language),null):{sent:false,permanent:false,code:"WHATSAPP_DISCONNECTED",waitMs:0,global:false};
-  if(result.code!=="TOO_SOON")await c.env.DB.prepare(`UPDATE deals_channel SET last_error=?${result.sent?",active=1":result.code==="DESTINATION_DISABLED"?",active=0":""} WHERE id=? AND user_id=?`).bind(result.sent?null:result.code,id,owner).run();
-  return c.json({ok:result.sent,code:result.code},202);
+  let result:Delivery={sent:true,permanent:false,code:null,waitMs:0,global:false},sent=0;
+  for(const kind of kinds){
+   if(sent)await new Promise(r=>setTimeout(r,Math.min(1500,Math.max(300,result.waitMs))));
+   const key=`test:${id}:${now}:${kind}`,session=row.sessionId;
+   if(kind==="test")result=type==="telegram"?await sendTelegram(c.env,target,testText(lang),null):type==="discord"?await sendDiscord(target,{username:"Blup Deals",allowed_mentions:{parse:[]},content:testText(lang)}):type==="webhook"?await sendWebhook(target,null,lang):session?await sendWhatsapp(c.env,session,target,key,testText(lang),null):{sent:false,permanent:false,code:"WHATSAPP_DISCONNECTED",waitMs:0,global:false};
+   else result=await deliverPost(c.env,type,target,await samplePost(c.env.DB,owner,kind,lang,account),lang,fetch,session?{session,key}:undefined);
+   if(!result.sent)break;
+   sent++;
+  }
+  // WhatsApp's turn: after a post, 30 minutes; a "too soon", what is left.
+  const again=type!=="whatsapp"?now+TEST_GAP:result.code==="TOO_SOON"?now+Math.max(TEST_GAP,result.waitMs):result.sent?now+WHATSAPP_INTERVAL:now+TEST_GAP;
+  await c.env.DB.prepare(`UPDATE deals_channel SET test_at=?${result.code==="TOO_SOON"?"":`,last_error=?${result.sent?",active=1":result.code==="DESTINATION_DISABLED"?",active=0":""}`} WHERE id=? AND user_id=?`).bind(...(result.code==="TOO_SOON"?[again]:[again,result.sent?null:result.code]),id,owner).run();
+  return c.json({ok:result.sent,code:result.code,sent,testAgainAt:again},202);
  });
 
 // Linking Telegram: the panel opens the bot in private with a one-time

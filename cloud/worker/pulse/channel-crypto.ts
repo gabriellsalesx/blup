@@ -36,5 +36,7 @@ export const customWebhook=z.string().max(2048).transform((raw,ctx)=>{
 // What a generic webhook keeps sealed: its address and the secret its
 // requests are signed with.
 export const webhookTarget=z.object({url:z.url().max(2048),secret:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
+// A webhook's signing secret: 32 random bytes in hex.
+export const newSecret=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,"0")).join("");
 export const chatIdSchema=z.string().regex(/^[1-9][0-9]{0,15}$/).refine(v=>Number.isSafeInteger(Number(v)));
 export function sameSecret(a:string,b:string){const x=new TextEncoder().encode(a),y=new TextEncoder().encode(b);if(!x.length||x.length!==y.length)return false;let difference=0;for(let i=0;i<x.length;i++)difference|=x[i]^y[i];return difference===0;}

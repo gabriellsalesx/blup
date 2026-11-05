@@ -253,6 +253,13 @@
       "when": 1793874512462,
       "tag": "0035_deals_whatsapp",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1793907743145,
+      "tag": "0036_deals_channel_test",
+      "breakpoints": true
     }
   ]
 }
