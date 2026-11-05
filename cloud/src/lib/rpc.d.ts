@@ -10437,7 +10437,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: string;
             };
             outputFormat: "json";
-            status: 402 | 429 | 502 | 503;
+            status: 402 | 422 | 429 | 502 | 503;
         } | {
             input: {
                 json: {
@@ -10590,7 +10590,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: string;
             };
             outputFormat: "json";
-            status: 402 | 429 | 502 | 503;
+            status: 402 | 422 | 429 | 502 | 503;
         } | {
             input: {
                 json: {

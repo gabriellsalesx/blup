@@ -203,10 +203,12 @@ export async function chatModels(env: Cloudflare.Env): Promise<Map<string, ChatM
 // OpenRouter says it cost.
 export type AIText = { text: string; model: string } | { code: "NO_AI" | "AI_MONTH_LIMIT" | "AI_WEEK_LIMIT" | "UNAVAILABLE" | "UPSTREAM"; status: 402 | 429 | 502 | 503 };
 // json: the answer is a JSON object (OpenRouter's response_format).
-// Reasoning is off: these are short answers, and a model that reasons first
-// spends the max_tokens on it and answers nothing (the staff list only
-// models that can turn it off).
-export async function aiText(env: Cloudflare.Env, userId: string, feature: AIFeature, input: { system: string; user: string; maxTokens: number; json?: boolean; temperature?: number }): Promise<AIText> {
+// Reasoning is off by default: these are short answers, and a model that
+// reasons first spends the max_tokens on it and answers nothing (the staff
+// list only models that can turn it off). think: a little of it, for a
+// task the person waits for and that comes out poor without it (room for
+// it goes in maxTokens).
+export async function aiText(env: Cloudflare.Env, userId: string, feature: AIFeature, input: { system: string; user: string; maxTokens: number; json?: boolean; temperature?: number; think?: boolean }): Promise<AIText> {
 	if (!env.OPENROUTER_API_KEY) return { code: "UNAVAILABLE", status: 503 };
 	const models = await modelsFor(env.DB, feature), catalog = await chatModels(env);
 	// Without the catalog, a generous price per token (US$ 20 per million).
@@ -217,7 +219,7 @@ export async function aiText(env: Cloudflare.Env, userId: string, feature: AIFea
 	if (!admission.hold) return { code: admission.error.code as "NO_AI" | "AI_MONTH_LIMIT" | "AI_WEEK_LIMIT", status: 402 };
 	const hold = admission.hold;
 	try {
-		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(60_000), redirect: "manual", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://getblup.io", "X-Title": "Blup Cloud" }, body: JSON.stringify({ models, temperature: input.temperature ?? 0.7, max_tokens: input.maxTokens, usage: { include: true }, reasoning: { effort: "none" }, ...(input.json ? { response_format: { type: "json_object" } } : {}), messages: [{ role: "system", content: input.system }, { role: "user", content: input.user }] }) });
+		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(60_000), redirect: "manual", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://getblup.io", "X-Title": "Blup Cloud" }, body: JSON.stringify({ models, temperature: input.temperature ?? 0.7, max_tokens: input.maxTokens, usage: { include: true }, reasoning: { effort: input.think ? "low" : "none" }, ...(input.json ? { response_format: { type: "json_object" } } : {}), messages: [{ role: "system", content: input.system }, { role: "user", content: input.user }] }) });
 		const raw: unknown = await res.json().catch(() => null);
 		const cost = providerCost(raw, res.ok ? estimate : 0);
 		if (res.ok || usageSchema.safeParse(raw).success) await settle(env.DB, hold, [env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,?,?,?)").bind(userId, feature, input.maxTokens, cost)]);
