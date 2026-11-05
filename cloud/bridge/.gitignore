@@ -1,0 +1,3 @@
+# A pasta de dados guarda as sessões do WhatsApp: nunca vai para o Git.
+data/
+bridge

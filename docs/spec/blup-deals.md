@@ -664,3 +664,18 @@ Tudo pela cota de IA do plano ([deals/ai.ts](../../cloud/worker/deals/ai.ts)), c
 7. **Idioma do canal** (`deals_channel.language`, na lista de canais): os textos fixos saem no idioma do canal e a IA traduz a frase personalizada, a descrição e o texto extra, uma vez por post para todos os canais daquele idioma.
 
 Sem texto em tempo real (streaming): as respostas são curtas (uma frase, uma lista de buscas) e saem em 1 a 3 segundos; o botão mostra que está trabalhando. As outras funções rodam sozinhas, sem ninguém esperando.
+
+## Canal do WhatsApp pela Ponte (em construção, 05/11/2026)
+
+Decisão do dono: publicar no **Canal** do WhatsApp (newsletter), só Canal, nunca grupo, pelo caminho não oficial. A [API oficial da Meta](https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/onboarding-business-app-users/) marca Canais como "Not supported". O risco de suspensão do número é avisado na landing page e aceito pelo cliente ao conectar.
+
+A [Ponte](../../cloud/bridge/README.md) é um serviço Go próprio, em módulo separado (`cloud/bridge`), sobre a biblioteca [whatsmeow](https://github.com/tulir/whatsmeow) (MPL-2.0), a mesma que o WAHA usa por baixo; não usa o WAHA. Roda em qualquer servidor (binário estático ou Docker), com configuração só por variáveis de ambiente; numa VPS fica atrás de um Cloudflare Tunnel. Não acessa o D1: o Blup Cloud continua dono de tudo do negócio e fala com ela por pedidos assinados (HMAC com momento e nonce, nos dois sentidos). Ela guarda só as chaves das sessões, em SQLite (Postgres opcional).
+
+- Lista só os Canais em que a sessão é `owner` ou `admin`; grupos não existem para ela.
+- Modo segurança: no máximo um post a cada 30 minutos por Canal, conferido também na Ponte (`429 TOO_SOON`), mesmo que o Blup Cloud peça antes.
+- O post vai como imagem com legenda (ou texto). A imagem chega do Blup Cloud, que a baixa com o `safeFetch`; nada é salvo, e a Ponte não busca endereços de fora. Workers não cobra transferência de dados.
+- Uma chave por post: o pedido repetido não publica duas vezes.
+
+Teste real em 05/11/2026 com o Canal BuildFeed do dono: QR, lista de Canais (papel dono), imagem com legenda e texto chegaram, com negrito e link clicável; pela Ponte, a sessão voltou sozinha ao subir, o pedido sem assinatura foi recusado e o segundo post logo depois recebeu `429` com 1799 segundos de espera.
+
+Falta: o lado do Blup Cloud (tipo de canal `whatsapp`, aceite do risco, tela do QR, escolha do Canal, envio com o modo segurança, aviso de sessão caída, limpeza ao remover o canal ou apagar a conta) e o aviso na landing page.
