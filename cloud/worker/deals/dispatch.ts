@@ -22,8 +22,8 @@ export const shortLink=(env:Cloudflare.Env,code:string)=>`https://${env.DEALS_PU
 export async function deliverPost(env:Cloudflare.Env,type:ChannelType,target:string,post:Post,language:string|null,send:typeof fetch=fetch,whatsapp?:{session:string;key:string}):Promise<Delivery>{
  const lang=languageOf(language)??"pt";
  if(type==="webhook")return sendWebhook(target,post,lang,send);
- if(type==="whatsapp")return whatsapp?sendWhatsapp(env,whatsapp.session,target,whatsapp.key,whatsappText(post,lang),post.image,send):{sent:false,permanent:false,code:"WHATSAPP_DISCONNECTED",waitMs:300_000,global:false};
- return type==="telegram"?sendTelegram(env,target,telegramText(post,lang),post.image,send,post.watch??null):sendDiscord(target,discordPayload(post,lang),send);
+ if(type==="whatsapp")return whatsapp?sendWhatsapp(env,whatsapp.session,target,whatsapp.key,whatsappText(post,lang),post.image,send,post.photo??null):{sent:false,permanent:false,code:"WHATSAPP_DISCONNECTED",waitMs:300_000,global:false};
+ return type==="telegram"?sendTelegram(env,target,telegramText(post,lang),post.image,send,post.watch??null,post.photo??null):sendDiscord(target,discordPayload(post.photo?{...post,image:"attachment://exemplo.jpg"}:post,lang),send,post.photo??null);
 }
 // The shortest wait between two posts in a channel: on a WhatsApp Canal,
 // the safety mode's 30 minutes (the Bridge checks it again).

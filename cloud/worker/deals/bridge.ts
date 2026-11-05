@@ -38,11 +38,12 @@ export async function bridge(env:Cloudflare.Env,method:"GET"|"POST"|"DELETE",pat
 // A post to a Canal: the image (the store's, fetched here behind the same
 // guard as a pasted page; JPEG or PNG only, else the text alone) and the
 // caption go to the Bridge, which posts at most once per key (the post's
-// id) and once every 30 minutes per Canal.
-export async function sendWhatsapp(env:Cloudflare.Env,session:string,channel:string,key:string,text:string,image:string|null,send:typeof fetch=fetch):Promise<Delivery>{
+// id) and once every 30 minutes per Canal. A photo's own bytes (an
+// example's picture) go as they are.
+export async function sendWhatsapp(env:Cloudflare.Env,session:string,channel:string,key:string,text:string,image:string|null,send:typeof fetch=fetch,photo:Uint8Array|null=null):Promise<Delivery>{
  if(!bridgeReady(env))return failure("CHANNEL_UNAVAILABLE",300_000);
- let picture:string|null=null;
- if(image){
+ let picture:string|null=photo&&isJpegOrPng(photo)?base64(photo):null;
+ if(image&&!picture){
   const got=await safeImage(image,{send});
   if(got&&isJpegOrPng(got.bytes))picture=base64(got.bytes);
  }

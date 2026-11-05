@@ -8788,7 +8788,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: 503;
         };
     };
-}, "/telegram">, "/api/pulse"> | import("hono/types").MergeSchemaPath<(((import("hono/types").BlankSchema | import("hono/types").MergeSchemaPath<{
+}, "/telegram">, "/api/pulse"> | import("hono/types").MergeSchemaPath<((((import("hono/types").BlankSchema | import("hono/types").MergeSchemaPath<{
     "/webhook": {
         $post: {
             input: {
@@ -9058,6 +9058,30 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 }, "/whatsapp">) & {
+    "/samples/:name{[a-z-]{1,20}\\.jpg}": {
+        $get: {
+            input: {
+                param: {
+                    name: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    name: string;
+                };
+            };
+            output: Uint8Array<ArrayBuffer>;
+            outputFormat: "body";
+            status: 200;
+        };
+    };
+}) & {
     "/usage": {
         $get: {
             input: {};

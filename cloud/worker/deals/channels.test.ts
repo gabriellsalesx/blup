@@ -82,12 +82,21 @@ describe("webhooks",()=>{
 });
 
 describe("examples",()=>{
+ it("serves the pictures in public, and nothing else",async()=>{
+  const r=await dealsApi.fetch(new Request("https://cloud.audit.invalid/samples/store.jpg"),state.env);
+  expect(r.status).toBe(200);expect(r.headers.get("content-type")).toBe("image/jpeg");
+  expect(new Uint8Array(await r.arrayBuffer()).slice(0,2)).toEqual(new Uint8Array([0xff,0xd8]));
+  expect((await dealsApi.fetch(new Request("https://cloud.audit.invalid/samples/outra.jpg"),state.env)).status).toBe(404);
+ });
  it("sends the fixed examples, marked, in the account's layout, once a minute",async()=>{
   const {id}=await (await call("/channels",{method:"POST",body:{type:"discord",webhook:HOOK}})).json() as {id:string};
   const r=await call(`/channels/${id}/test`,{method:"POST",body:{kinds:["test","game_free","nuuvem_deal","store_deal","product"]}});expect(r.status).toBe(202);
   const out=await r.json() as {ok:boolean;sent:number;testAgainAt:number};
   expect(out).toMatchObject({ok:true,sent:5});expect(out.testAgainAt).toBeGreaterThan(Date.now()+50_000);
-  const bodies=await Promise.all(got.map(g=>g.json() as Promise<{content?:string;embeds?:{title:string;description:string}[]}>));
+  // The plain test is JSON; each example goes with its picture as a file.
+  type Body={content?:string;embeds?:{title:string;description:string;image?:{url:string}}[]};
+  const bodies=await Promise.all(got.map(async(g,i)=>{if(!i)return await g.json() as Body;const form=await g.formData(),file=form.get("files[0]") as File;expect(file.type).toBe("image/jpeg");expect(new Uint8Array(await file.arrayBuffer()).slice(0,2)).toEqual(new Uint8Array([0xff,0xd8]));return JSON.parse(String(form.get("payload_json"))) as Body;}));
+  for(const b of bodies.slice(1))expect(b.embeds?.[0].image?.url).toBe("attachment://exemplo.jpg");
   expect(bodies[0].content).toContain("Teste do Blup Deals");
   expect(bodies[1].embeds?.[0].title).toContain("Aventura Estelar");expect(bodies[1].embeds?.[0].description).toContain("Grátis");
   expect(bodies[2].embeds?.[0].title).toContain("Promoção na Nuuvem: Cidade Neon");

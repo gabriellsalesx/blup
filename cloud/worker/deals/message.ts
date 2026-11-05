@@ -10,8 +10,9 @@ import {discordWebhook} from "../pulse/channel-crypto";
 // and socials, their networks, go under the link.
 // description and coupon are the person's own for this post; style, the
 // account's layout (classic, or emoji: a mark for each part). store goes to
-// webhooks; sample marks an example sent from the panel.
-export type Post={store?:string|null;sample?:boolean;title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;link:string;affiliate:boolean;kind:string;credit:string|null;watch?:string|null;extra?:string|null;socials?:readonly {name:string;url:string}[];description?:string|null;coupon?:string|null;style?:"classic"|"emoji"};
+// webhooks; sample marks an example sent from the panel, and photo is its
+// picture's own bytes (a JPEG sent as a file, not fetched by address).
+export type Post={store?:string|null;sample?:boolean;photo?:Uint8Array|null;title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;link:string;affiliate:boolean;kind:string;credit:string|null;watch?:string|null;extra?:string|null;socials?:readonly {name:string;url:string}[];description?:string|null;coupon?:string|null;style?:"classic"|"emoji"};
 const words={
  pt:{free:"Grátis",open:"Ver oferta",video:"Vídeo novo",watch:"Ver o vídeo",videoAd:"#publi",ad:"#publi · link de afiliado",off:"de desconto",value:"Valor",coupon:"Cupom",link:"Link",test:"Teste do Blup Deals: este canal está pronto para receber ofertas.",sample:"Exemplo do Blup Deals: é assim que as ofertas chegam aqui."},
  en:{free:"Free",open:"See the deal",video:"New video",watch:"Watch the video",videoAd:"#ad",ad:"#ad · affiliate link",off:"off",value:"Price",coupon:"Coupon",link:"Link",test:"Blup Deals test: this channel is ready to get deals.",sample:"Blup Deals example: this is how deals arrive here."},
@@ -109,31 +110,36 @@ export function sendWebhook(target:string,p:Post|null,language:Language,send:typ
 export const dealsChatId=z.string().regex(/^-?[1-9][0-9]{0,15}$/).refine(v=>Number.isSafeInteger(Number(v)));
 const botToken=(env:Cloudflare.Env)=>/^[0-9]+:[A-Za-z0-9_-]{20,200}$/.test(env.DEALS_TELEGRAM_TOKEN??"")?env.DEALS_TELEGRAM_TOKEN:null;
 const telegramResult=z.discriminatedUnion("ok",[z.object({ok:z.literal(true),result:z.object({message_id:z.number().int().nonnegative()})}),z.object({ok:z.literal(false),error_code:z.number().int(),parameters:z.object({retry_after:z.number().int().nonnegative().optional()}).optional()})]);
-async function telegramCall(token:string,method:string,body:object,send:typeof fetch){
- const res=await send(`https://api.telegram.org/bot${token}/${method}`,{method:"POST",redirect:"manual",signal:AbortSignal.timeout(10_000),headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+async function telegramCall(token:string,method:string,body:object|FormData,send:typeof fetch){
+ const res=await send(`https://api.telegram.org/bot${token}/${method}`,{method:"POST",redirect:"manual",signal:AbortSignal.timeout(15_000),...(body instanceof FormData?{body}:{headers:{"content-type":"application/json"},body:JSON.stringify(body)})});
  return {res,result:telegramResult.safeParse(await json(res))};
 }
+// A picture's bytes as a form's file.
+function photoForm(fields:Record<string,string>,name:string,bytes:Uint8Array){const form=new FormData();for(const [k,v] of Object.entries(fields))form.append(k,v);form.append(name,new Blob([bytes],{type:"image/jpeg"}),"exemplo.jpg");return form;}
 // A photo with the caption; when Telegram refuses the photo (a store
 // image it cannot fetch), the text alone. A video goes as text with the
-// video's own preview above it (Telegram reads TikTok's page itself).
-export async function sendTelegram(env:Cloudflare.Env,target:string,text:string,image:string|null,send:typeof fetch=fetch,watch:string|null=null):Promise<Delivery>{
+// video's own preview above it (Telegram reads TikTok's page itself). A
+// photo's bytes go as a file.
+export async function sendTelegram(env:Cloudflare.Env,target:string,text:string,image:string|null,send:typeof fetch=fetch,watch:string|null=null,photo:Uint8Array|null=null):Promise<Delivery>{
  const chat=dealsChatId.safeParse(target);if(!chat.success)return failure("INVALID_TARGET",0,true);
  const token=botToken(env);if(!token)return failure("CHANNEL_UNAVAILABLE",300_000);
  try{
   const preview=watch?{url:watch,prefer_large_media:true,show_above_text:true}:{is_disabled:true};
-  let {res,result}=image?await telegramCall(token,"sendPhoto",{chat_id:chat.data,photo:image,caption:text,parse_mode:"HTML"},send):await telegramCall(token,"sendMessage",{chat_id:chat.data,text,parse_mode:"HTML",link_preview_options:preview},send);
-  if(image&&result.success&&!result.data.ok&&result.data.error_code===400)({res,result}=await telegramCall(token,"sendMessage",{chat_id:chat.data,text,parse_mode:"HTML",link_preview_options:{is_disabled:true}},send));
+  let {res,result}=photo?await telegramCall(token,"sendPhoto",photoForm({chat_id:chat.data,caption:text,parse_mode:"HTML"},"photo",photo),send):image?await telegramCall(token,"sendPhoto",{chat_id:chat.data,photo:image,caption:text,parse_mode:"HTML"},send):await telegramCall(token,"sendMessage",{chat_id:chat.data,text,parse_mode:"HTML",link_preview_options:preview},send);
+  if((photo||image)&&result.success&&!result.data.ok&&result.data.error_code===400)({res,result}=await telegramCall(token,"sendMessage",{chat_id:chat.data,text,parse_mode:"HTML",link_preview_options:{is_disabled:true}},send));
   if(!result.success)return failure("PROVIDER");if(result.data.ok)return res.ok?success(1000):failure("PROVIDER");
   if(result.data.error_code===429)return failure("RATE_LIMIT",wait(result.data.parameters?.retry_after??res.headers.get("retry-after")),false,true);
   if([400,403,404].includes(result.data.error_code))return failure("DESTINATION_DISABLED",0,true);
   return failure("PROVIDER");
  }catch{return failure("PROVIDER");}
 }
-export async function sendDiscord(target:string,payload:object,send:typeof fetch=fetch):Promise<Delivery>{
+// A photo's bytes go as the message's file, shown in the embed
+// (attachment://exemplo.jpg).
+export async function sendDiscord(target:string,payload:object,send:typeof fetch=fetch,photo:Uint8Array|null=null):Promise<Delivery>{
  const parsed=discordWebhook.safeParse(target);if(!parsed.success)return failure("INVALID_TARGET",0,true);
  const url=new URL(parsed.data.url);url.searchParams.set("wait","true");
  try{
-  const res=await send(url,{method:"POST",redirect:"manual",signal:AbortSignal.timeout(10_000),headers:{"content-type":"application/json"},body:JSON.stringify(payload)}),body=await json(res);
+  const res=await send(url,{method:"POST",redirect:"manual",signal:AbortSignal.timeout(15_000),...(photo?{body:photoForm({payload_json:JSON.stringify({...payload,attachments:[{id:0,filename:"exemplo.jpg"}]})},"files[0]",photo)}:{headers:{"content-type":"application/json"},body:JSON.stringify(payload)})}),body=await json(res);
   if(res.status===429){const p=z.object({retry_after:z.number().finite().min(0).optional(),global:z.boolean().optional()}).safeParse(body);return failure("RATE_LIMIT",wait(p.success?p.data.retry_after??res.headers.get("retry-after"):res.headers.get("retry-after")),false,p.success&&p.data.global===true);}
   if([401,403,404].includes(res.status))return failure("DESTINATION_DISABLED",0,true);
   if(!res.ok||!z.object({id:z.string().regex(/^[0-9]{1,22}$/)}).safeParse(body).success)return failure("PROVIDER");

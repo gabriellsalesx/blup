@@ -83,7 +83,7 @@ export const channelsApi=new Hono<DealsApp>()
    if(sent)await new Promise(r=>setTimeout(r,Math.min(1500,Math.max(300,result.waitMs))));
    const key=`test:${id}:${now}:${kind}`,session=row.sessionId;
    if(kind==="test")result=type==="telegram"?await sendTelegram(c.env,target,testText(lang),null):type==="discord"?await sendDiscord(target,{username:"Blup Deals",allowed_mentions:{parse:[]},content:testText(lang)}):type==="webhook"?await sendWebhook(target,null,lang):session?await sendWhatsapp(c.env,session,target,key,testText(lang),null):{sent:false,permanent:false,code:"WHATSAPP_DISCONNECTED",waitMs:0,global:false};
-   else result=await deliverPost(c.env,type,target,await samplePost(c.env.DB,owner,kind,lang,account),lang,fetch,session?{session,key}:undefined);
+   else result=await deliverPost(c.env,type,target,await samplePost(c.env.DB,owner,kind,lang,account,new URL(c.req.url).origin),lang,fetch,session?{session,key}:undefined);
    if(!result.sent)break;
    sent++;
   }
