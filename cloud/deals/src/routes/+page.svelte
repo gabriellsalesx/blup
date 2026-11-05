@@ -39,7 +39,8 @@
 </script>
 
 <PageHeader title={t("dealsOffers")} lead={t("dealsOffersLead")}>
- {#snippet aside()}{#if hasPlan()}<div class="flex flex-wrap gap-2">{#if !data.channels.length}<Button variant="secondary" onclick={()=>goto(resolve("/start"))}><Rocket class="size-4"/>{t("dealsStart")}</Button>{/if}<Button variant="secondary" onclick={()=>goto(resolve("/settings"))}><Settings2 class="size-4"/>{t("dealsSettings")}</Button><Button variant="secondary" onclick={()=>goto(resolve("/offers/video"))}><Clapperboard class="size-4"/>{t("dealsNewVideo")}</Button><Button onclick={()=>goto(resolve("/offers/new"))}><ClipboardPaste class="size-4"/>{t("dealsPasteLink")}</Button></div>{/if}{/snippet}
+ <!-- On a phone, one row: Paste link first, New video beside it, Settings as its icon at the end (the narrowest phones drop the other icons). -->
+ {#snippet aside()}{#if hasPlan()}<div class="flex flex-wrap gap-2">{#if !data.channels.length}<Button variant="secondary" class="max-sm:order-first max-sm:basis-full" onclick={()=>goto(resolve("/start"))}><Rocket class="size-4"/>{t("dealsStart")}</Button>{/if}<Button variant="secondary" class="max-sm:order-last max-sm:px-3" title={t("dealsSettings")} onclick={()=>goto(resolve("/settings"))}><Settings2 class="size-4"/><span class="max-sm:sr-only">{t("dealsSettings")}</span></Button><Button variant="secondary" class="whitespace-nowrap max-sm:flex-1 max-sm:px-3" onclick={()=>goto(resolve("/offers/video"))}><Clapperboard class="size-4 max-[359px]:hidden"/>{t("dealsNewVideo")}</Button><Button class="whitespace-nowrap max-sm:order-first max-sm:flex-1 max-sm:px-3" onclick={()=>goto(resolve("/offers/new"))}><ClipboardPaste class="size-4 max-[359px]:hidden"/>{t("dealsPasteLink")}</Button></div>{/if}{/snippet}
 </PageHeader>
 
 <div class="mt-6"><Usage kind="posts"/></div>
