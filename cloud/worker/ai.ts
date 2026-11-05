@@ -179,8 +179,10 @@ export async function modelsFor(db: D1Database, feature: AIFeature): Promise<str
 // OpenRouter's text models and their prices (US$ per token), read at most
 // every 6 hours per isolate, to hold enough of the allowance before a
 // request (the dearest of the list) and to show the staff what each costs.
-const chatCatalog = z.object({ data: z.array(z.object({ id: z.string().min(1).max(200), name: z.string().max(200).optional(), pricing: z.object({ prompt: z.string().max(32), completion: z.string().max(32) }) })).max(10000) });
-export type ChatModel = { id: string; name: string; prompt: number; completion: number };
+// thinks: the model always reasons before answering (OpenRouter's
+// reasoning.mandatory) and refuses reasoning turned off.
+const chatCatalog = z.object({ data: z.array(z.object({ id: z.string().min(1).max(200), name: z.string().max(200).optional(), pricing: z.object({ prompt: z.string().max(32), completion: z.string().max(32) }), reasoning: z.object({ mandatory: z.boolean().optional() }).nullish().catch(null) })).max(10000) });
+export type ChatModel = { id: string; name: string; prompt: number; completion: number; thinks: boolean };
 let chatCache: { at: number; models: Map<string, ChatModel> } | null = null;
 export async function chatModels(env: Cloudflare.Env): Promise<Map<string, ChatModel>> {
 	if (chatCache && Date.now() - chatCache.at < 6 * 3600 * 1000) return chatCache.models;
@@ -189,7 +191,7 @@ export async function chatModels(env: Cloudflare.Env): Promise<Map<string, ChatM
 		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/models`, { signal: AbortSignal.timeout(15_000) });
 		if (res.ok) for (const m of chatCatalog.parse(await res.json()).data) {
 			const prompt = Number(m.pricing.prompt), completion = Number(m.pricing.completion);
-			if (Number.isFinite(prompt) && Number.isFinite(completion) && prompt >= 0 && completion >= 0) models.set(m.id, { id: m.id, name: m.name ?? m.id, prompt, completion });
+			if (Number.isFinite(prompt) && Number.isFinite(completion) && prompt >= 0 && completion >= 0) models.set(m.id, { id: m.id, name: m.name ?? m.id, prompt, completion, thinks: m.reasoning?.mandatory === true });
 		}
 	} catch {}
 	if (models.size) chatCache = { at: Date.now(), models };
@@ -201,6 +203,9 @@ export async function chatModels(env: Cloudflare.Env): Promise<Map<string, ChatM
 // OpenRouter says it cost.
 export type AIText = { text: string; model: string } | { code: "NO_AI" | "AI_MONTH_LIMIT" | "AI_WEEK_LIMIT" | "UNAVAILABLE" | "UPSTREAM"; status: 402 | 429 | 502 | 503 };
 // json: the answer is a JSON object (OpenRouter's response_format).
+// Reasoning is off: these are short answers, and a model that reasons first
+// spends the max_tokens on it and answers nothing (the staff list only
+// models that can turn it off).
 export async function aiText(env: Cloudflare.Env, userId: string, feature: AIFeature, input: { system: string; user: string; maxTokens: number; json?: boolean; temperature?: number }): Promise<AIText> {
 	if (!env.OPENROUTER_API_KEY) return { code: "UNAVAILABLE", status: 503 };
 	const models = await modelsFor(env.DB, feature), catalog = await chatModels(env);
@@ -212,7 +217,7 @@ export async function aiText(env: Cloudflare.Env, userId: string, feature: AIFea
 	if (!admission.hold) return { code: admission.error.code as "NO_AI" | "AI_MONTH_LIMIT" | "AI_WEEK_LIMIT", status: 402 };
 	const hold = admission.hold;
 	try {
-		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(60_000), redirect: "manual", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://getblup.io", "X-Title": "Blup Cloud" }, body: JSON.stringify({ models, temperature: input.temperature ?? 0.7, max_tokens: input.maxTokens, usage: { include: true }, ...(input.json ? { response_format: { type: "json_object" } } : {}), messages: [{ role: "system", content: input.system }, { role: "user", content: input.user }] }) });
+		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(60_000), redirect: "manual", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://getblup.io", "X-Title": "Blup Cloud" }, body: JSON.stringify({ models, temperature: input.temperature ?? 0.7, max_tokens: input.maxTokens, usage: { include: true }, reasoning: { effort: "none" }, ...(input.json ? { response_format: { type: "json_object" } } : {}), messages: [{ role: "system", content: input.system }, { role: "user", content: input.user }] }) });
 		const raw: unknown = await res.json().catch(() => null);
 		const cost = providerCost(raw, res.ok ? estimate : 0);
 		if (res.ok || usageSchema.safeParse(raw).success) await settle(env.DB, hold, [env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,?,?,?)").bind(userId, feature, input.maxTokens, cost)]);

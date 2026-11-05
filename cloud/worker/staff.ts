@@ -258,6 +258,9 @@ export const staffApi = new Hono<App>()
 		const { feature } = c.req.valid("param"), { models } = c.req.valid("json"), catalog = await chatModels(c.env);
 		const unknown = catalog.size ? models.filter((m) => !catalog.has(m)) : [];
 		if (unknown.length) return c.json({ code: "UNKNOWN_MODEL", models: unknown }, 400);
+		// Each feature runs with reasoning off, which these models refuse.
+		const thinking = models.filter((m) => catalog.get(m)?.thinks);
+		if (thinking.length) return c.json({ code: "REASONING_MODEL", models: thinking }, 400);
 		await c.env.DB.prepare("INSERT INTO ai_model_setting(feature,models,updated_by,updated_at) VALUES(?,?,?,?) ON CONFLICT(feature) DO UPDATE SET models=excluded.models,updated_by=excluded.updated_by,updated_at=excluded.updated_at").bind(feature, JSON.stringify(models), c.get("staff").email, Date.now()).run();
 		await log(c.get("staff").email, "ai.models", null, `${feature}: ${models.join(", ")}`);
 		return c.json({ ok: true });

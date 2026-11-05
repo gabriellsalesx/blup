@@ -52,7 +52,7 @@
 			lists[feature] = ai.features.find((f) => f.feature === feature)?.models.map((m) => m.id) ?? models;
 			toast("Modelos salvos");
 		} catch (e) {
-			toast(e instanceof StaffError && e.code === "UNKNOWN_MODEL" ? "Algum modelo não existe no OpenRouter. Confira o ID." : "Não deu certo.", { kind: "error" });
+			toast(e instanceof StaffError && e.code === "UNKNOWN_MODEL" ? "Algum modelo não existe no OpenRouter. Confira o ID." : e instanceof StaffError && e.code === "REASONING_MODEL" ? "Algum modelo sempre raciocina antes de responder e não serve aqui. Escolha outro." : "Não deu certo.", { kind: "error" });
 		} finally { busy = null; }
 	}
 	const saved = (feature: string) => ai?.features.find((f) => f.feature === feature);

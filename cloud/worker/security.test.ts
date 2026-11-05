@@ -270,7 +270,9 @@ describe("atomic resource admission and publish regressions",()=>{
 		}));
 		const out=await aiText(state.env,"alice","deals_describe",{system:"s",user:"u",maxTokens:160});
 		expect(out).toEqual({text:"Bom para o dia a dia.",model:"google/gemini-4-flash"});
-		expect((calls.find(c=>c.url.endsWith("/chat/completions"))?.body as {models:string[]}).models).toEqual(["deepseek/deepseek-v4.1-flash","google/gemini-4-flash"]);
+		const sent=calls.find(c=>c.url.endsWith("/chat/completions"))?.body as {models:string[];reasoning:unknown};
+		expect(sent.models).toEqual(["deepseek/deepseek-v4.1-flash","google/gemini-4-flash"]);
+		expect(sent.reasoning).toEqual({effort:"none"});
 		expect(d1.sqlite.prepare("SELECT kind,cost_micros AS cost FROM ai_usage").get()).toEqual({kind:"deals_describe",cost:40});
 		expect(await aiText(state.env,"free","deals_describe",{system:"s",user:"u",maxTokens:160})).toEqual({code:"NO_AI",status:402});
 	});
