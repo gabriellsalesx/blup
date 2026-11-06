@@ -67,7 +67,7 @@ Cada plataforma marcada como testada em [pulse-platforms.ts](../../cloud/shared/
 
 Notas: no SDK 11 o `withSentryConfig` do Next fica em `@sentry/nextjs/config` e o plugin do SvelteKit em `@sentry/sveltekit/vite`; o SvelteKit 3 recebe a configuração pelo plugin `sveltekit({...})` e lê variáveis públicas declaradas em `src/env.js` (`$app/env/public`). Nos builds de produção os nomes das funções saem minificados (os source maps os recuperam). Faltam as plataformas de outras linguagens, o celular e o Electron.
 
-**Agrupamento (a decidir):** o grupo usa arquivo, função e **linha** dos quadros do app. O Sentry ignora a linha quando a função tem nome; aqui, uma nova versão que mude o código de linha cria um problema novo para o mesmo erro. No Nuxt o mesmo erro de rota virou dois problemas, porque os quadros internos do Nitro (empacotados no app e marcados como do app) mudam entre a primeira chamada e as seguintes.
+**Agrupamento (versão 2, decidida pelo dono em 05/11/2026):** o grupo usa o tipo do erro e os **dois quadros do app mais perto do erro** (onde foi lançado e quem chamou). Quadro com nome conta por arquivo e função, sem a linha (uma versão que move o código mantém o problema); quadro anônimo conta pela linha de código enviada pelo SDK (ou o número dela). Os quadros mais distantes, muitas vezes do próprio framework e variáveis entre chamadas, não dividem o problema: o erro de rota do Nuxt, que antes virava dois problemas, agora fica num só. Ao entrar, os grupos antigos (versão 1) não se juntam aos novos. Regra em [event.ts](../../cloud/worker/pulse/event.ts) (`groupFrames`).
 
 ### Fase 2: monitores, páginas e incidentes
 

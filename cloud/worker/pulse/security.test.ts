@@ -63,6 +63,14 @@ describe("Pulse protocol and privacy",()=>{
   expect((await safeEvent(raw(undefined,"first failure"),"b".repeat(32))).group).not.toBe((await safeEvent(raw(undefined,"different failure"),"c".repeat(32))).group);
   const withLine=(line:number)=>({...raw(),exception:{values:[{type:"Error",value:"failure",stacktrace:{frames:[{filename:"app.js",function:"?",lineno:line,in_app:true}]}}]}});
   expect((await safeEvent(withLine(1),"b".repeat(32))).group).not.toBe((await safeEvent(withLine(2),"c".repeat(32))).group);
+  // Named frames group by file and function: a release that moves the code
+  // keeps the issue, and frames further out (a framework's own, which vary
+  // between calls) do not split it; another caller does.
+  const stack=(frames:{filename:string;function:string;lineno:number}[])=>({...raw(),exception:{values:[{type:"Error",value:"failure",stacktrace:{frames:frames.map(f=>({...f,in_app:true}))}}]}});
+  const group=async(frames:{filename:string;function:string;lineno:number}[])=>(await safeEvent(stack(frames),"d".repeat(32))).group;
+  const thrower={filename:"boom.mjs",function:"rota",lineno:18},caller={filename:"boom.mjs",function:"Object.handler",lineno:20};
+  expect(await group([{filename:"nitro.mjs",function:"Object.handler",lineno:1935},caller,thrower])).toBe(await group([{filename:"nitro.mjs",function:"?",lineno:1617},caller,{...thrower,lineno:42}]));
+  expect(await group([caller,thrower])).not.toBe(await group([{filename:"other.mjs",function:"checkout",lineno:3},thrower]));
  });
 });
 describe("Pulse atomic admission and retention",()=>{

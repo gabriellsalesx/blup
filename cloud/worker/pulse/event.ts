@@ -54,6 +54,19 @@ function breadcrumbsOf(raw:Record<string,unknown>){
   return [{at:Number.isFinite(at)?at:null,type:cleanText(c.data.type??"default",32),category:cleanText(c.data.category??"",64),level:cleanText(c.data.level??"info",16),message}];});
  return values.length?values:undefined;
 }
+// How a stack groups (version 2, close to Sentry's): the two app frames
+// nearest the error, where it was thrown and its caller (all frames' when
+// none is the app's). A named frame counts by file and function, never the
+// line, so a release that moves the code keeps the issue; an anonymous one
+// by its source line (or the line number when the SDK sends no code). The
+// frames further out, often a framework's own bundled code that varies
+// between calls, do not split an issue.
+type GroupFrame={filename:string;function:string;line:number|null;inApp:boolean;context?:{line:string}};
+const namedFrame=(f:GroupFrame)=>!!f.function&&!/^(?:\?|<anonymous>|anonymous|Object\.\?)$/.test(f.function);
+function groupFrames(frames:GroupFrame[]){
+ const app=frames.filter(f=>f.inApp);
+ return (app.length?app:frames).slice(-2).map(f=>namedFrame(f)?[f.filename,f.function]:[f.filename,f.context?.line??f.line]);
+}
 export async function safeEvent(raw:Record<string,unknown>,id:string):Promise<SafeEvent>{
  const parsed=schema.safeParse(raw);if(!parsed.success)throw new IngestError(400,"EVENT");const value=parsed.data;
  const exceptions=value.exception?.values.map(e=>({type:cleanText(e.type??"Error",128),value:cleanText(e.value??"",1024),frames:e.stacktrace?.frames.slice(-50).map(f=>{const code=codeOf(f);return {filename:cleanText((f.filename??f.abs_path??"").split(/[\\/]/).pop()?.split(/[?#]/)[0]??"",160),function:cleanText(f.function??"",128),module:cleanText(f.module??"",128),line:f.lineno??null,column:f.colno??null,inApp:f.in_app??false,...(code?{context:code}:{})};})??[]}))??[];
@@ -62,7 +75,7 @@ export async function safeEvent(raw:Record<string,unknown>,id:string):Promise<Sa
  const context=contextOf(raw),breadcrumbs=breadcrumbsOf(raw);
  const message=typeof value.message==="string"?value.message:value.message?.formatted??value.message?.message??value.logentry?.formatted??value.logentry?.message??"";
  const title=cleanText(exceptions.at(-1)?.value||message||exceptions.at(-1)?.type||"Error",256);
- const base=JSON.stringify([1,cleanText(value.platform??"other",80),exceptions.map(e=>[e.type,e.frames.filter(f=>f.inApp).length?e.frames.filter(f=>f.inApp).map(f=>[f.filename,f.function,f.line]):e.frames.slice(-5).map(f=>[f.filename,f.function,f.line])]),exceptions.some(e=>e.frames.length)?"":title.replace(/\b(?:\d+|[a-f0-9]{8,})\b/gi,"#")]);
+ const base=JSON.stringify([2,cleanText(value.platform??"other",80),exceptions.map(e=>[e.type,groupFrames(e.frames)]),exceptions.some(e=>e.frames.length)?"":title.replace(/\b(?:\d+|[a-f0-9]{8,})\b/gi,"#")]);
  const identity=value.fingerprint?.map(s=>s==="{{ default }}"?base:cleanText(s))??[base];
  return {id,group:await sha256(JSON.stringify([1,identity])),title,level:value.level??"error",platform:cleanText(value.platform??"other",80),environment:cleanText(value.environment??"",80),release:cleanText(value.release??"",128),message:cleanText(message,1024),exceptions,...(context?{context}:{}),...(breadcrumbs?{breadcrumbs}:{})};
 }
