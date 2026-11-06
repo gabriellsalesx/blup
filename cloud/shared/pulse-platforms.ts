@@ -2,8 +2,8 @@
 // how the panel explains the setup: every SDK sends the same envelopes.
 // `tested` marks the SDKs already checked against Blup Pulse (a real
 // error from the official SDK reaches it grouped, with its stack, and
-// without personal data; the JavaScript family on 05/11/2026, SDK 11.10
-// and 11.11, see docs/spec/blup-pulse.md); the others use the same
+// without personal data; the JavaScript family and the server languages
+// on 05/11/2026, see docs/spec/blup-pulse.md); the others use the same
 // protocol and are shown as being tested.
 export const platformGroups = ["popular", "browser", "server", "mobile", "desktop"] as const;
 export type PlatformGroup = (typeof platformGroups)[number];
@@ -24,21 +24,21 @@ export const platforms = [
 	{ id: "hono", label: "Hono", groups: ["server"], tested: true },
 	{ id: "bun", label: "Bun", groups: ["server"], tested: true },
 	{ id: "deno", label: "Deno", groups: ["server"], tested: true },
-	{ id: "python", label: "Python", groups: ["popular", "server"], tested: false },
-	{ id: "django", label: "Django", groups: ["popular", "server"], tested: false },
-	{ id: "flask", label: "Flask", groups: ["server"], tested: false },
-	{ id: "fastapi", label: "FastAPI", groups: ["server"], tested: false },
+	{ id: "python", label: "Python", groups: ["popular", "server"], tested: true },
+	{ id: "django", label: "Django", groups: ["popular", "server"], tested: true },
+	{ id: "flask", label: "Flask", groups: ["server"], tested: true },
+	{ id: "fastapi", label: "FastAPI", groups: ["server"], tested: true },
 	{ id: "go", label: "Go", groups: ["popular", "server", "desktop"], tested: true },
-	{ id: "php", label: "PHP", groups: ["popular", "server"], tested: false },
-	{ id: "laravel", label: "Laravel", groups: ["popular", "server"], tested: false },
-	{ id: "symfony", label: "Symfony", groups: ["server"], tested: false },
-	{ id: "ruby", label: "Ruby", groups: ["server"], tested: false },
-	{ id: "rails", label: "Rails", groups: ["server"], tested: false },
-	{ id: "java", label: "Java", groups: ["popular", "server"], tested: false },
-	{ id: "spring", label: "Spring Boot", groups: ["server"], tested: false },
-	{ id: "dotnet", label: "C# / .NET", groups: ["server", "desktop"], tested: false },
-	{ id: "elixir", label: "Elixir", groups: ["server"], tested: false },
-	{ id: "rust", label: "Rust", groups: ["server", "desktop"], tested: false },
+	{ id: "php", label: "PHP", groups: ["popular", "server"], tested: true },
+	{ id: "laravel", label: "Laravel", groups: ["popular", "server"], tested: true },
+	{ id: "symfony", label: "Symfony", groups: ["server"], tested: true },
+	{ id: "ruby", label: "Ruby", groups: ["server"], tested: true },
+	{ id: "rails", label: "Rails", groups: ["server"], tested: true },
+	{ id: "java", label: "Java", groups: ["popular", "server"], tested: true },
+	{ id: "spring", label: "Spring Boot", groups: ["server"], tested: true },
+	{ id: "dotnet", label: "C# / .NET", groups: ["server", "desktop"], tested: true },
+	{ id: "elixir", label: "Elixir", groups: ["server"], tested: true },
+	{ id: "rust", label: "Rust", groups: ["server", "desktop"], tested: true },
 	{ id: "react-native", label: "React Native", groups: ["popular", "mobile"], tested: false },
 	{ id: "flutter", label: "Flutter", groups: ["mobile", "desktop"], tested: false },
 	{ id: "android", label: "Android", groups: ["mobile"], tested: false },

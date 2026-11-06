@@ -17,7 +17,7 @@ export function cleanText(value:string,max=256){return value
 const codeLines=z.array(z.string().max(8192)).max(64);
 const frame=z.object({filename:z.string().max(8192).optional(),abs_path:z.string().max(8192).optional(),function:z.string().max(8192).optional(),module:z.string().max(8192).optional(),lineno:z.number().int().min(0).max(10_000_000).optional(),colno:z.number().int().min(0).max(10_000_000).optional(),in_app:z.boolean().optional(),pre_context:codeLines.optional().catch(undefined),context_line:z.string().max(8192).optional().catch(undefined),post_context:codeLines.optional().catch(undefined)});
 const error=z.object({type:z.string().max(8192).optional(),value:z.string().max(204800).optional(),stacktrace:z.object({frames:z.array(frame).max(512)}).optional()});
-const schema=z.object({type:z.enum(["default","error"]).optional(),platform:z.string().max(80).optional(),level:z.enum(["fatal","error","warning","info","debug"]).optional(),message:z.union([z.string().max(204800),z.object({formatted:z.string().max(204800).optional(),message:z.string().max(204800).optional()})]).optional(),logentry:z.object({formatted:z.string().max(204800).optional(),message:z.string().max(204800).optional()}).optional(),exception:z.union([z.object({values:z.array(error).max(32)}),z.array(error).max(32)]).transform(v=>Array.isArray(v)?{values:v}:v).optional(),fingerprint:z.array(z.string().max(256)).min(1).max(32).optional(),environment:z.string().max(256).optional(),release:z.string().max(256).optional()});
+const schema=z.object({type:z.enum(["default","error","event"]).optional(),platform:z.string().max(80).optional(),level:z.enum(["fatal","error","warning","info","debug"]).optional(),message:z.union([z.string().max(204800),z.object({formatted:z.string().max(204800).optional(),message:z.string().max(204800).optional()})]).optional(),logentry:z.object({formatted:z.string().max(204800).optional(),message:z.string().max(204800).optional()}).optional(),exception:z.union([z.object({values:z.array(error).max(32)}),z.array(error).max(32)]).transform(v=>Array.isArray(v)?{values:v}:v).optional(),fingerprint:z.array(z.string().max(256)).max(32).optional(),environment:z.string().max(256).optional(),release:z.string().max(256).optional()});
 // The stored projection, checked again when read back from the project's SQLite.
 const storedFrame=z.object({filename:z.string(),function:z.string(),module:z.string(),line:z.number().int().nullable(),column:z.number().int().nullable(),inApp:z.boolean(),context:z.object({pre:z.array(z.string()).max(5),line:z.string(),post:z.array(z.string()).max(5)}).strict().optional()}).strict();
 const storedContext=z.object({method:z.string().optional(),route:z.string().optional(),browser:z.string().optional(),os:z.string().optional(),runtime:z.string().optional()}).strict();
@@ -82,8 +82,14 @@ export async function safeEvent(input:Record<string,unknown>,id:string):Promise<
  for(const e of exceptions){let kept=0;for(let i=e.frames.length-1;i>=0;i--){const f=e.frames[i];if(f.context&&++kept>10)delete f.context;}}
  const context=contextOf(raw),breadcrumbs=breadcrumbsOf(raw);
  const message=typeof value.message==="string"?value.message:value.message?.formatted??value.message?.message??value.logentry?.formatted??value.logentry?.message??"";
- const title=cleanText(exceptions.at(-1)?.value||message||exceptions.at(-1)?.type||"Error",256);
+ // The title: the error's first line, without a trailing " (Type)" that
+ // only repeats it (sentry-ruby sends the message, its class and a
+ // highlight of the code); the whole message stays in the details.
+ const lastRaw=value.exception?.values.at(-1);
+ const headline=(()=>{const first=(lastRaw?.value??"").split(/\r?\n/)[0]??"",suffix=lastRaw?.type?` (${lastRaw.type})`:"";return suffix&&first.endsWith(suffix)?first.slice(0,-suffix.length):first;})();
+ const title=cleanText(headline||message||exceptions.at(-1)?.type||"Error",256);
  const base=JSON.stringify([2,cleanText(value.platform??"other",80),exceptions.map(e=>[e.type,groupFrames(e.frames)]),exceptions.some(e=>e.frames.length)?"":title.replace(/\b(?:\d+|[a-f0-9]{8,})\b/gi,"#")]);
- const identity=value.fingerprint?.map(s=>s==="{{ default }}"?base:cleanText(s))??[base];
+ // An empty fingerprint (the Java SDKs send one on every event) is the default, as in Sentry.
+ const identity=value.fingerprint?.length?value.fingerprint.map(s=>s==="{{ default }}"?base:cleanText(s)):[base];
  return {id,group:await sha256(JSON.stringify([1,identity])),title,level:value.level??"error",platform:cleanText(value.platform??"other",80),environment:cleanText(value.environment??"",80),release:cleanText(value.release??"",128),message:cleanText(message,1024),exceptions,...(context?{context}:{}),...(breadcrumbs?{breadcrumbs}:{})};
 }

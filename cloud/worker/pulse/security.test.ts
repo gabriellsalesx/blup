@@ -42,6 +42,18 @@ describe("Pulse protocol and privacy",()=>{
   expect(normalizeEventId({event_id:"12345678-1234-1234-1234-123456789abc"})).toBe("12345678123412341234123456789abc");
  });
  it("accepts the official Go 0.50 exception array without retaining absolute paths",async()=>{const event=await safeEvent({platform:"go",exception:[{type:"Error",value:"failure",stacktrace:{frames:[{abs_path:"/application/main.go",function:"main",lineno:4,in_app:true}]}}]},"a".repeat(32));expect(event.exceptions[0].frames[0].filename).toBe("main.go");expect(JSON.stringify(event)).not.toContain("/application/");});
+ it("takes an empty fingerprint as the default grouping (Java SDKs)",async()=>{
+  const frames=[{filename:"Main.java",function:"teste.Main.checkout",lineno:9,in_app:true}];
+  const withEmpty=await safeEvent({platform:"java",fingerprint:[],exception:{values:[{type:"RuntimeException",value:"failure",stacktrace:{frames}}]}},"f".repeat(32));
+  const without=await safeEvent({platform:"java",exception:{values:[{type:"RuntimeException",value:"failure",stacktrace:{frames}}]}},"a".repeat(32));
+  expect(withEmpty.group).toBe(without.group);
+ });
+ it("takes sentry-ruby's events: type event, and a title without the class and code highlight",async()=>{
+  const event=await safeEvent({platform:"ruby",type:"event",fingerprint:[],exception:{values:[{type:"RuntimeError",value:"Falha no checkout (RuntimeError)\n\n    raise \"x\"\n    ^^^^^",stacktrace:{frames:[{filename:"lib/loja.rb",function:"checkout",lineno:3,in_app:true}]}}]}},"9".repeat(32));
+  expect(event.title).toBe("Falha no checkout");
+  expect(event.exceptions[0].value).toContain("^^^^^");
+  expect((await safeEvent({platform:"python",exception:{values:[{type:"KeyError",value:"faltou (id)"}]}},"8".repeat(32))).title).toBe("faltou (id)");
+ });
  it("takes JSON null as a missing field (sentry-elixir)",async()=>{
   const event=await safeEvent({platform:"elixir",message:null,level:"error",exception:{values:[{type:"RuntimeError",value:"failure",module:null,stacktrace:{frames:[{filename:"lib/app.ex",function:"App.checkout/0",lineno:3,colno:null,in_app:true,context_line:null}]}}]},dist:null},"e".repeat(32));
   expect(event).toMatchObject({platform:"elixir",title:"failure",exceptions:[{frames:[{function:"App.checkout/0",line:3,column:null}]}]});

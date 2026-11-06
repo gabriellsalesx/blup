@@ -67,6 +67,22 @@ Cada plataforma marcada como testada em [pulse-platforms.ts](../../cloud/shared/
 
 Notas: no SDK 11 o `withSentryConfig` do Next fica em `@sentry/nextjs/config` e o plugin do SvelteKit em `@sentry/sveltekit/vite`; o SvelteKit 3 recebe a configuração pelo plugin `sveltekit({...})` e lê variáveis públicas declaradas em `src/env.js` (`$app/env/public`). Nos builds de produção os nomes das funções saem minificados (os source maps os recuperam). Faltam as plataformas de outras linguagens, o celular e o Electron.
 
+### SDKs conferidos (linguagens de servidor, 05/11/2026)
+
+Mesmo método da família JavaScript, com o programa de teste de cada linguagem (servidor de verdade ou o cliente de teste do próprio framework).
+
+| Plataforma | SDK | Como |
+| --- | --- | --- |
+| Python, Django, Flask, FastAPI | `sentry-sdk` 2.73 (Django 6.1, Flask 3.1, FastAPI 0.162) | erro em thread; cliente de teste de cada framework |
+| PHP, Laravel, Symfony | `sentry/sentry` 4.36, `sentry-laravel` 4.29 (Laravel 13.40), `sentry-symfony` 5.15 (Symfony 8.1) | erro não tratado por execução; `php -S` com o app em produção |
+| Ruby, Rails | `sentry-ruby` / `sentry-rails` 7.2 (Rails 8.1.4) | middleware Rack do SDK; pilha completa do Rails |
+| Java, Spring Boot | `io.sentry:sentry` 8.63; `sentry-spring-boot-4-starter` 8.63 (Spring Boot 4.1) | erro em thread; controller HTTP |
+| C#/.NET | `Sentry` / `Sentry.AspNetCore` 6.12 (.NET 10) | erro não tratado no console; endpoint do ASP.NET Core |
+| Elixir | `sentry` 14.0.1 (hex) com finch | `Task` que cai, pelo `Sentry.LoggerHandler` |
+| Rust | `sentry` 0.49.5 | `panic` em thread (build de depuração, para manter os nomes) |
+
+Os testes acharam quatro incompatibilidades do Pulse, corrigidas no mesmo dia: só a versão 7 do protocolo era aceita (o Elixir declara 5); campos `null` derrubavam o evento (Elixir); `fingerprint: []` derrubava o evento (Java e Ruby mandam em todo erro; vazio agora é o agrupamento padrão); e `type: "event"` era descartado em silêncio (Ruby). O título passa a usar só a primeira linha da mensagem, sem o ` (Classe)` repetido que o Ruby acrescenta. Ficam em teste o celular (React Native, Flutter, Android, iOS) e o Electron.
+
 **Agrupamento (versão 2, decidida pelo dono em 05/11/2026):** o grupo usa o tipo do erro e os **dois quadros do app mais perto do erro** (onde foi lançado e quem chamou). Quadro com nome conta por arquivo e função, sem a linha (uma versão que move o código mantém o problema); quadro anônimo conta pela linha de código enviada pelo SDK (ou o número dela). Os quadros mais distantes, muitas vezes do próprio framework e variáveis entre chamadas, não dividem o problema: o erro de rota do Nuxt, que antes virava dois problemas, agora fica num só. Ao entrar, os grupos antigos (versão 1) não se juntam aos novos. Regra em [event.ts](../../cloud/worker/pulse/event.ts) (`groupFrames`).
 
 ### Fase 2: monitores, páginas e incidentes

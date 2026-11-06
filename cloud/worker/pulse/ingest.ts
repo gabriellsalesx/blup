@@ -18,7 +18,8 @@ export async function pulseIngest(req:Request,env:Cloudflare.Env){
   const project=await env.DB.prepare("SELECT p.id,p.user_id AS userId,p.object_name AS objectName FROM pulse_project p JOIN pulse_key k ON k.project_id=p.id WHERE p.id=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL AND k.hash=? AND k.revoked_at IS NULL").bind(m[1],keyHash).first<{id:string;userId:string;objectName:string}>();
   if(!project||!(await pulseAccess(env,project.userId)).writable)throw new IngestError(403,"KEY");
   if(!parsed.event)return respond({});
-  if(parsed.event.type!==undefined&&parsed.event.type!=="default"&&parsed.event.type!=="error")return respond({});
+  // Errors only ("event" is sentry-ruby's name for one); performance data and the rest are skipped.
+  if(parsed.event.type!==undefined&&parsed.event.type!=="default"&&parsed.event.type!=="error"&&parsed.event.type!=="event")return respond({});
   const event=await safeEvent(parsed.event,normalizeEventId(parsed.event,parsed.id));
   const accepted=await env.PULSE_PROJECT.getByName(project.objectName).ingest(project.id,keyHash,event);
   if(!accepted.ok)throw new IngestError(accepted.status,accepted.code,accepted.wait);
