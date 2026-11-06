@@ -67,7 +67,15 @@ function groupFrames(frames:GroupFrame[]){
  const app=frames.filter(f=>f.inApp);
  return (app.length?app:frames).slice(-2).map(f=>namedFrame(f)?[f.filename,f.function]:[f.filename,f.context?.line??f.line]);
 }
-export async function safeEvent(raw:Record<string,unknown>,id:string):Promise<SafeEvent>{
+// Some SDKs (sentry-elixir) send absent fields as JSON null: they count as
+// missing. Only object keys, a bounded depth down (deeper is kept as it is).
+function withoutNulls(value:unknown,depth=0):unknown{
+ if(depth>24||value===null||typeof value!=="object")return value;
+ if(Array.isArray(value))return value.map(v=>withoutNulls(v,depth+1));
+ return Object.fromEntries(Object.entries(value).filter(([,v])=>v!==null).map(([k,v])=>[k,withoutNulls(v,depth+1)]));
+}
+export async function safeEvent(input:Record<string,unknown>,id:string):Promise<SafeEvent>{
+ const raw=withoutNulls(input) as Record<string,unknown>;
  const parsed=schema.safeParse(raw);if(!parsed.success)throw new IngestError(400,"EVENT");const value=parsed.data;
  const exceptions=value.exception?.values.map(e=>({type:cleanText(e.type??"Error",128),value:cleanText(e.value??"",1024),frames:e.stacktrace?.frames.slice(-50).map(f=>{const code=codeOf(f);return {filename:cleanText((f.filename??f.abs_path??"").split(/[\\/]/).pop()?.split(/[?#]/)[0]??"",160),function:cleanText(f.function??"",128),module:cleanText(f.module??"",128),line:f.lineno??null,column:f.colno??null,inApp:f.in_app??false,...(code?{context:code}:{})};})??[]}))??[];
  // Code only around the ten app frames nearest the error, in each exception.

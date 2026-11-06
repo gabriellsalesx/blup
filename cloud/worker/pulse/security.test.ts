@@ -42,10 +42,18 @@ describe("Pulse protocol and privacy",()=>{
   expect(normalizeEventId({event_id:"12345678-1234-1234-1234-123456789abc"})).toBe("12345678123412341234123456789abc");
  });
  it("accepts the official Go 0.50 exception array without retaining absolute paths",async()=>{const event=await safeEvent({platform:"go",exception:[{type:"Error",value:"failure",stacktrace:{frames:[{abs_path:"/application/main.go",function:"main",lineno:4,in_app:true}]}}]},"a".repeat(32));expect(event.exceptions[0].frames[0].filename).toBe("main.go");expect(JSON.stringify(event)).not.toContain("/application/");});
+ it("takes JSON null as a missing field (sentry-elixir)",async()=>{
+  const event=await safeEvent({platform:"elixir",message:null,level:"error",exception:{values:[{type:"RuntimeError",value:"failure",module:null,stacktrace:{frames:[{filename:"lib/app.ex",function:"App.checkout/0",lineno:3,colno:null,in_app:true,context_line:null}]}}]},dist:null},"e".repeat(32));
+  expect(event).toMatchObject({platform:"elixir",title:"failure",exceptions:[{frames:[{function:"App.checkout/0",line:3,column:null}]}]});
+ });
  it("validates all authentication sources without letting cookies authorize ingestion",()=>{
   const key="a".repeat(48),url=`https://ingest.audit.invalid/api/123/store/?sentry_key=${key}&sentry_version=7`;
   expect(authKey(new Request(url),"123",`https://${key}@ingest.audit.invalid/123`)).toBe(key);
   expect(()=>authKey(new Request(url,{headers:{"x-sentry-auth":`Sentry sentry_version=7,sentry_key=${"b".repeat(48)}`}}),"123")).toThrow(IngestError);
+  // Any whole protocol version, as Sentry: sentry-elixir still states 5.
+  expect(authKey(new Request("https://ingest.audit.invalid/api/123/envelope/",{headers:{"x-sentry-auth":`Sentry sentry_version=5, sentry_client=sentry-elixir/14.0.1, sentry_key=${key}`}}),"123")).toBe(key);
+  expect(authKey(new Request(`https://ingest.audit.invalid/api/123/store/?sentry_key=${key}&sentry_version=5`),"123")).toBe(key);
+  for(const v of ["0","7a","100",""])expect(()=>authKey(new Request(`https://ingest.audit.invalid/api/123/store/?sentry_key=${key}&sentry_version=${v}`),"123")).toThrow(IngestError);
   expect(()=>authKey(new Request("https://ingest.audit.invalid/api/123/store/",{headers:{cookie:"session=anything"}}),"123")).toThrow(IngestError);
   expect(()=>authKey(new Request(url),"123",`https://${key}@evil.invalid/123`)).toThrow(IngestError);
  });
