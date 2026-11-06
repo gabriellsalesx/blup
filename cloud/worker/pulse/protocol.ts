@@ -6,7 +6,7 @@ export class IngestError extends Error{constructor(readonly status:400|403|413|4
 const jsonObject=z.record(z.string(),z.unknown());
 const eventId=z.string().regex(/^(?:[a-fA-F0-9]{32}|[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12})$/).transform(v=>v.replaceAll("-","").toLowerCase());
 const envelopeHeader=z.object({event_id:eventId.optional(),dsn:z.string().max(2048).optional()});
-const itemHeader=z.object({type:z.string().min(1).max(80),length:z.number().int().min(0).max(1024*1024).optional()});
+const itemHeader=z.object({type:z.string().min(1).max(80),length:z.number().int().min(0).max(1024*1024).optional(),attachment_type:z.string().max(80).optional()});
 const decoder=new TextDecoder("utf-8",{fatal:true,ignoreBOM:false});
 function parseJson(bytes:Uint8Array){try{return JSON.parse(decoder.decode(bytes)) as unknown;}catch{throw new IngestError(400,"INVALID");}}
 export function checkDepth(value:unknown,depth=0,budget={left:20_000}):void{
@@ -26,11 +26,13 @@ export async function ingestBytes(req:Request):Promise<Uint8Array<ArrayBuffer>>{
  }catch(e){if(e instanceof BodyError)throw new IngestError(e.status===413?413:400,e.status===413?"ENVELOPE_SIZE":"INVALID");throw new IngestError(400,"COMPRESSION");}
 }
 export function parseEnvelope(bytes:Uint8Array,store=false){
- if(store)return {event:parsedEvent(bytes),id:undefined as string|undefined,dsn:undefined as string|undefined};
+ if(store)return {event:parsedEvent(bytes),id:undefined as string|undefined,dsn:undefined as string|undefined,minidump:false};
  let offset=0;
  const line=()=>{const start=offset;while(offset<bytes.length&&bytes[offset]!==10)offset++;if(offset-start>8192)throw new IngestError(400,"HEADER_SIZE");const result=bytes.subarray(start,offset);if(offset<bytes.length)offset++;return result;};
  const header=envelopeHeader.safeParse(parseJson(line()));if(!header.success)throw new IngestError(400,"INVALID");
- let event:Record<string,unknown>|undefined,count=0;
+ // A minidump (Electron and native SDKs) is never kept: it only marks the
+ // event as a native crash.
+ let event:Record<string,unknown>|undefined,count=0,minidump=false;
  while(offset<bytes.length){
   if(++count>100)throw new IngestError(400,"ITEMS");
   const parsed=itemHeader.safeParse(parseJson(line()));if(!parsed.success)throw new IngestError(400,"INVALID");
@@ -38,8 +40,9 @@ export function parseEnvelope(bytes:Uint8Array,store=false){
   if(item.length!==undefined){if(offset+item.length>bytes.length)throw new IngestError(400,"LENGTH");payload=bytes.subarray(offset,offset+item.length);offset+=item.length;if(offset<bytes.length){if(bytes[offset]!==10)throw new IngestError(400,"LENGTH");offset++;}}
   else {const start=offset;while(offset<bytes.length&&bytes[offset]!==10)offset++;payload=bytes.subarray(start,offset);if(offset<bytes.length)offset++;}
   if(item.type==="event"){if(event)throw new IngestError(400,"MULTIPLE_EVENTS");event=parsedEvent(payload);}
+  else if(item.type==="attachment"&&item.attachment_type==="event.minidump")minidump=true;
  }
- return {event,id:header.data.event_id,dsn:header.data.dsn};
+ return {event,id:header.data.event_id,dsn:header.data.dsn,minidump};
 }
 export function normalizeEventId(event:Record<string,unknown>,headerId?:string){
  let id:string|undefined;

@@ -43,7 +43,7 @@ export const platforms = [
 	{ id: "flutter", label: "Flutter", groups: ["mobile", "desktop"], tested: false },
 	{ id: "android", label: "Android", groups: ["mobile"], tested: false },
 	{ id: "ios", label: "iOS", groups: ["mobile"], tested: false },
-	{ id: "electron", label: "Electron", groups: ["desktop"], tested: false },
+	{ id: "electron", label: "Electron", groups: ["desktop"], tested: true },
 	{ id: "other", label: "Other", groups: [], tested: false },
 ] as const satisfies readonly { id: string; label: string; groups: readonly PlatformGroup[]; tested: boolean }[];
 

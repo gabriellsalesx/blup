@@ -20,7 +20,7 @@ export async function pulseIngest(req:Request,env:Cloudflare.Env){
   if(!parsed.event)return respond({});
   // Errors only ("event" is sentry-ruby's name for one); performance data and the rest are skipped.
   if(parsed.event.type!==undefined&&parsed.event.type!=="default"&&parsed.event.type!=="error"&&parsed.event.type!=="event")return respond({});
-  const event=await safeEvent(parsed.event,normalizeEventId(parsed.event,parsed.id));
+  const event=await safeEvent(parsed.event,normalizeEventId(parsed.event,parsed.id),parsed.minidump);
   const accepted=await env.PULSE_PROJECT.getByName(project.objectName).ingest(project.id,keyHash,event);
   if(!accepted.ok)throw new IngestError(accepted.status,accepted.code,accepted.wait);
   return respond({id:accepted.id});

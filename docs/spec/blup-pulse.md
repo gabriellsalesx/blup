@@ -83,6 +83,10 @@ Mesmo método da família JavaScript, com o programa de teste de cada linguagem 
 
 Os testes acharam quatro incompatibilidades do Pulse, corrigidas no mesmo dia: só a versão 7 do protocolo era aceita (o Elixir declara 5); campos `null` derrubavam o evento (Elixir); `fingerprint: []` derrubava o evento (Java e Ruby mandam em todo erro; vazio agora é o agrupamento padrão); e `type: "event"` era descartado em silêncio (Ruby). O título passa a usar só a primeira linha da mensagem, sem o ` (Classe)` repetido que o Ruby acrescenta. Ficam em teste o celular (React Native, Flutter, Android, iOS) e o Electron.
 
+### Electron (06/11/2026)
+
+`@sentry/electron` 8.3.0 com Electron 45.2.3, janela oculta: erro não tratado na janela (renderer, empacotado com esbuild) duas vezes, `captureException` no processo principal. Passou no mesmo conjunto (rota 2x agrupada, pilha, versão, privacidade). Travamento nativo: o SDK manda o minidump na abertura seguinte do app, com `platform: native` e sem exceção, e chegava como "Error". O Pulse continua sem guardar o minidump, mas o anexo `event.minidump` marca o evento como travamento nativo, com o título `Native crash (<processo>)` pela tag `event.process` (renderer, browser, gpu); os travamentos de um mesmo processo ficam num problema só. O minidump medido tem de 140 a 320 KB, dentro do teto de 1 MiB do envelope.
+
 **Agrupamento (versão 2, decidida pelo dono em 05/11/2026):** o grupo usa o tipo do erro e os **dois quadros do app mais perto do erro** (onde foi lançado e quem chamou). Quadro com nome conta por arquivo e função, sem a linha (uma versão que move o código mantém o problema); quadro anônimo conta pela linha de código enviada pelo SDK (ou o número dela). Os quadros mais distantes, muitas vezes do próprio framework e variáveis entre chamadas, não dividem o problema: o erro de rota do Nuxt, que antes virava dois problemas, agora fica num só. Ao entrar, os grupos antigos (versão 1) não se juntam aos novos. Regra em [event.ts](../../cloud/worker/pulse/event.ts) (`groupFrames`).
 
 ### Fase 2: monitores, páginas e incidentes
@@ -297,7 +301,7 @@ Aceitar `application/x-sentry-envelope` ou ausência de Content-Type. Para compa
 | `session`, `sessions`, `client_report` | Consumir e ignorar; não entram na cota de erros |
 | `transaction`, `span`, perfis e métricas | Consumir e ignorar; sem performance ou tracing |
 | `replay_event`, `replay_recording` | Consumir e ignorar; nunca armazenar gravações |
-| `attachment`, inclusive payload nativo | Consumir e ignorar; sem anexos/minidumps |
+| `attachment`, inclusive payload nativo | Consumir e ignorar; sem anexos/minidumps (um `event.minidump` só dá ao evento o título de travamento nativo) |
 | `user_report`, `feedback`, `check_in`, logs e tipos futuros | Ignorar se o enquadramento for válido; não criar recurso implícito |
 
 Tipos de item não são as mesmas categorias usadas nos headers de rate limit. Dentro de `event`, o MVP aceita `type` ausente, `default` ou `error`; outros tipos de telemetria não viram erros só por estarem nesse item. Um envelope só com itens ignorados recebe `200 {}` depois de validado e limitado em bytes, sem incrementar contadores. Item ignorado continua sujeito ao teto do envelope. Enquadramento inválido retorna 400; não responder sucesso para bytes que não foram interpretados com segurança. A API não faz download de source maps, anexos ou URLs presentes no evento. [Tipos e restrições dos itens](https://develop.sentry.dev/sdk/foundations/envelopes/envelope-items/).

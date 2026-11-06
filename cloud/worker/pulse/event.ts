@@ -74,7 +74,7 @@ function withoutNulls(value:unknown,depth=0):unknown{
  if(Array.isArray(value))return value.map(v=>withoutNulls(v,depth+1));
  return Object.fromEntries(Object.entries(value).filter(([,v])=>v!==null).map(([k,v])=>[k,withoutNulls(v,depth+1)]));
 }
-export async function safeEvent(input:Record<string,unknown>,id:string):Promise<SafeEvent>{
+export async function safeEvent(input:Record<string,unknown>,id:string,minidump=false):Promise<SafeEvent>{
  const raw=withoutNulls(input) as Record<string,unknown>;
  const parsed=schema.safeParse(raw);if(!parsed.success)throw new IngestError(400,"EVENT");const value=parsed.data;
  const exceptions=value.exception?.values.map(e=>({type:cleanText(e.type??"Error",128),value:cleanText(e.value??"",1024),frames:e.stacktrace?.frames.slice(-50).map(f=>{const code=codeOf(f);return {filename:cleanText((f.filename??f.abs_path??"").split(/[\\/]/).pop()?.split(/[?#]/)[0]??"",160),function:cleanText(f.function??"",128),module:cleanText(f.module??"",128),line:f.lineno??null,column:f.colno??null,inApp:f.in_app??false,...(code?{context:code}:{})};})??[]}))??[];
@@ -87,7 +87,11 @@ export async function safeEvent(input:Record<string,unknown>,id:string):Promise<
  // highlight of the code); the whole message stays in the details.
  const lastRaw=value.exception?.values.at(-1);
  const headline=(()=>{const first=(lastRaw?.value??"").split(/\r?\n/)[0]??"",suffix=lastRaw?.type?` (${lastRaw.type})`:"";return suffix&&first.endsWith(suffix)?first.slice(0,-suffix.length):first;})();
- const title=cleanText(headline||message||exceptions.at(-1)?.type||"Error",256);
+ // A native crash comes with a minidump and no exception: named after the
+ // process that died (Electron's "event.process" tag: browser, renderer, gpu).
+ const tag=minidump&&raw.tags&&typeof raw.tags==="object"&&!Array.isArray(raw.tags)?(raw.tags as Record<string,unknown>)["event.process"]:undefined;
+ const crashed=typeof tag==="string"&&/^[a-z-]{1,24}$/.test(tag)?` (${tag})`:"";
+ const title=cleanText(headline||message||(minidump?`Native crash${crashed}`:"")||exceptions.at(-1)?.type||"Error",256);
  const base=JSON.stringify([2,cleanText(value.platform??"other",80),exceptions.map(e=>[e.type,groupFrames(e.frames)]),exceptions.some(e=>e.frames.length)?"":title.replace(/\b(?:\d+|[a-f0-9]{8,})\b/gi,"#")]);
  // An empty fingerprint (the Java SDKs send one on every event) is the default, as in Sentry.
  const identity=value.fingerprint?.length?value.fingerprint.map(s=>s==="{{ default }}"?base:cleanText(s)):[base];

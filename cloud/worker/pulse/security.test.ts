@@ -48,6 +48,14 @@ describe("Pulse protocol and privacy",()=>{
   const without=await safeEvent({platform:"java",exception:{values:[{type:"RuntimeException",value:"failure",stacktrace:{frames}}]}},"a".repeat(32));
   expect(withEmpty.group).toBe(without.group);
  });
+ it("names an Electron native crash after the process, without keeping the minidump",async()=>{
+  const event={event_id:"c".repeat(32),platform:"native",level:"fatal",tags:{"event.process":"renderer"}},p=envelope(event),a=new TextEncoder().encode('{"type":"attachment","length":3,"attachment_type":"event.minidump","filename":"x.dmp"}\n');
+  const bytes=new Uint8Array(p.length+1+a.length+3);bytes.set(p);bytes[p.length]=10;bytes.set(a,p.length+1);bytes.set([77,68,77],p.length+1+a.length);
+  const parsed=parseEnvelope(bytes);expect(parsed.minidump).toBe(true);
+  const crash=await safeEvent(parsed.event!,"c".repeat(32),parsed.minidump);expect(crash.title).toBe("Native crash (renderer)");expect(JSON.stringify(crash)).not.toContain("x.dmp");
+  expect((await safeEvent({platform:"native",tags:{"event.process":"<b>"}},"d".repeat(32),true)).title).toBe("Native crash");
+  expect((await safeEvent({platform:"native",tags:{"event.process":"renderer"}},"e".repeat(32))).title).toBe("Error");
+ });
  it("takes sentry-ruby's events: type event, and a title without the class and code highlight",async()=>{
   const event=await safeEvent({platform:"ruby",type:"event",fingerprint:[],exception:{values:[{type:"RuntimeError",value:"Falha no checkout (RuntimeError)\n\n    raise \"x\"\n    ^^^^^",stacktrace:{frames:[{filename:"lib/loja.rb",function:"checkout",lineno:3,in_app:true}]}}]}},"9".repeat(32));
   expect(event.title).toBe("Falha no checkout");
