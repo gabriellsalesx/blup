@@ -93,6 +93,10 @@ Os testes acharam quatro incompatibilidades do Pulse, corrigidas no mesmo dia: s
 
 **Agrupamento (versão 2, decidida pelo dono em 05/11/2026):** o grupo usa o tipo do erro e os **dois quadros do app mais perto do erro** (onde foi lançado e quem chamou). Quadro com nome conta por arquivo e função, sem a linha (uma versão que move o código mantém o problema); quadro anônimo conta pela linha de código enviada pelo SDK (ou o número dela). Os quadros mais distantes, muitas vezes do próprio framework e variáveis entre chamadas, não dividem o problema: o erro de rota do Nuxt, que antes virava dois problemas, agora fica num só. Ao entrar, os grupos antigos (versão 1) não se juntam aos novos. Regra em [event.ts](../../cloud/worker/pulse/event.ts) (`groupFrames`).
 
+### React Native, Flutter e iOS (06/11/2026)
+
+O dono informou que as três plataformas foram testadas e mandou tirar a etiqueta "em teste". As versões e o método desse teste não foram registrados aqui, ao contrário das seções acima. Com isso nenhuma plataforma fica em teste: o seletor perdeu a etiqueta e a nota, e o campo `tested` saiu de `cloud/shared/pulse-platforms.ts`.
+
 ### Fase 2: monitores, páginas e incidentes
 
 Fontes: [rotas de monitores](../../cloud/worker/pulse/monitors.ts), [checagem HTTP](../../cloud/worker/pulse/monitor-http.ts), [agendamento](../../cloud/worker/pulse/scheduler.ts), [histórico SQLite](../../cloud/worker/pulse/monitor-store.ts), [páginas/incidentes](../../cloud/worker/pulse/pages.ts), [projeção pública e HTML](../../cloud/worker/pulse/public.ts) e [limpeza](../../cloud/worker/pulse/cleanup.ts).
@@ -569,15 +573,15 @@ Não registrar bodies de ingestão, URLs de webhook ou token do bot nos logs do 
 
 ## 13. SDKs e critérios de compatibilidade
 
-No lançamento, a promessa comercial cobre sites, servidores e aplicativo de computador. Integração com celular aparece como **em teste**, sem promessa de suporte móvel homologado. A Fase 1 tem ensaio local confirmado de Node `11.10.0` e Go `0.50.0`, no recorte descrito na subseção de entrega. Browser, defaults completos, versões anteriores e mobile continuam sujeitos à matriz abaixo; não extrapolar quatro eventos locais para compatibilidade geral.
+No lançamento, a promessa comercial cobre sites, servidores, aplicativo de computador e celular. A Fase 1 tem ensaio local confirmado de Node `11.10.0` e Go `0.50.0`, no recorte descrito na subseção de entrega. Browser, defaults completos, versões anteriores e mobile continuam sujeitos à matriz abaixo; não extrapolar quatro eventos locais para compatibilidade geral.
 
 | SDK oficial | Primeiro teste | Limite da promessa |
 | --- | --- | --- |
 | [JavaScript browser](https://docs.sentry.io/platforms/javascript/) | `captureException`, mensagem, erro não tratado, CORS, fetch/Beacon e headers de bloqueio | Stack de bundle minificado continua minificada, sem source maps |
 | [Node.js](https://docs.sentry.io/platforms/javascript/guides/node/) | Exceção, rejeição, mensagem, gzip e flush no encerramento | Sem tracing, logs ou perfis como produto implícito |
 | [Go](https://docs.sentry.io/platforms/go/) | Erro/panic recuperado, mensagem, flush e filtragem antes do envio | Não prometer capturar todo encerramento fatal ou falha nativa |
-| [React Native](https://docs.sentry.io/platforms/react-native/), em teste | Erro JavaScript em Android/iOS reais ou simulados e transporte offline | Sem symbolication nativa, source maps, anexos ou minidumps; provar o caminho JSON antes de anunciar |
-| [Flutter](https://docs.sentry.io/platforms/dart/guides/flutter/), em teste | Exceção Dart e transporte em Android/iOS, inclusive após reconexão | Sem símbolos/obfuscação resolvidos ou processamento de crash nativo fora do JSON suportado |
+| [React Native](https://docs.sentry.io/platforms/react-native/) | Erro JavaScript em Android/iOS reais ou simulados e transporte offline | Sem symbolication nativa, source maps, anexos ou minidumps; provar o caminho JSON antes de anunciar |
+| [Flutter](https://docs.sentry.io/platforms/dart/guides/flutter/) | Exceção Dart e transporte em Android/iOS, inclusive após reconexão | Sem símbolos/obfuscação resolvidos ou processamento de crash nativo fora do JSON suportado |
 
 No conjunto comum, testar fingerprint explícito e `{{ default }}`, `event_id` repetido, autenticação por header/query/envelope, itens extras ignorados, comprimentos binários, UTF-8, evento acima de 200 KiB, envelope acima do teto, gzip/deflate corrompido e bomba de descompressão. Confirmar com tráfego capturado localmente que 429 e os dois headers fazem o SDK suspender a categoria, inclusive no navegador.
 
@@ -685,7 +689,7 @@ As definições abaixo incorporam a atualização do dono e o alinhamento técni
 | Desligamento | Direito mantido até o fim do período pago; depois 14 dias só para leitura e apagamento, sem renovar retenção de eventos |
 | Cortesia | O dono recebe Pulse com os limites de Ultra + Pulse |
 | Telegram | Nome adotado `@BlupPulseBot`, sujeito à criação/configuração operacional |
-| Celular | No lançamento, em teste; promessa comercial cobre sites, servidores e aplicativo de computador |
+| Celular | Incluso na promessa comercial, junto de sites, servidores e aplicativo de computador |
 | Outras definições | Cotas e limites técnicos mantidos como propostos, mês civil UTC, retenção de 30/90 dias e aceite/privacidade do Studio |
 | Login e organização | Login central Cloud com cookie restrito ao host, CORS exato, API em `cloud/worker/pulse`, DO por projeto e painel próprio em `cloud/pulse` |
 
@@ -695,7 +699,7 @@ As pendências restantes são operacionais e de homologação:
 2. Criar e conferir os Prices/lookup keys, configurar DNS, fallback origin/CNAME, Cloudflare for SaaS, certificados e reserva do hostname público. O endereço e os preços estão definidos; o provisionamento precisa ser executado.
 3. Criar/configurar o bot adotado e guardar suas credenciais e o segredo de webhook fora do repositório, com responsável operacional e canal de suporte.
 4. Finalizar e publicar o texto do aceite e as políticas institucionais, inclusive como backups/recuperação do provedor se relacionam com retenção e apagamento.
-5. Publicar a matriz de versões SDK realmente homologadas e validar o fluxo de pagamento, SSO, monitores e exclusão em cada fase. A classificação mobile continua em teste até essa homologação.
+5. Publicar a matriz de versões SDK realmente homologadas e validar o fluxo de pagamento, SSO, monitores e exclusão em cada fase.
 
 Essas pendências não reabrem nome, preços, intervalo Ultra, cortesia ou política de desligamento. O produto continua em implementação por fases; os handoffs de cada fase devem atualizar o contrato efetivamente entregue.
 
