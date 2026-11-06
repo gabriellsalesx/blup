@@ -52,6 +52,23 @@ A migração [0015_pulse_nucleo.sql](../../cloud/migrations/0015_pulse_nucleo.sq
 
 A Lupa informou: 292/292 testes, check/build Cloud e Pulse aprovados e D1 local do zero com `0000..0015`. SDKs oficiais Node `11.10.0` e Go `0.50.0` foram testados localmente; quatro eventos, entre exceções e mensagens, foram persistidos sem as sentinelas pessoais inseridas no ensaio. Os [scripts de SDK](../../cloud/scripts/pulse-sdk/check.mjs) e a [fixture Go](../../cloud/scripts/pulse-sdk/main.go.fixture) documentam o recorte. O ensaio Node desativa integrações padrão, client reports, logs e tracing; isso não homologa todos os defaults, plataformas ou recursos dos SDKs. Esses testes foram executados pela área Cloud, não repetidos por esta documentação.
 
+### SDKs conferidos (família JavaScript, 05/11/2026)
+
+Cada plataforma marcada como testada em [pulse-platforms.ts](../../cloud/shared/pulse-platforms.ts) passou, contra a prévia local, por um app mínimo com o SDK oficial do Sentry: o erro que o framework captura sozinho chega (rota no servidor, componente ou clique no navegador); dois erros iguais viram um problema com contagem 2; uma captura manual chega com a pilha, a versão e o ambiente; e-mail, IP e um texto marcador enviados de propósito (montados em tempo de execução, para não estarem no trecho de código guardado) não ficam guardados. O filtro `Dedupe` do SDK foi desligado no teste, porque ele descarta um erro idêntico logo em seguida.
+
+| Plataforma | SDK | Como |
+| --- | --- | --- |
+| Express, NestJS | `@sentry/node`, `@sentry/nestjs` 11.11 | servidor de verdade, `setupExpressErrorHandler` e `SentryGlobalFilter` |
+| Hono | `@sentry/hono/node` 11.11 | `@hono/node-server`, middleware `sentry(app)` |
+| Bun | `@sentry/bun` 11.11 | `Bun.serve` |
+| Deno | `@sentry/deno` 11.10 | `Deno.serve` (a 11.11 tinha menos de 24 h e o Deno a bloqueia) |
+| React, Vue, Angular, Svelte | `@sentry/react`, `@sentry/vue`, `@sentry/angular`, `@sentry/svelte` 11.11 | Chromium; `ErrorBoundary`, `errorHandler` do app, `createErrorHandler`, `svelte:boundary` |
+| Next.js 16, Nuxt 4, SvelteKit 3, Astro 7 | `@sentry/nextjs`, `@sentry/nuxt`, `@sentry/sveltekit`, `@sentry/astro` 11.10 | app real com build de produção e servidor Node; rota de API, captura manual no servidor e no navegador |
+
+Notas: no SDK 11 o `withSentryConfig` do Next fica em `@sentry/nextjs/config` e o plugin do SvelteKit em `@sentry/sveltekit/vite`; o SvelteKit 3 recebe a configuração pelo plugin `sveltekit({...})` e lê variáveis públicas declaradas em `src/env.js` (`$app/env/public`). Nos builds de produção os nomes das funções saem minificados (os source maps os recuperam). Faltam as plataformas de outras linguagens, o celular e o Electron.
+
+**Agrupamento (a decidir):** o grupo usa arquivo, função e **linha** dos quadros do app. O Sentry ignora a linha quando a função tem nome; aqui, uma nova versão que mude o código de linha cria um problema novo para o mesmo erro. No Nuxt o mesmo erro de rota virou dois problemas, porque os quadros internos do Nitro (empacotados no app e marcados como do app) mudam entre a primeira chamada e as seguintes.
+
 ### Fase 2: monitores, páginas e incidentes
 
 Fontes: [rotas de monitores](../../cloud/worker/pulse/monitors.ts), [checagem HTTP](../../cloud/worker/pulse/monitor-http.ts), [agendamento](../../cloud/worker/pulse/scheduler.ts), [histórico SQLite](../../cloud/worker/pulse/monitor-store.ts), [páginas/incidentes](../../cloud/worker/pulse/pages.ts), [projeção pública e HTML](../../cloud/worker/pulse/public.ts) e [limpeza](../../cloud/worker/pulse/cleanup.ts).

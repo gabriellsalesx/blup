@@ -1,26 +1,29 @@
 // The platforms a Pulse project can be made for. The platform only picks
 // how the panel explains the setup: every SDK sends the same envelopes.
-// `tested` marks the SDKs already checked against Blup Pulse; the others
-// use the same protocol and are shown as being tested.
+// `tested` marks the SDKs already checked against Blup Pulse (a real
+// error from the official SDK reaches it grouped, with its stack, and
+// without personal data; the JavaScript family on 05/11/2026, SDK 11.10
+// and 11.11, see docs/spec/blup-pulse.md); the others use the same
+// protocol and are shown as being tested.
 export const platformGroups = ["popular", "browser", "server", "mobile", "desktop"] as const;
 export type PlatformGroup = (typeof platformGroups)[number];
 
 export const platforms = [
 	{ id: "javascript", label: "JavaScript", groups: ["popular", "browser"], tested: true },
-	{ id: "react", label: "React", groups: ["popular", "browser"], tested: false },
-	{ id: "nextjs", label: "Next.js", groups: ["popular", "browser", "server"], tested: false },
-	{ id: "vue", label: "Vue", groups: ["browser"], tested: false },
-	{ id: "nuxt", label: "Nuxt", groups: ["browser", "server"], tested: false },
-	{ id: "angular", label: "Angular", groups: ["browser"], tested: false },
-	{ id: "svelte", label: "Svelte", groups: ["browser"], tested: false },
-	{ id: "sveltekit", label: "SvelteKit", groups: ["browser", "server"], tested: false },
-	{ id: "astro", label: "Astro", groups: ["browser"], tested: false },
+	{ id: "react", label: "React", groups: ["popular", "browser"], tested: true },
+	{ id: "nextjs", label: "Next.js", groups: ["popular", "browser", "server"], tested: true },
+	{ id: "vue", label: "Vue", groups: ["browser"], tested: true },
+	{ id: "nuxt", label: "Nuxt", groups: ["browser", "server"], tested: true },
+	{ id: "angular", label: "Angular", groups: ["browser"], tested: true },
+	{ id: "svelte", label: "Svelte", groups: ["browser"], tested: true },
+	{ id: "sveltekit", label: "SvelteKit", groups: ["browser", "server"], tested: true },
+	{ id: "astro", label: "Astro", groups: ["browser"], tested: true },
 	{ id: "node", label: "Node.js", groups: ["popular", "server"], tested: true },
-	{ id: "express", label: "Express", groups: ["popular", "server"], tested: false },
-	{ id: "nestjs", label: "NestJS", groups: ["server"], tested: false },
-	{ id: "hono", label: "Hono", groups: ["server"], tested: false },
-	{ id: "bun", label: "Bun", groups: ["server"], tested: false },
-	{ id: "deno", label: "Deno", groups: ["server"], tested: false },
+	{ id: "express", label: "Express", groups: ["popular", "server"], tested: true },
+	{ id: "nestjs", label: "NestJS", groups: ["server"], tested: true },
+	{ id: "hono", label: "Hono", groups: ["server"], tested: true },
+	{ id: "bun", label: "Bun", groups: ["server"], tested: true },
+	{ id: "deno", label: "Deno", groups: ["server"], tested: true },
 	{ id: "python", label: "Python", groups: ["popular", "server"], tested: false },
 	{ id: "django", label: "Django", groups: ["popular", "server"], tested: false },
 	{ id: "flask", label: "Flask", groups: ["server"], tested: false },
