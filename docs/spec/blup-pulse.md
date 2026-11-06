@@ -87,6 +87,10 @@ Os testes acharam quatro incompatibilidades do Pulse, corrigidas no mesmo dia: s
 
 `@sentry/electron` 8.3.0 com Electron 45.2.3, janela oculta: erro não tratado na janela (renderer, empacotado com esbuild) duas vezes, `captureException` no processo principal. Passou no mesmo conjunto (rota 2x agrupada, pilha, versão, privacidade). Travamento nativo: o SDK manda o minidump na abertura seguinte do app, com `platform: native` e sem exceção, e chegava como "Error". O Pulse continua sem guardar o minidump, mas o anexo `event.minidump` marca o evento como travamento nativo, com o título `Native crash (<processo>)` pela tag `event.process` (renderer, browser, gpu); os travamentos de um mesmo processo ficam num problema só. O minidump medido tem de 140 a 320 KB, dentro do teto de 1 MiB do envelope.
 
+### Android (06/11/2026)
+
+`io.sentry:sentry-android` 8.63.0 (AGP 9.5.1, compileSdk 36), app Java no emulador (imagem Google APIs do Android 16, x86_64) com `adb reverse` para o preview. Erro não tratado duas vezes (o app fecha; o SDK guarda e manda na abertura seguinte) e `captureException` tratado: passou no conjunto inteiro (rota 2x agrupada, pilha com as funções, versão, privacidade). O travamento nativo (SIGSEGV, pelo `sentry-android-ndk` incluso) chega como `Segfault` (`SIGSEGV`, `platform: native`) com os endereços da pilha, sem nomes: o Pulse não simboliza código nativo. React Native, Flutter e iOS continuam em teste.
+
 **Agrupamento (versão 2, decidida pelo dono em 05/11/2026):** o grupo usa o tipo do erro e os **dois quadros do app mais perto do erro** (onde foi lançado e quem chamou). Quadro com nome conta por arquivo e função, sem a linha (uma versão que move o código mantém o problema); quadro anônimo conta pela linha de código enviada pelo SDK (ou o número dela). Os quadros mais distantes, muitas vezes do próprio framework e variáveis entre chamadas, não dividem o problema: o erro de rota do Nuxt, que antes virava dois problemas, agora fica num só. Ao entrar, os grupos antigos (versão 1) não se juntam aos novos. Regra em [event.ts](../../cloud/worker/pulse/event.ts) (`groupFrames`).
 
 ### Fase 2: monitores, páginas e incidentes

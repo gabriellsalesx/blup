@@ -41,7 +41,7 @@ export const platforms = [
 	{ id: "rust", label: "Rust", groups: ["server", "desktop"], tested: true },
 	{ id: "react-native", label: "React Native", groups: ["popular", "mobile"], tested: false },
 	{ id: "flutter", label: "Flutter", groups: ["mobile", "desktop"], tested: false },
-	{ id: "android", label: "Android", groups: ["mobile"], tested: false },
+	{ id: "android", label: "Android", groups: ["mobile"], tested: true },
 	{ id: "ios", label: "iOS", groups: ["mobile"], tested: false },
 	{ id: "electron", label: "Electron", groups: ["desktop"], tested: true },
 	{ id: "other", label: "Other", groups: [], tested: false },
