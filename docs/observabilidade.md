@@ -15,7 +15,7 @@ Crie um projeto por parte na sua conta do Pulse e guarde a DSN de cada um:
 | Painéis no navegador (Cloud, staff, Pulse, Deals) | `javascript` | `VITE_SENTRY_DSN=... npm run build` (e no build de cada painel) |
 | Ponte do WhatsApp | `go` | variável `SENTRY_DSN` do contêiner |
 | Blup Studio (desktop) | `go` | `SENTRY_DSN=... task build` (vai para `-X main.studioSentryDSN`) |
-| Blup Studio (celular) | `go` | `SENTRY_DSN=... task android:build` |
+| Blup Notes (celular) | `go` | `SENTRY_DSN=... task android:build` |
 
 Os erros saem marcados com o ambiente:
 - `production` no ar;
@@ -32,7 +32,7 @@ Cada erro leva a versão de quem o mandou, e o Pulse mostra essa versão no prob
 | Painéis | `blup-paineis@1.0.0` | idem |
 | Ponte | `blup-bridge@1.0.0` | `docker build --build-arg VERSION=1.1.0` |
 | Studio desktop | `blup-studio@1.0.0` | `VERSION=1.1.0 task build` |
-| Studio celular | `blup-studio-mobile@1.0.0` | `VERSION=1.1.0 wails3 task android:build` |
+| Blup Notes (celular) | `blup-notes@1.0.0` | `VERSION=1.1.0 wails3 task android:build` |
 
 - O Cloud, os Sites e os painéis leem a versão de um lugar só, `cloud/shared/version.ts`, que puxa do `package.json`. Os bundles levam só esse campo, não o arquivo inteiro.
 - O Cloud e os Sites também mandam o id da publicação na Cloudflare (`dist`), para separar duas publicações da mesma versão.
