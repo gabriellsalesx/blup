@@ -16,7 +16,13 @@ import {readSiteDomain,refreshSiteDomain,removeSiteDomain,newProof} from "./site
 // other; deleting the channel deletes the page (channels.ts).
 type SiteRow={id:string;channelId:string;slug:string;title:string;description:string;language:string;logoLight:string|null;logoDark:string|null;showTitle:number;links:string};
 const columns="id,channel_id AS channelId,slug,title,description,language,logo_light AS logoLight,logo_dark AS logoDark,show_title AS showTitle,links";
-export const siteAddress=(env:Cloudflare.Env,slug:string)=>`https://${env.DEALS_PUBLIC_HOST||"deals.getblup.site"}/${slug}/`;
+// The page's address; on this computer (deals.localhost) with the local
+// server's scheme and port.
+export function siteAddress(env:Cloudflare.Env,slug:string){
+ const host=env.DEALS_PUBLIC_HOST||"deals.getblup.site";
+ if(host.endsWith(".localhost")){try{const app=new URL(env.APP_URL);return `${app.protocol}//${host}${app.port?`:${app.port}`:""}/${slug}/`;}catch{/* below */}}
+ return `https://${host}/${slug}/`;
+}
 export const ownSite=(env:Cloudflare.Env,owner:string)=>env.DB.prepare(`SELECT ${columns} FROM deals_site WHERE user_id=?`).bind(owner).first<SiteRow>();
 const view=(env:Cloudflare.Env,s:SiteRow)=>({id:s.id,channelId:s.channelId,slug:s.slug,title:s.title,description:s.description,language:z.enum(["pt","en","es"]).catch("pt").parse(s.language),logos:{light:s.logoLight,dark:s.logoDark},showTitle:s.showTitle===1,links:linksOf(s.links),url:siteAddress(env,s.slug)});
 const logoColumn={light:"logo_light",dark:"logo_dark"} as const satisfies Record<LogoVariant,string>;

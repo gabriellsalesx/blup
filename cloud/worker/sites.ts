@@ -17,6 +17,7 @@ import { opaqueId } from "./validation";
 import { domainsApi } from "./domains";
 import { stageFile } from "./upload";
 import { planOf } from "./account";
+import { ownSite as ownDealsPage, siteAddress as dealsPageAddress } from "./deals/sites";
 import { HASH, deploySchema, fileKey, manifestKey, slugAllowed, slugCandidates, slugProblem, toManifest } from "./site-rules";
 
 // Sites published through Blup Cloud (paid plans). The Studio builds the
@@ -65,17 +66,22 @@ export const sitesApi = new Hono<App>()
 	.use(signedIn)
 	.route("/:id/domain",domainsApi)
 
-	// The account's sites and how many the plan allows (0 on Free).
+	// The account's sites and how many the plan allows (0 on Free), with
+	// the Deals page, which counts as one.
 	.get("/", async (c) => {
 		const userId = c.get("userId");
-		const [plan, rows] = await Promise.all([
+		const [plan, rows, deals] = await Promise.all([
 			planOf(userId),
 			db.select({ id: site.id, slug: site.slug, title: site.title, bytes: site.bytes, files: site.files, live: site.deploy, updatedAt: site.updatedAt }).from(site).where(eq(site.userId, userId)).orderBy(desc(site.updatedAt)),
+			ownDealsPage(c.env,userId),
 		]);
 		const downgrade=await siteDowngrade(c.env.DB,userId,plan,rows.length);
 		const expired=downgrade!==null&&Date.parse(downgrade.deadline)<=Date.now();
 		return c.json({
 			limit: plan.limits.sites,downgrade,
+			// The Deals page takes one of the plan's sites too (made and
+			// edited in the Deals panel).
+			deals: deals?{title:deals.title,channelId:deals.channelId,url:dealsPageAddress(c.env,deals.slug)}:null,
 			sites: rows.map((r) => ({ ...r,published:r.live!=="",live:r.live!==""&&(!expired||downgrade.retainedSiteIds.includes(r.id)), url: siteURL(c.env, r.slug) })),
 		});
 	})

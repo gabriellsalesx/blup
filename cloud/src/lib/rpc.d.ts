@@ -2229,6 +2229,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     retainedSiteIds: string[];
                     selectionOpen: boolean;
                 } | null;
+                deals: {
+                    title: string;
+                    channelId: string;
+                    url: string;
+                } | null;
                 sites: {
                     published: boolean;
                     live: boolean;
@@ -2563,6 +2568,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     selectedSiteId: string | null;
                     retainedSiteIds: string[];
                     selectionOpen: boolean;
+                } | null;
+                deals: {
+                    title: string;
+                    channelId: string;
+                    url: string;
                 } | null;
                 sites: {
                     published: boolean;

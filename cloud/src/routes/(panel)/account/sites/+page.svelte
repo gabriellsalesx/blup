@@ -12,6 +12,7 @@
  import { confirm } from "#lib/confirm.svelte.ts";
  import { toast } from "#lib/toast.svelte.ts";
  import { bytes } from "#lib/usage.ts";
+ import { appURLs } from "#lib/app-urls.ts";
  let {data}:PageProps=$props();
  let result=$derived(data.sites);
  let busy=$state("");
@@ -32,7 +33,9 @@
   catch(error){toast(()=>errorMessage(error),{kind:"error"});}
   finally{busy="";}
  }
- const count=$derived(result===null?t("loading"):result.sites.length===1?t("siteCountOne",{limit}):t("siteCount",{count:result.sites.length,limit}));
+ // The Deals page counts as one of the plan's sites.
+ const used=$derived(result===null?0:result.sites.length+(result.deals?1:0));
+ const count=$derived(result===null?t("loading"):used===1?t("siteCountOne",{limit}):t("siteCount",{count:used,limit}));
 </script>
 <PageHeader title={t("sites")}/>
 <p class="mt-2 text-neutral-500">{t("sitesLead")}</p>
@@ -62,5 +65,12 @@
    {/snippet}
   </Row>
  {/each}
+ {#if result?.deals}
+  {@const deals=result.deals}
+  <Row title={deals.title} help={t("sitesDealsPage")}>
+   <a class="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-blup hover:underline" href={deals.url} target="_blank" rel="noopener"><Globe class="size-4" />{deals.url.replace(/^https?:\/\//,"").replace(/\/$/,"")}</a>
+   {#snippet action()}<Button variant="secondary" onclick={()=>{location.href=`${appURLs.deals}channels/${deals.channelId}`;}}>{t("sitesOpenDeals")}</Button>{/snippet}
+  </Row>
+ {/if}
  <Row title={t("howPublish")}  help={t("howPublishHelp")}  />
 </div>
