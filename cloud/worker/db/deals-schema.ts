@@ -159,6 +159,8 @@ export const dealsSite=sqliteTable("deals_site",{
  // The header, as a Pulse page's: the name beside the logo or not, and up
  // to five links (JSON, as navLinks).
  showTitle:integer("show_title").notNull().default(1),links:text("links").notNull().default("[]"),
+ // Its social networks (JSON, one of each of siteNetworks).
+ socials:text("socials").notNull().default("[]"),
 });
 
 // A deals page's own domain, verified like a Pulse page's (TXT proof, then

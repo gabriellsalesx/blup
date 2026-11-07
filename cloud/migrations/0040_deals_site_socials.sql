@@ -1,0 +1,1 @@
+ALTER TABLE `deals_site` ADD `socials` text DEFAULT '[]' NOT NULL;

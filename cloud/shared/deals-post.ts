@@ -60,6 +60,9 @@ export const socialNetworks=[
 export type SocialNetwork=(typeof socialNetworks)[number]["id"];
 export const socialIds=socialNetworks.map(n=>n.id) as [SocialNetwork,...SocialNetwork[]];
 export const networkOf=(id:string)=>socialNetworks.find(n=>n.id===id);
+// The networks a public deals page can show, one of each.
+export const siteNetworks=["whatsapp","telegram","discord","instagram","tiktok"] as const satisfies readonly SocialNetwork[];
+export type SiteNetwork=(typeof siteNetworks)[number];
 // The address, cleaned, when it is a profile on that network's site.
 export function socialURL(network:SocialNetwork,raw:string):string|null{
  try{

@@ -60,7 +60,7 @@ const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now
  }
  onDestroy(stopPolling);
  // The page is made with its channel; then it opens, to add the logos.
- async function site(values:{title:string;slug:string;description:string;language:"pt"|"en"|"es";showTitle:boolean;links:{label:string;url:string}[]}){await run(async()=>{const made=await parseResponse(dealsApi.site.$post({json:values}));void refreshUsage();toast(()=>t("dealsLinked"));await goto(resolve("/channels/[channel]",{channel:made.site.channelId}));});}
+ async function site(values:{title:string;slug:string;description:string;language:"pt"|"en"|"es";showTitle:boolean;links:{label:string;url:string}[];socials:{network:"whatsapp"|"telegram"|"discord"|"instagram"|"tiktok";url:string}[]}){await run(async()=>{const made=await parseResponse(dealsApi.site.$post({json:values}));void refreshUsage();toast(()=>t("dealsLinked"));await goto(resolve("/channels/[channel]",{channel:made.site.channelId}));});}
  function choose(next:Kind){if(next===kind)return;kind=next;webhook="";stopPolling();link=null;linkStatus=null;}
 </script>
 

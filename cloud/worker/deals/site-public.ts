@@ -5,7 +5,7 @@ import {THEME_SCRIPT} from "../pulse/public-html";
 import {sha256} from "../pulse/limits";
 import {linksOf} from "../pulse/page-look";
 import {dealsAccess} from "./entitlement";
-import {siteLogoKey,siteQuery,siteSlug,SITE_PAGE,SITE_DAYS} from "./site-rules";
+import {siteLogoKey,siteQuery,siteSlug,socialsOf,SITE_PAGE,SITE_DAYS} from "./site-rules";
 const since=(now:number)=>now-SITE_DAYS*86_400_000;
 import {SitePage,SITE_CSS,SEARCH_SCRIPT,searchResult,type DealCategory,type SiteDeal,type SiteInfo,type SitePageProps} from "./site-page";
 import {DetailPage,SHARE_SCRIPT,HISTORY_DAYS,type PricePoint,type SiteDetail} from "./site-detail";
@@ -18,8 +18,8 @@ import {DetailPage,SHARE_SCRIPT,HISTORY_DAYS,type PricePoint,type SiteDetail} fr
 // - a new version renders once and stays in the edge cache;
 // - GET and HEAD only, within DEALS_PUBLIC_LIMIT per IP.
 
-type Found={id:string;userId:string;slug:string;title:string;description:string;language:string;logoLight:string|null;logoDark:string|null;showTitle:number;links:string;updatedAt:number;latest:number|null};
-const found=`SELECT s.id,s.user_id AS userId,s.slug,s.title,s.description,s.language,s.logo_light AS logoLight,s.logo_dark AS logoDark,s.show_title AS showTitle,s.links,s.updated_at AS updatedAt,
+type Found={id:string;userId:string;slug:string;title:string;description:string;language:string;logoLight:string|null;logoDark:string|null;showTitle:number;links:string;socials:string;updatedAt:number;latest:number|null};
+const found=`SELECT s.id,s.user_id AS userId,s.slug,s.title,s.description,s.language,s.logo_light AS logoLight,s.logo_dark AS logoDark,s.show_title AS showTitle,s.links,s.socials,s.updated_at AS updatedAt,
  (SELECT max(p.sent_at) FROM deals_post p WHERE p.channel_id=s.channel_id AND p.state='sent') AS latest FROM deals_site s`;
 const siteBySlug=(env:Cloudflare.Env,slug:string)=>env.DB.prepare(`${found} WHERE s.slug=?`).bind(slug).first<Found>();
 const siteByHost=(env:Cloudflare.Env,host:string)=>env.DB.prepare(`${found} JOIN deals_site_domain d ON d.site_id=s.id WHERE d.hostname=? AND d.verified_at IS NOT NULL AND d.status='active' AND d.ssl='active'`).bind(host).first<Found>();
@@ -119,7 +119,7 @@ export async function serveDealsSite(req:Request,env:Cloudflare.Env):Promise<Res
   const json=(body:unknown,status=200)=>new Response(req.method==="HEAD"?null:JSON.stringify(body),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":status===200?"public, max-age=60":"no-store","x-content-type-options":"nosniff"}});
   if((await dealsAccess(env,site.userId,Date.now())).readOnly)return json({code:"NOT_FOUND"},404);
   if(!query.q)return json({results:[]});
-  const info:SiteInfo={slug:site.slug,title:site.title,description:site.description,language:languageOf(site.language)??"pt",logos:{light:site.logoLight,dark:site.logoDark},showTitle:site.showTitle===1,links:linksOf(site.links)};
+  const info:SiteInfo={slug:site.slug,title:site.title,description:site.description,language:languageOf(site.language)??"pt",logos:{light:site.logoLight,dark:site.logoDark},showTitle:site.showTitle===1,links:linksOf(site.links),socials:socialsOf(site.socials)};
   const {deals}=await dealsOf(env,site.id,{q:query.q},Date.now());
   return json({results:deals.slice(0,8).map(d=>searchResult({base:own?"":`/${site.slug}`,lang,site:info},d))});
  }
@@ -144,7 +144,7 @@ export async function serveDealsSite(req:Request,env:Cloudflare.Env):Promise<Res
  if(kept)return new Response(req.method==="HEAD"?null:kept.body,{headers});
  // Without the Deals plan (or a domain the account lost), no page.
  if((await dealsAccess(env,site.userId,now)).readOnly)return own?null:notFound();
- const info:SiteInfo={slug:site.slug,title:site.title,description:site.description,language:languageOf(site.language)??"pt",logos:{light:site.logoLight,dark:site.logoDark},showTitle:site.showTitle===1,links:linksOf(site.links)};
+ const info:SiteInfo={slug:site.slug,title:site.title,description:site.description,language:languageOf(site.language)??"pt",logos:{light:site.logoLight,dark:site.logoDark},showTitle:site.showTitle===1,links:linksOf(site.links),socials:socialsOf(site.socials)};
  const shared={now,site:info,lang,base:own?"":`/${site.slug}`,origin:url.origin,links:`https://${env.DEALS_PUBLIC_HOST||"deals.getblup.site"}`};
  let html:string;
  if(detail){

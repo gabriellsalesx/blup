@@ -281,6 +281,13 @@
       "when": 1794072253328,
       "tag": "0039_deals_site_header",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "6",
+      "when": 1794075743959,
+      "tag": "0040_deals_site_socials",
+      "breakpoints": true
     }
   ]
 }

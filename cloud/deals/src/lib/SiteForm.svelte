@@ -11,23 +11,26 @@
  import Switch from "#lib/ui/Switch.svelte";
  import SlugField,{type SlugState} from "#lib/ui/SlugField.svelte";
  import {slugState,SITE_HOST,type SiteLanguage} from "./site";
+ import SocialFields from "./SocialFields.svelte";
+ import {siteNetworks,socialURL,type SiteNetwork} from "../../../shared/deals-post";
  // The deals page, as Pulse's status page form: its name, address,
  // description and language; then its header (the name beside the logo or
  // not, and the logos once the page exists: `logos`, each sent as it is
- // picked) and up to five links. While the page is new the address follows
+ // picked), up to five links and its social networks (one of each). While the page is new the address follows
  // the name until it is typed, and is checked as it changes; once the page
  // exists it is fixed.
  type Link={label:string;url:string};
- type Values={title:string;slug:string;description:string;language:SiteLanguage;showTitle:boolean;links:Link[]};
+ type Social={network:SiteNetwork;url:string};
+ type Values={title:string;slug:string;description:string;language:SiteLanguage;showTitle:boolean;links:Link[];socials:Social[]};
  let {initial,editing=false,busy=false,disabled=false,logos,onsave}:{initial?:Values;editing?:boolean;busy?:boolean;disabled?:boolean;logos?:Snippet;onsave:(values:Values)=>void}=$props();
  const start=untrack(()=>initial);
  let title=$state(start?.title??""),slug=$state(start?.slug??""),description=$state(start?.description??""),lang=$state<SiteLanguage>(start?.language??language());
- let showTitle=$state(start?.showTitle??true),links=$state<Link[]>(start?.links.map(l=>({...l}))??[]);
+ let showTitle=$state(start?.showTitle??true),links=$state<Link[]>(start?.links.map(l=>({...l}))??[]),socials=$state<Social[]>(start?.socials.map(s=>({...s}))??[]);
  let address=$state<SlugState>("idle"),slugTyped=false;
  const languages=[{value:"pt" as const,label:"Português"},{value:"en" as const,label:"English"},{value:"es" as const,label:"Español"}];
  // A link needs a name and a full https address.
  const linkOk=(l:Link)=>{if(!l.label.trim())return false;try{const u=new URL(l.url.trim());return u.protocol==="https:"&&u.hostname.includes(".")&&!u.username&&!u.password;}catch{return false;}};
- const valid=$derived(title.trim().length>0&&links.every(linkOk)&&(editing||address==="available"));
+ const valid=$derived(title.trim().length>0&&links.every(linkOk)&&socials.every(s=>!!socialURL(s.network,s.url))&&(editing||address==="available"));
  const slugify=(text:string)=>text.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40).replace(/-+$/,"");
  let timer:ReturnType<typeof setTimeout>|undefined,asked=0;
  // Asks the server a moment after typing stops; only the latest answer counts.
@@ -40,7 +43,7 @@
  }
  function titled(){if(!editing&&!slugTyped){slug=slugify(title);check();}}
  function typed(){slugTyped=slug.length>0;check();}
- function submit(e:SubmitEvent){e.preventDefault();onsave({title:title.trim(),slug,description:description.trim(),language:lang,showTitle,links:links.map(l=>({label:l.label.trim(),url:l.url.trim()}))});}
+ function submit(e:SubmitEvent){e.preventDefault();onsave({title:title.trim(),slug,description:description.trim(),language:lang,showTitle,links:links.map(l=>({label:l.label.trim(),url:l.url.trim()})),socials:socials.map(s=>({network:s.network,url:s.url.trim()}))});}
 </script>
 
 <form class="grid grid-cols-[minmax(0,1fr)] gap-10" onsubmit={submit}>
@@ -70,6 +73,9 @@
    {/each}
    {#if links.length<5}<Button small variant="secondary" type="button" class="justify-self-start" {disabled} onclick={()=>links.push({label:"",url:"https://"})}><Plus class="size-4"/>{t("pulseAddLink")}</Button>{/if}
   </div>
+ </FormSection>
+ <FormSection title={t("dealsSocials")} help={t("dealsSiteSocialsHelp")}>
+  <SocialFields networks={siteNetworks} bind:links={socials} {disabled}/>
  </FormSection>
  <div class="flex justify-end"><Button {busy} disabled={!valid||disabled}>{#if !editing}<Plus class="size-4"/>{/if}{editing?t("save"):t("dealsSiteCreate")}</Button></div>
 </form>

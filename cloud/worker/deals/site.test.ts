@@ -170,15 +170,25 @@ describe("deals page",()=>{
   await makeSite();
   let html=await (await visit("/ofertas-ana/"))!.text();
   expect(html).toContain('<a class="brand" href="/ofertas-ana/"><span>Ofertas da &lt;b&gt;Ana&lt;/b&gt;</span>');expect(html).not.toContain('id="mobile-menu"');
-  const patch=await call("/site",{method:"PATCH",body:{title:"Ofertas da Ana",description:"",language:"pt",showTitle:false,links:[{label:"Instagram",url:"https://instagram.com/ana"}]}});
+  const patch=await call("/site",{method:"PATCH",body:{title:"Ofertas da Ana",description:"",language:"pt",showTitle:false,links:[{label:"Instagram",url:"https://instagram.com/ana"}],socials:[]}});
   expect(patch.status).toBe(200);
-  expect((await call("/site",{method:"PATCH",body:{title:"X",description:"",language:"pt",showTitle:true,links:[{label:"Ruim",url:"http://inseguro.com"}]}})).status).toBe(400);
+  expect((await call("/site",{method:"PATCH",body:{title:"X",description:"",language:"pt",showTitle:true,links:[{label:"Ruim",url:"http://inseguro.com"}],socials:[]}})).status).toBe(400);
   const site=(await (await call("/site")).json() as {site:{showTitle:boolean;links:unknown[]}}).site;
-  expect(site).toMatchObject({showTitle:false,links:[{label:"Instagram",url:"https://instagram.com/ana"}]});
+  expect(site).toMatchObject({showTitle:false,links:[{label:"Instagram",url:"https://instagram.com/ana"}],socials:[]});
   html=await (await visit("/ofertas-ana/"))!.text();
   expect(html).toContain('href="https://instagram.com/ana" rel="noopener nofollow">Instagram</a>');expect(html).toContain('id="mobile-menu"');
   // Without a logo the name still shows (something has to).
   expect(html).toContain("<span>Ofertas da Ana</span>");
+ });
+ it("shows the page's social networks, one of each, each on its own site",async()=>{
+  await makeSite();
+  const save=(socials:unknown)=>call("/site",{method:"PATCH",body:{title:"Ofertas da Ana",description:"",language:"pt",showTitle:true,links:[],socials}});
+  expect((await save([{network:"instagram",url:"https://evil.example/ana"}])).status).toBe(400);
+  expect((await save([{network:"telegram",url:"https://t.me/a"},{network:"telegram",url:"https://t.me/b"}])).status).toBe(400);
+  expect((await save([{network:"youtube",url:"https://youtube.com/@ana"}])).status).toBe(400);
+  expect((await save([{network:"instagram",url:"https://instagram.com/ana"},{network:"whatsapp",url:"https://whatsapp.com/channel/abc"}])).status).toBe(200);
+  const html=await (await visit("/ofertas-ana/"))!.text();
+  expect(html).toContain('class="socials"');expect(html).toContain('href="https://instagram.com/ana"');expect(html).toContain(">Instagram</a>");expect(html).toContain("Siga também");
  });
  it("keeps logos checked and versioned",async()=>{
   await makeSite();

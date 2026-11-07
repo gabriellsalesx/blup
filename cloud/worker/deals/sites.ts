@@ -8,14 +8,14 @@ import {dealsWrite,type DealsApp} from "./access";
 import {addChannel} from "./store";
 import {accountPlan} from "../lifecycle";
 import {reserve,release} from "../quota";
-import {siteCreate,siteUpdate,siteSlug,siteLogoKey,siteReserved} from "./site-rules";
+import {siteCreate,siteUpdate,siteSlug,siteLogoKey,siteReserved,socialsOf} from "./site-rules";
 import {readSiteDomain,refreshSiteDomain,removeSiteDomain,newProof} from "./site-domain";
 
 // /api/deals/site: the account's public deals page. Making it makes its
 // channel (type "site"), so hunts and pasted links send to it like to any
 // other; deleting the channel deletes the page (channels.ts).
-type SiteRow={id:string;channelId:string;slug:string;title:string;description:string;language:string;logoLight:string|null;logoDark:string|null;showTitle:number;links:string};
-const columns="id,channel_id AS channelId,slug,title,description,language,logo_light AS logoLight,logo_dark AS logoDark,show_title AS showTitle,links";
+type SiteRow={id:string;channelId:string;slug:string;title:string;description:string;language:string;logoLight:string|null;logoDark:string|null;showTitle:number;links:string;socials:string};
+const columns="id,channel_id AS channelId,slug,title,description,language,logo_light AS logoLight,logo_dark AS logoDark,show_title AS showTitle,links,socials";
 // The page's address; on this computer (deals.localhost) with the local
 // server's scheme and port.
 export function siteAddress(env:Cloudflare.Env,slug:string){
@@ -24,7 +24,7 @@ export function siteAddress(env:Cloudflare.Env,slug:string){
  return `https://${host}/${slug}/`;
 }
 export const ownSite=(env:Cloudflare.Env,owner:string)=>env.DB.prepare(`SELECT ${columns} FROM deals_site WHERE user_id=?`).bind(owner).first<SiteRow>();
-const view=(env:Cloudflare.Env,s:SiteRow)=>({id:s.id,channelId:s.channelId,slug:s.slug,title:s.title,description:s.description,language:z.enum(["pt","en","es"]).catch("pt").parse(s.language),logos:{light:s.logoLight,dark:s.logoDark},showTitle:s.showTitle===1,links:linksOf(s.links),url:siteAddress(env,s.slug)});
+const view=(env:Cloudflare.Env,s:SiteRow)=>({id:s.id,channelId:s.channelId,slug:s.slug,title:s.title,description:s.description,language:z.enum(["pt","en","es"]).catch("pt").parse(s.language),logos:{light:s.logoLight,dark:s.logoDark},showTitle:s.showTitle===1,links:linksOf(s.links),socials:socialsOf(s.socials),url:siteAddress(env,s.slug)});
 const logoColumn={light:"logo_light",dark:"logo_dark"} as const satisfies Record<LogoVariant,string>;
 const logoParam=z.object({variant:logoVariant});
 
@@ -66,7 +66,7 @@ export const sitesApi=new Hono<DealsApp>()
    let channel:Awaited<ReturnType<typeof addChannel>>;try{channel=await addChannel(c.env,owner,"site",id,body.title,now);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
    if(!channel)return c.json({code:"QUOTA"},409);
    try{
-    await c.env.DB.prepare("INSERT INTO deals_site(id,user_id,channel_id,slug,title,description,language,show_title,links,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)").bind(id,owner,channel.id,body.slug,body.title,body.description,body.language,body.showTitle?1:0,JSON.stringify(body.links),now,now).run();
+    await c.env.DB.prepare("INSERT INTO deals_site(id,user_id,channel_id,slug,title,description,language,show_title,links,socials,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,owner,channel.id,body.slug,body.title,body.description,body.language,body.showTitle?1:0,JSON.stringify(body.links),JSON.stringify(body.socials),now,now).run();
    }catch(e){
     // Someone took the address (or a second page) a moment before.
     await c.env.DB.prepare("DELETE FROM deals_channel WHERE id=? AND user_id=?").bind(channel.id,owner).run();
@@ -79,7 +79,7 @@ export const sitesApi=new Hono<DealsApp>()
  })
  .patch("/",dealsWrite,validate("json",siteUpdate),async c=>{
   const owner=c.get("session").user.id,body=c.req.valid("json");
-  const row=await c.env.DB.prepare("UPDATE deals_site SET title=?,description=?,language=?,show_title=?,links=?,updated_at=? WHERE user_id=? RETURNING id,channel_id AS channelId").bind(body.title,body.description,body.language,body.showTitle?1:0,JSON.stringify(body.links),Date.now(),owner).first<{id:string;channelId:string}>();
+  const row=await c.env.DB.prepare("UPDATE deals_site SET title=?,description=?,language=?,show_title=?,links=?,socials=?,updated_at=? WHERE user_id=? RETURNING id,channel_id AS channelId").bind(body.title,body.description,body.language,body.showTitle?1:0,JSON.stringify(body.links),JSON.stringify(body.socials),Date.now(),owner).first<{id:string;channelId:string}>();
   if(!row)return c.json({code:"NOT_FOUND"},404);
   await c.env.DB.prepare("UPDATE deals_channel SET name=? WHERE id=? AND user_id=?").bind(body.title,row.channelId,owner).run();
   return c.json({ok:true});

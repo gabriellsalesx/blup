@@ -11,7 +11,7 @@ it("turns the Pulse page's year",()=>{
  expect(renderStatusPage(page,at(2031))).toContain("© 2031 Status da Ana");
 });
 it("turns the Deals page's year",()=>{
- const props=(now:number)=>({now,site:{slug:"ana",title:"Ofertas da Ana",description:"",language:"pt" as const,logos:{light:null,dark:null},showTitle:true,links:[]},lang:"pt" as const,base:"/ana",origin:"https://deals.getblup.site",links:"https://deals.getblup.site",deals:[],query:null,category:null,categories:[],next:null});
+ const props=(now:number)=>({now,site:{slug:"ana",title:"Ofertas da Ana",description:"",language:"pt" as const,logos:{light:null,dark:null},showTitle:true,links:[],socials:[]},lang:"pt" as const,base:"/ana",origin:"https://deals.getblup.site",links:"https://deals.getblup.site",deals:[],query:null,category:null,categories:[],next:null});
  expect(String(SitePage(props(at(2026))))).toContain("© 2026 Ofertas da Ana");
  expect(String(SitePage(props(at(2031))))).toContain("© 2031 Ofertas da Ana");
 });

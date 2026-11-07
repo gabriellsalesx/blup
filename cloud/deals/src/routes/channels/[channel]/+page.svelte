@@ -35,6 +35,7 @@
  import {hasPlan} from "../../../lib/plan";
  import SiteForm from "../../../lib/SiteForm.svelte";
  import {getSite,uploadSiteLogo,removeSiteLogo,type SiteLanguage} from "../../../lib/site";
+ import type {SiteNetwork} from "../../../../../shared/deals-post";
  // One channel, as Pulse's alerts: its state and the examples it can get
  // (the plain test, a free game, a Nuuvem sale, a store find, a pasted
  // link), each as it would really arrive, marked as an example. One round
@@ -49,7 +50,7 @@
  let site=$derived(data.page?.site??null);
  const tabs=$derived([{value:"settings" as const,label:t("dealsSiteSettings")},{value:"domain" as const,label:t("dealsSiteDomainTab")}]);
  let tab=$derived<"settings"|"domain">(data.tab);
- async function saveSite(values:{title:string;description:string;language:SiteLanguage;showTitle:boolean;links:{label:string;url:string}[]}){await run(async()=>{await parseResponse(dealsApi.site.$patch({json:{title:values.title,description:values.description,language:values.language,showTitle:values.showTitle,links:values.links}}));site=await getSite();await invalidateAll();toast(()=>t("pulseToastSaved"));});}
+ async function saveSite(values:{title:string;description:string;language:SiteLanguage;showTitle:boolean;links:{label:string;url:string}[];socials:{network:SiteNetwork;url:string}[]}){await run(async()=>{await parseResponse(dealsApi.site.$patch({json:{title:values.title,description:values.description,language:values.language,showTitle:values.showTitle,links:values.links,socials:values.socials}}));site=await getSite();await invalidateAll();toast(()=>t("pulseToastSaved"));});}
  type Kind="test"|"game_free"|"nuuvem_deal"|"store_deal"|"product";
  const options:{value:Kind;label:()=>string;help:()=>string;Icon:Component<{class?:string}>;bg:string}[]=[
   {value:"test",label:()=>t("dealsSampleTest"),help:()=>t("dealsSampleTestHelp"),Icon:Send,bg:"bg-blup"},
@@ -101,7 +102,7 @@
   {#if tab==="domain"}
    <DomainCard eligible={hasPlan()} help={t("dealsSiteDomainHelp")} removeAsk={t("dealsSiteDomainRemoveAsk")} errorText={dealsError} load={()=>parseResponse(dealsApi.site.domain.$get())} connect={hostname=>parseResponse(dealsApi.site.domain.$post({json:{hostname}}))} remove={()=>parseResponse(dealsApi.site.domain.$delete())}/>
   {:else}
-   <div class="mt-8">{#key current.id}<SiteForm editing {busy} disabled={!hasPlan()} initial={{title:current.title,slug:current.slug,description:current.description,language:current.language,showTitle:current.showTitle,links:current.links}} onsave={saveSite}>
+   <div class="mt-8">{#key current.id}<SiteForm editing {busy} disabled={!hasPlan()} initial={{title:current.title,slug:current.slug,description:current.description,language:current.language,showTitle:current.showTitle,links:current.links,socials:current.socials}} onsave={saveSite}>
     {#snippet logos()}
      <LogoField variant="light" label={t("pulseLogoLight")} preview={data.page?.logos.light??null} disabled={!hasPlan()} upload={logo=>uploadSiteLogo("light",logo)} remove={()=>removeSiteLogo("light")}/>
      <LogoField variant="dark" label={t("pulseLogoDark")} preview={data.page?.logos.dark??null} disabled={!hasPlan()} upload={logo=>uploadSiteLogo("dark",logo)} remove={()=>removeSiteLogo("dark")}/>

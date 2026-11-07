@@ -12054,6 +12054,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         label: string;
                         url: string;
                     }[];
+                    socials: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
+                        url: string;
+                    }[];
                     url: string;
                 } | null;
             };
@@ -12128,6 +12132,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         label: string;
                         url: string;
                     }[] | undefined;
+                    socials?: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
+                        url: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -12151,6 +12159,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         label: string;
                         url: string;
                     }[] | undefined;
+                    socials?: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
+                        url: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -12171,6 +12183,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         label: string;
                         url: string;
                     }[] | undefined;
+                    socials?: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
+                        url: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -12188,6 +12204,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     showTitle?: boolean | undefined;
                     links?: {
                         label: string;
+                        url: string;
+                    }[] | undefined;
+                    socials?: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
                         url: string;
                     }[] | undefined;
                 };
@@ -12210,6 +12230,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         label: string;
                         url: string;
                     }[] | undefined;
+                    socials?: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
+                        url: string;
+                    }[] | undefined;
                 };
             };
             output: {
@@ -12227,6 +12251,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     showTitle?: boolean | undefined;
                     links?: {
                         label: string;
+                        url: string;
+                    }[] | undefined;
+                    socials?: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
                         url: string;
                     }[] | undefined;
                 };
@@ -12248,6 +12276,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         label: string;
                         url: string;
                     }[];
+                    socials: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
+                        url: string;
+                    }[];
                     url: string;
                 };
             };
@@ -12263,6 +12295,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     showTitle?: boolean | undefined;
                     links?: {
                         label: string;
+                        url: string;
+                    }[] | undefined;
+                    socials?: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
                         url: string;
                     }[] | undefined;
                 };
@@ -12287,6 +12323,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         label: string;
                         url: string;
                     }[];
+                    socials: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
+                        url: string;
+                    }[];
                 };
             };
             output: {
@@ -12309,6 +12349,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         label: string;
                         url: string;
                     }[];
+                    socials: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
+                        url: string;
+                    }[];
                 };
             };
             output: {
@@ -12328,6 +12372,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         label: string;
                         url: string;
                     }[];
+                    socials: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
+                        url: string;
+                    }[];
                 };
             };
             output: {
@@ -12344,6 +12392,10 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     showTitle: boolean;
                     links: {
                         label: string;
+                        url: string;
+                    }[];
+                    socials: {
+                        network: "discord" | "tiktok" | "telegram" | "instagram" | "whatsapp";
                         url: string;
                     }[];
                 };

@@ -4,7 +4,9 @@ import {raw} from "hono/html";
 import type {Child} from "hono/jsx";
 import {translate,type messages,type MessageKey} from "../../src/lib/i18n/catalog";
 import {languageTag,type Language,type TranslationArgs} from "../../shared/language";
-import {dealCategories,storeTitles,platformNames} from "../../shared/deals-post";
+import {dealCategories,storeTitles,platformNames,networkOf,type SiteNetwork} from "../../shared/deals-post";
+import {socialMarks} from "../../shared/social-marks";
+import type {SiteSocial} from "./site-rules";
 import {THEME_SCRIPT} from "../pulse/public-html";
 import {money} from "./message";
 
@@ -16,7 +18,7 @@ import {money} from "./message";
 
 export type DealCategory=(typeof dealCategories)[number];
 export type SiteLink={label:string;url:string};
-export type SiteInfo={slug:string;title:string;description:string;language:Language;logos:{light:string|null;dark:string|null};showTitle:boolean;links:SiteLink[]};
+export type SiteInfo={slug:string;title:string;description:string;language:Language;logos:{light:string|null;dark:string|null};showTitle:boolean;links:SiteLink[];socials:SiteSocial[]};
 export type SiteDeal={code:string;title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;store:string;coupon:string|null;description:string|null;category:DealCategory|null;sentAt:number;kind:string;platforms:string[];endsAt:number|null};
 export type SitePageProps={
  site:SiteInfo;
@@ -136,6 +138,20 @@ function DealCard({deal,lang,t,links,detail}:{deal:SiteDeal;lang:Language;t:Tran
  </article>;
 }
 
+// The page's social networks, under its description: each a small pill
+// with the network's mark in its own color and its name, so a visitor
+// sees at once where else to follow the deals.
+const networkColor:Record<SiteNetwork,string>={whatsapp:"#25D366",telegram:"#26A5E4",discord:"#5865F2",instagram:"#FF0069",tiktok:"currentColor"};
+function Socials({socials,t}:{socials:SiteSocial[];t:Translate}){
+ if(!socials.length)return null;
+ return <nav class="socials" aria-label={t("dealsSiteFollow")}>
+  <span class="socials-label">{t("dealsSiteFollow")}</span>
+  {socials.map(s=><a href={s.url} rel="noopener nofollow me" target="_blank">
+   <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true" style={`fill:${networkColor[s.network]};stroke:none`}><path d={socialMarks[s.network]}/></svg>{networkOf(s.network)?.name??s.network}
+  </a>)}
+ </nav>;
+}
+
 export type Translate=<K extends MessageKey>(key:K,...args:TranslationArgs<(typeof messages)[K][0]>)=>string;
 export const translator=(lang:Language):Translate=>(key,...args)=>translate(lang,key,...args);
 
@@ -243,6 +259,7 @@ export function SitePage(props:SitePageProps){
   <section class="intro">
    <h1>{site.title}</h1>
    {site.description?<p>{site.description}</p>:null}
+   <Socials socials={site.socials} t={t}/>
   </section>
   {tabs.length>1?<nav class="chips" aria-label={t("dealsSiteCategories")}>{tabs.map(tab=><a href={tab.href} aria-current={tab.on?"page":undefined}>{tab.label}</a>)}</nav>:null}
   {props.query?<p class="results">{deals.length?null:t("dealsSiteNothing",{query:props.query})} <a href={pageHref(props,{q:null})}>{t("dealsSiteClear")}</a></p>:null}
@@ -278,7 +295,7 @@ export const SITE_CSS=`@layer reset,tokens,base,layout,components;
 .search-field{display:flex;align-items:center;gap:.75rem;padding:0 1rem;border-block-end:1px solid var(--main-200)}.search-field>.icon{color:var(--main-400)}.search-field input{flex:1;min-width:0;height:3rem;border:0;outline:0;background:transparent}.search-field input::-webkit-search-cancel-button{appearance:none}
 .search-results{overflow-y:auto;max-height:calc(100dvh - 12rem);padding:.5rem}.search-results:empty{display:none}.search-results a{display:block;padding:.75rem;border-radius:.5rem}.search-results a:hover,.search-results a:focus-visible{background:var(--main-100)}.search-results strong{display:block;font-weight:600}.search-results p{font-size:.875rem;color:var(--main-600);margin-block-start:.25rem}.search-results mark{background:none;color:var(--accent);font-weight:600}.search-status{padding:1.25rem;text-align:center;font-size:.875rem;color:var(--main-500)}:root:not(.js) [data-search-open]{display:none}
 .button{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.5rem 1rem;border-radius:.375rem;font-weight:600;background:var(--primary);color:var(--on-primary);transition:opacity .2s}.button:hover{opacity:.85}.button-ghost{background:transparent;color:var(--main-900);box-shadow:inset 0 0 0 1px var(--main-300)}
-.intro{padding-block:2.5rem 1.5rem}.intro h1{font-size:clamp(1.75rem,1.4rem + 1.5vw,2.5rem);font-weight:700;line-height:1.1;letter-spacing:-.025em}.intro p{margin-block-start:.5rem;max-width:42rem;color:var(--main-600)}
+.intro{padding-block:2.5rem 1.5rem}.intro h1{font-size:clamp(1.75rem,1.4rem + 1.5vw,2.5rem);font-weight:700;line-height:1.1;letter-spacing:-.025em}.intro p{margin-block-start:.5rem;max-width:42rem;color:var(--main-600)}.socials{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-block-start:1rem}.socials-label{font-size:.8125rem;font-weight:600;color:var(--main-500);margin-inline-end:.25rem}.socials a{display:inline-flex;align-items:center;gap:.375rem;padding:.3125rem .75rem;border:1px solid var(--main-200);border-radius:999px;background:var(--card);font-size:.8125rem;font-weight:600;color:var(--main-700);transition:border-color .2s,color .2s}.socials a:hover{border-color:var(--main-400);color:var(--main-900)}
 .chips{display:flex;gap:.5rem;overflow-x:auto;scrollbar-width:none;padding-block-end:1.25rem}.chips a{flex:none;padding:.375rem .875rem;border:1px solid var(--main-200);border-radius:999px;font-size:.875rem;font-weight:500;color:var(--main-600)}.chips a[aria-current]{background:var(--main-900);border-color:var(--main-900);color:var(--main-25)}
 .results{margin-block-end:1rem;color:var(--main-600)}.results a{text-decoration:underline}.empty{padding-block:4rem;text-align:center;color:var(--main-500)}
 .deals{display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))}
