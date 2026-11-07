@@ -132,6 +132,9 @@
 		{ "name": "BULK_LIMIT", "namespace_id": "1003", "simple": { "limit": 500, "period": 10 } }
 			],
 			"vars": {
+				// Os erros do Cloud vão para o Blup Pulse marcados como de
+				// produção. A DSN é secret: wrangler secret put SENTRY_DSN.
+				"SENTRY_ENVIRONMENT": "production",
 				"APP_URL": "https://cloud.getblup.io",
 				// A passkey vale em getblup.io e nos subdomínios; o login confere a
 				// origem (cloud.getblup.io), então outro subdomínio não a usa.

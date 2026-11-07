@@ -38,6 +38,10 @@ import {checkDue} from "./pulse/scheduler";
 import {pulseMaintenance} from "./pulse/cleanup";
 import {servePulsePage} from "./pulse/public";
 import {pulseApi} from "./pulse/api";
+import {Sentry,sentryOptions,reportError,watched} from "./observability";
+import {serveHealth} from "./health";
+import {SyncLive as SyncLiveObject} from "./live";
+import {PulseProject as PulseProjectObject} from "./pulse/project";
 import {dealsApi} from "./deals/api";
 import {serveDealsLink} from "./deals/redirect";
 import {serveDealsSite} from "./deals/site-public";
@@ -232,15 +236,20 @@ app.onError(async (err, c) => {
   }
   return c.req.path.startsWith("/api/ai/")?c.json({code:"INVALID",error:{code:"INVALID",message:"Pedido inválido."}},err.status):c.json({code:err.status===400?"INVALID":err.status===413?"TOO_LARGE":"REQUEST_FAILED"},err.status);
  }
-	// Database/provider errors may contain query bindings or private text.
+	// Database/provider errors may contain query bindings or private text
+	// (Pulse keeps the error's type and stack, not those values).
 	console.error("[blup] request_failed", err.name);
+	reportError(err);
 	return c.json(requestError(c.req.path,"INTERNAL","Não deu para completar o pedido."), 500);
 });
 
 export type AppType = typeof routes;
 
-export { SyncLive } from "./live";
-export {PulseProject} from "./pulse/project";
+// The Durable Objects, with their errors reported to Pulse too.
+export const SyncLive=Sentry.instrumentDurableObjectWithSentry(sentryOptions,SyncLiveObject);
+export const PulseProject=Sentry.instrumentDurableObjectWithSentry(sentryOptions,PulseProjectObject);
+// Each background job on its own: one failing is reported, the others go on.
+const all=(...jobs:Promise<unknown>[])=>Promise.all(jobs.map(watched));
 
 // The security headers of static/_headers, on what the Worker itself
 // serves (Cloudflare applies _headers only to assets it serves directly).
@@ -267,9 +276,11 @@ function secure(res: Response): Response {
 // The daily cron (wrangler.jsonc); the other one is the reminders'.
 const DAILY = "0 4 * * *";
 
-export default {
+// Wrapped by the Sentry SDK: what throws (requests, cron) reaches Pulse.
+export default Sentry.withSentry(sentryOptions,{
 	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
 		const url = new URL(req.url);
+		const health=await serveHealth(req,env);if(health)return health;
 		if(url.hostname===env.PULSE_INGEST_HOST)return secure(await pulseIngest(req,env));
 		if(url.hostname===env.PULSE_PUBLIC_HOST)return secure(await servePulsePage(req,env)??new Response("Not found",{status:404}));
 		// deals.getblup.site: the deals pages (/<slug>/), else the short links (/r/).
@@ -293,8 +304,8 @@ export default {
 	// Every 5 minutes, the calendar's reminders by e-mail; once a day, the
 	// clean-up of old versions and unused blocks.
 	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
-		if(controller.cron==="* * * * *"){ctx.waitUntil(Promise.all([checkDue(env).then(()=>reconcileAlerts(env)).then(()=>dispatchAlerts(env)),collectDeals(env).then(()=>collectMirrors(env)).then(()=>collectShops(env)).then(()=>dispatchDeals(env))]));return;}
-		if (controller.cron === DAILY) ctx.waitUntil(Promise.all([pulseMaintenance(env,true),dealsCleanup(env,dealsLimits.historyDays),dealsLifecycle(env),cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))]));
-		else ctx.waitUntil(Promise.all([pulseMaintenance(env),sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)]).then(()=>flushSitePurges(env)));
+		if(controller.cron==="* * * * *"){ctx.waitUntil(all(checkDue(env).then(()=>reconcileAlerts(env)).then(()=>dispatchAlerts(env)),collectDeals(env).then(()=>collectMirrors(env)).then(()=>collectShops(env)).then(()=>dispatchDeals(env))));return;}
+		if (controller.cron === DAILY) ctx.waitUntil(all(pulseMaintenance(env,true),dealsCleanup(env,dealsLimits.historyDays),dealsLifecycle(env),cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))));
+		else ctx.waitUntil(all(pulseMaintenance(env),sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)).then(()=>watched(flushSitePurges(env))));
 	},
-} satisfies ExportedHandler<Cloudflare.Env>;
+} satisfies ExportedHandler<Cloudflare.Env>);

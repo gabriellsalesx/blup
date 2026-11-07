@@ -31,6 +31,8 @@ interface __BaseEnv_CloudflareBindings {
 	DEALS_RAKUTEN_CLIENT_SECRET: string;
 	DEALS_RAKUTEN_SID: string;
 	PULSE_INGEST_HOST: string;
+	SENTRY_DSN?: string;
+	SENTRY_ENVIRONMENT?: string;
 	PULSE_PUBLIC_HOST: string;
 	OTP_LIMIT: RateLimit;
 	ABUSE_LIMIT: RateLimit;
@@ -93,6 +95,8 @@ declare namespace Cloudflare {
 	DEALS_RAKUTEN_CLIENT_SECRET: string;
 	DEALS_RAKUTEN_SID: string;
 	PULSE_INGEST_HOST: string;
+	SENTRY_DSN?: string;
+	SENTRY_ENVIRONMENT?: string;
 	PULSE_PUBLIC_HOST: string;
 	OTP_LIMIT: RateLimit;
 	ABUSE_LIMIT: RateLimit;

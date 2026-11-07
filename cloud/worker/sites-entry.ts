@@ -5,6 +5,8 @@ import { cachedSiteProps,serveDeploy } from "./serve-site";
 import { drainSitePurges } from "./site-cache-purge";
 import { serveSite } from "./serve-site";
 import { slugOfHost } from "./site-rules";
+import { Sentry, sentryOptions } from "./observability";
+import { serveHealth } from "./health";
 
 // The Worker of the published sites (<slug>.getblup.site), apart from the
 // panel's: no assets, no auth, only the D1 rows of the sites and their files
@@ -25,9 +27,12 @@ async function resolveDomain(env:Cloudflare.Env,host:string,canonical:string){
  const result={...row,at:Date.now()};domainCache.set(host,result);return result;
 }
 
-export default {
+// Wrapped by the Sentry SDK: what throws reaches Pulse (through the
+// network: the ingest lives in the Cloud's Worker).
+export default Sentry.withSentry(sentryOptions,{
 	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
 		const url = new URL(req.url);
+		const health=await serveHealth(req,env);if(health)return health;
 		if(url.hostname===env.PULSE_PUBLIC_HOST)return await servePulsePage(req,env)??new Response("Not found",{status:404});
 		// Custom Pulse hostnames use the same verified SaaS namespace.
 		// Resolve eligibility on every request before the short public cache.
@@ -61,7 +66,7 @@ export default {
 		for (const [k, v] of Object.entries(HEADERS)) if (!res.headers.has(k)) res.headers.set(k, v);
 		return res;
 	},
-} satisfies ExportedHandler<Cloudflare.Env>;
+} satisfies ExportedHandler<Cloudflare.Env>);
 
 // RPC maintenance executes in the namespace that owns the cached fetch.
 // There is no public HTTP endpoint for triggering a purge.
