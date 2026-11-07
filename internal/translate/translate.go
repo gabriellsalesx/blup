@@ -35,10 +35,13 @@ var (
 
 // Client translates through OpenRouter (Blup false) or Blup Cloud (Blup
 // true, Key being the Blup session).
+// Models, on OpenRouter, is the order to try (the first answers, the
+// others take over when it fails, OpenRouter's fallback); empty, Model.
 type Client struct {
 	Key     string
 	BaseURL string
 	Blup    bool
+	Models  []string
 	HTTP    *http.Client
 }
 
@@ -122,14 +125,19 @@ func (c *Client) part(ctx context.Context, text, from, to string) (string, error
 		body, _ = json.Marshal(map[string]string{"text": text, "from": from, "to": to})
 	} else {
 		url = c.BaseURL + "/chat/completions"
-		body, _ = json.Marshal(map[string]any{
-			"model":       Model,
+		req := map[string]any{
 			"temperature": 0.2,
 			"messages": []map[string]string{
 				{"role": "system", "content": Prompt(from, to)},
 				{"role": "user", "content": text},
 			},
-		})
+		}
+		if len(c.Models) > 0 {
+			req["models"] = c.Models
+		} else {
+			req["model"] = Model
+		}
+		body, _ = json.Marshal(req)
 	}
 	var last error
 	for try := range 3 {

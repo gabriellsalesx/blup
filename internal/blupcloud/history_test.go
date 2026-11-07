@@ -3,6 +3,7 @@ package blupcloud
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -82,5 +83,119 @@ func TestMeStorageGrace(t *testing.T) {
 	body = `{"id":"u","plan":{"name":"pro","limits":{}},"usage":{"historyBytes":-1}}`
 	if _, err := c.Me(context.Background()); !errors.Is(err, ErrBadAnswer) {
 		t.Fatalf("negative history accepted: %v", err)
+	}
+}
+
+func TestDeleteVault(t *testing.T) {
+	var got []string
+	status, body := 200, `{"freedBytes":0,"storageBytes":0}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = append(got, r.Method+" "+r.URL.Path)
+		if r.Method == http.MethodDelete {
+			w.WriteHeader(status)
+		}
+		w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	c := &Client{BaseURL: srv.URL, HTTP: srv.Client(), Token: "t"}
+	ctx := context.Background()
+	if err := c.DeleteVault(ctx, vaultID); err != nil || len(got) != 1 || got[0] != "DELETE /api/sync/vaults/"+vaultID {
+		t.Fatalf("%v %v", err, got)
+	}
+	if err := c.DeleteVault(ctx, "../me"); !errors.Is(err, ErrVaultMissing) || len(got) != 1 {
+		t.Fatalf("bad id: %v, %v", err, got)
+	}
+	// Already gone (not listed) is done; a sync in the way is not.
+	status, body = 404, `{"code":"NOT_FOUND","vaults":[]}`
+	if err := c.DeleteVault(ctx, vaultID); err != nil {
+		t.Fatalf("gone: %v", err)
+	}
+	// A 404 for a vault still listed: a cloud without the route.
+	status, body = 404, `{"code":"NOT_FOUND","vaults":[{"id":"`+vaultID+`"}]}`
+	if err := c.DeleteVault(ctx, vaultID); !errors.Is(err, ErrCantDelete) {
+		t.Fatalf("old cloud: %v", err)
+	}
+	status, body = 409, `{"code":"SYNC_BUSY"}`
+	if err := c.DeleteVault(ctx, vaultID); !errors.Is(err, ErrSyncBusy) {
+		t.Fatalf("busy: %v", err)
+	}
+}
+
+func TestRenameVault(t *testing.T) {
+	var got []string
+	status := 200
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		got = append(got, r.Method+" "+r.URL.Path+" "+string(b))
+		w.WriteHeader(status)
+		w.Write([]byte(`{"code":"NOT_FOUND"}`))
+	}))
+	defer srv.Close()
+	c := &Client{BaseURL: srv.URL, HTTP: srv.Client(), Token: "t"}
+	if err := c.RenameVault(context.Background(), vaultID, []byte("novo")); err != nil || len(got) != 1 || got[0] != `PATCH /api/sync/vaults/`+vaultID+` {"name":"bm92bw=="}` {
+		t.Fatalf("%v %v", err, got)
+	}
+	status = 404
+	if err := c.RenameVault(context.Background(), vaultID, []byte("novo")); !errors.Is(err, ErrVaultMissing) {
+		t.Fatalf("gone: %v", err)
+	}
+}
+
+func TestVaultGone(t *testing.T) {
+	list, status := `{"vaults":[]}`, 200
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/sync/vaults/"+vaultID {
+			w.WriteHeader(404)
+			w.Write([]byte(`{"code":"NOT_FOUND"}`))
+			return
+		}
+		w.WriteHeader(status)
+		w.Write([]byte(list))
+	}))
+	defer srv.Close()
+	c := &Client{BaseURL: srv.URL, HTTP: srv.Client(), Token: "t"}
+	ctx := context.Background()
+	if _, err := c.VaultHead(ctx, vaultID); !errors.Is(err, ErrVaultMissing) {
+		t.Fatalf("head: %v", err)
+	}
+	if !c.VaultGone(ctx, vaultID) {
+		t.Fatal("not in the list, but not gone")
+	}
+	list = `{"vaults":[{"id":"` + vaultID + `"}]}`
+	if c.VaultGone(ctx, vaultID) {
+		t.Fatal("listed, but gone")
+	}
+	// Without the list, never gone.
+	status = 500
+	if c.VaultGone(ctx, vaultID) {
+		t.Fatal("offline, but gone")
+	}
+}
+
+func TestStudioAI(t *testing.T) {
+	body, auth := `{"voice":{"plan":{"models":["microsoft/mai-voice-2.1"],"recommended":null},"own":{"models":["microsoft/mai-voice-2.1","vendor/voz"],"recommended":"vendor/voz"}},"translate":{"plan":["anthropic/claude-haiku-5.5"],"own":["deepseek/deepseek-v4.1-flash"]}}`, "x"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth = r.Header.Get("Authorization")
+		if r.URL.Path != "/api/studio-ai" {
+			w.WriteHeader(404)
+			return
+		}
+		w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	c := &Client{BaseURL: srv.URL, HTTP: srv.Client()}
+	ai, err := c.StudioAI(context.Background())
+	if err != nil || ai.Voice.Own.Models[1] != "vendor/voz" || ai.Voice.Own.Recommended != "vendor/voz" || ai.Voice.Plan.Recommended != "" || ai.Translate.Plan[0] != "anthropic/claude-haiku-5.5" || auth != "" {
+		t.Fatalf("%+v %v auth=%q", ai, err, auth)
+	}
+	// A list that isn't one is refused (the Studio keeps what it had).
+	for _, bad := range []string{
+		`{"voice":{"plan":{"models":["../x"]},"own":{"models":["a/b"]}},"translate":{"plan":["a/b"],"own":["a/b"]}}`,
+		`{"voice":{"plan":{"models":["a/b"],"recommended":"c/d"},"own":{"models":["a/b"]}},"translate":{"plan":["a/b"],"own":["a/b"]}}`,
+	} {
+		body = bad
+		if _, err := c.StudioAI(context.Background()); !errors.Is(err, ErrBadAnswer) {
+			t.Fatalf("%s: %v", bad, err)
+		}
 	}
 }

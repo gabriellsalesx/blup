@@ -28,7 +28,8 @@ func TestSplitKeepsCodeWhole(t *testing.T) {
 
 func TestTextThroughOpenRouter(t *testing.T) {
 	var got struct {
-		Model    string `json:"model"`
+		Model    string   `json:"model"`
+		Models   []string `json:"models"`
 		Messages []struct{ Role, Content string }
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -49,6 +50,14 @@ func TestTextThroughOpenRouter(t *testing.T) {
 	}
 	if got.Model != Model || got.Messages[1].Content != "Olá **mundo**." || !strings.Contains(got.Messages[0].Content, "Brazilian Portuguese to English") {
 		t.Fatalf("request = %+v", got)
+	}
+	// The staff's list: OpenRouter tries them in order.
+	got.Model, got.Models = "", nil
+	if _, err := (&Client{Key: "k", BaseURL: srv.URL, Models: []string{"a/one", "b/two"}}).Text(context.Background(), "Olá", "pt", "en", nil); err != nil {
+		t.Fatal(err)
+	}
+	if got.Model != "" || strings.Join(got.Models, ",") != "a/one,b/two" {
+		t.Fatalf("models = %q %v", got.Model, got.Models)
 	}
 }
 

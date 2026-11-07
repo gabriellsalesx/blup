@@ -17,7 +17,7 @@ import (
 
 // LiveState is reported to the window.
 type LiveState struct {
-	State string    `json:"state"` // "syncing", "synced" or "error"
+	State string    `json:"state"` // "syncing", "synced", "error" or "gone" (deleted on another device)
 	At    time.Time `json:"at"`
 	Error string    `json:"error,omitempty"`
 	Info  SyncInfo  `json:"info"`
@@ -34,6 +34,17 @@ type Live struct {
 	syncing bool
 	again   bool      // a change arrived during a sync
 	quiet   time.Time // our own downloads end before this
+	gone    bool      // the vault was deleted elsewhere: stopped for good
+}
+
+// Gone tells whether it stopped because the vault was deleted elsewhere.
+func (l *Live) Gone() bool {
+	if l == nil {
+		return false
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.gone
 }
 
 // liveDelay is how long after the last saved change the notes are sent.
@@ -152,6 +163,15 @@ func (l *Live) sync(ctx context.Context) {
 		st := LiveState{State: "synced", At: time.Now(), Info: info}
 		if err != nil {
 			st = LiveState{State: "error", At: time.Now(), Error: err.Error()}
+		}
+		if errors.Is(err, ErrVaultGone) {
+			st.State = "gone"
+			l.mu.Lock()
+			l.gone, l.syncing = true, false
+			l.mu.Unlock()
+			l.report(st)
+			l.Stop()
+			return
 		}
 		l.report(st)
 		l.mu.Lock()

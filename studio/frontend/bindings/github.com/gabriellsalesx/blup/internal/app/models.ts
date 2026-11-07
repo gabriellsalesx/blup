@@ -361,6 +361,7 @@ export interface DeleteChoice {
     "published": boolean;
     "blupSite": boolean;
     "syncRepo": boolean;
+    "cloudNotes": boolean;
     "feedback": boolean;
 }
 
@@ -439,6 +440,11 @@ export interface Event {
      * "", 0, 15m, 1h, 1d or 1w
      */
     "remind": string;
+
+    /**
+     * rings at the event's time, on the phone
+     */
+    "alarm": boolean;
 }
 
 /**
@@ -526,7 +532,7 @@ export interface GraphNode {
  */
 export interface LiveState {
     /**
-     * "syncing", "synced" or "error"
+     * "syncing", "synced", "error" or "gone" (deleted on another device)
      */
     "state": string;
     "at": string;
@@ -868,6 +874,11 @@ export interface SiteParts {
      */
     "blupSite": string;
     "syncRepo": string;
+
+    /**
+     * its notes are synced to Blup Cloud
+     */
+    "cloudNotes": boolean;
     "feedback": string;
 }
 
@@ -981,4 +992,14 @@ export interface Voice {
     "female": boolean;
     "ready": boolean;
     "sample": boolean;
+}
+
+/**
+ * VoiceModels are the voice models offered for a language, in the order
+ * the staff put them (Recommended only on the one the owner marked): Own
+ * with the person's OpenRouter key, Plan through Blup Cloud on the plan.
+ */
+export interface VoiceModels {
+    "own": ModelOption[] | null;
+    "plan": ModelOption[] | null;
 }

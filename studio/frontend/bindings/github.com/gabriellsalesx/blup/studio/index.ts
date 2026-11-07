@@ -23,6 +23,7 @@ export type {
     PropEdit,
     RecentSite,
     Removed,
+    Renamed,
     Republish,
     SiteInfo,
     TermData,

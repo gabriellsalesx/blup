@@ -17,6 +17,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -445,6 +446,53 @@ func (c *Client) PurgeHistory(ctx context.Context, vaultID string) (HistoryPurge
 	return HistoryPurge{FreedBytes: *r.FreedBytes, StorageBytes: *r.StorageBytes}, nil
 }
 
+// VaultGone tells whether a vault is surely no longer on the account: it
+// is not in the list. Anything else (offline, signed out) is false, so a
+// device never lets go of a vault by mistake.
+func (c *Client) VaultGone(ctx context.Context, vaultID string) bool {
+	vaults, err := c.Vaults(ctx)
+	return err == nil && !slices.ContainsFunc(vaults, func(v Vault) bool { return v.ID == vaultID })
+}
+
+// RenameVault gives a vault a new name, sealed (keys.SealName).
+func (c *Client) RenameVault(ctx context.Context, vaultID string, name []byte) error {
+	if !ValidVaultID(vaultID) {
+		return ErrVaultMissing
+	}
+	err := c.do(ctx, http.MethodPatch, "/sync/vaults/"+url.PathEscape(vaultID), map[string]any{"name": name}, "", nil)
+	var e *apiError
+	if errors.As(err, &e) && (e.Code == "NOT_FOUND" || e.Status == http.StatusNotFound) {
+		return ErrVaultMissing
+	}
+	return err
+}
+
+// ErrCantDelete: the cloud can't delete vaults (an older one); nothing
+// was deleted.
+var ErrCantDelete = errors.New("blupcloud: this cloud can't delete vaults yet")
+
+// DeleteVault deletes a vault on the cloud for good: every version of it
+// and the blocks no other vault uses. One already gone is fine; a 404 for
+// one still listed means a cloud without the route, so it is an error.
+func (c *Client) DeleteVault(ctx context.Context, vaultID string) error {
+	if !ValidVaultID(vaultID) {
+		return ErrVaultMissing
+	}
+	err := c.do(ctx, http.MethodDelete, "/sync/vaults/"+url.PathEscape(vaultID), nil, "", nil)
+	var e *apiError
+	if !errors.As(err, &e) || (e.Code != "NOT_FOUND" && e.Status != http.StatusNotFound) {
+		return err
+	}
+	vaults, err := c.Vaults(ctx)
+	if err != nil {
+		return err
+	}
+	if slices.ContainsFunc(vaults, func(v Vault) bool { return v.ID == vaultID }) {
+		return ErrCantDelete
+	}
+	return nil
+}
+
 // Me returns the signed in account.
 func (c *Client) Me(ctx context.Context) (Account, error) {
 	var a Account
@@ -535,7 +583,12 @@ func (c *Client) VaultHead(ctx context.Context, id string) (int64, error) {
 	var v struct {
 		Head *int64 `json:"head"`
 	}
-	if err := c.do(ctx, http.MethodGet, "/sync/vaults/"+url.PathEscape(id), nil, "", &v); err != nil {
+	err := c.do(ctx, http.MethodGet, "/sync/vaults/"+url.PathEscape(id), nil, "", &v)
+	var e *apiError
+	if errors.As(err, &e) && e.Code == "NOT_FOUND" {
+		return 0, ErrVaultMissing
+	}
+	if err != nil {
 		return 0, err
 	}
 	if v.Head == nil || *v.Head < 0 {

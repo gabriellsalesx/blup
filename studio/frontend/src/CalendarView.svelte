@@ -96,7 +96,7 @@
 
   // The form: a new event (on a day, maybe of a kind) or one to change.
   function add(day = selected, kind: Kind = "appointment") {
-    form = { isNew: true, ev: { path: "", title: "", date: day, time: "", kind, repeat: kind === "birthday" ? "yearly" : "", remind: "1d" } };
+    form = { isNew: true, ev: { path: "", title: "", date: day, time: "", kind, repeat: kind === "birthday" ? "yearly" : "", remind: "1d", alarm: false } };
   }
   const edit = (ev: Event) => (form = { isNew: false, ev: { ...ev } });
   async function save(ev: Event) {

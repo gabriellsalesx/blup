@@ -14,6 +14,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/deploy/github"
 	"github.com/gabriellsalesx/blup/internal/i18n"
 	"github.com/gabriellsalesx/blup/internal/notesync"
+	"github.com/gabriellsalesx/blup/internal/obsidian"
 )
 
 // Publishing and syncing without questions, for Blup Studio: the accounts
@@ -338,12 +339,20 @@ func syncer(ctx context.Context, site *config.Site) (*notesync.Syncer, string, e
 
 // SyncStatus tells what a sync would send and receive.
 func SyncStatus(ctx context.Context, site *config.Site) (SyncInfo, error) {
+	// Not on Blup Cloud yet (or let go of): a look makes no vault there,
+	// only the Sync button does; everything here would be sent.
+	if site.Sync.Remote == RemoteBlup && site.Sync.Vault == "" {
+		return SyncInfo{Repo: "Blup Cloud", Send: obsidian.CountNotes(site.ContentDir())}, nil
+	}
 	sy, repo, err := syncer(ctx, site)
 	if err != nil {
 		return SyncInfo{}, err
 	}
 	plan, err := sy.Status(ctx, nil)
 	if err != nil {
+		if gone := unlinkGoneVault(ctx, site, err); gone != nil {
+			return SyncInfo{}, gone
+		}
 		return SyncInfo{}, errors.New(describe(err))
 	}
 	return SyncInfo{
@@ -377,6 +386,9 @@ func syncSite(ctx context.Context, site *config.Site, share bool) (SyncInfo, err
 	}
 	rep, err := sy.Sync(ctx, nil)
 	if err != nil {
+		if gone := unlinkGoneVault(ctx, site, err); gone != nil {
+			return SyncInfo{}, gone
+		}
 		return SyncInfo{}, errors.New(describe(err))
 	}
 	// Settings changed on another computer.

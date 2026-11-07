@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { RestoreSite, ForgetSite, Sites, Layout, SaveLayout, HomeDir, OpenSiteFolder } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { RestoreSite, ForgetSite, RenameSite, Sites, Layout, SaveLayout, HomeDir, OpenSiteFolder } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteInfo, HomeItem } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Ellipsis from "@lucide/svelte/icons/ellipsis";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
@@ -10,6 +10,7 @@
   import BlupLogo from "./ui/BlupLogo.svelte";
   import Trash from "@lucide/svelte/icons/trash-2";
   import FolderOpen from "@lucide/svelte/icons/folder-open";
+  import PenLine from "@lucide/svelte/icons/pen-line";
   import Search from "@lucide/svelte/icons/search";
   import { blupOf, homeView } from "./blups.svelte";
 
@@ -182,6 +183,18 @@
     if (open === oldName) open = name;
     save();
   }
+  // A site's or vault's own name (its folder keeps its name).
+  let renamingSite = $state("");
+  async function renameSite(dir: string, value: string) {
+    renamingSite = "";
+    const title = value.trim(), s = sites[dir];
+    if (!s || !title || title === s.title) return;
+    try {
+      const r = await RenameSite(dir, title);
+      sites[dir] = { ...s, title: r.title, folder: r.folder };
+      if (!r.cloudOK) toast(h.renamedLocal);
+    } catch (e) { toastError(e); }
+  }
   function ungroup(name: string) {
     const i = folderAt(name);
     if (i < 0) return;
@@ -235,12 +248,21 @@
       class:before={over?.key === "s:" + dir && over.zone === "before"}
       class:after={over?.key === "s:" + dir && over.zone === "after"}
       class:into={over?.key === "s:" + dir && over.zone === "into"}>
-      <button class="open" onclick={() => onOpen(s)}>
-        <img src="/blups/{blupOf(s)}.svg" alt="" />
-        <span class="kind">{s.kind === "notes" ? t.vaults.kind : s.model === "bento" ? t.product : t.blog}</span>
-        <strong>{s.title}</strong>
-        <span class="path muted" title={s.folder}>{short(s.folder)}</span>
-      </button>
+      {#if renamingSite === dir}
+        <div class="open">
+          <img src="/blups/{blupOf(s)}.svg" alt="" />
+          <span class="kind">{s.kind === "notes" ? t.vaults.kind : s.model === "bento" ? t.product : t.blog}</span>
+          <input class="title-edit" type="text" value={s.title} maxlength="120" aria-label={h.renameSite} use:focus onblur={(e) => renameSite(dir, e.currentTarget.value)} onkeydown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") { e.currentTarget.value = s.title; e.currentTarget.blur(); } }} />
+          <span class="path muted" title={s.folder}>{short(s.folder)}</span>
+        </div>
+      {:else}
+        <button class="open" onclick={() => onOpen(s)}>
+          <img src="/blups/{blupOf(s)}.svg" alt="" />
+          <span class="kind">{s.kind === "notes" ? t.vaults.kind : s.model === "bento" ? t.product : t.blog}</span>
+          <strong>{s.title}</strong>
+          <span class="path muted" title={s.folder}>{short(s.folder)}</span>
+        </button>
+      {/if}
       <button class="more" title={h.options} onclick={(e) => { e.stopPropagation(); menu = menu === dir ? "" : dir; }}><Ellipsis size={18} /></button>
       {#if menu === dir}
         <div class="menu" role="menu">
@@ -251,6 +273,7 @@
             <button onclick={() => newFolderWith(dir)}>{isVault(dir) ? h.newFolderWithVault : h.newFolderWith}</button>
           {/if}
           <hr />
+          <button onclick={() => { menu = ""; renamingSite = dir; }}><PenLine size={15} />{h.renameSite}</button>
           <button onclick={() => { menu = ""; OpenSiteFolder(dir).catch(toastError); }}><FolderOpen size={15} />{h.openFolder}</button>
           <button onclick={() => { menu = ""; forget(dir); }}>{t.del.forget}</button>
           <button class="danger" onclick={() => { menu = ""; deleting = dir; }}><Trash size={15} />{isVault(dir) ? t.del.deleteMenuVault : t.del.deleteMenu}</button>
@@ -389,6 +412,7 @@
   .site img, .site.new img { width: 2.5rem; }
   .open { width: 100%; display: grid; gap: .35rem; justify-items: start; text-align: start; padding: 1.25rem; padding-inline-end: 2.75rem; }
   .open strong { font-size: 1.05rem; }
+  .title-edit { width: 100%; font-size: 1.05rem; font-weight: 700; }
   .kind { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--blue); }
   .path { max-width: 100%; font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .more { position: absolute; inset-block-start: .75rem; inset-inline-end: .6rem; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .45rem; color: var(--muted); }

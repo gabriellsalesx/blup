@@ -347,6 +347,16 @@ export interface Removed {
 }
 
 /**
+ * Renamed is a site's new name and notes folder, and whether Blup Cloud
+ * took the name too.
+ */
+export interface Renamed {
+    "title": string;
+    "folder": string;
+    "cloudOK": boolean;
+}
+
+/**
  * Republish is a publish the Studio does alone, heard by the window as
  * "republish": the site's own domain on Blup Cloud turned active or
  * stopped being, so its links (canonical, feed, sitemap) move to the

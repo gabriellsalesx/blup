@@ -9,12 +9,12 @@
 
   // Deleting a site: a box for each part. Folders go to the system's trash;
   // what is online is deleted for good, so those boxes start unticked, but
-  // the site on Blup Cloud starts ticked (deleting the site takes its
-  // address down too, unless unticked). The name is typed to confirm.
+  // the site and the notes on Blup Cloud start ticked (deleting the site
+  // takes them down too, unless unticked). The name is typed to confirm.
   let { dir, onClose, onDone }: { dir: string; onClose: () => void; onDone: (dir: string) => void } = $props();
   const d = t.del;
   let parts = $state<Parts | null>(null);
-  let pick = $state({ site: true, notes: false, published: false, blupSite: false, syncRepo: false, feedback: false });
+  let pick = $state({ site: true, notes: false, published: false, blupSite: false, syncRepo: false, cloudNotes: false, feedback: false });
   let typed = $state("");
   let busy = $state(false);
   let error = $state("");
@@ -22,7 +22,7 @@
   const home = (p: string) => p.replace(/^\/home\/[^/]+|^\/Users\/[^/]+|^C:\\Users\\[^\\]+/, "~");
 
   // The site whose parts are listed: the one the dialog opened for.
-  SiteParts(untrack(() => dir)).then((p) => { parts = p; pick.notes = p.notesOwned; pick.blupSite = !!p.blupSite; }).catch((e) => (error = String(e)));
+  SiteParts(untrack(() => dir)).then((p) => { parts = p; pick.notes = p.notesOwned; pick.blupSite = !!p.blupSite; pick.cloudNotes = p.cloudNotes; }).catch((e) => (error = String(e)));
   const ready = $derived(!!parts && typed.trim() === parts.title.trim() && Object.values(pick).some(Boolean));
 
   async function run() {
@@ -58,6 +58,7 @@
       {#if parts.published}<label class="part"><input type="checkbox" bind:checked={pick.published} /><span><b>{d.parts.published}</b><small>{parts.published} · <em>{d.forGood}</em></small></span></label>{/if}
       {#if parts.blupSite}<label class="part"><input type="checkbox" bind:checked={pick.blupSite} /><span><b>{t.aip.blupSite}</b><small>{parts.blupSite} · <em>{d.forGood}</em></small></span></label>{/if}
       {#if parts.syncRepo}<label class="part"><input type="checkbox" bind:checked={pick.syncRepo} /><span><b>{d.parts.syncRepo}</b><small>github.com/{parts.syncRepo} · <em>{d.forGood}</em></small></span></label>{/if}
+      {#if parts.cloudNotes}<label class="part"><input type="checkbox" bind:checked={pick.cloudNotes} /><span><b>{d.parts.cloudNotes}</b><small>{d.cloudNotesHelp} · <em>{d.forGood}</em></small></span></label>{/if}
       {#if parts.feedback}<label class="part"><input type="checkbox" bind:checked={pick.feedback} /><span><b>{d.parts.feedback}</b><small>github.com/{parts.feedback} · <em>{d.forGood}</em></small></span></label>{/if}
     </div>
     <label class="field"><span>{d.confirm.replace("{name}", parts.title)}</span><input type="text" bind:value={typed} placeholder={parts.title} /></label>

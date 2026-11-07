@@ -33,17 +33,19 @@ type SiteParts struct {
 	Published  string `json:"published"`  // "Cloudflare Pages: projeto" or "GitHub Pages: dono/repo"
 	BlupSite   string `json:"blupSite"`   // its address on Blup Cloud, when it is published there
 	SyncRepo   string `json:"syncRepo"`
+	CloudNotes bool   `json:"cloudNotes"` // its notes are synced to Blup Cloud
 	Feedback   string `json:"feedback"`
 }
 
 // DeleteChoice is what to delete.
 type DeleteChoice struct {
-	Site      bool `json:"site"`
-	Notes     bool `json:"notes"`
-	Published bool `json:"published"`
-	BlupSite  bool `json:"blupSite"`
-	SyncRepo  bool `json:"syncRepo"`
-	Feedback  bool `json:"feedback"`
+	Site       bool `json:"site"`
+	Notes      bool `json:"notes"`
+	Published  bool `json:"published"`
+	BlupSite   bool `json:"blupSite"`
+	SyncRepo   bool `json:"syncRepo"`
+	CloudNotes bool `json:"cloudNotes"`
+	Feedback   bool `json:"feedback"`
 }
 
 // PartsOf lists the parts of the site in dir.
@@ -73,6 +75,7 @@ func PartsOf(dir string) (SiteParts, error) {
 	if site.Sync.Repo != "" {
 		p.SyncRepo = site.Sync.Owner + "/" + site.Sync.Repo
 	}
+	p.CloudNotes = site.Sync.Remote == config.SyncBlup && site.Sync.Vault != ""
 	if site.Feedback.Repo != "" {
 		p.Feedback = site.Feedback.Owner + "/" + site.Feedback.Repo
 	}
@@ -130,6 +133,13 @@ func DeleteSite(ctx context.Context, dir string, c DeleteChoice) ([]DeleteProble
 	if c.SyncRepo && site.Sync.Repo != "" {
 		deleteRepo(ctx, site.Sync.Owner, site.Sync.Repo, "syncRepo", fail)
 	}
+	if c.CloudNotes && site.Sync.Remote == config.SyncBlup && site.Sync.Vault != "" && deleteBlupVault(ctx, site.Sync.Vault, fail) && !c.Site {
+		// The folder stays: it no longer syncs to the vault deleted.
+		site.Sync.Vault, site.Sync.Remote = "", ""
+		if err := site.Save(); err != nil {
+			return problems, err
+		}
+	}
 	if c.Feedback && site.Feedback.Repo != "" {
 		deleteRepo(ctx, site.Feedback.Owner, site.Feedback.Repo, "feedback", fail)
 	}
@@ -180,6 +190,21 @@ func deleteBlupSite(ctx context.Context, id string, fail func(string, error, str
 	}
 	fail("blupSite", errors.New(describe(err)), link)
 	return false
+}
+
+// deleteBlupVault deletes the site's notes on Blup Cloud, every version.
+// One already gone is fine.
+func deleteBlupVault(ctx context.Context, id string, fail func(string, error, string)) bool {
+	link := blupcloud.PageAccount.URL()
+	c, _, err := blupClient()
+	if err == nil {
+		err = c.DeleteVault(ctx, id)
+	}
+	if err != nil {
+		fail("cloudNotes", errors.New(describe(err)), link)
+		return false
+	}
+	return true
 }
 
 // ForgetSite takes a site out of Blup's list (nothing is deleted).

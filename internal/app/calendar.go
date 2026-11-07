@@ -26,6 +26,7 @@ import (
 //	event: exam       (appointment, birthday, exam, interview, deadline, reminder)
 //	repeat: yearly    (weekly, monthly, yearly; none: once)
 //	remind: 1d        (0, 15m, 1h, 1d, 1w; none: no reminder)
+//	alarm: true       (rings at the event's time on the phone; none: no alarm)
 //	---
 
 // Event is one event of the calendar.
@@ -37,6 +38,7 @@ type Event struct {
 	Kind   string `json:"kind"`   // see EventKinds
 	Repeat string `json:"repeat"` // "", weekly, monthly or yearly
 	Remind string `json:"remind"` // "", 0, 15m, 1h, 1d or 1w
+	Alarm  bool   `json:"alarm"`  // rings at the event's time, on the phone
 }
 
 // EventKinds are the kinds of event, each with its color and icon in the
@@ -102,7 +104,7 @@ func Events(site *config.Site) ([]Event, error) {
 // eventOf reads an event's properties; a note without a valid date is not
 // an event.
 func eventOf(n obsidian.Note) (Event, bool) {
-	ev := Event{Date: propDay(n.Props["date"]), Time: n.String("time"), Kind: n.String("event"), Repeat: n.String("repeat"), Remind: n.String("remind")}
+	ev := Event{Date: propDay(n.Props["date"]), Time: n.String("time"), Kind: n.String("event"), Repeat: n.String("repeat"), Remind: n.String("remind"), Alarm: n.Props["alarm"] == true}
 	if ev.Date == "" {
 		return ev, false
 	}
@@ -195,12 +197,19 @@ func SaveEvent(site *config.Site, ev Event) (string, error) {
 		}
 		return s
 	}
+	flag := func(on bool) any {
+		if !on {
+			return nil
+		}
+		return true
+	}
 	return rel, obsidian.SetProperties(p,
 		obsidian.Prop{Key: "date", Value: ev.Date},
 		obsidian.Prop{Key: "time", Value: opt(ev.Time)},
 		obsidian.Prop{Key: "event", Value: ev.Kind},
 		obsidian.Prop{Key: "repeat", Value: opt(ev.Repeat)},
 		obsidian.Prop{Key: "remind", Value: opt(ev.Remind)},
+		obsidian.Prop{Key: "alarm", Value: flag(ev.Alarm)},
 		obsidian.Prop{Key: "updated", Value: time.Now().Format("2006-01-02")},
 	)
 }

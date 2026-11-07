@@ -976,6 +976,14 @@ export function RenameItem(rel: string, name: string): $CancellablePromise<strin
 }
 
 /**
+ * RenameSite gives a site or a vault a new name, and its notes folder too
+ * when Blup made it; on Blup Cloud too when its notes are there.
+ */
+export function RenameSite(dir: string, title: string): $CancellablePromise<$models.Renamed> {
+    return $Call.ByID(1170375791, dir, title);
+}
+
+/**
  * ResizeTerminal follows the panel's size.
  */
 export function ResizeTerminal(id: string, cols: number, rows: number): $CancellablePromise<void> {
@@ -1453,9 +1461,10 @@ export function Version(): $CancellablePromise<string> {
 }
 
 /**
- * VoiceModels lists OpenRouter's voice models that can read sites in lang.
+ * VoiceModels lists the voice models the staff offers that can read sites
+ * in lang: with one's own OpenRouter key and through the plan.
  */
-export function VoiceModels(lang: string): $CancellablePromise<app$0.ModelOption[] | null> {
+export function VoiceModels(lang: string): $CancellablePromise<app$0.VoiceModels> {
     return $Call.ByID(3909428702, lang);
 }
 

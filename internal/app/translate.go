@@ -231,7 +231,15 @@ func translator(ctx context.Context, provider string) (*translate.Client, error)
 		if err := needConsent(AIOpenRouter); err != nil {
 			return nil, err
 		}
-		return &translate.Client{Key: creds.OpenRouterToken, BaseURL: cmp.Or(openRouterURL, narrate.DefaultBaseURL)}, nil
+		// The models the staff picked for one's own key, in order; none, none.
+		models := studioAI(ctx).Translate.Own
+		if len(models) == 0 {
+			return nil, errors.New(byLangCode(string(i18n.Current()),
+				"Nenhum modelo de tradução está disponível agora. Tente mais tarde.",
+				"No translation model is available right now. Try again later.",
+				"Ningún modelo de traducción está disponible ahora. Inténtalo más tarde."))
+		}
+		return &translate.Client{Key: creds.OpenRouterToken, BaseURL: cmp.Or(openRouterURL, narrate.DefaultBaseURL), Models: models}, nil
 	}
 	return nil, ErrNoProvider
 }

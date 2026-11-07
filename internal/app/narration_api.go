@@ -123,6 +123,14 @@ type ModelOption struct {
 	Voices      int     `json:"voices"`
 }
 
+// VoiceModels are the voice models offered for a language, in the order
+// the staff put them (Recommended only on the one the owner marked): Own
+// with the person's OpenRouter key, Plan through Blup Cloud on the plan.
+type VoiceModels struct {
+	Own  []ModelOption `json:"own"`
+	Plan []ModelOption `json:"plan"`
+}
+
 // speechModels reads OpenRouter's voice models (the recommended one alone
 // when the list can't be read).
 func speechModels(ctx context.Context) ([]narrate.ModelInfo, error) {
@@ -139,17 +147,27 @@ func speechModels(ctx context.Context) ([]narrate.ModelInfo, error) {
 	}), nil
 }
 
-// NarrationModels lists OpenRouter's voice models that can read a site in
-// lang, the recommended one first.
-func NarrationModels(ctx context.Context, lang string) ([]ModelOption, error) {
+// NarrationModels lists the voice models the staff offers (Blup Cloud's
+// /staff/ai) that can read a site in lang: with one's own key and through
+// the plan (free ones aren't offered through the plan).
+func NarrationModels(ctx context.Context, lang string) (VoiceModels, error) {
 	list, err := speechModels(ctx)
-	var out []ModelOption
-	for _, m := range list {
-		if n := len(narrate.VoicesFor(m, lang)); n > 0 {
-			out = append(out, ModelOption{ID: m.ID, Name: m.Name, PerPost: m.PerThousand * 7, Recommended: m.ID == narrate.DefaultModel, Voices: n})
+	ai := studioAI(ctx)
+	pick := func(l blupcloud.VoiceList, plan bool) []ModelOption {
+		out := []ModelOption{}
+		for _, id := range l.Models {
+			i := slices.IndexFunc(list, func(m narrate.ModelInfo) bool { return m.ID == id })
+			if i < 0 || (plan && list[i].PerThousand <= 0) {
+				continue
+			}
+			m := list[i]
+			if n := len(narrate.VoicesFor(m, lang)); n > 0 {
+				out = append(out, ModelOption{ID: m.ID, Name: m.Name, PerPost: m.PerThousand * 7, Recommended: m.ID == l.Recommended, Voices: n})
+			}
 		}
+		return out
 	}
-	return out, err
+	return VoiceModels{Own: pick(ai.Voice.Own, false), Plan: pick(ai.Voice.Plan, true)}, err
 }
 
 // Voice is a narration voice: Engine "local" (on the computer) or
@@ -179,12 +197,9 @@ func NarrationVoices(ctx context.Context, lang, model, blupModel string) ([]Voic
 			out = append(out, Voice{ID: localPrefix + v.ID, Name: v.Name, Engine: "local", Female: v.Female, Ready: installed, Sample: true})
 		}
 	}
-	if model == "" {
-		model = narrate.DefaultModel
-	}
-	if blupModel == "" {
-		blupModel = narrate.DefaultModel
-	}
+	// Only the models the staff offers; another (or none) is the list's first.
+	ai := studioAI(ctx)
+	model, blupModel = pickModel(model, ai.Voice.Own), pickModel(blupModel, ai.Voice.Plan)
 	list, err := speechModels(ctx)
 	// Through Blup Cloud, on plans with AI: the voices of the model chosen
 	// there (any of OpenRouter's; a dearer one uses the allowance faster).

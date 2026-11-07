@@ -94,6 +94,7 @@ func TestDeleteSiteFromBlupCloud(t *testing.T) {
 		s.Title, s.Model, s.Vault = "Meu blog", "mochi", filepath.Join(base, "vault")
 		s.Deploy.Provider = "blup"
 		s.Deploy.Blup = config.BlupSite{ID: "s1", Slug: "meu-blog", URL: "https://meu-blog.getblup.site"}
+		s.Sync.Remote, s.Sync.Vault = config.SyncBlup, "6f1c1f9e-1b2a-4c3d-9e8f-0a1b2c3d4e5f"
 		if err := s.Save(); err != nil {
 			t.Fatal(err)
 		}
@@ -143,5 +144,29 @@ func TestDeleteSiteFromBlupCloud(t *testing.T) {
 	}
 	if s, _ := config.LoadSite(dir); s.Deploy.Blup.ID != "s1" {
 		t.Fatal("forgot an address still online")
+	}
+
+	// The notes on Blup Cloud: the vault goes, and the folder stops syncing.
+	calls, fail = nil, false
+	dir = newSite()
+	if p, _ := PartsOf(dir); !p.CloudNotes {
+		t.Fatalf("parts = %+v", p)
+	}
+	if problems, err := DeleteSite(ctx, dir, DeleteChoice{CloudNotes: true}); err != nil || len(problems) != 0 {
+		t.Fatalf("cloud notes: %v %v", problems, err)
+	}
+	if strings.Join(calls, ",") != "DELETE /api/sync/vaults/6f1c1f9e-1b2a-4c3d-9e8f-0a1b2c3d4e5f Bearer tok" {
+		t.Fatalf("calls = %v", calls)
+	}
+	if s, _ := config.LoadSite(dir); s.Sync.Vault != "" || s.Sync.Remote != "" {
+		t.Fatalf("still syncs: %+v", s.Sync)
+	}
+	// It failing keeps the link, and says where to do it by hand.
+	dir, fail = newSite(), true
+	if problems, _ := DeleteSite(ctx, dir, DeleteChoice{CloudNotes: true}); len(problems) != 1 || problems[0].Part != "cloudNotes" {
+		t.Fatalf("failure: %+v", problems)
+	}
+	if s, _ := config.LoadSite(dir); s.Sync.Vault == "" {
+		t.Fatal("forgot a vault still online")
 	}
 }

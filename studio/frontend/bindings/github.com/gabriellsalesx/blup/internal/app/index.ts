@@ -50,5 +50,6 @@ export type {
     Target,
     TrashItem,
     UpdateInfo,
-    Voice
+    Voice,
+    VoiceModels
 } from "./models.js";

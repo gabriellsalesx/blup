@@ -40,6 +40,9 @@
   import CloudCheck from "@lucide/svelte/icons/cloud-check";
   import CloudAlert from "@lucide/svelte/icons/cloud-alert";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
+  import Check from "@lucide/svelte/icons/check";
+  import Cloud from "@lucide/svelte/icons/cloud";
+  import Monitor from "@lucide/svelte/icons/monitor";
   import Paperclip from "@lucide/svelte/icons/paperclip";
   import Users from "@lucide/svelte/icons/users";
   import Trash2 from "@lucide/svelte/icons/trash-2";
@@ -537,6 +540,13 @@
   // After each sync the use may have changed (a refusal for the storage,
   // or space freed): the banner follows.
   const offCloud = Events.On("cloudSync", (ev) => {
+    // Deleted from Blup Cloud on another device: said once, and the notes
+    // stop syncing until the person clicks Sync.
+    if (ev.data?.state === "gone") {
+      cloud = null;
+      toast(ev.data.error ?? "", { ms: 15000 });
+      return;
+    }
     cloud = ev.data;
     if (ev.data?.state !== "syncing" && signedIn) loadAccount();
   });
@@ -848,7 +858,14 @@
         {/each}
       </nav>
       <strong class="title">{fileTitle(current)}</strong>
-      <span class="status muted">{status === "saved" ? t.saved : status === "saving" ? t.saving : t.unsaved}</span>
+      <span class="status" role="img" aria-label={status === "saved" ? t.savedHere : t.savingHere}>
+        {#if status === "saved"}<span class="state saved"><Check size={11} strokeWidth={3.5} /></span>
+        {:else}<span class="state saving"><RefreshCw size={10} strokeWidth={3} /></span>{/if}
+        <span class="status-info" role="tooltip">
+          <span><Monitor size={15} />{status === "saved" ? t.savedHere : t.savingHere}</span>
+          {#if cloud && signedIn}<span><Cloud size={15} />{cloudTitle}</span>{/if}
+        </span>
+      </span>
     {:else}
       <strong class="title">{site.title}</strong>
     {/if}
@@ -1056,7 +1073,16 @@
   .crumb.db:hover { background: color-mix(in srgb, var(--blue) 22%, transparent); }
   .slash { flex: none; padding-inline: .15rem; color: var(--muted); }
   .title { font-size: .95rem; white-space: nowrap; }
-  .status { font-size: .8rem; }
+  /* Saved or saving, as on the phone; what it means, on hover. */
+  .status { position: relative; flex: none; display: grid; place-items: center; padding: .2rem; border-radius: 50%; }
+  .state { display: grid; place-items: center; width: 1.1rem; height: 1.1rem; border-radius: 50%; }
+  .state.saved { background: #16a34a; color: #fff; }
+  .state.saving { background: var(--soft); color: var(--text); }
+  .state.saving :global(svg) { animation: spin 1s linear infinite; }
+  .status-info { position: absolute; z-index: 40; inset-block-start: calc(100% + .45rem); inset-inline-start: 50%; translate: -50% 0; display: none; gap: .4rem; padding: .55rem .75rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 8px 20px rgb(0 0 0 / .18); font-size: .8rem; font-weight: 500; white-space: nowrap; }
+  .status-info span { display: flex; align-items: center; gap: .45rem; }
+  .status-info :global(svg) { color: var(--blue); }
+  .status:hover .status-info { display: grid; }
   .spacer { flex: 1; }
   .main { grid-row: 2; position: relative; overflow: hidden; background: var(--panel); }
   .main.scroll { overflow: auto; background: var(--bg); }

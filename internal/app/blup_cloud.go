@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"os"
 	"path/filepath"
+	"slices"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/cloudcrypt"
@@ -26,6 +30,7 @@ func init() {
 		knownError{blupcloud.ErrDevicesLimit, "blup.err_devices"},
 		knownError{blupcloud.ErrSyncBusy, "blup.err_sync_busy"},
 		knownError{blupcloud.ErrVaultMissing, "blup.err_vault_missing"},
+		knownError{blupcloud.ErrCantDelete, "blup.err_cant_delete"},
 		knownError{blupcloud.ErrTicketExpired, "blup.err_ticket_expired"},
 		knownError{blupcloud.ErrDenied, "blup.err_denied"},
 		knownError{blupcloud.ErrExpired, "blup.err_expired"},
@@ -342,4 +347,115 @@ func PurgeHistory(ctx context.Context, site *config.Site) (blupcloud.HistoryPurg
 		return r, errors.New(describe(err))
 	}
 	return r, nil
+}
+
+// ErrVaultGone: the site's notes were deleted from Blup Cloud on another
+// device; this one let go of them (the notes stay here).
+var ErrVaultGone = errors.New("vault gone")
+
+// VaultGoneError says it in the person's words; errors.Is finds ErrVaultGone.
+type VaultGoneError struct{}
+
+func (VaultGoneError) Error() string        { return i18n.T("sync.vault_gone") }
+func (VaultGoneError) Is(target error) bool { return target == ErrVaultGone }
+
+// unlinkGoneVault lets go of the site's Blup Cloud vault when a sync found
+// it missing and the account's list confirms it was deleted: the notes stay,
+// syncing stops, and only the person sends them again (the Sync button makes
+// a new vault). Otherwise, nil: the error stays what it was.
+func unlinkGoneVault(ctx context.Context, site *config.Site, err error) error {
+	if site.Sync.Remote != RemoteBlup || site.Sync.Vault == "" || !errors.Is(err, blupcloud.ErrVaultMissing) {
+		return nil
+	}
+	c, _, cerr := blupClient()
+	if cerr != nil || !c.VaultGone(ctx, site.Sync.Vault) {
+		return nil
+	}
+	old := site.Sync.Vault
+	site.Sync.Vault = ""
+	if err := site.Save(); err != nil {
+		return err
+	}
+	// Starting over: the next sync compares without a base, so nothing is
+	// deleted on either side.
+	os.Remove(filepath.Join(site.Dir(), ".blup", "sync-state.json"))
+	os.RemoveAll(filepath.Join(site.Dir(), ".blup", "cloud-history", old))
+	return VaultGoneError{}
+}
+
+// RenameSite gives a site or a vault of notes a new name. With its notes on
+// Blup Cloud, the name changes there too, so the other devices see it; it
+// changes here anyway, and cloudOK says whether it did there.
+func RenameSite(ctx context.Context, dir, title string) (cloudOK bool, err error) {
+	title = strings.Join(strings.Fields(title), " ")
+	if title == "" || utf8.RuneCountInString(title) > 120 {
+		return false, errors.New(i18nInvalidName())
+	}
+	site, err := config.LoadSite(dir)
+	if err != nil {
+		return false, err
+	}
+	if err := renameNotesFolder(site, title); err != nil {
+		return false, err
+	}
+	site.Title = title
+	if err := site.Save(); err != nil {
+		return false, err
+	}
+	if site.Sync.Remote != config.SyncBlup || site.Sync.Vault == "" {
+		return true, nil
+	}
+	return renameBlupVault(ctx, site.Sync.Vault, title) == nil, nil
+}
+
+// renameNotesFolder gives the notes folder the new name too, when it is a
+// folder Blup made (in Documents/Blup or Documents/Blup/Vaults). A folder
+// the person picked keeps its name: other apps may point at it.
+func renameNotesFolder(site *config.Site, title string) error {
+	if site.Folder != "" || site.Vault == "" {
+		return nil
+	}
+	old := filepath.Clean(site.Vault)
+	parent := filepath.Dir(old)
+	blup := filepath.Dir(DefaultNotesDir("x"))
+	vaults := filepath.Dir(parent) == blup && slices.Contains([]string{"Vaults", "Cofres", "Bóvedas"}, filepath.Base(parent))
+	if parent != blup && !vaults {
+		return nil
+	}
+	to := filepath.Join(parent, folderName(title))
+	if to == old {
+		return nil
+	}
+	// Another folder with that name (not this one in other letter case).
+	if a, err := os.Stat(to); err == nil {
+		if b, err := os.Stat(old); err != nil || !os.SameFile(a, b) {
+			return errors.New(i18n.T("rename.folder_taken", filepath.Base(to)))
+		}
+	}
+	if err := os.Rename(old, to); err != nil {
+		return err
+	}
+	site.Vault = to
+	return nil
+}
+
+// renameBlupVault seals title with the notes key and names the vault with it.
+func renameBlupVault(ctx context.Context, id, title string) error {
+	c, creds, err := blupClient()
+	if err != nil {
+		return err
+	}
+	master, err := base64.StdEncoding.DecodeString(creds.NotesKey)
+	if creds.NotesKey == "" || err != nil {
+		return errNotesLocked
+	}
+	keys, err := cloudcrypt.Derive(master)
+	if err != nil {
+		return errNotesLocked
+	}
+	name, err := keys.SealName(title)
+	if err != nil {
+		return err
+	}
+	return c.RenameVault(ctx, id, name)
 }

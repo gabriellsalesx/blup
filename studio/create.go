@@ -120,6 +120,31 @@ func (s *Studio) ForgetSite(dir string) error {
 	return app.ForgetSite(dir)
 }
 
+// Renamed is a site's new name and notes folder, and whether Blup Cloud
+// took the name too.
+type Renamed struct {
+	Title   string `json:"title"`
+	Folder  string `json:"folder"`
+	CloudOK bool   `json:"cloudOK"`
+}
+
+// RenameSite gives a site or a vault a new name, and its notes folder too
+// when Blup made it; on Blup Cloud too when its notes are there.
+func (s *Studio) RenameSite(dir, title string) (Renamed, error) {
+	s.closeIfOpen(dir) // its watcher and preview hold the folder
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	ok, err := app.RenameSite(ctx, dir, title)
+	if err != nil {
+		return Renamed{}, err
+	}
+	site, err := config.LoadSite(dir)
+	if err != nil {
+		return Renamed{}, err
+	}
+	return Renamed{Title: site.Title, Folder: site.ContentDir(), CloudOK: ok}, nil
+}
+
 // DeleteSite deletes the parts chosen of the site in dir (folders to the
 // system's trash; online parts for good). Parts that couldn't be deleted
 // come back with a link to do it by hand.

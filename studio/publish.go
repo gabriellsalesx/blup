@@ -171,7 +171,7 @@ func (s *Studio) Sync() (app.SyncInfo, error) {
 	// The first sync through Blup Cloud creates the vault: live sync can
 	// start now (on live plans).
 	s.mu.Lock()
-	start := err == nil && s.live == nil && site.Sync.Remote == app.RemoteBlup
+	start := err == nil && (s.live == nil || s.live.Gone()) && site.Sync.Remote == app.RemoteBlup
 	s.mu.Unlock()
 	if start {
 		s.startLive(site)

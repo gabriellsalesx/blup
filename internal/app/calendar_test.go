@@ -15,7 +15,7 @@ func TestEvents(t *testing.T) {
 	t.Cleanup(func() { i18n.Set(i18n.EN) })
 	site := settingsSite(t)
 	root := site.ContentDir()
-	rel, err := SaveEvent(site, Event{Title: "Prova de cálculo", Date: "2026-11-05", Time: "14:00", Kind: "exam", Remind: "1d"})
+	rel, err := SaveEvent(site, Event{Title: "Prova de cálculo", Date: "2026-11-05", Time: "14:00", Kind: "exam", Remind: "1d", Alarm: true})
 	if err != nil || rel != "Agenda/Prova de cálculo.md" {
 		t.Fatalf("save = %q, %v", rel, err)
 	}
@@ -27,20 +27,20 @@ func TestEvents(t *testing.T) {
 	if err != nil || len(evs) != 2 {
 		t.Fatalf("events = %+v, %v", evs, err)
 	}
-	if evs[0].Title != "Ana" || evs[0].Date != "2000-02-29" || evs[0].Repeat != "yearly" || evs[1].Time != "14:00" || evs[1].Remind != "1d" {
+	if evs[0].Title != "Ana" || evs[0].Date != "2000-02-29" || evs[0].Repeat != "yearly" || evs[1].Time != "14:00" || evs[1].Remind != "1d" || !evs[1].Alarm || evs[0].Alarm {
 		t.Fatalf("events = %+v", evs)
 	}
 
 	// Renamed with its title; the text written in it stays.
 	write(t, root, rel, strings.Replace(string(must(os.ReadFile(filepath.Join(root, rel)))), "---\n\n", "---\n\nCapítulos 3 e 4\n", 1))
 	ev := evs[1]
-	ev.Title, ev.Time, ev.Remind = "Prova final", "", ""
+	ev.Title, ev.Time, ev.Remind, ev.Alarm = "Prova final", "", "", false
 	rel, err = SaveEvent(site, ev)
 	if err != nil || rel != "Agenda/Prova final.md" {
 		t.Fatalf("rename = %q, %v", rel, err)
 	}
 	s := string(must(os.ReadFile(filepath.Join(root, rel))))
-	if !strings.Contains(s, "Capítulos 3 e 4") || strings.Contains(s, "time:") || strings.Contains(s, "remind:") || !strings.Contains(s, "event: exam") {
+	if !strings.Contains(s, "Capítulos 3 e 4") || strings.Contains(s, "time:") || strings.Contains(s, "remind:") || strings.Contains(s, "alarm:") || !strings.Contains(s, "event: exam") {
 		t.Fatalf("note = %q", s)
 	}
 	if _, err := SaveEvent(site, Event{Title: "x", Date: "amanhã", Kind: "exam"}); err == nil {

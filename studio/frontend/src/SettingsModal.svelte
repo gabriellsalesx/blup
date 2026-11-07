@@ -224,7 +224,9 @@
   const firstLang = () => (LANGS.some(([l]) => l === siteLang) ? siteLang : t.lang);
   let voiceLang = $state<string>(firstLang());
   let voices = $state<Record<string, Voice[]>>({ pt: [], en: [], es: [] });
-  let models = $state<Record<string, Model[]>>({ pt: [], en: [], es: [] });
+  // The voice models the staff offers (Blup Cloud), in its order: with
+  // one's own OpenRouter key and through the plan.
+  let models = $state<Record<string, { own: Model[]; plan: Model[] }>>({ pt: { own: [], plan: [] }, en: { own: [], plan: [] }, es: { own: [], plan: [] } });
   // The model chosen for OpenRouter and for Blup Cloud, each from the
   // voice chosen (else the recommended one).
   const modelOf = (l: string, blup: boolean) => { const c = norm(look.voices?.[l]); return c.startsWith("blup:") === blup && c.includes("|") ? c.replace(/^blup:/, "").split("|")[0] : DEFAULT_MODEL; };
@@ -234,7 +236,14 @@
   const loadVoices = () => {
     for (const [l] of LANGS) {
       reloadVoices(l);
-      VoiceModels(l).then((m) => (models[l] = m ?? [])).catch(() => {});
+      VoiceModels(l).then((m) => {
+        models[l] = { own: m?.own ?? [], plan: m?.plan ?? [] };
+        // A model the staff no longer offers: the recommended one, else the
+        // list's first (as the Studio's voices already do).
+        const fallback = (list: Model[]) => (list.find((x) => x.recommended) ?? list[0]).id;
+        if (models[l].own.length && !models[l].own.some((x) => x.id === model[l])) model[l] = fallback(models[l].own);
+        if (models[l].plan.length && !models[l].plan.some((x) => x.id === blupModel[l])) blupModel[l] = fallback(models[l].plan);
+      }).catch(() => {});
     }
   };
   loadVoices();
@@ -653,20 +662,20 @@
                  connected (signed in on a plan with AI, or the key saved). -->
             {#if engine === "local" ? voices[l].some((v) => v.engine === "local") : voices[l].some((v) => v.engine === engine && v.ready)}
               <small class="muted group">{group}</small>
-              {#if engine === "openrouter" && models[l].length}
+              {#if engine === "openrouter" && models[l].own.length}
                 <label class="model">
                   <span>{lv.model}</span>
                   <select value={model[l]} onchange={(e) => pickModel(l, e.currentTarget.value)}>
-                    {#each models[l] as m (m.id)}<option value={m.id}>{m.name.replace(/^[^:]+:\s*/, "")}{m.recommended ? ` (${lv.recommended})` : ""} · {price(m)}</option>{/each}
+                    {#each models[l].own as m (m.id)}<option value={m.id}>{m.name.replace(/^[^:]+:\s*/, "")}{m.recommended ? ` (${lv.recommended})` : ""} · {price(m)}</option>{/each}
                   </select>
                 </label>
-              {:else if engine === "blup" && models[l].length}
-                <!-- The same models, without the price: the plan pays (a
-                     dearer one uses the month's AI allowance faster). -->
+              {:else if engine === "blup" && models[l].plan.length}
+                <!-- Without the price: the plan pays (a dearer one uses the
+                     month's AI allowance faster). -->
                 <label class="model">
                   <span>{lv.model}</span>
                   <select value={blupModel[l]} onchange={(e) => pickModel(l, e.currentTarget.value, true)}>
-                    {#each models[l].filter((m) => m.perPost > 0) as m (m.id)}<option value={m.id}>{m.name.replace(/^[^:]+:\s*/, "")}{m.recommended ? ` (${lv.recommended})` : ""}</option>{/each}
+                    {#each models[l].plan as m (m.id)}<option value={m.id}>{m.name.replace(/^[^:]+:\s*/, "")}{m.recommended ? ` (${lv.recommended})` : ""}</option>{/each}
                   </select>
                 </label>
                 <small class="muted model-help">{lv.blupModelHelp}</small>

@@ -63,8 +63,9 @@ func (s *Studio) Voices(ctx context.Context, lang, model, blupModel string) ([]a
 	return app.NarrationVoices(ctx, lang, model, blupModel)
 }
 
-// VoiceModels lists OpenRouter's voice models that can read sites in lang.
-func (s *Studio) VoiceModels(ctx context.Context, lang string) ([]app.ModelOption, error) {
+// VoiceModels lists the voice models the staff offers that can read sites
+// in lang: with one's own OpenRouter key and through the plan.
+func (s *Studio) VoiceModels(ctx context.Context, lang string) (app.VoiceModels, error) {
 	return app.NarrationModels(ctx, lang)
 }
 
