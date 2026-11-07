@@ -107,7 +107,7 @@ export function DetailPage(props:DetailPageProps){
     {deal.coupon?<p class="deal-coupon"><Icon name="ticket" small/>{t("dealsSiteCoupon",{code:deal.coupon})}</p>:null}
     {deal.description?<p class="detail-text">{deal.description}</p>:null}
     {deal.expired?<p class="detail-ended">{t("dealsSiteEnded")}</p>:<a class="button button-accent detail-go" href={go} rel="nofollow sponsored noopener">{t("dealsSiteGo")}<Icon name="external" small/></a>}
-    <button class="button button-ghost share" type="button" data-share={canonical} data-copied={t("dealsSiteCopied")}><Icon name="share" small/><span data-label>{t("dealsSiteShare")}</span></button>
+    <button class="button button-ghost share" type="button" data-share={canonical} data-copied={t("dealsSiteCopied")} data-idle={t("dealsSiteShare")}><span class="share-icon"><Icon name="share" small/></span><span class="copied-icon"><Icon name="check" small/></span><span data-label aria-live="polite">{t("dealsSiteShare")}</span></button>
    </div>
   </article>
   {stats&&deal.currency?<section class="history" aria-labelledby="history-title">
@@ -122,6 +122,7 @@ export function DetailPage(props:DetailPageProps){
  </Shell>;
 }
 
-// Sharing: the phone's own share sheet, or the link copied. Allowed by its
-// hash, as the theme's.
-export const SHARE_SCRIPT=`document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-share]");if(!b)return;var u=b.getAttribute("data-share");if(navigator.share){navigator.share({title:document.title,url:u}).catch(function(){});return}if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){var l=b.querySelector("[data-label]");if(l)l.textContent=b.getAttribute("data-copied")})}});`;
+// Sharing: the phone's own share sheet, or the link copied (the button
+// turns green with a check for a few seconds). Allowed by its hash, as the
+// theme's.
+export const SHARE_SCRIPT=`document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-share]");if(!b)return;var u=b.getAttribute("data-share");if(navigator.share){navigator.share({title:document.title,url:u}).catch(function(){});return}if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){var l=b.querySelector("[data-label]");if(l)l.textContent=b.getAttribute("data-copied");b.classList.add("copied");clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove("copied");if(l)l.textContent=b.getAttribute("data-idle")},3000)})}});`;

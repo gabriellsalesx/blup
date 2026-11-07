@@ -44,7 +44,7 @@ export const categoryKey={electronics:"dealsCatElectronics",computers:"dealsCatC
 
 // Lucide's icons (ISC), inline: search, globe, sun, moon, monitor,
 // chevron-down, tag, ticket, share-2, arrow-left, external-link,
-// chart-line, x, menu.
+// chart-line, x, menu, check.
 const paths={
  search:<><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></>,
  globe:<><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></>,
@@ -59,6 +59,7 @@ const paths={
  external:<><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></>,
  chart:<><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></>,
  x:<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>,
+ check:<path d="M20 6 9 17l-5-5"/>,
  menu:<><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></>,
 } as const;
 export function Icon({name,small=false}:{name:keyof typeof paths;small?:boolean}){
@@ -285,7 +286,7 @@ export const SITE_CSS=`@layer reset,tokens,base,layout,components;
 .deal-price{display:flex;align-items:baseline;gap:.5rem;margin-block-start:auto;padding-block-start:.25rem}.deal-price strong{font-size:1.25rem;color:var(--accent)}.deal-price s{font-size:.875rem;color:var(--main-500)}
 .deal-coupon{display:inline-flex;align-items:center;gap:.375rem;width:fit-content;padding:.125rem .5rem;border:1px dashed var(--main-300);border-radius:.375rem;font-size:.8125rem;font-weight:600}.deal-go{margin-block-start:.5rem}.deal-until{font-size:.8125rem;font-weight:500;color:var(--main-600)}
 .more{display:flex;justify-content:center;padding-block:2rem}
-.button-accent{background:var(--accent);color:var(--on-accent)}:root:not(.js) .share{display:none}
+.button-accent{background:var(--accent);color:var(--on-accent)}:root:not(.js) .share{display:none}.share .copied-icon{display:none}.share.copied{color:light-dark(#15803d,#4ade80);box-shadow:inset 0 0 0 1px currentColor;background:color-mix(in srgb,currentColor 10%,transparent)}.share.copied .share-icon{display:none}.share.copied .copied-icon{display:inline-flex}
 .back{padding-block:1.5rem 1rem;font-size:.875rem}.back a{display:inline-flex;align-items:center;gap:.375rem;color:var(--main-600)}.back a:hover{color:var(--main-900)}
 .detail{display:grid;gap:1.5rem}@media (width>=48rem){.detail{grid-template-columns:minmax(0,26rem) minmax(0,1fr);gap:2.5rem;align-items:start}}
 .detail-image{position:relative;aspect-ratio:1;border:1px solid var(--main-200);border-radius:.75rem;overflow:hidden;background:var(--main-100)}.detail-image img{width:100%;height:100%;object-fit:cover}
