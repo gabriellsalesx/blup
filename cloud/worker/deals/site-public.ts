@@ -5,7 +5,8 @@ import {THEME_SCRIPT} from "../pulse/public-html";
 import {sha256} from "../pulse/limits";
 import {linksOf} from "../pulse/page-look";
 import {dealsAccess} from "./entitlement";
-import {siteLogoKey,siteQuery,siteSlug,SITE_PAGE} from "./site-rules";
+import {siteLogoKey,siteQuery,siteSlug,SITE_PAGE,SITE_DAYS} from "./site-rules";
+const since=(now:number)=>now-SITE_DAYS*86_400_000;
 import {SitePage,SITE_CSS,SEARCH_SCRIPT,searchResult,type DealCategory,type SiteDeal,type SiteInfo,type SitePageProps} from "./site-page";
 import {DetailPage,SHARE_SCRIPT,HISTORY_DAYS,type PricePoint,type SiteDetail} from "./site-detail";
 
@@ -27,11 +28,12 @@ type DealRow={platforms:string;endsAt:number|null;code:string;title:string;image
 const https=z.url({protocol:/^https$/}).max(2048);
 const category=z.enum(dealCategories);
 
-// One page of the deals the site's channel sent, newest first: the offer's
+// One page of the deals the site's channel sent in the last SITE_DAYS,
+// newest first: the offer's
 // short name when it has one, its price only when the post showed it, and
 // nothing whose offer ran out.
 async function dealsOf(env:Cloudflare.Env,siteId:string,query:z.infer<typeof siteQuery>,now:number){
- const where=["p.channel_id=(SELECT channel_id FROM deals_site WHERE id=?1)","p.state='sent'","(o.expires_at IS NULL OR o.expires_at>?2)"],binds:(string|number)[]=[siteId,now];
+ const where=["p.channel_id=(SELECT channel_id FROM deals_site WHERE id=?1)","p.state='sent'","(o.expires_at IS NULL OR o.expires_at>?2)","p.sent_at>?3"],binds:(string|number)[]=[siteId,now,since(now)];
  if(query.before){binds.push(query.before);where.push(`p.sent_at<?${binds.length}`);}
  if(query.category){binds.push(query.category);where.push(`o.category=?${binds.length}`);}
  if(query.q){binds.push(`%${query.q.replace(/[\\%_]/g,m=>`\\${m}`)}%`);where.push(`(o.title LIKE ?${binds.length} ESCAPE '\\' OR o.short_title LIKE ?${binds.length} ESCAPE '\\')`);}
@@ -43,7 +45,7 @@ async function dealsOf(env:Cloudflare.Env,siteId:string,query:z.infer<typeof sit
 }
 // The categories the page has deals in, in the panel's order.
 async function categoriesOf(env:Cloudflare.Env,siteId:string,now:number):Promise<DealCategory[]>{
- const rows=await env.DB.prepare("SELECT DISTINCT o.category FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id WHERE p.channel_id=(SELECT channel_id FROM deals_site WHERE id=?) AND p.state='sent' AND (o.expires_at IS NULL OR o.expires_at>?) AND o.category IS NOT NULL LIMIT 32").bind(siteId,now).all<{category:string}>();
+ const rows=await env.DB.prepare("SELECT DISTINCT o.category FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id WHERE p.channel_id=(SELECT channel_id FROM deals_site WHERE id=?) AND p.state='sent' AND p.sent_at>? AND (o.expires_at IS NULL OR o.expires_at>?) AND o.category IS NOT NULL LIMIT 32").bind(siteId,since(now),now).all<{category:string}>();
  const present=new Set(rows.results.map(r=>r.category));
  return dealCategories.filter(c=>present.has(c));
 }
@@ -51,8 +53,8 @@ async function categoriesOf(env:Cloudflare.Env,siteId:string,now:number):Promise
 // One deal of the page, by its short code: what the list shows, whether its
 // offer ran out, and the version of its prices (for the page's ETag).
 type DetailRow=DealRow&{offerId:string;expiresAt:number|null;priced:number|null};
-const detailOf=(env:Cloudflare.Env,siteId:string,code:string)=>env.DB.prepare(`SELECT p.code,coalesce(o.short_title,o.title) AS title,o.image_url AS image,CASE WHEN p.price_shown=1 THEN o.price END AS price,CASE WHEN p.price_shown=1 THEN o.original_price END AS originalPrice,o.currency,o.discount,o.store,p.coupon,p.description,o.category,p.sent_at AS sentAt,o.kind,o.platforms,o.expires_at AS endsAt,o.id AS offerId,o.expires_at AS expiresAt,(SELECT max(at) FROM deals_price WHERE offer_id=o.id) AS priced
- FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id WHERE p.code=? AND p.channel_id=(SELECT channel_id FROM deals_site WHERE id=?) AND p.state='sent'`).bind(code,siteId).first<DetailRow>();
+const detailOf=(env:Cloudflare.Env,siteId:string,code:string,now:number)=>env.DB.prepare(`SELECT p.code,coalesce(o.short_title,o.title) AS title,o.image_url AS image,CASE WHEN p.price_shown=1 THEN o.price END AS price,CASE WHEN p.price_shown=1 THEN o.original_price END AS originalPrice,o.currency,o.discount,o.store,p.coupon,p.description,o.category,p.sent_at AS sentAt,o.kind,o.platforms,o.expires_at AS endsAt,o.id AS offerId,o.expires_at AS expiresAt,(SELECT max(at) FROM deals_price WHERE offer_id=o.id) AS priced
+ FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id WHERE p.code=? AND p.channel_id=(SELECT channel_id FROM deals_site WHERE id=?) AND p.state='sent' AND p.sent_at>?`).bind(code,siteId,since(now)).first<DetailRow>();
 // The prices of the last days (and the one before them, where the line
 // starts), in the offer's currency.
 async function pricesOf(env:Cloudflare.Env,offerId:string,currency:string,now:number):Promise<PricePoint[]>{
@@ -126,7 +128,7 @@ export async function serveDealsSite(req:Request,env:Cloudflare.Env):Promise<Res
  // 304 at once.
  const now=Date.now(),day=Math.floor(now/86_400_000);
  // A deal's page changes with its own post and prices too.
- const detail=deal?await detailOf(env,site.id,deal[1]!):null;
+ const detail=deal?await detailOf(env,site.id,deal[1]!,now):null;
  if(deal&&!detail)return notFound();
  const etag=`"${(await sha256(`${site.id}:${site.updatedAt}:${site.latest??0}:${day}:${url.pathname}:${url.search}:${env.CF_VERSION_METADATA?.id??""}:${await codeVersion()}:${detail?`${detail.priced??0}:${detail.expiresAt??0}`:""}`)).slice(0,32)}"`;
  const headers:Record<string,string>={

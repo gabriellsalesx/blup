@@ -147,6 +147,15 @@ describe("deals page",()=>{
    expect(html).toContain("Grátis até");expect(html).toMatch(/Valor normal: US\$\s49,99/);expect(html).not.toContain("<s>US$");
   }
  });
+ it("keeps each deal on the page for 30 days",async()=>{
+  const site=await makeSite();
+  const id=await send(site,offer("B09","Mouse gamer",9900));await dispatchDeals(state.env,fetch);
+  const code=(db.sqlite.prepare("SELECT code FROM deals_post WHERE offer_id=?").get(id) as {code:string}).code;
+  expect(await (await visit("/ofertas-ana/"))!.text()).toContain("Mouse gamer");
+  db.sqlite.prepare("UPDATE deals_post SET sent_at=? WHERE offer_id=?").run(Date.now()-31*86_400_000,id);
+  expect(await (await visit("/ofertas-ana/?x=1"))!.text()).not.toContain("Mouse gamer");
+  expect((await visit(`/ofertas-ana/o/${code}/`))?.status).toBe(404);
+ });
  it("weighs each price by how long it lasted",()=>{
   const day=86_400_000,now=100*day;
   // 100 for 20 days, then 80 for 10: average 93.3, now 14% below.

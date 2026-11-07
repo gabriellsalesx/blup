@@ -62,11 +62,19 @@ function PriceChart({stats,currency,lang,t}:{stats:PriceStats;currency:string;la
  </figure>;
 }
 
-// Where the price sits between the period's lowest and highest.
+// Where the price sits between the period's lowest and highest: a mark
+// on the bar with an arrow above and below pointing at it, and the price
+// now over the top arrow (kept inside the bar's ends).
 function PriceBar({stats,currency,lang,t}:{stats:PriceStats;currency:string;lang:Language;t:Translate}){
- const at=stats.high>stats.low?(stats.current-stats.low)/(stats.high-stats.low)*100:50;
+ const at=Math.min(100,Math.max(0,stats.high>stats.low?(stats.current-stats.low)/(stats.high-stats.low)*100:50));
+ const align=at<15?"start":at>85?"end":"center";
  return <div class="bar">
-  <div class="bar-track"><span class="bar-mark" style={`left:${Math.min(100,Math.max(0,at)).toFixed(1)}%`}/></div>
+  <div class="bar-track">
+   <span class={`bar-now bar-now-${align}`} style={`left:${at.toFixed(1)}%`}>{t("dealsSiteNow",{price:money(stats.current,currency,lang)})}</span>
+   <span class="bar-arrow bar-arrow-down" style={`left:${at.toFixed(1)}%`} aria-hidden="true"/>
+   <span class="bar-mark" style={`left:${at.toFixed(1)}%`}/>
+   <span class="bar-arrow bar-arrow-up" style={`left:${at.toFixed(1)}%`} aria-hidden="true"/>
+  </div>
   <div class="bar-ends"><span>{t("dealsSiteLowest")}: {money(stats.low,currency,lang)}</span><span>{t("dealsSiteAverageLabel")}: {money(Math.round(stats.average),currency,lang)}</span><span>{t("dealsSiteHighest")}: {money(stats.high,currency,lang)}</span></div>
  </div>;
 }

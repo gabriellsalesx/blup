@@ -20,6 +20,9 @@ export type SiteUpdate=z.infer<typeof siteUpdate>;
 // What a visit asks of the page: a search, a category, the page of results
 // (a cursor: the last deal's time) and the language of its texts.
 export const SITE_PAGE=24;
+// How long a deal stays on the page after it was sent: older ones leave on
+// their own, so the page does not pile up.
+export const SITE_DAYS=30;
 export const siteQuery=z.object({
  q:z.string().trim().max(80).optional().catch(undefined),
  category:z.enum(dealCategories).optional().catch(undefined),
