@@ -40,6 +40,18 @@ export interface CalendarOpen {
 }
 
 /**
+ * ErrorReports is what the page needs: the person's answer ("" = not
+ * asked yet, "on" or "off") and, when on, the DSN and the release for the
+ * page's own errors.
+ */
+export interface ErrorReports {
+    "answer": string;
+    "dsn": string;
+    "environment": string;
+    "release": string;
+}
+
+/**
  * Found is what OpenExisting found in the folder the user picked.
  */
 export interface Found {
@@ -296,6 +308,11 @@ export interface Prefs {
      * the calendar's reminders (on the computer and, in Max and Ultra, by e-mail); on by default
      */
     "notifications": boolean;
+
+    /**
+     * error reports to Blup: "" (not asked yet), "on" or "off" (errors.go)
+     */
+    "errorReports": string;
 }
 
 /**

@@ -117,6 +117,7 @@ type Prefs struct {
 	TranslateAI   string            `json:"translateAI"`   // who translates: "local" (on the computer), "openrouter" or "blup", chosen by the person; "" (or the old "cloud") = local when installed, else ask
 	RailNames     bool              `json:"railNames"`     // the side menu shows each screen's name next to its icon
 	Notifications bool              `json:"notifications"` // the calendar's reminders (on the computer and, in Max and Ultra, by e-mail); on by default
+	ErrorReports  string            `json:"errorReports"`  // error reports to Blup: "" (not asked yet), "on" or "off" (errors.go)
 }
 
 func prefsFile() (string, error) {
@@ -147,9 +148,11 @@ func (s *Studio) Prefs() Prefs {
 }
 
 // SavePrefs saves the Studio's choices. The recent sites are the Studio's
-// own (remember): the page's copy may be old, so the saved list is kept.
+// own (remember), and so is the answer about error reports
+// (SetErrorReports): the page's copy may be old, so the saved ones are kept.
 func (s *Studio) SavePrefs(p Prefs) error {
-	p.Recent = s.Prefs().Recent
+	saved := s.Prefs()
+	p.Recent, p.ErrorReports = saved.Recent, saved.ErrorReports
 	return savePrefs(p.normalized())
 }
 
@@ -157,6 +160,9 @@ func (s *Studio) SavePrefs(p Prefs) error {
 // unknown theme, a text size of -5 or 9999) becomes the default.
 func (p Prefs) normalized() Prefs {
 	d := defaultPrefs()
+	if p.ErrorReports != "on" && p.ErrorReports != "off" {
+		p.ErrorReports = ""
+	}
 	if p.Theme != "system" && p.Theme != "light" && p.Theme != "dark" {
 		p.Theme = d.Theme
 	}

@@ -6,7 +6,7 @@
          note may show one from the web), the preview (hugo behind its
          guard, on a random port of 127.0.0.1) in a frame, and no inline
          script. tests/csp.test.ts checks it. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-src http://127.0.0.1:*; object-src 'none'; base-uri 'none'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://ingest.getblup.io; worker-src 'self' blob:; frame-src http://127.0.0.1:*; object-src 'none'; base-uri 'none'" />
     <link rel="icon" type="image/svg+xml" href="/blup.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Blup Studio</title>

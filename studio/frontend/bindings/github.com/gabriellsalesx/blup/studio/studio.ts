@@ -452,6 +452,10 @@ export function EmptyTrash(): $CancellablePromise<void> {
     return $Call.ByID(3532244619);
 }
 
+export function ErrorReports(): $CancellablePromise<$models.ErrorReports> {
+    return $Call.ByID(3463411447);
+}
+
 /**
  * FeedbackPosts lists the requests of the open site's feedback board.
  */
@@ -1121,7 +1125,8 @@ export function SavePodcast(edits: $models.PropEdit[] | null): $CancellablePromi
 
 /**
  * SavePrefs saves the Studio's choices. The recent sites are the Studio's
- * own (remember): the page's copy may be old, so the saved list is kept.
+ * own (remember), and so is the answer about error reports
+ * (SetErrorReports): the page's copy may be old, so the saved ones are kept.
  */
 export function SavePrefs(p: $models.Prefs): $CancellablePromise<void> {
     return $Call.ByID(3443380611, p);
@@ -1181,6 +1186,14 @@ export function SetBlupDomain(hostname: string): $CancellablePromise<app$0.BlupD
  */
 export function SetDomain(value: string): $CancellablePromise<app$0.DomainStatus> {
     return $Call.ByID(2274237710, value);
+}
+
+/**
+ * SetErrorReports saves the person's answer and turns the reports on or
+ * off at once.
+ */
+export function SetErrorReports(on: boolean): $CancellablePromise<$models.ErrorReports> {
+    return $Call.ByID(3136739799, on);
 }
 
 /**

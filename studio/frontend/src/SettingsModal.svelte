@@ -4,7 +4,8 @@
 
 <script lang="ts">
   import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails, AIConsent, SetAIConsent } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails, AIConsent, SetAIConsent, ErrorReports, SetErrorReports } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { startPageReports } from "./errorreports";
   import type { Connections as Conn, BlupAccount as Account, AIQuota, AIConsent as Consent, UpdateInfo } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { ReminderUse } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
@@ -47,6 +48,14 @@
   // by e-mail, with the month's use.
   let mailUse = $state<ReminderUse | null>(null);
   ReminderEmails().then((u) => (mailUse = u)).catch(() => {});
+  // Error reports to Blup (errors.go): the same answer as the question at
+  // the start; the page's own errors follow it at once.
+  let reportsOn = $state(false);
+  ErrorReports().then((r) => (reportsOn = r.answer === "on")).catch(() => {});
+  async function setReports(on: boolean) {
+    reportsOn = on;
+    try { startPageReports(await SetErrorReports(on)); toast(on ? t.errs.on : t.errs.off); } catch { reportsOn = !on; }
+  }
   async function setNotify(on: boolean) {
     look.notifications = on;
     try { await SetNotifications(on); } catch (e) { look.notifications = !on; }
@@ -434,6 +443,7 @@
       <div class="item"><Switch label={k.autostart} help={k.autostartHelp} checked={autostart} onchange={setAutostart} /></div>
       <div class="item"><Switch label={k.tray} help={k.trayHelp} checked={!!look.tray} onchange={setTray} /></div>
       <div class="item"><Switch label={s.notify} help={s.notifyHelp} checked={look.notifications} onchange={setNotify} /></div>
+      <div class="item"><Switch label={t.errs.setting} help={t.errs.settingHelp} checked={reportsOn} onchange={setReports} /></div>
       {#if mailUse && mailUse.limit > 0 && look.notifications}
         <!-- A passkey only account has no e-mail: the reminders can't go by e-mail. -->
         {#if mailUse.emailMissing}<p class="bad note">{s.notifyNoEmail}</p>

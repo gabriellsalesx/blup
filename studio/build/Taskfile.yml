@@ -265,7 +265,7 @@ tasks:
       # Blup version written into the binary (internal/app.Version). Release
       # builds pass VERSION=x.y.z; keep the default equal to config.yml.
       VERSION: '{{.VERSION | default "1.0.0"}}'
-      BUILD_FLAGS: '-tags server{{if eq .DEV "true"}}{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -buildvcs=false -gcflags=all="-l"{{else}},production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -X github.com/gabriellsalesx/blup/internal/app.Version={{.VERSION}}"{{end}}'
+      BUILD_FLAGS: '-tags server{{if eq .DEV "true"}}{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -buildvcs=false -gcflags=all="-l"{{else}},production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -X github.com/gabriellsalesx/blup/internal/app.Version={{.VERSION}} -X main.studioSentryDSN={{.SENTRY_DSN}}"{{end}}'
 
   run:server:
     summary: Builds and runs a development server (DEV=true)

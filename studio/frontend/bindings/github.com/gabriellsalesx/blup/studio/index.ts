@@ -10,6 +10,7 @@ export type {
     Agent,
     BlupLoginCode,
     CalendarOpen,
+    ErrorReports,
     Found,
     HomeItem,
     Hyprland,

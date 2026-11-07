@@ -29,6 +29,8 @@ func main() {
 	}
 	i18n.Set(i18n.Lang(lang))
 	studio := &Studio{lang: lang}
+	// Error reports, if the person said yes before (errors.go).
+	startReports(studio.Prefs().ErrorReports == "on")
 	app := application.New(application.Options{
 		Name:        "Blup Studio",
 		Description: "Write in Markdown, preview and publish your site",
@@ -38,6 +40,8 @@ func main() {
 		Assets:     application.AssetOptions{Handler: application.AssetFileServerFS(assets), Middleware: assetMiddleware},
 		Mac:        application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
 		OnShutdown: studio.shutdown,
+		// A panic is reported to Blup Pulse when the person allowed it.
+		PanicHandler: onPanic,
 		// Opening it again shows the window already running.
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "dev.blup.studio",

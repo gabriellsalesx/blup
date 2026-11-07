@@ -344,6 +344,7 @@ func (s *Studio) StopPreview() {
 func (s *Studio) shutdown() {
 	s.StopPreview()
 	closeTerminals(s)
+	startReports(false) // what is waiting goes before closing
 }
 
 // PreviewPage is the preview address of a note's page ("" when the preview

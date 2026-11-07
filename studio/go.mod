@@ -6,6 +6,7 @@ require (
 	github.com/aymanbagabas/go-pty v0.2.3
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gabriellsalesx/blup v0.0.0
+	github.com/getsentry/sentry-go v0.50.0
 	github.com/wailsapp/wails/v3 v3.1.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/image v0.47.0

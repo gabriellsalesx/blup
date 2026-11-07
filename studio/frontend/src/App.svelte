@@ -5,7 +5,9 @@
   import Welcome from "./Welcome.svelte";
   import VaultOnboarding from "./VaultOnboarding.svelte";
   import type { SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
-  import { Sites } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { Sites, ErrorReports, SetErrorReports } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import ErrorReportsAsk from "./ErrorReportsAsk.svelte";
+  import { startPageReports } from "./errorreports";
   import { look, setPref } from "./theme.svelte";
   import Toaster from "./Toaster.svelte";
 
@@ -31,6 +33,19 @@
     .catch(() => {})
     .finally(() => (ready = true));
   $effect(() => { if (ready && (site?.dir ?? "") !== look.lastSite) setPref("lastSite", site?.dir ?? ""); });
+
+  // Error reports to Blup (errors.go): asked once, after the welcome; the
+  // page's own errors go too when the answer is yes. "Not now" (Escape)
+  // asks again the next time the Studio opens.
+  let askReports = $state(false);
+  ErrorReports()
+    .then((r) => { startPageReports(r); askReports = r.answer === ""; })
+    .catch(() => {});
+  async function answerReports(yes: boolean | null) {
+    askReports = false;
+    if (yes === null) return;
+    try { startPageReports(await SetErrorReports(yes)); } catch { /* asked again next time */ }
+  }
 </script>
 
 {#if !ready}
@@ -48,5 +63,7 @@
 {:else}
   <Home onOpen={(s) => (site = s)} onNew={() => (creating = true)} onNewVault={() => (creatingVault = true)} />
 {/if}
+
+{#if askReports && ready && !welcome}<ErrorReportsAsk onAnswer={answerReports} />{/if}
 
 <Toaster />

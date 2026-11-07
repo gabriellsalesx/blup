@@ -205,6 +205,8 @@ if [ "$GOOS" = "windows" ]; then
 fi
 # Blup version (internal/app.Version); the Taskfiles pass VERSION.
 LDFLAGS="$LDFLAGS -X github.com/gabriellsalesx/blup/internal/app.Version=${VERSION:-1.0.0}"
+# Error reports go to this Blup Pulse project (SENTRY_DSN; empty sends none).
+LDFLAGS="$LDFLAGS -X main.studioSentryDSN=${SENTRY_DSN:-}"
 
 TAGS="production"
 if [ -n "$EXTRA_TAGS" ]; then
