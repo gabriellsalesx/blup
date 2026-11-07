@@ -1,0 +1,88 @@
+# A Ponte do WhatsApp (cloud/bridge) na hospedagem, a cada mudança na main.
+#
+# Compila aqui, porque a compilação passa de 1 GB de memória e a aplicação
+# tem 512 MB, e envia só o binário. O envio junta os arquivos: os
+# certificados do banco e o resto que já estão na aplicação continuam. Na
+# aplicação, o comando de início é ./bridge.
+#
+# Configurar uma vez no GitHub (Settings > Secrets and variables > Actions):
+# - secret BRIDGE_DEPLOY_KEY: a chave da API da hospedagem, só com as
+#   permissões de enviar deploys e de reiniciar;
+# - variável BRIDGE_DEPLOY_API: o endereço da API da hospedagem;
+# - variável BRIDGE_APP_ID: o ID da aplicação da Ponte;
+# - variável BRIDGE_URL: o endereço https da Ponte, para conferir a volta.
+name: bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cloud/bridge/**"
+      - ".github/workflows/bridge.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Uma publicação por vez; a mais nova espera a anterior terminar.
+concurrency:
+  group: bridge-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: cloud/bridge
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: cloud/bridge/go.mod
+          cache-dependency-path: cloud/bridge/go.sum
+
+      - name: Testes
+        run: |
+          go vet ./...
+          go test -race ./...
+
+      - name: Compilar (linux/amd64)
+        run: |
+          mkdir -p out
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+            -ldflags="-s -w -X main.version=1.0.0+${GITHUB_SHA::7}" -o out/bridge .
+          # O zip guarda a permissão de execução do binário.
+          cd out && zip -X bridge.zip bridge
+
+      - name: Enviar e reiniciar
+        if: vars.BRIDGE_APP_ID != '' && vars.BRIDGE_DEPLOY_API != ''
+        working-directory: cloud/bridge/out
+        env:
+          KEY: ${{ secrets.BRIDGE_DEPLOY_KEY }}
+          API: ${{ vars.BRIDGE_DEPLOY_API }}
+          APP: ${{ vars.BRIDGE_APP_ID }}
+        run: |
+          if [ -z "$KEY" ]; then echo "Falta o secret BRIDGE_DEPLOY_KEY" >&2; exit 1; fi
+          API="${API%/}"
+          # A chave vai por arquivo, para não aparecer na linha de comando.
+          printf 'Authorization: %s\n' "$KEY" > "$RUNNER_TEMP/auth"
+          curl -sS --fail-with-body -m 300 -H @"$RUNNER_TEMP/auth" \
+            -F "file=@bridge.zip;type=application/octet-stream" \
+            "$API/apps/$APP/commit" -o /dev/null
+          # O reinício pode demorar até 95 s para responder.
+          curl -sS --fail-with-body -m 180 -X POST -H @"$RUNNER_TEMP/auth" \
+            "$API/apps/$APP/restart" -o /dev/null
+          rm -f "$RUNNER_TEMP/auth"
+
+      - name: Conferir que voltou
+        if: vars.BRIDGE_APP_ID != '' && vars.BRIDGE_DEPLOY_API != '' && vars.BRIDGE_URL != ''
+        env:
+          BRIDGE_URL: ${{ vars.BRIDGE_URL }}
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS -m 10 "${BRIDGE_URL%/}/_blup/ready"; then exit 0; fi
+            sleep 5
+          done
+          echo "A Ponte não respondeu em /_blup/ready depois de 2 min e meio" >&2
+          exit 1

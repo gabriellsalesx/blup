@@ -61,6 +61,15 @@ docker run -d --restart unless-stopped -v blup-bridge-data:/data \
   -e BRIDGE_SECRET=... -e CALLBACK_URL=... -e CALLBACK_SECRET=... blup-bridge
 ```
 
+### Hospedagem com binário pronto
+
+Numa plataforma que roda o programa direto (sem Docker):
+
+- **Compilação:** passa de 1 GB de memória. Se a aplicação tiver menos que isso, envie o binário pronto (linux/amd64) e use `./bridge` como comando de início.
+- **Banco:** num Postgres que exige certificado de cliente, os arquivos do certificado ficam na pasta da aplicação e o `DATABASE_URL` aponta para eles (`sslmode=verify-ca&sslrootcert=...&sslcert=...&sslkey=...`). Use um usuário e um banco só da Ponte, sem outros privilégios.
+- **Variáveis:** ficam no painel da plataforma, nunca no git.
+- **Atualizar:** o workflow `.github/workflows/bridge.yml` testa, compila e envia só o binário a cada mudança em `cloud/bridge/` na `main`. O envio junta os arquivos, então os certificados continuam na aplicação e nunca passam pelo git. Ele usa o secret `BRIDGE_DEPLOY_KEY` e as variáveis `BRIDGE_DEPLOY_API`, `BRIDGE_APP_ID` e `BRIDGE_URL` (descritas no próprio workflow).
+
 **Numa VPS, a Ponte não fica aberta na internet.** Ela escuta em `127.0.0.1` e o acesso chega por um [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/) apontando para `http://127.0.0.1:8080`. Uma plataforma que já entrega HTTPS também serve; aí use `HOST=0.0.0.0`. Em qualquer caso, sem a assinatura nenhum pedido passa.
 
 Os registros saem em JSON na saída padrão, sem texto de post, QR ou senha. Sem assinatura, para o servidor e o monitor do Blup Pulse: `GET /health` (ou `/_blup/health`) responde `{"ok":true}` enquanto a Ponte está viva; `GET /_blup/ready` responde `200` quando o banco responde e `503` quando não. Nenhuma das duas mostra detalhes, e nenhuma vai para cache. Na imagem Docker, o `HEALTHCHECK` roda `/bridge health`, que pergunta `/_blup/health` na própria máquina (a imagem não tem shell nem curl). Ao receber `SIGTERM`, ela fecha as conexões e as sessões antes de sair.
