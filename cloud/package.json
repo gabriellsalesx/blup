@@ -27,6 +27,7 @@
     "@better-auth/stripe": "^1.7.14",
     "@hono/zod-validator": "^0.9.1",
     "@sentry/cloudflare": "11.11.0",
+    "@sentry/svelte": "11.11.0",
     "better-auth": "^1.7.14",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.14",

@@ -1179,15 +1179,6 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 }, "/api/staff"> | import("hono/types").MergeSchemaPath<{
-    "/live": {
-        $get: {
-            input: {};
-            output: {};
-            outputFormat: string;
-            status: import("hono/utils/http-status").StatusCode;
-        };
-    };
-} & {
     "/key": {
         $get: {
             input: {};
