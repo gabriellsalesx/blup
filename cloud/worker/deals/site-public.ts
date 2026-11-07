@@ -145,7 +145,7 @@ export async function serveDealsSite(req:Request,env:Cloudflare.Env):Promise<Res
  // Without the Deals plan (or a domain the account lost), no page.
  if((await dealsAccess(env,site.userId,now)).readOnly)return own?null:notFound();
  const info:SiteInfo={slug:site.slug,title:site.title,description:site.description,language:languageOf(site.language)??"pt",logos:{light:site.logoLight,dark:site.logoDark},showTitle:site.showTitle===1,links:linksOf(site.links)};
- const shared={site:info,lang,base:own?"":`/${site.slug}`,origin:url.origin,links:`https://${env.DEALS_PUBLIC_HOST||"deals.getblup.site"}`};
+ const shared={now,site:info,lang,base:own?"":`/${site.slug}`,origin:url.origin,links:`https://${env.DEALS_PUBLIC_HOST||"deals.getblup.site"}`};
  let html:string;
  if(detail){
   const full:SiteDetail={...toDeal(detail),expired:detail.expiresAt!==null&&detail.expiresAt<=now,prices:detail.currency?await pricesOf(env,detail.offerId,detail.currency,now):[]};

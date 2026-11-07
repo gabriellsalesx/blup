@@ -13,7 +13,7 @@ export const HISTORY_DAYS=30;
 const DAY=86_400_000;
 export type PricePoint={at:number;price:number};
 export type SiteDetail=SiteDeal&{expired:boolean;prices:PricePoint[]};
-export type DetailPageProps=SitePageProps&{deal:SiteDetail;now:number};
+export type DetailPageProps=SitePageProps&{deal:SiteDetail};
 
 // The prices are kept only when they change, so each one holds until the
 // next: the average weighs each by how long it lasted. Under two prices

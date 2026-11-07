@@ -35,6 +35,8 @@ export type SitePageProps={
  next:number|null;
  // The deal open on its own page (/o/<code>/), when it is one.
  detail?:string;
+ // When the page is made: the footer's year follows it.
+ now:number;
 };
 
 const languageNames:Record<Language,string>={pt:"Português",en:"English",es:"Español"};
@@ -220,7 +222,7 @@ export function Shell({page:props,title,description,canonical,alternates,image,d
    <main class="container">{children}</main>
    <footer class="site-footer">
     <div class="container">
-     <span>© {new Date().getUTCFullYear()} {site.title}</span>
+     <span>© {new Date(props.now).getUTCFullYear()} {site.title}</span>
      <span>{t("dealsSiteMadeWith")} <a href="https://getblup.io/blup-deals/" rel="noopener">Blup Deals</a></span>
     </div>
    </footer>
