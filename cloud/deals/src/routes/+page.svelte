@@ -4,7 +4,6 @@
  import {goto} from "$app/navigation";
  import ClipboardPaste from "@lucide/svelte/icons/clipboard-paste";
  import Clapperboard from "@lucide/svelte/icons/clapperboard";
- import Rocket from "@lucide/svelte/icons/rocket";
  import Tag from "@lucide/svelte/icons/tag";
  import ExternalLink from "@lucide/svelte/icons/external-link";
  import Settings2 from "@lucide/svelte/icons/settings-2";
@@ -27,8 +26,8 @@
  import Usage from "../lib/Usage.svelte";
  // The deals of the account: those waiting in the queue, those sent (with
  // their clicks) and those that failed (with why). Pasting a link adds one,
- // and so does a new TikTok video; without a channel yet, the first steps
- // come first. The queue says when each goes, in the account's pace.
+ // and so does a new TikTok video. An account not set up yet (no plan, or
+ // no channel) is sent to the steps by the load. The queue says when each goes, in the account's pace.
  let {data}:PageProps=$props();
  const states=$derived([{value:"queued" as const,label:t("dealsQueued")},{value:"sent" as const,label:t("dealsSent")},{value:"failed" as const,label:t("dealsFailed")}]);
  const empty=$derived({queued:t("dealsQueueEmpty"),sent:t("dealsOffersEmpty"),failed:t("dealsFailedEmpty")}[data.state]);
@@ -40,7 +39,7 @@
 
 <PageHeader title={t("dealsOffers")} lead={t("dealsOffersLead")}>
  <!-- On a phone, one row: Paste link first, New video beside it, Settings as its icon at the end (the narrowest phones drop the other icons). -->
- {#snippet aside()}{#if hasPlan()}<div class="flex flex-wrap gap-2">{#if !data.channels.length}<Button variant="secondary" class="max-sm:order-first max-sm:basis-full" onclick={()=>goto(resolve("/start"))}><Rocket class="size-4"/>{t("dealsStart")}</Button>{/if}<Button variant="secondary" class="max-sm:order-last max-sm:px-3" title={t("dealsSettings")} onclick={()=>goto(resolve("/settings"))}><Settings2 class="size-4"/><span class="max-sm:sr-only">{t("dealsSettings")}</span></Button><Button variant="secondary" class="whitespace-nowrap max-sm:flex-1 max-sm:px-3" onclick={()=>goto(resolve("/offers/video"))}><Clapperboard class="size-4 max-[359px]:hidden"/>{t("dealsNewVideo")}</Button><Button class="whitespace-nowrap max-sm:order-first max-sm:flex-1 max-sm:px-3" onclick={()=>goto(resolve("/offers/new"))}><ClipboardPaste class="size-4 max-[359px]:hidden"/>{t("dealsPasteLink")}</Button></div>{/if}{/snippet}
+ {#snippet aside()}{#if hasPlan()}<div class="flex flex-wrap gap-2"><Button variant="secondary" class="max-sm:order-last max-sm:px-3" title={t("dealsSettings")} onclick={()=>goto(resolve("/settings"))}><Settings2 class="size-4"/><span class="max-sm:sr-only">{t("dealsSettings")}</span></Button><Button variant="secondary" class="whitespace-nowrap max-sm:flex-1 max-sm:px-3" onclick={()=>goto(resolve("/offers/video"))}><Clapperboard class="size-4 max-[359px]:hidden"/>{t("dealsNewVideo")}</Button><Button class="whitespace-nowrap max-sm:order-first max-sm:flex-1 max-sm:px-3" onclick={()=>goto(resolve("/offers/new"))}><ClipboardPaste class="size-4 max-[359px]:hidden"/>{t("dealsPasteLink")}</Button></div>{/if}{/snippet}
 </PageHeader>
 
 <div class="mt-6"><Usage kind="posts"/></div>

@@ -720,3 +720,13 @@ describe("staff: AI settings and add-on usage",()=>{
 		expect(await(await staffCall("/users/alice")).json()).toMatchObject({addons:{pulse:null,deals:null}});
 	});
 });
+
+describe("deals first steps",()=>{
+	it("reads them from what the account has, the plan first",async()=>{
+		d1.sqlite.exec("UPDATE subscription SET plan='ultra_pulse_deals' WHERE reference_id='bob'");
+		const steps=async(user:string)=>(await(await request("/deals/setup","GET",undefined,user)).json() as {steps:{id:string;done:boolean}[]}).steps;
+		expect(await steps("alice")).toEqual([{id:"plan",done:false},{id:"channel",done:false},{id:"ids",done:false},{id:"hunt",done:false},{id:"post",done:false}]);
+		expect((await steps("bob"))[0]).toEqual({id:"plan",done:true});
+		expect((await request("/deals/setup","GET",undefined,"")).status).toBe(401);
+	});
+});

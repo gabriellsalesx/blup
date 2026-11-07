@@ -12008,7 +12008,21 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: 400;
         };
     };
-}, "/settings">, "/api/deals"> | import("hono/types").MergeSchemaPath<{
+}, "/settings"> | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                steps: {
+                    id: "plan" | "post" | "channel" | "ids" | "hunt";
+                    done: boolean;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/setup">, "/api/deals"> | import("hono/types").MergeSchemaPath<{
     "/checkout": {
         $post: {
             input: {

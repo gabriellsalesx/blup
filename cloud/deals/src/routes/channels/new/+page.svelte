@@ -37,7 +37,7 @@
 const [t, v1] = header.split(",").map((p) => p.split("=")[1]);
 const mac = crypto.createHmac("sha256", process.env.DEALS_WEBHOOK_SECRET).update(\`\${t}.\${rawBody}\`).digest("hex");
 const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now() / 1000 - Number(t) < 300;`;
- const back=$derived(data.next??resolve("/channels"));
+ const back=resolve("/channels");
  async function run(fn:()=>Promise<void>){busy=true;try{await fn();}catch(e){toast(dealsError(e),{kind:"error"});}finally{busy=false;}}
  async function done(){void refreshUsage();toast(()=>t("dealsLinked"));await goto(back);}
  async function own(e:SubmitEvent){e.preventDefault();await run(async()=>{const made=await parseResponse(dealsApi.channels.$post({json:{type:"webhook",url:webhook.trim()}}));webhook="";secret=made.secret;void refreshUsage();toast(()=>t("dealsLinked"));});}
@@ -60,7 +60,7 @@ const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now
  function choose(next:Kind){if(next===kind)return;kind=next;webhook="";stopPolling();link=null;linkStatus=null;}
 </script>
 
-<div class="mb-4"><BackLink href={back} label={data.next?t("dealsStart"):t("dealsChannels")}/></div>
+<div class="mb-4"><BackLink href={back} label={t("dealsChannels")}/></div>
 <PageHeader title={t("dealsNewChannelTitle")} lead={t("dealsChannelsPrivacy")}/>
 
 <div class="mt-8"><Card title={t("dealsChooseKind")}>
