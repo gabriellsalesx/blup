@@ -3,7 +3,7 @@
  import {planLabel} from "../../../../../shared/plan-i18n";
  import {t,formatDate,language} from "#lib/i18n.svelte.ts";
 	import Lock from "@lucide/svelte/icons/lock";
-	import Monitor from "@lucide/svelte/icons/monitor";
+	import DeviceIcon from "#lib/ui/DeviceIcon.svelte";
 	import Row from "#lib/ui/Row.svelte";
 	import PageHeader from "#lib/ui/PageHeader.svelte";
 	import Button from "#lib/ui/Button.svelte";
@@ -66,7 +66,7 @@
 		<Row title={d.name} help={t("deviceDates",{created:when(d.createdAt),seen:when(d.lastSeen)})}>
 			{#snippet action()}
 				<div class="flex items-center gap-3">
-					<Monitor class="size-5 text-neutral-400" />
+					<DeviceIcon platform={d.platform} />
 					<Button variant="secondary" busy={busy === d.id} onclick={() => disconnect(d)}>{t("disconnect")}</Button>
 				</div>
 			{/snippet}

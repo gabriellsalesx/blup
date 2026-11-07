@@ -69,7 +69,7 @@ func UserAgent() string {
 	if host == "" {
 		host = "?"
 	}
-	osName := map[string]string{"linux": "Linux", "darwin": "macOS", "windows": "Windows"}[runtime.GOOS]
+	osName := map[string]string{"linux": "Linux", "darwin": "macOS", "windows": "Windows", "android": "Android", "ios": "iOS"}[runtime.GOOS]
 	if osName == "" {
 		osName = runtime.GOOS
 	}

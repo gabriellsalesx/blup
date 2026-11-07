@@ -194,12 +194,16 @@ const routes = app
 			.from(sessionTable)
 			.where(and(eq(sessionTable.userId, user.id), isStudio, gt(sessionTable.expiresAt, new Date())))
 			.orderBy(desc(sessionTable.updatedAt));
-		// "Blup Studio (Linux; my-pc)" -> "my-pc · Linux".
-		const name = (agent: string | null) => {
+		// "Blup Studio (Linux; my-pc)" -> "my-pc · Linux", on Linux (its
+		// mark in the panel). Older Studios sent Go's own names ("android").
+		const systems = { linux: ["linux", "Linux"], macos: ["macos", "macOS"], darwin: ["macos", "macOS"], windows: ["windows", "Windows"], android: ["android", "Android"], ios: ["ios", "iOS"] } as const;
+		const device = (agent: string | null) => {
 			const m = /\((.+?);\s*(.+)\)/.exec(agent ?? "");
-			return m ? `${m[2]} · ${m[1]}` : "Blup Studio";
+			if (!m) return { name: "Blup Studio", platform: "other" as const };
+			const key = m[1]!.trim().toLowerCase(), known = Object.hasOwn(systems, key) ? systems[key as keyof typeof systems] : null;
+			return { name: `${m[2]} · ${known ? known[1] : m[1]}`, platform: known ? known[0] : "other" as const };
 		};
-		return c.json({ devices: rows.map((r) => ({ id: r.id, name: name(r.agent), createdAt: r.createdAt, lastSeen: r.lastSeen })) });
+		return c.json({ devices: rows.map((r) => ({ id: r.id, ...device(r.agent), createdAt: r.createdAt, lastSeen: r.lastSeen })) });
 	})
 	.delete("/devices/:id", session, validate("param",idParam), async (c) => {
 		const { user } = c.get("session");

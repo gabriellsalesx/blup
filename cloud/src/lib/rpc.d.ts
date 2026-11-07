@@ -209,10 +209,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {};
             output: {
                 devices: {
-                    id: string;
-                    name: string;
                     createdAt: string;
                     lastSeen: string;
+                    name: string;
+                    platform: "other" | "android" | "ios" | "linux" | "macos" | "windows";
+                    id: string;
                 }[];
             };
             outputFormat: "json";
