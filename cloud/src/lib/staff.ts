@@ -9,6 +9,8 @@ export type Stats=InferResponseType<typeof client.stats.$get,200>;
 export type Team=InferResponseType<typeof client.team.$get,200>;
 export type AIModels=InferResponseType<typeof client.ai.$get,200>;
 export type AIFeature=AIModels["features"][number]["feature"];
+export type AccountDetail=InferResponseType<(typeof client.users)[":id"]["$get"],200>;
+export type Addons=AccountDetail["addons"];
 export class StaffError extends Error {
  constructor(public status:number,public code:string){super(code);}
 }
@@ -35,7 +37,7 @@ export const staffApi={
  setMember:(email:string,role:Role)=>call(parseResponse(client.team.$post({json:{email,role}}))),
  removeMember:(email:string)=>call(parseResponse(client.team[":email"].$delete({param:{email}}))),
  ai:()=>call(parseResponse(client.ai.$get())),
- setModels:(feature:AIFeature,models:string[])=>call(parseResponse(client.ai[":feature"].$put({param:{feature},json:{models}}))),
+ setModels:(feature:AIFeature,models:string[],recommended:string|null)=>call(parseResponse(client.ai[":feature"].$put({param:{feature},json:{models,recommended}}))),
  log:(cursor:string|null)=>call(parseResponse(client.log.$get({query:cursor?{cursor}:{}}))),
 };
 

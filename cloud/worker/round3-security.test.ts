@@ -253,3 +253,38 @@ describe("manual history purge",()=>{
 		await Promise.all([drainSyncGarbage(runtime.env,"owner"),drainSyncGarbage(runtime.env,"owner")]);expect(await(await request("/sync/vaults/vault-1/history","DELETE")).json()).toMatchObject({freedBytes:0});expect(db.sqlite.prepare("SELECT n FROM vault_version WHERE vault_id='vault-1'").all()).toEqual([{n:1}]);
 	});
 });
+describe("vault deletion",()=>{
+	it("deletes the vault and only the blocks no other vault uses",async()=>{
+		const ids=await storedVault(2);const kept=ids[0]!,gone=ids[1]!;
+		db.sqlite.exec("INSERT INTO vault(id,user_id,name,head) VALUES ('vault-2','owner','Yw==',1)");
+		db.sqlite.prepare("INSERT INTO vault_version(vault_id,n,key,size,created_at) VALUES ('vault-2',1,'u/owner/v/second',?,?)").run(65,Date.now());
+		await notes.put("u/owner/v/second/m","y");await notes.put("u/owner/v/second/r",kept);
+		const before=db.sqlite.prepare("SELECT storage_bytes AS n FROM sync_account WHERE user_id='owner'").get()?.n as number;
+		const response=await request("/sync/vaults/vault-1","DELETE");expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({freedBytes:2*MB+ids.join("\n").length+1});
+		expect(db.sqlite.prepare("SELECT id FROM vault WHERE user_id='owner'").all()).toEqual([{id:"vault-2"}]);
+		expect(db.sqlite.prepare("SELECT count(*) AS n FROM vault_version WHERE vault_id='vault-1'").get()?.n).toBe(0);
+		expect(db.sqlite.prepare("SELECT id FROM sync_block WHERE user_id='owner'").all()).toEqual([{id:kept}]);
+		expect(notes.objects.has(`u/owner/b/${gone}`)).toBe(false);expect(notes.objects.has(`u/owner/b/${kept}`)).toBe(true);
+		expect(notes.objects.has("u/owner/v/current/m")).toBe(false);expect(notes.objects.has("u/owner/v/second/m")).toBe(true);
+		expect(db.sqlite.prepare("SELECT storage_bytes AS n FROM sync_account WHERE user_id='owner'").get()?.n).toBe(before-2*MB-ids.join("\n").length-1);
+		expect((await request("/sync/vaults/vault-1","DELETE")).status).toBe(404);
+	});
+	it("refuses another account's vault and a vault in the middle of a sync",async()=>{
+		expect((await request("/sync/vaults/vault-other","DELETE")).status).toBe(404);
+		expect(db.sqlite.prepare("SELECT count(*) AS n FROM vault WHERE id='vault-other'").get()?.n).toBe(1);
+		await storedVault(1);const {ticket}=await(await prepare([{id:H,size:4}])).json() as {ticket:string};
+		expect((await request("/sync/vaults/vault-1","DELETE")).status).toBe(409);
+		await request(`/sync/preparations/${ticket}`,"DELETE");expect((await request("/sync/vaults/vault-1","DELETE")).status).toBe(200);
+	});
+});
+describe("vault rename",()=>{
+	it("changes the sealed name of the account's own vault only",async()=>{
+		expect((await request("/sync/vaults/vault-1","PATCH",{name:"bm92bw=="})).status).toBe(200);
+		expect(db.sqlite.prepare("SELECT name FROM vault WHERE id='vault-1'").get()?.name).toBe("bm92bw==");
+		expect((await request("/sync/vaults/vault-other","PATCH",{name:"bm92bw=="})).status).toBe(404);
+		expect(db.sqlite.prepare("SELECT name FROM vault WHERE id='vault-other'").get()?.name).toBe("Yg==");
+		expect((await request("/sync/vaults/vault-1","PATCH",{name:"not base64!"})).status).toBe(400);
+		expect((await request("/sync/vaults/vault-1","PATCH",{name:"bm92bw==",head:9})).status).toBe(400);
+	});
+});

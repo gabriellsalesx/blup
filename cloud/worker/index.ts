@@ -26,7 +26,7 @@ import { syncApi } from "./sync";
 import { sitesApi } from "./sites";
 import { forgetOld, remindersApi, sendDue } from "./reminders";
 import { cleanUp } from "./cleanup";
-import { aiApi, aiUsageOf } from "./ai";
+import { aiApi, aiUsageOf, studioAIApi } from "./ai";
 import { isStudio, usageOf } from "./usage";
 import {user as userTable, session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail } from "./auth-options";
@@ -209,6 +209,7 @@ const routes = app
 	.route("/sync",syncApi)
 	.route("/sites",sitesApi)
 	.route("/reminders",remindersApi)
+	.route("/studio-ai",studioAIApi)
 	.route("/ai",aiApi)
 	.route("/pulse",pulseApi)
 	.route("/deals",dealsApi)

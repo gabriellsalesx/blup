@@ -8,7 +8,7 @@ import { v7 as uuidv7 } from "uuid";
 import { auth, db } from "./auth";
 import { syncAccount, syncBlock, vault, vaultVersion } from "./db/schema";
 import { planOf } from "./account";
-import { purgeVaultHistory } from "./sync-history";
+import { purgeVaultHistory, deleteVault } from "./sync-history";
 import { prepareTransfer,putPreparedBlock,commitTransfer,cancelTransfer,preparationSchema } from "./sync-transfers";
 import { lockUpload,unlockUpload,uploadGuard,storageLimit,SyncError } from "./sync-storage";
 import { reserve, release, settle } from "./quota";
@@ -164,6 +164,13 @@ export const syncApi = new Hono<App>()
 
 	})
 
+	// A new name, sealed by the Studio like the first one.
+	.patch("/vaults/:id",validate("param",idParam),validate("json",z.object({name:b64.min(1)}).strict()),async c=>{
+		const changed=await c.env.DB.prepare("UPDATE vault SET name=? WHERE id=? AND user_id=? RETURNING id").bind(c.req.valid("json").name,c.req.valid("param").id,c.get("userId")).first();
+		return changed?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
+	})
+	// The vault and what only it uses, for good.
+	.delete("/vaults/:id",validate("param",idParam),async c=>c.json(await deleteVault(c.env,c.get("userId"),c.req.valid("param").id)))
 	.delete("/vaults/:id/history",validate("param",idParam),async c=>c.json(await purgeVaultHistory(c.env,c.get("userId"),c.req.valid("param").id)))
 
 	.post("/vaults/:id/prepare",validate("param",idParam),async c=>{

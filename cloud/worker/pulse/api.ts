@@ -1,4 +1,5 @@
 import {resourceChoices} from "../billing-flow";
+import {pulseCountsOf} from "../addon-usage";
 import {platformIds} from "../../shared/pulse-platforms";
 import {selectionBody,observePulseEntitlements} from "./entitlements";
 import {purgeProject} from "./cleanup";
@@ -18,7 +19,7 @@ import {maintenanceApi} from "./maintenance";
 import {sourcemapUploadApi,sourcemapPanelApi,withOriginals} from "./sourcemaps";
 import {z} from "zod";
 import {validate,hashId,opaqueId} from "../validation";
-import {pulseIdParam,projectId,issueState,numericId,publicKey,sha256,monthOf} from "./limits";
+import {pulseIdParam,projectId,issueState,numericId,publicKey,sha256} from "./limits";
 
 const projectBody=z.object({name:z.string().trim().min(1).max(80),platform:z.enum(platformIds)}).strict();
 const filters=z.object({state:issueState.optional(),environment:z.string().max(80).optional(),release:z.string().max(128).optional(),q:z.string().max(128).optional(),beforeId:hashId.optional(),before:z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),limit:z.coerce.number().int().min(1).max(50).default(30)});
@@ -35,13 +36,11 @@ async function newKey(env:Cloudflare.Env,project:string,rotate=false){
 }
 export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi).get("/public/:slug",validate("param",z.object({slug:pageSlug})),async c=>{if(!(await c.env.PULSE_PUBLIC_LIMIT.limit({key:`public:${c.req.header("cf-connecting-ip")??"local"}`})).success){c.header("Retry-After","60");return c.json({code:"TOO_MANY_REQUESTS"},429);}const page=await publicPage(c.env,c.req.valid("param").slug);return page?c.json(page):c.json({code:"NOT_FOUND"},404);}).route("/",sourcemapUploadApi).use("*",pulseSession).use("/projects/:project",projectWrite).use("/projects/:project/*",projectWrite)
  .get("/usage",async c=>{
-  const owner=c.get("session").user.id,access=c.get("access"),month=monthOf();
-  const projects=await c.env.DB.prepare("SELECT id,object_name AS objectName FROM pulse_project WHERE user_id=? AND deleted_at IS NULL ORDER BY id LIMIT 10").bind(owner).all<{id:string;objectName:string}>();
-  const stats=access.readable?await Promise.all(projects.results.map(p=>c.env.PULSE_PROJECT.getByName(p.objectName).usage(month))):[];
+  const owner=c.get("session").user.id,access=c.get("access");
+  const counts=await pulseCountsOf(c.env,owner,access.readable);
   const resources=access.readable?await resourceChoices(c.env.DB,owner):{projects:[],monitors:[],pages:[]},selection=await c.env.DB.prepare("SELECT target_plan AS plan,applied_at AS applied FROM pulse_selection WHERE user_id=?").bind(owner).first<{plan:string;applied:number|null}>();
   const selectionRequired=!!access.limits&&(resources.projects.length>access.limits.projects||resources.monitors.length>access.limits.monitors||resources.pages.length>access.limits.pages)&&!(selection?.plan===access.plan&&selection.applied!==null);
-  const reserved=await c.env.DB.prepare("SELECT reserved FROM pulse_month WHERE user_id=? AND month=?").bind(owner,month).first<{reserved:number}>();
-  return c.json({selectionRequired,resources,plan:access.plan,limits:access.limits,readOnly:!access.writable,readOnlyUntil:access.readOnlyUntil===null?null:new Date(access.readOnlyUntil).toISOString(),month,accepted:stats.reduce((n,s)=>n+s.accepted,0),reserved:reserved?.reserved??0,bytes:stats.reduce((n,s)=>n+s.bytes,0)});
+  return c.json({selectionRequired,resources,plan:access.plan,limits:access.limits,readOnly:!access.writable,readOnlyUntil:access.readOnlyUntil===null?null:new Date(access.readOnlyUntil).toISOString(),month:counts.month,accepted:counts.accepted,reserved:counts.reserved,bytes:counts.bytes});
  })
  .put("/selection",pulseWrite,validate("json",selectionBody),async c=>{
   const owner=c.get("session").user.id,access=c.get("access"),keep=c.req.valid("json"),choices=await resourceChoices(c.env.DB,owner);if(!access.limits||!access.plan)return c.json({code:"PLAN"},403);

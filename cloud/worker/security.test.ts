@@ -43,6 +43,9 @@ beforeEach(() => {
 	seedUser(d1,"alice","max"); seedUser(d1,"bob","max"); seedUser(d1,"free");
 	d1.sqlite.exec("INSERT INTO sync_account(user_id,wrapped_key) VALUES ('alice','{}'),('bob','{}'),('free','{}'); INSERT INTO vault(id,user_id,name) VALUES ('vault-a','alice','YQ=='),('vault-b','bob','Yg=='); INSERT INTO site(id,user_id,slug,title) VALUES ('site-a','alice','alice-site','A'),('site-b','bob','bob-site','B')");
 	vi.stubGlobal("fetch", vi.fn(async () => {throw new Error("External network forbidden in audit tests");}));
+	// The AI lists start empty; the owner adds the models these tests use.
+	const lists:Record<string,string[]>={studio_voice:["microsoft/mai-voice-2.1"],studio_translate:["anthropic/claude-haiku-5.5"],deals_describe:["deepseek/deepseek-v4.1-flash"],deals_curate:["deepseek/deepseek-v4.1-flash"],deals_extract:["deepseek/deepseek-v4.1-flash"],deals_suggest:["deepseek/deepseek-v4.1-flash"],deals_translate:["deepseek/deepseek-v4.1-flash"]};
+	for(const [feature,models] of Object.entries(lists))d1.sqlite.prepare("INSERT INTO ai_model_setting(feature,models,updated_by,updated_at) VALUES(?,?,'owner@audit.invalid',1)").run(feature,JSON.stringify(models));
 });
 afterEach(async () => { await Promise.allSettled(pending); d1.close(); vi.unstubAllGlobals();vi.useRealTimers(); });
 
@@ -219,6 +222,9 @@ describe("local attacks on actual Cloud routes", () => {
 	it("uses the selected voice model's price and rejects unavailable voices",async()=>{
 		Object.assign(state.env,{OPENROUTER_URL:"https://catalog.audit.invalid"});
 		vi.stubGlobal("fetch",vi.fn(async()=>Response.json({data:[{id:"vendor/audit-voice",pricing:{prompt:"0.000015"},supported_voices:["demo"]}]})));
+		// Only a model the staff offers on the plans (studio_voice) is priced.
+		expect(await voicePrice(state.env,"vendor/audit-voice","demo")).toBeNull();
+		d1.sqlite.prepare("INSERT INTO ai_model_setting(feature,models,updated_by,updated_at) VALUES('studio_voice',?,'owner@audit.invalid',1) ON CONFLICT(feature) DO UPDATE SET models=excluded.models").run(JSON.stringify(["microsoft/mai-voice-2.1","vendor/audit-voice"]));
 		expect(await voicePrice(state.env,"vendor/audit-voice","demo")).toBe(15);
 		expect(await voicePrice(state.env,"vendor/audit-voice","forged")).toBeNull();
 		expect(await voicePrice(state.env,"vendor/absent","")).toBeNull();
@@ -261,7 +267,7 @@ describe("atomic resource admission and publish regressions",()=>{
 	});
 	it("writes a Deals description with the staff's models in order, paid from the plan",async()=>{
 		Object.assign(state.env,{OPENROUTER_API_KEY:"audit-only-placeholder",OPENROUTER_URL:"https://upstream.audit.invalid"});
-		d1.sqlite.prepare("INSERT INTO ai_model_setting(feature,models,updated_by,updated_at) VALUES('deals_describe',?,'admin@audit.invalid',0)").run(JSON.stringify(["deepseek/deepseek-v4.1-flash","google/gemini-4-flash"]));
+		d1.sqlite.prepare("INSERT OR REPLACE INTO ai_model_setting(feature,models,updated_by,updated_at) VALUES('deals_describe',?,'admin@audit.invalid',0)").run(JSON.stringify(["deepseek/deepseek-v4.1-flash","google/gemini-4-flash"]));
 		const calls:{url:string;body:unknown}[]=[];
 		vi.stubGlobal("fetch",vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{
 			const u=String(url);calls.push({url:u,body:init?.body?JSON.parse(String(init.body)):null});
@@ -346,7 +352,8 @@ describe("round two: malicious inputs and resource failures",()=>{
 		Object.assign(state.env,{OPENROUTER_API_KEY:"audit-only-placeholder",OPENROUTER_URL:"https://upstream.audit.invalid"});
 		const mock=vi.fn(async(_url:RequestInfo|URL,_init?:RequestInit)=>Response.json({choices:"invalid",usage:{cost:0.002}}));vi.stubGlobal("fetch",mock);
 		expect((await request("/ai/translate","POST",{text:"some text",from:"en",to:"pt"})).status).toBe(502);
-		const init=mock.mock.calls[0]?.[1];
+		// The request (the catalog's read comes before it).
+		const init=mock.mock.calls.find(([url])=>String(url).endsWith("/chat/completions"))?.[1];
 		expect(init&&JSON.parse(String(init.body)).max_tokens).toBeGreaterThan(0);
 		expect(d1.sqlite.prepare("SELECT cost_micros FROM ai_usage").get()?.cost_micros).toBe(2000);
 	});
@@ -654,5 +661,62 @@ describe("Deals panel cross-origin",()=>{
 		const post=(origin:string)=>new Request("https://cloud.audit.invalid/api/deals/usage",{method:"POST",headers:{origin,cookie:"s=1"}});
 		expect(mutationOriginAllowed(post(deals),[pulse,deals])).toBe(true);
 		expect(mutationOriginAllowed(post("https://evil.audit.invalid"),[pulse,deals])).toBe(false);
+	});
+});
+
+describe("staff: AI settings and add-on usage",()=>{
+	const staffCall=(path:string,init?:RequestInit)=>staffApi.request(`http://localhost${path}`,init,state.env,ctx);
+	it("lets only the owner in STAFF_OWNER_EMAIL see and change the AI models",async()=>{
+		Object.assign(state.env,{STAFF_DEV_EMAIL:"admin@audit.invalid",STAFF_OWNER_EMAIL:"owner@audit.invalid"});
+		d1.sqlite.exec("INSERT INTO staff(email,role,added_by) VALUES ('admin@audit.invalid','admin','fixture')");
+		expect(await(await staffCall("/me")).json()).toMatchObject({role:"admin",owner:false});
+		expect((await staffCall("/ai")).status).toBe(403);
+		expect((await staffCall("/ai/studio_voice",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({models:["vendor/x"]})})).status).toBe(403);
+		Object.assign(state.env,{STAFF_DEV_EMAIL:"owner@audit.invalid",OPENROUTER_URL:"https://staff-catalog.audit.invalid"});
+		// A model listed oddly (null voices, as OpenRouter sends) doesn't lose the list.
+		vi.stubGlobal("fetch",vi.fn(async(url:string)=>Response.json({data:String(url).includes("speech")?[{id:"vendor/voice",name:"Voice",pricing:{prompt:"0.00002"},supported_voices:null},{id:"vendor/odd",pricing:null}]:[{id:"vendor/text",name:"Text",pricing:{prompt:"0.000001",completion:"0.000002"}}]})));
+		const ai=await(await staffCall("/ai")).json() as {features:{feature:string;kind:string;max:number}[]};
+		expect(ai.features.map(f=>f.feature)).toEqual(expect.arrayContaining(["studio_voice","studio_voice_own","studio_translate","studio_translate_own"]));
+		expect(ai.features.find(f=>f.feature==="studio_voice")).toMatchObject({kind:"speech",max:10});
+		const put=(feature:string,models:string[])=>staffCall(`/ai/${feature}`,{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({models})});
+		// A voice list takes voice models only; a text list, text models only.
+		expect((await put("studio_voice",["vendor/text"])).status).toBe(400);
+		expect((await put("studio_translate",["vendor/voice"])).status).toBe(400);
+		expect((await put("studio_translate",Array.from({length:6},(_,i)=>`vendor/text${i}`))).status).toBe(400);
+		expect((await put("studio_voice_own",["vendor/voice"])).status).toBe(200);
+		expect((await put("studio_translate_own",["vendor/text"])).status).toBe(200);
+		// What the Studio reads, without signing in. Nothing is marked
+		// recommended until the owner marks it.
+		const res=await worker.fetch(new Request("https://cloud.audit.invalid/api/studio-ai"),state.env,ctx);
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({voice:{plan:{models:["microsoft/mai-voice-2.1"],recommended:null},own:{models:["vendor/voice"],recommended:null}},translate:{plan:["anthropic/claude-haiku-5.5"],own:["vendor/text"]}});
+		// A list the owner never filled is empty (no model comes by default),
+		// and any model can be taken out, down to none.
+		expect(await(await staffCall("/ai")).json()).toMatchObject({features:expect.arrayContaining([expect.objectContaining({feature:"studio_voice_own",models:[expect.objectContaining({id:"vendor/voice"})]})])});
+		expect((await put("studio_voice_own",[])).status).toBe(200);
+		d1.sqlite.exec("DELETE FROM ai_model_setting WHERE feature='deals_suggest'");
+		const lists=await(await staffCall("/ai")).json() as {features:{feature:string;models:unknown[]}[]};
+		expect(lists.features.find(f=>f.feature==="deals_suggest")?.models).toEqual([]);
+		expect(lists.features.find(f=>f.feature==="studio_voice_own")?.models).toEqual([]);
+		// The owner marks one: it must be in the list; a text list's main one answers first.
+		const mark=(feature:string,models:string[],recommended:string|null)=>staffCall(`/ai/${feature}`,{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({models,recommended})});
+		expect((await mark("studio_voice_own",["vendor/voice"],"vendor/other")).status).toBe(400);
+		expect((await mark("studio_voice_own",["microsoft/mai-voice-2.1","vendor/voice"],"vendor/voice")).status).toBe(400); // mai isn't in this test's catalog
+		vi.stubGlobal("fetch",vi.fn(async(url:string)=>Response.json({data:String(url).includes("speech")?[{id:"vendor/voice",pricing:{prompt:"0.00002"}},{id:"vendor/voice2",pricing:{prompt:"0.00003"}}]:[{id:"vendor/text",pricing:{prompt:"0.000001",completion:"0.000002"}},{id:"vendor/text2",pricing:{prompt:"0.000001",completion:"0.000002"}}]})));
+		Object.assign(state.env,{OPENROUTER_URL:"https://staff-catalog2.audit.invalid"});
+		expect((await mark("studio_voice_own",["vendor/voice","vendor/voice2"],"vendor/voice2")).status).toBe(200);
+		expect((await mark("studio_translate_own",["vendor/text","vendor/text2"],"vendor/text2")).status).toBe(200);
+		const after=await(await worker.fetch(new Request("https://cloud.audit.invalid/api/studio-ai"),state.env,ctx)).json() as {voice:{own:{models:string[];recommended:string|null}};translate:{own:string[]}};
+		expect(after.voice.own).toEqual({models:["vendor/voice","vendor/voice2"],recommended:"vendor/voice2"});
+		expect(after.translate.own).toEqual(["vendor/text2","vendor/text"]);
+	});
+	it("shows each account's Pulse and Deals plan and use",async()=>{
+		Object.assign(state.env,{STAFF_DEV_EMAIL:"owner@audit.invalid",STAFF_OWNER_EMAIL:"owner@audit.invalid",PULSE_PROJECT:{getByName:()=>({usage:async()=>({accepted:7,bytes:512})})}});
+		seedUser(d1,"carol","ultra_pulse_deals");
+		const carol=await(await staffCall("/users/carol")).json() as {addons:{pulse:{limits:{projects:number};used:{projects:number;accepted:number}}|null;deals:{limits:{channels:number};used:{postsToday:number}}|null}};
+		expect(carol.addons.pulse).toMatchObject({limits:{projects:10,events:250_000},used:{projects:0,monitors:0,pages:0,accepted:0}});
+		expect(carol.addons.deals).toMatchObject({limits:{channels:10,postsPerDay:100},used:{channels:0,hunts:0,mirrors:0,postsToday:0}});
+		// A plan without them shows neither.
+		expect(await(await staffCall("/users/alice")).json()).toMatchObject({addons:{pulse:null,deals:null}});
 	});
 });

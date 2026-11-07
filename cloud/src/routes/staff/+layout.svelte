@@ -11,15 +11,15 @@
 	// The staff area: the same frame as the account panel.
 	let { data, children }: LayoutProps = $props();
 
+	// An account's page, any account (a route's parameter can't be empty:
+	// the address of one, without its id).
+	const accounts = staffHref(resolve("/staff/accounts/[id]", { id: "_" })).slice(0, -1);
 	const links = $derived([
-		{ href: staffHref(resolve("/staff")), label: "Contas", Icon: Users, match: (p: string) => p === staffHref(resolve("/staff")) || p.startsWith(staffHref(resolve("/staff/accounts/[id]", { id: "" }))) },
-		...(data.me?.role === "admin"
-			? [
-					{ href: staffHref(resolve("/staff/team")), label: "Equipe", Icon: UserCog },
-					{ href: staffHref(resolve("/staff/ai")), label: "IA", Icon: Sparkles },
-					{ href: staffHref(resolve("/staff/log")), label: "Registro", Icon: ScrollText },
-				]
-			: []),
+		{ href: staffHref(resolve("/staff")), label: "Contas", Icon: Users, match: (p: string) => p === staffHref(resolve("/staff")) || p.startsWith(accounts) },
+		...(data.me?.role === "admin" ? [{ href: staffHref(resolve("/staff/team")), label: "Equipe", Icon: UserCog }] : []),
+		// The AI settings: the owner (STAFF_OWNER_EMAIL) only.
+		...(data.me?.owner ? [{ href: staffHref(resolve("/staff/ai")), label: "IA", Icon: Sparkles, match: (p: string) => p.startsWith(staffHref(resolve("/staff/ai"))) }] : []),
+		...(data.me?.role === "admin" ? [{ href: staffHref(resolve("/staff/log")), label: "Registro", Icon: ScrollText }] : []),
 	]);
 </script>
 

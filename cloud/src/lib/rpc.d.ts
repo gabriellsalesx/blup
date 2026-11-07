@@ -268,6 +268,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 email: string;
                 role: "admin" | "support";
+                owner: boolean;
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;
@@ -439,6 +440,56 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     percent: number;
                     resetsAt: string;
                     included: boolean;
+                };
+                addons: {
+                    pulse: {
+                        limits: {
+                            readonly projects: 3;
+                            readonly events: 50000;
+                            readonly retentionDays: 30;
+                            readonly monitors: 10;
+                            readonly intervalMinutes: 5;
+                            readonly pages: 1;
+                            readonly customDomain: false;
+                            readonly projectBytes: number;
+                            readonly burst: 60;
+                        } | {
+                            readonly projects: 10;
+                            readonly events: 250000;
+                            readonly retentionDays: 90;
+                            readonly monitors: 50;
+                            readonly intervalMinutes: 2;
+                            readonly pages: 3;
+                            readonly customDomain: true;
+                            readonly projectBytes: number;
+                            readonly burst: 300;
+                        };
+                        used: {
+                            projects: number;
+                            monitors: number;
+                            pages: number;
+                            month: string;
+                            accepted: number;
+                            reserved: number;
+                            bytes: number;
+                        };
+                    } | null;
+                    deals: {
+                        limits: {
+                            readonly channels: 10;
+                            readonly hunts: 20;
+                            readonly mirrors: 10;
+                            readonly postsPerDay: 100;
+                            readonly historyDays: 90;
+                        };
+                        used: {
+                            channels: number;
+                            hunts: number;
+                            mirrors: number;
+                            postsToday: number;
+                            resetsAt: string;
+                        };
+                    } | null;
                 };
                 billing: {
                     id: number;
@@ -931,16 +982,26 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {};
             output: {
                 features: {
-                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
-                    models: {
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate" | "studio_translate" | "studio_translate_own" | "studio_voice" | "studio_voice_own";
+                    kind: "chat" | "speech";
+                    max: 5 | 10;
+                    recommended: string | null;
+                    models: ({
+                        id: string;
+                        name: string | null;
+                        prompt: null;
+                        completion: null;
+                        perThousand: number | null;
+                    } | {
                         id: string;
                         name: string | null;
                         prompt: number | null;
                         completion: number | null;
-                    }[];
-                    defaults: "deepseek/deepseek-v4.1-flash"[];
+                        perThousand: null;
+                    })[];
                 }[];
                 catalog: boolean;
+                speechCatalog: boolean;
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;
@@ -951,11 +1012,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $put: {
             input: {
                 param: {
-                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate" | "studio_translate" | "studio_translate_own" | "studio_voice" | "studio_voice_own";
                 };
             } & {
                 json: {
                     models: string[];
+                    recommended?: string | null | undefined;
                 };
             };
             output: {
@@ -970,11 +1032,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate" | "studio_translate" | "studio_translate_own" | "studio_voice" | "studio_voice_own";
                 };
             } & {
                 json: {
                     models: string[];
+                    recommended?: string | null | undefined;
                 };
             };
             output: {
@@ -986,11 +1049,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate" | "studio_translate" | "studio_translate_own" | "studio_voice" | "studio_voice_own";
                 };
             } & {
                 json: {
                     models: string[];
+                    recommended?: string | null | undefined;
                 };
             };
             output: {
@@ -1005,11 +1069,12 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate" | "studio_translate" | "studio_translate_own" | "studio_voice" | "studio_voice_own";
                 };
             } & {
                 json: {
                     models: string[];
+                    recommended?: string | null | undefined;
                 };
             };
             output: {
@@ -1021,27 +1086,28 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 param: {
-                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate" | "studio_translate" | "studio_translate_own" | "studio_voice" | "studio_voice_own";
                 };
             } & {
                 json: {
                     models: string[];
+                    recommended?: string | null | undefined;
                 };
             };
             output: {
                 code: string;
-                models: string[];
             };
             outputFormat: "json";
             status: 400;
         } | {
             input: {
                 param: {
-                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate";
+                    feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate" | "studio_translate" | "studio_translate_own" | "studio_voice" | "studio_voice_own";
                 };
             } & {
                 json: {
                     models: string[];
+                    recommended?: string | null | undefined;
                 };
             };
             output: {
@@ -1614,6 +1680,153 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             outputFormat: "json";
             status: 201;
+        };
+    };
+} & {
+    "/vaults/:id": {
+        $patch: {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    name: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    name: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    name: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    name: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    name: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    name: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        };
+    };
+} & {
+    "/vaults/:id": {
+        $delete: {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
+                freedBytes: number;
+                storageBytes: number;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
 } & {
@@ -3073,6 +3286,30 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 }, "/api/reminders"> | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                voice: {
+                    plan: {
+                        models: string[];
+                        recommended: string | null;
+                    };
+                    own: {
+                        models: string[];
+                        recommended: string | null;
+                    };
+                };
+                translate: {
+                    plan: string[];
+                    own: string[];
+                };
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/api/studio-ai"> | import("hono/types").MergeSchemaPath<{
     "/usage": {
         $get: {
             input: {};
@@ -10433,7 +10670,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             output: {
                 reason?: "not_configured" | "unsupported_store" | "conversion_failed" | undefined;
-                store: "other" | "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte";
+                store: "amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte" | "other";
                 title: string;
                 image: string | null;
                 price: number | null;
@@ -11644,7 +11881,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
                 socials: {
                     links: {
-                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "threads" | "instagram" | "youtube" | "x" | "whatsapp";
+                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "instagram" | "youtube" | "x" | "threads" | "whatsapp";
                         url: string;
                     }[];
                     on: boolean;
@@ -11668,7 +11905,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     };
                     socials: {
                         links: {
-                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "threads" | "instagram" | "youtube" | "x" | "whatsapp";
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "instagram" | "youtube" | "x" | "threads" | "whatsapp";
                             url: string;
                         }[];
                         on: boolean;
@@ -11699,7 +11936,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
                 socials: {
                     links: {
-                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "threads" | "instagram" | "youtube" | "x" | "whatsapp";
+                        network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "instagram" | "youtube" | "x" | "threads" | "whatsapp";
                         url: string;
                     }[];
                     on: boolean;
@@ -11719,7 +11956,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     };
                     socials: {
                         links: {
-                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "threads" | "instagram" | "youtube" | "x" | "whatsapp";
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "instagram" | "youtube" | "x" | "threads" | "whatsapp";
                             url: string;
                         }[];
                         on: boolean;
@@ -11751,7 +11988,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     };
                     socials: {
                         links: {
-                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "threads" | "instagram" | "youtube" | "x" | "whatsapp";
+                            network: "site" | "discord" | "facebook" | "twitch" | "kick" | "tiktok" | "telegram" | "instagram" | "youtube" | "x" | "threads" | "whatsapp";
                             url: string;
                         }[];
                         on: boolean;

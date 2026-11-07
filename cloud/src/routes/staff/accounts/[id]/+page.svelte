@@ -14,6 +14,7 @@
 	import Button from "#lib/ui/Button.svelte";
 	import Row from "#lib/ui/Row.svelte";
 	import UsageBars from "#lib/ui/UsageBars.svelte";
+	import AddonBars from "#lib/ui/AddonBars.svelte";
 	import Field from "#lib/ui/Field.svelte";
 	import Modal from "#lib/ui/Modal.svelte";
 
@@ -90,6 +91,10 @@
 
 		<Row title="Uso" help="Só números: o conteúdo das notas é criptografado e a staff não vê.">
 			<UsageBars usage={d.usage} limits={d.plan.limits} ai={d.ai} />
+		</Row>
+
+		<Row title="Adicionais" help="Blup Pulse e Blup Deals: o que o plano permite e quanto a conta usa agora.">
+			<AddonBars addons={d.addons} />
 		</Row>
 
 		<Row title="Pagamentos" help="O que o Stripe avisou: pagamentos, falhas, reembolsos, contestações e alertas de fraude.">

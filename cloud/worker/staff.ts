@@ -13,7 +13,8 @@ import { planNamed } from "./plans";
 import { GIFT_PLAN, isOwner } from "./account";
 import { hasEmail } from "./auth-options";
 import { usageOf } from "./usage";
-import { aiUsageOf, aiFeatures, modelList, modelsFor, chatModels, type AIFeature } from "./ai";
+import { addonUsageOf } from "./addon-usage";
+import { aiUsageOf, aiFeatures, aiFeatureNames, modelId, modelList, modelListFor, settingFor, chatModels, speechCatalog } from "./ai";
 
 // The staff area (support and administration). In production Cloudflare
 // Access stands in front of /staff and /api/staff; here the Worker checks
@@ -22,7 +23,9 @@ import { aiUsageOf, aiFeatures, modelList, modelsFor, chatModels, type AIFeature
 // on the person's computer) and never signs in as a user.
 
 type Role = "support" | "admin";
-type Staff = { email: string; role: Role };
+// owner: the e-mail in STAFF_OWNER_EMAIL (the Worker's secrets, .dev.vars
+// here), the only one who sees and changes the AI settings.
+type Staff = { email: string; role: Role; owner: boolean };
 type App = { Bindings: Cloudflare.Env; Variables: { staff: Staff } };
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
@@ -46,18 +49,24 @@ const onStaff = createMiddleware<App>(async (c, next) => {
 	const email = await accessEmail(c);
 	if (!email) return c.json({ code: "FORBIDDEN" }, 403);
 	let role: Role | null = null;
-	if (c.env.STAFF_OWNER_EMAIL && email === c.env.STAFF_OWNER_EMAIL.toLowerCase()) role = "admin";
+	const owner = !!c.env.STAFF_OWNER_EMAIL && email === c.env.STAFF_OWNER_EMAIL.toLowerCase();
+	if (owner) role = "admin";
 	else {
 		const [s] = await db.select({ role: staff.role }).from(staff).where(eq(staff.email, email)).limit(1);
 		role = s?.role ?? null;
 	}
 	if (!role) return c.json({ code: "FORBIDDEN" }, 403);
-	c.set("staff", { email, role });
+	c.set("staff", { email, role, owner });
 	await next();
 });
 
 const adminOnly = createMiddleware<App>(async (c, next) => {
 	if (c.get("staff").role !== "admin") return c.json({ code: "ADMIN_ONLY" }, 403);
+	await next();
+});
+
+const ownerOnly = createMiddleware<App>(async (c, next) => {
+	if (!c.get("staff").owner) return c.json({ code: "OWNER_ONLY" }, 403);
 	await next();
 });
 
@@ -157,7 +166,7 @@ export const staffApi = new Hono<App>()
 		const active = subs.find((s) => ACTIVE.includes(s.status));
 		const gift = isOwner(u.email, u.emailVerified);
 		const plan = planNamed(gift ? GIFT_PLAN : active?.plan);
-		const [usage, ai] = await Promise.all([usageOf(id), aiUsageOf(id, plan)]);
+		const [usage, ai, addons] = await Promise.all([usageOf(id), aiUsageOf(id, plan), addonUsageOf(c.env, id, plan)]);
 		const [state]=await db.select({deletedAt:resourceQuota.deletedAt,purgeAfter:resourceQuota.purgeAfter,purgeStarted:resourceQuota.purgeStarted}).from(resourceQuota).where(eq(resourceQuota.userId,id)).limit(1);
 		const stripeMode = /^[rs]k_live_/.test(c.env.STRIPE_SECRET_KEY) ? "" : "test/";
 		return c.json({
@@ -166,6 +175,8 @@ export const staffApi = new Hono<App>()
 			plan: { label: gift ? `${plan.label} (cortesia)` : plan.label, gift, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.cancelAt ?? active?.periodEnd ?? null, cancelAtPeriodEnd: !!(active?.cancelAtPeriodEnd || active?.cancelAt) },
 			usage,
 			ai: { percent: ai.percent, resetsAt: ai.resetsAt, included: plan.limits.aiUsage > 0 },
+			// Blup Pulse and Blup Deals, when the plan includes them.
+			addons,
 			billing,
 			stripeUrl: u.stripeCustomerId ? `https://dashboard.stripe.com/${stripeMode}customers/${u.stripeCustomerId}` : null,
 			sessions,
@@ -243,26 +254,44 @@ export const staffApi = new Hono<App>()
 		return c.json({ ok: true });
 	})
 
-	// The AI models of each feature, in order (admin only): the first
-	// answers, the others take over when it fails. Each must be in
-	// OpenRouter's catalog (when it can be read); the price is shown.
-	.get("/ai", adminOnly, async (c) => {
-		const catalog = await chatModels(c.env);
-		const features = await Promise.all((Object.keys(aiFeatures) as AIFeature[]).map(async (feature) => {
-			const models = await modelsFor(c.env.DB, feature);
-			return { feature, models: models.map((id) => { const m = catalog.get(id); return { id, name: m?.name ?? null, prompt: m ? m.prompt * 1e6 : null, completion: m ? m.completion * 1e6 : null }; }), defaults: [...aiFeatures[feature]] };
+	// The AI models of each feature, in order (the owner only): a text
+	// feature's first model answers and the others take over when it fails;
+	// a voice list is what Blup Studio offers. Each must be in OpenRouter's
+	// catalog (when it can be read); the price is shown.
+	.get("/ai", ownerOnly, async (c) => {
+		const [chat, speech] = await Promise.all([chatModels(c.env), speechCatalog(c.env)]);
+		const features = await Promise.all(aiFeatureNames.map(async (feature) => {
+			const spec = aiFeatures[feature], { models, recommended } = await settingFor(c.env.DB, feature);
+			return {
+				feature, kind: spec.kind, max: spec.max, recommended,
+				models: models.map((id) => {
+					if (spec.kind === "speech") { const m = speech.live ? speech.models.get(id) : undefined; return { id, name: m?.name ?? null, prompt: null, completion: null, perThousand: m ? m.perCharMicros / 1000 : null }; }
+					const m = chat.get(id);
+					return { id, name: m?.name ?? null, prompt: m ? m.prompt * 1e6 : null, completion: m ? m.completion * 1e6 : null, perThousand: null };
+				}),
+			};
 		}));
-		return c.json({ features, catalog: catalog.size > 0 });
+		return c.json({ features, catalog: chat.size > 0, speechCatalog: speech.live });
 	})
-	.put("/ai/:feature", adminOnly, validate("param", z.object({ feature: z.enum(Object.keys(aiFeatures) as [AIFeature, ...AIFeature[]]) })), body(z.object({ models: modelList }).strict()), async (c) => {
-		const { feature } = c.req.valid("param"), { models } = c.req.valid("json"), catalog = await chatModels(c.env);
-		const unknown = catalog.size ? models.filter((m) => !catalog.has(m)) : [];
-		if (unknown.length) return c.json({ code: "UNKNOWN_MODEL", models: unknown }, 400);
-		// Each feature runs with reasoning off, which these models refuse.
-		const thinking = models.filter((m) => catalog.get(m)?.thinks);
-		if (thinking.length) return c.json({ code: "REASONING_MODEL", models: thinking }, 400);
-		await c.env.DB.prepare("INSERT INTO ai_model_setting(feature,models,updated_by,updated_at) VALUES(?,?,?,?) ON CONFLICT(feature) DO UPDATE SET models=excluded.models,updated_by=excluded.updated_by,updated_at=excluded.updated_at").bind(feature, JSON.stringify(models), c.get("staff").email, Date.now()).run();
-		await log(c.get("staff").email, "ai.models", null, `${feature}: ${models.join(", ")}`);
+	.put("/ai/:feature", ownerOnly, validate("param", z.object({ feature: z.enum(aiFeatureNames) })), body(z.object({ models: modelList, recommended: modelId.nullable().default(null) }).strict()), async (c) => {
+		const { feature } = c.req.valid("param"), { models, recommended } = c.req.valid("json"), spec = aiFeatures[feature];
+		if (!modelListFor(feature).safeParse(models).success) return c.json({ code: "TOO_MANY", max: spec.max }, 400);
+		// The marked one must be in the list.
+		if (recommended !== null && !models.includes(recommended)) return c.json({ code: "NOT_IN_LIST" }, 400);
+		if (spec.kind === "speech") {
+			const speech = await speechCatalog(c.env);
+			const unknown = speech.live ? models.filter((m) => !speech.models.has(m)) : [];
+			if (unknown.length) return c.json({ code: "UNKNOWN_MODEL", models: unknown }, 400);
+		} else {
+			const catalog = await chatModels(c.env);
+			const unknown = catalog.size ? models.filter((m) => !catalog.has(m)) : [];
+			if (unknown.length) return c.json({ code: "UNKNOWN_MODEL", models: unknown }, 400);
+			// Each feature runs with reasoning off, which these models refuse.
+			const thinking = models.filter((m) => catalog.get(m)?.thinks);
+			if (thinking.length) return c.json({ code: "REASONING_MODEL", models: thinking }, 400);
+		}
+		await c.env.DB.prepare("INSERT INTO ai_model_setting(feature,models,recommended,updated_by,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(feature) DO UPDATE SET models=excluded.models,recommended=excluded.recommended,updated_by=excluded.updated_by,updated_at=excluded.updated_at").bind(feature, JSON.stringify(models), recommended, c.get("staff").email, Date.now()).run();
+		await log(c.get("staff").email, "ai.models", null, `${feature}: ${models.join(", ")}${recommended ? ` (marcado: ${recommended})` : ""}`);
 		return c.json({ ok: true });
 	})
 

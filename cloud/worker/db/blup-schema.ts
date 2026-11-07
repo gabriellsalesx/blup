@@ -304,6 +304,9 @@ export const siteCachePurgeState=sqliteTable("site_cache_purge_state",{
 export const aiModelSetting = sqliteTable("ai_model_setting", {
 	feature: text("feature").primaryKey(),
 	models: text("models").notNull(),
+	// The model the owner marked: a voice list's recommended one, a text
+	// list's main one (it answers first). None until the owner picks one.
+	recommended: text("recommended"),
 	updatedBy: text("updated_by").notNull(),
 	updatedAt: integer("updated_at").notNull(),
 });

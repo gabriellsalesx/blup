@@ -260,6 +260,13 @@
       "when": 1793907743145,
       "tag": "0036_deals_channel_test",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1794062013664,
+      "tag": "0037_ia_recomendado",
+      "breakpoints": true
     }
   ]
 }

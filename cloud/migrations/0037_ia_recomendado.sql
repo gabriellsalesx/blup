@@ -1,0 +1,1 @@
+ALTER TABLE `ai_model_setting` ADD `recommended` text;
