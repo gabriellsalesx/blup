@@ -1,0 +1,10 @@
+{{- /* Newest, most reacted and most commented: feedback.js shows the tabs
+only when the posts have reactions and comments, and sorts the .nori-list
+under them. On the home page and at the end of each post. */ -}}
+{{- if site.Params.blup.feedback }}
+<div class="nori-tabs" role="tablist" aria-label="{{ T "noriSort" }}" data-fb-tabs hidden>
+  <button type="button" role="tab" aria-selected="true" data-fb-sort="recent">{{ T "noriRecent" }}</button>
+  <button type="button" role="tab" aria-selected="false" data-fb-sort="top">{{ T "noriTop" }}</button>
+  <button type="button" role="tab" aria-selected="false" data-fb-sort="talk">{{ T "noriTalk" }}</button>
+</div>
+{{- end -}}

@@ -128,6 +128,11 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-tag { color: var(--main-600); }
 
   /* Share buttons at the end of a post: on the box color, like the rest. */
+  .nori-more { margin-block: 3rem 0; padding-block-start: 2rem; border-block-start: 1px solid var(--main-200); }
+  .nori-more h2 { font-size: 1.25rem; font-weight: 700; margin-block-end: 1rem; }
+  .nori-more-all { margin-block-start: 1rem; text-align: center; }
+  .nori-more-all a { font-weight: 600; color: var(--main-600); }
+  .nori-more-all a:hover { color: var(--main-900); text-decoration: underline; }
   .nori-share { margin-block: 2.5rem 0; padding-block-start: 2rem; border-block-start: 1px solid var(--main-200); }
   .nori-share .share :is(a, button) { background: var(--panel); }
   .nori-share .share :is(a, button):hover { background: var(--panel-hover); }
