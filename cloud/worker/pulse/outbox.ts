@@ -54,9 +54,12 @@ export async function dispatchAlerts(env:Cloudflare.Env,now=Date.now()){
  const lock=await siteLock(env.DB,"pulse-dispatch",55_000);if(!lock)return;
  try{
   const due=await env.DB.prepare("SELECT o.id,o.user_id AS userId,o.project_id AS projectId,o.channel_id AS channelId,o.ref_id AS refId,o.kind,o.attempts,o.expires_at AS expiresAt,c.type,c.target,c.next_at AS channelNext,c.active,u.language FROM pulse_outbox o JOIN pulse_channel c ON c.id=o.channel_id JOIN user u ON u.id=o.user_id WHERE o.state='pending' AND o.next_at<=? AND o.claim_until<=? ORDER BY o.next_at LIMIT 50").bind(now,now).all<{id:string;userId:string;projectId:string|null;channelId:string;refId:string;kind:string;attempts:number;expiresAt:number;type:string;target:string;channelNext:number;active:number;language:string}>();
+  // Each owner's access is read once per round, not once per alert.
+  const accessOf=new Map<string,Promise<Awaited<ReturnType<typeof pulseAccess>>>>();
   for(const item of due.results){
    if(Date.now()-now>45_000)break;
-   const access=await pulseAccess(env,item.userId),discard=async()=>{await env.DB.prepare("UPDATE pulse_outbox SET state='discarded',claim=NULL,claim_until=0 WHERE id=?").bind(item.id).run();};
+   let pending=accessOf.get(item.userId);if(!pending){pending=pulseAccess(env,item.userId);accessOf.set(item.userId,pending);}
+   const access=await pending,discard=async()=>{await env.DB.prepare("UPDATE pulse_outbox SET state='discarded',claim=NULL,claim_until=0 WHERE id=?").bind(item.id).run();};
    if(item.expiresAt<=Date.now()||item.attempts>=5||!item.active||!access.writable||!isKind(item.kind)){await discard();continue;}
    // What the alert says, in the owner's language, from what is true now
    // (an issue still open, a monitor still in that state).

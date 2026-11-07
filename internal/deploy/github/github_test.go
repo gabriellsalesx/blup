@@ -156,7 +156,7 @@ func TestPublishOrphanThenIncremental(t *testing.T) {
 
 	var mu sync.Mutex
 	var phases []Phase
-	res, err := c.Publish(ctx, "Maria", "blog", dir, PublishOptions{CNAME: "blog.example.com"}, func(p Progress) {
+	res, err := c.Publish(ctx, "Maria", "blog", dir, PublishOptions{}, func(p Progress) {
 		mu.Lock()
 		phases = append(phases, p.Phase)
 		mu.Unlock()
@@ -172,8 +172,8 @@ func TestPublishOrphanThenIncremental(t *testing.T) {
 		t.Fatalf("first publish must be an orphan commit, parents=%v", cm.parents)
 	}
 	got := rp.files("gh-pages")
-	if got["CNAME"] != "blog.example.com\n" || got[".nojekyll"] != "" {
-		t.Fatalf("missing CNAME/.nojekyll: %v", got)
+	if got[".nojekyll"] != "" {
+		t.Fatalf("unexpected .nojekyll: %v", got)
 	}
 	if _, ok := got[".nojekyll"]; !ok {
 		t.Fatal(".nojekyll missing")
@@ -181,11 +181,11 @@ func TestPublishOrphanThenIncremental(t *testing.T) {
 	if _, ok := got[".git/config"]; ok {
 		t.Fatal(".git must be skipped")
 	}
-	if got["img/copy.png"] != png || got["posts/a.html"] != "a" || len(got) != 8 {
+	if got["img/copy.png"] != png || got["posts/a.html"] != "a" || len(got) != 7 {
 		t.Fatalf("tree = %v", got)
 	}
-	// 7 distinct contents (two identical PNGs): index,a,b,png,.nojekyll2,.nojekyll,CNAME.
-	if n := f.count("POST /repos/Maria/blog/git/blobs"); n != 7 {
+	// 6 distinct contents (two identical PNGs): index,a,b,png,.nojekyll2,.nojekyll.
+	if n := f.count("POST /repos/Maria/blog/git/blobs"); n != 6 {
 		t.Fatalf("blob uploads = %d, want 7", n)
 	}
 	if f.count("POST /repos/Maria/blog/git/refs") != 1 {
@@ -216,8 +216,8 @@ func TestPublishOrphanThenIncremental(t *testing.T) {
 	if n := f.count("POST /repos/Maria/blog/git/blobs") - before; n != 2 {
 		t.Fatalf("second publish uploaded %d blobs, want 2 (index + c)", n)
 	}
-	if res.Orphan || res.Uploaded != 2 || res.Skipped != 4 || res.Deleted != 3 {
-		// deleted: posts/b.html, posts/.nojekyll2, CNAME
+	if res.Orphan || res.Uploaded != 2 || res.Skipped != 4 || res.Deleted != 2 {
+		// deleted: posts/b.html, posts/.nojekyll2
 		t.Fatalf("result = %+v", res)
 	}
 	cm = rp.commits[rp.refs["gh-pages"]]
@@ -227,9 +227,6 @@ func TestPublishOrphanThenIncremental(t *testing.T) {
 	got = rp.files("gh-pages")
 	if _, ok := got["posts/b.html"]; ok {
 		t.Fatal("deleted file still present")
-	}
-	if _, ok := got["CNAME"]; ok {
-		t.Fatal("CNAME should disappear when not set")
 	}
 	if got["index.html"] != "<h1>home v2</h1>" || got["posts/c.html"] != "c" {
 		t.Fatalf("tree = %v", got)

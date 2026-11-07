@@ -1,4 +1,5 @@
-import { z } from "zod";
+// zod/mini: the panels import this file too (much smaller than full zod).
+import { z } from "zod/mini";
 export const languageSchema=z.enum(["pt","en","es"]);
 export type Language=z.infer<typeof languageSchema>;
 export const languageTag={pt:"pt-BR",en:"en-US",es:"es"} as const;

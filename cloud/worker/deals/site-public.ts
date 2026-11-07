@@ -130,7 +130,7 @@ export async function serveDealsSite(req:Request,env:Cloudflare.Env):Promise<Res
  // A deal's page changes with its own post and prices too.
  const detail=deal?await detailOf(env,site.id,deal[1]!,now):null;
  if(deal&&!detail)return notFound();
- const etag=`"${(await sha256(`${site.id}:${site.updatedAt}:${site.latest??0}:${day}:${url.pathname}:${url.search}:${env.CF_VERSION_METADATA?.id??""}:${await codeVersion()}:${detail?`${detail.priced??0}:${detail.expiresAt??0}`:""}`)).slice(0,32)}"`;
+ const etag=`"${(await sha256(`${site.id}:${site.updatedAt}:${site.latest??0}:${day}:${url.pathname}:${JSON.stringify(query)}:${env.CF_VERSION_METADATA?.id??""}:${await codeVersion()}:${detail?`${detail.priced??0}:${detail.expiresAt??0}`:""}`)).slice(0,32)}"`;
  const headers:Record<string,string>={
   "content-type":"text/html; charset=utf-8",etag,
   "cache-control":"public, max-age=0, must-revalidate",

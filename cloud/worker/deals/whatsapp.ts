@@ -125,8 +125,8 @@ async function bridgeList(env:Cloudflare.Env,id:string){
 
 // The Bridge's notice that a connection changed (signed with its own
 // secret, within five minutes). Repeating one is harmless: it only sets
-// the state again.
-const notice=z.object({session:z.string().uuid(),state:z.enum(states),at:z.string().max(64)});
+// the state again, and never over a newer one.
+const notice=z.object({session:z.uuid(),state:z.enum(states),at:z.string().max(64)});
 export const whatsappCallbackApi=new Hono<DealsApp>()
  .post("/callback",async c=>{
   const secret=c.env.DEALS_BRIDGE_CALLBACK_SECRET??"";
@@ -139,8 +139,11 @@ export const whatsappCallbackApi=new Hono<DealsApp>()
   if(!sameSecret(got,await signature(secret,at,nonce,"POST",url.pathname+url.search,raw)))return c.json({code:"UNAUTHORIZED"},401);
   let body:unknown;try{body=JSON.parse(raw);}catch{return c.json({code:"BAD_REQUEST"},400);}
   const parsed=notice.safeParse(body);if(!parsed.success)return c.json({code:"BAD_REQUEST"},400);
-  const row=await c.env.DB.prepare("SELECT id FROM deals_whatsapp WHERE id=?").bind(parsed.data.session).first();
-  if(row)await keep(c.env.DB,parsed.data.session,parsed.data.state,undefined);
+  // A notice older than the saved state (a Bridge retry arriving late) does
+  // not undo a newer one.
+  const row=await c.env.DB.prepare("SELECT updated_at AS updatedAt FROM deals_whatsapp WHERE id=?").bind(parsed.data.session).first<{updatedAt:number}>();
+  const sentAt=Date.parse(parsed.data.at);
+  if(row&&!(Number.isFinite(sentAt)&&sentAt<row.updatedAt))await keep(c.env.DB,parsed.data.session,parsed.data.state,undefined);
   return c.json({ok:true});
  });
 

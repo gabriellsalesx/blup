@@ -32,6 +32,9 @@ const (
 	maxBody  = 8 << 20 // a imagem vem em base64
 	maxImage = 5 << 20
 	maxText  = 4096
+	// Corpos lidos ao mesmo tempo, antes da assinatura (até maxReading x
+	// maxBody de memória).
+	maxReading = 16
 )
 
 var (
@@ -72,12 +75,25 @@ func routes(b bridge, v *verifier, log *slog.Logger, rd *readiness) http.Handler
 		}
 		w.WriteHeader(204)
 	})
+	reading := make(chan struct{}, maxReading)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if healthPath(r.URL.Path) {
 			serveHealth(w, r, rd)
 			return
 		}
+		if !v.plausible(r) {
+			reply(w, 401, code("UNAUTHORIZED"))
+			return
+		}
+		// Poucos corpos lidos ao mesmo tempo: a assinatura só é conferida
+		// depois de ler, e cada um pode ter até maxBody.
+		select {
+		case reading <- struct{}{}:
+		case <-r.Context().Done():
+			return
+		}
 		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
+		<-reading
 		if err != nil {
 			reply(w, 413, code("TOO_LARGE"))
 			return

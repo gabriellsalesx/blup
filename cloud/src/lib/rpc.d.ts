@@ -16,8 +16,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $get: {
             input: {};
             output: {
-                name: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
-                basePlan: "free" | "pro" | "max" | "ultra";
+                name: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "pro" | "max" | "ultra" | "free";
+                basePlan: "pro" | "max" | "ultra" | "free";
                 pulse: {
                     readonly projects: 3;
                     readonly events: 50000;
@@ -144,8 +144,8 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 name: string;
                 createdAt: string;
                 plan: {
-                    name: "free" | "pro" | "max" | "ultra";
-                    billingName: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
+                    name: "pro" | "max" | "ultra" | "free";
+                    billingName: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "pro" | "max" | "ultra" | "free";
                     billingInterval: "year" | "month" | null;
                     pulse: {
                         enabled: boolean;
@@ -12779,7 +12779,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $post: {
             input: {
                 json: {
-                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "pro" | "max" | "ultra" | "free";
                     annual: boolean;
                 };
             };
@@ -12795,7 +12795,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "pro" | "max" | "ultra" | "free";
                     annual: boolean;
                 };
             };
@@ -12808,7 +12808,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         } | {
             input: {
                 json: {
-                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "pro" | "max" | "ultra" | "free";
                     annual: boolean;
                 };
             };
@@ -12817,7 +12817,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 expiresAt: string;
                 quote: {
                     mode: "cancel" | "restore" | "scheduled" | "immediate";
-                    target: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
+                    target: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "pro" | "max" | "ultra" | "free";
                     annual: boolean;
                     currency: string;
                     amountDue: number;
@@ -12925,11 +12925,11 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 paymentUrl: string | null;
                 change: {
-                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "pro" | "max" | "ultra" | "free";
                     effectiveAt: string;
                 } | null;
                 checkout: {
-                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "free" | "pro" | "max" | "ultra";
+                    plan: "max_pulse" | "ultra_pulse" | "ultra_deals" | "ultra_pulse_deals" | "pro" | "max" | "ultra" | "free";
                     url: string;
                     expiresAt: string;
                 } | null;

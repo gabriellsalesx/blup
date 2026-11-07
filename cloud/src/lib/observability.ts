@@ -25,6 +25,18 @@ export function startErrors(panel: Panel, dsn: string | undefined = import.meta.
 		// The default integrations, without the console's (a log line may
 		// carry what the person typed).
 		integrations: (defaults) => defaults.filter((i) => !/console/i.test(i.name)),
+		// The trail before an error (requests, page changes) keeps addresses
+		// without their query or fragment: a search (?q=) may carry an e-mail.
+		beforeBreadcrumb(crumb) {
+			const data = crumb.data;
+			if (!data) return crumb;
+			const clean: Record<string, unknown> = { ...data };
+			for (const key of ["url", "from", "to"]) {
+				const value = clean[key];
+				if (typeof value === "string") clean[key] = value.split(/[?#]/)[0];
+			}
+			return { ...crumb, data: clean };
+		},
 		beforeSend(event) {
 			if (event.request?.url) event.request = { url: event.request.url.split(/[?#]/)[0] };
 			delete event.user;

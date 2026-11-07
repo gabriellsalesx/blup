@@ -59,7 +59,6 @@ const reservedHeaders=new Set(["host","content-length","transfer-encoding","conn
 export const headerName=z.string().regex(/^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,64}$/).refine(n=>!reservedHeaders.has(n.toLowerCase()));
 export const monitorHeader=z.object({name:headerName,value:z.string().max(1024).regex(/^[^\r\n\0]*$/)}).strict();
 export type MonitorHeader=z.infer<typeof monitorHeader>;
-export const monitorHeaders=z.array(monitorHeader).max(5).refine(v=>new Set(v.map(h=>h.name.toLowerCase())).size===v.length);
 const BODY_LIMIT=256*1024;
 // Reads at most the first 256 KB of a page, as text, then lets the rest go.
 async function pageText(res:Response){

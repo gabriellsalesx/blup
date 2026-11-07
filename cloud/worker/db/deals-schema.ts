@@ -98,7 +98,9 @@ export const dealsPost=sqliteTable("deals_post",{
  description:text("description"),coupon:text("coupon"),
 },t=>[uniqueIndex("deals_post_once_idx").on(t.channelId,t.offerId),index("deals_post_due_idx").on(t.state,t.nextAt),index("deals_post_owner_day_idx").on(t.userId,t.day),index("deals_post_created_idx").on(t.createdAt),
  // A deals page lists its channel's sent posts, newest first.
- index("deals_post_channel_sent_idx").on(t.channelId,t.state,t.sentAt)]);
+ index("deals_post_channel_sent_idx").on(t.channelId,t.state,t.sentAt),
+ // Whether an offer was already queued (hunts, clean-up): by offer first.
+ index("deals_post_offer_user_idx").on(t.offerId,t.userId)]);
 
 // Clicks on the short links, added up per post and day (few writes).
 export const dealsClickDay=sqliteTable("deals_click_day",{

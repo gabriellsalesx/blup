@@ -40,7 +40,9 @@ export const pulseComponent=sqliteTable("pulse_component",{
  pageId:text("page_id").notNull(),monitorId:text("monitor_id").notNull(),name:text("name").notNull(),position:integer("position").notNull(),
  // What the service is, shown by a help icon on the public page ('' none).
  description:text("description").notNull().default(""),
-},t=>[primaryKey({columns:[t.pageId,t.monitorId]})]);
+},t=>[primaryKey({columns:[t.pageId,t.monitorId]}),
+ // Removing a monitor removes its services on every page.
+ index("pulse_component_monitor_idx").on(t.monitorId)]);
 export const pulseIncident=sqliteTable("pulse_incident",{
  id:text("id").primaryKey(),pageId:text("page_id").notNull(),title:text("title").notNull(),state:text("state").notNull(),impact:text("impact").notNull(),createdAt:integer("created_at").notNull(),updatedAt:integer("updated_at").notNull(),expiresAt:integer("expires_at").notNull().default(0),
 },t=>[index("pulse_incident_expiry_idx").on(t.expiresAt),index("pulse_incident_page_idx").on(t.pageId,t.createdAt)]);

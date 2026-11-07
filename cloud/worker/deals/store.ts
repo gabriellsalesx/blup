@@ -13,7 +13,6 @@ export const channelTypes=["telegram","discord","whatsapp","webhook","site"] as 
 export type ChannelType=(typeof channelTypes)[number];
 // The shortest wait between two posts in the same channel.
 export const CHANNEL_INTERVAL=2*60_000;
-export class DealsError extends Error{constructor(readonly code:string,readonly status:400|403|404|409|429|502|503){super(code);}}
 
 // Channel targets and store secrets are sealed with the Pulse destination
 // key, under the Deals context (they never open as each other).
@@ -102,9 +101,12 @@ async function paceSlot(db:D1Database,owner:string,sendAt:number,now:number,hori
 // price from another country's store). paced: it waits its turn in the
 // account's pace (a hunt's find, a link put in the queue), at most horizon
 // ahead.
+const httpsLink=(raw:string)=>{try{const u=new URL(raw);return u.protocol==="https:"&&!u.username&&!u.password;}catch{return false;}};
 export async function enqueue(db:D1Database,input:{owner:string;offerId:string;channels:readonly string[];link:string;affiliate:boolean;huntId:string|null;sendAt:number;now?:number;priceShown?:boolean;paced?:boolean;horizon?:number;description?:string|null;coupon?:string|null}){
  const now=input.now??Date.now();
  if(!input.channels.length)return 0;
+ // The link becomes an href in the panels and the /r/ redirect: https only.
+ if(!httpsLink(input.link))return 0;
  const slot=input.paced?await paceSlot(db,input.owner,input.sendAt,now,input.horizon??QUEUE_HORIZON):null;
  if(slot==="full")return 0;
  const sendAt=slot?.at??input.sendAt,day=dayOf(sendAt);

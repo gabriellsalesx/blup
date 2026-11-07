@@ -30,7 +30,6 @@ const MaxFileSize = 100 << 20
 // PublishOptions tunes Publish.
 type PublishOptions struct {
 	Branch  string // default "gh-pages"
-	CNAME   string // custom domain; written to /CNAME when set
 	Message string // commit message; default "Publish site"
 }
 
@@ -113,7 +112,7 @@ func hashFile(abs string, size int64) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func scanDir(dir string, opts PublishOptions) ([]*localFile, error) {
+func scanDir(dir string) ([]*localFile, error) {
 	st, err := os.Stat(dir)
 	if err != nil {
 		return nil, err
@@ -164,9 +163,6 @@ func scanDir(dir string, opts PublishOptions) ([]*localFile, error) {
 		byPath[path] = &localFile{path: path, data: data, size: int64(len(data)), sha: BlobSHA(data)}
 	}
 	addVirtual(".nojekyll", nil)
-	if cn := strings.TrimSpace(opts.CNAME); cn != "" {
-		addVirtual("CNAME", []byte(cn+"\n"))
-	}
 	files := make([]*localFile, 0, len(byPath))
 	for _, f := range byPath {
 		files = append(files, f)
@@ -193,7 +189,7 @@ type treeEntry struct {
 
 // Publish mirrors dir onto branch of owner/repo. Unchanged files are not
 // uploaded again; files missing from dir are deleted from the branch. A
-// .nojekyll file is always added and, when opts.CNAME is set, a CNAME file.
+// .nojekyll file is always added.
 // The branch is created as an orphan when missing and force-updated
 // otherwise. progress may be nil.
 func (c *Client) Publish(ctx context.Context, owner, repo, dir string, opts PublishOptions, progress func(Progress)) (Result, error) {
@@ -215,7 +211,7 @@ func (c *Client) Publish(ctx context.Context, owner, repo, dir string, opts Publ
 	res := Result{Branch: opts.Branch}
 
 	report(Progress{Phase: PhaseScan})
-	files, err := scanDir(dir, opts)
+	files, err := scanDir(dir)
 	if err != nil {
 		return res, err
 	}

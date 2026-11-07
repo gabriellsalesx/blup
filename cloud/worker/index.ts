@@ -27,6 +27,7 @@ import { syncApi } from "./sync";
 import { sitesApi } from "./sites";
 import { forgetOld, remindersApi, sendDue } from "./reminders";
 import { cleanUp } from "./cleanup";
+import { cleanExpiredAuth } from "./auth-cleanup";
 import { aiApi, aiUsageOf, studioAIApi } from "./ai";
 import { isStudio, usageOf } from "./usage";
 import {user as userTable, session as sessionTable } from "./db/schema";
@@ -58,7 +59,7 @@ type App = { Bindings: Cloudflare.Env; Variables: { session: Session } };
 import {LOGO_MAX_BYTES} from "./pulse/page-look";
 const app = new Hono<App>().basePath("/api");
 
-const headersSchema=z.object({"x-blup-language":languageSchema.optional(),"accept-language":z.string().max(1024).optional(),authorization:z.string().max(8192).optional(),cookie:z.string().max(16384).optional(),origin:z.url().max(2048).optional(),"cf-connecting-ip":z.union([z.ipv4(),z.ipv6()]).optional(),"user-agent":z.string().max(1024).optional(),"cf-access-jwt-assertion":z.string().max(16384).optional(),"x-captcha-response":z.string().max(4096).optional(),"x-blup-upload-ticket":opaqueId.optional(),"content-length":safeInt.optional(),"sec-fetch-site":z.enum(["same-origin","same-site","cross-site","none"]).optional(),upgrade:z.enum(["websocket"]).optional()});
+const headersSchema=z.object({"x-blup-language":z.optional(languageSchema),"accept-language":z.string().max(1024).optional(),authorization:z.string().max(8192).optional(),cookie:z.string().max(16384).optional(),origin:z.url().max(2048).optional(),"cf-connecting-ip":z.union([z.ipv4(),z.ipv6()]).optional(),"user-agent":z.string().max(1024).optional(),"cf-access-jwt-assertion":z.string().max(16384).optional(),"x-captcha-response":z.string().max(4096).optional(),"x-blup-upload-ticket":opaqueId.optional(),"content-length":safeInt.optional(),"sec-fetch-site":z.enum(["same-origin","same-site","cross-site","none"]).optional(),upgrade:z.enum(["websocket"]).optional()});
 app.use("*",async(c,next)=>{
  const checked=headersSchema.safeParse(Object.fromEntries(c.req.raw.headers));
  if(!checked.success)return c.json(requestError(c.req.path,"INVALID"),400);
@@ -71,7 +72,10 @@ app.use("*",async(c,next)=>{
 });
 
 app.use("*", async (c, next) => {
-	if (!mutationOriginAllowed(c.req.raw,[c.env.PULSE_APP_URL,c.env.DEALS_APP_URL].filter(Boolean))) return c.json(requestError(c.req.path,"ORIGIN_NOT_ALLOWED","Origem não permitida."),403);
+	// The Pulse and Deals panels never change the staff area: there only its
+	// own origin counts (the Access cookie is sent to same-site pages too).
+	const panels=c.req.path.startsWith("/api/staff")?[]:[c.env.PULSE_APP_URL,c.env.DEALS_APP_URL].filter(Boolean);
+	if (!mutationOriginAllowed(c.req.raw,panels)) return c.json(requestError(c.req.path,"ORIGIN_NOT_ALLOWED","Origem não permitida."),403);
 	await next();
 	// A WebSocket (101) goes as it is: copying the response would drop the socket.
 	if (c.res.status !== 101 && !c.res.headers.has("cache-control")) c.header("cache-control", "no-store");
@@ -305,7 +309,7 @@ export default Sentry.withSentry(sentryOptions,{
 	// clean-up of old versions and unused blocks.
 	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
 		if(controller.cron==="* * * * *"){ctx.waitUntil(all(checkDue(env).then(()=>reconcileAlerts(env)).then(()=>dispatchAlerts(env)),collectDeals(env).then(()=>collectMirrors(env)).then(()=>collectShops(env)).then(()=>dispatchDeals(env))));return;}
-		if (controller.cron === DAILY) ctx.waitUntil(all(pulseMaintenance(env,true),dealsCleanup(env,dealsLimits.historyDays),dealsLifecycle(env),cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))));
+		if (controller.cron === DAILY) ctx.waitUntil(all(pulseMaintenance(env,true),dealsCleanup(env,dealsLimits.historyDays),dealsLifecycle(env),cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cleanExpiredAuth(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))));
 		else ctx.waitUntil(all(pulseMaintenance(env),sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)).then(()=>watched(flushSitePurges(env))));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>);

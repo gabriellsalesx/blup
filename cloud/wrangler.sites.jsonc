@@ -7,6 +7,8 @@
 	"name": "blup-sites",
 	"main": "worker/sites-entry.ts",
 	"compatibility_date": "2026-10-28",
+	// nodejs_compat: o SDK do Sentry usa AsyncLocalStorage para separar os pedidos.
+	"compatibility_flags": ["nodejs_compat"],
 	"observability": { "enabled": true },
 	"cache": { "enabled": false },
 	"exports": {

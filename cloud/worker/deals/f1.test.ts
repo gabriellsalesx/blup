@@ -35,7 +35,7 @@ const KEY=btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
 const HOOK="https://discord.com/api/webhooks/123456789012345678/"+"a".repeat(68);
 beforeEach(()=>{
  db=new TestD1();seedUser(db,"alice","ultra_deals");seedUser(db,"bob","ultra_pulse_deals");seedUser(db,"plain","ultra");
- Object.assign(state.env,{DB:db.asD1(),STAFF_OWNER_EMAIL:"",PULSE_CHANNEL_KEY:KEY,DEALS_PUBLIC_HOST:"deals.audit.invalid",DEALS_TELEGRAM_BOT:"BlupDealsBot",DEALS_TELEGRAM_TOKEN:"123456:"+"b".repeat(30),DEALS_TELEGRAM_WEBHOOK_SECRET:"hook-secret"});
+ Object.assign(state.env,{DB:db.asD1(),STAFF_OWNER_EMAIL:"",PULSE_CHANNEL_KEY:KEY,DEALS_PUBLIC_HOST:"deals.audit.invalid",DEALS_TELEGRAM_BOT:"BlupDealsBot",DEALS_TELEGRAM_TOKEN:"123456:"+"b".repeat(30),DEALS_TELEGRAM_WEBHOOK_SECRET:"hook-secret",DEALS_PUBLIC_LIMIT:{limit:async()=>({success:true})}});
 });
 afterEach(()=>{fakeAI.curate=fakeAI.extract=fakeAI.describe=fakeAI.translate=null;db.close();vi.unstubAllGlobals();vi.restoreAllMocks();});
 const call=(path:string,init:{method?:string;body?:unknown;user?:string|null;headers?:Record<string,string>}={})=>dealsApi.fetch(new Request(`https://cloud.audit.invalid${path}`,{method:init.method??"GET",headers:{...(init.user===null?{}:{authorization:`Bearer ${init.user??"alice"}`}),...(init.body!==undefined?{"content-type":"application/json"}:{}),...init.headers},body:init.body===undefined?undefined:JSON.stringify(init.body)}),state.env);
@@ -233,6 +233,8 @@ describe("the daily cap and dedupe",()=>{
   for(let i=0;i<100;i++){const o=await upsertOffer(db.asD1(),offer({key:`k${i}`}),now);expect(await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now,now})).toBe(1);}
   const extra=await upsertOffer(db.asD1(),offer({key:"extra"}),now);
   expect(await enqueue(db.asD1(),{owner:"alice",offerId:extra.id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now,now})).toBe(0);
+  // Only https links become posts (they are hrefs in the panels and /r/).
+  for(const link of ["javascript:alert(1)","http://x.invalid","data:text/html,x"])expect(await enqueue(db.asD1(),{owner:"alice",offerId:extra.id,channels:[channel],link,affiliate:false,huntId:null,sendAt:now+2*86_400_000,now})).toBe(0);
   expect(await enqueue(db.asD1(),{owner:"alice",offerId:extra.id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now+86_400_000,now})).toBe(1);
   db.sqlite.prepare("UPDATE deals_post SET day=? WHERE user_id='alice'").run(dayOf());
   vi.stubGlobal("fetch",net({}).send);
@@ -697,13 +699,13 @@ describe("pace, opening lines and networks",()=>{
   // The first one goes now (nothing went before), the next ones 30 minutes apart.
   expect(times()).toEqual([now,now+30*60_000,now+60*60_000]);
   // An offer twice in a channel takes no time.
-  expect(await enqueue(db.asD1(),{owner:"alice",offerId:ids[0],channels:[channel],link:"x",affiliate:false,huntId:"h",sendAt:now,now,paced:true})).toBe(0);
+  expect(await enqueue(db.asD1(),{owner:"alice",offerId:ids[0],channels:[channel],link:"https://x.invalid",affiliate:false,huntId:"h",sendAt:now,now,paced:true})).toBe(0);
   expect((await (await call("/settings",{user:"alice"})).json() as {behind:boolean}).behind).toBe(false);
   // Three hours: the queue spaces again, three hours apart.
   expect((await put({...base,pace:180})).status).toBe(200);
   const spaced=times();expect(spaced[1]-spaced[0]).toBe(180*60_000);expect(spaced[2]-spaced[1]).toBe(180*60_000);
   // What would only go out after two days is left out, and the panel warns.
-  const more=[];for(let i=0;i<20;i++)more.push(await enqueue(db.asD1(),{owner:"alice",offerId:(await upsertOffer(db.asD1(),offer({key:`m${i}`,title:`m${i}`}),Date.now())).id,channels:[channel],link:"x",affiliate:false,huntId:"h",sendAt:Date.now(),paced:true}));
+  const more=[];for(let i=0;i<20;i++)more.push(await enqueue(db.asD1(),{owner:"alice",offerId:(await upsertOffer(db.asD1(),offer({key:`m${i}`,title:`m${i}`}),Date.now())).id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:"h",sendAt:Date.now(),paced:true}));
   expect(more.filter(n=>n===0).length).toBeGreaterThan(0);
   expect(times().at(-1)!).toBeLessThanOrEqual(Date.now()+2*86_400_000);
   expect((await (await call("/settings",{user:"alice"})).json() as {behind:boolean}).behind).toBe(true);

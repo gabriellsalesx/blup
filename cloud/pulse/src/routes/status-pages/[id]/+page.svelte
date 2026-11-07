@@ -75,7 +75,7 @@
    {#each maintenance as item(item.id)}
     {@const href=resolve("/status-pages/[id]/maintenance/[maintenance]",{id:pageId,maintenance:item.id})}
     <ListItem href={writable?href:undefined} label={item.title}>
-     <div class="flex items-center gap-4"><StateMark tone={item.state==="finished"?"past":"maint"} label={maintenanceLabel(item.state)}/><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{item.title}</span><Badge tone={item.state==="active"?"indigo":"neutral"}>{maintenanceLabel(item.state)}</Badge></p><p class="text-sm text-neutral-500">{formatDate(new Date(item.startsAt))} – {formatDate(new Date(item.endsAt))}</p></div></div>
+     <div class="flex items-center gap-4"><StateMark tone={item.state==="finished"?"past":"maint"} label={maintenanceLabel(item.state)}/><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{item.title}</span><Badge tone={item.state==="active"?"indigo":"neutral"}>{maintenanceLabel(item.state)}</Badge></p><p class="text-sm text-neutral-500">{t("dateRange",{start:formatDate(new Date(item.startsAt)),end:formatDate(new Date(item.endsAt))})}</p></div></div>
      {#snippet actions()}<span class="text-sm text-neutral-500">{item.services.length===1?t("pulseOneService"):t("pulseManyServices",{count:String(item.services.length)})}</span>{/snippet}
      {#snippet menu()}{#if writable}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseEdit"),Icon:Pencil,onselect:()=>void goto(href)},{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void removeMaintenance(item)}]}/>{/if}{/snippet}
     </ListItem>

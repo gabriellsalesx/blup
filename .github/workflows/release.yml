@@ -42,6 +42,9 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       DEB_MAINTAINER: ${{ vars.DEB_MAINTAINER || 'Blup <no-reply@getblup.io>' }}
+      # DSN do projeto "Blup Studio (desktop)" no Pulse; vai para
+      # -X main.studioSentryDSN. Sem ela, o Studio não manda relatórios.
+      SENTRY_DSN: ${{ vars.STUDIO_SENTRY_DSN }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -117,6 +120,9 @@ jobs:
     needs: release
     runs-on: windows-latest
     env:
+      # DSN do projeto "Blup Studio (desktop)" no Pulse; vai para
+      # -X main.studioSentryDSN. Sem ela, o Studio não manda relatórios.
+      SENTRY_DSN: ${{ vars.STUDIO_SENTRY_DSN }}
       MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
       MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
       MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}

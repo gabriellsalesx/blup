@@ -1,4 +1,4 @@
-import {z} from "zod";
+import {z} from "zod/mini";
 import {t} from "#lib/i18n.svelte.ts";
 import {errorMessage} from "#lib/i18n/errors.ts";
 import type {PlainMessageKey} from "#lib/i18n/catalog.ts";
@@ -7,7 +7,7 @@ import type {PlainMessageKey} from "#lib/i18n/catalog.ts";
 // get their own words here; the rest go to the panels' shared table.
 const own={PLAN:"dealsErrorPlan",QUOTA:"dealsErrorQuota",DAILY_LIMIT:"dealsErrorDaily",FETCH_BLOCKED:"dealsErrorBlocked",FETCH_FAILED:"dealsErrorFetch",DUPLICATE:"dealsErrorDuplicate",CHANNEL_UNAVAILABLE:"dealsErrorUnavailable",TELEGRAM_UNAVAILABLE:"dealsErrorBot",WHATSAPP_UNAVAILABLE:"dealsWhatsappDown",NOT_A_VIDEO:"dealsErrorNotVideo",VIDEO_NOT_FOUND:"dealsErrorVideoMissing",VIDEO_ANNOUNCED:"dealsErrorVideoAnnounced",NUUVEM_NOT_CONFIGURED:"dealsErrorNuuvem",CHANNEL_INVALID:"dealsErrorChannelInvalid",CHANNEL_GONE:"dealsErrorChannelGone",CHANNEL_REFUSED:"dealsErrorChannelRefused",MIRROR_EXISTS:"dealsErrorMirrorExists",STORE_NOT_CONFIGURED:"dealsErrorShopKeys",QUEUE_FULL:"dealsErrorQueueFull",NO_AI:"dealsErrorNoAI",AI_MONTH_LIMIT:"dealsErrorAILimit",AI_WEEK_LIMIT:"dealsErrorAILimit",UPSTREAM:"dealsErrorAIFailed",UNAVAILABLE:"dealsErrorAIFailed",OFF_TOPIC:"dealsErrorOffTopic",BRIDGE_BUSY:"dealsErrorBridgeBusy",NOT_CONNECTED:"dealsErrorWhatsappNotConnected",SITE_EXISTS:"dealsSiteHave",SLUG_TAKEN:"dealsSiteSlugTaken"} as const satisfies Record<string,PlainMessageKey>;
 const isOwn=(code:string):code is keyof typeof own=>Object.hasOwn(own,code);
-const errorSchema=z.object({code:z.string().optional(),detail:z.object({data:z.object({code:z.string().optional()})}).optional()});
+const errorSchema=z.object({code:z.optional(z.string()),detail:z.optional(z.object({data:z.object({code:z.optional(z.string())})}))});
 export function dealsError(error:unknown):string{
  const parsed=errorSchema.safeParse(error),code=parsed.success?parsed.data.code??parsed.data.detail?.data.code:undefined;
  return code&&isOwn(code)?t(own[code]):errorMessage(error);

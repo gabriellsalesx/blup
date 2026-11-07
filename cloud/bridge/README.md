@@ -13,7 +13,7 @@ O caminho é **não oficial**. A API da Meta não publica em Canal, e a Ponte fa
 
 A Ponte não acessa o D1. Só o Blup Cloud fala com ela, e só ela fala com o WhatsApp. As imagens chegam prontas do Blup Cloud, que as baixa com a proteção contra endereços maliciosos; a Ponte não busca nada na internet além do WhatsApp. Nada fica salvo: a imagem vai ao WhatsApp e some da memória.
 
-Se a pasta de dados se perder, ninguém perde o Canal: cada cliente só precisa ler o QR de novo.
+Se a pasta de dados se perder, ninguém perde o Canal: cada cliente só precisa ler o QR de novo. Ela guarda as chaves das sessões sem criptografia: a pasta nasce com `0700` e o banco com `0600`, e o volume não deve ir para backup aberto.
 
 ## Modo segurança
 
@@ -63,7 +63,7 @@ docker run -d --restart unless-stopped -v blup-bridge-data:/data \
 
 **Numa VPS, a Ponte não fica aberta na internet.** Ela escuta em `127.0.0.1` e o acesso chega por um [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/) apontando para `http://127.0.0.1:8080`. Uma plataforma que já entrega HTTPS também serve; aí use `HOST=0.0.0.0`. Em qualquer caso, sem a assinatura nenhum pedido passa.
 
-Os registros saem em JSON na saída padrão, sem texto de post, QR ou senha. Sem assinatura, para o servidor e o monitor do Blup Pulse: `GET /health` (ou `/_blup/health`) responde `{"ok":true}` enquanto a Ponte está viva; `GET /_blup/ready` responde `200` quando o banco responde e `503` quando não. Nenhuma das duas mostra detalhes, e nenhuma vai para cache. Ao receber `SIGTERM`, ela fecha as conexões e as sessões antes de sair.
+Os registros saem em JSON na saída padrão, sem texto de post, QR ou senha. Sem assinatura, para o servidor e o monitor do Blup Pulse: `GET /health` (ou `/_blup/health`) responde `{"ok":true}` enquanto a Ponte está viva; `GET /_blup/ready` responde `200` quando o banco responde e `503` quando não. Nenhuma das duas mostra detalhes, e nenhuma vai para cache. Na imagem Docker, o `HEALTHCHECK` roda `/bridge health`, que pergunta `/_blup/health` na própria máquina (a imagem não tem shell nem curl). Ao receber `SIGTERM`, ela fecha as conexões e as sessões antes de sair.
 
 ## Contrato
 

@@ -31,15 +31,19 @@ export async function publicPage(env:Cloudflare.Env,slug:string){
  const inWindow=(await env.DB.prepare("SELECT mc.maintenance_id AS maintenanceId,mc.monitor_id AS monitorId,c.name FROM pulse_maintenance_component mc JOIN pulse_maintenance m ON m.id=mc.maintenance_id JOIN pulse_component c ON c.page_id=m.page_id AND c.monitor_id=mc.monitor_id WHERE m.page_id=? AND m.ends_at>? ORDER BY c.position").bind(page.id,now).all<{maintenanceId:string;monitorId:string;name:string}>()).results;
  const activeNow=new Set(windows.filter(w=>w.startsAt<=now).map(w=>w.id)),inMaintenance=(monitor:string)=>inWindow.some(m=>m.monitorId===monitor&&activeNow.has(m.maintenanceId));
  const publicMaintenance=windows.map(w=>({title:w.title,body:w.body,state:maintenanceStateAt(w.startsAt,w.endsAt,now)==="active"?"active" as const:"scheduled" as const,startsAt:new Date(w.startsAt).toISOString(),endsAt:new Date(w.endsAt).toISOString(),services:inWindow.filter(m=>m.maintenanceId===w.id).map(m=>m.name)}));
+ // The histories in parallel (one Durable Object call each), in order.
+ const histories=await Promise.all(components.results.map(c=>env.PULSE_PROJECT.getByName(c.objectName).monitorHistory(c.id,access.limits?.retentionDays??30)));
  const publicComponents=[];
- for(const c of components.results){
-  const history=await env.PULSE_PROJECT.getByName(c.objectName).monitorHistory(c.id,access.limits?.retentionDays??30);
+ for(const [i,c] of components.results.entries()){
+  const history=histories[i];
   const state=c.lastAt!==null&&Date.now()-c.lastAt<=Math.max(c.intervalMinutes,access.limits?.intervalMinutes??5)*120_000&&["up","down"].includes(c.state)?c.state:"unknown";
   // Closed public projection. No private names, URLs, DSNs or issues.
   publicComponents.push({name:c.name,description:c.description,state,incident:incidentOf(c.id),maintenance:inMaintenance(c.id),lastCheckedAt:c.lastAt===null?null:new Date(c.lastAt).toISOString(),days:history.days.map(d=>({date:new Date(d.day*86_400_000).toISOString().slice(0,10),up:d.up,down:d.down,unknown:d.unknown,maintenance:d.maintenance??0}))});
  }
+ // The updates of every incident in one round trip (a batch).
+ const updateRows=incidents.results.length?await env.DB.batch<{body:string;state:string;createdAt:number}>(incidents.results.map(item=>env.DB.prepare("SELECT body,state,created_at AS createdAt FROM pulse_incident_update WHERE incident_id=? AND created_at>? ORDER BY created_at DESC LIMIT 20").bind(item.id,cutoff))):[];
  const publicIncidents=[];
- for(const item of incidents.results){const updates=await env.DB.prepare("SELECT body,state,created_at AS createdAt FROM pulse_incident_update WHERE incident_id=? AND created_at>? ORDER BY created_at DESC LIMIT 20").bind(item.id,cutoff).all<{body:string;state:string;createdAt:number}>();publicIncidents.push({id:item.id,title:item.title,state:item.state,impact:item.impact,createdAt:new Date(item.createdAt).toISOString(),updatedAt:new Date(item.updatedAt).toISOString(),services:affected.filter(a=>a.incidentId===item.id).map(a=>({name:a.name,status:a.status})),updates:updates.results.map(u=>({...u,createdAt:new Date(u.createdAt).toISOString()}))});}
+ for(const [i,item] of incidents.results.entries()){const updates=updateRows[i];publicIncidents.push({id:item.id,title:item.title,state:item.state,impact:item.impact,createdAt:new Date(item.createdAt).toISOString(),updatedAt:new Date(item.updatedAt).toISOString(),services:affected.filter(a=>a.incidentId===item.id).map(a=>({name:a.name,status:a.status})),updates:updates.results.map(u=>({...u,createdAt:new Date(u.createdAt).toISOString()}))});}
  // The page's own domain, when it is live and the plan allows it.
  const domain=access.limits?.customDomain?(await env.DB.prepare("SELECT hostname FROM pulse_page_domain WHERE page_id=? AND verified_at IS NOT NULL AND status='active' AND ssl='active'").bind(page.id).first<{hostname:string}>())?.hostname??null:null;
  const result=publicSchema.parse({unavailable:false,domain,title:page.title,showTitle:!!page.showTitle,links:linksOf(page.navLinks),logos:{light:page.logoLight,dark:page.logoDark},slug:page.slug,language:languageOf(page.language)??"en",historyDays:access.limits?.retentionDays??30,components:publicComponents,incidents:publicIncidents,maintenance:publicMaintenance});

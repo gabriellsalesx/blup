@@ -28,8 +28,11 @@ const incidentParam=z.object({page:opaqueId,incident:opaqueId});
 const incidentTitle=z.string().trim().min(1).max(120);
 export const pageParam=z.object({page:opaqueId});
 export async function ownedPage(env:Cloudflare.Env,owner:string,id:string){return env.DB.prepare("SELECT id,title,slug,published,language,plan_disabled AS planDisabled FROM pulse_page WHERE id=? AND user_id=? AND (retire_at IS NULL OR retire_at>?)").bind(id,owner,Date.now()).first<{id:string;title:string;slug:string;published:number;language:string;planDisabled:number}>();}
+// Every monitor must be the owner's (one query, the ids are already unique).
 async function validComponents(db:D1Database,owner:string,list:z.infer<typeof components>){
- for(const item of list){if(!await db.prepare("SELECT m.id FROM pulse_monitor m JOIN pulse_project p ON p.id=m.project_id WHERE m.id=? AND m.user_id=? AND p.deleted_at IS NULL").bind(item.monitorId,owner).first())return false;}return true;
+ if(!list.length)return true;
+ const found=await db.prepare("SELECT count(*) AS n FROM pulse_monitor m JOIN pulse_project p ON p.id=m.project_id WHERE m.id IN(SELECT value FROM json_each(?)) AND m.user_id=? AND p.deleted_at IS NULL").bind(JSON.stringify(list.map(c=>c.monitorId)),owner).first<{n:number}>();
+ return found?.n===list.length;
 }
 function setComponents(db:D1Database,page:string,list:z.infer<typeof components>){return [db.prepare("DELETE FROM pulse_component WHERE page_id=?").bind(page),...list.map((item,position)=>db.prepare("INSERT INTO pulse_component(page_id,monitor_id,name,position,description) VALUES(?,?,?,?,?)").bind(page,item.monitorId,item.name,position,item.description))];}
 export const pagesApi=new Hono<PulseApp>()
@@ -54,7 +57,7 @@ export const pagesApi=new Hono<PulseApp>()
    return result[0].results.length?c.json({id,slug:input.slug},201):c.json({code:"QUOTA"},409);
   }catch(e){if(e instanceof Error&&e.message.includes("UNIQUE"))return c.json({code:"SLUG_TAKEN"},409);throw e;}
  })
- .patch("/:page",pulseWrite,validate("param",pageParam),validate("json",z.object({title:pageBody.shape.title.optional(),components:components.optional(),published:z.boolean().optional(),language:languageSchema.optional(),...look}).strict().refine(v=>Object.keys(v).length>0)),async c=>{
+ .patch("/:page",pulseWrite,validate("param",pageParam),validate("json",z.object({title:pageBody.shape.title.optional(),components:components.optional(),published:z.boolean().optional(),language:z.optional(languageSchema),...look}).strict().refine(v=>Object.keys(v).length>0)),async c=>{
   const id=c.req.valid("param").page,owner=c.get("session").user.id,current=await ownedPage(c.env,owner,id);if(!current)return c.json({code:"NOT_FOUND"},404);const body=c.req.valid("json");if(current.planDisabled)return c.json({code:"PLAN"},403);
   if(body.components&&!await validComponents(c.env.DB,owner,body.components))return c.json({code:"NOT_FOUND"},404);
   await c.env.DB.batch([c.env.DB.prepare("UPDATE pulse_page SET title=?,published=?,language=?,show_title=coalesce(?,show_title),nav_links=coalesce(?,nav_links) WHERE id=? AND user_id=?").bind(body.title??current.title,body.published===undefined?current.published:Number(body.published),body.language??current.language,body.showTitle===undefined?null:Number(body.showTitle),body.links===undefined?null:JSON.stringify(body.links),id,owner),...(body.components?setComponents(c.env.DB,id,body.components):[])]);return c.json({ok:true});

@@ -131,6 +131,12 @@ describe("the Bridge's notices",()=>{
   expect((await notice({session:id,state:"banned",at:"x"},CALLBACK,Math.floor(Date.now()/1000)-600)).status).toBe(401);
   expect(session()?.state).toBe("connected");
  });
+ it("does not let a late, older notice undo a newer state",async()=>{
+  await connected();const id=session()!.id;
+  expect((await notice({session:id,state:"logged_out",at:new Date().toISOString()})).status).toBe(200);
+  expect((await notice({session:id,state:"connected",at:new Date(Date.now()-120_000).toISOString()})).status).toBe(200);
+  expect(session()?.state).toBe("logged_out");
+ });
  it("marks the Canais when the phone disconnects, and clears them on reconnecting",async()=>{
   const channel=await connected();const id=session()!.id;
   expect((await notice({session:id,state:"logged_out",at:new Date().toISOString()})).status).toBe(200);

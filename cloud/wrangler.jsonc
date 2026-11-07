@@ -140,7 +140,9 @@
 				// origem (cloud.getblup.io), então outro subdomínio não a usa.
 				"PASSKEY_RP_ID": "getblup.io",
 				"MAIL_FROM": "Blup <no-reply@getblup.io>",
-				// Troque pela chave de site real do Turnstile (é pública).
+				// ATENÇÃO, ANTES DO DEPLOY: esta é a chave de TESTE do Turnstile
+				// (sempre aprova). Troque pela chave de site real (é pública; a
+				// secreta vai em wrangler secret put TURNSTILE_SECRET_KEY).
 				"TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
 				"EMAIL_MODE": "send",
 				"STAFF_HOST": "staff.getblup.io",

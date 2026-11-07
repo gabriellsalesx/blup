@@ -53,21 +53,37 @@ func newVerifier(secret []byte, now func() time.Time) *verifier {
 	return &verifier{secret: secret, now: now, seen: map[string]time.Time{}}
 }
 
-func (v *verifier) check(req *http.Request, body []byte) bool {
+// plausible confere só os cabeçalhos (momento na janela, nonce e assinatura
+// no formato), antes de ler o corpo: um pedido sem eles nem chega a gastar
+// memória com até maxBody.
+func (v *verifier) plausible(req *http.Request) bool {
+	_, _, ok := v.headers(req, v.now())
+	return ok
+}
+
+func (v *verifier) headers(req *http.Request, now time.Time) (at int64, got []byte, ok bool) {
 	at, err := strconv.ParseInt(req.Header.Get(headerTime), 10, 64)
 	if err != nil {
-		return false
+		return 0, nil, false
 	}
-	now := v.now()
 	when := time.Unix(at, 0)
 	if when.Before(now.Add(-skew)) || when.After(now.Add(skew)) {
+		return 0, nil, false
+	}
+	got, err = hex.DecodeString(req.Header.Get(headerSignature))
+	if err != nil || len(got) != sha256.Size || !nonceFormat.MatchString(req.Header.Get(headerNonce)) {
+		return 0, nil, false
+	}
+	return at, got, true
+}
+
+func (v *verifier) check(req *http.Request, body []byte) bool {
+	now := v.now()
+	at, got, ok := v.headers(req, now)
+	if !ok {
 		return false
 	}
 	nonce := req.Header.Get(headerNonce)
-	got, err := hex.DecodeString(req.Header.Get(headerSignature))
-	if err != nil || !nonceFormat.MatchString(nonce) {
-		return false
-	}
 	want, _ := hex.DecodeString(signature(v.secret, at, nonce, req.Method, req.URL.RequestURI(), body))
 	if !hmac.Equal(got, want) {
 		return false

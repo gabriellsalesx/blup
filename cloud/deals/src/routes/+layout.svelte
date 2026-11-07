@@ -19,7 +19,7 @@
  import Toaster from "#lib/ui/Toaster.svelte";
  import ConfirmHost from "#lib/ui/ConfirmHost.svelte";
  import SignOutButton from "#lib/ui/SignOutButton.svelte";
- import {cloudURL,rpc,parseResponse} from "../lib/api";
+ import {rpc,parseResponse} from "../lib/api";
  import {cloudPaths} from "../../../shared/panel-paths";
  import {panel} from "../lib/panel.svelte";
  import {setupDone} from "../lib/setup";
@@ -46,7 +46,7 @@
  const title=$derived.by(()=>{const name=pageTitles[(page.route.id??"") as RouteId]?.();return name?`${name} · Blup Deals`:"Blup Deals";});
  // Signing out ends the Blup session, then opens the sign-in again (a
  // full load, so nothing of the account stays in memory).
- async function signOut(){try{await fetch(`${cloudURL}/api/auth/sign-out`,{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:"{}"});}finally{location.href=resolve("/sign-in");}}
+ async function signOut(){try{const {dealsAuth}=await import("../lib/auth");await dealsAuth.signOut();}finally{location.href=resolve("/sign-in");}}
  let alive=true;onDestroy(()=>{alive=false;});
  const saver=createLanguageSaver((language)=>parseResponse(rpc.me.language.$put({json:{language}})),id=>alive&&panel.me?.id===id,()=>toast(()=>t("errorGeneric"),{kind:"error"}));
  $effect(()=>{document.documentElement.lang=intlLocale();});

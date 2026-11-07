@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -312,4 +313,53 @@ func TestRoutes(t *testing.T) {
 	if w := call(t, h, "DELETE", "/v1/sessions/abcdefgh", nil); w.Code != 204 {
 		t.Fatal("remover", w.Code)
 	}
+}
+
+// O banco com as chaves das sessões nasce só para o dono, e um que já
+// existia aberto para todos é fechado.
+func TestDatabaseIsPrivate(t *testing.T) {
+	dir := t.TempDir()
+	cfg := Config{DataDir: filepath.Join(dir, "data")}
+	if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg.sqlitePath()+"-wal", nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	db, _, err := openDB(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	for _, p := range []string{cfg.sqlitePath(), cfg.sqlitePath() + "-wal"} {
+		info, err := os.Stat(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o600 {
+			t.Fatalf("%s: %v", p, info.Mode().Perm())
+		}
+	}
+}
+
+// Sem os cabeçalhos da assinatura, o corpo nem é lido.
+func TestUnsignedBodyNotRead(t *testing.T) {
+	h := routes(&fake{}, newVerifier(secret, time.Now), slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	body := &countingReader{r: strings.NewReader(strings.Repeat("a", 1<<20))}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("POST", "/v1/sessions/abcdefgh/posts", body))
+	if w.Code != 401 || body.n != 0 {
+		t.Fatal(w.Code, body.n)
+	}
+}
+
+type countingReader struct {
+	r io.Reader
+	n int
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += n
+	return n, err
 }

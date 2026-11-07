@@ -17,10 +17,10 @@ func (s *Studio) FeedbackPosts(ctx context.Context) ([]app.FeedbackPost, error) 
 
 // SetFeedbackStatus sets a request's status (new, planned, progress, done,
 // declined) on GitHub; the site shows it within a minute.
-func (s *Studio) SetFeedbackStatus(number int, status string) error {
+func (s *Studio) SetFeedbackStatus(ctx context.Context, number int, status string) error {
 	site, err := s.current()
 	if err != nil {
 		return err
 	}
-	return app.SetFeedbackStatus(context.Background(), site, number, status)
+	return app.SetFeedbackStatus(ctx, site, number, status)
 }

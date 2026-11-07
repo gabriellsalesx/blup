@@ -12,15 +12,11 @@ export const cloudPaths = {
 	pulse: "/account/pulse",
 	device: "/device",
 } as const satisfies Record<string, `/${string}`>;
-export type CloudPath = (typeof cloudPaths)[keyof typeof cloudPaths];
 
 // After signing in, the page that asked for it: /sign-in?next=/account/plan
 export const nextParam = "next";
 // Stripe's return after a paid checkout: /account/plan?checkout=success
 export const checkoutParam = "checkout";
-
-// /sign-in?next=<path>, for a path of the same panel.
-export const signInFor = (next: string) => `${cloudPaths.signIn}?${new URLSearchParams({ [nextParam]: next })}`;
 
 // The Pulse panel, opened from the Cloud panel's switcher and after signing in.
 export const pulseAppURL = "https://pulse.getblup.io/";

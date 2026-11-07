@@ -85,15 +85,17 @@
  }
  // While the QR waits, or the connection comes back, the state is asked
  // every three seconds (five minutes at most).
- let timer:ReturnType<typeof setInterval>|undefined,polls=0;
+ // A request still on its way when the component goes away does not start
+ // the polling again (it would never stop).
+ let timer:ReturnType<typeof setInterval>|undefined,polls=0,gone=false;
  function stopPolling(){if(timer!==undefined){clearInterval(timer);timer=undefined;}}
  function startPolling(){
-  if(timer!==undefined)return;polls=0;
+  if(gone||timer!==undefined)return;polls=0;
   timer=setInterval(()=>{if(++polls>100){stopPolling();return;}void load().catch(()=>{});},3000);
  }
  let tick:ReturnType<typeof setInterval>|undefined;
  onMount(()=>{void run("load",load);tick=setInterval(()=>{now=Date.now();},1000);});
- onDestroy(()=>{stopPolling();clearInterval(tick);});
+ onDestroy(()=>{gone=true;stopPolling();clearInterval(tick);});
 </script>
 
 <!-- Only the states are announced, not the count. -->

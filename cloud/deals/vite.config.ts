@@ -2,7 +2,7 @@ import adapter from "@sveltejs/adapter-static";
 import {sveltekit} from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import {defineConfig} from "vite";
-import {sentryConnect} from "../shared/sentry-csp";
+import {sentryConnect} from "../shared/sentry-csp.ts";
 // The CSP: only our files run, plus Cloudflare Turnstile on the sign-in
 // (the same as the Cloud panel's); the data and the sign-in come from the
 // Cloud's Worker; the errors go to Blup Pulse's ingest. Deal photos come straight from the stores, so images

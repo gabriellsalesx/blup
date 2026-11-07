@@ -6,7 +6,6 @@
  import {onDestroy} from "svelte";
  import {createLanguageSaver} from "#lib/language-save.ts";
  import {toast} from "#lib/toast.svelte.ts";
-	import { goto } from "$app/navigation";
 	import { page } from "$app/state";
 	import User from "@lucide/svelte/icons/user";
 	import CreditCard from "@lucide/svelte/icons/credit-card";
@@ -37,9 +36,11 @@
 		{ href: resolve("/(panel)/account/sites"), label: t("sites"), Icon: Globe },
 	]);
 
+	// Signing out ends the session, then opens the sign-in with a full load,
+	// so nothing of the account stays in memory (the same as Pulse and Deals).
 	async function signOut() {
-		await authClient.signOut();
-		goto(resolve("/(auth)/sign-in"), { replace: true });
+		try { await authClient.signOut(); }
+		finally { location.replace(resolve("/(auth)/sign-in")); }
 	}
 </script>
 

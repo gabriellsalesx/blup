@@ -27,6 +27,9 @@ import (
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "health" {
+		os.Exit(healthcheck())
+	}
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	err := run(log)
 	if err != nil {
@@ -125,6 +128,11 @@ func openDB(cfg Config) (*sql.DB, string, error) {
 	if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
 		return nil, "", fmt.Errorf("criar DATA_DIR: %w", err)
 	}
+	// As chaves das sessões só para o dono do processo. O SQLite cria o
+	// -wal e o -shm com a mesma permissão do arquivo principal.
+	if err := private(cfg.sqlitePath()); err != nil {
+		return nil, "", fmt.Errorf("proteger o banco: %w", err)
+	}
 	db, err := sql.Open("sqlite", "file:"+cfg.sqlitePath()+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(10000)")
 	if err != nil {
 		return nil, "", err
@@ -132,6 +140,43 @@ func openDB(cfg Config) (*sql.DB, string, error) {
 	// Uma conexão só: o SQLite não aceita duas escritas ao mesmo tempo.
 	db.SetMaxOpenConns(1)
 	return db, "sqlite3", nil
+}
+
+// private cria o arquivo com 0600, ou fecha um que já exista.
+func private(path string) error {
+	f, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0o600)
+	if err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	for _, p := range []string{path, path + "-wal", path + "-shm"} {
+		if err := os.Chmod(p, 0o600); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
+// healthcheck é o "bridge health" do HEALTHCHECK do Dockerfile (a imagem
+// não tem shell nem curl): pergunta à Ponte, na própria máquina, se ela está
+// viva.
+func healthcheck() int {
+	host := or(env("HOST"), "127.0.0.1")
+	if ip := net.ParseIP(host); ip != nil && ip.IsUnspecified() {
+		host = "127.0.0.1"
+	}
+	c := &http.Client{Timeout: 3 * time.Second}
+	res, err := c.Get("http://" + net.JoinHostPort(host, or(env("PORT"), "8080")) + "/_blup/health")
+	if err != nil {
+		return 1
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return 1
+	}
+	return 0
 }
 
 // notifier avisa o Blup Cloud quando uma sessão muda de estado, assinando

@@ -79,9 +79,8 @@
 	async function leaveEverywhere() {
 		if (!(await confirm({ title: t("leaveAllTitle"), message: t("leaveAllBody"), confirmLabel: t("leaveAllConfirm") }))) return;
 		busy = true;
-		await authClient.revokeSessions();
-		await authClient.signOut();
-		goto(resolve("/(auth)/sign-in"), { replace: true });
+		try { await authClient.revokeSessions(); await authClient.signOut(); }
+		finally { location.replace(resolve("/(auth)/sign-in")); }
 	}
 
 	async function deleteAccount() {

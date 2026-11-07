@@ -13,7 +13,6 @@ type pagesSite struct {
 	HTMLURL   string `json:"html_url"`
 	Status    string `json:"status"`
 	BuildType string `json:"build_type"`
-	CNAME     string `json:"cname"`
 	Source    *struct {
 		Branch string `json:"branch"`
 		Path   string `json:"path"`

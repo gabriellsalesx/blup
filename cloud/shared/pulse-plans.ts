@@ -1,11 +1,13 @@
-import {z} from "zod";
+// zod/mini: the panels import this file too (much smaller than full zod).
+import {z} from "zod/mini";
 export const pulsePlanSchema=z.enum(["max_pulse","ultra_pulse"]);
 export type PulsePlan=z.infer<typeof pulsePlanSchema>;
 // Blup Deals exists only with Ultra, with or without Pulse.
 export const dealsPlanSchema=z.enum(["ultra_deals","ultra_pulse_deals"]);
 export type DealsPlan=z.infer<typeof dealsPlanSchema>;
-export const planNameSchema=z.enum(["free","pro","max","ultra","max_pulse","ultra_pulse","ultra_deals","ultra_pulse_deals"]);
-export const paidPlanNameSchema=planNameSchema.exclude(["free"]);
+const paidPlanNames=["pro","max","ultra","max_pulse","ultra_pulse","ultra_deals","ultra_pulse_deals"] as const;
+export const planNameSchema=z.enum(["free",...paidPlanNames]);
+export const paidPlanNameSchema=z.enum(paidPlanNames);
 export type PlanName=z.infer<typeof planNameSchema>;
 export type BasePlanName="free"|"pro"|"max"|"ultra";
 // What each complete variant is made of: its base plan, the Pulse limits it

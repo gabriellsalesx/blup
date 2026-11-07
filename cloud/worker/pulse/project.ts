@@ -53,9 +53,12 @@ export class PulseProject extends DurableObject<Cloudflare.Env>{
  async recordChecks(observations:MonitorObservation[]){return this.serial(async()=>{
   const monitorStore=this.monitorStore;
   const results=[];
+  // One account owns this project: its access is read once per batch.
+  const accessOf=new Map<string,Promise<Awaited<ReturnType<typeof pulseAccess>>>>();
   for(const observation of observations){
    const current=await this.env.DB.prepare("SELECT m.id,m.project_id AS project,p.user_id AS userId,EXISTS(SELECT 1 FROM pulse_maintenance_component mc JOIN pulse_maintenance w ON w.id=mc.maintenance_id WHERE mc.monitor_id=m.id AND w.starts_at<=? AND w.ends_at>?) AS maintenance FROM pulse_monitor m JOIN pulse_project p ON p.id=m.project_id WHERE m.id=? AND m.active=1 AND m.plan_disabled=0 AND m.revision=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL").bind(observation.checkedAt,observation.checkedAt,observation.monitor,observation.revision).first<{id:string;project:string;userId:string;maintenance:number}>();
-   const access=current?await pulseAccess(this.env,current.userId):null,canRecord=!!(current&&access?.writable&&access.limits&&this.ctx.storage.sql.databaseSize<access.limits.projectBytes-1024*1024);
+   let pending=current?accessOf.get(current.userId):undefined;if(current&&!pending){pending=pulseAccess(this.env,current.userId);accessOf.set(current.userId,pending);}
+   const access=pending?await pending:null,canRecord=!!(current&&access?.writable&&access.limits&&this.ctx.storage.sql.databaseSize<access.limits.projectBytes-1024*1024);
    if(current&&canRecord)this.ctx.storage.sql.exec("INSERT INTO meta VALUES('project',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",current.project);
    results.push(canRecord&&current?monitorStore.record(observation,current.maintenance===1):{state:"unknown" as const,duplicate:true});
   }

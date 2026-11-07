@@ -1,5 +1,5 @@
 import {parseResponse,type InferResponseType} from "hono/client";
-import {z} from "zod";
+import {z} from "zod/mini";
 import {rpc} from "./api";
 import {money as formatMoney} from "./money";
 const client=rpc.staff;
@@ -17,7 +17,7 @@ export class StaffError extends Error {
 async function call<T>(request:Promise<T>):Promise<T>{
  try{return await request;}
  catch(e){
-  const parsed=z.object({statusCode:z.number().int(),detail:z.object({data:z.object({code:z.string()})})}).safeParse(e);
+  const parsed=z.object({statusCode:z.int(),detail:z.object({data:z.object({code:z.string()})})}).safeParse(e);
   if(parsed.success)throw new StaffError(parsed.data.statusCode,parsed.data.detail.data.code);
   throw e;
  }

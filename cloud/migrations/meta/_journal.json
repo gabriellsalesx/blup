@@ -288,6 +288,13 @@
       "when": 1794075743959,
       "tag": "0040_deals_site_socials",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "6",
+      "when": 1794085357488,
+      "tag": "0041_indices_oferta_e_componente",
+      "breakpoints": true
     }
   ]
 }

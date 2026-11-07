@@ -292,3 +292,24 @@ A distribuição direta Windows/macOS sem assinatura continua sendo um caminho s
 - [ ] **BLOQUEANTE documental para Store até o institucional estar no ar:** publicar e conferir `https://getblup.io/privacidade`, `https://getblup.io/termos` e `https://getblup.io/feedback`, todas **a publicar no site institucional** em Hugo, no repositório privado do Confete. A política do produto não é o modelo gerado para sites de usuários. Cadastrar `/privacidade` no Partner Center, conforme 10.5.1.
 - [ ] Declarar tradução/narração por IA na ficha e na submissão, conforme 11.16, e indicar `/feedback` como canal de relato, inclusive de resultado inadequado de IA. Contato: `help@getblup.io`. Conferir recebimento e responsável pelo tratamento. Por decisão do dono, não haverá botão de denúncia de IA no Studio. [Políticas da Store](https://learn.microsoft.com/en-us/windows/apps/publish/store-policies).
 - [ ] Descrever Studio e Cloud como produtos próprios, informar serviços pagos/opcionais e cobrança de terceiros e preparar capturas/idiomas/notas de certificação. Realizar a primeira submissão pelo Partner Center; assistência de IA não dispensa revisão ou aprovação. [Guia Microsoft com IA](https://learn.microsoft.com/en-us/windows/apps/develop/ai-assisted/quickstart).
+
+## 14. Pendências da revisão de 07/11/2026
+
+Achados da revisão geral antes do lançamento que ainda dependem de decisão ou de ação fora do código.
+
+**Bloqueiam o deploy**
+- Turnstile: `TURNSTILE_SITE_KEY` de produção em `cloud/wrangler.jsonc` ainda é a chave de teste. Trocar pela real e conferir que a `TURNSTILE_SECRET_KEY` também é a real.
+- Studio no celular: `cloudURL` fixo em `http://localhost:18820` (`studio-mobile-prototipo/cloud.go`). Passar o endereço de produção no build antes de ir às lojas.
+- Studio no celular: release do Android sem keystore (sai com a chave de debug).
+- Variável `STUDIO_SENTRY_DSN` no GitHub (vars do repositório): o workflow de release já a repassa como `SENTRY_DSN`.
+
+**Melhorias recomendadas (não bloqueiam)**
+- Pulse: guardar acesso e chave do projeto na memória do Durable Object por 30 a 60 s; hoje cada evento faz cerca de 15 leituras no D1.
+- Pulse: upload de source map com rate limit por token e cota em bytes.
+- Deals: orçamento de tempo e quantidade no espelhamento (`worker/deals/mirror.ts`).
+- Sites: cache em memória de 10 a 30 s do `siteHead` (`worker/serve-site.ts`), para não consultar o D1 em toda visita.
+- Deals: mover `worker/deals/sample-images.ts` (1 MB em base64) para os static assets.
+- Ponte: chaves das sessões sem criptografia em repouso; usar volume cifrado e Access ou WAF na frente do Tunnel.
+- Registrar getblup.site na Public Suffix List.
+- Celular: CSP no `frontend/index.html`, credenciais no Keystore/Keychain, `minSdk` 26 ou mais e itens do iOS (`get-task-allow`, `NSAllowsLocalNetworking`, `ITSAppUsesNonExemptEncryption`, `PrivacyInfo.xcprivacy`).
+- Desktop: job de macOS com Developer ID e notarização; certificado de assinatura do Windows para fora da Store.

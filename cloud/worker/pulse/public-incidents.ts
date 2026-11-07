@@ -22,11 +22,15 @@ type Row={id:string;title:string;state:string;impact:string;createdAt:number;upd
 
 async function project(env:Cloudflare.Env,page:Page,rows:Row[]):Promise<PublicIncident[]>{
  const out:PublicIncident[]=[];
- for(const item of rows){
-  const [updates,affected]=await env.DB.batch([
-   env.DB.prepare("SELECT body,state,created_at AS createdAt FROM pulse_incident_update WHERE incident_id=? AND created_at>? ORDER BY created_at DESC LIMIT 50").bind(item.id,page.cutoff),
-   env.DB.prepare("SELECT c.name,ic.status FROM pulse_incident_component ic JOIN pulse_component c ON c.page_id=? AND c.monitor_id=ic.monitor_id WHERE ic.incident_id=? ORDER BY c.position").bind(page.id,item.id),
-  ]) as [D1Result<{body:string;state:string;createdAt:number}>,D1Result<{name:string;status:string}>];
+ // Two reads per incident, sent 25 incidents (50 statements) per batch: a
+ // public page never makes one round trip per incident.
+ const results:D1Result[]=[];
+ for(let start=0;start<rows.length;start+=25)results.push(...await env.DB.batch(rows.slice(start,start+25).flatMap(item=>[
+  env.DB.prepare("SELECT body,state,created_at AS createdAt FROM pulse_incident_update WHERE incident_id=? AND created_at>? ORDER BY created_at DESC LIMIT 50").bind(item.id,page.cutoff),
+  env.DB.prepare("SELECT c.name,ic.status FROM pulse_incident_component ic JOIN pulse_component c ON c.page_id=? AND c.monitor_id=ic.monitor_id WHERE ic.incident_id=? ORDER BY c.position").bind(page.id,item.id),
+ ])));
+ for(const [i,item] of rows.entries()){
+  const updates=results[i*2] as D1Result<{body:string;state:string;createdAt:number}>,affected=results[i*2+1] as D1Result<{name:string;status:string}>;
   out.push({id:item.id,title:item.title,state:item.state,impact:item.impact,createdAt:new Date(item.createdAt).toISOString(),updatedAt:new Date(item.updatedAt).toISOString(),
    services:affected.results.flatMap(r=>{const status=affectedStatus.safeParse(r.status);return status.success?[{name:r.name,status:status.data}]:[];}),
    updates:updates.results.map(u=>({...u,createdAt:new Date(u.createdAt).toISOString()}))});

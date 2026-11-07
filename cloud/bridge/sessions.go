@@ -141,12 +141,17 @@ func (m *manager) resume(ctx context.Context) error {
 		return err
 	}
 	for _, s := range saved {
-		jid, err := types.ParseJID(s.JID)
 		var device *store.Device
-		if err == nil {
+		if jid, err := types.ParseJID(s.JID); err == nil {
 			device, err = m.box.GetDevice(ctx, jid)
+			if err != nil {
+				// Erro passageiro do banco: a sessão continua salva e volta
+				// no próximo boot, em vez de ser apagada à toa.
+				m.log.Warn("não leu o aparelho ao subir", "session", s.ID, "err", err)
+				continue
+			}
 		}
-		if err != nil || device == nil {
+		if device == nil {
 			m.log.Warn("sessão sem aparelho, esquecida", "session", s.ID)
 			_ = m.db.forget(ctx, s.ID)
 			m.notify(s.ID, stateLoggedOut)
@@ -190,14 +195,14 @@ func (m *manager) Start(ctx context.Context, id string) (View, error) {
 		m.mu.Unlock()
 		return View{}, errBusy
 	}
-	ss = &session{id: id, state: statePairing}
+	// stop entra antes de a sessão aparecer em m.all: o Remove lê sem trava.
+	pairCtx, stop := context.WithTimeout(context.Background(), 5*time.Minute)
+	ss = &session{id: id, state: statePairing, stop: stop}
 	ss.cli = m.client(m.box.NewDevice(), id)
 	ss.cli.AddEventHandler(m.events(ss))
 	m.all[id] = ss
 	m.mu.Unlock()
 
-	pairCtx, stop := context.WithTimeout(context.Background(), 5*time.Minute)
-	ss.stop = stop
 	qr, err := ss.cli.GetQRChannel(pairCtx)
 	if err == nil {
 		err = ss.cli.Connect()
@@ -460,7 +465,9 @@ func (m *manager) Publish(ctx context.Context, id string, p Post) (Sent, error) 
 		_ = m.db.release(context.Background(), id, anyChannel, now, prevAny)
 		return Sent{}, err
 	}
-	if err := m.db.markSent(ctx, p.Key, id, sent); err != nil {
+	// O post já saiu: anota mesmo que o Blup Cloud tenha desistido do
+	// pedido, senão a mesma chave publicaria de novo.
+	if err := m.db.markSent(context.WithoutCancel(ctx), p.Key, id, sent); err != nil {
 		m.log.Error("post feito mas não anotado", "session", id, "err", err)
 	}
 	return sent, nil

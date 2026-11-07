@@ -22,8 +22,6 @@ export function socialsOf(stored:string):SiteSocial[]{try{const p=siteSocials.sa
 export const siteCreate=z.object({title:siteTitle,slug:siteSlug,description:siteDescription.default(""),language:languageSchema,showTitle:z.boolean().default(true),links:navLinks.default([]),socials:siteSocials.default([])}).strict();
 // The header (the name beside the logo, up to five links) as a Pulse page's.
 export const siteUpdate=z.object({title:siteTitle,description:siteDescription,language:languageSchema,showTitle:z.boolean(),links:navLinks,socials:siteSocials}).strict();
-export type SiteCreate=z.infer<typeof siteCreate>;
-export type SiteUpdate=z.infer<typeof siteUpdate>;
 
 // What a visit asks of the page: a search, a category, the page of results
 // (a cursor: the last deal's time) and the language of its texts.
@@ -35,9 +33,8 @@ export const siteQuery=z.object({
  q:z.string().trim().max(80).optional().catch(undefined),
  category:z.enum(dealCategories).optional().catch(undefined),
  before:z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional().catch(undefined),
- lang:languageSchema.optional().catch(undefined),
+ lang:z.optional(languageSchema).catch(undefined),
 });
-export type SiteQuery=z.infer<typeof siteQuery>;
 
 // The R2 key of a page's logo.
 export const siteLogoKey=(site:string,variant:"light"|"dark")=>`sites/${site}/logo-${variant}`;
