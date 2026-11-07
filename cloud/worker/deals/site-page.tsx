@@ -220,8 +220,8 @@ export function Shell({page:props,title,description,canonical,alternates,image,d
    <main class="container">{children}</main>
    <footer class="site-footer">
     <div class="container">
-     <p class="affiliate">{t("dealsSiteAffiliate")}</p>
-     <p class="powered">{t("dealsSiteMadeWith")} <a href="https://getblup.io">Blup Deals</a></p>
+     <span>© {new Date().getUTCFullYear()} {site.title}</span>
+     <span>{t("dealsSiteMadeWith")} <a href="https://getblup.io/blup-deals/" rel="noopener">Blup Deals</a></span>
     </div>
    </footer>
   </body>
@@ -265,7 +265,7 @@ export const SITE_CSS=`@layer reset,tokens,base,layout,components;
 .menu-toggle .close{display:none}body:has(.mobile-menu:popover-open) .menu-toggle .open{display:none}body:has(.mobile-menu:popover-open) .menu-toggle .close{display:block}
 .mobile-menu{position:fixed;inset:var(--header-h) 0 auto 0;margin:0;width:100%;max-width:none;border:0;border-block-end:1px solid var(--main-200);padding:.5rem var(--gutter);background:var(--main-100);color:var(--main-900);box-shadow:var(--shadow-lg)}.mobile-menu a{display:block;padding:.75rem 0;font-weight:500}
 @media (width>=48rem){.nav{display:flex}.menu-toggle{display:none}}
-.site-footer .container{display:grid;gap:.5rem;padding-block:2.5rem;font-size:.875rem;color:var(--main-500)}.site-footer a{text-decoration:underline}}
+.site-footer .container{display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;padding-block:2.5rem;font-size:.8125rem;color:var(--main-500)}.site-footer a{font-weight:600}.site-footer a:hover{text-decoration:underline}}
 @layer components{.dropdown{margin:0;inset:auto;padding:.25rem;border:1px solid var(--main-200);border-radius:.375rem;background:var(--main-100);color:var(--main-700);box-shadow:var(--shadow-lg);min-width:9rem;position-area:bottom span-left;margin-block-start:.375rem}@supports not (position-area:bottom){.dropdown{inset:calc(var(--header-h) - .25rem) 1rem auto auto}}
 .dropdown a,.dropdown button{display:flex;width:100%;align-items:center;gap:.75rem;padding:.5rem .75rem;border-radius:.25rem;font-size:.875rem}.dropdown a:hover,.dropdown button:hover,.dropdown [aria-checked="true"]{background:var(--main-200);color:var(--main-900)}
 :root:not(.js) .theme-picker{display:none}.when-dark{display:none}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .when-light{display:none}:root:not([data-theme="light"]) .when-dark{display:block}}:root[data-theme="dark"] .when-light{display:none}:root[data-theme="dark"] .when-dark{display:block}
