@@ -26,7 +26,7 @@ Click **Publish**, at the top. The first time, choose where the site will live:
 
 Sign in with your Blup account and type the address you want. While you type, the Studio checks whether the name is free and, if it isn't, suggests similar ones. The address stays fixed after the first publish.
 
-Each plan has a number of sites: Pro has 1, Max has 3 and Ultra has 10. Custom domains for Blup Cloud sites are on the way, on the Max and Ultra plans.
+Each plan has a number of sites: Pro has 1, Max has 3 and Ultra has 10. On the Max and Ultra plans, a Blup Cloud site can also have its own domain.
 
 ### Through Cloudflare or GitHub
 

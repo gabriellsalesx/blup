@@ -19,7 +19,7 @@ weight: 2
 Todos os planos têm criptografia de ponta a ponta. O Ultra também tem suporte prioritário.
 
 > [!info] Domínio próprio
-> O domínio próprio nos sites do Blup Cloud ainda está chegando aos planos Max e Ultra. Pelo Cloudflare Workers ou pelo GitHub Pages, o site fica no endereço grátis do serviço.
+> Nos planos Max e Ultra, o site do Blup Cloud pode ter domínio próprio, ligado pela tela **Publicar** do Studio. Pelo Cloudflare Workers ou pelo GitHub Pages, o site fica no endereço grátis do serviço.
 
 > [!tip] Sem plano também dá
 > Publicar no Cloudflare Workers ou no GitHub Pages é grátis. Para narrar e traduzir, use a voz e a tradução no computador, ou a sua chave do OpenRouter.
