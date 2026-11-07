@@ -505,7 +505,10 @@ through light-dark(): the theme switcher only changes color-scheme. */
   .lock-error { color: light-dark(#b91c1c, #f87171); font-size: .875rem; }
   .locked-note { display: flex; align-items: center; gap: .5rem; margin-block-end: 1.5rem; padding: .5rem .75rem; border-radius: .375rem; background: var(--main-100); color: var(--main-600); font-size: .875rem; }
   .lock-badge { display: inline-block; width: 1em; height: 1em; margin-inline-end: .35em; vertical-align: -.1em; color: var(--main-500); }
-  .related .h2 { margin-block-end: 2.5rem; }
+  .related-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .75rem; margin-block-end: 2.5rem; }
+  .related .related-head .h2 { margin-block-end: 0; }
+  .see-all { font-size: .875rem; font-weight: 600; color: var(--main-600); }
+  .see-all:hover { color: var(--main-900); text-decoration: underline; }
 }
 
 @layer content {
