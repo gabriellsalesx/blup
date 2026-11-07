@@ -33,7 +33,7 @@ La cuenta sirve para todas tus bóvedas y sitios, en esta y en las demás comput
 Todos los planes tienen **cifrado de extremo a extremo** y sincronizan todas las bóvedas y sitios que quieras. El plan anual cuesta diez meses: dos meses te salen gratis.
 
 > [!info] Dominio propio en Blup Cloud
-> El dominio propio en los sitios de Blup Cloud viene en los planes Max y Ultra. Con Cloudflare Pages y GitHub Pages ya funciona en cualquier plan, incluso sin cuenta. Consulta [Dominio propio](../Publicación/Dominio%20propio.md).
+> El dominio propio viene en los planes Max y Ultra y solo se vincula en los sitios de Blup Cloud. Con Cloudflare Workers y GitHub Pages, el sitio queda en la dirección gratis del servicio. Consulta [Dominio propio](../Publicación/Dominio%20propio.md).
 
 ## Ver el uso
 
@@ -50,5 +50,5 @@ En **Configuración > Blup Cloud**, unas barras muestran el uso del plan:
 Puedes hacer casi todo gratis, con otras cuentas:
 
 - Sincronizar las notas con un repositorio privado de GitHub.
-- Publicar en Cloudflare Pages o en GitHub Pages.
+- Publicar en Cloudflare Workers o en GitHub Pages, en la dirección gratis del servicio.
 - Narrar y traducir en la computadora, o con tu clave de OpenRouter.

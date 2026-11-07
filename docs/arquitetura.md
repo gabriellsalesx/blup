@@ -13,7 +13,7 @@ flowchart LR
   App <--> Notas[Markdown e anexos no disco]
   App --> Hugo[Scaffold e Hugo]
   Hugo --> Saida[Site estatico]
-  Saida --> Pages[Cloudflare Pages ou GitHub Pages]
+  Saida --> Pages[Cloudflare Workers ou GitHub Pages]
   Saida --> Sites[Worker blup-sites e R2 SITES]
   App <--> Cloud[Worker Blup Cloud]
   Cloud <--> D1[D1 e Drizzle]
@@ -94,7 +94,7 @@ O scaffold substitui a cópia do tema e as configurações geradas, preservando 
 
 Adicionar, remover ou restaurar seções pode exigir reiniciar o processo Hugo da prévia: o watcher pode perder arquivos copiados antes de observar uma pasta nova. `sectionsChanged` trata esse caso; `previewFollows` trata mudança de idiomas/mounts. O Studio aberto não precisa reiniciar.
 
-GitHub Pages recebe blobs/árvores e Cloudflare Pages recebe Direct Upload. Blup Cloud usa a sessão da conta, reserva slug e recebe arquivos pelo hash do conteúdo armazenado, compactando recursos apropriados. O manifesto é ativado no D1 depois dos uploads; um Worker separado autoriza cada pedido no D1 e chama um entrypoint com Workers Cache por site/deploy, que resolve o manifesto e lê R2 em miss. O site usa `https://nome.getblup.site/`; Max/Ultra também vinculam um hostname próprio, após prova TXT e validação Cloudflare/SSL. O cliente escolhe domínio ativo com SSL/direito ou carência válida como baseURL. O Studio republica em segundo plano quando essa base muda, sem redirecionar visitantes entre os dois hosts. Reservas D1 limitam admissão concorrente, e leases serializam publicação/limpeza, preservando manifestos substituídos por pelo menos dez minutos.
+GitHub Pages recebe blobs/árvores e Cloudflare Workers recebe Direct Upload de static assets, num Worker sem código em `<nome>.<conta>.workers.dev`. Blup Cloud usa a sessão da conta, reserva slug e recebe arquivos pelo hash do conteúdo armazenado, compactando recursos apropriados. O manifesto é ativado no D1 depois dos uploads; um Worker separado autoriza cada pedido no D1 e chama um entrypoint com Workers Cache por site/deploy, que resolve o manifesto e lê R2 em miss. O site usa `https://nome.getblup.site/`; Max/Ultra também vinculam um hostname próprio, após prova TXT e validação Cloudflare/SSL. O cliente escolhe domínio ativo com SSL/direito ou carência válida como baseURL. O Studio republica em segundo plano quando essa base muda, sem redirecionar visitantes entre os dois hosts. Reservas D1 limitam admissão concorrente, e leases serializam publicação/limpeza, preservando manifestos substituídos por pelo menos dez minutos.
 
 Publicar é uma ação distinta de sincronizar. Um cofre sincronizado não fica público por isso; publicar o site não é backup das notas. [Publicação](spec/publicacao.md) descreve cache, concorrência e limites dos provedores.
 
@@ -242,7 +242,7 @@ O HTML oferece Link preload dos recursos conhecidos do manifesto, e o provisiona
 
 ## Contratos entre linguagens e release
 
-O painel infere DTOs de `AppType` Hono por `hc`/`InferResponseType`; `worker/export-rpc.mjs` gera um contrato de transporte sem bindings privados do Worker. Zod valida entradas e contratos externos nos pontos consumidos. Wails gera modelos/métodos TS de Go, e os eventos registrados geram payloads tipados para `Events.On`. Arquivos locais/sincronizados recebem normalização e limites próprios. Os wrappers genéricos de GitHub/Cloudflare Pages ainda usam DTOs sem schema semântico estrito; os detalhes e limites de null/opcionais/números estão em [tipagem e contratos](spec/tipagem-e-contratos.md).
+O painel infere DTOs de `AppType` Hono por `hc`/`InferResponseType`; `worker/export-rpc.mjs` gera um contrato de transporte sem bindings privados do Worker. Zod valida entradas e contratos externos nos pontos consumidos. Wails gera modelos/métodos TS de Go, e os eventos registrados geram payloads tipados para `Events.On`. Arquivos locais/sincronizados recebem normalização e limites próprios. Os wrappers genéricos de GitHub/Cloudflare Workers ainda usam DTOs sem schema semântico estrito; os detalhes e limites de null/opcionais/números estão em [tipagem e contratos](spec/tipagem-e-contratos.md).
 
 A autoatualização CLI verifica Ed25519 dos bytes exatos de `checksums.txt`, depois SHA-256 do pacote, e recusa versão igual/anterior. O gerador `scripts/sign-release` usa chave fora do repositório. Os instaladores iniciais permanecem só com SHA-256. Builds `production` exigem `app.Version` em `x.y.z`; assinatura nativa/notarização e distribuição do Studio têm fluxo separado. Veja [build](spec/testes-e-build.md) e [deploy](deploy.md).
 

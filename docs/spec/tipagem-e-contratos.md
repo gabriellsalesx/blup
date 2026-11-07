@@ -97,7 +97,7 @@ O endpoint público `/config` passou pelo cliente RPC e trata erro HTTP. `/plans
 
 ## Limites residuais conhecidos
 
-Os wrappers genéricos de resposta em [GitHub](../../internal/deploy/github/client.go) e [Cloudflare Pages](../../internal/deploy/cfpages/client.go) usam DTOs Go e `json.Unmarshal`, sem schema semântico estrito para cada resposta. JSON `null` ou campo ausente pode resultar em zero value. Continuam existindo classificação de erro HTTP, checagem de permissões e verificações posteriores nos fluxos. A equipe manteve essa fronteira para outra rodada para não reabrir a integração entregue; não se afirma validação completa de todo JSON de terceiros.
+Os wrappers genéricos de resposta em [GitHub](../../internal/deploy/github/client.go) e [Cloudflare Workers](../../internal/deploy/cfworkers/client.go) usam DTOs Go e `json.Unmarshal`, sem schema semântico estrito para cada resposta. JSON `null` ou campo ausente pode resultar em zero value. Continuam existindo classificação de erro HTTP, checagem de permissões e verificações posteriores nos fluxos. A equipe manteve essa fronteira para outra rodada para não reabrir a integração entregue; não se afirma validação completa de todo JSON de terceiros.
 
 ## Referências oficiais
 

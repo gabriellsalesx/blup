@@ -38,7 +38,7 @@ A capa ideal é um quadrado de 1400 a 3000 pixels, em JPG ou PNG. O Studio avisa
 
 ## 4. Enviar ao Spotify e à Apple
 
-O feed precisa do endereço completo do site, então **publique o site** primeiro, pelo Blup Cloud, Cloudflare Pages ou GitHub Pages (veja [Onde publicar](../Publicação/Onde%20publicar.md)). Com domínio próprio, o feed usa o seu domínio. Aí a tela mostra o **Feed do podcast** de cada idioma, com **Copiar**.
+O feed precisa do endereço completo do site, então **publique o site** primeiro, pelo Blup Cloud, Cloudflare Workers ou GitHub Pages (veja [Onde publicar](../Publicação/Onde%20publicar.md)). Com domínio próprio no Blup Cloud, o feed usa o seu domínio. Aí a tela mostra o **Feed do podcast** de cada idioma, com **Copiar**.
 
 - **Enviar ao Spotify**: no Spotify for Creators, escolha "já tenho um podcast" e cole o endereço. O código de confirmação chega no e-mail de contato.
 - **Enviar à Apple Podcasts**: na Apple Podcasts Connect, entre com o seu Apple ID, crie um programa a partir do feed e espere a aprovação.

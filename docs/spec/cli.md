@@ -50,7 +50,7 @@ O menu usa o primeiro site existente como atual. Oferece prévia, publicação, 
 
 Templates são um complemento: falha nessa etapa gera aviso na CLI. Na conversão opcional, erro que não seja cancelamento também só gera aviso. Se `ensureHugo` falhar, a criação retorna erro e não oferece feedback, sync ou prévia. A pasta técnica é criada antes das últimas etapas; não há transação geral que desfaça tudo quando um passo posterior falha.
 
-`Slug` remove acentos, converte para minúsculas, mantém `a-z` e `0-9` e troca cada sequência dos demais caracteres, inclusive hífens, por um único `-`. Apara hífens nas pontas, limita a 50 caracteres, apara de novo após o corte e usa `site` para resultado vazio. O Cloudflare tem sanitização própria para nomes de projeto.
+`Slug` remove acentos, converte para minúsculas, mantém `a-z` e `0-9` e troca cada sequência dos demais caracteres, inclusive hífens, por um único `-`. Apara hífens nas pontas, limita a 50 caracteres, apara de novo após o corte e usa `site` para resultado vazio. O Cloudflare tem sanitização própria para nomes de Worker (`NameFromTitle`, até 63 caracteres).
 
 A API `CreateSite`, em `internal/app/create_api.go`, recebe `NewSiteOptions` com `vault`, `folder`, `dir`, `model`, `sections`, `title`, `description`, `author`, `lang` e `adjustLinks`. Ela é usada pelo Studio, aceita pasta comum e Nori. Modelo diferente de `bento` ou `nori` vira `mochi`, sem erro; fora do Bento, descarta `sections`. Exige título não vazio, valida os tipos e a seleção não vazia de seções Bento, recusa `..` em `folder` e normaliza idioma diferente de `pt` e `es` para `en`.
 
@@ -70,7 +70,7 @@ blup build /caminho/do/site --url https://exemplo.test/blog/ --out /tmp/site-pro
 blup gerar --endereco=https://exemplo.test/ --saida=/tmp/site-pronto /caminho/do/site
 ```
 
-Flags aceitas: `--url`/`--endereco` e `--out`/`--saida`, com `=` ou valor no próximo argumento. A URL deve ter esquema HTTP ou HTTPS e host; seu caminho recebe `/` final. Sem URL explícita, usa o domínio próprio ou `/`, sem calcular automaticamente a URL do provedor salvo. O parser não rejeita flags desconhecidas: elas ficam em `rest`, e o primeiro argumento restante é interpretado como caminho do site, inclusive se começar com `--`.
+Flags aceitas: `--url`/`--endereco` e `--out`/`--saida`, com `=` ou valor no próximo argumento. A URL deve ter esquema HTTP ou HTTPS e host; seu caminho recebe `/` final. Sem URL explícita, usa `/`, sem calcular automaticamente a URL do provedor salvo. O parser não rejeita flags desconhecidas: elas ficam em `rest`, e o primeiro argumento restante é interpretado como caminho do site, inclusive se começar com `--`.
 
 O build passa pelo pipeline de publicação local, com feedback, criptografia e tentativas de gerar Pagefind e PWA. `BLUP_NO_SEARCH` não vazio pula Pagefind; falhas de busca ou PWA só geram aviso e não interrompem o build. Não envia os arquivos ao provedor. Mesmo sem deploy, feedback ativo e credenciais disponíveis podem provocar criação ou atualização de issues.
 
@@ -106,7 +106,6 @@ Esse comando ainda prepara explicitamente o transporte GitHub: não é uma inter
 - Inclusão de seções no Bento. O fluxo CLI de seções adiciona exemplos; a remoção é feita nas notas. O Studio tem remoção para a lixeira.
 - Feedback com issues e instalação do GitHub App; cookies, ferramentas e política de privacidade.
 - Redes sociais, logo, favicon, nome, descrição e autor/perfil.
-- Domínio próprio, consulta de estado e remoção.
 - Senha geral específica do site.
 
 Nome, descrição, menu, redes e imagens ficam também nas propriedades da nota inicial; veja [configuração](configuracao.md). Essas opções não publicam imediatamente as alterações.

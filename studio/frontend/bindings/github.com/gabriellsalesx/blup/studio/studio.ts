@@ -22,7 +22,7 @@ import * as blupcloud$0 from "../internal/blupcloud/models.js";
 import * as config$0 from "../internal/config/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as cfpages$0 from "../internal/deploy/cfpages/models.js";
+import * as cfworkers$0 from "../internal/deploy/cfworkers/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -214,13 +214,6 @@ export function CheckCookieTool(key: string, value: string): $CancellablePromise
 }
 
 /**
- * CheckDomain connects the domain again and says where it stands.
- */
-export function CheckDomain(): $CancellablePromise<app$0.DomainStatus> {
-    return $Call.ByID(3221178750);
-}
-
-/**
  * CheckSiteDir tells why a folder can't hold a new site ("" when it can).
  */
 export function CheckSiteDir(dir: string): $CancellablePromise<string> {
@@ -269,8 +262,16 @@ export function CloudSites(): $CancellablePromise<app$0.CloudSite[] | null> {
 /**
  * CloudflareAccounts lists the accounts of the saved Cloudflare key.
  */
-export function CloudflareAccounts(): $CancellablePromise<cfpages$0.Account[] | null> {
+export function CloudflareAccounts(): $CancellablePromise<cfworkers$0.Account[] | null> {
     return $Call.ByID(4050939365);
+}
+
+/**
+ * CloudflareSubdomain is the workers.dev subdomain of a Cloudflare account
+ * ("" when the account has none yet: the Publish screen asks for one).
+ */
+export function CloudflareSubdomain(account: string): $CancellablePromise<string> {
+    return $Call.ByID(3359554201, account);
 }
 
 /**
@@ -284,7 +285,7 @@ export function ConnectAI(key: string): $CancellablePromise<void> {
  * ConnectCloudflare checks and saves a Cloudflare key; it returns the
  * accounts it can publish to.
  */
-export function ConnectCloudflare(token: string): $CancellablePromise<cfpages$0.Account[] | null> {
+export function ConnectCloudflare(token: string): $CancellablePromise<cfworkers$0.Account[] | null> {
     return $Call.ByID(3728971643, token);
 }
 
@@ -368,13 +369,6 @@ export function CreateSite(o: app$0.NewSiteOptions): $CancellablePromise<$models
  */
 export function CreateVault(title: string, notes: string): $CancellablePromise<$models.SiteInfo> {
     return $Call.ByID(3165056722, title, notes);
-}
-
-/**
- * CurrentDomain is the site's custom domain ("" for the free address).
- */
-export function CurrentDomain(): $CancellablePromise<string> {
-    return $Call.ByID(31178783);
 }
 
 /**
@@ -929,13 +923,6 @@ export function RemoveBlupDomain(): $CancellablePromise<app$0.BlupDomain> {
 }
 
 /**
- * RemoveDomain goes back to the free address.
- */
-export function RemoveDomain(): $CancellablePromise<void> {
-    return $Call.ByID(1901298994);
-}
-
-/**
  * RemoveImage removes the logo or favicon.
  */
 export function RemoveImage(key: string): $CancellablePromise<void> {
@@ -1182,10 +1169,11 @@ export function SetBlupDomain(hostname: string): $CancellablePromise<app$0.BlupD
 }
 
 /**
- * SetDomain saves and connects a custom domain.
+ * SetCloudflareSubdomain gives a Cloudflare account its workers.dev
+ * subdomain, once (it is the same for every site of the account).
  */
-export function SetDomain(value: string): $CancellablePromise<app$0.DomainStatus> {
-    return $Call.ByID(2274237710, value);
+export function SetCloudflareSubdomain(account: string, name: string): $CancellablePromise<string> {
+    return $Call.ByID(2001669497, account, name);
 }
 
 /**

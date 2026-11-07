@@ -197,13 +197,8 @@ func HugoConfig(s *config.Site, preview bool) ([]byte, error) {
 		mount{Source: "data", Target: "data"},
 	)
 
-	baseURL := "/"
-	if s.Domain != "" {
-		baseURL = "https://" + s.Domain + "/"
-	}
-
 	cfg := map[string]any{
-		"baseURL":                baseURL,
+		"baseURL":                "/", // the build passes the real address
 		"title":                  s.Title,
 		"locale":                 locale,
 		"defaultContentLanguage": s.Lang,

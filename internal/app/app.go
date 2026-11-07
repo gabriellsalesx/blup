@@ -65,7 +65,7 @@ func Run(ctx context.Context, args []string) error {
 	case "build", "gerar":
 		// Non-interactive build into <site>/public, for scripts and CI.
 		// --url sets the address the site will live at (it can be a
-		// subfolder: https://x.pages.dev/bento/); --out copies the result
+		// subfolder: https://x.ana.workers.dev/bento/); --out copies the result
 		// to another folder, like the one of a landing page.
 		opts, rest, err := parseBuildFlags(args[1:])
 		if err != nil {

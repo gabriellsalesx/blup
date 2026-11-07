@@ -6,7 +6,7 @@ weight: 3
 O Blup confere a chave antes de usar. Se ela não servir, ele explica o motivo e pede outra.
 
 - **GitHub**: na criação da chave, em **Repository access**, escolha **All repositories**.
-- **Cloudflare**: a chave precisa da permissão **Cloudflare Pages: Edit**.
+- **Cloudflare**: a chave precisa da permissão **Account › Workers Scripts › Edit**.
 - Chaves vencem. Crie outra pelo mesmo caminho e cole quando o Blup pedir.
 
 Quem publica pelo Blup Cloud não precisa de chave: basta entrar na conta.

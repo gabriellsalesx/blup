@@ -1,19 +1,20 @@
 ---
 title: Publicar
-description: Cloudflare Pages o GitHub Pages, gratis. Un comando en cada actualización.
+description: Cloudflare Workers o GitHub Pages, gratis. Un comando en cada actualización.
 weight: 3
 ---
-Ejecuta `blup publish` (o `blup publicar`). La primera vez, elige dónde: Cloudflare Pages o GitHub Pages. Los dos son gratuitos. La publicación con Blup Cloud se hace en el Studio; mira [Dónde publicar](../Publicación/Dónde%20publicar.md).
+Ejecuta `blup publish` (o `blup publicar`). La primera vez, elige dónde: Cloudflare Workers o GitHub Pages. Los dos son gratuitos. La publicación con Blup Cloud se hace en el Studio; mira [Dónde publicar](../Publicación/Dónde%20publicar.md).
 
 ![Blup lanzando el sitio](../../Adjuntos/blup-publicar.jpg)
 
-## Cloudflare Pages
+## Cloudflare Workers
 
-Rápido en todo el mundo, con una dirección como `tusitio.pages.dev`.
+Rápido en todo el mundo, con una dirección como `tusitio.tucuenta.workers.dev`.
 
 1. Crea una cuenta gratis en dash.cloudflare.com, si no tienes.
-2. Blup abre el formulario de la clave de acceso. Revisa el permiso **Cloudflare Pages: Edit**, crea la clave y pégala en la terminal.
-3. Elige el nombre del proyecto: se convierte en la dirección.
+2. Blup abre el formulario de la clave de acceso. Revisa el permiso **Account › Workers Scripts › Edit**, crea la clave y pégala en la terminal.
+3. Si la cuenta todavía no tiene una dirección en workers.dev, Blup pregunta su nombre. Se elige una vez y sirve para todos los sitios de la cuenta.
+4. Elige el nombre del sitio: es el inicio de la dirección. Si la cuenta ya tiene otro sitio con ese nombre, Blup pide otro.
 
 ## GitHub Pages
 
@@ -29,14 +30,4 @@ Una dirección como `tunombre.github.io/tusitio`.
 
 ## Dominio propio
 
-Para que el sitio responda en una dirección tuya, como `tusitio.com` o `blog.tusitio.com`, ejecuta `blup customize` (o `blup personalizar`) y elige **Dominio propio**. Blup:
-
-1. pregunta el dominio;
-2. conecta el dominio donde está publicado el sitio, en Cloudflare Pages o en GitHub Pages;
-3. muestra el registro DNS exacto que debes crear donde compraste el dominio, si falta alguno;
-4. activa el HTTPS cuando todo está listo.
-
-El DNS puede tardar de minutos a algunas horas. Para comprobarlo, vuelve a **Dominio propio** y elige **Comprobar si está funcionando**; cada `blup publish` también lo revisa. Con la misma opción cambias de dominio o vuelves a la dirección gratis.
-
-> [!tip] Dominio raíz en Cloudflare Pages
-> Un dominio raíz (`tusitio.com`, sin `www` ni `blog` delante) en Cloudflare Pages tiene que estar en tu cuenta de Cloudflare, lo cual es gratis. Si prefieres no cambiar eso, usa `www.tusitio.com`.
+Con Cloudflare Workers y con GitHub Pages, el sitio queda en la dirección gratis del servicio. Un dominio tuyo, como `tusitio.com`, se vincula solo con Blup Cloud, en los planes Max y Ultra, en la pantalla **Publicar** del Studio. Mira [Dominio propio](../Publicación/Dominio%20propio.md).

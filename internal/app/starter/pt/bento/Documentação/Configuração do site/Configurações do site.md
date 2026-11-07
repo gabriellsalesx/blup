@@ -74,4 +74,4 @@ social:
 | Publicar | Onde e como o site vai ao ar. Veja [Publicar pelo Studio](../Publicação/Publicar%20pelo%20Studio.md) |
 
 > [!note] E o blup.toml?
-> Na pasta do site no computador, o **blup.toml** guarda o que não é conteúdo: onde publicar, o domínio próprio, os idiomas, a senha do site e o repositório da sincronização. O Studio e o `blup personalizar` mudam tudo isso sem você abrir o arquivo.
+> Na pasta do site no computador, o **blup.toml** guarda o que não é conteúdo: onde publicar, os idiomas, a senha do site e o repositório da sincronização. O Studio e o `blup personalizar` mudam tudo isso sem você abrir o arquivo.

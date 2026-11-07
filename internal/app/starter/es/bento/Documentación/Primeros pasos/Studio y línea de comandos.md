@@ -34,7 +34,7 @@ El Studio reúne todo en una sola app: escribir, ver el sitio, configurar y publ
 ## Lo que funciona en los dos
 
 - Escribir en Markdown, con propiedades, callouts, tablas, fórmulas y comentarios `%%`.
-- Generar el sitio, ver la vista previa y publicar en Cloudflare Pages o en GitHub Pages.
+- Generar el sitio, ver la vista previa y publicar en Cloudflare Workers o en GitHub Pages.
 - Sincronizar las notas con un repositorio privado de GitHub.
 - Contraseñas, páginas ocultas, borradores, cookies, comentarios y reacciones.
 

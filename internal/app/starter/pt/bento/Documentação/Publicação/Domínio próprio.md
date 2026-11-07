@@ -1,31 +1,29 @@
 ---
 title: Domínio próprio
-description: O site no seu endereço, como meusite.com.br, com HTTPS.
+description: O site no seu endereço, como meusite.com.br, com HTTPS. Pelo Blup Cloud, nos planos Max e Ultra.
 weight: 3
 ---
-Em vez do endereço grátis (`site.pages.dev` ou `seunome.github.io`), o site pode responder num endereço seu, como `meusite.com.br` ou `blog.meusite.com.br`. Você precisa de um domínio comprado (Registro.br, GoDaddy, Cloudflare...).
+Em vez de `seusite.getblup.site`, o site pode responder num endereço seu, como `meusite.com.br` ou `blog.meusite.com.br`. Você precisa de um domínio comprado (Registro.br, GoDaddy, Cloudflare...).
 
-> [!info] Onde já funciona
-> Pelo **Cloudflare Pages** e pelo **GitHub Pages**, o domínio próprio já funciona. Nos sites publicados pelo **Blup Cloud**, ele vem nos planos Max e Ultra.
+> [!info] Só pelo Blup Cloud
+> O domínio próprio é ligado pelo **Blup Cloud**, nos planos **Max** e **Ultra**. Os sites publicados pelo **Cloudflare Workers** ou pelo **GitHub Pages** ficam no endereço grátis do serviço (`nome.suaconta.workers.dev` ou `seunome.github.io`). Para usar um domínio seu, publique o site pelo Blup Cloud: veja [Sites pelo Blup Cloud](../Blup%20Cloud/Sites%20pelo%20Blup%20Cloud.md).
 
 ## Pelo Blup Studio
 
-O bloco **Domínio próprio** aparece na tela **Publicar** depois que o site está no ar pelo Cloudflare ou pelo GitHub.
+O bloco **Domínio próprio** aparece na tela **Publicar** depois que o site está no ar pelo Blup Cloud.
 
-1. Escreva só o endereço, como `meusite.com.br`, e clique em **Ligar domínio**.
-2. O Studio liga o domínio onde o site está publicado.
-3. Se faltar um passo, ele mostra o **registro de DNS** exato (Tipo, Nome e Valor, com **Copiar**). Crie esse registro no site onde você comprou o domínio.
-4. Clique em **Verificar**. Pode levar de minutos a algumas horas.
-5. Quando aparecer **Funcionando**, publique de novo para os links do site usarem o novo endereço.
+1. Escreva só o domínio, sem `https://`, como `meusite.com.br`, e clique em **Vincular**.
+2. O Studio mostra os **registros de DNS** que faltam (Tipo, Nome e Valor, com **Copiar**): um TXT que prova que o domínio é seu e o CNAME que aponta para o Blup Cloud. Crie esses registros no site onde você comprou o domínio.
+3. Clique em **Verificar**. Enquanto a tela estiver aberta, o Studio confere de novo a cada minuto. O DNS pode levar de minutos a algumas horas.
+4. Quando aparecer **Ativo** e **HTTPS ativo**, o Studio publica o site de novo sozinho, para os links usarem o novo endereço.
 
-**Trocar** muda de domínio. **Voltar ao endereço grátis** desliga o domínio deste site (ele continua seu).
+O endereço `seusite.getblup.site` continua funcionando. **Remover** desliga o domínio deste site, que volta a ficar só em `seusite.getblup.site`.
 
-## Pela linha de comando
+> [!tip] Domínio raiz
+> Um domínio raiz (`meusite.com.br`, sem `www` ou `blog` na frente) precisa de um DNS que aceite CNAME na raiz (CNAME flattening ou ALIAS). Se o seu não aceitar, use `www.meusite.com.br`.
 
-Rode `blup personalizar` e escolha **Domínio próprio**. O Blup pergunta o domínio, liga onde o site está publicado, mostra o registro de DNS se faltar e liga o HTTPS. Para conferir, volte em **Domínio próprio** e escolha **Ver se já está funcionando**; cada `blup publicar` também confere.
+> [!warning] Mudou de plano?
+> Saindo do Max ou do Ultra, o domínio continua funcionando por 14 dias. Voltando a um desses planos antes disso, nada muda. Depois do prazo, o site fica só em `seusite.getblup.site`, e para usar o domínio de novo é preciso vinculá-lo outra vez.
 
-> [!tip] Domínio raiz no Cloudflare Pages
-> Um domínio raiz (`meusite.com.br`, sem `www` ou `blog` na frente) no Cloudflare Pages precisa estar na sua conta Cloudflare, o que é grátis: adicione o domínio em dash.cloudflare.com e, onde você o comprou, troque os servidores de nome pelos que o Cloudflare mostrar. Se preferir não mudar isso, use `www.meusite.com.br`.
-
-> [!note] Podcast precisa de domínio
-> O feed do podcast dos blogs só funciona nos apps com o endereço completo do site. Veja [Podcast dos blogs](../Recursos%20com%20IA/Podcast%20dos%20blogs.md).
+> [!note] Podcast precisa do endereço completo
+> O feed do podcast dos blogs só funciona nos apps com o endereço completo do site. Com domínio próprio, o feed usa o seu domínio. Veja [Podcast dos blogs](../Recursos%20com%20IA/Podcast%20dos%20blogs.md).

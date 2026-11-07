@@ -14,12 +14,12 @@ Click **Publish**, at the top or at the bottom of the side bar. The screen shows
 
 See the details in [Sites on Blup Cloud](../Blup%20Cloud/Sites%20on%20Blup%20Cloud.md).
 
-## With Cloudflare Pages
+## With Cloudflare Workers
 
-1. Pick **Cloudflare Pages** and click **Connect the account**.
+1. Pick **Cloudflare Workers** and click **Connect the account**.
 2. **Open in the browser** opens the key form, already with the right permissions. Click **Continue to summary** and then **Create Token**.
 3. Paste the key and click **Connect**. It stays only on your computer.
-4. Pick the account and the **Site name**: it becomes the address, `name.pages.dev`.
+4. Pick the account and the **Site name**: it starts the address, `name.youraccount.workers.dev`. If the account doesn't have a workers.dev address yet, the Studio asks for **Your account's address**: type the name and click **Create**. It is chosen once and serves every site of the account.
 5. Click **Publish now**.
 
 ## With GitHub Pages
@@ -40,4 +40,4 @@ The screen shows each step. At the end, you see **Online at** with the address a
 ## After publishing
 
 - To send your changes, click **Publish** again. See [Update the site](Update%20the%20site.md).
-- With Cloudflare or GitHub, the **Custom domain** block shows up. See [Custom domain](Custom%20domain.md).
+- With Blup Cloud, on the Max and Ultra plans, the **Own domain** block shows up. With Cloudflare or GitHub, the site stays at the free address. See [Custom domain](Custom%20domain.md).

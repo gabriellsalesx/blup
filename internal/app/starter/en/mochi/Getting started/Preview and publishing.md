@@ -1,7 +1,7 @@
 ---
 title: Preview and publishing
 date: {{date-2}}
-description: See the site while you write and publish it through Blup Cloud, Cloudflare Pages or GitHub Pages.
+description: See the site while you write and publish it through Blup Cloud, Cloudflare Workers or GitHub Pages.
 tags: [Getting started, Studio]
 image: "[[blup-publicar.jpg]]"
 ---
@@ -19,7 +19,7 @@ The preview also shows drafts, so you can check them before publishing.
 Click **Publish**, at the top. The first time, choose where the site will live:
 
 - **Blup Cloud**: an address like `yoursite.getblup.site`, with nothing to set up. Comes with the paid plans, starting with Pro.
-- **Cloudflare Pages**: free, with an address like `yoursite.pages.dev`. You need a Cloudflare account.
+- **Cloudflare Workers**: free, with an address like `yoursite.youraccount.workers.dev`. You need a Cloudflare account.
 - **GitHub Pages**: free, with an address like `yourname.github.io/yoursite`. You need a GitHub account.
 
 ### Through Blup Cloud
@@ -39,7 +39,7 @@ Connect the account once:
 Done: click **Publish now**. When it finishes, the Studio shows the site's address.
 
 > [!info] In the command line
-> Run `blup publish`. The first time it asks where to publish (Cloudflare Pages or GitHub Pages), opens the key page and asks you to paste the key in the terminal.
+> Run `blup publish`. The first time it asks where to publish (Cloudflare Workers or GitHub Pages), opens the key page and asks you to paste the key in the terminal.
 
 From then on, only what changed is sent.
 
@@ -48,7 +48,7 @@ From then on, only what changed is sent.
 
 ## Custom domain
 
-Want an address of your own, like `mysite.com`? With the site online through Cloudflare or GitHub, go to the **Publish** screen, under **Custom domain**, and type the address. Blup connects the domain where the site is published and, if something is missing, shows the DNS record to create where you bought the domain. In the command line, the way is `blup customize` and then **Custom domain**.
+Want an address of your own, like `mysite.com`? A custom domain is linked only through Blup Cloud, on the Max and Ultra plans. With the site online through Blup Cloud, go to the **Publish** screen, under **Own domain**, and type the address. The Studio shows the DNS records to create where you bought the domain. Through Cloudflare or GitHub, the site stays at the service's free address.
 
 ## What goes online
 

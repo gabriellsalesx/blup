@@ -13,7 +13,7 @@ El podcast es una sección de los blogs (temas **Mochi** y **Nori**) que solo of
 El sitio gana una página con la lista de episodios y un reproductor que pasa solo al siguiente. La pantalla Podcast muestra la dirección del feed, con accesos directos para registrarlo en Spotify y en Apple Podcasts.
 
 > [!info] El feed necesita el sitio en línea
-> Las apps de podcast necesitan la dirección completa del feed. Aparece en la pantalla Podcast después de publicar el sitio (con Blup Cloud, Cloudflare Pages o GitHub Pages). Antes de eso, la pantalla explica lo que falta.
+> Las apps de podcast necesitan la dirección completa del feed. Aparece en la pantalla Podcast después de publicar el sitio (con Blup Cloud, Cloudflare Workers o GitHub Pages). Antes de eso, la pantalla explica lo que falta.
 
 > [!tip] Un feed por idioma
 > Si el blog se publica en más de un idioma, cada idioma tiene su propio feed, con los posts narrados en ese idioma.

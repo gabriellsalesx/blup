@@ -32,7 +32,7 @@ Na tela **Podcast** do Studio ficam os dados do programa:
 A tela também mostra quantos episódios há e o **Feed do podcast**, com **Copiar** e os atalhos para enviar ao Spotify e à Apple Podcasts. Cole o endereço uma vez só: os episódios novos chegam sozinhos quando você publica o site.
 
 > [!warning] Precisa de um endereço completo
-> O Spotify e a Apple precisam do endereço completo do feed. Depois que o site for publicado (pelo Blup Cloud, Cloudflare Pages ou GitHub Pages), o endereço completo aparece na tela Podcast.
+> O Spotify e a Apple precisam do endereço completo do feed. Depois que o site for publicado (pelo Blup Cloud, Cloudflare Workers ou GitHub Pages), o endereço completo aparece na tela Podcast.
 
 > [!info] Pela linha de comando
 > A seção Podcast se liga no Studio. Depois de ligada, os dados do programa ficam nas propriedades da nota **_index** da pasta Podcast, e a página e o feed continuam sendo gerados quando você publica pela linha de comando.

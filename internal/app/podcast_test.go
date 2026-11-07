@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
 )
 
@@ -50,7 +51,9 @@ func TestPodcastSection(t *testing.T) {
 // narration the podcast lists) and the feed of each language.
 func TestPodcastInfo(t *testing.T) {
 	site := settingsSite(t)
-	site.Domain = "blog.exemplo.com"
+	// Published on Blup Cloud with its own domain: the feeds use it.
+	site.Deploy.Provider = config.ProviderBlup
+	site.Deploy.Blup = config.BlupSite{ID: "s1", Slug: "blog", URL: "https://blog.getblup.site/", Base: "https://blog.exemplo.com/"}
 	site.Translations = []string{"en"}
 	if err := AddSection(site, "podcast"); err != nil {
 		t.Fatal(err)

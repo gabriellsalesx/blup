@@ -38,7 +38,7 @@ La portada ideal es un cuadrado de 1400 a 3000 píxeles, en JPG o PNG. El Studio
 
 ## 4. Enviar a Spotify y a Apple
 
-El feed necesita la dirección completa del sitio, así que **publica el sitio** primero, con Blup Cloud, Cloudflare Pages o GitHub Pages (mira [Dónde publicar](../Publicación/Dónde%20publicar.md)). Con dominio propio, el feed usa tu dominio. Entonces la pantalla muestra el **Feed del podcast** de cada idioma, con **Copiar**.
+El feed necesita la dirección completa del sitio, así que **publica el sitio** primero, con Blup Cloud, Cloudflare Workers o GitHub Pages (mira [Dónde publicar](../Publicación/Dónde%20publicar.md)). Con dominio propio en Blup Cloud, el feed usa tu dominio. Entonces la pantalla muestra el **Feed del podcast** de cada idioma, con **Copiar**.
 
 - **Enviar a Spotify**: en Spotify for Creators, elige "ya tengo un podcast" y pega la dirección. El código de confirmación llega al e-mail de contacto.
 - **Enviar a Apple Podcasts**: en Apple Podcasts Connect, inicia sesión con tu Apple ID, crea un programa a partir del feed y espera la aprobación.

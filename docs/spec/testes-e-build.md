@@ -33,14 +33,14 @@ Sem tag `production` e sem `-X ...app.Version=...`, o binário mantém `dev`, e 
 | `internal/wikilinks` | Resolução, conversão, âncoras e backups |
 | `internal/notesync` | Comparação de versões, conflitos, exclusões, falhas e servidor GitHub falso |
 | `internal/cloudcrypt`, `internal/blupcloud` | Cifra, embrulhos, limites de derivação, isolamento de blocos, histórico, sync e publicação com HTTP simulado |
-| `internal/deploy/github` | Repositórios, publicação, Pages, domínios e autenticação com HTTP simulado |
-| `internal/deploy/cfpages` | Hashes, upload, erros e domínios com API simulada |
+| `internal/deploy/github` | Repositórios, publicação, Pages e autenticação com HTTP simulado |
+| `internal/deploy/cfworkers` | Hashes, sessão de upload, buckets, publicação do Worker, subdomínio workers.dev e erros com API simulada |
 | `internal/lock` | Criptografia e pós-processamento |
 | `internal/pwa` | Ícones e worker |
 | `internal/narrate` | Limpeza, partes, HTTP e MP3 |
 | `internal/kokoro` | Tokens, fonemas, estilo, pausas e instalação simulada |
 | `internal/update` | Versões, download, checksums, troca e rollback |
-| `internal/app` | Criação, exemplos, configurações, domínios, feedback, arquivos, autores, anexos, snapshots e recuperação |
+| `internal/app` | Criação, exemplos, configurações, domínio Blup Cloud, feedback, arquivos, autores, anexos, snapshots e recuperação |
 | `internal/scaffold` | Montagem e integração real com Hugo |
 
 `internal/scaffold/scaffold_test.go` chama `hugo.Find`; se não houver Hugo compatível, pula a integração. `TestBuild` exercita Mochi e Bento com o cofre de `testdata/vault`, valida links, callouts, MathML, WebP, título, imagens sociais, proteção e notas escondidas. O teste de Hugo sem modo Blup verifica que não publica o corpo protegido em claro. Esse arquivo não inclui Nori no loop principal.

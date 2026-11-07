@@ -69,7 +69,7 @@ func parseBuildFlags(args []string) (buildOptions, []string, error) {
 func buildCommand(ctx context.Context, site *config.Site, o buildOptions) error {
 	base := o.url
 	if base == "" {
-		base = siteURL(site, "/")
+		base = "/"
 	}
 	dir, err := build(ctx, site, base)
 	if err != nil || o.out == "" {

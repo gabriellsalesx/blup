@@ -16,7 +16,7 @@ Running just `blup` opens the **menu**: preview, publish, customize, sync, conve
 | `blup new` | `blup novo` | Creates a new site |
 | `blup preview` | `blup ver` | Opens the preview in the browser |
 | `blup publish` | `blup publicar` | Puts the site online |
-| `blup customize` | `blup personalizar` | Menu, sections, social links, logo, favicon, author, custom domain, general password and comments |
+| `blup customize` | `blup personalizar` | Menu, sections, social links, logo, favicon, author, general password and comments |
 | `blup sync` | `blup sincronizar` | Keeps the notes in a private GitHub repository |
 | `blup convert` | `blup converter` | Swaps `[[wikilinks]]` for standard links |
 | `blup build` | `blup gerar` | Builds the site into `public/`, with no questions |
@@ -35,15 +35,15 @@ Blup remembers every site you created. In the menu, **Switch to another site** p
 
 ## Site inside a subfolder
 
-Want the docs at `mysite.pages.dev/bento/`, next to a landing page at the root? Build the site for that address and copy it into the landing page's folder:
+Want the docs at `mysite.com/bento/`, next to a landing page at the root? Build the site for that address and copy it into the landing page's folder:
 
 ```sh
-blup build --url https://mysite.pages.dev/bento/ --out ../my-landing/bento
+blup build --url https://mysite.com/bento/ --out ../my-landing/bento
 ```
 
 - `--url` is the final address of the site, and it can be a subfolder. Links, images and search then work inside it.
 - `--out` copies the finished site into another folder, replacing what Blup had put there before. To be safe, Blup never deletes a folder it didn't fill itself.
-- Then publish the landing page's folder, for example with Cloudflare Pages connected to a GitHub repository: each `git push` updates the site.
+- Then publish the landing page's folder, for example with a service connected to a GitHub repository: each `git push` updates the site.
 
 > [!tip] In Portuguese too
 > `blup gerar --url … --saida …` does the same.

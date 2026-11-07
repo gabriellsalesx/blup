@@ -19,7 +19,7 @@ weight: 2
 Every plan has end-to-end encryption. Ultra also has priority support.
 
 > [!info] Custom domain
-> Custom domains for Blup Cloud sites are still on their way to the Max and Ultra plans.
+> Custom domains for Blup Cloud sites are still on their way to the Max and Ultra plans. With Cloudflare Workers or GitHub Pages, the site stays at the service's free address.
 
 > [!tip] You can do without a plan too
-> Publishing on Cloudflare Pages or GitHub Pages is free. To narrate and translate, use the voice and translation on your computer, or your own OpenRouter key.
+> Publishing on Cloudflare Workers or GitHub Pages is free. To narrate and translate, use the voice and translation on your computer, or your own OpenRouter key.

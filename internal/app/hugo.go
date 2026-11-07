@@ -189,9 +189,12 @@ func hugoProblems(log string) []string {
 	return out
 }
 
-func siteURL(site *config.Site, fallback string) string {
-	if site.Domain != "" {
-		return fmt.Sprintf("https://%s/", site.Domain)
+// publishedBase is the address the site was last published to ("" when
+// never): on Blup Cloud the one its last build used (its own domain when
+// active), elsewhere where it is online.
+func publishedBase(site *config.Site) string {
+	if site.Deploy.Provider == config.ProviderBlup && site.Deploy.Blup.Base != "" {
+		return site.Deploy.Blup.Base
 	}
-	return fallback
+	return LoadTarget(site).URL
 }

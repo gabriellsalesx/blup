@@ -30,7 +30,7 @@ type SiteParts struct {
 	SiteDir    string `json:"siteDir"`
 	NotesDir   string `json:"notesDir"`
 	NotesOwned bool   `json:"notesOwned"` // a folder Blup made for this site (else a vault the user already had)
-	Published  string `json:"published"`  // "Cloudflare Pages: projeto" or "GitHub Pages: dono/repo"
+	Published  string `json:"published"`  // "Cloudflare Workers: nome" or "GitHub Pages: dono/repo"
 	BlupSite   string `json:"blupSite"`   // its address on Blup Cloud, when it is published there
 	SyncRepo   string `json:"syncRepo"`
 	CloudNotes bool   `json:"cloudNotes"` // its notes are synced to Blup Cloud
@@ -59,8 +59,8 @@ func PartsOf(dir string) (SiteParts, error) {
 	p.NotesOwned = site.Folder == "" && filepath.Dir(filepath.Clean(site.Vault)) == filepath.Dir(DefaultNotesDir("x"))
 	switch site.Deploy.Provider {
 	case config.ProviderCloudflare:
-		if site.Deploy.Cloudflare.Project != "" {
-			p.Published = "Cloudflare Pages: " + site.Deploy.Cloudflare.Project
+		if site.Deploy.Cloudflare.URL != "" {
+			p.Published = "Cloudflare Workers: " + site.Deploy.Cloudflare.Worker
 		}
 	case config.ProviderGitHub:
 		if site.Deploy.GitHub.Repo != "" {
@@ -106,11 +106,13 @@ func DeleteSite(ctx context.Context, dir string, c DeleteChoice) ([]DeleteProble
 		switch site.Deploy.Provider {
 		case config.ProviderCloudflare:
 			d := site.Deploy.Cloudflare
-			if d.Project != "" {
+			// Only a Worker Blup published (URL set): a name chosen but never
+			// published may be another Worker of the account.
+			if d.Worker != "" && d.URL != "" {
 				if cf, err := cloudflareClient(ctx); err != nil {
 					fail("published", err, "https://dash.cloudflare.com/")
-				} else if err := cf.DeleteProject(ctx, d.Account, d.Project); err != nil {
-					fail("published", err, "https://dash.cloudflare.com/"+d.Account+"/pages/view/"+d.Project+"/settings/production")
+				} else if err := cf.Delete(ctx, d.Account, d.Worker); err != nil {
+					fail("published", err, "https://dash.cloudflare.com/"+d.Account+"/workers/services/view/"+d.Worker+"/production/settings")
 				}
 			}
 		case config.ProviderGitHub:

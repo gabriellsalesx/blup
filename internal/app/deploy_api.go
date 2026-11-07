@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/gabriellsalesx/blup/internal/config"
-	"github.com/gabriellsalesx/blup/internal/deploy/cfpages"
+	"github.com/gabriellsalesx/blup/internal/deploy/cfworkers"
 	"github.com/gabriellsalesx/blup/internal/deploy/github"
 	"github.com/gabriellsalesx/blup/internal/i18n"
 	"github.com/gabriellsalesx/blup/internal/notesync"
@@ -77,8 +77,9 @@ func GitHubNewRepoLink(site *config.Site, kind, name string) string {
 	return ""
 }
 
-// CloudflareKeyLink opens Cloudflare's form for a new key (Pages: Edit).
-func CloudflareKeyLink() string { return cfpages.TokenTemplateURL }
+// CloudflareKeyLink opens Cloudflare's form for a new key (Workers
+// Scripts: Edit).
+func CloudflareKeyLink() string { return cfworkers.TokenTemplateURL }
 
 // ConnectGitHub checks a GitHub key and saves it; it returns the login.
 func ConnectGitHub(ctx context.Context, token string) (string, error) {
@@ -97,8 +98,8 @@ func ConnectGitHub(ctx context.Context, token string) (string, error) {
 
 // ConnectCloudflare checks a Cloudflare key and saves it; it returns the
 // accounts the key can publish to.
-func ConnectCloudflare(ctx context.Context, token string) ([]cfpages.Account, error) {
-	c := &cfpages.Client{Token: strings.TrimSpace(token)}
+func ConnectCloudflare(ctx context.Context, token string) ([]cfworkers.Account, error) {
+	c := &cfworkers.Client{Token: strings.TrimSpace(token)}
 	if err := c.VerifyToken(ctx); err != nil {
 		return nil, errors.New(describe(err))
 	}
@@ -132,7 +133,7 @@ func Disconnect(account string) error {
 }
 
 // CloudflareAccounts lists the accounts of the saved Cloudflare key.
-func CloudflareAccounts(ctx context.Context) ([]cfpages.Account, error) {
+func CloudflareAccounts(ctx context.Context) ([]cfworkers.Account, error) {
 	c, err := savedCloudflare()
 	if err != nil {
 		return nil, err
@@ -144,7 +145,7 @@ func CloudflareAccounts(ctx context.Context) ([]cfpages.Account, error) {
 	return a, nil
 }
 
-func savedCloudflare() (*cfpages.Client, error) {
+func savedCloudflare() (*cfworkers.Client, error) {
 	creds, err := config.LoadCredentials()
 	if err != nil {
 		return nil, err
@@ -152,7 +153,7 @@ func savedCloudflare() (*cfpages.Client, error) {
 	if creds.CloudflareToken == "" {
 		return nil, errors.New(i18n.T("pub.connect_cloudflare"))
 	}
-	return &cfpages.Client{Token: creds.CloudflareToken}, nil
+	return &cfworkers.Client{Token: creds.CloudflareToken}, nil
 }
 
 func savedGitHub(ctx context.Context) (*github.Client, string, error) {
@@ -172,7 +173,7 @@ func savedGitHub(ctx context.Context) (*github.Client, string, error) {
 }
 
 // Target is where the site is published: "blup" (Slug), "cloudflare"
-// (Account, Project) or "github" (Repo).
+// (Account, Project: the Worker's name) or "github" (Repo).
 type Target struct {
 	Provider string `json:"provider"`
 	Account  string `json:"account"`
@@ -189,12 +190,12 @@ type Target struct {
 // for a site never published.
 func LoadTarget(site *config.Site) Target {
 	d := site.Deploy
-	t := Target{Provider: string(d.Provider), Account: d.Cloudflare.Account, Project: d.Cloudflare.Project, Repo: d.GitHub.Repo, Slug: d.Blup.Slug, SlugFixed: d.Blup.ID != ""}
+	t := Target{Provider: string(d.Provider), Account: d.Cloudflare.Account, Project: d.Cloudflare.Worker, Repo: d.GitHub.Repo, Slug: d.Blup.Slug, SlugFixed: d.Blup.ID != ""}
 	if t.Slug == "" {
 		t.Slug = blupSlug(site.Title)
 	}
 	if t.Project == "" {
-		t.Project = cfpages.ProjectNameFromTitle(site.Title)
+		t.Project = cfworkers.NameFromTitle(site.Title)
 	}
 	if t.Repo == "" {
 		t.Repo = Slug(site.Title)
@@ -202,10 +203,10 @@ func LoadTarget(site *config.Site) Target {
 	switch {
 	case d.Provider == config.ProviderBlup && d.Blup.URL != "":
 		t.URL = d.Blup.URL
-	case d.Provider == config.ProviderCloudflare && d.Cloudflare.Subdomain != "":
-		t.URL = siteURL(site, "https://"+d.Cloudflare.Subdomain+"/")
+	case d.Provider == config.ProviderCloudflare && d.Cloudflare.URL != "":
+		t.URL = d.Cloudflare.URL
 	case d.Provider == config.ProviderGitHub && d.GitHub.Owner != "" && d.GitHub.Repo != "":
-		t.URL = siteURL(site, github.ExpectedURL(d.GitHub.Owner, d.GitHub.Repo))
+		t.URL = github.ExpectedURL(d.GitHub.Owner, d.GitHub.Repo)
 	}
 	return t
 }
@@ -226,13 +227,15 @@ func SetTarget(site *config.Site, t Target) error {
 		if t.Account == "" {
 			return errors.New(i18n.T("pub.pick_account"))
 		}
-		if err := cfpages.ValidateProjectName(t.Project); err != nil {
-			return err
+		if err := cfworkers.ValidateName(t.Project); err != nil {
+			return errors.New(i18n.T("cf.err_name"))
 		}
-		if site.Deploy.Cloudflare.Project != t.Project {
-			site.Deploy.Cloudflare.Subdomain = ""
+		// Another account or name is another Worker: it is checked again
+		// before the first publish (the name must be free there).
+		if cf := site.Deploy.Cloudflare; cf.Worker != t.Project || cf.Account != t.Account {
+			site.Deploy.Cloudflare = config.Cloudflare{}
 		}
-		site.Deploy.Cloudflare.Account, site.Deploy.Cloudflare.Project = t.Account, t.Project
+		site.Deploy.Cloudflare.Account, site.Deploy.Cloudflare.Worker = t.Account, t.Project
 	case config.ProviderGitHub:
 		if strings.TrimSpace(t.Repo) == "" {
 			return errors.New(i18n.T("required"))
@@ -256,7 +259,7 @@ func PublishNow(ctx context.Context, site *config.Site) (string, error) {
 	case config.ProviderBlup:
 		live, err = deployBlup(ctx, site)
 	case config.ProviderCloudflare:
-		var c *cfpages.Client
+		var c *cfworkers.Client
 		if c, err = savedCloudflare(); err == nil {
 			live, err = deployCloudflare(ctx, site, c)
 		}

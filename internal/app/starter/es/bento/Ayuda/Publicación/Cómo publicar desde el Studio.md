@@ -4,7 +4,7 @@ description: La pantalla Publicar lo hace todo, desde elegir el lugar hasta la d
 weight: 2
 ---
 1. Haz clic en **Publicar**, arriba en el Studio.
-2. Elige dónde publicar: **Blup Cloud**, **Cloudflare Pages** o **GitHub Pages**.
+2. Elige dónde publicar: **Blup Cloud**, **Cloudflare Workers** o **GitHub Pages**.
 3. En Blup Cloud, inicia sesión en tu cuenta y elige la dirección. En los otros, conecta la cuenta siguiendo los pasos de la pantalla.
 4. Haz clic en **Publicar** y sigue el avance.
 

@@ -1,7 +1,7 @@
 ---
 title: Prévia e publicação
 date: {{date-2}}
-description: Veja o site enquanto escreve e publique pelo Blup Cloud, pelo Cloudflare Pages ou pelo GitHub Pages.
+description: Veja o site enquanto escreve e publique pelo Blup Cloud, pelo Cloudflare Workers ou pelo GitHub Pages.
 tags: [Começando, Studio]
 image: "[[blup-publicar.jpg]]"
 ---
@@ -19,7 +19,7 @@ A prévia mostra também os rascunhos, para você conferir antes de publicar.
 Clique em **Publicar**, no topo. Na primeira vez, escolha onde o site vai ficar:
 
 - **Blup Cloud**: endereço como `seusite.getblup.site`, sem configurar nada. Vem nos planos pagos, a partir do Pro.
-- **Cloudflare Pages**: grátis, com endereço como `seusite.pages.dev`. Precisa de uma conta no Cloudflare.
+- **Cloudflare Workers**: grátis, com endereço como `seusite.suaconta.workers.dev`. Precisa de uma conta no Cloudflare.
 - **GitHub Pages**: grátis, com endereço como `seunome.github.io/seusite`. Precisa de uma conta no GitHub.
 
 ### Pelo Blup Cloud
@@ -39,7 +39,7 @@ Conecte a conta uma vez:
 Pronto: clique em **Publicar agora**. Quando terminar, o Studio mostra o endereço do site.
 
 > [!info] Pela linha de comando
-> Rode `blup publicar`. Na primeira vez ele pergunta onde publicar (Cloudflare Pages ou GitHub Pages), abre a página da chave e pede para colar no terminal.
+> Rode `blup publicar`. Na primeira vez ele pergunta onde publicar (Cloudflare Workers ou GitHub Pages), abre a página da chave e pede para colar no terminal.
 
 Das próximas vezes, só o que mudou é enviado.
 
@@ -48,7 +48,7 @@ Das próximas vezes, só o que mudou é enviado.
 
 ## Domínio próprio
 
-Quer um endereço seu, como `meusite.com.br`? Com o site no ar pelo Cloudflare ou pelo GitHub, vá à tela **Publicar**, em **Domínio próprio**, e digite o endereço. O Blup liga o domínio onde o site está publicado e, se faltar algo, mostra o registro de DNS para criar onde você comprou o domínio. Pela linha de comando, o caminho é `blup personalizar` e **Domínio próprio**.
+Quer um endereço seu, como `meusite.com.br`? O domínio próprio é ligado só pelo Blup Cloud, nos planos Max e Ultra. Com o site no ar pelo Blup Cloud, vá à tela **Publicar**, em **Domínio próprio**, e digite o endereço. O Studio mostra os registros de DNS para criar onde você comprou o domínio. Pelo Cloudflare ou pelo GitHub, o site fica no endereço grátis do serviço.
 
 ## O que vai para o ar
 

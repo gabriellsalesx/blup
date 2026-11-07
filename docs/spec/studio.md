@@ -14,7 +14,7 @@ O idioma inicial segue `config.Global.Lang`, senão `i18n.System()`, em `studio/
 
 ## Bindings e eventos
 
-Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsalesx/blup/`, especialmente `studio/studio.ts` e `studio/models.ts`, com modelos de `internal/app`, `config` e `deploy/cfpages`. A interface importa essas funções em vez de construir endpoints HTTP próprios para cada operação local.
+Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsalesx/blup/`, especialmente `studio/studio.ts` e `studio/models.ts`, com modelos de `internal/app`, `config` e `deploy/cfworkers`. A interface importa essas funções em vez de construir endpoints HTTP próprios para cada operação local.
 
 `studio/build/Taskfile.yml` gera bindings com `wails3 generate bindings`, flags de build, limpeza do destino, TypeScript e interfaces. `vite.config.ts` aplica o plugin Wails ao diretório de bindings. Eles são artefatos de integração derivados das assinaturas Go e precisam acompanhar as alterações de serviço. Campos opcionais, ponteiros, slices/mapas nulos e números seguem os tipos gerados; a interface trata ausência e estreita propriedades YAML dinâmicas. O código em `frontend/src` não usa `any` para contornar a checagem. Bindings gerados de `any` Go continuam podendo conter esse tipo. A [spec de contratos](tipagem-e-contratos.md) detalha a fronteira e seus limites.
 
@@ -28,7 +28,7 @@ Os bindings TypeScript ficam em `studio/frontend/bindings/github.com/gabriellsal
 | `feedback_board.go` | `FeedbackPosts` e `SetFeedbackStatus`, para os pedidos reais do quadro Bento |
 | `translate.go`, `localtr.go` | Idiomas de notas e site, tradução remota/local, revisão, textos de propriedades e atualização da prévia |
 | `authors.go`, `attachments.go` | CRUD de perfis e gestão dos anexos |
-| `publish.go` | Contas, destino, publicação, sync e domínio |
+| `publish.go` | Contas, destino, publicação, sync e domínio Blup Cloud |
 | `cloud.go` | Conta/sync Blup Cloud, descoberta/recuperação GitHub, senha geral e `PurgeHistory` do cofre aberto |
 | `narration.go` | Modelos, vozes, amostras, instalação local, chave remota e geração |
 | `media.go` | Detecção local de reprodução MP3 por `canPlayMP3` |
@@ -310,7 +310,7 @@ Em Linux, `canPlayMP3` procura `libgstaudioparsers.so` nos diretórios GStreamer
 | Comentários, `CommentsPanel.svelte` | Ativa/desativa feedback, prepara repositório e orienta instalação do App |
 | Feedback, `FeedbackPanel.svelte` | Só no Bento com a seção Feedback: lista issues de pedidos via `FeedbackPosts`, filtra por categoria, abre no GitHub e muda o status via `SetFeedbackStatus` |
 | Cookies, `CookiesPanel.svelte` | Ferramentas, IDs, URLs próprias, banner e política |
-| Publicação, `PublishPanel.svelte` | Conectar contas, destino, publicar, acompanhar log, domínio e sync |
+| Publicação, `PublishPanel.svelte` | Conectar contas, destino (inclusive o subdomínio workers.dev da conta Cloudflare), publicar, acompanhar log e sync; domínio só pelo `BlupDomain.svelte` |
 | Podcast, `PodcastPanel.svelte` | Nos blogs com a seção: identidade, capa, episódios e links do feed por idioma |
 | Lixeira, `TrashPanel.svelte` | Restaurar, excluir item e esvaziar |
 

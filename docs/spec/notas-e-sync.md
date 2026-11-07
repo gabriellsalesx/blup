@@ -102,11 +102,11 @@ Se o remoto reaparece vazio depois de uma base com mais de um arquivo, `snapshot
 | Viaja no TOML portátil | Fica fora dele |
 | --- | --- |
 | `version`, `title`, `description`, `author`, `lang`, `model`, `kind` | Caminhos `vault`, `folder` e diretório técnico |
-| `domain`, `translations`, `home`, `logo_link` | `Site.Password` e senha global |
+| `translations`, `home`, `logo_link` | `Site.Password` e senha global |
 | `cookies` | `deploy`, `feedback`, tokens, preferências Studio e estado local |
 | Identidade e idiomas do site | `sync`, reconstruído pelo destino escolhido |
 
-`sharedSite` não serializa `Deploy` nem `Feedback`, e a leitura de arquivos antigos não importa essas tabelas. A cópia portátil não troca contas ou destinos de publicação. `translations` usa presença explícita: se ausente num arquivo antigo, preserva os idiomas locais; lista presente e vazia limpa a lista, e valores presentes são filtrados para idiomas conhecidos, únicos e diferentes do principal. `domain`, `home` e `logo_link` continuam portáteis, mas o vínculo Blup Cloud é estado separado no servidor. A leitura filtra `logo_link` por `ValidLogoLink`; valor inválido volta à home. `home` guarda o nome da pasta e pode perder validade ao renomeá-la.
+`sharedSite` não serializa `Deploy` nem `Feedback`, e a leitura de arquivos antigos não importa essas tabelas. A cópia portátil não troca contas ou destinos de publicação. `translations` usa presença explícita: se ausente num arquivo antigo, preserva os idiomas locais; lista presente e vazia limpa a lista, e valores presentes são filtrados para idiomas conhecidos, únicos e diferentes do principal. `home` e `logo_link` continuam portáteis; o domínio próprio não viaja, porque é vínculo do Blup Cloud guardado no servidor. A leitura filtra `logo_link` por `ValidLogoLink`; valor inválido volta à home. `home` guarda o nome da pasta e pode perder validade ao renomeá-la.
 
 Overrides em `layouts/`, `assets/`, `static/`, `i18n/` e `data/` do diretório técnico não são incluídos por esse mecanismo. As notas, inclusive YAML com senhas literais, continuam sendo arquivos enviados ao repositório de notas.
 

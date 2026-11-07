@@ -516,11 +516,11 @@ func TestPodcastPage(t *testing.T) {
 			}
 			dir := t.TempDir()
 			s := config.NewSite(dir)
-			s.Title, s.Lang, s.Model, s.Vault, s.Domain = "Blog", "pt", model, vault, "blog.exemplo.com"
+			s.Title, s.Lang, s.Model, s.Vault = "Blog", "pt", model, vault
 			if err := Write(s); err != nil {
 				t.Fatal(err)
 			}
-			if out, err := bin.Command(context.Background(), dir, "--logLevel", "warn").CombinedOutput(); err != nil {
+			if out, err := bin.Command(context.Background(), dir, "--logLevel", "warn", "--baseURL", "https://blog.exemplo.com/").CombinedOutput(); err != nil {
 				t.Fatalf("hugo: %v\n%s", err, out)
 			}
 			page, err := os.ReadFile(filepath.Join(dir, "public", "podcast", "index.html"))

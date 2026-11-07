@@ -4,7 +4,7 @@ import wails from "@wailsio/runtime/plugins/vite";
 
 // Under wails3 dev, Vite's client reloads the window through a WebSocket of
 // its dev server: index.html's Content-Security-Policy lets it connect there
-// in dev only (the built Studio keeps connect-src 'self').
+// in dev only (the built Studio keeps connect-src 'self' plus the error reports' ingest).
 const devSocket = (): Plugin => ({
   name: "blup-dev-csp",
   apply: "serve",

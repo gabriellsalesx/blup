@@ -1,19 +1,20 @@
 ---
 title: Publicar
-description: Cloudflare Pages ou GitHub Pages, de graça. Um comando a cada atualização.
+description: Cloudflare Workers ou GitHub Pages, de graça. Um comando a cada atualização.
 weight: 3
 ---
-Rode `blup publicar`. Na primeira vez, escolha onde: Cloudflare Pages ou GitHub Pages. Os dois são gratuitos. A publicação pelo Blup Cloud é feita no Studio; veja [Onde publicar](../Publicação/Onde%20publicar.md).
+Rode `blup publicar`. Na primeira vez, escolha onde: Cloudflare Workers ou GitHub Pages. Os dois são gratuitos. A publicação pelo Blup Cloud é feita no Studio; veja [Onde publicar](../Publicação/Onde%20publicar.md).
 
 ![O Blup lançando o site](../../Anexos/blup-publicar.jpg)
 
-## Cloudflare Pages
+## Cloudflare Workers
 
-Rápido no mundo todo, com endereço como `meusite.pages.dev`.
+Rápido no mundo todo, com endereço como `meusite.suaconta.workers.dev`.
 
 1. Crie uma conta grátis em dash.cloudflare.com, se não tiver.
-2. O Blup abre o formulário da chave de acesso. Confira a permissão **Cloudflare Pages: Edit**, crie a chave e cole no terminal.
-3. Escolha o nome do projeto: ele vira o endereço.
+2. O Blup abre o formulário da chave de acesso. Confira a permissão **Account › Workers Scripts › Edit**, crie a chave e cole no terminal.
+3. Se a conta ainda não tiver um endereço no workers.dev, o Blup pergunta o nome dele. Ele é escolhido uma vez e vale para todos os sites da conta.
+4. Escolha o nome do site: ele vira o começo do endereço. Se já existir outro site com esse nome na conta, o Blup pede outro.
 
 ## GitHub Pages
 
@@ -29,14 +30,4 @@ Endereço como `seunome.github.io/meusite`.
 
 ## Domínio próprio
 
-Para o site responder num endereço seu, como `meusite.com.br` ou `blog.meusite.com.br`, rode `blup personalizar` e escolha **Domínio próprio**. O Blup:
-
-1. pergunta o domínio;
-2. liga o domínio onde o site está publicado, no Cloudflare Pages ou no GitHub Pages;
-3. mostra o registro de DNS exato para criar onde você comprou o domínio, se faltar algum;
-4. liga o HTTPS quando estiver tudo pronto.
-
-O DNS pode levar de minutos a algumas horas. Para conferir, volte em **Domínio próprio** e escolha **Ver se já está funcionando**; cada `blup publicar` também confere. Pela mesma opção você troca de domínio ou volta ao endereço grátis.
-
-> [!tip] Domínio raiz no Cloudflare Pages
-> Um domínio raiz (`meusite.com.br`, sem `www` ou `blog` na frente) no Cloudflare Pages precisa estar na sua conta Cloudflare, o que é grátis. Se preferir não mudar isso, use `www.meusite.com.br`.
+Pelo Cloudflare Workers e pelo GitHub Pages, o site fica no endereço grátis do serviço. Um domínio seu, como `meusite.com.br`, é ligado só pelo Blup Cloud, nos planos Max e Ultra, na tela **Publicar** do Studio. Veja [Domínio próprio](../Publicação/Domínio%20próprio.md).

@@ -74,4 +74,4 @@ social:
 | Publish | Where and how the site goes live. See [Publish from the Studio](../Publishing/Publish%20from%20the%20Studio.md) |
 
 > [!note] What about blup.toml?
-> In the site folder on your computer, **blup.toml** keeps what is not content: where to publish, the custom domain, the languages, the site password and the sync repository. The Studio and `blup customize` change all of it without you opening the file.
+> In the site folder on your computer, **blup.toml** keeps what is not content: where to publish, the languages, the site password and the sync repository. The Studio and `blup customize` change all of it without you opening the file.

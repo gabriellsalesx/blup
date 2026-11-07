@@ -13,7 +13,7 @@ The podcast is a section for blogs (**Mochi** and **Nori** themes) that only Blu
 The site gets a page with the list of episodes and a player that moves on to the next one by itself. The Podcast screen shows the feed address, with shortcuts to submit it to Spotify and Apple Podcasts.
 
 > [!info] The feed needs the site to be live
-> Podcast apps need the full address of the feed. It shows on the Podcast screen once the site is published (with Blup Cloud, Cloudflare Pages or GitHub Pages). Before that, the screen explains what is missing.
+> Podcast apps need the full address of the feed. It shows on the Podcast screen once the site is published (with Blup Cloud, Cloudflare Workers or GitHub Pages). Before that, the screen explains what is missing.
 
 > [!tip] One feed per language
 > If the blog is published in more than one language, each language has its own feed, with the posts narrated in that language.

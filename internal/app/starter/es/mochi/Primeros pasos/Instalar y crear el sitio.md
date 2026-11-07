@@ -60,7 +60,7 @@ Después, ejecuta `blup`. La primera vez pregunta el idioma y abre el asistente 
 | `blup new` | Crea un sitio nuevo |
 | `blup preview` | Abre la vista previa en el navegador |
 | `blup publish` | Pone el sitio en línea |
-| `blup customize` | Menú, redes, logo, comentarios, cookies y dominio |
+| `blup customize` | Menú, redes, logo, comentarios y cookies |
 | `blup sync` | Guarda las notas en un repositorio privado de GitHub |
 | `blup convert` | Cambia los `[[wikilinks]]` por enlaces estándar |
 | `blup update` | Actualiza Blup |

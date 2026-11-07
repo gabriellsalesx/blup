@@ -14,12 +14,12 @@ Clique em **Publicar**, no topo ou no fim da faixa lateral. A tela mostra **Onde
 
 Veja os detalhes em [Sites pelo Blup Cloud](../Blup%20Cloud/Sites%20pelo%20Blup%20Cloud.md).
 
-## Pelo Cloudflare Pages
+## Pelo Cloudflare Workers
 
-1. Escolha **Cloudflare Pages** e clique em **Conectar a conta**.
+1. Escolha **Cloudflare Workers** e clique em **Conectar a conta**.
 2. **Abrir no navegador** abre o formulário da chave, já com as permissões certas. Clique em **Continue to summary** e depois em **Create Token**.
 3. Cole a chave e clique em **Conectar**. Ela fica só no seu computador.
-4. Escolha a conta e o **Nome do site**: ele vira o endereço, `nome.pages.dev`.
+4. Escolha a conta e o **Nome do site**: ele vira o começo do endereço, `nome.suaconta.workers.dev`. Se a conta ainda não tiver um endereço no workers.dev, o Studio pede o **Endereço da sua conta**: escreva o nome e clique em **Criar**. Ele é escolhido uma vez e vale para todos os sites da conta.
 5. Clique em **Publicar agora**.
 
 ## Pelo GitHub Pages
@@ -40,4 +40,4 @@ A tela mostra cada etapa. No fim, aparece **No ar em** com o endereço e o botã
 ## Depois de publicar
 
 - Para mandar as mudanças, clique em **Publicar** de novo. Veja [Atualizar o site](Atualizar%20o%20site.md).
-- Pelo Cloudflare ou pelo GitHub, aparece o bloco **Domínio próprio**. Veja [Domínio próprio](Domínio%20próprio.md).
+- Pelo Blup Cloud, nos planos Max e Ultra, aparece o bloco **Domínio próprio**. Pelo Cloudflare ou pelo GitHub, o site fica no endereço grátis. Veja [Domínio próprio](Domínio%20próprio.md).

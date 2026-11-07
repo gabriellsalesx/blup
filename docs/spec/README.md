@@ -19,7 +19,7 @@ Para a visão entre componentes, consulte [Arquitetura](../arquitetura.md). A op
 | [Blup Pulse](blup-pulse.md) | Fases 1 a 4 com gates locais fechados: ingestão, monitores, páginas, avisos, cobrança e domínio; staging, aceite Studio e liberação comercial pendentes |
 | [Blup Deals](blup-deals.md) | F1 local: canais, afiliados, ofertas/jogos, links curtos, cliques e painel; preços aprovados no sandbox, 100 posts/dia e evolução F2/F3 |
 | [Calendário e lembretes](calendario-e-lembretes.md) | Eventos Markdown, recorrência, notificações locais e e-mails Max 50 / Ultra 100 |
-| [Publicação](publicacao.md) | Sites em `getblup.site`, Cloudflare Pages, GitHub Pages e domínio próprio |
+| [Publicação](publicacao.md) | Sites em `getblup.site`, Cloudflare Workers e GitHub Pages; domínio próprio só no Blup Cloud |
 | [Narração e voz](narracao-e-voz.md) | Idioma pela pasta da nota, voz por idioma, OpenRouter, Blup Cloud, MP3 e Kokoro |
 | [Studio](studio.md) | Wails, Svelte, editor, Feedback, tradução, reinício da prévia, painéis, terminal e integração desktop |
 | [Tipagem e contratos](tipagem-e-contratos.md) | Hono RPC/Zod, bindings/eventos Wails, null/opcionais, arquivos externos e limites residuais |
@@ -46,7 +46,7 @@ O site publicado é um conjunto de arquivos estáticos. Busca usa Pagefind no na
 | `theme/` | Templates, CSS, JavaScript, fontes, traduções e imagens padrão do site |
 | `internal/lock` | Substitui regiões protegidas por conteúdo criptografado após Hugo |
 | `internal/pagefind`, `internal/pwa` | Índice estático, ícones e service worker depois do build |
-| `internal/deploy/github`, `internal/deploy/cfpages` | Publicação por HTTP, sem `git` nem `wrangler` |
+| `internal/deploy/github`, `internal/deploy/cfworkers` | Publicação por HTTP, sem `git` nem `wrangler` |
 | `internal/notesync` | Comparação de base, disco e remoto; transporte GitHub ou adaptador cifrado Blup Cloud |
 | `internal/blupcloud`, `internal/cloudcrypt` | Cliente Blup Cloud, blocos e manifestos cifrados, histórico e publicação |
 | `internal/narrate`, `internal/kokoro` | Texto falável, geração de voz remota ou local e MP3 |

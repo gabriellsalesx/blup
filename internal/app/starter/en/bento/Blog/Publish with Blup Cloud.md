@@ -5,7 +5,7 @@ description: A getblup.site address with nothing to set up, and your notes on al
 tags: [News, Blup Cloud]
 image: "[[blup-publicar.jpg]]"
 ---
-Publishing on Cloudflare Pages or GitHub Pages is still free. But now there is a way with no setup at all: **Blup Cloud**.
+Publishing on Cloudflare Workers or GitHub Pages is still free. But now there is a way with no setup at all: **Blup Cloud**.
 
 ## Publish
 

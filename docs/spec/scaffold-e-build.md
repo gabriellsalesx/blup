@@ -12,7 +12,7 @@ Os diretórios de overrides são preservados. O tema pode ser substituído parci
 
 `HugoConfig(site, preview)` define:
 
-- URL base `/` ou domínio próprio; título, `locale` `pt-BR`/`en-US`, idioma e `theme = "blup"`.
+- URL base `/` (o build passa o endereço real); título, `locale` `pt-BR`/`en-US`, idioma e `theme = "blup"`.
 - Remoção de acentos em caminhos, aliases desativados, robots habilitado, taxonomias `tags` e `authors`, paginação de 10 itens.
 - Datas na ordem `date`, `publishDate`, `created`, nome do arquivo e mtime para blogs. Bento usa somente as três propriedades, evitando reordenar documentação por mtime.
 - `lastmod` por `lastmod`, `updated`, `modified`, mtime.
@@ -66,7 +66,7 @@ Pagefind é fixado em `1.5.2`, com cache `<cache>/blup/pagefind-1.5.2/pagefind`,
 
 No publish Blup Cloud, `blupBase` escolhe domínio ativo com SSL/direito ou carência futura, senão o endereço nativo; falha temporária de consulta conserva a base anterior. O resultado registra `Deploy.Blup.Base`, e o Studio pode republicar para atualizar canonical, feed e sitemap. Isso não cria redirects entre hosts.
 
-O build não acrescenta `--buildDrafts`. Sem domínio ou URL de deploy informada, `buildCommand` usa `/`. A cópia opcional de saída é descrita em [CLI](cli.md).
+O build não acrescenta `--buildDrafts`. Sem URL de deploy informada, `buildCommand` usa `/`. A cópia opcional de saída é descrita em [CLI](cli.md).
 
 `encryptLocked` consulta o manifesto para saber se precisa de senha geral. Se não houver senha salva e a UI for interativa, pede e salva a senha global. Sem interatividade, devolve erro. A senha específica do site tem precedência sobre a global.
 

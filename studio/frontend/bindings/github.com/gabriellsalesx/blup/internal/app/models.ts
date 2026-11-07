@@ -336,15 +336,6 @@ export interface DBView {
 }
 
 /**
- * DNSRecord is a record to create where the domain was bought.
- */
-export interface DNSRecord {
-    "type": string;
-    "name": string;
-    "value": string;
-}
-
-/**
  * Database is a database and its records.
  */
 export interface Database {
@@ -373,33 +364,6 @@ export interface DeleteProblem {
     "part": string;
     "err": string;
     "link": string;
-}
-
-/**
- * DomainStatus is where a custom domain stands.
- */
-export interface DomainStatus {
-    "domain": string;
-
-    /**
-     * State: "none" (no domain), "unpublished" (connected on the first
-     * publish), "active", "dns" (records to create), "waiting" (the host
-     * is setting it up) or "apex-cloudflare" (a root domain on Cloudflare
-     * Pages: it must be added to the Cloudflare account).
-     */
-    "state": string;
-    "records": DNSRecord[] | null;
-
-    /**
-     * for apex-cloudflare: the www. address that works with a record
-     */
-    "www": string;
-    "message": string;
-
-    /**
-     * GitHub: HTTPS is on
-     */
-    "https": boolean;
 }
 
 /**
@@ -865,7 +829,7 @@ export interface SiteParts {
     "notesOwned": boolean;
 
     /**
-     * "Cloudflare Pages: projeto" or "GitHub Pages: dono/repo"
+     * "Cloudflare Workers: nome" or "GitHub Pages: dono/repo"
      */
     "published": string;
 
@@ -922,7 +886,7 @@ export interface SyncInfo {
 
 /**
  * Target is where the site is published: "blup" (Slug), "cloudflare"
- * (Account, Project) or "github" (Repo).
+ * (Account, Project: the Worker's name) or "github" (Repo).
  */
 export interface Target {
     "provider": string;

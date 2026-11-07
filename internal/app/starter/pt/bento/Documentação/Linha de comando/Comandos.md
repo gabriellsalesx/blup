@@ -16,7 +16,7 @@ Rodar só `blup` abre o **menu**: prévia, publicar, personalizar, sincronizar, 
 | `blup novo` | `blup new` | Cria um site novo |
 | `blup ver` | `blup preview` | Abre a prévia no navegador |
 | `blup publicar` | `blup publish` | Coloca o site no ar |
-| `blup personalizar` | `blup customize` | Menu, seções, redes, logo, favicon, autor, domínio próprio, senha geral e comentários |
+| `blup personalizar` | `blup customize` | Menu, seções, redes, logo, favicon, autor, senha geral e comentários |
 | `blup sincronizar` | `blup sync` | Guarda as notas num repositório privado no GitHub |
 | `blup converter` | `blup convert` | Troca `[[wikilinks]]` por links padrão |
 | `blup gerar` | `blup build` | Gera o site em `public/`, sem perguntas |
@@ -35,15 +35,15 @@ O Blup lembra de todos os sites que você criou. No menu, **Trocar de site** esc
 
 ## Site dentro de uma subpasta
 
-Quer a documentação em `meusite.pages.dev/bento/`, junto de uma landing page na raiz? Gere o site para esse endereço e copie para a pasta da landing:
+Quer a documentação em `meusite.com.br/bento/`, junto de uma landing page na raiz? Gere o site para esse endereço e copie para a pasta da landing:
 
 ```sh
-blup gerar --url https://meusite.pages.dev/bento/ --saida ../minha-landing/bento
+blup gerar --url https://meusite.com.br/bento/ --saida ../minha-landing/bento
 ```
 
 - `--url` é o endereço final do site, e pode ser uma subpasta. Links, imagens e a busca passam a funcionar dentro dela.
 - `--saida` copia o site pronto para outra pasta, trocando o que o Blup tinha posto lá antes. Por segurança, o Blup nunca apaga uma pasta que não foi ele que preencheu.
-- Depois, publique a pasta da landing, por exemplo com o Cloudflare Pages ligado a um repositório do GitHub: cada `git push` atualiza o site.
+- Depois, publique a pasta da landing, por exemplo num serviço ligado a um repositório do GitHub: cada `git push` atualiza o site.
 
 > [!tip] Em inglês também
 > `blup build --url … --out …` faz o mesmo.

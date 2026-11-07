@@ -12,7 +12,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
-	"github.com/gabriellsalesx/blup/internal/deploy/cfpages"
+	"github.com/gabriellsalesx/blup/internal/deploy/cfworkers"
 	"github.com/gabriellsalesx/blup/internal/ui"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -91,7 +91,7 @@ func (s *Studio) ConnectGitHub(ctx context.Context, token string) (string, error
 
 // ConnectCloudflare checks and saves a Cloudflare key; it returns the
 // accounts it can publish to.
-func (s *Studio) ConnectCloudflare(ctx context.Context, token string) ([]cfpages.Account, error) {
+func (s *Studio) ConnectCloudflare(ctx context.Context, token string) ([]cfworkers.Account, error) {
 	return app.ConnectCloudflare(ctx, token)
 }
 
@@ -99,8 +99,20 @@ func (s *Studio) ConnectCloudflare(ctx context.Context, token string) ([]cfpages
 func (s *Studio) Disconnect(account string) error { return app.Disconnect(account) }
 
 // CloudflareAccounts lists the accounts of the saved Cloudflare key.
-func (s *Studio) CloudflareAccounts(ctx context.Context) ([]cfpages.Account, error) {
+func (s *Studio) CloudflareAccounts(ctx context.Context) ([]cfworkers.Account, error) {
 	return app.CloudflareAccounts(ctx)
+}
+
+// CloudflareSubdomain is the workers.dev subdomain of a Cloudflare account
+// ("" when the account has none yet: the Publish screen asks for one).
+func (s *Studio) CloudflareSubdomain(ctx context.Context, account string) (string, error) {
+	return app.CloudflareSubdomain(ctx, account)
+}
+
+// SetCloudflareSubdomain gives a Cloudflare account its workers.dev
+// subdomain, once (it is the same for every site of the account).
+func (s *Studio) SetCloudflareSubdomain(ctx context.Context, account, name string) (string, error) {
+	return app.SetCloudflareSubdomain(ctx, account, name)
 }
 
 // CheckSiteSlug says whether an address on Blup Cloud is free (while it is
@@ -177,48 +189,6 @@ func (s *Studio) Sync() (app.SyncInfo, error) {
 		s.startLive(site)
 	}
 	return info, err
-}
-
-// CurrentDomain is the site's custom domain ("" for the free address).
-func (s *Studio) CurrentDomain() string {
-	site, err := s.current()
-	if err != nil {
-		return ""
-	}
-	return site.Domain
-}
-
-// SetDomain saves and connects a custom domain.
-func (s *Studio) SetDomain(value string) (app.DomainStatus, error) {
-	site, err := s.current()
-	if err != nil {
-		return app.DomainStatus{}, err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
-	return app.SetDomain(ctx, site, value)
-}
-
-// CheckDomain connects the domain again and says where it stands.
-func (s *Studio) CheckDomain(ctx context.Context) (app.DomainStatus, error) {
-	site, err := s.current()
-	if err != nil {
-		return app.DomainStatus{}, err
-	}
-	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
-	defer cancel()
-	return app.CheckDomain(ctx, site)
-}
-
-// RemoveDomain goes back to the free address.
-func (s *Studio) RemoveDomain() error {
-	site, err := s.current()
-	if err != nil {
-		return err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-	return app.RemoveDomain(ctx, site)
 }
 
 // OpenNewGitHubRepo opens GitHub's "new repository" form filled in for the

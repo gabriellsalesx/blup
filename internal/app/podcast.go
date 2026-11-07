@@ -74,7 +74,7 @@ func Podcast(site *config.Site) (PodcastInfo, error) {
 		Email:    n.String("podcast_email"),
 		Category: firstOf(n.String("podcast_category"), "Technology"),
 		Image:    n.String("image"),
-		HasURL:   site.Domain != "" || LoadTarget(site).URL != "",
+		HasURL:   publishedBase(site) != "",
 		Episodes: countEpisodes(site),
 	}
 	switch v := n.Props["podcast_explicit"].(type) {
@@ -92,14 +92,11 @@ func Podcast(site *config.Site) (PodcastInfo, error) {
 		}
 	}
 	// The section's address is its folder, as Hugo writes it; the main
-	// language at the root, the others under their code. The site's own
-	// domain, else where it was published (Blup Cloud, Cloudflare, GitHub:
-	// the build has that address in full).
+	// language at the root, the others under their code, at the address
+	// the site was published to (the build has that address in full).
 	slug := urlize(folder)
 	base := "/"
-	if site.Domain != "" {
-		base = "https://" + site.Domain + "/"
-	} else if u := LoadTarget(site).URL; u != "" {
+	if u := publishedBase(site); u != "" {
 		base = strings.TrimSuffix(u, "/") + "/"
 	}
 	info.Feeds = append(info.Feeds, PodcastFeed{Lang: site.Lang, URL: base + slug + "/feed.xml"})

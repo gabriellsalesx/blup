@@ -33,7 +33,6 @@ func customize(ctx context.Context, _ *config.Global, site *config.Site) error {
 			ui.Option(i18n.T("custom.social"), "social"),
 			ui.Option(i18n.T("custom.images"), "images"),
 			ui.Option(i18n.T("custom.about"), "about"),
-			ui.Option(i18n.T("custom.domain"), "domain"),
 			ui.Option(i18n.T("custom.password"), "password"),
 			ui.Option(i18n.T("custom.back"), "back"),
 		)...); err != nil || choice == "back" {
@@ -51,8 +50,6 @@ func customize(ctx context.Context, _ *config.Global, site *config.Site) error {
 			err = editImages(site)
 		case "about":
 			err = editAbout(site)
-		case "domain":
-			err = editDomain(ctx, site)
 		case "feedback":
 			err = editFeedback(ctx, site)
 		case "cookies":

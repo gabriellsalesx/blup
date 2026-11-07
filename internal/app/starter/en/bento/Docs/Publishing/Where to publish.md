@@ -1,6 +1,6 @@
 ---
 title: Where to publish
-description: Blup Cloud, Cloudflare Pages or GitHub Pages. Two of them are free.
+description: Blup Cloud, Cloudflare Workers or GitHub Pages. Two of them are free.
 weight: 1
 ---
 Blup builds the site on your computer and sends the finished pages to one of these places:
@@ -8,7 +8,7 @@ Blup builds the site on your computer and sends the finished pages to one of the
 | Destination | Price | Address | What you need |
 | --- | --- | --- | --- |
 | **Blup Cloud** | On paid plans (Pro and up) | `yoursite.getblup.site` | Just your Blup account. Nothing to set up |
-| **Cloudflare Pages** | Free | `yoursite.pages.dev` | A free Cloudflare account |
+| **Cloudflare Workers** | Free | `yoursite.youraccount.workers.dev` | A free Cloudflare account |
 | **GitHub Pages** | Free | `username.github.io/site` | A free GitHub account |
 
 ![Blup launching the site](../../Attachments/blup-publicar.jpg)
@@ -16,14 +16,14 @@ Blup builds the site on your computer and sends the finished pages to one of the
 ## Which one?
 
 - **Want the simplest?** Blup Cloud: you pick the address and click Publish. See [Sites on Blup Cloud](../Blup%20Cloud/Sites%20on%20Blup%20Cloud.md).
-- **Want it free and fast all over the world?** Cloudflare Pages.
+- **Want it free and fast all over the world?** Cloudflare Workers.
 - **Already use GitHub?** GitHub Pages.
 
 With all three, the site is fast, has HTTPS and works as an app.
 
 ## Custom domain
 
-Want `mysite.com` instead of the free address? With Cloudflare and GitHub, you can already do it. For sites on Blup Cloud, a custom domain comes with the Max and Ultra plans. See [Custom domain](Custom%20domain.md).
+Want `mysite.com` instead of the service's address? A custom domain is linked only through Blup Cloud, on the Max and Ultra plans. With Cloudflare and GitHub, the site stays at the free address. See [Custom domain](Custom%20domain.md).
 
 ## What goes online
 

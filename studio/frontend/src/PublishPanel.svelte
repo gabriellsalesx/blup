@@ -2,25 +2,23 @@
   import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { onDestroy, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
-  import { CurrentDomain, SetDomain, CheckDomain, RemoveDomain, Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, Target, SetTarget, Publish, CheckSiteSlug, SyncStatus, Sync, SyncRemote, SetSyncRemote, OpenNewGitHubRepo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
-  import type { Connections as Conn, Target as Dest, SyncInfo, DomainStatus, BlupAccount } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
-  import type { Account } from "../bindings/github.com/gabriellsalesx/blup/internal/deploy/cfpages/models";
+  import { Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, CloudflareSubdomain, SetCloudflareSubdomain, Target, SetTarget, Publish, CheckSiteSlug, SyncStatus, Sync, SyncRemote, SetSyncRemote, OpenNewGitHubRepo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import type { Connections as Conn, Target as Dest, SyncInfo, BlupAccount } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import type { Account } from "../bindings/github.com/gabriellsalesx/blup/internal/deploy/cfworkers/models";
   import type { SlugCheck } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import Check from "@lucide/svelte/icons/check";
   import Alert from "@lucide/svelte/icons/circle-alert";
   import Loader from "@lucide/svelte/icons/loader-circle";
   import External from "@lucide/svelte/icons/external-link";
   import Refresh from "@lucide/svelte/icons/refresh-cw";
-  import Copy from "@lucide/svelte/icons/copy";
-  import { Clipboard } from "@wailsio/runtime";
   import { t } from "./i18n";
   import { toast } from "./toast.svelte";
   import CloudAccount from "./CloudAccount.svelte";
   import BlupDomain from "./BlupDomain.svelte";
   import Choice from "./ui/Choice.svelte";
 
-  // Two screens in one: publishing the site (where it goes, then its own
-  // domain once it is online) and syncing the notes. notes: a vault of notes
+  // Two screens in one: publishing the site (where it goes; its own domain
+  // only on Blup Cloud, once it is online) and syncing the notes. notes: a vault of notes
   // has no site, so only syncing shows; a site's Sync button opens the
   // sync part (autostart "sync").
   let { autostart = "", notes = false }: { autostart?: string; notes?: boolean } = $props();
@@ -58,33 +56,32 @@
     if (remote === "blup" && cloud?.notes === "ready" && !checkedCloud) { checkedCloud = true; checkSync(); }
   });
 
-  // The custom domain: typed here, connected where the site is published;
-  // the DNS records still missing are listed to copy.
-  const dm = t.domain;
-  let domain = $state("");
-  let domainInput = $state("");
-  let editingDomain = $state(false);
-  let dstatus = $state<DomainStatus | null>(null);
-  let dbusy = $state(false);
-  let derror = $state("");
-  let askRemove = $state(false);
-  let republish = $state(false);
-  let copiedRec = $state(-1);
-  CurrentDomain().then((d) => { domain = d; domainInput = d; });
-  async function domainRun(fn: () => Promise<DomainStatus | void>, changed = false) {
-    dbusy = true; derror = "";
+  // Cloudflare: the account's workers.dev subdomain, in every site's
+  // address (<site>.<subdomain>.workers.dev). A new account has none: it
+  // is chosen here once. null while it is looked up.
+  let cfSub = $state<string | null>(null);
+  let subInput = $state("");
+  let subBusy = $state(false);
+  let subError = $state("");
+  const LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+  const normLabel = (v: string) => v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9-]+/g, "-").replace(/^-+/, "").slice(0, 63);
+  async function loadSub() {
+    cfSub = null; subError = "";
+    const account = target?.account;
+    if (target?.provider !== "cloudflare" || !conn?.cloudflare || !account) return;
     try {
-      const st = await fn();
-      dstatus = st ?? null;
-      domain = st ? st.domain : "";
-      editingDomain = false; askRemove = false;
-      if (changed) republish = true;
-    } catch (e) { derror = msg(e); } finally { dbusy = false; }
+      const sub = await CloudflareSubdomain(account);
+      if (target?.account !== account) return;
+      cfSub = sub;
+      if (!sub) subInput = normLabel(accounts.find((a) => a.id === account)?.name ?? "").replace(/-+$/, "");
+    } catch (e) { subError = msg(e); }
   }
-  const setDomain = () => domainRun(async () => { const st = await SetDomain(domainInput); toast(t.toast.domainSet.replace("{domain}", st.domain)); return st; }, true);
-  const checkDomain = () => domainRun(() => CheckDomain());
-  const removeDomain = () => domainRun(async () => { await RemoveDomain(); domainInput = ""; toast(t.toast.domainRemoved); }, true);
-  async function copyRec(i: number, v: string) { await Clipboard.SetText(v); copiedRec = i; setTimeout(() => (copiedRec = -1), 1500); }
+  async function createSub() {
+    if (!target?.account || !LABEL.test(subInput)) return;
+    subBusy = true; subError = "";
+    try { cfSub = await SetCloudflareSubdomain(target.account, subInput); } catch (e) { subError = msg(e); } finally { subBusy = false; }
+  }
+  const cfAddress = $derived(cfSub && target?.project ? `${target.project}.${cfSub}.workers.dev` : "");
 
   const off = Events.On("progress", (ev) => { log.push(ev.data); });
   onDestroy(() => off());
@@ -94,7 +91,7 @@
     try {
       [conn, target] = await Promise.all([Connections(), Target()]);
       live = target?.url ?? "";
-      if (conn?.cloudflare && target?.provider === "cloudflare") accounts = (await CloudflareAccounts().catch(() => [])) ?? [];
+      if (conn?.cloudflare && target?.provider === "cloudflare") { accounts = (await CloudflareAccounts().catch(() => [])) ?? []; loadSub(); }
     } catch (e) { error = msg(e); }
   }
   const msg = (e: unknown) => String(e).replace(/^(Runtime)?Error: /, "");
@@ -126,7 +123,7 @@
   onDestroy(() => clearTimeout(slugTimer));
   const slugFree = $derived(!!target?.slugFixed || slugCheck?.status === "free" || slugCheck?.status === "yours");
   const connected = $derived(target?.provider === "blup" ? blupOK : target?.provider === "cloudflare" ? !!conn?.cloudflare : !!conn?.github);
-  const ready = $derived(!!target?.provider && connected && (target.provider === "blup" ? slugOK && slugFree : target.provider === "github" ? !!target.repo : !!target.account && !!target.project));
+  const ready = $derived(!!target?.provider && connected && (target.provider === "blup" ? slugOK && slugFree : target.provider === "github" ? !!target.repo : !!target.account && LABEL.test(target.project) && !!cfSub));
   // The steps to connect a Cloudflare or GitHub account show on request.
   let howTo = $state(false);
 
@@ -135,6 +132,7 @@
     target.provider = provider;
     if (provider === "cloudflare" && conn?.cloudflare && !accounts.length) accounts = (await CloudflareAccounts().catch(() => [])) ?? [];
     if (provider === "cloudflare" && !target.account && accounts.length) target.account = accounts[0].id;
+    if (provider === "cloudflare") loadSub();
     howTo = false;
   }
 
@@ -145,6 +143,8 @@
       if (target.provider === "cloudflare") {
         accounts = (await ConnectCloudflare(key)) ?? [];
         if (accounts.length) target.account = accounts[0].id;
+        conn = await Connections();
+        await loadSub();
       } else {
         await ConnectGitHub(key);
       }
@@ -209,7 +209,7 @@
       <h2>{p.where}</h2>
       <div class="choices three">
         <Choice title="Blup Cloud · {cl.recommended}" help={p.blupHelp} on={target.provider === "blup"} onclick={() => pick("blup")} />
-        <Choice title="Cloudflare Pages" help={p.cfHelp} on={target.provider === "cloudflare"} onclick={() => pick("cloudflare")} />
+        <Choice title="Cloudflare Workers" help={p.cfHelp} on={target.provider === "cloudflare"} onclick={() => pick("cloudflare")} />
         <Choice title="GitHub Pages" help={p.ghHelp} on={target.provider === "github"} onclick={() => pick("github")} />
       </div>
     </section>
@@ -257,14 +257,29 @@
           {#if target.provider === "cloudflare"}
             {#if accounts.length > 1}
               <label class="field"><span>{p.account}</span>
-                <select bind:value={target.account}>{#each accounts as a (a.id)}<option value={a.id}>{a.name}</option>{/each}</select>
+                <select bind:value={target.account} onchange={loadSub}>{#each accounts as a (a.id)}<option value={a.id}>{a.name}</option>{/each}</select>
               </label>
             {/if}
-            <label class="field"><span>{p.project}</span><input type="text" bind:value={target.project} /><small>{p.projectHelp}</small></label>
+            {#if cfSub === ""}
+              <label class="field"><span>{p.cfSub}</span>
+                <div class="row addr">
+                  <input type="text" value={subInput} oninput={(e) => { subInput = normLabel(e.currentTarget.value); e.currentTarget.value = subInput; }} spellcheck="false" autocomplete="off" />
+                  <span class="muted">.workers.dev</span>
+                  <button class="btn" disabled={subBusy || !LABEL.test(subInput)} onclick={createSub}>{subBusy ? p.checking : p.cfSubCreate}</button>
+                </div>
+                <small>{p.cfSubHelp}</small>
+              </label>
+            {/if}
+            {#if subError}<p class="bad">{subError}</p>{/if}
+            <label class="field"><span>{p.project}</span>
+              <input type="text" value={target.project} oninput={(e) => { target!.project = normLabel(e.currentTarget.value); e.currentTarget.value = target!.project; }} spellcheck="false" autocomplete="off" />
+              <small>{#if !LABEL.test(target.project)}<span class="bad">{p.projectBad}</span>{:else if cfAddress}{p.projectHelp.replace("{address}", cfAddress)}{:else}{p.projectHelpNoSub}{/if}</small>
+            </label>
           {:else}
             <label class="field"><span>{p.repo}</span><input type="text" bind:value={target.repo} /><small>{p.repoHelp}</small></label>
             <small class="muted">{gr.siteHelp} <button class="link" onclick={() => newRepo("site")}>{gr.create}</button></small>
           {/if}
+          <small class="muted">{p.domainOnCloud}</small>
         {:else if !howTo}
           <p class="muted">{target.provider === "cloudflare" ? p.cfNeeds : p.ghNeeds}</p>
           <div class="actions"><button class="btn" onclick={() => (howTo = true)}>{p.connectAccount}</button></div>
@@ -306,65 +321,6 @@
     <!-- The own domain on Blup Cloud (Max and Ultra), once the site is there. -->
     {#if target.provider === "blup" && cloud?.signedIn && cloud.sitesMax !== 0 && (live || target.slugFixed)}
       <BlupDomain slug={target.slug} />
-    {/if}
-
-    <!-- The own domain on GitHub or Cloudflare comes once the site is online. -->
-    {#if target.provider && target.provider !== "blup" && (live || domain)}
-    <section class="card">
-      <h2>{dm.title}</h2>
-      <p>{dm.help}</p>
-      {#if !domain || editingDomain}
-        <div class="row">
-          <input type="text" bind:value={domainInput} placeholder="meusite.com.br" onkeydown={(e) => e.key === "Enter" && setDomain()} />
-          <button class="btn" disabled={dbusy || !domainInput.trim()} onclick={setDomain}>{dbusy ? dm.connecting : dm.connect}</button>
-          {#if editingDomain}<button class="btn ghost" onclick={() => { editingDomain = false; domainInput = domain; }}>{t.sec.cancel}</button>{/if}
-        </div>
-        <small class="muted">{dm.inputHelp}</small>
-      {:else}
-        <div class="row status">
-          <div class="field"><span>{domain}</span>
-            {#if dstatus?.state === "active"}<small class="good"><Check size={13} /> {dm.active}{dstatus.https ? " · HTTPS" : ""}</small>
-            {:else if dstatus?.state === "unpublished"}<small>{dm.unpublished}</small>
-            {:else if dstatus?.state === "waiting"}<small>{dm.waiting}</small>
-            {:else if dstatus?.state === "dns" || dstatus?.state === "apex-cloudflare"}<small class="warn">{dm.missing}</small>
-            {:else}<small class="muted">{dm.saved}</small>{/if}
-          </div>
-          <span class="spacer"></span>
-          <button class="btn ghost" disabled={dbusy} onclick={checkDomain}>{#if dbusy}<span class="spin"><Loader size={14} /></span>{:else}<Refresh size={14} />{/if}{dm.check}</button>
-          <button class="btn ghost" onclick={() => (editingDomain = true)}>{dm.change}</button>
-        </div>
-        {#if dstatus?.state === "apex-cloudflare"}
-          <p class="box">{dm.apexCf.replace("{domain}", domain)}</p>
-          <p>{dm.apexCfWww.replace("{www}", dstatus.www)}</p>
-        {:else if dstatus?.state === "dns"}
-          <p>{dm.dnsHelp}</p>
-        {/if}
-        {#if dstatus?.records?.length && (dstatus.state === "dns" || dstatus.state === "apex-cloudflare")}
-          <table class="dns">
-            <thead><tr><th>{dm.type}</th><th>{dm.name}</th><th>{dm.value}</th><th></th></tr></thead>
-            <tbody>
-              {#each dstatus.records as r, i (i)}
-                <tr><td>{r.type}</td><td><code>{r.name}</code></td><td><code>{r.value}</code></td>
-                  <td><button class="icon-btn" title={dm.copy} onclick={() => copyRec(i, r.value)}>{#if copiedRec === i}<Check size={14} />{:else}<Copy size={14} />{/if}</button></td></tr>
-              {/each}
-            </tbody>
-          </table>
-          <small class="muted">{dm.dnsTime}</small>
-        {/if}
-        {#if dstatus?.message}<small class="muted">{dstatus.message}</small>{/if}
-        <div class="actions">
-          {#if askRemove}
-            <span class="muted q">{dm.removeQ.replace("{domain}", domain)}</span>
-            <button class="btn ghost" onclick={() => (askRemove = false)}>{t.sec.cancel}</button>
-            <button class="btn danger" disabled={dbusy} onclick={removeDomain}>{dm.remove}</button>
-          {:else}
-            <button class="btn ghost danger-text" onclick={() => (askRemove = true)}>{dm.remove}</button>
-          {/if}
-        </div>
-      {/if}
-      {#if derror}<p class="bad">{derror}</p>{/if}
-      {#if republish}<p class="box">{dm.republish}</p>{/if}
-    </section>
     {/if}
 
     {:else}
@@ -439,12 +395,5 @@
   .sum { color: var(--text); }
   .good { display: inline-flex; align-items: center; gap: .25rem; color: #16a34a; }
   .warn { color: #b45309; }
-  .dns { width: 100%; border-collapse: collapse; font-size: .85rem; }
-  .dns th { text-align: start; font-size: .75rem; color: var(--muted); font-weight: 600; padding: .3rem .5rem; }
-  .dns td { padding: .45rem .5rem; border-block-start: 1px solid var(--line); }
-  .dns code { font-size: .85rem; user-select: all; }
-  .q { font-size: .85rem; }
-  .danger-text { color: var(--red); }
   .large { margin: 0; padding-inline-start: 1.25rem; font-size: .85rem; color: var(--muted); }
-  .btn.danger { background: var(--red); color: #fff; }
 </style>

@@ -30,7 +30,7 @@ var openRouterURL = ""
 // ErrNoAIKey means no OpenRouter key was saved.
 var ErrNoAIKey = errors.New("no OpenRouter key")
 
-// maxAudio is the largest narration published (Cloudflare Pages takes
+// maxAudio is the largest narration published (Cloudflare Workers takes
 // files up to 25 MiB).
 const maxAudio = 25 << 20
 

@@ -1,7 +1,7 @@
 ---
 title: Vista previa y publicación
 date: {{date-2}}
-description: Mira el sitio mientras escribes y publícalo con Blup Cloud, Cloudflare Pages o GitHub Pages.
+description: Mira el sitio mientras escribes y publícalo con Blup Cloud, Cloudflare Workers o GitHub Pages.
 tags: [Primeros pasos, Studio]
 image: "[[blup-publicar.jpg]]"
 ---
@@ -19,7 +19,7 @@ La vista previa también muestra los borradores, para que los revises antes de p
 Haz clic en **Publicar**, arriba. La primera vez, elige dónde va a estar el sitio:
 
 - **Blup Cloud**: una dirección como `tusitio.getblup.site`, sin configurar nada. Viene en los planes de pago, desde Pro.
-- **Cloudflare Pages**: gratis, con una dirección como `tusitio.pages.dev`. Necesitas una cuenta de Cloudflare.
+- **Cloudflare Workers**: gratis, con una dirección como `tusitio.tucuenta.workers.dev`. Necesitas una cuenta de Cloudflare.
 - **GitHub Pages**: gratis, con una dirección como `tunombre.github.io/tusitio`. Necesitas una cuenta de GitHub.
 
 ### Con Blup Cloud
@@ -39,7 +39,7 @@ Conecta la cuenta una vez:
 Listo: haz clic en **Publicar ahora**. Cuando termina, el Studio muestra la dirección del sitio.
 
 > [!info] Por la línea de comandos
-> Ejecuta `blup publish`. La primera vez pregunta dónde publicar (Cloudflare Pages o GitHub Pages), abre la página de la clave y te pide pegarla en el terminal.
+> Ejecuta `blup publish`. La primera vez pregunta dónde publicar (Cloudflare Workers o GitHub Pages), abre la página de la clave y te pide pegarla en el terminal.
 
 Las siguientes veces, solo se envía lo que cambió.
 
@@ -48,7 +48,7 @@ Las siguientes veces, solo se envía lo que cambió.
 
 ## Dominio propio
 
-¿Quieres una dirección tuya, como `misitio.com`? Con el sitio en línea en Cloudflare o en GitHub, ve a la pantalla **Publicar**, en **Dominio propio**, y escribe la dirección. Blup conecta el dominio donde está publicado el sitio y, si falta algo, muestra el registro DNS que debes crear donde compraste el dominio. Con la línea de comandos, el camino es `blup customize` y **Dominio propio**.
+¿Quieres una dirección tuya, como `misitio.com`? El dominio propio se vincula solo con Blup Cloud, en los planes Max y Ultra. Con el sitio en línea en Blup Cloud, ve a la pantalla **Publicar**, en **Dominio propio**, y escribe la dirección. El Studio muestra los registros DNS que debes crear donde compraste el dominio. Con Cloudflare o con GitHub, el sitio queda en la dirección gratis del servicio.
 
 ## Qué se publica
 

@@ -38,7 +38,7 @@ The best cover is a square of 1400 to 3000 pixels, in JPG or PNG. The Studio tel
 
 ## 4. Send it to Spotify and Apple
 
-The feed needs the site's full address, so **publish the site** first, with Blup Cloud, Cloudflare Pages or GitHub Pages (see [Where to publish](../Publishing/Where%20to%20publish.md)). With a custom domain, the feed uses your domain. Then the screen shows the **Podcast feed** of each language, with **Copy**.
+The feed needs the site's full address, so **publish the site** first, with Blup Cloud, Cloudflare Workers or GitHub Pages (see [Where to publish](../Publishing/Where%20to%20publish.md)). With a custom domain on Blup Cloud, the feed uses your domain. Then the screen shows the **Podcast feed** of each language, with **Copy**.
 
 - **Submit to Spotify**: in Spotify for Creators, choose "I already have a podcast" and paste the address. The confirmation code arrives at the contact e-mail.
 - **Submit to Apple Podcasts**: in Apple Podcasts Connect, sign in with your Apple ID, create a show from the feed and wait for approval.

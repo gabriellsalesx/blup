@@ -25,7 +25,8 @@ const WANT: Record<string, string[]> = {
   "img-src": ["'self'", "data:", "blob:", "https:", "http:"],
   "media-src": ["'self'", "data:", "blob:"],
   "font-src": ["'self'", "data:"],
-  "connect-src": ["'self'"],
+  // The error reports (only after the person's yes) go to Blup Pulse.
+  "connect-src": ["'self'", "https://ingest.getblup.io"],
   "worker-src": ["'self'", "blob:"],
   "frame-src": ["http://127.0.0.1:*"],
   "object-src": ["'none'"],

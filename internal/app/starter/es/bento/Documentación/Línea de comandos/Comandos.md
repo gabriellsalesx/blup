@@ -16,7 +16,7 @@ Ejecutar solo `blup` abre el **menú**: vista previa, publicar, personalizar, si
 | `blup new` | `blup novo` | Crea un sitio nuevo |
 | `blup preview` | `blup ver` | Abre la vista previa en el navegador |
 | `blup publish` | `blup publicar` | Pone el sitio en línea |
-| `blup customize` | `blup personalizar` | Menú, secciones, redes, logo, favicon, autor, dominio propio, contraseña general y comentarios |
+| `blup customize` | `blup personalizar` | Menú, secciones, redes, logo, favicon, autor, contraseña general y comentarios |
 | `blup sync` | `blup sincronizar` | Guarda las notas en un repositorio privado de GitHub |
 | `blup convert` | `blup converter` | Cambia los `[[wikilinks]]` por enlaces estándar |
 | `blup build` | `blup gerar` | Genera el sitio en `public/`, sin preguntas |
@@ -35,15 +35,15 @@ Blup recuerda todos los sitios que creaste. En el menú, **Cambiar a otro sitio*
 
 ## Un sitio dentro de una subcarpeta
 
-¿Quieres la documentación en `tusitio.pages.dev/bento/`, junto a una landing page en la raíz? Genera el sitio para esa dirección y cópialo a la carpeta de la landing:
+¿Quieres la documentación en `tusitio.com/bento/`, junto a una landing page en la raíz? Genera el sitio para esa dirección y cópialo a la carpeta de la landing:
 
 ```sh
-blup build --url https://tusitio.pages.dev/bento/ --out ../mi-landing/bento
+blup build --url https://tusitio.com/bento/ --out ../mi-landing/bento
 ```
 
 - `--url` es la dirección final del sitio, y puede ser una subcarpeta. Los enlaces, las imágenes y la búsqueda funcionan dentro de ella.
 - `--out` copia el sitio listo a otra carpeta, reemplazando lo que Blup había puesto ahí antes. Por seguridad, Blup nunca borra una carpeta que no llenó él.
-- Después, publica la carpeta de la landing, por ejemplo con Cloudflare Pages conectado a un repositorio de GitHub: cada `git push` actualiza el sitio.
+- Después, publica la carpeta de la landing, por ejemplo con un servicio conectado a un repositorio de GitHub: cada `git push` actualiza el sitio.
 
 > [!tip] En portugués también
 > `blup gerar --url … --saida …` hace lo mismo.

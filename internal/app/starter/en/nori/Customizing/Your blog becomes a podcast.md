@@ -32,7 +32,7 @@ The Studio's **Podcast** screen holds the show's details:
 The screen also shows how many episodes there are and the **Podcast feed**, with **Copy** and shortcuts to send it to Spotify and Apple Podcasts. Paste the address just once: new episodes arrive by themselves when you publish the site.
 
 > [!warning] It needs a full address
-> Spotify and Apple need the feed's full address. Once the site is published (through Blup Cloud, Cloudflare Pages or GitHub Pages), the full address shows on the Podcast screen.
+> Spotify and Apple need the feed's full address. Once the site is published (through Blup Cloud, Cloudflare Workers or GitHub Pages), the full address shows on the Podcast screen.
 
 > [!info] And the command line?
 > The Podcast section is turned on in the Studio. Once it's on, the show's details live in the properties of the **_index** note in the Podcast folder, and the page and the feed keep being made when you publish from the command line.

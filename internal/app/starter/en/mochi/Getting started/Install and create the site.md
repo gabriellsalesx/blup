@@ -60,7 +60,7 @@ Then run `blup`. The first time it asks for the language and opens the new site 
 | `blup new` | Creates a new site |
 | `blup preview` | Opens the preview in the browser |
 | `blup publish` | Puts the site online |
-| `blup customize` | Menu, social links, logo, comments, cookies and domain |
+| `blup customize` | Menu, social links, logo, comments and cookies |
 | `blup sync` | Keeps the notes in a private GitHub repository |
 | `blup convert` | Turns `[[wikilinks]]` into standard links |
 | `blup update` | Updates Blup |

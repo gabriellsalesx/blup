@@ -49,7 +49,7 @@ Propriedades da nota (todas opcionais):
 - Programa: título, link, descrição, idioma, `atom:link`, `itunes:author`, `itunes:owner`, `itunes:image`, `itunes:category`, `itunes:explicit` e `itunes:type episodic`.
 - Episódio: título, link do post, `guid` por `translationKey`, senão `RelPermalink`, data, descrição, `enclosure` com o MP3 (tamanho real em bytes e `?v=` com o `audio_hash`), `itunes:duration` (`audio_seconds`) e `itunes:image`. Sem chave explícita estável, renomear a página pode mudar o GUID.
 - As capas do feed são JPEG quadrados de 1400 px, recortados com `Fill ... smart`; o player usa uma variante de 512 px. O aviso de imagem do Studio usa a faixa de 1400 a 3000 px.
-- Os endereços saem completos com o endereço do build: o domínio próprio (`blup.toml` `domain`) ou o endereço onde o site é publicado (Blup Cloud, Cloudflare Pages, GitHub Pages), que a publicação passa como `baseURL`. Só a prévia, sem endereço, gera caminhos relativos.
+- Os endereços saem completos com o endereço do build: o endereço onde o site é publicado (Blup Cloud, com o domínio próprio quando ativo, Cloudflare Workers, GitHub Pages), que a publicação passa como `baseURL`. Só a prévia, sem endereço, gera caminhos relativos.
 
 ## Tela Podcast no Studio
 
@@ -58,7 +58,7 @@ Propriedades da nota (todas opcionais):
 - O bloco Idiomas do Studio também aparece nas notas de seção (antes só nas outras), e a tradução da nota do Podcast fica em `Podcast/<idioma>/_index.md`, com as mesmas propriedades.
 - Nome, descrição (a do Google, do compartilhamento e do feed), autor, e-mail de contato, categoria (lista da Apple traduzida, valor em inglês), conteúdo explícito e capa (`PickCover`, com aviso quando a imagem não é um quadrado de 1400 a 3000 px).
 - Quantos episódios há: posts do idioma principal com narração que o podcast lista.
-- O endereço do feed de cada idioma, com Copiar e os atalhos para Spotify for Creators e Apple Podcasts Connect: pelo domínio próprio, senão pelo endereço onde o site foi publicado (`LoadTarget`). Antes da primeira publicação, a tela explica que é preciso publicar.
+- O endereço do feed de cada idioma, com Copiar e os atalhos para Spotify for Creators e Apple Podcasts Connect: pelo endereço da última publicação (`publishedBase`: no Blup Cloud, a base do último build, que pode ser o domínio próprio; nos outros, `LoadTarget`). Antes da primeira publicação, a tela explica que é preciso publicar.
 - `SavePodcast` só grava as propriedades da lista `PodcastProps` e recusa e-mail sem `@`.
 
 Os atalhos abrem serviços externos; o Blup não cadastra automaticamente o programa nem garante aprovação em diretórios. `podcast_email` fica público no feed. Cada idioma usa os posts com áudio daquele idioma: traduzir uma nota não cria uma narração, e narrar a tradução consulta sua voz em `Prefs.Voices[lang]`. O [fluxo de narração](narracao-e-voz.md) descreve como gerar e atualizar esses arquivos.

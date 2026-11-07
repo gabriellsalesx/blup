@@ -25,7 +25,7 @@ func TestPrivacyNote(t *testing.T) {
 	}
 	b, _ := os.ReadFile(path)
 	text := string(b)
-	for _, want := range []string{"blup: privacy", "hidden: true", "ana@x.dev", "Ana", "Google Analytics", "YouTube", "Cloudflare Pages", "link **Cookies**"} {
+	for _, want := range []string{"blup: privacy", "hidden: true", "ana@x.dev", "Ana", "Google Analytics", "YouTube", "Cloudflare Workers", "link **Cookies**"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("policy misses %q", want)
 		}

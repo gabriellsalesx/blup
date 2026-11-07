@@ -30,7 +30,7 @@ Quem prefere o terminal pode usar o `blup` para ver a prévia (`blup ver`), publ
 Pelos dois caminhos dá para:
 
 - escrever em Markdown, com propriedades, callouts, tabelas, fórmulas e comentários `%%`;
-- gerar o site, ver a prévia e publicar no Cloudflare Pages ou no GitHub Pages;
+- gerar o site, ver a prévia e publicar no Cloudflare Workers ou no GitHub Pages;
 - sincronizar as notas com um repositório privado do GitHub;
 - usar senhas, páginas escondidas, rascunhos, cookies, comentários e reações.
 

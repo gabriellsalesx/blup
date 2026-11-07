@@ -33,7 +33,7 @@ The account works for all your vaults and sites, on this computer and on the oth
 Every plan has **end-to-end encryption** and syncs as many vaults and sites as you want. The yearly plan costs ten months: two months are free.
 
 > [!info] Custom domain on Blup Cloud
-> A custom domain for Blup Cloud sites comes with the Max and Ultra plans. With Cloudflare Pages and GitHub Pages, it already works on any plan, even without an account. See [Custom domain](../Publishing/Custom%20domain.md).
+> A custom domain comes with the Max and Ultra plans and is linked only on Blup Cloud sites. With Cloudflare Workers and GitHub Pages, the site stays at the service's free address. See [Custom domain](../Publishing/Custom%20domain.md).
 
 ## See your usage
 
@@ -50,5 +50,5 @@ In **Settings > Blup Cloud**, bars show how much of the plan you use:
 You can do almost everything for free, with other accounts:
 
 - Sync your notes through a private GitHub repository.
-- Publish on Cloudflare Pages or GitHub Pages.
+- Publish on Cloudflare Workers or GitHub Pages, at the service's free address.
 - Narrate and translate on your computer, or with your own OpenRouter key.

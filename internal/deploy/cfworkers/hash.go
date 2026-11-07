@@ -1,4 +1,4 @@
-package cfpages
+package cfworkers
 
 import (
 	"encoding/base64"
@@ -78,12 +78,26 @@ var webTypes = map[string]string{
 	"mp3": "audio/mpeg", "ogg": "audio/ogg", "wav": "audio/wav", "m4a": "audio/mp4",
 }
 
-// contentTypeFor mirrors wrangler pages validate.ts:
-// getType(name) || "application/octet-stream" (no charset suffix).
+// contentTypeFor mirrors wrangler's getContentType
+// (@cloudflare/workers-shared utils/helpers.ts): the type of the extension,
+// with "; charset=utf-8" on text types, and "application/null" when the
+// extension is unknown (Cloudflare then serves the file with no
+// Content-Type, as wrangler's upload does).
 func contentTypeFor(name string) string {
+	t := mediaType(name)
+	if t == "" {
+		return "application/null"
+	}
+	if strings.HasPrefix(t, "text/") {
+		t += "; charset=utf-8"
+	}
+	return t
+}
+
+func mediaType(name string) string {
 	ext := strings.ToLower(strings.TrimPrefix(nodeExtname("/"+name), "."))
 	if ext == "" {
-		return "application/octet-stream"
+		return ""
 	}
 	if t, ok := webTypes[ext]; ok {
 		return t
@@ -93,5 +107,5 @@ func contentTypeFor(name string) string {
 			return mt
 		}
 	}
-	return "application/octet-stream"
+	return ""
 }

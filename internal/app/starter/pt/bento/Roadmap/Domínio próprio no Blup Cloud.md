@@ -7,4 +7,4 @@ weight: 1
 ---
 Para os planos Max e Ultra. Para mover um card de coluna, troque o `status` e salve. Aqui, `em andamento`.
 
-No Cloudflare Pages e no GitHub Pages, o domínio próprio já funciona.
+Os sites publicados pelo Cloudflare Workers ou pelo GitHub Pages ficam no endereço grátis do serviço: o domínio próprio é só do Blup Cloud.

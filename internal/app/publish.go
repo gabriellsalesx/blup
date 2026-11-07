@@ -53,10 +53,6 @@ func publish(ctx context.Context, g *config.Global, site *config.Site) error {
 		return err
 	}
 	ui.OK(i18n.T("pub.live", ui.Highlight(live)))
-	// A custom domain is connected (or checked) on every publish.
-	if err := connectDomain(ctx, site); err != nil && !ui.Aborted(err) {
-		ui.Warn(describe(err))
-	}
 	if ok, _ := ui.Confirm(i18n.T("pub.open"), "", true); ok {
 		ui.OpenBrowser(live)
 	}
@@ -140,7 +136,7 @@ func deployGitHub(ctx context.Context, site *config.Site, c *github.Client, logi
 		return "", err
 	}
 
-	live := siteURL(site, github.ExpectedURL(login, d.Repo))
+	live := github.ExpectedURL(login, d.Repo)
 	dir, err := build(ctx, site, live)
 	if err != nil {
 		return "", err
@@ -149,7 +145,6 @@ func deployGitHub(ctx context.Context, site *config.Site, c *github.Client, logi
 	var res github.Result
 	if err := ui.Spin(ctx, i18n.T("pub.uploading"), func(ctx context.Context) error {
 		res, err = c.Publish(ctx, login, d.Repo, dir, github.PublishOptions{
-			CNAME:   site.Domain,
 			Message: "blup " + time.Now().Format("2006-01-02 15:04"),
 		}, nil)
 		return err

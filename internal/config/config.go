@@ -65,7 +65,6 @@ type Site struct {
 	Kind   string `toml:"kind,omitempty"`
 	Vault  string `toml:"vault"`  // absolute path of the Obsidian vault
 	Folder string `toml:"folder"` // folder inside the vault published as the site; "" = whole vault
-	Domain string `toml:"domain,omitempty"`
 	// Home (Bento) is the folder of the section the home page leads to;
 	// "" shows the sections (or leads to the only one). A folder that is
 	// no longer a section counts as "".
@@ -148,10 +147,16 @@ type BlupSite struct {
 	Base string `toml:"base,omitempty"`
 }
 
+// Cloudflare is the site as a Worker with static files:
+// https://<Worker>.<Subdomain>.workers.dev/.
 type Cloudflare struct {
-	Account   string `toml:"account,omitempty"`
-	Project   string `toml:"project,omitempty"`
+	Account string `toml:"account,omitempty"`
+	Worker  string `toml:"worker,omitempty"`
+	// Subdomain is the account's workers.dev subdomain ("ana").
 	Subdomain string `toml:"subdomain,omitempty"`
+	// URL is set once Blup published the Worker: from then on the name is
+	// this site's, and publishing again may replace it.
+	URL string `toml:"url,omitempty"`
 }
 
 // Feedback is the public repository whose issues hold the votes,

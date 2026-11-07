@@ -7,4 +7,4 @@ weight: 1
 ---
 For the Max and Ultra plans. To move a card to another column, change the `status` and save. Here, `in progress`.
 
-On Cloudflare Pages and GitHub Pages, a custom domain already works.
+Sites published with Cloudflare Workers or GitHub Pages stay at the service's free address: a custom domain is only on Blup Cloud.

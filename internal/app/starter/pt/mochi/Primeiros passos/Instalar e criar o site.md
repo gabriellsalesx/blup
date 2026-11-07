@@ -60,7 +60,7 @@ Depois, rode `blup`. Na primeira vez ele pergunta o idioma e abre o assistente d
 | `blup novo` | Cria um site novo |
 | `blup ver` | Abre a prévia no navegador |
 | `blup publicar` | Coloca o site no ar |
-| `blup personalizar` | Menu, redes, logo, comentários, cookies e domínio |
+| `blup personalizar` | Menu, redes, logo, comentários e cookies |
 | `blup sincronizar` | Guarda as notas num repositório privado no GitHub |
 | `blup converter` | Troca `[[wikilinks]]` por links padrão |
 | `blup atualizar` | Atualiza o Blup |

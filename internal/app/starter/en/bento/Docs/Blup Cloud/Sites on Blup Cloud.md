@@ -42,4 +42,4 @@ A site is public by nature: anyone with the address can read it. That's why Blup
 
 ## Custom domain
 
-On the Max and Ultra plans, Blup Cloud sites can have a custom domain. Meanwhile, it already works with Cloudflare Pages or GitHub Pages. See [Custom domain](../Publishing/Custom%20domain.md).
+On the Max and Ultra plans, Blup Cloud sites can have a custom domain. It is the only way to get one: with Cloudflare Workers or GitHub Pages, the site stays at the service's free address. See [Custom domain](../Publishing/Custom%20domain.md).

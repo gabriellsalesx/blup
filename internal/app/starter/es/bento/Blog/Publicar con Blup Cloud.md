@@ -5,7 +5,7 @@ description: Una dirección getblup.site sin configurar nada, y tus notas en tod
 tags: [Novedades, Blup Cloud]
 image: "[[blup-publicar.jpg]]"
 ---
-Publicar en Cloudflare Pages o en GitHub Pages sigue siendo gratis. Pero ahora hay un camino sin ninguna configuración: **Blup Cloud**.
+Publicar en Cloudflare Workers o en GitHub Pages sigue siendo gratis. Pero ahora hay un camino sin ninguna configuración: **Blup Cloud**.
 
 ## Publicar
 

@@ -1,15 +1,17 @@
 ---
 title: Como usar o meu próprio domínio?
-description: Um endereço como meusite.com.br no lugar do endereço do serviço.
+description: Um endereço como meusite.com.br no lugar do endereço do serviço. Pelo Blup Cloud, nos planos Max e Ultra.
 weight: 4
 ---
-## No Cloudflare Pages e no GitHub Pages
+O domínio próprio é ligado só pelo **Blup Cloud**, nos planos **Max** e **Ultra**.
 
-1. Publique o site uma vez.
-2. Na tela **Publicar**, informe o domínio.
+1. Publique o site pelo Blup Cloud uma vez.
+2. Na tela **Publicar**, no bloco **Domínio próprio**, informe o domínio e clique em **Vincular**.
 3. O Studio mostra os registros que você precisa criar onde comprou o domínio.
-4. Espere a confirmação. Depois, publique de novo para os links usarem o domínio novo.
+4. Clique em **Verificar** e espere aparecer **Ativo**. O Studio publica de novo sozinho, para os links usarem o domínio novo.
 
-## No Blup Cloud
+O passo a passo completo está em [Domínio próprio](../../Documentação/Publicação/Domínio%20próprio.md).
 
-O domínio próprio nos sites do Blup Cloud fica nos planos **Max** e **Ultra** e ainda está chegando. Até lá, o site fica no endereço `seusite.getblup.site`.
+## No Cloudflare Workers e no GitHub Pages
+
+Os sites publicados por esses serviços ficam no endereço grátis deles, como `meusite.suaconta.workers.dev` ou `seunome.github.io/meusite`. O Blup não liga domínio próprio por lá.

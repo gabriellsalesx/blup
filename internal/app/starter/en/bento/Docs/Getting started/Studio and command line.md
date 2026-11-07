@@ -34,7 +34,7 @@ If you prefer the terminal, use `blup` to preview (`blup preview`), publish (`bl
 ## What works in both
 
 - Writing in Markdown, with properties, callouts, tables, math and `%%` comments.
-- Building the site, previewing it and publishing to Cloudflare Pages or GitHub Pages.
+- Building the site, previewing it and publishing to Cloudflare Workers or GitHub Pages.
 - Syncing your notes with a private GitHub repository.
 - Passwords, hidden pages, drafts, cookies, comments and reactions.
 

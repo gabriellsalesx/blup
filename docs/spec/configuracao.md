@@ -51,7 +51,6 @@ O navegador guarda `blup-lang` no `localStorage` e em cookie com `Path=/`, valid
 | `kind` | texto opcional | Vazio para site; `notes` para cofre de anotações, com editor e sync, sem prévia nem publicação |
 | `vault` | texto | Caminho da raiz das notas/cofre |
 | `folder` | texto | Subpasta publicada; vazio significa a raiz inteira |
-| `domain` | texto opcional | Host de domínio próprio; a URL de build usa `https://<domain>/` |
 | `home` | texto opcional | Bento: nome da pasta da seção exibida na home; vazio usa padrão (cartões, ou a única seção) |
 | `logo_link` | texto opcional | URL HTTP/HTTPS ou caminho do site iniciado por uma `/`; muda o destino do logo/nome no cabeçalho dos três modelos |
 | `password` | texto opcional | Senha geral deste site para notas marcadas com senha geral |
@@ -64,8 +63,9 @@ O navegador guarda `blup-lang` no `localStorage` e em cookie com `Path=/`, valid
 | `[deploy.blup].id`, `.slug`, `.url` | texto | Identidade e endereço nativo do site em `getblup.site` |
 | `[deploy.blup].base` | texto | BaseURL da última publicação; domínio próprio elegível ou endereço nativo; usada para detectar republicação |
 | `[deploy.cloudflare].account` | texto | ID da conta |
-| `[deploy.cloudflare].project` | texto | Nome do projeto Pages |
-| `[deploy.cloudflare].subdomain` | texto | Host real retornado pelo Pages, inclusive eventual sufixo |
+| `[deploy.cloudflare].worker` | texto | Nome do Worker, que também é o primeiro rótulo do endereço |
+| `[deploy.cloudflare].subdomain` | texto | Subdomínio workers.dev da conta (`ana` em `ana.workers.dev`) |
+| `[deploy.cloudflare].url` | texto | `https://<worker>.<subdomain>.workers.dev/`, gravado só depois da primeira publicação |
 | `[deploy.github].owner` | texto | Dono do repositório de publicação |
 | `[deploy.github].repo` | texto | Repositório da saída estática |
 | `[sync].owner`, `[sync].repo` | texto | Repositório de notas, separado do deploy |
@@ -203,7 +203,7 @@ Perfis ficam na pasta com `blup: authors`, normalmente `Autores` ou `Writers`. C
 
 No Feedback, `status` dentro de `examples` é apenas o estado do exemplo. Pedidos reais têm status nas etiquetas GitHub `status: planned`, `status: progress`, `status: done` ou `status: declined`; não há nota por pedido. Categorias e opções de status são fixas no código, sem configuração pelo Studio. O [contrato do quadro](feedback.md) detalha esses campos e o que é traduzido.
 
-O vínculo Blup Cloud fica em `site_domain`, com `disableAt` no contrato HTTP. Não é gravado em `Site.Domain` ou `Deploy.Blup.URL`; o publish registra a base usada em `Deploy.Blup.Base` e o Studio pode republicar ao mudar o endereço oficial. `Deploy` e `Feedback` ficam fora do TOML portátil; `translations`, `home` e `logo_link` viajam. Link inválido vindo do TOML portátil é ignorado. O contrato portátil de `.blup/site.toml`, o estado do sync e os caches estão detalhados em [notas e sync](notas-e-sync.md) e [scaffold e build](scaffold-e-build.md).
+O vínculo Blup Cloud fica em `site_domain`, com `disableAt` no contrato HTTP. Não é gravado no arquivo do site nem em `Deploy.Blup.URL`; o arquivo do site não tem campo `domain`, porque domínio próprio só existe no Blup Cloud; o publish registra a base usada em `Deploy.Blup.Base` e o Studio pode republicar ao mudar o endereço oficial. `Deploy` e `Feedback` ficam fora do TOML portátil; `translations`, `home` e `logo_link` viajam. Link inválido vindo do TOML portátil é ignorado. O contrato portátil de `.blup/site.toml`, o estado do sync e os caches estão detalhados em [notas e sync](notas-e-sync.md) e [scaffold e build](scaffold-e-build.md).
 
 Os campos `podcast_*`, `outputs` e `audio*` do programa e seus episódios estão em [Podcast](podcast.md). Eventos de cofre usam `date`, `time`, `event`, `repeat` e `remind`, conforme [Calendário e lembretes](calendario-e-lembretes.md). A preferência `blup-lang` do visitante fica no `localStorage` do site publicado, sem alterar `config.toml` ou as preferências do Studio.
 

@@ -1,20 +1,29 @@
-// Package cfpages publishes a folder of static files to Cloudflare Pages
-// (*.pages.dev) using the Direct Upload protocol, in pure Go (no Node, no
-// wrangler).
+// Package cfworkers publishes a folder of static files as a Cloudflare
+// Worker with static assets (<name>.<account>.workers.dev), in pure Go (no
+// Node, no wrangler). Cloudflare recommends Workers over Pages for new
+// projects: https://developers.cloudflare.com/workers/static-assets/migration-guides/migrate-from-pages/
 //
-// The protocol mirrors wrangler's `pages deploy`
-// (github.com/cloudflare/workers-sdk, packages/wrangler/src/pages/upload.ts,
-// validate.ts, constants.ts and src/api/pages/deploy.ts):
+// The protocol is the Direct Upload API
+// (https://developers.cloudflare.com/workers/static-assets/direct-upload/),
+// done the way wrangler does it (github.com/cloudflare/workers-sdk,
+// packages/deploy-helpers/src/deploy/helpers/assets.ts and
+// create-worker-upload-form.ts):
 //
-//  1. GET  /accounts/{a}/pages/projects/{p}/upload-token  -> short-lived JWT
-//  2. POST /pages/assets/check-missing   (Bearer JWT) which hashes are new
-//  3. POST /pages/assets/upload          (Bearer JWT) buckets of base64 files
-//  4. POST /pages/assets/upsert-hashes   (Bearer JWT) mark every hash as live
-//  5. POST /accounts/{a}/pages/projects/{p}/deployments  multipart: manifest,
-//     branch, and the _headers / _redirects files as separate form parts.
+//  1. POST /accounts/{a}/workers/scripts/{w}/assets-upload-session with the
+//     manifest {"/path": {hash, size}}: an upload JWT and the buckets of
+//     hashes Cloudflare does not have yet;
+//  2. POST /accounts/{a}/workers/assets/upload?base64=true (Bearer upload
+//     JWT), one multipart body per bucket; the last answer carries the
+//     completion JWT;
+//  3. PUT  /accounts/{a}/workers/scripts/{w}, multipart with only the
+//     metadata: {assets: {jwt, config}, compatibility_date}. A site of
+//     static files needs no Worker code (wrangler's "assets only" upload);
+//     _headers and _redirects go inside assets.config;
+//  4. POST /accounts/{a}/workers/scripts/{w}/subdomain {enabled: true}
+//     turns on <w>.<account subdomain>.workers.dev.
 //
-// Token permission: "Account > Cloudflare Pages > Edit".
-package cfpages
+// Token permission: "Account > Workers Scripts > Edit".
+package cfworkers
 
 import (
 	"bytes"
@@ -32,9 +41,9 @@ import (
 const DefaultBaseURL = "https://api.cloudflare.com/client/v4"
 
 // TokenTemplateURL pre-fills the dashboard's "Create API token" form with
-// "Account > Cloudflare Pages > Edit" (short key "page", see
+// "Account > Workers Scripts > Edit" (short key "workers_scripts", see
 // https://developers.cloudflare.com/fundamentals/api/how-to/account-owned-token-template/).
-const TokenTemplateURL = "https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=%5B%7B%22key%22%3A%22page%22%2C%22type%22%3A%22edit%22%7D%5D&accountId=%2A&zoneId=all&name=blup"
+const TokenTemplateURL = "https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=%5B%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%5D&accountId=%2A&zoneId=all&name=blup"
 
 // Sentinel errors. Every error returned by this package that falls in one of
 // these categories wraps the sentinel, so callers can use errors.Is.
@@ -42,21 +51,26 @@ var (
 	// ErrInvalidToken: the API token is malformed, revoked or expired.
 	ErrInvalidToken = errors.New("cloudflare: invalid API token")
 	// ErrMissingPermission: the token is valid but lacks
-	// "Account > Cloudflare Pages > Edit" (or access to the account).
-	ErrMissingPermission = errors.New("cloudflare: API token is missing the Cloudflare Pages Edit permission")
-	// ErrProjectNameTaken: Cloudflare refused to create the project name
-	// (conflict). Pages names are per account; a *.pages.dev clash with
-	// another account is solved by Cloudflare with a suffixed subdomain.
-	ErrProjectNameTaken = errors.New("cloudflare: project name is already taken")
-	// ErrInvalidProjectName: the name does not follow Pages rules.
-	ErrInvalidProjectName = errors.New("cloudflare: invalid project name")
-	// ErrQuota: too many files or an account limit (projects, rate limit).
+	// "Account > Workers Scripts > Edit" (or access to the account).
+	ErrMissingPermission = errors.New("cloudflare: API token is missing the Workers Scripts Edit permission")
+	// ErrNameTaken: the account already has a Worker with this name that
+	// Blup did not publish (Worker names are per account; publishing would
+	// replace it).
+	ErrNameTaken = errors.New("cloudflare: a Worker with this name already exists")
+	// ErrInvalidName: the name does not follow the Worker name rules.
+	ErrInvalidName = errors.New("cloudflare: invalid Worker name")
+	// ErrNoSubdomain: the account has no workers.dev subdomain yet
+	// (RegisterSubdomain creates one).
+	ErrNoSubdomain = errors.New("cloudflare: the account has no workers.dev subdomain")
+	// ErrSubdomainTaken: that workers.dev subdomain belongs to someone else.
+	ErrSubdomainTaken = errors.New("cloudflare: workers.dev subdomain is taken")
+	// ErrQuota: too many files or an account limit (Workers, rate limit).
 	ErrQuota = errors.New("cloudflare: quota exceeded")
 	// ErrTooManyFiles is a specific ErrQuota (errors.Is(err, ErrQuota) holds).
-	ErrTooManyFiles = fmt.Errorf("%w: too many files for one deployment", ErrQuota)
+	ErrTooManyFiles = fmt.Errorf("%w: too many files for one version", ErrQuota)
 	// ErrFileTooLarge: one file is bigger than MaxFileSize.
 	ErrFileTooLarge = errors.New("cloudflare: file too large")
-	// ErrNotFound: the requested resource (project, account) does not exist.
+	// ErrNotFound: the requested resource (Worker, account) does not exist.
 	ErrNotFound = errors.New("cloudflare: not found")
 )
 
@@ -88,28 +102,29 @@ func (e *APIError) hasCode(c int) bool {
 	return false
 }
 
-// Cloudflare / Pages error codes we react to.
+// Cloudflare / Workers error codes we react to.
 const (
-	codePagesUnknown      = 8000000 // retried on deployment create (like wrangler)
-	codePagesUnauthorized = 8000013 // upload JWT expired -> refresh
-	codePagesNotFound     = 8000007 // project not found
+	codeAuth              = 10000 // authentication error (missing permission)
+	codeNotFound          = 10007 // Worker or workers.dev subdomain not found
+	codeSubdomainTaken    = 10031 // workers.dev subdomain unavailable
+	codeSubdomainUnusable = 10032 // subdomain check: it is free to register
 )
 
 func classify(e *APIError) error {
 	text := strings.ToLower(strings.Join(e.Messages, " "))
 	switch {
-	case e.Status == http.StatusNotFound || e.hasCode(codePagesNotFound) || e.hasCode(7003):
+	case e.hasCode(codeSubdomainTaken):
+		return ErrSubdomainTaken
+	case e.Status == http.StatusNotFound || e.hasCode(codeNotFound) || e.hasCode(7003):
 		return ErrNotFound
 	case e.hasCode(1000) || e.hasCode(1001) || e.hasCode(6003) || e.hasCode(6111) ||
 		e.hasCode(9106) || e.hasCode(9107) || e.hasCode(9103) ||
 		strings.Contains(text, "invalid api token") ||
-		e.Status == http.StatusUnauthorized && !e.hasCode(codePagesUnauthorized):
+		e.Status == http.StatusUnauthorized:
 		return ErrInvalidToken
-	case e.Status == http.StatusForbidden || e.hasCode(10000) || e.hasCode(9109):
+	case e.Status == http.StatusForbidden || e.hasCode(codeAuth) || e.hasCode(9109):
 		return ErrMissingPermission
-	case e.Status == http.StatusConflict || strings.Contains(text, "already exists") || strings.Contains(text, "already taken"):
-		return ErrProjectNameTaken
-	case strings.Contains(text, "too many files") || strings.Contains(text, "file count"):
+	case strings.Contains(text, "too many") && (strings.Contains(text, "file") || strings.Contains(text, "asset")):
 		return ErrTooManyFiles
 	case e.Status == http.StatusRequestEntityTooLarge || strings.Contains(text, "too large"):
 		return ErrFileTooLarge
@@ -121,7 +136,7 @@ func classify(e *APIError) error {
 
 // Client talks to the Cloudflare API with a user-supplied API token.
 type Client struct {
-	// Token is the API token ("Account > Cloudflare Pages > Edit").
+	// Token is the API token ("Account > Workers Scripts > Edit").
 	Token string
 	// HTTP is the HTTP client; nil means a client with a 5 minute timeout.
 	HTTP *http.Client
@@ -177,7 +192,8 @@ type apiMessage struct {
 
 // do performs a request. bearer overrides the API token (upload JWT).
 // body may be nil, an io.Reader (with contentType) or a value to JSON-encode.
-func (c *Client) do(ctx context.Context, method, path, bearer string, body any, contentType string, out any) (*envelope, error) {
+// headers are extra request headers, as name/value pairs.
+func (c *Client) do(ctx context.Context, method, path, bearer string, body any, contentType string, out any, headers ...[2]string) (*envelope, error) {
 	var rdr io.Reader
 	switch b := body.(type) {
 	case nil:
@@ -202,6 +218,9 @@ func (c *Client) do(ctx context.Context, method, path, bearer string, body any, 
 	req.Header.Set("Accept", "application/json")
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
+	}
+	for _, h := range headers {
+		req.Header.Set(h[0], h[1])
 	}
 	resp, err := c.httpClient().Do(req)
 	if err != nil {
@@ -240,8 +259,8 @@ func (c *Client) do(ctx context.Context, method, path, bearer string, body any, 
 
 // VerifyToken checks that the token is valid and active. It accepts both
 // user tokens (/user/tokens/verify) and account-owned tokens
-// (/accounts/{id}/tokens/verify). It does not prove the Pages permission;
-// EnsureProject reports ErrMissingPermission for that.
+// (/accounts/{id}/tokens/verify). It does not prove the Workers
+// permission; the first call to the account reports ErrMissingPermission.
 func (c *Client) VerifyToken(ctx context.Context) error {
 	if strings.TrimSpace(c.Token) == "" {
 		return fmt.Errorf("empty token: %w", ErrInvalidToken)

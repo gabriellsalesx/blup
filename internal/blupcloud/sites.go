@@ -220,7 +220,7 @@ func compressible(t string) bool {
 	return slices.ContainsFunc(textTypes, func(p string) bool { return strings.HasPrefix(t, p) })
 }
 
-// skipped are Cloudflare Pages' own files: they mean nothing here.
+// skipped are Cloudflare's own config files (_headers, _redirects): they mean nothing here.
 var skipped = map[string]bool{"/_headers": true, "/_redirects": true, "/_routes.json": true, "/_worker.js": true}
 
 // PackSite reads a built site (dir): every file with its stored hash, text

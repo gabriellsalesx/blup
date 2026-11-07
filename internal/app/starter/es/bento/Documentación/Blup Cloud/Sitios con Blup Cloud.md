@@ -42,4 +42,4 @@ Un sitio es público por naturaleza: cualquier persona con la dirección puede l
 
 ## Dominio propio
 
-En los planes Max y Ultra, los sitios de Blup Cloud pueden tener dominio propio. Mientras tanto, con Cloudflare Pages o GitHub Pages ya funciona. Consulta [Dominio propio](../Publicación/Dominio%20propio.md).
+En los planes Max y Ultra, los sitios de Blup Cloud pueden tener dominio propio. Es el único camino para eso: con Cloudflare Workers o GitHub Pages, el sitio queda en la dirección gratis del servicio. Consulta [Dominio propio](../Publicación/Dominio%20propio.md).
