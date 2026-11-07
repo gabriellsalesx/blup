@@ -4,6 +4,7 @@ import { historyBytes } from "./sync-history";
 import { and, count, eq, gt, sum } from "drizzle-orm";
 import { db } from "./auth";
 import { session, site, syncAccount, vault } from "./db/schema";
+import { dealsSite } from "./db/deals-schema";
 
 // Blup Studio's requests say who they are ("Blup Studio (Linux; my-pc)");
 // its sessions are its devices.
@@ -33,10 +34,12 @@ export type Usage = {
 };
 
 export async function usageOf(userId: string): Promise<Usage> {
-	const [[acc], [{ n }], [sites], devices] = await Promise.all([
+	const [[acc], [{ n }], [sites], [deals], devices] = await Promise.all([
 		db.select({ storageBytes: syncAccount.storageBytes, lastSyncAt: syncAccount.lastSyncAt }).from(syncAccount).where(eq(syncAccount.userId, userId)).limit(1),
 		db.select({ n: count() }).from(vault).where(eq(vault.userId, userId)),
 		db.select({ n: count(), bytes: sum(site.bytes) }).from(site).where(eq(site.userId, userId)),
+		// The Deals page counts as one of the plan's sites.
+		db.select({ n: count() }).from(dealsSite).where(eq(dealsSite.userId, userId)),
 		devicesOf(userId),
 	]);
 	const plan=await accountPlan(env,userId);
@@ -49,7 +52,7 @@ export async function usageOf(userId: string): Promise<Usage> {
 		// Notes and sites share the plan's storage.
 		storageBytes: (acc?.storageBytes ?? 0) + Number(sites?.bytes ?? 0),
 		vaults: n,
-		sites: sites?.n ?? 0,
+		sites: (sites?.n ?? 0) + (deals?.n ?? 0),
 		devices,
 		lastSyncAt: acc?.lastSyncAt ? acc.lastSyncAt.toISOString() : null,
 	};

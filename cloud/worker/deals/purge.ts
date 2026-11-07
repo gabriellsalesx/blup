@@ -1,5 +1,7 @@
 import {sqlPlans,plansWithDeals} from "../../shared/pulse-plans";
 import {forgetWhatsapp} from "./bridge";
+import {removeSiteDomain} from "./site-domain";
+import {siteLogoKey} from "./site-rules";
 
 export const READ_ONLY_DAYS=14;
 const DAY=86_400_000;
@@ -33,12 +35,15 @@ export async function dealsLifecycle(env:Cloudflare.Env,now=Date.now()){
  }
 }
 // The account's own Deals data, when the account is purged for good: store
-// IDs and keys, channels, hunts, posts, clicks, Telegram links and the
+// IDs and keys, the public page, channels, hunts, posts, clicks, Telegram links and the
 // WhatsApp connection (logged out at the Bridge first). The
 // shared catalog stays; only pasted products and videos nobody else posted go (and
 // their prices), since they came from this account alone.
 export async function purgeDealsAccount(env:Cloudflare.Env,userId:string){
  await forgetWhatsapp(env,userId);
+ // The public page: its domain, its logos and the row.
+ const page=await env.DB.prepare("SELECT id FROM deals_site WHERE user_id=?").bind(userId).first<{id:string}>();
+ if(page){await removeSiteDomain(env,page.id);await env.DEALS_ASSETS.delete([siteLogoKey(page.id,"light"),siteLogoKey(page.id,"dark")]);await env.DB.prepare("DELETE FROM deals_site WHERE id=?").bind(page.id).run();}
  const orphan="kind IN('product','video') AND id IN(SELECT offer_id FROM deals_post WHERE user_id=?) AND NOT EXISTS(SELECT 1 FROM deals_post p WHERE p.offer_id=deals_offer.id AND p.user_id<>?)";
  await env.DB.batch([
   env.DB.prepare(`DELETE FROM deals_price WHERE offer_id IN(SELECT id FROM deals_offer WHERE ${orphan})`).bind(userId,userId),

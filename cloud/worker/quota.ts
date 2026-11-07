@@ -5,7 +5,8 @@ type Reservation = { id: string; userId: string; kind: Resource; amount: number 
 const columns = { storage: "storage", sites: "sites", vaults: "vaults", ai: "ai", devices: "devices" } satisfies Record<Resource,string>;
 const used = {
 	storage: "coalesce((SELECT storage_bytes FROM sync_account WHERE user_id = resource_quota.user_id),0) + coalesce((SELECT sum(bytes) FROM site WHERE user_id = resource_quota.user_id),0)",
-	sites: "(SELECT count(*) FROM site WHERE user_id = resource_quota.user_id)",
+	// The Blup sites and the Deals page share the plan's sites.
+	sites: "(SELECT count(*) FROM site WHERE user_id = resource_quota.user_id) + (SELECT count(*) FROM deals_site WHERE user_id = resource_quota.user_id)",
 	vaults: "(SELECT count(*) FROM vault WHERE user_id = resource_quota.user_id)",
 	devices: "(SELECT count(*) FROM session WHERE user_id = resource_quota.user_id AND studio_device = 1 AND expires_at > ?)",
 };

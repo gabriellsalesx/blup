@@ -120,6 +120,22 @@ describe("deals page",()=>{
   expect((await visit("/ofertas-ana/o/ZZZZZZZZ/"))?.status).toBe(404);
   expect(await visit("/ofertas-ana/o/curto/")).toBeNull();
  });
+ it("is one of the plan's sites, with the ones Blup publishes",async()=>{
+  // Ultra has 10 sites: with 10 published, no room for the page.
+  for(let i=0;i<10;i++)db.sqlite.prepare("INSERT INTO site(id,user_id,slug,title) VALUES(?,?,?,?)").run(`s${i}`,"alice",`site-${i}`,`Site ${i}`);
+  const full=await call("/site",{method:"POST",body:{title:"Ofertas",slug:"ofertas-ana",language:"pt"}});
+  expect(full.status).toBe(403);expect(await full.json()).toMatchObject({code:"SITES_LIMIT",limit:10});
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_channel").get()).toEqual({n:0});
+  // One site less: the page fits, and then a new Blup site does not.
+  db.sqlite.prepare("DELETE FROM site WHERE id='s9'").run();
+  await makeSite();
+  const {reserve}=await import("../quota");
+  expect(await reserve(state.env.DB,"alice","sites",1,10)).toBeNull();
+  // An account that goes takes its page along.
+  const {purgeDealsAccount}=await import("./purge");
+  await purgeDealsAccount(state.env,"alice");
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_site").get()).toEqual({n:0});
+ });
  it("shows a free game by its platform, until when it is free",async()=>{
   const site=await makeSite();
   const game:OfferInput={key:"gp:1",store:"gamerpower",externalId:"1",sourceId:"gamerpower",title:"Hogwarts Legacy (Epic Games) Giveaway",url:"https://www.gamerpower.com/open/hogwarts",imageUrl:"https://img.example/cover.jpg",price:0,originalPrice:4999,currency:"USD",kind:"game_free",platforms:["epic","pc"],discount:100,credit:"gamerpower",expiresAt:Date.now()+5*86_400_000};

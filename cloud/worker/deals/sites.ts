@@ -6,6 +6,8 @@ import {DomainError,hostnameSchema} from "../domain-provider";
 import {logoVariant,logoType,LOGO_MAX_BYTES,acceptableLogo,linksOf,type LogoVariant} from "../pulse/page-look";
 import {dealsWrite,type DealsApp} from "./access";
 import {addChannel} from "./store";
+import {accountPlan} from "../lifecycle";
+import {reserve,release} from "../quota";
 import {siteCreate,siteUpdate,siteSlug,siteLogoKey,siteReserved} from "./site-rules";
 import {readSiteDomain,refreshSiteDomain,removeSiteDomain,newProof} from "./site-domain";
 
@@ -49,19 +51,25 @@ export const sitesApi=new Hono<DealsApp>()
   const owner=c.get("session").user.id,body=c.req.valid("json"),now=Date.now();
   if(await ownSite(c.env,owner))return c.json({code:"SITE_EXISTS"},409);
   if(await c.env.DB.prepare("SELECT 1 FROM deals_site WHERE slug=?").bind(body.slug).first())return c.json({code:"SLUG_TAKEN"},409);
-  const id=crypto.randomUUID();
-  let channel:Awaited<ReturnType<typeof addChannel>>;try{channel=await addChannel(c.env,owner,"site",id,body.title,now);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
-  if(!channel)return c.json({code:"QUOTA"},409);
+  // The page is one of the plan's sites (with the ones Blup publishes).
+  const limit=(await accountPlan(c.env,owner))?.limits.sites??0;
+  const reservation=limit>0?await reserve(c.env.DB,owner,"sites",1,limit):null;
+  if(!reservation)return c.json({code:"SITES_LIMIT",limit},403);
   try{
-   await c.env.DB.prepare("INSERT INTO deals_site(id,user_id,channel_id,slug,title,description,language,show_title,links,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)").bind(id,owner,channel.id,body.slug,body.title,body.description,body.language,body.showTitle?1:0,JSON.stringify(body.links),now,now).run();
-  }catch(e){
-   // Someone took the address (or a second page) a moment before.
-   await c.env.DB.prepare("DELETE FROM deals_channel WHERE id=? AND user_id=?").bind(channel.id,owner).run();
-   if(String(e).includes("UNIQUE"))return c.json({code:String(e).includes("slug")?"SLUG_TAKEN":"SITE_EXISTS"},409);
-   throw e;
-  }
-  const site=await ownSite(c.env,owner);
-  return site?c.json({site:view(c.env,site)},201):c.json({code:"INTERNAL"},500);
+   const id=crypto.randomUUID();
+   let channel:Awaited<ReturnType<typeof addChannel>>;try{channel=await addChannel(c.env,owner,"site",id,body.title,now);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
+   if(!channel)return c.json({code:"QUOTA"},409);
+   try{
+    await c.env.DB.prepare("INSERT INTO deals_site(id,user_id,channel_id,slug,title,description,language,show_title,links,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)").bind(id,owner,channel.id,body.slug,body.title,body.description,body.language,body.showTitle?1:0,JSON.stringify(body.links),now,now).run();
+   }catch(e){
+    // Someone took the address (or a second page) a moment before.
+    await c.env.DB.prepare("DELETE FROM deals_channel WHERE id=? AND user_id=?").bind(channel.id,owner).run();
+    if(String(e).includes("UNIQUE"))return c.json({code:String(e).includes("slug")?"SLUG_TAKEN":"SITE_EXISTS"},409);
+    throw e;
+   }
+   const site=await ownSite(c.env,owner);
+   return site?c.json({site:view(c.env,site)},201):c.json({code:"INTERNAL"},500);
+  }finally{await release(c.env.DB,reservation);}
  })
  .patch("/",dealsWrite,validate("json",siteUpdate),async c=>{
   const owner=c.get("session").user.id,body=c.req.valid("json");

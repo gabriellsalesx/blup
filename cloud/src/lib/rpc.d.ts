@@ -11168,7 +11168,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11312,7 +11312,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11343,7 +11343,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11371,7 +11371,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11398,7 +11398,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11425,7 +11425,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11452,7 +11452,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11479,7 +11479,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11514,7 +11514,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11548,7 +11548,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11579,7 +11579,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11613,7 +11613,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11644,7 +11644,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11674,7 +11674,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11704,7 +11704,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -11734,7 +11734,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     filters?: {
                         aiFilter?: boolean | undefined;
                         aiExtract?: boolean | undefined;
-                        categories?: ("auto" | "home" | "other" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food")[] | undefined;
+                        categories?: ("auto" | "home" | "electronics" | "computers" | "phones" | "games" | "kitchen" | "fashion" | "beauty" | "sports" | "kids" | "pets" | "books" | "tools" | "food" | "other")[] | undefined;
                         stores?: ("amazon" | "mercadolivre" | "shopee" | "aliexpress" | "nuuvem" | "magalu" | "terabyte")[] | undefined;
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
@@ -12167,6 +12167,26 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             outputFormat: "json";
             status: 409;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    language: "pt" | "en" | "es";
+                    description?: string | undefined;
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+                limit: number;
+            };
+            outputFormat: "json";
+            status: 403;
         } | {
             input: {
                 json: {
