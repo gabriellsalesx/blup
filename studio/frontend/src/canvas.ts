@@ -265,10 +265,17 @@ function inline(s: string): string {
   const codes: string[] = [];
   s = s.replace(/`([^`]+)`/g, (_, c) => `\u0000${codes.push(esc(c)) - 1}\u0000`);
   s = esc(s);
+  // An image of the vault: a mark for cardimages.ts, never an <img> from the
+  // text. One on the web stays the link it was.
+  // Kept out of the rest, as the code: the links below would rewrite it.
+  const marks: string[] = [];
+  const mark = (src: string, alt: string) => `\u0001${marks.push(`<span class="card-img" data-src="${src}">${alt}</span>`) - 1}\u0001`;
+  s = s.replace(/!\[\[([^\]|#]+\.(?:png|jpe?g|webp|gif|svg|avif))(?:\|[^\]]*)?\]\]/gi, (_, name) => mark(`[[${name}]]`, name));
+  s = s.replace(/!\[([^\]]*)\]\((?!https?:)([^)\s]+)\)/gi, (_, alt, src) => mark(src, alt));
   s = s.replace(/!?\[\[([^\]|#]+)(#[^\]|]*)?(?:\|([^\]]*))?\]\]/g, (_, name, _h, alias) => `<button class="lnk" data-href="[[${name}]]">${alias || name}</button>`);
-  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, href) => `<button class="lnk" data-href="${href}">${text}</button>`);
+  s = s.replace(/!?\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, href) => `<button class="lnk" data-href="${href}">${text}</button>`);
   s = s.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/__([^_]+)__/g, "<b>$1</b>");
   s = s.replace(/(^|[^*])\*([^*]+)\*/g, "$1<i>$2</i>").replace(/(^|\W)_([^_]+)_(?=\W|$)/g, "$1<i>$2</i>");
   s = s.replace(/~~([^~]+)~~/g, "<s>$1</s>").replace(/==([^=]+)==/g, "<mark>$1</mark>");
-  return s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${codes[+i]}</code>`);
+  return s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${codes[+i]}</code>`).replace(/\u0001(\d+)\u0001/g, (_, i) => marks[+i]);
 }

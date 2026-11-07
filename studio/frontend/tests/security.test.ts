@@ -83,3 +83,14 @@ test("export: title and language are escaped", async () => {
   const doc = await noteDocument(`</title><script>alert(1)</script>`, "x", `"><script>`, async () => "");
   assert.doesNotMatch(doc, /<script/);
 });
+
+test("canvas cards: an image of the vault is a mark to load, never an <img> from the text", () => {
+  assert.match(cardHTML(`![foto](../Anexos/a%20b.png)`), /<span class="card-img" data-src="\.\.\/Anexos\/a%20b\.png">foto<\/span>/);
+  assert.match(cardHTML(`![[foto.png|300]]`), /<span class="card-img" data-src="\[\[foto\.png\]\]">foto\.png<\/span>/);
+  // On the web: a link, so opening a note tells no server anything.
+  assert.match(cardHTML(`![x](https://example.com/p.png)`), /<button class="lnk" data-href="https:\/\/example\.com\/p\.png">x<\/button>/);
+  assert.doesNotMatch(cardHTML(`![x](https://example.com/p.png)`), /card-img/);
+  // Not an image: the link it always was.
+  assert.match(cardHTML(`![[Outra nota]]`), /<button class="lnk"/);
+  for (const md of [`![a"onerror="x](b.png)`, `![x](b.png"onerror="alert(1))`, `![[a"onload="x.png]]`]) assert.doesNotMatch(cardHTML(md), /<img|\sonerror=|\sonload=/);
+});

@@ -37,7 +37,8 @@
   import { CALLOUTS, calloutIcon, calloutName } from "./callouts";
   import { mdExtras } from "./mdextras";
   import { linkConceal, headingFolds } from "./livemd";
-  import { livePreview } from "./livepreview";
+  import { forgetImages, livePreview } from "./livepreview";
+  import { blockAt, dataImage, dropPoint, moveImage, removeImage, scrollNear, type ImageSpan } from "./imagedrag";
   import Highlighter from "@lucide/svelte/icons/highlighter";
   import AlignLeft from "@lucide/svelte/icons/text-align-start";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
@@ -372,6 +373,61 @@
     }
   }
   const images = (list: FileList | undefined | null) => [...(list ?? [])].filter((f) => f.type.startsWith("image/"));
+  // The images of a paste or a drop: its files, or an image that came as
+  // its address (data:image/…), which must not land in the text.
+  function imagesIn(data: DataTransfer | null) {
+    const files = images(data?.files);
+    if (files.length) return files;
+    const file = dataImage(data?.getData("text/plain"));
+    return file ? [file] : [];
+  }
+
+  // Moving an image with the mouse (see imagedrag.ts). The listeners are on
+  // the editor's box, in the capture phase: an image or a table under the
+  // pointer would keep the event from the editor.
+  let moving: ImageSpan | null = null;
+  let dropLine = $state<{ x: number; y: number; width: number } | null>(null);
+  // Where the image would land, with the pointer there.
+  function landing(x: number, y: number) {
+    const pos = view.posAtCoords({ x, y }, false);
+    const b = blockAt(view.state, pos);
+    const top = view.lineBlockAt(b?.from ?? pos).top, bottom = view.lineBlockAt(b?.to ?? pos).bottom;
+    const at = dropPoint(view.state, pos, y - view.documentTop > (top + bottom) / 2);
+    return { at, y: view.documentTop + view.lineBlockAt(at)[at === view.state.doc.lineAt(at).from ? "top" : "bottom"] };
+  }
+  // Both enter and over must be taken, or WebKit refuses the drop.
+  function dragOver(e: DragEvent) {
+    if (!moving) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    showLine(e.clientX, e.clientY);
+  }
+  function showLine(x: number, y: number) {
+    const r = view.contentDOM.getBoundingClientRect();
+    dropLine = { x: r.left, y: landing(x, y).y, width: r.width };
+  }
+  function dragLeave(e: DragEvent) {
+    if (!host.contains(e.relatedTarget as Node | null)) dropLine = null;
+  }
+  function dropImage(e: DragEvent) {
+    if (!moving) return;
+    e.preventDefault();
+    e.stopPropagation();
+    landImage(e.clientX, e.clientY);
+  }
+  function landImage(x: number, y: number) {
+    if (!moving) return;
+    const changes = moveImage(view.state, moving, landing(x, y).at);
+    if (changes) view.dispatch({ changes, userEvent: "move.drop" });
+    moving = dropLine = null;
+    view.focus();
+  }
+  function dropOut(span: ImageSpan) {
+    view.dispatch({ changes: removeImage(view.state, span), userEvent: "delete" });
+    view.focus();
+    toast(te.imageRemoved, { action: { label: te.undo, run: () => undo(view) } });
+  }
   async function pickImage() {
     try {
       const md = await PickNoteImage(note);
@@ -460,6 +516,7 @@
   ];
 
   onMount(() => {
+    forgetImages();
     view = new EditorView({
       parent: host,
       doc: text,
@@ -473,9 +530,13 @@
         linkConceal,
         headingFolds({ fold: te.fold, unfold: te.unfold }),
         livePreview({
-          text: { copy: te.copy, copied: te.copied, code: te.code, lang: t.lang, remote: te.remoteImage },
+          text: { copy: te.copy, copied: te.copied, code: te.code, lang: t.lang, remote: te.remoteImage, moveImage: te.moveImage, removeImage: te.removeImage },
           image: (src) => NoteImage(note, src),
           onCopy: (code) => void Clipboard.SetText(code),
+          onImageDrag: (span) => { moving = span; if (!span) dropLine = null; },
+          onImagePoint: (x, y) => { scrollNear(view.contentDOM, y); showLine(x, y); },
+          onImageDrop: landImage,
+          onImageRemove: dropOut,
         }),
         tables(t.editor.tableUi),
         EditorView.contentAttributes.of({ spellcheck: "false" }), // ours, below
@@ -549,14 +610,14 @@
             return false;
           },
           paste: (e) => {
-            const files = images(e.clipboardData?.files);
+            const files = imagesIn(e.clipboardData);
             if (!files.length) return false;
             e.preventDefault();
             addImages(files);
             return true;
           },
           drop: (e, v) => {
-            const files = images(e.dataTransfer?.files);
+            const files = imagesIn(e.dataTransfer);
             if (!files.length) return false;
             e.preventDefault();
             addImages(files, v.posAtCoords({ x: e.clientX, y: e.clientY }) ?? undefined);
@@ -627,8 +688,9 @@
   <!-- The note scrolls as one page: the header, then the text. -->
   <div class={["page", { wide: look.editorWidth === "wide", headed: !!header }]}>
     {#if header}<div class="head">{@render header()}</div>{/if}
-    <div class="editor" oncontextmenu={onMenu} class:wide={look.editorWidth === "wide"} style:--size="{look.editorFont}px" bind:this={host}></div>
+    <div class="editor" oncontextmenu={onMenu} class:wide={look.editorWidth === "wide"} style:--size="{look.editorFont}px" ondragentercapture={dragOver} ondragovercapture={dragOver} ondragleavecapture={dragLeave} ondropcapture={dropImage} bind:this={host}></div>
   </div>
+  {#if dropLine}<div class="drop-line" style:left="{dropLine.x}px" style:top="{dropLine.y}px" style:width="{dropLine.width}px"></div>{/if}
 </div>
 
 {#if ctx}<ContextMenu x={ctx.x} y={ctx.y} items={menuItems()} onClose={() => { ctx = null; view.focus(); }} />{/if}
@@ -707,7 +769,16 @@
   .editor :global(.cm-bullet) { display: inline-block; width: 1ch; color: var(--muted); font-weight: 700; }
   .editor :global(.cm-task-box) { width: 1rem; height: 1rem; margin: 0 .25rem 0 0; vertical-align: -2px; accent-color: var(--blue); cursor: pointer; }
   .editor :global(.cm-task-done) { color: var(--muted); text-decoration: line-through; }
-  .editor :global(.cm-image) { display: block; margin-block: .3rem; }
+  .drop-line { position: fixed; z-index: 5; height: 2px; margin-block-start: -1px; border-radius: 1px; background: var(--blue); pointer-events: none; }
+  .editor :global(.cm-image) { position: relative; display: block; width: fit-content; max-width: 100%; margin-block: .3rem; outline: none; }
+  .editor :global(.cm-image.moving) { opacity: .5; }
+  .editor :global(.cm-image.focused img) { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .editor :global(.cm-image-grip) { position: absolute; width: .75rem; height: .75rem; border: 2px solid var(--blue); border-radius: 2px; background: var(--bg); cursor: move; touch-action: none; }
+  .editor :global(.cm-image-grip.top-left) { inset: -.4rem auto auto -.4rem; }
+  .editor :global(.cm-image-grip.top-right) { inset: -.4rem -.4rem auto auto; }
+  .editor :global(.cm-image-grip.bottom-left) { inset: auto auto -.4rem -.4rem; }
+  .editor :global(.cm-image-grip.bottom-right) { inset: auto -.4rem -.4rem auto; }
+  .editor :global(.cm-image-remove) { position: absolute; inset: .6rem .6rem auto auto; display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--bg); color: var(--red); cursor: pointer; }
   .editor :global(.cm-image img) { display: block; max-width: 100%; max-height: 28rem; border-radius: .4rem; }
   .editor :global(.cm-image-load) { padding: .35rem .7rem; border: 1px dashed var(--line); border-radius: .4rem; color: var(--muted); font-size: .85em; cursor: pointer; }
   .editor :global(.cm-image-load:hover) { border-color: var(--blue); color: var(--blue); }

@@ -4,6 +4,7 @@
   import PenTool from "@lucide/svelte/icons/pen-tool";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import { cardHTML } from "./canvas";
+  import { cardImages } from "./cardimages";
   import { t } from "./i18n";
 
   // A file of the vault on a canvas: a note shows its text, an image shows
@@ -35,7 +36,7 @@
         {#if board === "drawing"}<PenTool size={15} />{:else if board === "canvas"}<LayoutDashboard size={15} />{:else}<FileText size={15} />{/if}
         {name}
       </b>
-      {#if c.html}<div class="md" data-from={file}>{@html c.html}</div>{/if}
+      {#if c.html}<div class="md" data-from={file} use:cardImages={{ from: file, html: c.html }}>{@html c.html}</div>{/if}
     </div>
   {/if}
 {:catch}

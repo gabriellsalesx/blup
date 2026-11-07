@@ -16,13 +16,18 @@ import { EditorView, Decoration, ViewPlugin, WidgetType, type DecorationSet, typ
 import { type EditorState, type Range } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { CALLOUTS, CALLOUT_ALIASES, calloutIcon, calloutName } from "./callouts";
+import { frontEnd, type ImageSpan } from "./imagedrag";
 import type { SyntaxNode } from "@lezer/common";
 
-export type LiveText = { copy: string; copied: string; code: string; lang: string; remote: string };
+export type LiveText = { copy: string; copied: string; code: string; lang: string; remote: string; moveImage: string; removeImage: string };
 export type LiveOptions = {
   text: LiveText;
   image: (src: string) => Promise<string>; // an image's data: URL ("" when missing)
   onCopy?: (code: string) => void;
+  onImageDrag?: (span: ImageSpan | null) => void; // an image picked up to move (null: let go)
+  onImagePoint?: (x: number, y: number) => void; // held by a corner, the finger or the mouse here
+  onImageDrop?: (x: number, y: number) => void; // and let go here
+  onImageRemove?: (span: ImageSpan) => void;
 };
 
 const hide = Decoration.replace({});
@@ -112,9 +117,84 @@ class CodeHead extends WidgetType {
 const loaded = new Map<string, string>();
 const allowed = new Set<string>();
 
+// Addresses are relative to the note: another note starts over.
+export function forgetImages() { loaded.clear(); }
+
+// A click or a tap on a picture gives it the focus: a line around it, a
+// square at each corner to hold and move it (the only way on a touch screen),
+// and a button that takes it out of the note. Delete does that too, and Esc
+// or a click anywhere else lets go of it.
+const TRASH = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+let letGo: (() => void) | null = null;
+
+function focusPicture(view: EditorView, box: HTMLElement, size: number, opts: LiveOptions) {
+  if (box.classList.contains("focused")) return;
+  letGo?.();
+  const span = () => { const from = view.posAtDOM(box); return { from, to: from + size }; };
+  const parts: HTMLElement[] = [];
+  for (const corner of ["top-left", "top-right", "bottom-left", "bottom-right"]) {
+    const grip = document.createElement("span");
+    grip.className = `cm-image-grip ${corner}`;
+    grip.setAttribute("role", "button");
+    grip.setAttribute("aria-label", opts.text.moveImage);
+    grip.title = opts.text.moveImage;
+    // The notes on a phone slide away from under a finger: not this one.
+    grip.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+    grip.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      grip.setPointerCapture(e.pointerId);
+      box.classList.add("moving");
+      opts.onImageDrag?.(span());
+      const move = (ev: PointerEvent) => opts.onImagePoint?.(ev.clientX, ev.clientY);
+      const end = (ev: PointerEvent) => {
+        grip.removeEventListener("pointermove", move);
+        grip.removeEventListener("pointerup", end);
+        grip.removeEventListener("pointercancel", end);
+        box.classList.remove("moving");
+        if (ev.type === "pointerup") opts.onImageDrop?.(ev.clientX, ev.clientY);
+        opts.onImageDrag?.(null);
+      };
+      grip.addEventListener("pointermove", move);
+      grip.addEventListener("pointerup", end);
+      grip.addEventListener("pointercancel", end);
+    });
+    parts.push(grip);
+  }
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "cm-image-remove";
+  remove.title = opts.text.removeImage;
+  remove.setAttribute("aria-label", opts.text.removeImage);
+  remove.innerHTML = TRASH;
+  remove.addEventListener("click", (e) => { e.stopPropagation(); opts.onImageRemove?.(span()); });
+  parts.push(remove);
+
+  const outside = (e: Event) => { if (!box.contains(e.target as Node)) letGo?.(); };
+  const keys = (e: KeyboardEvent) => {
+    if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); opts.onImageRemove?.(span()); }
+    else if (e.key === "Escape") { e.preventDefault(); letGo?.(); view.focus(); }
+  };
+  box.classList.add("focused");
+  box.append(...parts);
+  box.tabIndex = -1;
+  box.addEventListener("keydown", keys);
+  document.addEventListener("pointerdown", outside, true);
+  box.focus({ preventScroll: true }); // out of the text: on a phone the keyboard goes
+  letGo = () => {
+    letGo = null;
+    document.removeEventListener("pointerdown", outside, true);
+    box.removeEventListener("keydown", keys);
+    box.classList.remove("focused");
+    box.removeAttribute("tabindex");
+    for (const part of parts) part.remove();
+  };
+}
+
 class Picture extends WidgetType {
-  constructor(readonly src: string, readonly alt: string, readonly opts: LiveOptions) { super(); }
-  eq(o: Picture) { return o.src === this.src && o.alt === this.alt; }
+  // size: how long its Markdown is.
+  constructor(readonly src: string, readonly alt: string, readonly size: number, readonly opts: LiveOptions) { super(); }
+  eq(o: Picture) { return o.src === this.src && o.alt === this.alt && o.size === this.size; }
   toDOM(view: EditorView) {
     const box = document.createElement("span");
     box.className = "cm-image";
@@ -126,6 +206,17 @@ class Picture extends WidgetType {
       img.onload = () => view.requestMeasure();
       box.append(img);
     };
+    // Dragging it carries its Markdown, not the address the picture shows
+    // from (see imagedrag.ts).
+    img.addEventListener("dragstart", (e) => {
+      const from = view.posAtDOM(box), to = from + this.size;
+      e.dataTransfer?.clearData();
+      e.dataTransfer?.setData("text/plain", view.state.sliceDoc(from, to));
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+      this.opts.onImageDrag?.({ from, to });
+    });
+    img.addEventListener("dragend", () => this.opts.onImageDrag?.(null));
+    img.addEventListener("click", () => focusPicture(view, box, this.size, this.opts));
     if (/^https?:/i.test(this.src) && !allowed.has(this.src)) {
       const b = document.createElement("button");
       b.type = "button";
@@ -138,21 +229,14 @@ class Picture extends WidgetType {
       box.append(b);
     } else if (/^(https?:|data:image\/)/i.test(this.src)) show(this.src);
     else if (loaded.has(this.src)) show(loaded.get(this.src)!);
-    else this.opts.image(this.src).then((url) => { loaded.set(this.src, url); show(url); }, () => show(""));
+    else this.opts.image(this.src).then((url) => { if (url) loaded.set(this.src, url); show(url); }, () => show(""));
     return box;
   }
+  destroy(dom: HTMLElement) { if (dom.classList.contains("focused")) letGo?.(); }
 }
 
 const IMAGE_FILE = /\.(png|jpe?g|webp|gif|svg|avif)$/i;
 const WIKI_IMAGE = /!\[\[([^\]|\n]+?)(\|[^\]\n]*)?\]\]/g;
-
-// The end of the front matter at the top (--- … ---): left as written.
-function frontEnd(state: EditorState) {
-  const doc = state.doc;
-  if (doc.lines < 2 || doc.line(1).text !== "---") return 0;
-  for (let n = 2; n <= doc.lines; n++) if (/^(---|\.\.\.)$/.test(doc.line(n).text)) return doc.line(n).to;
-  return 0;
-}
 
 function build(view: EditorView, opts: LiveOptions): DecorationSet {
   const { state } = view;
@@ -252,7 +336,7 @@ function build(view: EditorView, opts: LiveOptions): DecorationSet {
             if (!url || lineTouched(n.from)) return false;
             const raw = state.sliceDoc(n.from, n.to);
             const alt = raw.match(/^!\[([^\]]*)\]/)?.[1] ?? "";
-            out.push(Decoration.replace({ widget: new Picture(state.sliceDoc(url.from, url.to), alt, opts) }).range(n.from, n.to));
+            out.push(Decoration.replace({ widget: new Picture(state.sliceDoc(url.from, url.to), alt, raw.length, opts) }).range(n.from, n.to));
             return false;
           }
         }
@@ -264,7 +348,7 @@ function build(view: EditorView, opts: LiveOptions): DecorationSet {
     for (const m of text.matchAll(WIKI_IMAGE)) {
       const a = from + m.index!, b = a + m[0].length;
       if (a < front || !IMAGE_FILE.test(m[1].trim()) || lineTouched(a) || inCode(state, a)) continue;
-      out.push(Decoration.replace({ widget: new Picture("[[" + m[1].trim() + "]]", m[1].trim(), opts) }).range(a, b));
+      out.push(Decoration.replace({ widget: new Picture("[[" + m[1].trim() + "]]", m[1].trim(), m[0].length, opts) }).range(a, b));
     }
     for (const m of text.matchAll(/==(?=\S)[^=\n]+?==/g)) {
       const a = from + m.index!, b = a + m[0].length;

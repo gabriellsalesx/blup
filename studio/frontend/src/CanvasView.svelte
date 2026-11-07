@@ -18,6 +18,7 @@
   import ExternalLink from "@lucide/svelte/icons/external-link";
   import CanvasFile from "./CanvasFile.svelte";
   import NotePicker from "./NotePicker.svelte";
+  import { cardImages } from "./cardimages";
   import { bounds, cardHTML, colorOf, COLORS, curve, edgePath, inside, newId, parseCanvas, sidePoint, sideToward, writeCanvas, type CEdge, type CNode, type Canvas, type Side } from "./canvas";
   import { resolveHref, resolveWiki, type NoteRef } from "./notelinks";
   import { t } from "./i18n";
@@ -519,7 +520,7 @@
               {#if editing === n.id}
                 <textarea bind:value={n.text} placeholder={tb.textPh} use:focus oninput={(e) => grow(e, n)} onblur={finishEdit} onpointerdown={(e) => e.stopPropagation()}></textarea>
               {:else}
-                <div class="md">{@html cardHTML(n.text ?? "")}</div>
+                <div class="md" use:cardImages={{ from: path, html: n.text ?? "" }}>{@html cardHTML(n.text ?? "")}</div>
               {/if}
             {:else if n.type === "file"}
               <CanvasFile file={n.file ?? ""} version={fileVersion} />
@@ -621,6 +622,8 @@
   .ccard :global(.md blockquote) { margin: 0 0 .45rem; padding-inline-start: .7rem; border-inline-start: 3px solid var(--line); color: var(--muted); }
   .ccard :global(.md code) { padding: .05rem .3rem; border-radius: .25rem; background: var(--soft); font-size: .88em; }
   .ccard :global(.md pre) { padding: .5rem; border-radius: .4rem; background: var(--soft); overflow: auto; }
+  .ccard :global(.md .card-img) { display: block; color: var(--muted); font-size: .85em; }
+  .ccard :global(.md .card-img img) { display: block; max-width: 100%; border-radius: .4rem; }
   .ccard :global(.md mark) { background: color-mix(in srgb, #e0ac00 35%, transparent); color: inherit; }
   .ccard :global(.md .lnk) { color: var(--blue); text-decoration: underline; padding: 0; font: inherit; cursor: pointer; }
 
