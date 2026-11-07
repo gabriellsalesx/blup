@@ -2,7 +2,7 @@
 /** @jsxImportSource hono/jsx */
 import {languageTag,type Language} from "../../shared/language";
 import {money} from "./message";
-import {Shell,Icon,dealHref,translator,placeOf,untilOf,fillsBox,type SiteDeal,type SitePageProps,type Translate} from "./site-page";
+import {Shell,Icon,dealHref,translator,placeOf,untilOf,type SiteDeal,type SitePageProps,type Translate} from "./site-page";
 
 // A deal's own page (/o/<code>/): the photo, the price, the coupon and the
 // post's words, a button to the store (through the short link, which
@@ -83,7 +83,7 @@ export function DetailPage(props:DetailPageProps){
  return <Shell page={props} title={`${deal.title} · ${site.title}`} description={deal.description||(store?`${deal.title} · ${store}`:deal.title)} canonical={canonical} alternates={alternates} image={deal.image} data={data} scripts={[SHARE_SCRIPT]}>
   <p class="back"><a href={`${props.base}/${lang!==site.language?`?lang=${lang}`:""}`}><Icon name="back" small/>{t("dealsSiteBack")}</a></p>
   <article class="detail">
-   <div class={fillsBox(deal.kind)?"detail-image cover":"detail-image"}>
+   <div class="detail-image">
     {deal.image?<img src={deal.image} alt={deal.title} decoding="async" referrerpolicy="no-referrer" width="560" height="560"/>:<span class="deal-blank"><Icon name="tag"/></span>}
     {deal.discount&&deal.discount>0?<span class="deal-off">{t("dealsSiteOff",{percent:deal.discount})}</span>:null}
    </div>

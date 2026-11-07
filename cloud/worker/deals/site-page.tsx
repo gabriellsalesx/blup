@@ -107,14 +107,13 @@ export function untilOf(deal:Pick<SiteDeal,"endsAt"|"kind"|"price">,lang:Languag
  const date=new Intl.DateTimeFormat(languageTag[lang],{day:"numeric",month:"long",timeZone:"America/Sao_Paulo"}).format(deal.endsAt);
  return deal.kind==="game_free"||deal.price===0?t("dealsSiteFreeUntil",{date}):t("dealsSiteUntil",{date});
 }
-// Game covers are wide: they fill the box (cut at the sides); a product's
-// photo is shown whole, on white.
-export const fillsBox=(kind:string)=>kind==="game_free"||kind==="nuuvem_deal";
+// Every photo fills its square box (a wide game cover is cut at the
+// sides), with no frame around it.
 
 function DealCard({deal,lang,t,links,detail}:{deal:SiteDeal;lang:Language;t:Translate;links:string;detail:string}){
  const store=placeOf(deal),free=deal.kind==="game_free"||deal.price===0,href=`${links}/r/${deal.code}`,until=untilOf(deal,lang,t);
  return <article class="deal">
-  <a class={fillsBox(deal.kind)?"deal-image cover":"deal-image"} href={detail} tabindex={-1} aria-hidden="true">
+  <a class="deal-image" href={detail} tabindex={-1} aria-hidden="true">
    {deal.image?<img src={deal.image} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="320" height="320"/>:<span class="deal-blank"><Icon name="tag"/></span>}
    {deal.discount&&deal.discount>0?<span class="deal-off">{t("dealsSiteOff",{percent:deal.discount})}</span>:null}
   </a>
@@ -278,7 +277,7 @@ export const SITE_CSS=`@layer reset,tokens,base,layout,components;
 .chips{display:flex;gap:.5rem;overflow-x:auto;scrollbar-width:none;padding-block-end:1.25rem}.chips a{flex:none;padding:.375rem .875rem;border:1px solid var(--main-200);border-radius:999px;font-size:.875rem;font-weight:500;color:var(--main-600)}.chips a[aria-current]{background:var(--main-900);border-color:var(--main-900);color:var(--main-25)}
 .results{margin-block-end:1rem;color:var(--main-600)}.results a{text-decoration:underline}.empty{padding-block:4rem;text-align:center;color:var(--main-500)}
 .deals{display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))}
-.deal{display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--main-200);border-radius:.75rem;background:var(--card)}.deal-image{position:relative;display:block;aspect-ratio:1;background:#fff}.deal-image img{width:100%;height:100%;object-fit:contain;padding:.75rem}.cover img{object-fit:cover;padding:0}.deal-blank{display:grid;place-items:center;height:100%;color:var(--main-500)}
+.deal{display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--main-200);border-radius:.75rem;background:var(--card)}.deal-image{position:relative;display:block;aspect-ratio:1;overflow:hidden;background:var(--main-100)}.deal-image img{width:100%;height:100%;object-fit:cover}.deal-blank{display:grid;place-items:center;height:100%;color:var(--main-500)}
 .deal-off{position:absolute;inset:.5rem auto auto .5rem;padding:.125rem .5rem;border-radius:999px;background:var(--accent);color:var(--on-accent);font-size:.75rem;font-weight:700}
 .deal-body{display:flex;flex:1;flex-direction:column;gap:.375rem;padding:1rem}.deal-store{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--main-500)}.deal-title{font-size:1rem;font-weight:600;line-height:1.35}.deal-title a:hover{text-decoration:underline}.deal-text{font-size:.875rem;color:var(--main-600)}
 .deal-price{display:flex;align-items:baseline;gap:.5rem;margin-block-start:auto;padding-block-start:.25rem}.deal-price strong{font-size:1.25rem;color:var(--accent)}.deal-price s{font-size:.875rem;color:var(--main-500)}
@@ -287,7 +286,7 @@ export const SITE_CSS=`@layer reset,tokens,base,layout,components;
 .button-accent{background:var(--accent);color:var(--on-accent)}:root:not(.js) .share{display:none}
 .back{padding-block:1.5rem 1rem;font-size:.875rem}.back a{display:inline-flex;align-items:center;gap:.375rem;color:var(--main-600)}.back a:hover{color:var(--main-900)}
 .detail{display:grid;gap:1.5rem}@media (width>=48rem){.detail{grid-template-columns:minmax(0,26rem) minmax(0,1fr);gap:2.5rem;align-items:start}}
-.detail-image{position:relative;aspect-ratio:1;border:1px solid var(--main-200);border-radius:.75rem;overflow:hidden;background:#fff}.detail-image img{width:100%;height:100%;object-fit:contain;padding:1.25rem}.detail-image.cover img{object-fit:cover;padding:0}
+.detail-image{position:relative;aspect-ratio:1;border:1px solid var(--main-200);border-radius:.75rem;overflow:hidden;background:var(--main-100)}.detail-image img{width:100%;height:100%;object-fit:cover}
 .detail-body{display:flex;flex-direction:column;align-items:flex-start;gap:.75rem}.detail-meta{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;font-size:.8125rem;color:var(--main-500)}.detail-store{padding:.125rem .5rem;border-radius:.375rem;background:var(--main-200);color:var(--main-900);font-weight:600}
 .detail-title{font-size:clamp(1.375rem,1.2rem + .8vw,1.875rem);font-weight:700;line-height:1.2;letter-spacing:-.02em}.detail-price{display:flex;align-items:baseline;flex-wrap:wrap;gap:.625rem}.detail-price strong{font-size:2rem;line-height:1.1;color:var(--accent)}.detail-price s{color:var(--main-500)}.detail-text{color:var(--main-600);max-width:40rem}
 .detail-go,.share{width:100%;max-width:24rem;padding-block:.75rem}.detail-ended{padding:.75rem 1rem;border-radius:.5rem;background:var(--main-100);color:var(--main-600)}
