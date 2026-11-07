@@ -36,6 +36,8 @@ Tudo por variáveis de ambiente:
 | `SESSION_GAP` | `5m` | o intervalo mínimo entre posts do mesmo número; aceita `5m` ou mais |
 | `DEVICE_NAME` | `Blup Deals` | o nome em "Aparelhos conectados" |
 | `DEVICE_PLATFORM` | `desktop` | o ícone ao lado do nome: `desktop`, `chrome`, `firefox`, `edge` ou `safari` (o WhatsApp não aceita um ícone próprio; vale para quem conectar depois da troca) |
+| `SENTRY_DSN` | vazio | a DSN de um projeto do Blup Pulse: os erros da Ponte vão para lá (só erros, sem dados pessoais); vazio não envia nada |
+| `SENTRY_ENVIRONMENT` | `production` | o ambiente marcado nos erros (`development` na sua máquina) |
 
 Gere as senhas com `openssl rand -hex 32`. Elas ficam só nas variáveis do servidor e nos secrets do Blup Cloud, nunca no repositório.
 
@@ -61,11 +63,11 @@ docker run -d --restart unless-stopped -v blup-bridge-data:/data \
 
 **Numa VPS, a Ponte não fica aberta na internet.** Ela escuta em `127.0.0.1` e o acesso chega por um [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/) apontando para `http://127.0.0.1:8080`. Uma plataforma que já entrega HTTPS também serve; aí use `HOST=0.0.0.0`. Em qualquer caso, sem a assinatura nenhum pedido passa.
 
-Os registros saem em JSON na saída padrão, sem texto de post, QR ou senha. `GET /health` responde `{"ok":true}` sem assinatura, para o servidor saber se a Ponte está viva. Ao receber `SIGTERM`, ela fecha as conexões e as sessões antes de sair.
+Os registros saem em JSON na saída padrão, sem texto de post, QR ou senha. Sem assinatura, para o servidor e o monitor do Blup Pulse: `GET /health` (ou `/_blup/health`) responde `{"ok":true}` enquanto a Ponte está viva; `GET /_blup/ready` responde `200` quando o banco responde e `503` quando não. Nenhuma das duas mostra detalhes, e nenhuma vai para cache. Ao receber `SIGTERM`, ela fecha as conexões e as sessões antes de sair.
 
 ## Contrato
 
-Todos os pedidos, menos `/health`, levam três cabeçalhos:
+Todos os pedidos, menos os de saúde, levam três cabeçalhos:
 
 | Cabeçalho | Valor |
 |---|---|

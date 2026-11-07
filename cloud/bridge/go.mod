@@ -3,6 +3,7 @@ module github.com/gabriellsalesx/blup/cloud/bridge
 go 1.27.3
 
 require (
+	github.com/getsentry/sentry-go v0.50.0
 	github.com/jackc/pgx/v5 v5.12.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	go.mau.fi/whatsmeow v0.0.0-20261102152715-54038813c47f

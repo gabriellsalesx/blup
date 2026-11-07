@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/getsentry/sentry-go"
 )
 
 // bridge é o que as rotas usam: o manager de verdade, ou um falso nos
@@ -38,10 +40,10 @@ var (
 	postKey   = regexp.MustCompile(`^[A-Za-z0-9_:-]{8,128}$`)
 )
 
-// routes: só /health fica aberta; o resto exige a assinatura do Blup Cloud.
-func routes(b bridge, v *verifier, log *slog.Logger) http.Handler {
+// routes: só a saúde fica aberta (observability.go); o resto exige a
+// assinatura do Blup Cloud.
+func routes(b bridge, v *verifier, log *slog.Logger, rd *readiness) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { reply(w, 200, map[string]bool{"ok": true}) })
 	mux.HandleFunc("POST /v1/sessions/{id}", func(w http.ResponseWriter, r *http.Request) {
 		view, err := b.Start(r.Context(), r.PathValue("id"))
 		answer(w, log, view, err)
@@ -71,8 +73,8 @@ func routes(b bridge, v *verifier, log *slog.Logger) http.Handler {
 		w.WriteHeader(204)
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/health" {
-			mux.ServeHTTP(w, r)
+		if healthPath(r.URL.Path) {
+			serveHealth(w, r, rd)
 			return
 		}
 		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
@@ -148,6 +150,7 @@ func answer(w http.ResponseWriter, log *slog.Logger, v any, err error) {
 		reply(w, 503, code("BUSY"))
 	default:
 		log.Error("pedido falhou", "err", err)
+		sentry.CaptureException(err)
 		reply(w, 502, code("UPSTREAM"))
 	}
 }

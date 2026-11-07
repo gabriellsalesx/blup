@@ -19,6 +19,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/getsentry/sentry-go"
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	_ "modernc.org/sqlite"
@@ -26,8 +28,14 @@ import (
 
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	if err := run(log); err != nil {
+	err := run(log)
+	if err != nil {
 		log.Error("a Ponte parou", "err", err)
+		sentry.CaptureException(err)
+	}
+	// O que ainda não saiu para o Blup Pulse sai antes de terminar.
+	sentry.Flush(5 * time.Second)
+	if err != nil {
 		os.Exit(1)
 	}
 }
@@ -36,6 +44,11 @@ func run(log *slog.Logger) error {
 	cfg, err := loadConfig(env)
 	if err != nil {
 		return err
+	}
+	if on, err := initSentry(cfg.SentryDSN, cfg.SentryEnv); err != nil {
+		log.Warn("SENTRY_DSN inválida: os erros não vão para o Blup Pulse", "err", err)
+	} else if on {
+		log.Info("erros vão para o Blup Pulse")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -75,8 +88,11 @@ func run(log *slog.Logger) error {
 	}()
 
 	srv := &http.Server{
-		Addr:              net.JoinHostPort(cfg.Host, cfg.Port),
-		Handler:           routes(m, newVerifier(cfg.Secret, time.Now), log),
+		Addr: net.JoinHostPort(cfg.Host, cfg.Port),
+		// Um pânico num pedido vira erro no Blup Pulse e segue para o
+		// tratamento padrão do net/http (Repanic).
+		Handler: sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle(
+			routes(m, newVerifier(cfg.Secret, time.Now), log, &readiness{db: db})),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      90 * time.Second,

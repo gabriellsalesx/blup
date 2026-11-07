@@ -241,12 +241,31 @@ var png1 = func() string {
 
 func TestRoutes(t *testing.T) {
 	f := &fake{}
-	h := routes(f, newVerifier(secret, time.Now), slog.New(slog.NewTextHandler(io.Discard, nil)))
-	// /health não pede assinatura; o resto pede.
+	db, err := sql.Open("sqlite", "file::memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	h := routes(f, newVerifier(secret, time.Now), slog.New(slog.NewTextHandler(io.Discard, nil)), &readiness{db: db})
+	// A saúde não pede assinatura; o resto pede.
+	for _, path := range []string{"/health", "/_blup/health", "/_blup/ready"} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" {
+			t.Fatal("saúde", path, w.Code)
+		}
+	}
+	// Sem banco: viva, mas não pronta.
+	db.Close()
 	w := httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest("GET", "/health", nil))
-	if w.Code != 200 {
-		t.Fatal("health", w.Code)
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/_blup/ready", nil))
+	if w.Code != 503 || strings.Contains(w.Body.String(), "sql") {
+		t.Fatal("pronta sem banco", w.Code, w.Body)
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("POST", "/_blup/health", nil))
+	if w.Code != 405 {
+		t.Fatal("método", w.Code)
 	}
 	w = httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/v1/sessions/abcdefgh", nil))

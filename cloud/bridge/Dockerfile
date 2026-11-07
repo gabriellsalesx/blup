@@ -4,7 +4,9 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY *.go ./
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /bridge . && mkdir /data
+# A versão vai nos erros enviados ao Blup Pulse (docker build --build-arg VERSION=...).
+ARG VERSION=dev
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /bridge . && mkdir /data
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /bridge /bridge

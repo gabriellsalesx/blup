@@ -23,6 +23,8 @@ type Config struct {
 	SessionGap     time.Duration // SESSION_GAP: o intervalo mínimo entre posts do mesmo número
 	DeviceName     string        // DEVICE_NAME: o nome em "Aparelhos conectados"
 	DevicePlatform string        // DEVICE_PLATFORM: o ícone ao lado do nome
+	SentryDSN      string        // SENTRY_DSN: o projeto do Blup Pulse que recebe os erros (opcional)
+	SentryEnv      string        // SENTRY_ENVIRONMENT: production (padrão) ou development
 }
 
 const minSecret = 32
@@ -39,6 +41,8 @@ func loadConfig(get func(string) string) (Config, error) {
 		MinGap:         30 * time.Minute,
 		SessionGap:     5 * time.Minute,
 		DevicePlatform: or(get("DEVICE_PLATFORM"), "desktop"),
+		SentryDSN:      get("SENTRY_DSN"),
+		SentryEnv:      get("SENTRY_ENVIRONMENT"),
 	}
 	c.CallbackSecret = []byte(get("CALLBACK_SECRET"))
 	if len(c.Secret) < minSecret {
