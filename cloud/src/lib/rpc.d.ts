@@ -212,7 +212,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     createdAt: string;
                     lastSeen: string;
                     name: string;
-                    platform: "other" | "android" | "ios" | "linux" | "macos" | "windows";
+                    platform: "other" | "android" | "ios" | "macos" | "linux" | "windows";
                     id: string;
                 }[];
             };

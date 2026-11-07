@@ -1,9 +1,6 @@
-<script lang="ts" module>
-	export type DevicePlatform = "android" | "ios" | "macos" | "linux" | "windows" | "other";
-</script>
-
 <script lang="ts">
 	import Monitor from "@lucide/svelte/icons/monitor";
+	import type { DevicePlatform } from "../../../shared/user-agent";
 	// The mark of the system a Blup Studio runs on, in its own color (Apple's
 	// and iOS's in the text color, so they show in light and dark). Simple
 	// Icons (CC0), unchanged: Windows from simple-icons 9.21.0 (the last

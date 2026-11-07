@@ -3,7 +3,7 @@
 	import { resolve } from "$app/paths";
 	import AccountId from "#lib/ui/AccountId.svelte";
 	import { accountIdHelp } from "#lib/account-id.ts";
-	import { goto, refreshAll } from "$app/navigation";
+	import { goto, refreshAll, replaceState } from "$app/navigation";
 	import ArrowLeft from "@lucide/svelte/icons/arrow-left";
 	import External from "@lucide/svelte/icons/external-link";
 	import KeyRound from "@lucide/svelte/icons/key-round";
@@ -17,11 +17,37 @@
 	import AddonBars from "#lib/ui/AddonBars.svelte";
 	import Field from "#lib/ui/Field.svelte";
 	import Modal from "#lib/ui/Modal.svelte";
+	import Segmented from "#lib/ui/Segmented.svelte";
+	import DeviceIcon from "#lib/ui/DeviceIcon.svelte";
+	import { untrack } from "svelte";
+	import { page } from "$app/state";
+	import { readAgent } from "../../../../../shared/user-agent";
+	import { accountTabs, type AccountTab } from "./tabs";
 
-	// One account: plan, sessions, passkeys, what the staff did to it, and the
-	// support actions (blocking and deleting are for admins).
+	// One account, in tabs: the summary (ID, plan, deletion), its usage
+	// (Cloud, Pulse and Deals), payments, access (sessions with where each
+	// one is, passkeys), what the staff did to it, and the support actions
+	// (blocking and deleting are for admins).
 	let { data, params }: PageProps = $props();
 	const admin = $derived(data.me?.role === "admin");
+	const tabLabels: Record<AccountTab, string> = { summary: "Resumo", usage: "Uso", billing: "Pagamentos", access: "Acesso", history: "Histórico", actions: "Ações" };
+	const tabs = $derived(accountTabs.filter((t) => t !== "actions" || admin).map((value) => ({ value, label: tabLabels[value] })));
+	let tab = $state<AccountTab>(untrack(() => data.tab));
+	// The tab goes in the address, so a reload (or a link) opens it.
+	function show(next: AccountTab) {
+		const url = new URL(page.url.href);
+		url.searchParams.set("tab", next);
+		replaceState(url, {});
+	}
+	// Where a session is: Blup Studio (with the computer's name) or a browser,
+	// and on which system.
+	function sessionName(agent: string | null) {
+		const info = readAgent(agent);
+		if (info.studio) return `Blup Studio · ${info.studio.host}${info.system ? ` (${info.system})` : ""}`;
+		if (info.browser && info.system) return `${info.browser} no ${info.system}`;
+		// Anything else (a script, a tool) by the first word it gives.
+		return info.browser ?? info.system ?? (agent?.trim().split(/\s+/)[0]?.slice(0, 60) || "Aparelho desconhecido");
+	}
 	const id = $derived(params.id);
 
 	const d = $derived(data.detail);
@@ -71,7 +97,6 @@
 		{#if d.user.banned}<span class="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">Bloqueada</span>{/if}
 	</div>
 	<p class="mt-1 text-sm text-neutral-500">Criada em {when(d.user.createdAt)}</p>
- <Row title="ID da conta" help={accountIdHelp()}><div class="mt-2"><AccountId id={d.user.id} emphasis /></div></Row>
 	{#if d.user.banned && d.user.banReason}<p class="mt-2 text-sm text-red-600">Motivo do bloqueio: {d.user.banReason}</p>{/if}
 
 	{#if d.deletion.requestedAt}
@@ -82,13 +107,18 @@
 		</Row>
 	{/if}
 
-	<div class="mt-6">
+	<div class="mt-6"><Segmented label="Seções da conta" options={tabs} bind:value={tab} onchange={show} /></div>
+
+	<div class="mt-2">
+		{#if tab === "summary"}
+		<Row title="ID da conta" help={accountIdHelp()}><div class="mt-2"><AccountId id={d.user.id} emphasis /></div></Row>
 		<Row title={`Plano ${d.plan.label}`} help={d.plan.periodEnd ? `${d.plan.cancelAtPeriodEnd ? "Termina" : "Renova"} em ${when(d.plan.periodEnd)}` : "Sem assinatura paga."}>
 			{#snippet action()}
 				{#if d.stripeUrl}<a class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-4 py-2.5 font-semibold hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900" href={d.stripeUrl} target="_blank" rel="noreferrer">Abrir no Stripe <External class="size-4" /></a>{/if}
 			{/snippet}
 		</Row>
 
+		{:else if tab === "usage"}
 		<Row title="Uso" help="Só números: o conteúdo das notas é criptografado e a staff não vê.">
 			<UsageBars usage={d.usage} limits={d.plan.limits} ai={d.ai} />
 		</Row>
@@ -97,6 +127,7 @@
 			<AddonBars addons={d.addons} />
 		</Row>
 
+		{:else if tab === "billing"}
 		<Row title="Pagamentos" help="O que o Stripe avisou: pagamentos, falhas, reembolsos, contestações e alertas de fraude.">
 			<ul class="mt-3 grid gap-1.5 text-sm">
 				{#each d.billing as b (b.id)}
@@ -112,14 +143,19 @@
 			</ul>
 		</Row>
 
+		{:else if tab === "access"}
 		<Row title="Sessões" help={`${d.sessions.length} ${d.sessions.length === 1 ? "aparelho conectado" : "aparelhos conectados"}`}>
 			{#snippet action()}
 				<Button variant="secondary" {busy} disabled={!d.sessions.length} onclick={revokeSessions}>Encerrar todas</Button>
 			{/snippet}
 			{#if d.sessions.length}
-				<ul class="mt-3 grid gap-1.5 text-sm">
+				<ul class="mt-3 grid gap-2 text-sm">
 					{#each d.sessions as s (s.id)}
-						<li class="truncate text-neutral-600 dark:text-neutral-400" title={s.userAgent ?? ""}>{when(s.createdAt)} · {s.ipAddress || "IP desconhecido"}</li>
+						{@const info = readAgent(s.userAgent)}
+						<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800" title={s.userAgent ?? ""}>
+							<span class="grid size-9 shrink-0 place-items-center rounded-full bg-neutral-100 dark:bg-neutral-800"><DeviceIcon platform={info.platform} class="size-5" /></span>
+							<span class="min-w-0 flex-1"><b class="block truncate">{sessionName(s.userAgent)}</b><span class="block truncate text-neutral-500">{when(s.createdAt)} · {s.ipAddress || "IP desconhecido"}</span></span>
+						</li>
 					{/each}
 				</ul>
 			{/if}
@@ -139,6 +175,7 @@
 			</ul>
 		</Row>
 
+		{:else if tab === "history"}
 		<Row title="Histórico da staff" help="O que a equipe fez nesta conta.">
 			<ul class="mt-3 grid gap-1.5 text-sm">
 				{#each d.history as h (h.id)}
@@ -149,7 +186,7 @@
 			</ul>
 		</Row>
 
-		{#if admin}
+		{:else if tab === "actions" && admin}
 			{#if d.user.banned}
 				<Row title="Desbloquear a conta" help="A pessoa volta a entrar normalmente.">
 					{#snippet action()}<Button variant="secondary" {busy} onclick={() => run(() => staffApi.unban(id), "Conta desbloqueada")}>Desbloquear</Button>{/snippet}

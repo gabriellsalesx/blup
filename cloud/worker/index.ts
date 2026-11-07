@@ -13,6 +13,7 @@ import { HTTPException } from "hono/http-exception";
 import { boundedStream,idParam,safeInt,validate,opaqueId,requestError } from "./validation";
 import { accountAllowed,softDelete,purgeAccounts,cancelDeletedBilling,downgradeNotices } from "./lifecycle";
 import { approveDevice,approvalBody } from "./devices";
+import { readAgent } from "../shared/user-agent";
 import { expireReservations } from "./quota";
 import { cleanSites } from "./sites-cleanup";
 import { Hono } from "hono";
@@ -195,13 +196,10 @@ const routes = app
 			.where(and(eq(sessionTable.userId, user.id), isStudio, gt(sessionTable.expiresAt, new Date())))
 			.orderBy(desc(sessionTable.updatedAt));
 		// "Blup Studio (Linux; my-pc)" -> "my-pc · Linux", on Linux (its
-		// mark in the panel). Older Studios sent Go's own names ("android").
-		const systems = { linux: ["linux", "Linux"], macos: ["macos", "macOS"], darwin: ["macos", "macOS"], windows: ["windows", "Windows"], android: ["android", "Android"], ios: ["ios", "iOS"] } as const;
+		// mark in the panel).
 		const device = (agent: string | null) => {
-			const m = /\((.+?);\s*(.+)\)/.exec(agent ?? "");
-			if (!m) return { name: "Blup Studio", platform: "other" as const };
-			const key = m[1]!.trim().toLowerCase(), known = Object.hasOwn(systems, key) ? systems[key as keyof typeof systems] : null;
-			return { name: `${m[2]} · ${known ? known[1] : m[1]}`, platform: known ? known[0] : "other" as const };
+			const info = readAgent(agent);
+			return { name: info.studio ? `${info.studio.host} · ${info.system ?? "?"}` : "Blup Studio", platform: info.platform };
 		};
 		return c.json({ devices: rows.map((r) => ({ id: r.id, ...device(r.agent), createdAt: r.createdAt, lastSeen: r.lastSeen })) });
 	})
