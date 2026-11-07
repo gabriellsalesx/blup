@@ -103,10 +103,10 @@ export function DetailPage(props:DetailPageProps){
      {!free&&deal.originalPrice&&deal.currency&&deal.price!==null&&deal.originalPrice>deal.price?<s>{money(deal.originalPrice,deal.currency,lang)}</s>:null}
     </p>
     {free&&deal.originalPrice&&deal.currency?<p class="deal-until">{t("dealsSiteWorth",{price:money(deal.originalPrice,deal.currency,lang)})}</p>:null}
-    {until&&!deal.expired?<p class="deal-until">{until}</p>:null}
+    {until&&!deal.expired?<p class="deal-until deal-ends">{until}</p>:null}
     {deal.coupon?<p class="deal-coupon"><Icon name="ticket" small/>{t("dealsSiteCoupon",{code:deal.coupon})}</p>:null}
     {deal.description?<p class="detail-text">{deal.description}</p>:null}
-    {deal.expired?<p class="detail-ended">{t("dealsSiteEnded")}</p>:<a class="button button-accent detail-go" href={go} rel="nofollow sponsored noopener">{t("dealsSiteGo")}<Icon name="external" small/></a>}
+    {deal.expired?<p class="detail-ended">{t("dealsSiteEnded")}</p>:<a class="button button-good detail-go" href={go} rel="nofollow sponsored noopener">{t("dealsSiteGo")}<Icon name="external" small/></a>}
     <button class="button button-ghost share" type="button" data-share={canonical} data-copied={t("dealsSiteCopied")} data-idle={t("dealsSiteShare")}><span class="share-icon"><Icon name="share" small/></span><span class="copied-icon"><Icon name="check" small/></span><span data-label aria-live="polite">{t("dealsSiteShare")}</span></button>
    </div>
   </article>
