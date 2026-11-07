@@ -77,7 +77,9 @@
     {{- /* "See all": the page of every tag, with how many posts each has. */}}
     <div class="related-head">
       <h2 class="h2">{{ T "related" }}</h2>
-      {{- with site.GetPage "/tags" }}<a class="see-all" href="{{ .RelPermalink }}">{{ T "noriSeeAll" }}</a>{{ end }}
+      {{- /* In Bento, the blog's own tags (#<section>, see bento/taxonomy). */}}
+      {{- $scope := cond (eq site.Params.model "bento") (printf "#%s" (urlize $.Section)) "" }}
+      {{- with site.GetPage "/tags" }}<a class="see-all" href="{{ .RelPermalink }}{{ $scope }}">{{ T "noriSeeAll" }}</a>{{ end }}
     </div>
     <div class="post-grid">{{ range . }}{{ partial "mochi/card.html" . }}{{ end }}</div>
   </section>

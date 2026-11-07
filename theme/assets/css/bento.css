@@ -352,3 +352,9 @@ layout. Bundled into one file by css.Build. */
   .docs-article .prose > :first-child { margin-block-start: 0; }
   .docs-article .prose :is(h2, h3, h4) + * { margin-block-start: .75em; }
 }
+
+/* Tags: a blog's own list (and a tag's posts of that blog) shows when the
+   address ends in #<section>, in place of the whole site's. */
+.tags-page .tags-scope:not(:target) { display: none; }
+.tags-page:has(.tags-scope:target) .tags-all { display: none; }
+.tags-page .tags-scope { scroll-margin-block-start: 50vh; }

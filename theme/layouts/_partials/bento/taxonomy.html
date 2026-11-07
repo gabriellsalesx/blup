@@ -1,6 +1,25 @@
-<main id="main" class="page-wrap">
+{{- /* Every tag of the site with how many pages have it; and, for each
+blog section, its own tags counted over its posts alone, shown when the
+address ends in #<section> (the blog's "See all" leads there): no script,
+only :target. */ -}}
+{{- $terms := .Data.Terms.ByCount -}}
+<main id="main" class="page-wrap tags-page">
   <header class="page-intro"><h1 class="docs-title">{{ cond (eq .Data.Plural "authors") (T "authors") (T "tags") }}</h1></header>
-  <nav class="pills" style="justify-content:center;margin-block-start:2rem">
-    {{- range .Data.Terms.ByCount }}<a class="pill" href="{{ .Page.RelPermalink }}">{{ .Page.LinkTitle }} <small>{{ .Count }}</small></a>{{ end }}
+  <nav class="pills tags-all" style="justify-content:center;margin-block-start:2rem">
+    {{- range $terms }}<a class="pill" href="{{ .Page.RelPermalink }}">{{ .Page.LinkTitle }} <small>{{ .Count }}</small></a>{{ end }}
   </nav>
+  {{- if eq .Data.Plural "tags" }}
+  {{- range site.Sections }}
+  {{- if eq (partial "bento/kind.html" .) "blog" }}
+  {{- $section := .Section }}
+  {{- $id := urlize $section }}
+  <nav class="pills tags-scope" id="{{ $id }}" aria-label="{{ .LinkTitle }}" style="justify-content:center;margin-block-start:2rem">
+    {{- range $terms }}
+    {{- $n := len (where (partial "visible.html" .Pages) "Section" $section) }}
+    {{- if $n }}<a class="pill" href="{{ .Page.RelPermalink }}#{{ $id }}">{{ .Page.LinkTitle }} <small>{{ $n }}</small></a>{{ end }}
+    {{- end }}
+  </nav>
+  {{- end }}
+  {{- end }}
+  {{- end }}
 </main>
