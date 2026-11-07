@@ -144,12 +144,17 @@
 		</Row>
 
 		{:else if tab === "access"}
-		<Row title="Sessões" help={`${d.sessions.length} ${d.sessions.length === 1 ? "aparelho conectado" : "aparelhos conectados"}`}>
-			{#snippet action()}
+		<!-- The button by the title, the list in full width below it. -->
+		<section class="border-b border-neutral-200 py-5 dark:border-neutral-800">
+			<div class="flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
+				<div class="min-w-0">
+					<h2 class="font-semibold">Sessões</h2>
+					<p class="mt-0.5 text-sm text-neutral-500">{`${d.sessions.length} ${d.sessions.length === 1 ? "aparelho conectado" : "aparelhos conectados"}`}</p>
+				</div>
 				<Button variant="secondary" {busy} disabled={!d.sessions.length} onclick={revokeSessions}>Encerrar todas</Button>
-			{/snippet}
+			</div>
 			{#if d.sessions.length}
-				<ul class="mt-3 grid gap-2 text-sm">
+				<ul class="mt-4 grid gap-2 text-sm">
 					{#each d.sessions as s (s.id)}
 						{@const info = readAgent(s.userAgent)}
 						<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800" title={s.userAgent ?? ""}>
@@ -159,7 +164,7 @@
 					{/each}
 				</ul>
 			{/if}
-		</Row>
+		</section>
 
 		<Row title="Passkeys" help="Perdeu o aparelho? Remova a passkey: a pessoa entra pelo código por e-mail e cadastra outra.">
 			<ul class="mt-3 grid gap-2">
