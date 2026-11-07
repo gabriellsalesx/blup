@@ -12,6 +12,7 @@ import {seal,unseal,addChannel,channelTypes,targetHash} from "./store";
 import {sendWhatsapp,WHATSAPP_INTERVAL} from "./bridge";
 import {deliverPost} from "./dispatch";
 import {samplePost,sampleKinds} from "./samples";
+import {dropSite} from "./sites";
 import type {Delivery} from "../pulse/transports";
 
 const channelParam=z.object({channel:opaqueId});
@@ -57,6 +58,9 @@ export const channelsApi=new Hono<DealsApp>()
  })
  .delete("/:channel",validate("param",channelParam),async c=>{
   const owner=c.get("session").user.id,id=c.req.valid("param").channel;
+  // A deals page goes with its channel: its domain and logos first.
+  const site=await c.env.DB.prepare("SELECT id FROM deals_site WHERE channel_id=? AND user_id=?").bind(id,owner).first<{id:string}>();
+  if(site)await dropSite(c.env,site);
   const [removed]=await c.env.DB.batch([
    c.env.DB.prepare("DELETE FROM deals_channel WHERE id=? AND user_id=? RETURNING id").bind(id,owner),
    c.env.DB.prepare("DELETE FROM deals_post WHERE channel_id=? AND user_id=? AND state='queued'").bind(id,owner),
@@ -74,6 +78,8 @@ export const channelsApi=new Hono<DealsApp>()
   if(!row)return c.json({code:"NOT_FOUND"},404);
   const type=z.enum(channelTypes).parse(row.platform);
   if(type==="whatsapp"&&kinds.length>1)return c.json({code:"BAD_REQUEST"},400);
+  // A deals page has nothing to test: its posts just show on it.
+  if(type==="site")return c.json({code:"BAD_REQUEST"},400);
   // The round is taken atomically: two clicks never send twice.
   if(!await c.env.DB.prepare("UPDATE deals_channel SET test_at=? WHERE id=? AND user_id=? AND test_at<=? RETURNING id").bind(now+TEST_GAP,id,owner,now).first())return c.json({code:"TOO_SOON",testAgainAt:row.testAt},429);
   const account:Language=languageOf(row.language)??"pt",lang:Language=languageOf(row.channelLanguage)??account;

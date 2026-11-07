@@ -6,16 +6,15 @@
 	import BlupLogo from "./BlupLogo.svelte";
 
 	// The logo of the account, Pulse and Deals panels: a click opens the
-	// panels and picks another one, like switching organizations. Deals is
-	// listed only when its link is given.
+	// panels and picks another one, like switching organizations.
 	type App = "cloud" | "pulse" | "deals";
-	let { current, links }: { current: App; links: { cloud: string; pulse: string; deals?: string } } = $props();
+	let { current, links }: { current: App; links: { cloud: string; pulse: string; deals: string } } = $props();
 	const id = $props.id();
 	let open = $state(false);
 	const apps = $derived([
 		{ id: "cloud" as const, tag: "Cloud", hint: t("appCloudHint"), mint: false, coral: false, color: "text-[#3b82f6]", href: links.cloud },
 		{ id: "pulse" as const, tag: "Pulse", hint: t("appPulseHint"), mint: true, coral: false, color: "text-[#16846b]", href: links.pulse },
-		...(links.deals ? [{ id: "deals" as const, tag: "Deals", hint: t("appDealsHint"), mint: false, coral: true, color: "text-[#c2410c]", href: links.deals }] : []),
+		{ id: "deals" as const, tag: "Deals", hint: t("appDealsHint"), mint: false, coral: true, color: "text-[#c2410c]", href: links.deals },
 	]);
 	const here = $derived(apps.find((a) => a.id === current) ?? apps[0]);
 </script>

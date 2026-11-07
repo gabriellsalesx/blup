@@ -23,7 +23,7 @@
  import ActionMenu from "#lib/ui/ActionMenu.svelte";
  import StateMark from "#lib/ui/StateMark.svelte";
  import Segmented from "#lib/ui/Segmented.svelte";
- import Domain from "../../../lib/Domain.svelte";
+ import DomainCard from "#lib/ui/DomainCard.svelte";
  import PageForm from "../../../lib/PageForm.svelte";
  import BadgeEmbed from "../../../lib/BadgeEmbed.svelte";
  import {pulseApi,parseResponse} from "../../../lib/api";
@@ -69,7 +69,7 @@
   <div class="mt-8">{#key page.id}{#if writable}<PageForm monitors={data.monitors} initial={page} logos={{page:page.id,light:data.logoPreviews.light,dark:data.logoPreviews.dark}} editing {busy} onsave={save} oncancel={()=>goto(resolve("/status-pages"))}/>{:else}<p class="text-neutral-500">{t("pulseReadOnlyPage")}</p>{/if}{/key}</div>
   <div class="mt-10"><BadgeEmbed slug={page.slug} published={page.published}/></div>
  {:else if tab==="domain"}
-  <Domain page={page.id} eligible={writable&&!!panel.usage?.limits?.customDomain}/>
+  <DomainCard eligible={writable&&!!panel.usage?.limits?.customDomain} help={t("pulseDomainHelp")} removeAsk={t("pulseDomainRemoveAsk")} errorText={errorMessage} load={()=>parseResponse(pulseApi.pages[":page"].domain.$get({param:{page:pageId}}))} connect={hostname=>parseResponse(pulseApi.pages[":page"].domain.$post({param:{page:pageId},json:{hostname}}))} remove={()=>parseResponse(pulseApi.pages[":page"].domain.$delete({param:{page:pageId}}))}/>
  {:else if tab==="maintenance"}
   <div class="mt-8"><List empty={t("pulseNoMaintenance")}>
    {#each maintenance as item(item.id)}

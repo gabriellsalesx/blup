@@ -26,7 +26,7 @@
  // opens its details, where examples are sent. A WhatsApp Canal whose
  // connection ended says why and offers to reconnect.
  let {data}:PageProps=$props();
- const kindName={telegram:"Telegram",discord:"Discord",whatsapp:"WhatsApp",webhook:"Webhook"} as const;
+ const kindName=(type:Channel["type"])=>type==="site"?t("dealsSiteKind"):({telegram:"Telegram",discord:"Discord",whatsapp:"WhatsApp",webhook:"Webhook"} as const)[type];
  // The language a channel's posts go out in: the account's, or another
  // (the AI translates the post's own texts).
  const languages=$derived([{value:"account" as const,label:t("dealsChannelLanguageAccount")},{value:"pt" as const,label:"Português"},{value:"en" as const,label:"English"},{value:"es" as const,label:"Español"}]);
@@ -48,8 +48,8 @@
  {#each data.channels as channel(channel.id)}
   {@const failing=!channel.active||!!channel.lastError}
   <ListItem label={channel.label} href={detailsHref(channel)}>
-   <div class="flex items-center gap-3"><span class="grid size-10 shrink-0 place-items-center rounded-full border border-neutral-200 dark:border-neutral-700"><ChannelIcon type={channel.type} class="size-5"/></span><div class="min-w-0"><p class="truncate font-semibold">{channel.label}</p><p class="text-sm {failing?'text-amber-700 dark:text-amber-300':'text-neutral-500'}">{kindName[channel.type]} · {reconnect(channel)?failureText(channel.lastError):failing?t("dealsChannelFailing"):t("dealsChannelActive")}</p></div></div>
-   {#snippet actions()}<Select compact surface="bg-white dark:bg-neutral-900" label={`${t("dealsChannelLanguage")}: ${channel.label}`} options={languages} value={channel.language??"account"} disabled={!hasPlan()} onchange={(v)=>setLanguage(channel,v)}/>{/snippet}
+   <div class="flex items-center gap-3"><span class="grid size-10 shrink-0 place-items-center rounded-full border border-neutral-200 dark:border-neutral-700"><ChannelIcon type={channel.type} class="size-5"/></span><div class="min-w-0"><p class="truncate font-semibold">{channel.label}</p><p class="text-sm {failing?'text-amber-700 dark:text-amber-300':'text-neutral-500'}">{kindName(channel.type)} · {reconnect(channel)?failureText(channel.lastError):failing?t("dealsChannelFailing"):t("dealsChannelActive")}</p></div></div>
+   {#snippet actions()}{#if channel.type!=="site"}<Select compact surface="bg-white dark:bg-neutral-900" label={`${t("dealsChannelLanguage")}: ${channel.label}`} options={languages} value={channel.language??"account"} disabled={!hasPlan()} onchange={(v)=>setLanguage(channel,v)}/>{/if}{/snippet}
    {#snippet menu()}<ActionMenu label={t("dealsActions")} items={menuFor(channel)}/>{/snippet}
   </ListItem>
  {/each}

@@ -25,19 +25,31 @@
  import ChannelIcon from "#lib/ui/ChannelIcon.svelte";
  import FormSection from "#lib/ui/FormSection.svelte";
  import CodeBlock from "#lib/ui/CodeBlock.svelte";
+ import DetailHeader from "#lib/ui/DetailHeader.svelte";
+ import Segmented from "#lib/ui/Segmented.svelte";
+ import LogoField from "#lib/ui/LogoField.svelte";
+ import DomainCard from "#lib/ui/DomainCard.svelte";
  import {dealsApi,parseResponse} from "../../../lib/api";
  import {dealsError,failureText} from "../../../lib/errors";
  import {refreshUsage} from "../../../lib/panel.svelte";
  import {hasPlan} from "../../../lib/plan";
+ import SiteForm from "../../../lib/SiteForm.svelte";
+ import {getSite,uploadSiteLogo,removeSiteLogo,type SiteLanguage} from "../../../lib/site";
  // One channel, as Pulse's alerts: its state and the examples it can get
  // (the plain test, a free game, a Nuuvem sale, a store find, a pasted
  // link), each as it would really arrive, marked as an example. One round
  // a minute (on WhatsApp, one example at a time, in the Canal's 30-minute
  // turn), with a countdown to the next. A webhook also gets a new signing
- // secret here; and any channel is removed here.
+ // secret here; the deals page is edited here (as Pulse's status page:
+ // name, logos, domain); and any channel is removed here.
  let {data}:PageProps=$props();
  const channel=$derived(data.channel);
- const kindName={telegram:"Telegram",discord:"Discord",whatsapp:"WhatsApp",webhook:"Webhook"} as const;
+ const kindName=(type:NonNullable<typeof channel>["type"])=>type==="site"?t("dealsSiteKind"):({telegram:"Telegram",discord:"Discord",whatsapp:"WhatsApp",webhook:"Webhook"} as const)[type];
+ // The deals page: settings or domain, one at a time (?tab=domain).
+ let site=$derived(data.page?.site??null);
+ const tabs=$derived([{value:"settings" as const,label:t("dealsSiteSettings")},{value:"domain" as const,label:t("dealsSiteDomainTab")}]);
+ let tab=$derived<"settings"|"domain">(data.tab);
+ async function saveSite(values:{title:string;description:string;language:SiteLanguage;showTitle:boolean;links:{label:string;url:string}[]}){await run(async()=>{await parseResponse(dealsApi.site.$patch({json:{title:values.title,description:values.description,language:values.language,showTitle:values.showTitle,links:values.links}}));site=await getSite();await invalidateAll();toast(()=>t("pulseToastSaved"));});}
  type Kind="test"|"game_free"|"nuuvem_deal"|"store_deal"|"product";
  const options:{value:Kind;label:()=>string;help:()=>string;Icon:Component<{class?:string}>;bg:string}[]=[
   {value:"test",label:()=>t("dealsSampleTest"),help:()=>t("dealsSampleTestHelp"),Icon:Send,bg:"bg-blup"},
@@ -74,15 +86,29 @@
 
 {#if channel}
  <div class="mb-4"><BackLink href={resolve("/channels")} label={t("dealsChannels")}/></div>
- <PageHeader title={channel.label} lead={t("dealsChannelLead")}/>
+ {#if site}<DetailHeader title={site.title} url={site.url}/><p class="mt-2 text-neutral-500">{t("dealsSiteLead")}</p>
+ {:else}<PageHeader title={channel.label} lead={t("dealsChannelLead")}/>{/if}
  <div class="mt-6 flex flex-wrap items-center gap-3">
   <span class="grid size-10 shrink-0 place-items-center rounded-full border border-neutral-200 dark:border-neutral-700"><ChannelIcon type={channel.type} class="size-5"/></span>
-  <Badge>{kindName[channel.type]}</Badge>
+  <Badge>{kindName(channel.type)}</Badge>
   <span class="text-sm {!channel.active||channel.lastError?'text-amber-700 dark:text-amber-300':'text-neutral-500'}">{status}</span>
   {#if reconnect&&hasPlan()}<Button variant="secondary" onclick={()=>goto(`${resolve("/channels/new")}?kind=whatsapp`)}><RefreshCw class="size-4"/>{t("dealsWhatsappReconnect")}</Button>{/if}
  </div>
 
- {#if hasPlan()&&!reconnect}
+ {#if site}
+  {@const current=site}
+  <div class="mt-8"><Segmented label={t("dealsSiteKind")} options={tabs} bind:value={tab}/></div>
+  {#if tab==="domain"}
+   <DomainCard eligible={hasPlan()} help={t("dealsSiteDomainHelp")} removeAsk={t("dealsSiteDomainRemoveAsk")} errorText={dealsError} load={()=>parseResponse(dealsApi.site.domain.$get())} connect={hostname=>parseResponse(dealsApi.site.domain.$post({json:{hostname}}))} remove={()=>parseResponse(dealsApi.site.domain.$delete())}/>
+  {:else}
+   <div class="mt-8">{#key current.id}<SiteForm editing {busy} disabled={!hasPlan()} initial={{title:current.title,slug:current.slug,description:current.description,language:current.language,showTitle:current.showTitle,links:current.links}} onsave={saveSite}>
+    {#snippet logos()}
+     <LogoField variant="light" label={t("pulseLogoLight")} preview={data.page?.logos.light??null} disabled={!hasPlan()} upload={logo=>uploadSiteLogo("light",logo)} remove={()=>removeSiteLogo("light")}/>
+     <LogoField variant="dark" label={t("pulseLogoDark")} preview={data.page?.logos.dark??null} disabled={!hasPlan()} upload={logo=>uploadSiteLogo("dark",logo)} remove={()=>removeSiteLogo("dark")}/>
+    {/snippet}
+   </SiteForm>{/key}</div>
+  {/if}
+ {:else if hasPlan()&&!reconnect}
   <div class="mt-8"><Card title={t("dealsChooseSamples")} help={t("dealsChooseSamplesHelp")}>
    <div class="mt-5 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 xl:grid-cols-3" role={single?"radiogroup":"group"} aria-label={t("dealsChooseSamples")}>
     {#each options as option(option.value)}
@@ -100,7 +126,7 @@
   </Card></div>
  {/if}
 
- <div class="mt-10 grid grid-cols-[minmax(0,1fr)] gap-10">
+ {#if !site||tab==="settings"}<div class="mt-10 grid grid-cols-[minmax(0,1fr)] gap-10">
   {#if channel.type==="webhook"}
    <FormSection title={t("dealsSigningSecret")} help={t("dealsSigningSecretHelp")}>
     {#if secret}
@@ -112,7 +138,7 @@
   <FormSection title={t("dealsRemoveChannelTitle")} help={t("dealsRemoveChannelHelp")}>
    <button type="button" class="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50" disabled={busy} onclick={remove}><Trash2 class="size-4"/>{t("dealsRemoveThisChannel")}</button>
   </FormSection>
- </div>
+ </div>{/if}
 
  <p class="mt-10 text-xs text-neutral-500">{t("dealsChannelsPrivacy")}</p>
 {/if}

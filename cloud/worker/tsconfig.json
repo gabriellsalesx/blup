@@ -14,9 +14,12 @@
 		"noEmit": true,
 		"isolatedModules": true,
 		"verbatimModuleSyntax": true,
-		"allowImportingTsExtensions": true
+		"allowImportingTsExtensions": true,
+		"jsx": "react-jsx",
+		"jsxImportSource": "hono/jsx"
 	},
 	"include": [
-		"./**/*.ts"
+		"./**/*.ts",
+		"./**/*.tsx"
 	]
 }

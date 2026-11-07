@@ -1,4 +1,5 @@
 import {servePulsePage} from "./pulse/public";
+import {serveDealsSite} from "./deals/site-public";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { cachedSiteProps,serveDeploy } from "./serve-site";
 import { drainSitePurges } from "./site-cache-purge";
@@ -32,6 +33,8 @@ export default {
 		// Resolve eligibility on every request before the short public cache.
 		if(!slugOfHost(url.hostname,env.SITES_DOMAIN)){
 			const pulse=await servePulsePage(req,env);if(pulse)return pulse;
+			// A Deals page on its own domain (the same namespace).
+			const deals=await serveDealsSite(req,env);if(deals)return deals;
 		}
 		const local = env.SITES_DOMAIN === "localhost";
 		// Always HTTPS, and www.name.getblup.site is the same site as

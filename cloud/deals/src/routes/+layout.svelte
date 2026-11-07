@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {appURLs} from "#lib/app-urls.ts";
  import type {LayoutProps} from "./$types";
  import {resolve} from "$app/paths";
  import {page} from "$app/state";
@@ -19,7 +20,7 @@
  import ConfirmHost from "#lib/ui/ConfirmHost.svelte";
  import SignOutButton from "#lib/ui/SignOutButton.svelte";
  import {cloudURL,rpc,parseResponse} from "../lib/api";
- import {cloudPaths,pulseAppURL} from "../../../shared/panel-paths";
+ import {cloudPaths} from "../../../shared/panel-paths";
  import {panel} from "../lib/panel.svelte";
  import {setupDone} from "../lib/setup";
  import SetupGuide from "../lib/SetupGuide.svelte";
@@ -56,14 +57,14 @@
 {#if page.error||page.route.id==="/sign-in"}{@render children()}
 {:else if !panel.ready}<main class="p-10"><p>{t("loading")}</p></main>
 {:else if !panel.me}<main class="mx-auto max-w-xl p-10"><p>{t("errorGeneric")}</p><Button class="mt-4" onclick={()=>location.reload()}>{t("retry")}</Button></main>
-{:else}<PanelShell {links} home={resolve("/")} app={{current:"deals",links:{cloud:`${cloudURL}${cloudPaths.account}`,pulse:pulseAppURL,deals:resolve("/")}}} languages wide>
+{:else}<PanelShell {links} home={resolve("/")} app={{current:"deals",links:{cloud:`${appURLs.cloud}${cloudPaths.account}`,pulse:appURLs.pulse,deals:resolve("/")}}} languages wide>
  {#snippet foot(compact)}<SignOutButton onclick={signOut} {compact}/>{/snippet}
  <!-- After losing the plan: read-only with the date the data goes; else
   no plan once the first steps are done (until then, their first step
   says it); else read-only for another reason. -->
- {#if panel.usage?.readOnlyUntil}<p class="mb-6 rounded-lg bg-amber-50 p-4 dark:bg-amber-950">{t("dealsReadOnlyUntil",{date:formatDate(panel.usage.readOnlyUntil,{dateStyle:"long"})})} <a href={`${cloudURL}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>
- {:else if !setupLeft&&!panel.usage?.plan}<p class="mb-6 rounded-lg bg-orange-50 p-4 dark:bg-orange-950">{t("dealsNeedPlan")} <a href={`${cloudURL}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>
- {:else if panel.usage?.plan&&panel.usage.readOnly}<p class="mb-6 rounded-lg bg-amber-50 p-4 dark:bg-amber-950">{t("dealsReadOnly")} <a href={`${cloudURL}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>{/if}
+ {#if panel.usage?.readOnlyUntil}<p class="mb-6 rounded-lg bg-amber-50 p-4 dark:bg-amber-950">{t("dealsReadOnlyUntil",{date:formatDate(panel.usage.readOnlyUntil,{dateStyle:"long"})})} <a href={`${appURLs.cloud}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>
+ {:else if !setupLeft&&!panel.usage?.plan}<p class="mb-6 rounded-lg bg-orange-50 p-4 dark:bg-orange-950">{t("dealsNeedPlan")} <a href={`${appURLs.cloud}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>
+ {:else if panel.usage?.plan&&panel.usage.readOnly}<p class="mb-6 rounded-lg bg-amber-50 p-4 dark:bg-amber-950">{t("dealsReadOnly")} <a href={`${appURLs.cloud}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>{/if}
  {@render children()}
  <!-- The first steps, under the main pages only, until all are done. -->
  {#if guide&&panel.setup}<SetupGuide steps={panel.setup.steps}/>{/if}

@@ -8,8 +8,9 @@
  import FloatField from "#lib/ui/FloatField.svelte";
  import FormSection from "#lib/ui/FormSection.svelte";
  import Switch from "#lib/ui/Switch.svelte";
- import SlugField,{type SlugState} from "./SlugField.svelte";
- import LogoField from "./LogoField.svelte";
+ import SlugField,{type SlugState} from "#lib/ui/SlugField.svelte";
+ import LogoField from "#lib/ui/LogoField.svelte";
+ import {uploadLogo,removeLogo} from "./logo-image";
  import {pulseApi,parseResponse} from "./api";
  import type {Monitor} from "./status-pages";
  // A status page's title and address, the monitors it shows (each with
@@ -55,7 +56,7 @@
 
 <form class="grid grid-cols-[minmax(0,1fr)] gap-10" onsubmit={submit}>
  <FormSection title={t("pulseBasicInfo")} help={t("pulseBasicHelp")}>
-  <div class="grid grid-cols-[minmax(0,1fr)] gap-6"><FloatField id="page-title" surface="bg-white dark:bg-neutral-900" label={t("pulsePageTitle")} required maxlength={100} bind:value={title} oninput={titled}/><SlugField bind:value={slug} state={slugState} fixed={editing} oninput={typed}/></div>
+  <div class="grid grid-cols-[minmax(0,1fr)] gap-6"><FloatField id="page-title" surface="bg-white dark:bg-neutral-900" label={t("pulsePageTitle")} required maxlength={100} bind:value={title} oninput={titled}/><SlugField prefix="pulse.getblup.site/" bind:value={slug} state={slugState} fixed={editing} oninput={typed}/></div>
  </FormSection>
  <FormSection title={t("pulseComponents")} help={t("pulseComponentsHelp")}>
   <div class="-my-1 grid grid-cols-[minmax(0,1fr)]">
@@ -80,8 +81,8 @@
   <div class="grid grid-cols-[minmax(0,1fr)] gap-6">
    <Switch tone="mint" label={t("pulseShowTitle")} checked={showTitle} onchange={on=>showTitle=on}/>
    {#if logos}
-    <LogoField page={logos.page} variant="light" label={t("pulseLogoLight")} preview={logos.light}/>
-    <LogoField page={logos.page} variant="dark" label={t("pulseLogoDark")} preview={logos.dark}/>
+    <LogoField variant="light" label={t("pulseLogoLight")} preview={logos.light} upload={logo=>uploadLogo(logos.page,"light",logo)} remove={()=>removeLogo(logos.page,"light")}/>
+    <LogoField variant="dark" label={t("pulseLogoDark")} preview={logos.dark} upload={logo=>uploadLogo(logos.page,"dark",logo)} remove={()=>removeLogo(logos.page,"dark")}/>
     <p class="text-sm text-neutral-500">{t("pulseLogoHelp")}</p>
    {:else}<p class="text-sm text-neutral-500">{t("pulseLogoAfterCreate")}</p>{/if}
   </div>
@@ -89,9 +90,9 @@
  <FormSection title={t("pulseNavLinks")} help={t("pulseNavLinksHelp")}>
   <div class="grid grid-cols-[minmax(0,1fr)] gap-3">
    {#each links as link,i(i)}
-    <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]">
+    <div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]">
      <FloatField id={`link-label-${i}`} surface="bg-white dark:bg-neutral-900" label={t("pulseLinkLabel")} maxlength={40} required bind:value={link.label}/>
-     <div class="col-span-2 row-start-2 sm:col-span-1 sm:row-start-auto"><FloatField id={`link-url-${i}`} surface="bg-white dark:bg-neutral-900" label={t("pulseLinkURL")} type="url" maxlength={2048} required bind:value={link.url}/>{#if link.url.trim()&&!linkOk({label:"x",url:link.url})}<p class="mt-1 px-3 text-sm text-red-600 dark:text-red-400">{t("pulseLinkInvalid")}</p>{/if}</div>
+     <div class="col-span-2 row-start-2 sm:col-span-1 sm:row-start-auto"><FloatField id={`link-url-${i}`} surface="bg-white dark:bg-neutral-900" label={t("pulseLinkURL")} type="url" maxlength={2048} required bind:value={link.url}/>{#if link.url.trim()&&link.url.trim()!=="https://"&&!linkOk({label:"x",url:link.url})}<p class="mt-1 px-3 text-sm text-red-600 dark:text-red-400">{t("pulseLinkInvalid")}</p>{/if}</div>
      <button type="button" class="grid size-14 place-items-center rounded-md border border-neutral-300 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 dark:border-neutral-700 dark:hover:bg-neutral-800" aria-label={t("pulseRemoveLink")} onclick={()=>links.splice(i,1)}><X class="size-4"/></button>
     </div>
    {/each}

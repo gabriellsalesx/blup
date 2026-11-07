@@ -24,3 +24,5 @@ export const signInFor = (next: string) => `${cloudPaths.signIn}?${new URLSearch
 
 // The Pulse panel, opened from the Cloud panel's switcher and after signing in.
 export const pulseAppURL = "https://pulse.getblup.io/";
+// The Deals panel, opened from the other panels' switcher.
+export const dealsAppURL = "https://deals.getblup.io/";

@@ -7,7 +7,9 @@ import {dealsPaces,headlineKinds,socialIds,socialNetworks,socialURL,hasAddress,H
 
 export const DAY=86_400_000;
 export const dayOf=(now=Date.now())=>new Date(now).toISOString().slice(0,10);
-export const channelTypes=["telegram","discord","whatsapp","webhook"] as const;
+// "site": the account's public deals page (deals_site); nothing is sent
+// anywhere, the post shows on the page once it goes out.
+export const channelTypes=["telegram","discord","whatsapp","webhook","site"] as const;
 export type ChannelType=(typeof channelTypes)[number];
 // The shortest wait between two posts in the same channel.
 export const CHANNEL_INTERVAL=2*60_000;

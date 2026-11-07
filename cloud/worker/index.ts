@@ -39,6 +39,7 @@ import {servePulsePage} from "./pulse/public";
 import {pulseApi} from "./pulse/api";
 import {dealsApi} from "./deals/api";
 import {serveDealsLink} from "./deals/redirect";
+import {serveDealsSite} from "./deals/site-public";
 import {collectDeals,dealsCleanup} from "./deals/catalog";
 import {collectMirrors} from "./deals/mirror";
 import {collectShops} from "./deals/shops";
@@ -57,7 +58,7 @@ app.use("*",async(c,next)=>{
  const checked=headersSchema.safeParse(Object.fromEntries(c.req.raw.headers));
  if(!checked.success)return c.json(requestError(c.req.path,"INVALID"),400);
  if(c.req.raw.body && !/\/(?:files|blocks)\/[0-9a-f]{64}$/.test(c.req.path)){
-  const max=c.req.path==="/api/auth/stripe/webhook"?1024*1024:/\/sync\/vaults\/[^/]+\/(?:versions|prepare)$/.test(c.req.path)?34*1024*1024:/\/sites\/[^/]+\/deploys$/.test(c.req.path)?8*1024*1024:c.req.path==="/api/pulse/sourcemaps"?20*1024*1024:/^\/api\/pulse\/pages\/[^/]+\/logo\/(?:light|dark)$/.test(c.req.path)?LOGO_MAX_BYTES:96*1024;
+  const max=c.req.path==="/api/auth/stripe/webhook"?1024*1024:/\/sync\/vaults\/[^/]+\/(?:versions|prepare)$/.test(c.req.path)?34*1024*1024:/\/sites\/[^/]+\/deploys$/.test(c.req.path)?8*1024*1024:c.req.path==="/api/pulse/sourcemaps"?20*1024*1024:/^\/api\/(?:pulse\/pages\/[^/]+|deals\/site)\/logo\/(?:light|dark)$/.test(c.req.path)?LOGO_MAX_BYTES:96*1024;
   const bounded=boundedStream(c.req.raw.body,max,checked.data["content-length"]);
   const init={body:bounded,duplex:"half"};c.req.raw=new Request(c.req.raw,init);
  }
@@ -269,7 +270,8 @@ export default {
 		const url = new URL(req.url);
 		if(url.hostname===env.PULSE_INGEST_HOST)return secure(await pulseIngest(req,env));
 		if(url.hostname===env.PULSE_PUBLIC_HOST)return secure(await servePulsePage(req,env)??new Response("Not found",{status:404}));
-		if(env.DEALS_PUBLIC_HOST&&url.hostname===env.DEALS_PUBLIC_HOST)return secure(await serveDealsLink(req,env));
+		// deals.getblup.site: the deals pages (/<slug>/), else the short links (/r/).
+		if(env.DEALS_PUBLIC_HOST&&url.hostname===env.DEALS_PUBLIC_HOST)return secure(await serveDealsSite(req,env)??await serveDealsLink(req,env));
 		const corsOrigin=panelCorsOrigin(env,req.headers.get("origin"),url.pathname);
 		if(corsOrigin&&req.method==="OPTIONS")return secure(new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":corsOrigin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Methods":"GET, POST, PUT, PATCH, DELETE, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-Blup-Language, X-Captcha-Response","Access-Control-Max-Age":"600",Vary:"Origin"}}));
 		const staffApi = url.pathname.startsWith("/api/staff");

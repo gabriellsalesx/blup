@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {appURLs} from "#lib/app-urls.ts";
  import type {LayoutProps} from "./$types";
  import {resolve} from "$app/paths";
  import {page} from "$app/state";
@@ -45,9 +46,9 @@
 {#if page.error||page.route.id==="/sign-in"}{@render children()}
 {:else if !panel.ready}<main class="p-10"><p>{t("loading")}</p></main>
 {:else if !panel.me}<main class="mx-auto max-w-xl p-10"><p>{t("errorGeneric")}</p><Button class="mt-4" onclick={()=>location.reload()}>{t("retry")}</Button></main>
-{:else}<PanelShell {links} home={resolve("/")} app={{current:"pulse",links:{cloud:`${cloudURL}${cloudPaths.account}`,pulse:resolve("/")}}} languages wide>
+{:else}<PanelShell {links} home={resolve("/")} app={{current:"pulse",links:{cloud:`${appURLs.cloud}${cloudPaths.account}`,pulse:resolve("/"),deals:appURLs.deals}}} languages wide>
  {#snippet foot(compact)}<SignOutButton onclick={signOut} {compact}/>{/snippet}
- {#if !setupLeft&&!panel.usage?.plan}<p class="mb-6 rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950">{t("pulseNeedPlan")} <a href={`${cloudURL}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>{/if}
+ {#if !setupLeft&&!panel.usage?.plan}<p class="mb-6 rounded-lg bg-emerald-50 p-4 dark:bg-emerald-950">{t("pulseNeedPlan")} <a href={`${appURLs.cloud}${cloudPaths.plan}`} class="underline">{t("subscription")}</a></p>{/if}
  {#if panel.usage?.readOnlyUntil}<p class="mb-6 rounded-lg bg-amber-50 p-4 dark:bg-amber-950">{t("pulseReadOnly",{date:new Intl.DateTimeFormat(intlLocale(),{dateStyle:"long"}).format(new Date(panel.usage.readOnlyUntil))})}</p>{/if}
  {#if panel.usage?.selectionRequired&&panel.usage.limits}<PulseSelection resources={panel.usage.resources} limits={panel.usage.limits} bind:keep/><Button busy={selectionBusy} onclick={saveSelection}>{t("save")}</Button>{/if}
  {@render children()}

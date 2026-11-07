@@ -6,7 +6,7 @@ import {sendWhatsapp,WHATSAPP_INTERVAL} from "./bridge";
 import {unseal,settingsOf,headlineOf,socialLinks,channelTypes,CHANNEL_INTERVAL,DAY,dayOf,type ChannelType,type DealsSettings} from "./store";
 import {headline,defaultHeadlines,headlineKinds,storeTitles,type HeadlineKind} from "../../shared/deals-post";
 import {translate,gameTitle} from "./ai";
-import type {Delivery} from "../pulse/transports";
+import {success,type Delivery} from "../pulse/transports";
 
 type Due={id:string;userId:string;channelId:string;code:string;link:string;attempts:number;day:string;platform:string;target:string;channelNext:number;active:number;title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;kind:string;credit:string|null;language:string;affiliate:number;priceShown:number;url:string;store:string;description:string|null;coupon:string|null;offerId:string;shortTitle:string|null;channelLanguage:string|null;sessionId:string|null;whatsappState:string|null};
 // The post's opening line: the person's (or the default, in the account's
@@ -21,20 +21,23 @@ export const shortLink=(env:Cloudflare.Env,code:string)=>`https://${env.DEALS_PU
 // key is the post's own: the WhatsApp Bridge publishes it only once.
 export async function deliverPost(env:Cloudflare.Env,type:ChannelType,target:string,post:Post,language:string|null,send:typeof fetch=fetch,whatsapp?:{session:string;key:string}):Promise<Delivery>{
  const lang=languageOf(language)??"pt";
+ // A deals page: the post shows on it once marked sent; nothing goes out.
+ if(type==="site")return success();
  if(type==="webhook")return sendWebhook(target,post,lang,send);
  if(type==="whatsapp")return whatsapp?sendWhatsapp(env,whatsapp.session,target,whatsapp.key,whatsappText(post,lang),post.image,send,post.photo??null):{sent:false,permanent:false,code:"WHATSAPP_DISCONNECTED",waitMs:300_000,global:false};
  return type==="telegram"?sendTelegram(env,target,telegramText(post,lang),post.image,send,post.watch??null,post.photo??null):sendDiscord(target,discordPayload(post.photo?{...post,image:"attachment://exemplo.jpg"}:post,lang),send,post.photo??null);
 }
 // The shortest wait between two posts in a channel: on a WhatsApp Canal,
 // the safety mode's 30 minutes (the Bridge checks it again).
-const intervalOf=(type:ChannelType)=>type==="whatsapp"?WHATSAPP_INTERVAL:CHANNEL_INTERVAL;
+// A deals page takes its posts as they come (the account's pace still holds).
+const intervalOf=(type:ChannelType)=>type==="whatsapp"?WHATSAPP_INTERVAL:type==="site"?0:CHANNEL_INTERVAL;
 // The Deals bot's own budget per platform, kept in D1 (the table Pulse
 // uses, under other keys) so every run and every account shares it:
 // Telegram at most one message every 40 ms (25 per second, under the
 // about 30 per second Telegram allows a bot), Discord every 100 ms. A
 // global 429 pauses the whole platform for its Retry-After. Webhooks go
 // to many systems, each its own: only a light spacing.
-export const DEALS_BUDGET={telegram:{key:"deals-telegram",spacing:40},discord:{key:"deals-discord",spacing:100},whatsapp:{key:"deals-whatsapp",spacing:200},webhook:{key:"deals-webhook",spacing:20}} as const;
+export const DEALS_BUDGET={telegram:{key:"deals-telegram",spacing:40},discord:{key:"deals-discord",spacing:100},whatsapp:{key:"deals-whatsapp",spacing:200},webhook:{key:"deals-webhook",spacing:20},site:{key:"deals-site",spacing:0}} as const satisfies Record<ChannelType,{key:string;spacing:number}>;
 async function slot(db:D1Database,type:ChannelType,at:number){
  const {key,spacing}=DEALS_BUDGET[type];
  await db.prepare("INSERT OR IGNORE INTO pulse_delivery_budget(key,next_at) VALUES(?,0)").bind(key).run();
@@ -69,8 +72,9 @@ export async function dispatchDeals(env:Cloudflare.Env,send:typeof fetch=fetch,n
    // Valid for two days after the day it was meant to go out (sendAt),
    // however far ahead it was scheduled; retries keep their own cap.
    if(item.day<dayOf(now-2*DAY)){await fail("EXPIRED");continue;}
-   if(busy.has(item.channelId))continue;
    const type:ChannelType=channelTypes.find(t=>t===item.platform)??"discord";
+   // One post per channel and run; a deals page takes them all at once.
+   if(type!=="site"&&busy.has(item.channelId))continue;
    // A Canal whose WhatsApp is not connected waits (until it reconnects,
    // or the two days run out).
    if(type==="whatsapp"&&item.whatsappState!=="connected")continue;

@@ -1,4 +1,5 @@
 <script lang="ts">
+ import {appURLs} from "#lib/app-urls.ts";
  import type {Component} from "svelte";
  import {resolve} from "$app/paths";
  import CircleCheck from "@lucide/svelte/icons/circle-check";
@@ -23,7 +24,7 @@
  let {steps}:{steps:{id:SetupStep;done:boolean}[]}=$props();
  type Step={title:PlainMessageKey;text:PlainMessageKey;action:PlainMessageKey;href:string;Icon?:Component<{class?:string}>};
  const content:Record<SetupStep,Step>={
-  plan:{title:"dealsSetupPlan",text:"dealsSetupPlanText",action:"dealsSetupPlanAction",href:`${cloudURL}${cloudPaths.plan}`,Icon:CreditCard},
+  plan:{title:"dealsSetupPlan",text:"dealsSetupPlanText",action:"dealsSetupPlanAction",href:`${appURLs.cloud}${cloudPaths.plan}`,Icon:CreditCard},
   channel:{title:"dealsSetupChannel",text:"dealsSetupChannelText",action:"dealsNewChannel",href:resolve("/channels/new")},
   ids:{title:"dealsSetupIds",text:"dealsSetupIdsText",action:"dealsSetupIdsAction",href:resolve("/affiliates"),Icon:Handshake},
   hunt:{title:"dealsSetupHunt",text:"dealsSetupHuntText",action:"dealsSetupHuntAction",href:resolve("/hunts/new"),Icon:Crosshair},

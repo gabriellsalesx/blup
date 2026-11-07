@@ -82,3 +82,9 @@ export const storeTitles:Record<string,string>={amazon:"Amazon",mercadolivre:"Me
 export const dealCategories=["electronics","computers","phones","games","home","kitchen","fashion","beauty","sports","kids","pets","books","tools","auto","food","other"] as const;
 export type DealCategory=(typeof dealCategories)[number];
 export const postLanguages=["pt","en","es"] as const;
+
+// A giveaway's name without its store and the giveaway's words: "Hogwarts
+// Legacy (Epic Games) Giveaway" is "Hogwarts Legacy".
+export const gameTitle=(title:string)=>title.replace(/\s*\((?:[^()]*)\)\s*(?:Giveaway|Key Giveaway)?\s*$/i,"").replace(/\s+(?:Steam\s+)?(?:Key\s+)?Giveaway\s*$/i,"").trim()||title;
+// The names of the platforms a game is on (the ids the hunts use).
+export const platformNames:Record<string,string>={pc:"PC",steam:"Steam",epic:"Epic Games",gog:"GOG",ubisoft:"Ubisoft Connect",itchio:"itch.io",playstation:"PlayStation",xbox:"Xbox",switch:"Nintendo Switch",android:"Android",ios:"iOS"};

@@ -19,19 +19,21 @@
  import {refreshUsage} from "../../../lib/panel.svelte";
  import {hasPlan} from "../../../lib/plan";
  import WhatsappConnect from "../../../lib/WhatsappConnect.svelte";
+ import SiteForm from "../../../lib/SiteForm.svelte";
  // A new destination, as Pulse's alerts: paste a Discord channel's
  // webhook, link a Telegram channel or group through the Deals bot (the
  // bot is added there as an admin, then the channel is confirmed here), or
  // connect a WhatsApp by QR and pick its Canais (?kind=whatsapp opens it),
  // or give a webhook address of the person's own system (its signing
- // secret is shown once, here).
+ // secret is shown once, here), or make the deals page (one per
+ // account: with one already, a link to it).
  let {data}:PageProps=$props();
  const linkGET=dealsApi.telegram.link[":link"].$get;
  type LinkStatus=InferResponseType<typeof linkGET,200>;
  type Link=InferResponseType<typeof dealsApi.telegram.link.$post,201>;
- type Kind="telegram"|"discord"|"whatsapp"|"webhook";
+ type Kind="telegram"|"discord"|"whatsapp"|"webhook"|"site";
  let kind=$state<Kind>(untrack(()=>data.kind)),webhook=$state(""),secret=$state<string|null>(null),busy=$state(false),link=$state<Link|null>(null),linkStatus=$state<LinkStatus|null>(null);
- const kinds=$derived([{value:"telegram" as const,label:"Telegram",help:t("dealsTelegramHow")},{value:"discord" as const,label:"Discord",help:t("dealsDiscordHow")},{value:"whatsapp" as const,label:"WhatsApp",help:t("dealsWhatsappHow")},{value:"webhook" as const,label:"Webhook",help:t("dealsWebhookHow")}]);
+ const kinds=$derived([{value:"telegram" as const,label:"Telegram",help:t("dealsTelegramHow")},{value:"discord" as const,label:"Discord",help:t("dealsDiscordHow")},{value:"whatsapp" as const,label:"WhatsApp",help:t("dealsWhatsappHow")},{value:"webhook" as const,label:"Webhook",help:t("dealsWebhookHow")},{value:"site" as const,label:t("dealsSiteKind"),help:t("dealsSiteHow")}]);
  // How the person's system checks a request came from Blup Deals (Node).
  const verifySample=`// X-Blup-Signature: t=<seconds>,v1=<hex>
 const [t, v1] = header.split(",").map((p) => p.split("=")[1]);
@@ -57,6 +59,8 @@ const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now
   void poll();pollTimer=setInterval(()=>{void poll();},5000);
  }
  onDestroy(stopPolling);
+ // The page is made with its channel; then it opens, to add the logos.
+ async function site(values:{title:string;slug:string;description:string;language:"pt"|"en"|"es";showTitle:boolean;links:{label:string;url:string}[]}){await run(async()=>{const made=await parseResponse(dealsApi.site.$post({json:values}));void refreshUsage();toast(()=>t("dealsLinked"));await goto(resolve("/channels/[channel]",{channel:made.site.channelId}));});}
  function choose(next:Kind){if(next===kind)return;kind=next;webhook="";stopPolling();link=null;linkStatus=null;}
 </script>
 
@@ -82,6 +86,14 @@ const ok = crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(v1)) && Date.now
     <CodeBlock code={verifySample}/>
     <div class="flex justify-end"><Button onclick={()=>goto(back)}>{t("dealsDone")}</Button></div>
    </div>
+  {:else if kind==="site"}
+   {#if data.site}
+    {@const existing=data.site}
+    <div class="flex flex-wrap items-center justify-between gap-3"><p class="text-sm">{t("dealsSiteHave")}</p><Button variant="secondary" onclick={()=>goto(resolve("/channels/[channel]",{channel:existing.channelId}))}>{t("dealsSiteOpen")}</Button></div>
+   {:else}
+    <p class="mb-6 text-sm text-neutral-500">{t("dealsSiteFormHelp")}</p>
+    <SiteForm {busy} disabled={!hasPlan()} onsave={site}/>
+   {/if}
   {:else if kind==="whatsapp"}
    <WhatsappConnect onadded={done}/>
   {:else if kind==="webhook"}

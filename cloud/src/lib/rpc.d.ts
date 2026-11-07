@@ -984,7 +984,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 features: {
                     feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate" | "studio_translate" | "studio_translate_own" | "studio_voice" | "studio_voice_own";
                     kind: "chat" | "speech";
-                    max: 5 | 10;
+                    max: 10 | 5;
                     recommended: string | null;
                     models: ({
                         id: string;
@@ -4069,7 +4069,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     name: string;
-                    platform: "other" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "android" | "ios" | "electron";
+                    platform: "other" | "android" | "ios" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "electron";
                 };
             };
             output: {
@@ -4085,7 +4085,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     name: string;
-                    platform: "other" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "android" | "ios" | "electron";
+                    platform: "other" | "android" | "ios" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "electron";
                 };
             };
             output: {
@@ -4098,7 +4098,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     name: string;
-                    platform: "other" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "android" | "ios" | "electron";
+                    platform: "other" | "android" | "ios" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "electron";
                 };
             };
             output: {
@@ -4110,13 +4110,13 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             input: {
                 json: {
                     name: string;
-                    platform: "other" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "android" | "ios" | "electron";
+                    platform: "other" | "android" | "ios" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "electron";
                 };
             };
             output: {
                 id: string;
                 name: string;
-                platform: "other" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "android" | "ios" | "electron";
+                platform: "other" | "android" | "ios" | "javascript" | "react" | "nextjs" | "vue" | "nuxt" | "angular" | "svelte" | "sveltekit" | "astro" | "node" | "express" | "nestjs" | "hono" | "bun" | "deno" | "python" | "django" | "flask" | "fastapi" | "go" | "php" | "laravel" | "symfony" | "ruby" | "rails" | "java" | "spring" | "dotnet" | "elixir" | "rust" | "react-native" | "flutter" | "electron";
                 key: {
                     id: string;
                     prefix: string;
@@ -9365,7 +9365,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             output: {
                 channels: {
                     id: string;
-                    type: "webhook" | "discord" | "telegram" | "whatsapp";
+                    type: "site" | "webhook" | "discord" | "telegram" | "whatsapp";
                     label: string;
                     active: boolean;
                     lastError: string | null;
@@ -11173,7 +11173,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11317,7 +11317,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11348,7 +11348,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11376,7 +11376,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11403,7 +11403,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11430,7 +11430,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11457,7 +11457,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11484,7 +11484,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11519,7 +11519,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11553,7 +11553,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11584,7 +11584,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11618,7 +11618,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11649,7 +11649,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11679,7 +11679,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11709,7 +11709,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -11739,7 +11739,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         store?: "shopee" | "aliexpress" | undefined;
                         market?: "at" | "pt" | "es" | "in" | "id" | "de" | "fr" | "it" | "nl" | "pl" | "th" | "tr" | "br" | "my" | "sg" | "vn" | "ph" | "us" | "ca" | "mx" | "ar" | "cl" | "co" | "pe" | "gb" | "ie" | "be" | "se" | "ua" | "il" | "sa" | "ae" | "au" | "nz" | "jp" | "kr" | undefined;
                         keywords?: string[] | undefined;
-                        platforms?: ("android" | "ios" | "switch" | "pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox")[] | undefined;
+                        platforms?: ("pc" | "steam" | "epic" | "gog" | "ubisoft" | "itchio" | "playstation" | "xbox" | "switch" | "android" | "ios")[] | undefined;
                         minDiscount?: number | undefined;
                         maxPrice?: number | undefined;
                         gamesOnly?: boolean | undefined;
@@ -12022,7 +12022,604 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             status: import("hono/utils/http-status").ContentfulStatusCode;
         };
     };
-}, "/setup">, "/api/deals"> | import("hono/types").MergeSchemaPath<{
+}, "/setup"> | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                site: {
+                    id: string;
+                    channelId: string;
+                    slug: string;
+                    title: string;
+                    description: string;
+                    language: "pt" | "en" | "es";
+                    logos: {
+                        light: string | null;
+                        dark: string | null;
+                    };
+                    showTitle: boolean;
+                    links: {
+                        label: string;
+                        url: string;
+                    }[];
+                    url: string;
+                } | null;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/slug": {
+        $get: {
+            input: {
+                query: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                query: {
+                    slug: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                query: {
+                    slug: string;
+                };
+            };
+            output: {
+                state: "reserved" | "invalid";
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                query: {
+                    slug: string;
+                };
+            };
+            output: {
+                state: "taken" | "available" | "yours";
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    language: "pt" | "en" | "es";
+                    description?: string | undefined;
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    language: "pt" | "en" | "es";
+                    description?: string | undefined;
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    language: "pt" | "en" | "es";
+                    description?: string | undefined;
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    language: "pt" | "en" | "es";
+                    description?: string | undefined;
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    language: "pt" | "en" | "es";
+                    description?: string | undefined;
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
+                };
+            };
+            output: {
+                site: {
+                    id: string;
+                    channelId: string;
+                    slug: string;
+                    title: string;
+                    description: string;
+                    language: "pt" | "en" | "es";
+                    logos: {
+                        light: string | null;
+                        dark: string | null;
+                    };
+                    showTitle: boolean;
+                    links: {
+                        label: string;
+                        url: string;
+                    }[];
+                    url: string;
+                };
+            };
+            outputFormat: "json";
+            status: 201;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    slug: string;
+                    language: "pt" | "en" | "es";
+                    description?: string | undefined;
+                    showTitle?: boolean | undefined;
+                    links?: {
+                        label: string;
+                        url: string;
+                    }[] | undefined;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 500;
+        };
+    };
+} & {
+    "/": {
+        $patch: {
+            input: {
+                json: {
+                    title: string;
+                    description: string;
+                    language: "pt" | "en" | "es";
+                    showTitle: boolean;
+                    links: {
+                        label: string;
+                        url: string;
+                    }[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    description: string;
+                    language: "pt" | "en" | "es";
+                    showTitle: boolean;
+                    links: {
+                        label: string;
+                        url: string;
+                    }[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    description: string;
+                    language: "pt" | "en" | "es";
+                    showTitle: boolean;
+                    links: {
+                        label: string;
+                        url: string;
+                    }[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                json: {
+                    title: string;
+                    description: string;
+                    language: "pt" | "en" | "es";
+                    showTitle: boolean;
+                    links: {
+                        label: string;
+                        url: string;
+                    }[];
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/logo/:variant": {
+        $put: {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 413;
+        } | {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                version: string;
+            };
+            outputFormat: "json";
+            status: 201;
+        };
+    };
+} & {
+    "/logo/:variant": {
+        $get: {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {};
+            outputFormat: string;
+            status: import("hono/utils/http-status").StatusCode;
+        };
+    };
+} & {
+    "/logo/:variant": {
+        $delete: {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    variant: "light" | "dark";
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/domain": {
+        $get: {
+            input: {};
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {};
+            output: {
+                hostname: string;
+                status: "error" | "pending_ownership" | "pending" | "active" | "disabled";
+                disableAt: string | null;
+                ssl: "error" | "pending" | "active";
+                records: {
+                    type: "TXT" | "CNAME";
+                    name: string;
+                    value: string;
+                }[];
+            } | null;
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/domain": {
+        $post: {
+            input: {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                hostname: string;
+                status: "error" | "pending_ownership" | "pending" | "active" | "disabled";
+                disableAt: string | null;
+                ssl: "error" | "pending" | "active";
+                records: {
+                    type: "TXT" | "CNAME";
+                    name: string;
+                    value: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        } | {
+            input: {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                json: {
+                    hostname: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        };
+    };
+} & {
+    "/domain": {
+        $delete: {
+            input: {};
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {};
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+}, "/site">, "/api/deals"> | import("hono/types").MergeSchemaPath<{
     "/checkout": {
         $post: {
             input: {

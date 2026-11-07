@@ -138,4 +138,4 @@ ${DATA_RULE}`;
 // the game is ("Flotsam (Epic Games)"; "X Steam Key Giveaway" becomes
 // "X (Steam)").
 export const giveawayTitle=(title:string)=>title.replace(/\s+(?:(Steam|GOG|Epic Games|Itch\.io|Origin|Ubisoft|Battle\.net|Xbox|PlayStation)\s+)?(?:Key\s+)?Giveaway\s*$/i,(_,store:string|undefined)=>store?` (${store})`:"").trim()||title;
-export const gameTitle=(title:string)=>title.replace(/\s*\((?:[^()]*)\)\s*(?:Giveaway|Key Giveaway)?\s*$/i,"").replace(/\s+(?:Steam\s+)?(?:Key\s+)?Giveaway\s*$/i,"").trim()||title;
+export {gameTitle} from "../../shared/deals-post";

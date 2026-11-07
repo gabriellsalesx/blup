@@ -6,6 +6,7 @@ import {offersApi} from "./offers";
 import {huntsApi,statsApi} from "./hunts";
 import {settingsApi} from "./settings";
 import {setupApi} from "./setup";
+import {sitesApi} from "./sites";
 import {whatsappApi,whatsappCallbackApi} from "./whatsapp";
 import {isSampleImage,sampleImage} from "./samples";
 import {dayOf} from "./store";
@@ -42,4 +43,5 @@ export const dealsApi=new Hono<DealsApp>()
  .route("/hunts",huntsApi)
  .route("/stats",statsApi)
  .route("/settings",settingsApi)
- .route("/setup",setupApi);
+ .route("/setup",setupApi)
+ .route("/site",sitesApi);

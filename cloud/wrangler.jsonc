@@ -9,13 +9,17 @@
 	// A limpeza diária das versões antigas e dos blocos sem uso (04:00 UTC).
 	"triggers": { "crons": ["0 4 * * *", "*/5 * * * *", "* * * * *"] },
 	"upload_source_maps": true,
-	// O painel (SvelteKit estático) é servido como assets; só a API passa
-	// pelo Worker.
+	// O painel (SvelteKit estático) é servido como assets. O Worker roda
+	// antes de tudo, menos dos arquivos com hash (_app) e das fontes: assim
+	// pulse.getblup.site e deals.getblup.site respondem as páginas públicas
+	// e os links (/r/) também quando o navegador abre o endereço (sem isso,
+	// a navegação caía no index.html do painel); no host do painel, o
+	// Worker devolve os assets (env.ASSETS) como antes.
 	"assets": {
 		"directory": "./build",
 		"not_found_handling": "single-page-application",
 		"binding": "ASSETS",
-		"run_worker_first": ["/api/*", "/staff", "/staff/*"]
+		"run_worker_first": ["/*", "!/_app/*", "!/fonts/*"]
 	},
 	// Os IDs reais ficam fora do repositório público: troque na hora de
 	// publicar (npx wrangler d1 create blup-cloud).
@@ -34,8 +38,12 @@
 		{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" },
 		{ "binding": "SITES", "bucket_name": "blup-cloud-sites" },
 		{ "binding": "PULSE_SOURCEMAPS", "bucket_name": "blup-pulse-sourcemaps" },
-		{ "binding": "PULSE_ASSETS", "bucket_name": "blup-pulse-assets" }
+		{ "binding": "PULSE_ASSETS", "bucket_name": "blup-pulse-assets" },
+				{ "binding": "DEALS_ASSETS", "bucket_name": "blup-deals-assets" }
 	],
+	// A versão publicada: entra no ETag das páginas públicas do Deals, para
+	// que uma versão nova não fique presa no cache do navegador.
+	"version_metadata": { "binding": "CF_VERSION_METADATA" },
 	// A sala ao vivo de cada conta (sincronização em tempo real dos planos
 	// pagos), com hibernação de WebSocket.
 	"durable_objects": { "bindings": [{ "name": "SYNC_LIVE", "class_name": "SyncLive" }, { "name": "PULSE_PROJECT", "class_name": "PulseProject" }] },
@@ -45,6 +53,7 @@
 	"ratelimits": [
 		// Pedidos de código por e-mail: por IP, por minuto.
 		{ "name": "PULSE_PUBLIC_LIMIT", "namespace_id": "1005", "simple": { "limit": 300, "period": 60 } },
+		{ "name": "DEALS_PUBLIC_LIMIT", "namespace_id": "1006", "simple": { "limit": 300, "period": 60 } },
 		{ "name": "PULSE_INGEST_LIMIT", "namespace_id": "1004", "simple": { "limit": 500, "period": 10 } },
 		{ "name": "OTP_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
 		{ "name": "ABUSE_LIMIT", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } },
@@ -105,8 +114,10 @@
 				{ "binding": "NOTES", "bucket_name": "blup-cloud-notes" },
 				{ "binding": "SITES", "bucket_name": "blup-cloud-sites" },
 				{ "binding": "PULSE_SOURCEMAPS", "bucket_name": "blup-pulse-sourcemaps" },
-				{ "binding": "PULSE_ASSETS", "bucket_name": "blup-pulse-assets" }
+				{ "binding": "PULSE_ASSETS", "bucket_name": "blup-pulse-assets" },
+				{ "binding": "DEALS_ASSETS", "bucket_name": "blup-deals-assets" }
 			],
+			"version_metadata": { "binding": "CF_VERSION_METADATA" },
 			"durable_objects": { "bindings": [{ "name": "SYNC_LIVE", "class_name": "SyncLive" }, { "name": "PULSE_PROJECT", "class_name": "PulseProject" }] },
 			// Só manda a partir do no-reply (o domínio getblup.io precisa estar
 			// em Email Service > Email Sending na Cloudflare).
@@ -114,6 +125,7 @@
 			"send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["no-reply@getblup.io"] }],
 			"ratelimits": [
 				{ "name": "PULSE_PUBLIC_LIMIT", "namespace_id": "1005", "simple": { "limit": 300, "period": 60 } },
+		{ "name": "DEALS_PUBLIC_LIMIT", "namespace_id": "1006", "simple": { "limit": 300, "period": 60 } },
 		{ "name": "PULSE_INGEST_LIMIT", "namespace_id": "1004", "simple": { "limit": 500, "period": 10 } },
 		{ "name": "OTP_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
 		{ "name": "ABUSE_LIMIT", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } },

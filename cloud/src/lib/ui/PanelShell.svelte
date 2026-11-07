@@ -15,7 +15,7 @@
 	// the menu (signing out; `compact` asks for its icon alone). With `app`
 	// the logo switches between the account, Pulse and Deals panels.
 	type Link = { href: string; label: string; short?: string; Icon: Component; match?: (path: string) => boolean };
-	let { links, home, tag, foot, app, wide = false, languages=false, mint=false, children }: { links: Link[]; home: string; tag?: string; foot?: Snippet<[compact: boolean]>; app?: { current: "cloud" | "pulse" | "deals"; links: { cloud: string; pulse: string; deals?: string } }; wide?: boolean; languages?:boolean;mint?:boolean; children: Snippet } = $props();
+	let { links, home, tag, foot, app, wide = false, languages=false, mint=false, children }: { links: Link[]; home: string; tag?: string; foot?: Snippet<[compact: boolean]>; app?: { current: "cloud" | "pulse" | "deals"; links: { cloud: string; pulse: string; deals: string } }; wide?: boolean; languages?:boolean;mint?:boolean; children: Snippet } = $props();
 
 	const here = (l: Link) => (l.match ? l.match(page.url.pathname) : page.url.pathname === l.href);
 </script>

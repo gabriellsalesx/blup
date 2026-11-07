@@ -14,7 +14,7 @@
 	import Globe from "@lucide/svelte/icons/globe";
 	import { authClient } from "#lib/auth.ts";
 	import PanelShell from "#lib/ui/PanelShell.svelte";
-	import { pulseAppURL } from "../../../shared/panel-paths";
+	import { appURLs } from "#lib/app-urls.ts";
 	import SignOutButton from "#lib/ui/SignOutButton.svelte";
 
 	// The account panel.
@@ -44,7 +44,7 @@
 </script>
 
 <!-- The plans side by side need the wide page. -->
-<PanelShell languages {links} home={resolve("/(panel)/account")} app={{ current: "cloud", links: { cloud: resolve("/(panel)/account"), pulse: pulseAppURL } }} wide={page.url.pathname === resolve("/(panel)/account/plan")}>
+<PanelShell languages {links} home={resolve("/(panel)/account")} app={{ current: "cloud", links: { cloud: resolve("/(panel)/account"), pulse: appURLs.pulse, deals: appURLs.deals } }} wide={page.url.pathname === resolve("/(panel)/account/plan")}>
 	{#snippet foot(compact)}
 		<SignOutButton onclick={signOut} {compact} />
 	{/snippet}

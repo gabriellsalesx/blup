@@ -96,7 +96,9 @@ export const dealsPost=sqliteTable("deals_post",{
  // What the person wrote (or asked the AI for) about the product, and the
  // coupon, both for this post only.
  description:text("description"),coupon:text("coupon"),
-},t=>[uniqueIndex("deals_post_once_idx").on(t.channelId,t.offerId),index("deals_post_due_idx").on(t.state,t.nextAt),index("deals_post_owner_day_idx").on(t.userId,t.day),index("deals_post_created_idx").on(t.createdAt)]);
+},t=>[uniqueIndex("deals_post_once_idx").on(t.channelId,t.offerId),index("deals_post_due_idx").on(t.state,t.nextAt),index("deals_post_owner_day_idx").on(t.userId,t.day),index("deals_post_created_idx").on(t.createdAt),
+ // A deals page lists its channel's sent posts, newest first.
+ index("deals_post_channel_sent_idx").on(t.channelId,t.state,t.sentAt)]);
 
 // Clicks on the short links, added up per post and day (few writes).
 export const dealsClickDay=sqliteTable("deals_click_day",{
@@ -145,3 +147,23 @@ export const dealsWhatsapp=sqliteTable("deals_whatsapp",{
  id:text("id").primaryKey(),userId:text("user_id").notNull(),state:text("state").notNull().default("pairing"),phoneEnd:text("phone_end"),
  riskAcceptedAt:integer("risk_accepted_at").notNull(),createdAt:integer("created_at").notNull(),updatedAt:integer("updated_at").notNull(),
 },t=>[uniqueIndex("deals_whatsapp_user_idx").on(t.userId)]);
+
+// The account's public deals page (a channel of type "site"): the deals
+// sent to channelId show at deals.getblup.site/<slug>/, or on the account's
+// own domain. One per account. logoLight and logoDark are the versions of
+// the logos kept in R2 (DEALS_ASSETS), null without one.
+export const dealsSite=sqliteTable("deals_site",{
+ id:text("id").primaryKey(),userId:text("user_id").notNull().unique(),channelId:text("channel_id").notNull().unique(),slug:text("slug").notNull().unique(),
+ title:text("title").notNull(),description:text("description").notNull().default(""),language:text("language").notNull().default("pt"),
+ logoLight:text("logo_light"),logoDark:text("logo_dark"),createdAt:integer("created_at").notNull(),updatedAt:integer("updated_at").notNull(),
+ // The header, as a Pulse page's: the name beside the logo or not, and up
+ // to five links (JSON, as navLinks).
+ showTitle:integer("show_title").notNull().default(1),links:text("links").notNull().default("[]"),
+});
+
+// A deals page's own domain, verified like a Pulse page's (TXT proof, then
+// a Cloudflare custom hostname).
+export const dealsSiteDomain=sqliteTable("deals_site_domain",{
+ siteId:text("site_id").primaryKey(),hostname:text("hostname").notNull(),proof:text("proof").notNull(),providerId:text("provider_id"),verifiedAt:integer("verified_at"),
+ status:text("status").notNull().default("pending_ownership"),ssl:text("ssl").notNull().default("pending"),records:text("records").notNull().default("[]"),checkedAt:integer("checked_at"),
+},t=>[index("deals_site_domain_host_idx").on(t.hostname,t.verifiedAt)]);

@@ -267,6 +267,20 @@
       "when": 1794062013664,
       "tag": "0037_ia_recomendado",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1794067021783,
+      "tag": "0038_deals_site",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "6",
+      "when": 1794072253328,
+      "tag": "0039_deals_site_header",
+      "breakpoints": true
     }
   ]
 }
