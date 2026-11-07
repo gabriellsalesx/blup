@@ -40,7 +40,13 @@
 <PageHeader title={t("sites")}/>
 <p class="mt-2 text-neutral-500">{t("sitesLead")}</p>
 <div class="mt-6">
- <Row title={t("yourSites")}  help={count} />
+ <Row title={t("yourSites")}  help={count}>
+  {#if result!==null&&limit>0}
+   <div class="mt-3 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+    <div class="h-full rounded-full {used>=limit?"bg-red-500":"bg-blup"}" style:width="{Math.min(100,used/limit*100)}%"></div>
+   </div>
+  {/if}
+ </Row>
  {#if downgrade}
   <Row title={downgrade.selectionOpen?t("chooseSite"):t("planChange")} help={downgrade.selectionOpen?t("chooseSiteUntil",{date:when(downgrade.deadline)}):limit===0?t("freeSitesUntil",{date:when(downgrade.deadline)}):t("sitesUntil",{date:when(downgrade.deadline)})}>
    {#if downgrade.selectionOpen && downgrade.selectedSiteId===null}
