@@ -21,7 +21,21 @@ Os erros saem marcados com o ambiente:
 - `production` no ar;
 - `development` nesta máquina.
 
-A versão também vai junto: o id da versão publicada no Cloudflare, `blup-bridge@<versão>` e `blup-studio@<versão>`.
+### Versões
+
+Cada erro leva a versão de quem o mandou, e o Pulse mostra essa versão no problema. Todas começam em **1.0.0**.
+
+| Parte | Versão no Pulse | Onde mudar |
+|---|---|---|
+| Cloud | `blup-cloud@1.0.0` | `"version"` do `cloud/package.json` |
+| Sites publicados | `blup-sites@1.0.0` | idem |
+| Painéis | `blup-paineis@1.0.0` | idem |
+| Ponte | `blup-bridge@1.0.0` | `docker build --build-arg VERSION=1.1.0` |
+| Studio desktop | `blup-studio@1.0.0` | `VERSION=1.1.0 task build` |
+| Studio celular | `blup-studio-mobile@1.0.0` | `VERSION=1.1.0 wails3 task android:build` |
+
+- O Cloud, os Sites e os painéis leem a versão de um lugar só, `cloud/shared/version.ts`, que puxa do `package.json`. Os bundles levam só esse campo, não o arquivo inteiro.
+- O Cloud e os Sites também mandam o id da publicação na Cloudflare (`dist`), para separar duas publicações da mesma versão.
 
 Os erros do próprio Cloud entram direto na ingestão do Pulse, no mesmo pedido (`worker/observability.ts`). Eles não saem pela rede, então não há ciclo.
 

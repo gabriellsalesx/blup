@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/cloudflare";
 import {pulseIngest} from "./pulse/ingest";
+import {BLUP_VERSION} from "../shared/version";
 
 // The Cloud's own errors, sent to Blup Pulse with the official Sentry SDK
 // (errors only: Pulse keeps no performance data). The DSN is a secret
@@ -10,7 +11,8 @@ import {pulseIngest} from "./pulse/ingest";
 
 type Env=Cloudflare.Env;
 
-export function sentryOptions(env:Env):Sentry.CloudflareOptions{
+// `name`: the part of the Cloud the errors come from (its release name).
+export function sentryOptions(env:Env,name:"blup-cloud"|"blup-sites"="blup-cloud"):Sentry.CloudflareOptions{
  if(!env.SENTRY_DSN)return {enabled:false};
  let ingestHost="";
  try{ingestHost=new URL(env.SENTRY_DSN).hostname;}catch{return {enabled:false};}
@@ -21,7 +23,10 @@ export function sentryOptions(env:Env):Sentry.CloudflareOptions{
  return {
   dsn:env.SENTRY_DSN,
   environment:env.SENTRY_ENVIRONMENT||(env.STAFF_HOST?"production":"development"),
-  release:env.CF_VERSION_METADATA?.id,
+  // The project's version; the Cloudflare deployment tells two
+  // publications of the same version apart.
+  release:`${name}@${BLUP_VERSION}`,
+  dist:env.CF_VERSION_METADATA?.id?.slice(0,64),
   // No user, cookies, headers, bodies or query strings.
   dataCollection:{userInfo:false,cookies:false,httpHeaders:false,httpBodies:[],urlQueryParams:false},
   // Errors only: no tracing (no sample rate set).

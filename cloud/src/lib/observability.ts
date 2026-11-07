@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/svelte";
 import type { HandleClientError } from "@sveltejs/kit/hooks";
+import { BLUP_VERSION } from "../../shared/version";
 
 // The panels' errors in the browser (Blup Cloud, Pulse, Deals), sent to
 // Blup Pulse with the official Sentry SDK: errors only (no tracing, no
@@ -15,7 +16,8 @@ export function startErrors(panel: Panel, dsn: string | undefined = import.meta.
 	Sentry.init({
 		dsn,
 		environment: local ? "development" : "production",
-		release: import.meta.env.VITE_RELEASE || undefined,
+		// The project's version (package.json, through shared/version.ts).
+		release: `blup-paineis@${BLUP_VERSION}`,
 		initialScope: { tags: { panel } },
 		// No user, cookies, headers, bodies or query strings.
 		dataCollection: { userInfo: false, cookies: false, httpHeaders: false, httpBodies: [], urlQueryParams: false },

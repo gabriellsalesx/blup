@@ -29,7 +29,7 @@ async function resolveDomain(env:Cloudflare.Env,host:string,canonical:string){
 
 // Wrapped by the Sentry SDK: what throws reaches Pulse (through the
 // network: the ingest lives in the Cloud's Worker).
-export default Sentry.withSentry(sentryOptions,{
+export default Sentry.withSentry((env:Cloudflare.Env)=>sentryOptions(env,"blup-sites"),{
 	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
 		const url = new URL(req.url);
 		const health=await serveHealth(req,env);if(health)return health;

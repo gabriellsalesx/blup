@@ -17,7 +17,7 @@ import (
 // https://docs.sentry.io/platforms/go/guides/http/
 
 // version é a versão da Ponte, posta no build (-ldflags "-X main.version=...").
-var version = "dev"
+var version = "1.0.0"
 
 func initSentry(dsn, environment string) (bool, error) {
 	if dsn == "" {

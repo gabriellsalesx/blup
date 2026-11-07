@@ -5,7 +5,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY *.go ./
 # A versão vai nos erros enviados ao Blup Pulse (docker build --build-arg VERSION=...).
-ARG VERSION=dev
+ARG VERSION=1.0.0
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /bridge . && mkdir /data
 
 FROM gcr.io/distroless/static-debian12:nonroot
