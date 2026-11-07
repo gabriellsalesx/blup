@@ -495,11 +495,13 @@ async function attach(node, issue, lang, back) {
 }
 
 async function run(found = nodes, first = true) {
-  if (!repo || !found.length) return;
+  // The tabs work even with nothing to count yet (every post at 0).
+  if (!repo || !found.length) { if (first) sortTabs(new Map()); return; }
   let list;
   try {
     list = await read(`/issues?repo=${encodeURIComponent(repo)}`, `${API}/issues?labels=blup&state=all&per_page=100`);
   } catch {
+    if (first) sortTabs(new Map());
     return; // offline or rate limited: the links to GitHub still work
   }
   const issues = new Map(list.map((i) => [i.number, new Issue(i)]));
@@ -520,15 +522,14 @@ async function run(found = nodes, first = true) {
 document.addEventListener("blup:added", (e) => run([...e.target.querySelectorAll("[data-fb-issue]")], false));
 
 // sortTabs: Nori's "Latest / Top / Discussions" tabs above the list of
-// posts. They show only when the posts have reactions and comments; Top
-// orders by reactions and Discussions by comments, after bringing in the
-// posts of the next pages (the list is paginated).
+// posts (the home page's, and "More posts" at the end of a post). They are
+// there whenever the site has comments and reactions on; Top orders by
+// reactions and Discussions by comments, after bringing in the posts of
+// the next pages (the home page's list is paginated).
 function sortTabs(issues) {
   const bar = document.querySelector("[data-fb-tabs]");
   const list = document.querySelector(".nori-list");
   if (!bar || !list) return;
-  const all = [...issues.values()];
-  if (!all.some((i) => i.data.reactions?.total_count) || !all.some((i) => i.data.comments)) return;
   const score = (li, kind) => {
     const i = issues.get(Number(li.dataset.fbIssue));
     if (!i) return 0;
@@ -562,7 +563,6 @@ function sortTabs(issues) {
     rows.sort((a, b) => (kind === "recent" ? 0 : score(b, kind) - score(a, kind)) || a.dataset.order - b.dataset.order);
     list.append(...rows);
   });
-  bar.hidden = false;
 }
 
 // The login handed back after "#", read once for the whole page.

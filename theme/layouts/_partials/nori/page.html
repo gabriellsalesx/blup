@@ -37,17 +37,26 @@
     {{- /* Reactions and comments (GitHub issues). */}}
     {{ partial "bento/feedback.html" . }}
   </article>
-  {{- /* More posts: the newest others (with the home page's tabs to sort
-  them) and a link to all of them. */}}
-  {{- $others := first 10 (complement (slice .) (partial "mochi/posts.html" .)) }}
+  {{- /* More posts: the ones that share the most tags with this one,
+  then the ones of its folder, then the newest (ten, shown newest first),
+  with the home page's tabs and "See all" (the page of every tag). */}}
+  {{- $mine := slice }}{{ range .GetTerms "tags" }}{{ $mine = $mine | append .RelPermalink }}{{ end }}
+  {{- $section := .Section }}
+  {{- $ranked := slice }}
+  {{- range complement (slice .) (partial "mochi/posts.html" .) }}
+  {{- $theirs := slice }}{{ range .GetTerms "tags" }}{{ $theirs = $theirs | append .RelPermalink }}{{ end }}
+  {{- $score := add (mul (len (intersect $mine $theirs)) 2) (cond (eq .Section $section) 1 0) }}
+  {{- $ranked = $ranked | append (dict "page" . "rank" (add (mul $score 10000000000) .Date.Unix)) }}
+  {{- end }}
+  {{- $others := slice }}{{ range first 10 (sort $ranked "rank" "desc") }}{{ $others = $others | append .page }}{{ end }}
   {{- with $others }}
   <section class="nori-column nori-more" aria-labelledby="nori-more-title">
     <h2 id="nori-more-title">{{ T "noriMorePosts" }}</h2>
-    {{ partial "nori/tabs.html" $ }}
+    {{- $all := "" }}{{ with site.GetPage "/tags" }}{{ $all = .RelPermalink }}{{ end }}
+    {{ partial "nori/tabs.html" (dict "all" $all) }}
     <ul class="nori-list">
-      {{- range . }}{{ partial "nori/row.html" . }}{{ end }}
+      {{- range sort . "Date" "desc" }}{{ partial "nori/row.html" . }}{{ end }}
     </ul>
-    <p class="nori-more-all"><a href="{{ site.Home.RelPermalink }}">{{ T "allPosts" }}</a></p>
   </section>
   {{- end }}
 </main>

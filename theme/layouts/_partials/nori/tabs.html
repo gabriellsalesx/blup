@@ -1,10 +1,17 @@
-{{- /* Newest, most reacted and most commented: feedback.js shows the tabs
-only when the posts have reactions and comments, and sorts the .nori-list
-under them. On the home page and at the end of each post. */ -}}
-{{- if site.Params.blup.feedback }}
-<div class="nori-tabs" role="tablist" aria-label="{{ T "noriSort" }}" data-fb-tabs hidden>
-  <button type="button" role="tab" aria-selected="true" data-fb-sort="recent">{{ T "noriRecent" }}</button>
-  <button type="button" role="tab" aria-selected="false" data-fb-sort="top">{{ T "noriTop" }}</button>
-  <button type="button" role="tab" aria-selected="false" data-fb-sort="talk">{{ T "noriTalk" }}</button>
+{{- /* The tabs above a list of posts, and "See all" beside them (params:
+"all", an address, or ""). With comments and reactions on (they come
+together), Latest / Top / Discussions, sorted by feedback.js; without
+them, Latest alone. On the home page and in "More posts" at the end of a
+post. */ -}}
+{{- $fb := site.Params.blup.feedback -}}
+<div class="nori-tabs-row">
+  <div class="nori-tabs" role="tablist" aria-label="{{ T "noriSort" }}"{{ if $fb }} data-fb-tabs{{ end }}>
+    <button type="button" role="tab" aria-selected="true" data-fb-sort="recent">{{ T "noriRecent" }}</button>
+    {{- if $fb }}
+    <button type="button" role="tab" aria-selected="false" data-fb-sort="top">{{ T "noriTop" }}</button>
+    <button type="button" role="tab" aria-selected="false" data-fb-sort="talk">{{ T "noriTalk" }}</button>
+    {{- end }}
+  </div>
+  {{- with .all }}<a class="nori-see-all" href="{{ . }}">{{ T "noriSeeAll" }}</a>{{ end }}
 </div>
-{{- end -}}
+{{- /**/ -}}

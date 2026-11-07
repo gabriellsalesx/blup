@@ -89,6 +89,10 @@ neutral palette and layout. Bundled into one file by css.Build. */
   /* Tabs above the list: a small segmented control. */
   .nori-tabs { display: flex; width: fit-content; gap: .125rem; margin-block-end: 1rem; padding: .25rem; border: 1px solid var(--main-200); border-radius: .625rem; background: var(--panel); }
   .nori-tabs[hidden] { display: none; }
+  .nori-tabs-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-block-end: 1rem; }
+  .nori-tabs-row .nori-tabs { margin-block-end: 0; }
+  .nori-see-all { font-size: .875rem; font-weight: 600; color: var(--main-600); }
+  .nori-see-all:hover { color: var(--main-900); text-decoration: underline; }
   .nori-tabs button { padding: .375rem .75rem; border-radius: .375rem; font-size: .875rem; font-weight: 600; color: var(--main-500); transition: background-color .15s, color .15s; }
   .nori-tabs button:hover { color: var(--main-900); }
   .nori-tabs button[aria-selected="true"] { background: var(--main-100); color: var(--main-900); }
@@ -130,9 +134,6 @@ neutral palette and layout. Bundled into one file by css.Build. */
   /* Share buttons at the end of a post: on the box color, like the rest. */
   .nori-more { margin-block: 3rem 0; padding-block-start: 2rem; border-block-start: 1px solid var(--main-200); }
   .nori-more h2 { font-size: 1.25rem; font-weight: 700; margin-block-end: 1rem; }
-  .nori-more-all { margin-block-start: 1rem; text-align: center; }
-  .nori-more-all a { font-weight: 600; color: var(--main-600); }
-  .nori-more-all a:hover { color: var(--main-900); text-decoration: underline; }
   .nori-share { margin-block: 2.5rem 0; padding-block-start: 2rem; border-block-start: 1px solid var(--main-200); }
   .nori-share .share :is(a, button) { background: var(--panel); }
   .nori-share .share :is(a, button):hover { background: var(--panel-hover); }
