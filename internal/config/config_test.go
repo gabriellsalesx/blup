@@ -41,3 +41,34 @@ func TestSiteVersion(t *testing.T) {
 		t.Fatalf("want ErrNewerSite, got %v", err)
 	}
 }
+
+// A blup.toml with the site's password of protected notes is readable only
+// by the user.
+func TestSitePasswordFileMode(t *testing.T) {
+	if os.PathSeparator == '\\' {
+		t.Skip("no Unix modes on Windows")
+	}
+	dir := t.TempDir()
+	s := NewSite(dir)
+	s.Model = "mochi"
+	if err := s.Save(); err != nil {
+		t.Fatal(err)
+	}
+	mode := func() os.FileMode {
+		info, err := os.Stat(filepath.Join(dir, SiteFile))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return info.Mode().Perm()
+	}
+	if got := mode(); got != 0o644 {
+		t.Fatalf("without a password: %o", got)
+	}
+	s.Password = "girassol"
+	if err := s.Save(); err != nil {
+		t.Fatal(err)
+	}
+	if got := mode(); got != 0o600 {
+		t.Fatalf("with a password: %o, want 600", got)
+	}
+}

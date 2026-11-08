@@ -1,7 +1,7 @@
 {{- /* Notes outside the docs/roadmap/changelog folders (e.g. "About"). */ -}}
 <main id="main" class="page-wrap">
   <article class="docs-article">
-    <header><h1 class="docs-title">{{ partial "title.html" . }}</h1>{{ with .Description }}<p>{{ . }}</p>{{ end }}</header>{{ partial "site/ai-badge.html" . }}
+    <header><h1 class="docs-title">{{ partial "title.html" . }}</h1>{{ if not (partial "locked.html" .) }}{{ with .Description }}<p>{{ . }}</p>{{ end }}{{ end }}</header>{{ partial "site/ai-badge.html" . }}
     {{ partial "bento/body.html" . }}
   </article>
 </main>

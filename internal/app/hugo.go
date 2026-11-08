@@ -68,6 +68,9 @@ func build(ctx context.Context, site *config.Site, baseURL string) (string, erro
 			for _, w := range warnings {
 				ui.Error(w)
 			}
+			// What Hugo wrote before failing may hold the passwords
+			// (blup-locks.json) and protected posts in clear.
+			os.RemoveAll(out)
 			return errors.New(i18n.T("build.failed"))
 		}
 		for _, w := range warnings {

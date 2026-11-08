@@ -65,7 +65,7 @@ O servidor guarda os embrulhos e parâmetros. O cliente abre a chave no computad
 
 Arquivos são divididos em blocos de até 4 MiB. DEFLATE é aplicado quando reduz o tamanho, seguido de XChaCha20-Poly1305 com nonce aleatório e dados associados. O ID é HMAC-SHA256 do bloco em claro com a subchave de identificação. Blocos iguais na mesma conta podem ser reutilizados; o servidor vê igualdade e tamanho cifrado, mas não recebe um hash público do texto original para testar dicionários de conteúdo.
 
-O manifesto cifrado contém `files`, mapa de caminho para SHA de blob Git, tamanho, modo e lista de blocos. O nome do cofre também é cifrado. O servidor recebe separadamente referências de IDs de blocos em claro para limpeza. Não recebe nomes nem os tamanhos individuais dos arquivos contidos no manifesto, mas observa quantidade de blocos, tamanhos armazenados, versões, horários, conta e tráfego. Veja o [modelo de segurança](../seguranca.md).
+O manifesto cifrado contém `files`, mapa de caminho para SHA de blob Git, tamanho, modo e lista de blocos. O nome do cofre também é cifrado. O servidor recebe separadamente referências de IDs de blocos em claro para limpeza. Não recebe os nomes dos arquivos. Observa quantidade de blocos, tamanhos armazenados, versões, horários, conta e tráfego. Como uma nota menor que 4 MiB vira um bloco só, o tamanho desse bloco (o texto comprimido mais 42 bytes) e o horário em que ele aparece deixam estimar quantas notas há e quando uma nota de certo tamanho mudou. Esconder isso exige preenchimento dos blocos, um formato novo. Veja o [modelo de segurança](../seguranca.md).
 
 ## Persistência e protocolo
 

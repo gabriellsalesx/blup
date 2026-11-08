@@ -85,3 +85,65 @@ func TestAttackNoncesAndRecoveryEntropy(t *testing.T) {
 		t.Fatalf("recovery key: %d bytes, %v", len(key), err)
 	}
 }
+
+// O servidor mexe na chave embrulhada que guarda: troca as duas cópias de
+// lugar, troca o salt, ou entrega a de outra conta. Nada abre a chave
+// mestra (e nada abre uma chave que ele conheça).
+func TestAttackWrappedKeyTampering(t *testing.T) {
+	master, rec, w := newKeys(t, "senha das notas")
+	_, rec2, w2 := newKeys(t, "senha das notas")
+
+	swapped := w
+	swapped.ByPassword, swapped.ByRecovery = w.ByRecovery, w.ByPassword
+	if _, err := Unlock(swapped, "senha das notas"); !errors.Is(err, ErrWrongPassword) {
+		t.Fatalf("copies swapped, password: %v", err)
+	}
+	if _, err := Recover(swapped, rec); !errors.Is(err, ErrWrongPassword) {
+		t.Fatalf("copies swapped, recovery: %v", err)
+	}
+
+	salted := w
+	salted.Params.Salt = append([]byte(nil), w.Params.Salt...)
+	salted.Params.Salt[0] ^= 1
+	if _, err := Unlock(salted, "senha das notas"); !errors.Is(err, ErrWrongPassword) {
+		t.Fatalf("salt changed: %v", err)
+	}
+
+	// A mesma senha em outra conta abre outra chave mestra, nunca a desta,
+	// e a chave de recuperação de uma conta não abre a outra.
+	other, err := Unlock(w2, "senha das notas")
+	if err != nil || bytes.Equal(other, master) {
+		t.Fatalf("other account: %v", err)
+	}
+	if _, err := Recover(w, rec2); !errors.Is(err, ErrWrongPassword) {
+		t.Fatalf("recovery key of another account: %v", err)
+	}
+
+	// Um bloco selado com a chave de outra conta não abre aqui.
+	k, _ := Derive(master)
+	k2, _ := Derive(other)
+	id := k2.BlockID([]byte("nota"))
+	s, _ := k2.SealBlock(id, []byte("nota"))
+	if _, err := k.OpenBlock(id, s); err == nil {
+		t.Fatal("block of another account opened")
+	}
+	// O id de um bloco depende da conta: o servidor não liga o mesmo
+	// conteúdo entre contas nem confirma um conteúdo conhecido pelo id.
+	if k.BlockID([]byte("nota")) == id {
+		t.Fatal("block ids equal across accounts")
+	}
+}
+
+// Limite conhecido do formato 1 (ver a auditoria): o nome selado de um
+// cofre não está amarrado ao id do cofre, então o servidor pode trocar os
+// nomes de dois cofres da mesma conta. O conteúdo continua protegido (o
+// manifesto é amarrado ao cofre e à versão). Se este teste falhar, o
+// formato mudou: confira a migração dos nomes já selados.
+func TestKnownLimitVaultNameNotBound(t *testing.T) {
+	master, _, _ := newKeys(t, "senha")
+	k, _ := Derive(master)
+	a, _ := k.SealName("Trabalho")
+	if name, err := k.OpenName(a); err != nil || name != "Trabalho" {
+		t.Fatalf("name: %q %v", name, err)
+	}
+}

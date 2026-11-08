@@ -1,0 +1,6 @@
+{{- /* ID of a protected note's region, for the CLI (internal/lock). A
+translation (Posts/en/Note.md is mounted as Posts/Note.md in the English
+site) has the same File.UniqueID as its original, so the language goes in
+too: each language's copy is encrypted with its own password. Hex, as the
+CLI expects. */ -}}
+{{- return md5 (printf "%s|%s" .File.UniqueID .Language.Lang) -}}

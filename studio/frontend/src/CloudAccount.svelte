@@ -60,7 +60,7 @@
   async function create(e: SubmitEvent) {
     e.preventDefault();
     error = "";
-    if (pw.length < 8) return (error = c.short);
+    if ([...pw].length < 8) return (error = c.short); // characters, as the Go side counts
     if (pw !== pw2) return (error = c.differ);
     busy = true;
     try { recovery = await CreateNotesPassword(pw); pw = pw2 = ""; } catch (e) {
@@ -77,7 +77,7 @@
   async function unlock(e: SubmitEvent) {
     e.preventDefault();
     error = ""; busy = true;
-    try { await UnlockNotes(secret.trim()); secret = ""; await load(); } catch (e) { error = msg(e); } finally { busy = false; }
+    try { await UnlockNotes(secret); secret = ""; await load(); } catch (e) { error = msg(e); } finally { busy = false; }
   }
 </script>
 

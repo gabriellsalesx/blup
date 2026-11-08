@@ -726,6 +726,12 @@ func (s *Syncer) applyOne(ctx context.Context, e *entry, trash string) SkipReaso
 		if !unchanged(target, expect) {
 			return SkipChanged
 		}
+		// A folder of the path that is a link (or a file) here would carry
+		// the write out of the notes folder: a remote naming "link/x.md"
+		// while "link" points to ~/.ssh must never write there.
+		if !s.realParents(target) {
+			return SkipInvalidName
+		}
 		perm := os.FileMode(0o644)
 		if e.r.f.Mode == "100755" {
 			perm = 0o755
@@ -747,6 +753,33 @@ func (s *Syncer) applyOne(ctx context.Context, e *entry, trash string) SkipReaso
 		s.removeEmptyParents(filepath.Dir(e.l.abs))
 	}
 	return ""
+}
+
+// realParents reports whether every folder between Dir and target that
+// already exists is a real folder (not a symbolic link, not a file), so
+// writing target stays inside Dir. Folders still missing are made by
+// writeAtomic as real folders.
+func (s *Syncer) realParents(target string) bool {
+	root := filepath.Clean(s.Dir)
+	rel, err := filepath.Rel(root, filepath.Dir(target))
+	if err != nil || !filepath.IsLocal(rel) && rel != "." {
+		return false
+	}
+	if rel == "." {
+		return true
+	}
+	dir := root
+	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+		dir = filepath.Join(dir, part)
+		st, err := os.Lstat(dir)
+		if errors.Is(err, os.ErrNotExist) {
+			return true // the rest is made fresh
+		}
+		if err != nil || !st.IsDir() {
+			return false // a link (Lstat does not follow it) or a file
+		}
+	}
+	return true
 }
 
 // moveFile renames src to dst, copying across file systems.

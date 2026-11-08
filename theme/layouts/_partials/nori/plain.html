@@ -3,8 +3,12 @@
   <article class="nori-column">
     <header class="nori-post-head">
       <h1 class="nori-title">{{ partial "title.html" . }}</h1>
-      {{- with .Description }}<p class="nori-lede">{{ . }}</p>{{ end }}
+      {{- if not (partial "locked.html" .) }}{{ with .Description }}<p class="nori-lede">{{ . }}</p>{{ end }}{{ end }}
     </header>
+    {{- if partial "locked.html" . }}
+    {{ partial "mochi/lock.html" . }}
+    {{- else }}
     <div class="prose nori-prose">{{ partial "content.html" . }}</div>
+    {{- end }}
   </article>
 </main>

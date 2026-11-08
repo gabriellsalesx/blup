@@ -4,7 +4,11 @@ description and text, without byline, sharing or comments. */ -}}
   <article class="container plain-page">
     {{ partial "mochi/breadcrumb.html" (dict "items" (slice (dict "name" (partial "title.html" .)))) }}
     <h1 class="plain-title">{{ partial "title.html" . }}</h1>
+    {{- if partial "locked.html" . }}
+    {{ partial "mochi/lock.html" . }}
+    {{- else }}
     {{- with .Description }}<p class="plain-lead">{{ . }}</p>{{ end }}
     <div class="prose">{{ partial "content.html" . }}</div>
+    {{- end }}
   </article>
 </main>

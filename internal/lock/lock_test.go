@@ -151,3 +151,67 @@ func TestProcessStrayEndMarker(t *testing.T) {
 		t.Fatalf("want ErrLeftover, got %v", err)
 	}
 }
+
+// A site with translations has one manifest per language (/en/...): each
+// language's post is encrypted with its own password and no manifest is
+// left in the site.
+func TestProcessTranslationManifests(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, s string) {
+		p := filepath.Join(dir, rel)
+		os.MkdirAll(filepath.Dir(p), 0o755)
+		os.WriteFile(p, []byte(s), 0o644)
+	}
+	write("post/index.html", `<blup-begin data-id="aa"></blup-begin><p>SEGREDO-PT</p><blup-end></blup-end>`)
+	write("en/post/index.html", `<blup-begin data-id="bb"></blup-begin><p>SEGREDO-EN</p><blup-end></blup-end>`)
+	write(Manifest, `{"aa":"senha-pt"}`)
+	write("en/"+Manifest, `{"bb":"senha-en"}`)
+
+	n, err := Process(dir, "")
+	if err != nil || n != 2 {
+		t.Fatalf("process: %d %v", n, err)
+	}
+	for _, rel := range []string{Manifest, "en/" + Manifest} {
+		if _, err := os.Stat(filepath.Join(dir, rel)); !os.IsNotExist(err) {
+			t.Fatalf("%s must be deleted", rel)
+		}
+	}
+	if err := Check(dir); err != nil {
+		t.Fatal(err)
+	}
+	for rel, pw := range map[string]string{"post/index.html": "senha-pt", "en/post/index.html": "senha-en"} {
+		b, _ := os.ReadFile(filepath.Join(dir, rel))
+		if plain, err := Decrypt(pw, parse(t, string(b))); err != nil || !strings.Contains(string(plain), "SEGREDO") {
+			t.Fatalf("%s must open with %s: %q %v", rel, pw, plain, err)
+		}
+	}
+}
+
+// The same ID with two passwords (two languages' copies sharing an ID)
+// fails instead of encrypting one of them with the other's password.
+func TestManifestConflict(t *testing.T) {
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "en"), 0o755)
+	os.WriteFile(filepath.Join(dir, "x.html"), []byte(`<blup-begin data-id="aa"></blup-begin>S<blup-end></blup-end>`), 0o644)
+	os.WriteFile(filepath.Join(dir, Manifest), []byte(`{"aa":"um"}`), 0o644)
+	os.WriteFile(filepath.Join(dir, "en", Manifest), []byte(`{"aa":"dois"}`), 0o644)
+	if _, err := Process(dir, ""); err == nil {
+		t.Fatal("two passwords for one ID must fail")
+	}
+	if err := Discard(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "en", Manifest)); !os.IsNotExist(err) {
+		t.Fatal("Discard must delete every language's manifest")
+	}
+}
+
+// Check fails while any manifest is in the site.
+func TestCheckManifestLeft(t *testing.T) {
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "es"), 0o755)
+	os.WriteFile(filepath.Join(dir, "es", Manifest), []byte(`{}`), 0o644)
+	if err := Check(dir); !errors.Is(err, ErrManifestLeft) {
+		t.Fatalf("want ErrManifestLeft, got %v", err)
+	}
+}

@@ -2,6 +2,7 @@
 {{- if eq (lower (string .Params.blup)) "privacy" }}{{ partial "nori/plain.html" . }}{{ else -}}
 {{- $title := partial "title.html" . -}}
 {{- $authors := partial "mochi/authors.html" . -}}
+{{- $locked := partial "locked.html" . -}}
 <div class="reading-progress" aria-hidden="true"></div>
 <main id="main" class="nori-main">
   <article class="nori-column">
@@ -10,7 +11,7 @@
       <div class="nori-cover">{{ partial "mochi/picture.html" (dict "img" . "w" 640 "ratio" "40:21" "alt" $title "eager" true) }}</div>
       {{- end }}
       <h1 class="nori-title">{{ $title }}</h1>
-      {{- with .Description }}<p class="nori-lede">{{ . }}</p>{{ end }}
+      {{- if not $locked }}{{ with .Description }}<p class="nori-lede">{{ . }}</p>{{ end }}{{ end }}
       <p class="nori-byline nori-meta">
         {{- range $authors }}
         {{- if .url }}<a class="nori-author" href="{{ .url }}">{{ partial "mochi/avatar.html" (dict "author" .) }}{{ .name }}</a>
@@ -20,9 +21,9 @@
         {{- range .GetTerms "tags" }}<a class="nori-tag" href="{{ .RelPermalink }}">#{{ .LinkTitle }}</a>{{ end }}
       </p>
       {{ partial "site/ai-badge.html" . }}
-      {{ partial "listen.html" . }}
+      {{ if not $locked }}{{ partial "listen.html" . }}{{ end }}
     </header>
-    {{- if partial "locked.html" . }}
+    {{- if $locked }}
     {{ partial "mochi/lock.html" . }}
     {{- else }}
     <div class="prose nori-prose"{{ if not .Params.hidden }} data-pagefind-body data-pagefind-meta="title:{{ $title }}"{{ end }}>

@@ -4,7 +4,9 @@
 // of each protected post between <blup-begin data-id="ID"> and <blup-end>
 // markers and writes Manifest (ID → password) at the site root. Process
 // replaces every marked region with its AES-256-GCM ciphertext, deletes the
-// manifest and fails if any plaintext region is left. The browser decrypts
+// manifest and fails if any plaintext region is left. A site with
+// translations has one manifest per language (/en/blup-locks.json too): all
+// of them are read and deleted. The browser decrypts
 // with WebCrypto (theme/assets/js/lock.js) using the same parameters.
 package lock
 
@@ -60,25 +62,48 @@ func Pending(dir string) (posts int, needsGlobal bool, err error) {
 	return len(m), needsGlobal, nil
 }
 
-// Discard deletes the manifest; used when there is nothing to encrypt.
+// Discard deletes every manifest under dir; used when there is nothing to
+// encrypt, and when a build fails before Process.
 func Discard(dir string) error {
-	err := os.Remove(filepath.Join(dir, Manifest))
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
+	files, err := manifests(dir)
+	for _, f := range files {
+		if rerr := os.Remove(f); rerr != nil && !errors.Is(rerr, os.ErrNotExist) && err == nil {
+			err = rerr
+		}
 	}
 	return err
+}
+
+// manifests lists the manifest files under dir: the site's and one per
+// translation language (dir/en/blup-locks.json).
+func manifests(dir string) ([]string, error) {
+	var out []string
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if errors.Is(err, os.ErrNotExist) && p == dir {
+			return filepath.SkipAll
+		}
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && d.Name() == Manifest {
+			out = append(out, p)
+		}
+		return nil
+	})
+	return out, err
 }
 
 // Process encrypts every protected region under dir. global is the site-wide
 // password used by posts marked with Global. It returns how many posts were
 // encrypted.
 func Process(dir, global string) (int, error) {
+	// The manifests hold passwords: they must never be published, also
+	// when one cannot be read.
+	defer Discard(dir)
 	m, err := readManifest(dir)
 	if err != nil {
 		return 0, err
 	}
-	// The manifest holds passwords: it must never be published.
-	defer os.Remove(filepath.Join(dir, Manifest))
 	for _, pw := range m {
 		if pw == Global && global == "" {
 			return 0, ErrNoGlobalPassword // checked before touching any file
@@ -191,11 +216,32 @@ func newGCM(password string, salt []byte, iter int) (cipher.AEAD, error) {
 	return cipher.NewGCM(block)
 }
 
+// readManifest merges every manifest under dir (one per language).
 func readManifest(dir string) (map[string]string, error) {
-	b, err := os.ReadFile(filepath.Join(dir, Manifest))
-	if errors.Is(err, os.ErrNotExist) {
-		return map[string]string{}, nil
+	files, err := manifests(dir)
+	if err != nil {
+		return nil, err
 	}
+	all := map[string]string{}
+	for _, f := range files {
+		m, err := readManifestFile(f)
+		if err != nil {
+			return nil, err
+		}
+		for id, pw := range m {
+			// The theme gives each language's copy its own ID; the same ID
+			// with two passwords would encrypt a post with the wrong one.
+			if old, ok := all[id]; ok && old != pw {
+				return nil, fmt.Errorf("%s: the protected note %s has two passwords", Manifest, id)
+			}
+			all[id] = pw
+		}
+	}
+	return all, nil
+}
+
+func readManifestFile(file string) (map[string]string, error) {
+	b, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
@@ -217,12 +263,18 @@ func readManifest(dir string) (map[string]string, error) {
 // markerFiles are the published files Check reads.
 var markerFiles = []string{".html", ".htm", ".xml", ".json", ".txt"}
 
+// ErrManifestLeft means a manifest (with passwords) is still in the site.
+var ErrManifestLeft = errors.New("a file with the passwords of protected posts was left in the site")
+
 // Check fails when any published file under dir still holds a protected
 // region's marker (<blup-begin> or <blup-end>): whatever the manifest said,
-// that text was not encrypted. Run it on every build, also when there was
-// nothing to encrypt.
+// that text was not encrypted. It also fails when a manifest is left. Run
+// it on every build, also when there was nothing to encrypt.
 func Check(dir string) error {
 	return filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && d.Name() == Manifest {
+			return fmt.Errorf("%w: %s", ErrManifestLeft, p)
+		}
 		if err != nil || d.IsDir() || !slices.Contains(markerFiles, strings.ToLower(filepath.Ext(p))) {
 			return err
 		}

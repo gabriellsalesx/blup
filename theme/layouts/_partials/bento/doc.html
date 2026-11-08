@@ -20,7 +20,7 @@
     <article class="docs-article">
       <header>
         <h1 class="docs-title">{{ $title }}</h1>{{ partial "site/ai-badge.html" . }}
-        {{- with .Description }}<p>{{ . }}</p>{{ end }}
+        {{- if not (partial "locked.html" .) }}{{ with .Description }}<p>{{ . }}</p>{{ end }}{{ end }}
       </header>
       {{ partial "bento/body.html" . }}
       {{ partial "bento/pager.html" . }}

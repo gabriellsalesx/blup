@@ -7,7 +7,7 @@
       {{- with .Parent }}{{ if ne . $root }}{{ $crumbs = $crumbs | append (dict "name" (partial "title.html" .) "url" .RelPermalink) }}{{ end }}{{ end }}
       {{ partial "mochi/breadcrumb.html" (dict "items" ($crumbs | append (dict "name" (partial "title.html" .)))) }}
       <h1 class="docs-title">{{ partial "title.html" . }}</h1>{{ partial "site/ai-badge.html" . }}
-      {{- with .Description }}<p class="help-lead">{{ . }}</p>{{ end }}
+      {{- if not (partial "locked.html" .) }}{{ with .Description }}<p class="help-lead">{{ . }}</p>{{ end }}{{ end }}
       {{- if not .Lastmod.IsZero }}<p class="help-updated">{{ T "lastUpdated" }} <b>{{ .Lastmod | time.Format ":date_medium" }}</b></p>{{ end }}
       <hr>
     </header>

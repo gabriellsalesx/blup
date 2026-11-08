@@ -19,7 +19,7 @@ a notice; with plain "hugo" (no CLI) it is left out, never published in clear. *
     <noscript><p class="lock-error">{{ T "lockedNoScript" }}</p></noscript>
   </form>
   <div class="prose" data-blup-content hidden></div>
-  {{- if eq $mode "publish" }}<blup-begin data-id="{{ .File.UniqueID }}"></blup-begin>{{ partial "content.html" . }}<blup-end></blup-end>{{ end }}
+  {{- if eq $mode "publish" }}<blup-begin data-id="{{ partial "lock-id.html" . }}"></blup-begin>{{ partial "content.html" . }}<blup-end></blup-end>{{ end }}
   {{- $js := resources.Get "js/lock.js" | js.Build (dict "minify" true "format" "esm") | fingerprint }}
   <script type="module" src="{{ $js.RelPermalink }}"></script>
   {{- end }}

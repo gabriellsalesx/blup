@@ -15,10 +15,10 @@
       <div>
         {{ partial "mochi/breadcrumb.html" (dict "items" $crumbs) }}
         <h1 class="h2">{{ $title }}</h1>
-        {{- with .Description }}<p>{{ . }}</p>{{ end }}
+        {{- if not $locked }}{{ with .Description }}<p>{{ . }}</p>{{ end }}{{ end }}
         {{ partial "mochi/byline.html" (dict "page" . "long" true) }}
         {{ partial "site/ai-badge.html" . }}
-        {{ partial "listen.html" . }}
+        {{ if not $locked }}{{ partial "listen.html" . }}{{ end }}
       </div>
       {{- with $cover }}
       <div class="post-cover">{{ partial "mochi/picture.html" (dict "img" . "w" 640 "ratio" "37:25" "alt" $title "eager" true) }}</div>

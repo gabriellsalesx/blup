@@ -36,9 +36,19 @@ func init() {
 		knownError{blupcloud.ErrExpired, "blup.err_expired"},
 		knownError{cloudcrypt.ErrWrongPassword, "blup.err_password"},
 		knownError{errNotesLocked, "blup.err_locked"},
+		knownError{ErrNotesPasswordShort, "blup.err_password_short"},
 		knownError{notesync.ErrRolledBack, "blup.err_rolled_back"},
 	)
 }
+
+// MinNotesPassword is the shortest notes password accepted, in characters.
+// The cloud keeps the wrapped key, so it could try passwords offline: the
+// screens ask for this too, and this side refuses it whatever calls it.
+const MinNotesPassword = 8
+
+// ErrNotesPasswordShort: the notes password has fewer than MinNotesPassword
+// characters.
+var ErrNotesPasswordShort = errors.New("app: the notes password is too short")
 
 // errNotesLocked: the notes password was not typed on this computer yet.
 var errNotesLocked = errors.New("app: the notes are locked on this computer")
@@ -219,6 +229,9 @@ func finishSignOut(ctx context.Context, c *blupcloud.Client) error {
 // that encrypts the notes, wraps it with the password and returns the
 // recovery key, to be shown once.
 func CreateNotesPassword(ctx context.Context, password string) (string, error) {
+	if utf8.RuneCountInString(password) < MinNotesPassword {
+		return "", errors.New(describe(ErrNotesPasswordShort))
+	}
 	c, creds, err := blupClient()
 	if err != nil {
 		return "", errors.New(describe(err))
@@ -245,17 +258,29 @@ func UnlockNotes(ctx context.Context, secret string) error {
 	if err != nil {
 		return errors.New(describe(err))
 	}
-	master, err := cloudcrypt.Unlock(w, secret)
-	if errors.Is(err, cloudcrypt.ErrWrongPassword) {
-		if m, rerr := cloudcrypt.Recover(w, secret); rerr == nil {
-			master, err = m, nil
-		}
-	}
+	master, err := OpenNotesKey(w, secret)
 	if err != nil {
 		return errors.New(describe(err))
 	}
 	creds.NotesKey = base64.StdEncoding.EncodeToString(master)
 	return creds.Save()
+}
+
+// OpenNotesKey opens the master key with what was typed: the notes
+// password exactly as typed, then without the spaces around it (pasted
+// with a line break, or typed on a screen that trimmed it), then as the
+// recovery key.
+func OpenNotesKey(w cloudcrypt.Wrapped, secret string) ([]byte, error) {
+	master, err := cloudcrypt.Unlock(w, secret)
+	if t := strings.TrimSpace(secret); errors.Is(err, cloudcrypt.ErrWrongPassword) && t != secret && t != "" {
+		master, err = cloudcrypt.Unlock(w, t)
+	}
+	if errors.Is(err, cloudcrypt.ErrWrongPassword) {
+		if m, rerr := cloudcrypt.Recover(w, secret); rerr == nil {
+			master, err = m, nil
+		}
+	}
+	return master, err
 }
 
 // SetSyncRemote picks where the site's notes are synced: RemoteBlup or

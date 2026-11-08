@@ -313,7 +313,13 @@ func (s *Site) Save() error {
 	if err != nil {
 		return err
 	}
-	return writeAtomic(filepath.Join(s.dir, SiteFile), b, 0o644)
+	// The site's own password of protected notes is readable only by
+	// the user, as in credentials.toml.
+	mode := os.FileMode(0o644)
+	if s.Password != "" {
+		mode = 0o600
+	}
+	return writeAtomic(filepath.Join(s.dir, SiteFile), b, mode)
 }
 
 func load(name string, v any) error {
