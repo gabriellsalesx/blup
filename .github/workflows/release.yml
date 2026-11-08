@@ -3,6 +3,19 @@ name: release
 on:
   push:
     tags: ["v*.*.*"]
+  # Rehearsal: every build of the release, with a test version, and nothing
+  # published (GoReleaser in snapshot mode, no upload to a release).
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão de teste (por exemplo v1.0.0-rc.9)"
+        required: true
+        default: "v1.0.0-rc.9"
+
+env:
+  # The tag that started the run, or the rehearsal's version.
+  TAG: ${{ inputs.version || github.ref_name }}
+  REHEARSAL: ${{ github.event_name == 'workflow_dispatch' }}
 
 # Read only by default: only the jobs that publish to the release write.
 permissions:
@@ -27,21 +40,30 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/hugo.tar.gz" https://github.com/gohugoio/hugo/releases/download/v0.169.0/hugo_0.169.0_linux-amd64.tar.gz
           tar -xzf "$RUNNER_TEMP/hugo.tar.gz" -C "$RUNNER_TEMP" hugo && sudo mv "$RUNNER_TEMP/hugo" /usr/local/bin/
       - run: go test ./...
+      # GoReleaser hands no environment variables to the signing command:
+      # sign-release reads the key from this file, removed right after.
+      - name: Signing key
+        env:
+          KEY: ${{ secrets.BLUP_RELEASE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then echo "::error::BLUP_RELEASE_KEY is empty"; exit 1; fi
+          umask 077 && mkdir -p "$HOME/.config/blup-release"
+          printf '%s' "$KEY" > "$HOME/.config/blup-release/release.key"
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           version: v2.20.0
-          args: release --clean
+          args: ${{ env.REHEARSAL == 'true' && 'release --clean --snapshot --skip=publish' || 'release --clean' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # The tag that started this run: other tags on the same commit
           # (voice-tools-N) are not versions.
-          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
-          # Ed25519 key that signs checksums.txt (scripts/sign-release).
-          # Without it the release stops before publishing anything.
-          BLUP_RELEASE_KEY: ${{ secrets.BLUP_RELEASE_KEY }}
+          GORELEASER_CURRENT_TAG: ${{ env.TAG }}
           # DSN do projeto "Blup CLI" no Pulse; sem ela o CLI não manda
           # relatórios de erro (internal/app/reports.go).
           CLI_SENTRY_DSN: ${{ vars.CLI_SENTRY_DSN }}
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$HOME/.config/blup-release/release.key"
 
   # Blup Studio for Linux: the binary (for the AUR), AppImage, .deb and
   # .flatpak, built on Ubuntu 24.04 (its glibc 2.39 and GTK 4.14 are the
@@ -74,18 +96,18 @@ jobs:
           (cd studio/frontend && npm ci)
       - name: Build and AppImage
         working-directory: studio
-        run: wails3 task linux:create:appimage VERSION="${GITHUB_REF_NAME#v}"
+        run: wails3 task linux:create:appimage VERSION="${TAG#v}"
       - name: Metainfo and desktop file
         working-directory: studio
         run: |
-          sed -e "s/@VERSION@/${GITHUB_REF_NAME#v}/" -e "s/@DATE@/$(date -u +%F)/" \
+          sed -e "s/@VERSION@/${TAG#v}/" -e "s/@DATE@/$(date -u +%F)/" \
             build/linux/io.github.gabriellsalesx.blupstudio.metainfo.xml > bin/io.github.gabriellsalesx.blupstudio.metainfo.xml
           appstreamcli validate --no-net bin/io.github.gabriellsalesx.blupstudio.metainfo.xml
           desktop-file-validate build/linux/blup-studio.desktop
       - name: .deb
         working-directory: studio
         run: |
-          VERSION="${GITHUB_REF_NAME#v}" GOARCH=amd64 wails3 tool package -name blup-studio -format deb \
+          VERSION="${TAG#v}" GOARCH=amd64 wails3 tool package -name blup-studio -format deb \
             -config ./build/linux/nfpm/nfpm.yaml -out "$PWD/bin"
           lintian --fail-on error bin/blup-studio.deb
       - name: .flatpak (GNOME 51 runtime)
@@ -93,13 +115,13 @@ jobs:
         run: |
           flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak --user install -y --noninteractive --no-related flathub org.gnome.Platform//51
-          build/linux/flatpak/bundle.sh "${GITHUB_REF_NAME#v}" bin/blup-studio.flatpak
+          build/linux/flatpak/bundle.sh "${TAG#v}" bin/blup-studio.flatpak
           flatpak --user install -y --noninteractive bin/blup-studio.flatpak
           dbus-run-session -- flatpak --user run --command=sh io.github.gabriellsalesx.blupstudio -c 'if ldd /app/bin/blup-studio | grep "not found"; then exit 1; fi'
       - name: Name the files
         working-directory: studio/bin
         run: |
-          v="${GITHUB_REF_NAME#v}"
+          v="${TAG#v}"
           mkdir -p ../../dist-studio && d=../../dist-studio
           cp ../build/linux/blup-studio.desktop .
           cp ../build/linux/icons/512x512/blup-studio.png .
@@ -110,7 +132,7 @@ jobs:
           mv blup-studio.flatpak "$d/blup-studio_${v}_x86_64.flatpak"
       - name: Installs on Ubuntu 24.04, Debian 13 and Arch
         run: |
-          v="${GITHUB_REF_NAME#v}"
+          v="${TAG#v}"
           sudo apt-get install -y "./dist-studio/blup-studio_${v}_amd64.deb"
           if ldd /usr/bin/blup-studio | grep "not found"; then exit 1; fi
           docker run --rm -v "$PWD/dist-studio:/d:ro" debian:trixie sh -ec \
@@ -158,7 +180,7 @@ jobs:
         name: .msix for x64 and arm64
         shell: bash
         run: |
-          v="${GITHUB_REF_NAME#v}"
+          v="${TAG#v}"
           go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
           (cd studio/frontend && npm ci)
           mkdir -p dist-msix
@@ -181,7 +203,7 @@ jobs:
     needs: release
     uses: ./.github/workflows/builds.yml
     with:
-      version: ${{ github.ref_name }}
+      version: ${{ inputs.version || github.ref_name }}
     secrets: inherit
 
   # The Linux, Windows, macOS and Android files go up to the release with
@@ -189,6 +211,7 @@ jobs:
   # checksums.txt does for the CLI.
   studio-publish:
     needs: [studio-linux, apps]
+    if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -211,4 +234,4 @@ jobs:
         run: |
           (cd dist-studio && sha256sum -- * > studio-checksums.txt)
           go run ./scripts/sign-release -in dist-studio/studio-checksums.txt -out dist-studio/studio-checksums.txt.sig
-          gh release upload "$GITHUB_REF_NAME" dist-studio/* --clobber
+          gh release upload "$TAG" dist-studio/* --clobber

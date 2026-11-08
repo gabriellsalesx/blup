@@ -37,8 +37,9 @@ signs:
     cmd: go
     args: ["run", "./scripts/sign-release", "-in", "${artifact}", "-out", "${signature}"]
     signature: "${artifact}.sig"
-    env:
-      - BLUP_RELEASE_KEY={{ envOrDefault "BLUP_RELEASE_KEY" "" }}
+    # GoReleaser does not hand environment variables to the signing
+    # command: the key is read from ~/.config/blup-release/release.key,
+    # which release.yml writes from the BLUP_RELEASE_KEY secret.
     output: true
 
 # Tags of the local voice's tools packages (voice-tools-N) are not versions.
