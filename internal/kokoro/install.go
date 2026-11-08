@@ -66,32 +66,32 @@ var platforms = map[string]platform{
 		ort:        download{ortRelease + "onnxruntime-linux-x64-1.31.1.tgz", "c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9", 11413655},
 		ortLib:     "onnxruntime-linux-x64-1.31.1/lib/libonnxruntime.so.1.31.1",
 		ortLicense: "onnxruntime-linux-x64-1.31.1/LICENSE",
-		tools:      download{toolsRelease + "blup-voice-tools-linux-amd64.tar.gz", "51dba7d0c170f08e7837f2aedbf2f9ae916038ac8111d931da38cf62002c7d4f", 1737558},
+		tools:      download{toolsRelease + "blup-voice-tools-linux-amd64.tar.gz", "ebe0d10461c1d616d92561c198be199f7c07705bb9f2dc444a9055eed11a93f0", 1737542},
 	},
 	"linux/arm64": {
 		ort:        download{ortRelease + "onnxruntime-linux-aarch64-1.31.1.tgz", "5317505e2da99be65f8e2775ba3c2afd6d2961fd78aba1bd8f56159f48820c78", 10332381},
 		ortLib:     "onnxruntime-linux-aarch64-1.31.1/lib/libonnxruntime.so.1.31.1",
 		ortLicense: "onnxruntime-linux-aarch64-1.31.1/LICENSE",
-		tools:      download{toolsRelease + "blup-voice-tools-linux-arm64.tar.gz", "6c4a691b91e6809eba0709954ffc97b66986bdce3dc706e48dd42521247d827b", 1525131},
+		tools:      download{toolsRelease + "blup-voice-tools-linux-arm64.tar.gz", "17d2ca6f51e57ac31e81cfb6e1fc4fde980b300bbf8e9c43ffb3548f7850d5de", 1525121},
 	},
 	"darwin/arm64": {
 		ort:        download{ortRelease + "onnxruntime-osx-arm64-1.31.1.tgz", "2e1344a1926ee50eb25b38153cb6992c3567515aef0e677a1a520a1798896d6f", 36936435},
 		ortLib:     "onnxruntime-osx-arm64-1.31.1/lib/libonnxruntime.1.31.1.dylib",
 		ortLicense: "onnxruntime-osx-arm64-1.31.1/LICENSE",
-		tools:      download{toolsRelease + "blup-voice-tools-darwin-arm64.tar.gz", "205013142dc9a95577657b3f8416683bb8444a35641876d1e3e7308c24bd99ba", 878286},
+		tools:      download{toolsRelease + "blup-voice-tools-darwin-arm64.tar.gz", "04293776a6421dcec0bd60a22e0e0d36a28056bd28c2f4a9d9e215319cdfee19", 878291},
 	},
 	"darwin/amd64": {
 		ort:        download{ortIntelMac + "onnxruntime-osx-x86_64-1.23.2.tgz", "d10359e16347b57d9959f7e80a225a5b4a66ed7d7e007274a15cae86836485a6", 11676322},
 		ortLib:     "onnxruntime-osx-x86_64-1.23.2/lib/libonnxruntime.1.23.2.dylib",
 		ortLicense: "onnxruntime-osx-x86_64-1.23.2/LICENSE",
-		tools:      download{toolsRelease + "blup-voice-tools-darwin-amd64.tar.gz", "67ac6876bad411e431ecf31c4bd58727503287f07ed375f42cbb3929d6a532b7", 899513},
+		tools:      download{toolsRelease + "blup-voice-tools-darwin-amd64.tar.gz", "406af25e6ebfd918ec1fe9572005318118dbad4aced171d1bde4a2aa99aeece9", 899566},
 	},
 	// A .zip: the DLL needs the Visual C++ runtime, which the tools carry.
 	"windows/amd64": {
 		ort:        download{ortRelease + "onnxruntime-win-x64-1.31.1.zip", "5869e26bb25314375f2d5ef1877e3ea06b1543d6c710e6e4a1ec2f7177ab4b2c", 82929944},
 		ortLib:     "onnxruntime-win-x64-1.31.1/lib/onnxruntime.dll",
 		ortLicense: "onnxruntime-win-x64-1.31.1/LICENSE",
-		tools:      download{toolsRelease + "blup-voice-tools-windows-amd64.tar.gz", "b20b87d0de98dadd4c4f407c3ad44de7ee2436330d8f3a23148ef22013198c5f", 1261905},
+		tools:      download{toolsRelease + "blup-voice-tools-windows-amd64.tar.gz", "726d7438afd009ebcd9ba34c8dc77d7bf9d08ddae341afaa4c742615e7151585", 1261919},
 	},
 }
 
