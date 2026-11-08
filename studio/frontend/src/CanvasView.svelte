@@ -340,7 +340,7 @@
     const n = byId.get(editing);
     editing = "";
     // An empty text card left behind goes away.
-    if (n?.type === "text" && !n.text?.trim()) remove(new Set([n.id]), false);
+    if ((n?.type === "text" && !n.text?.trim()) || (n?.type === "link" && !n.url?.trim())) remove(new Set([n.id]), false);
     changed();
   }
   function grow(e: Event, n: CNode) {
@@ -528,9 +528,11 @@
               {#if editing === n.id}
                 <input class="url" bind:value={n.url} placeholder="https://" use:focus onkeydown={(e) => e.key === "Enter" && finishEdit()} onblur={finishEdit} onpointerdown={(e) => e.stopPropagation()} />
               {:else}
-                <button class="site" onclick={(e) => { e.stopPropagation(); if (n.url) OpenURL(n.url); }} onpointerdown={(e) => e.stopPropagation()}>
+                <!-- Not a button: the click goes to the card, which selects and
+                     moves; the link opens from the card's menu. -->
+                <div class="site">
                   <LinkIcon size={15} /><span><b>{(() => { try { return new URL(n.url ?? "").host; } catch { return n.url; } })()}</b><small>{n.url}</small></span>
-                </button>
+                </div>
               {/if}
             {/if}
           </div>
@@ -566,6 +568,7 @@
       {:else}
         {#if one && one.type !== "file"}<button title={tb.edit} onclick={() => startEdit(one)}><Pencil size={15} /></button>{/if}
         {#if one?.type === "file"}<button title={tb.open} onclick={() => openFile(one.file ?? "")}><ExternalLink size={15} /></button>{/if}
+        {#if one?.type === "link" && one.url}<button title={tb.open} onclick={() => OpenURL(one.url ?? "")}><ExternalLink size={15} /></button>{/if}
         <button title={tb.remove} onclick={() => remove(selected)}><Trash2 size={15} /></button>
       {/if}
     </div>
