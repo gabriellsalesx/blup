@@ -1,0 +1,130 @@
+# Builds de teste: o instalador do Windows (.exe), o .dmg do macOS e o APK do
+# Blup Notes, para baixar dos artefatos desta execução. Não cria release nem
+# publica nada: o blup update e o site não veem estes arquivos.
+#
+# Disparo manual (Actions > builds > Run workflow), com a versão que vai
+# dentro dos apps. Sem assinatura de desenvolvedor no Windows e no macOS (o
+# .app leva só a assinatura ad hoc). O APK sai assinado com a chave de
+# publicação do Blup Notes, vinda dos secrets:
+# - ANDROID_KEYSTORE_BASE64: o .jks em base64;
+# - ANDROID_KEYSTORE_PASSWORD e ANDROID_KEY_PASSWORD;
+# - variável ANDROID_KEY_ALIAS.
+# Sem eles, o APK sai com a chave de depuração (só para teste).
+name: builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão dentro dos apps (por exemplo 1.0.0-rc.1)"
+        required: true
+        default: "1.0.0-rc.1"
+
+permissions:
+  contents: read
+
+env:
+  VERSION: ${{ inputs.version }}
+
+jobs:
+  studio-windows:
+    runs-on: windows-latest
+    env:
+      SENTRY_DSN: ${{ vars.STUDIO_SENTRY_DSN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: studio/go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Instalador .exe (NSIS, por usuário, sem pedir administrador)
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+          command -v makensis || choco install nsis -y --no-progress
+          export PATH="$PATH:/c/Program Files (x86)/NSIS"
+          (cd studio/frontend && npm ci)
+          (cd studio && wails3 task windows:create:nsis:installer ARCH=amd64 VERSION="$VERSION" INSTALL_SCOPE=user)
+          mkdir -p out && mv studio/bin/*installer.exe "out/blup-studio_${VERSION}_windows_x64-setup.exe"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: studio-windows
+          path: out/*
+          if-no-files-found: error
+
+  studio-macos:
+    runs-on: macos-latest
+    env:
+      SENTRY_DSN: ${{ vars.STUDIO_SENTRY_DSN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: studio/go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: .dmg universal (Apple Silicon e Intel)
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+          (cd studio/frontend && npm ci)
+          cd studio
+          wails3 task darwin:package:universal VERSION="$VERSION"
+          wails3 task darwin:create:dmg
+          mkdir -p ../out && mv bin/*.dmg "../out/blup-studio_${VERSION}_macos_universal.dmg"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: studio-macos
+          path: out/*
+          if-no-files-found: error
+
+  notes-android:
+    runs-on: ubuntu-24.04
+    env:
+      SENTRY_DSN: ${{ vars.NOTES_SENTRY_DSN }}
+      KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ vars.ANDROID_KEY_ALIAS }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: mobile/go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Chave de assinatura (fica só nesta máquina)
+        if: env.KEYSTORE_B64 != ''
+        run: |
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+      - name: APK (arm64 e x86_64) e AAB
+        working-directory: mobile
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+          (cd frontend && npm ci)
+          export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_NDK_LATEST_HOME}"
+          wails3 task android:package:fat VERSION="$VERSION" SENTRY_DSN="$SENTRY_DSN"
+          wails3 task android:assemble:aab:release
+          mkdir -p ../out
+          mv bin/*.apk "../out/blup-notes_${VERSION}_android.apk"
+          mv bin/*.aab "../out/blup-notes_${VERSION}_android.aab"
+          rm -f "$RUNNER_TEMP/release.jks"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: notes-android
+          path: out/*
+          if-no-files-found: error
