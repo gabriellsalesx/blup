@@ -167,3 +167,53 @@ func TestSpeak(t *testing.T) {
 		t.Fatalf("%.1fs, %d bytes, % x", secs, len(mp3), mp3[:4])
 	}
 }
+
+// TestRealInstall installs the local voice for real (ONNX Runtime, model
+// and voices from their pinned addresses) with a tools package just built
+// (BLUP_VOICE_TOOLS_FILE, as .github/workflows/voice-tools.yml does on each
+// system) and reads aloud in each language with it.
+func TestRealInstall(t *testing.T) {
+	file := os.Getenv("BLUP_VOICE_TOOLS_FILE")
+	if file == "" {
+		t.Skip("set BLUP_VOICE_TOOLS_FILE to a tools package built for this system")
+	}
+	b, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := runtime.GOOS + "/" + runtime.GOARCH
+	p, ok := platforms[key]
+	if !ok {
+		t.Fatalf("no platform %s", key)
+	}
+	defer func(old platform) { platforms[key] = old }(p)
+	p.tools = download{file, sum(b), int64(len(b))}
+	platforms[key] = p
+	if !Supported() {
+		t.Fatalf("the local voice is not supported on %s (cgo needed on Linux and macOS)", key)
+	}
+	// Not t.TempDir: Windows keeps a loaded DLL from being deleted.
+	tmp, err := os.MkdirTemp("", "blup-kokoro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+	dir := filepath.Join(tmp, "kokoro")
+	if err := Install(context.Background(), dir, nil); err != nil {
+		t.Fatal(err)
+	}
+	for voice, text := range map[string]string{
+		"pf_dora":  "Olá! Um teste rápido da voz local, em português.",
+		"af_heart": "Hello! A quick test of the local voice, in English.",
+		"ef_dora":  "¡Hola! Una prueba rápida de la voz local, en español.",
+	} {
+		mp3, secs, err := Engine{dir}.Speak(context.Background(), text, voice, nil)
+		if err != nil {
+			t.Fatalf("%s: %v", voice, err)
+		}
+		if secs < 1 || len(mp3) < 4000 || mp3[0] != 0xFF {
+			t.Fatalf("%s: %.1fs, %d bytes", voice, secs, len(mp3))
+		}
+		t.Logf("%s: %.1fs, %d bytes of MP3", voice, secs, len(mp3))
+	}
+}

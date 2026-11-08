@@ -101,7 +101,7 @@ Antes do primeiro envio, o Studio pede aceite para o destino escolhido e o Go co
 
 `Engine.Speak` processa parágrafos, carrega o estilo da voz e executa sessão ONNX com `input_ids`, `style` e `speed`, obtendo `waveform` em 24 kHz. Insere pausa de 0,9 segundo após o primeiro parágrafo, 0,6 entre os demais e nenhuma após o último. Usa LAME em processo separado para MP3 mono 64 kbit/s, com entrada PCM de 16 bits.
 
-`ort_cgo.go` é compilado somente com `cgo && (linux || darwin)`. Usa `dlopen`, `OrtGetApiBase` e a API C vendorizada em `internal/kokoro/ort/`. `ort_other.go` devolve `ErrUnsupported` em Windows e builds sem CGO.
+`ort_cgo.go` é compilado somente com `cgo && (linux || darwin)`. Usa `dlopen`, `OrtGetApiBase` e a API C vendorizada em `internal/kokoro/ort/`. `ort_windows.go` (Windows amd64) faz o mesmo sem CGO, porque o Studio do Windows é compilado com `CGO_ENABLED=0`: carrega a DLL com `LoadLibraryEx`, chama as funções da tabela `OrtApi` por `syscall.SyscallN` nas posições de `ort_api.go` (um teste com CGO confere essas posições com o cabeçalho) e cria os tensores com o alocador do próprio ONNX Runtime. Antes da DLL, carrega pelo caminho completo o runtime do Visual C++ que vem no pacote de ferramentas. Os dois pedem a versão 23 da API, a do runtime mais antigo baixado (1.23.2, Mac Intel). `ort_other.go` devolve `ErrUnsupported` nos builds sem CGO de Linux e macOS.
 
 ## Instalação local e plataformas
 
@@ -111,12 +111,16 @@ O diretório é `<cache>/blup/kokoro`. `Install` trabalha em `kokoro.part`, baix
 
 | Plataforma na tabela | Situação executada hoje |
 | --- | --- |
-| Linux amd64 | Pacotes ONNX e ferramentas configurados; precisa de build com CGO |
-| Linux arm64 | ONNX configurado, pacote de ferramentas ausente; `Supported()` falso |
-| macOS arm64 | ONNX configurado, pacote de ferramentas ausente; `Supported()` falso |
+| Linux amd64 | ONNX Runtime 1.31.1 e ferramentas; precisa de build com CGO |
+| Linux arm64 | ONNX Runtime 1.31.1 e ferramentas; precisa de build com CGO |
+| macOS arm64 | ONNX Runtime 1.31.1 e ferramentas; precisa de build com CGO |
+| macOS amd64 | ONNX Runtime 1.23.2 (o último com build para Intel) e ferramentas |
+| Windows amd64 | ONNX Runtime 1.31.1 (.zip) e ferramentas com o runtime do Visual C++; sem CGO |
 | Demais | Sem conjunto de downloads suportado |
 
-O tamanho informado soma runtime, ferramentas, modelo de 92.361.116 bytes e as doze vozes da tabela, de 522.240 bytes cada. A tabela atual usa ONNX Runtime `1.31.1`, tag Blup `voice-tools-1` e revisão fixa `1939ad2a8e416c0acfeecc08a694d14ef25f2231` do repositório Hugging Face do modelo.
+Uma plataforma só conta como suportada (`platform.ready`) quando runtime e ferramentas têm SHA-256 e tamanho na tabela. Sem checksum, `Supported()` é falso.
+
+O tamanho informado soma runtime, ferramentas, modelo de 92.361.116 bytes e as doze vozes da tabela, de 522.240 bytes cada. A tabela atual usa ONNX Runtime `1.31.1` (e `1.23.2` no Mac Intel), tag Blup `voice-tools-2` e revisão fixa `1939ad2a8e416c0acfeecc08a694d14ef25f2231` do repositório Hugging Face do modelo.
 
 `BLUP_VOICE_TOOLS` é lida na inicialização do pacote Go e substitui somente o endereço do pacote de ferramentas por URL ou caminho local. Serve como espelho ou cópia local do mesmo arquivo: o SHA-256 e o tamanho usado no progresso continuam fixos na tabela. Um build diferente exige atualizar o hash da tabela e ajustar o tamanho informado; `fetch` verifica o hash, sem uma comparação separada de tamanho. A variável não completa uma plataforma que esteja sem ferramentas na tabela. O comentário que sugere testar um build novo só com essa variável não corresponde à implementação.
 
@@ -124,6 +128,6 @@ O tamanho informado soma runtime, ferramentas, modelo de 92.361.116 bytes e as d
 
 ## Construção das ferramentas
 
-`studio/build/voice/build-tools.sh` baixa eSpeak NG `1.52.0` e LAME `3.100` dos sources oficiais, valida SHA-256 e compila. Em Linux usa link estático. Empacota os executáveis, tabelas fonéticas, os dicionários `pt_dict`, `en_dict` e `es_dict`, a pasta `lang/` inteira do eSpeak, licenças, referências de sources e o próprio script em `blup-voice-tools-<os>-<arch>.tar.gz`.
+`studio/build/voice/build-tools.sh` baixa eSpeak NG `1.52.0` e LAME `3.100` dos sources oficiais, valida SHA-256 e compila. Em Linux e Windows usa link estático; no macOS os programas só usam bibliotecas da Apple (conferido com `otool`) e ganham assinatura ad hoc. No Windows roda num shell MSYS2 UCRT64, compila o eSpeak NG pelo CMake e copia para o pacote o runtime do Visual C++ indicado em `VCRT_DIR`. Antes de empacotar, roda os dois programas como o Studio roda. Empacota os executáveis, tabelas fonéticas, os dicionários `pt_dict`, `en_dict` e `es_dict`, a pasta `lang/` inteira do eSpeak, licenças, referências de sources e o próprio script em `blup-voice-tools-<os>-<arch>.tar.gz`.
 
-O script aceita diretório de trabalho e reconhece amd64/arm64 em Linux ou macOS. Essa capacidade de construir um pacote não significa que ele esteja adicionado com hash à tabela de instalação nem publicado pelo workflow atual. A integração do player publicado está descrita em [temas](temas-hugo.md).
+O script aceita diretório de trabalho (um caminho curto: o eSpeak NG guarda o caminho dos dados num buffer fixo durante o build). O workflow manual `.github/workflows/voice-tools.yml` roda o script em Linux amd64 e arm64, macOS arm64 e Intel e Windows x64, guarda cada pacote como artefato e instala a voz de verdade com ele (`TestRealInstall`). Ele não cria release. `studio/build/voice/pin-tools.sh <pasta dos artefatos>` grava SHA-256 e tamanho de cada pacote em `install.go` e imprime o comando `gh release create` da tag de `toolsRelease`. A integração do player publicado está descrita em [temas](temas-hugo.md).

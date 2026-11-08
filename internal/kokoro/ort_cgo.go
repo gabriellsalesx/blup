@@ -15,14 +15,14 @@ package kokoro
 // the OrtApi table.
 static const OrtApi* api;
 
-static const char* blup_ort_load(const char* path) {
+static const char* blup_ort_load(const char* path, uint32_t version) {
 	if (api) return NULL;
 	void* lib = dlopen(path, RTLD_NOW | RTLD_LOCAL);
 	if (!lib) return dlerror();
 	typedef const OrtApiBase* (*GetBase)(void);
 	GetBase get = (GetBase)dlsym(lib, "OrtGetApiBase");
 	if (!get) return "OrtGetApiBase not found";
-	api = get()->GetApi(ORT_API_VERSION);
+	api = get()->GetApi(version);
 	if (!api) return "ONNX Runtime too old";
 	return NULL;
 }
@@ -106,7 +106,7 @@ func openSession(lib, model string) (*session, error) {
 	defer loadMu.Unlock()
 	cl := C.CString(lib)
 	defer C.free(unsafe.Pointer(cl))
-	if msg := C.blup_ort_load(cl); msg != nil {
+	if msg := C.blup_ort_load(cl, ortAPIVersion); msg != nil {
 		return nil, errors.New("onnxruntime: " + C.GoString(msg))
 	}
 	cm := C.CString(model)
@@ -143,3 +143,35 @@ func (s *session) run(ids []int64, style []float32, speed float32) ([]float32, e
 }
 
 func (s *session) close() { C.blup_close(s.env, s.s) }
+
+// headerAPI gives, from the header, what ort_api.go copies for the loader
+// without cgo: the positions in OrtApi and the enum values (checked by a
+// test).
+func headerAPI() map[string]uintptr {
+	var a C.OrtApi
+	at := func(off uintptr) uintptr { return off / unsafe.Sizeof(uintptr(0)) }
+	return map[string]uintptr{
+		"GetErrorMessage":                  at(unsafe.Offsetof(a.GetErrorMessage)),
+		"CreateEnv":                        at(unsafe.Offsetof(a.CreateEnv)),
+		"CreateSession":                    at(unsafe.Offsetof(a.CreateSession)),
+		"Run":                              at(unsafe.Offsetof(a.Run)),
+		"CreateSessionOptions":             at(unsafe.Offsetof(a.CreateSessionOptions)),
+		"SetSessionGraphOptimizationLevel": at(unsafe.Offsetof(a.SetSessionGraphOptimizationLevel)),
+		"CreateTensorAsOrtValue":           at(unsafe.Offsetof(a.CreateTensorAsOrtValue)),
+		"GetTensorMutableData":             at(unsafe.Offsetof(a.GetTensorMutableData)),
+		"GetTensorShapeElementCount":       at(unsafe.Offsetof(a.GetTensorShapeElementCount)),
+		"GetTensorTypeAndShape":            at(unsafe.Offsetof(a.GetTensorTypeAndShape)),
+		"GetAllocatorWithDefaultOptions":   at(unsafe.Offsetof(a.GetAllocatorWithDefaultOptions)),
+		"ReleaseEnv":                       at(unsafe.Offsetof(a.ReleaseEnv)),
+		"ReleaseStatus":                    at(unsafe.Offsetof(a.ReleaseStatus)),
+		"ReleaseSession":                   at(unsafe.Offsetof(a.ReleaseSession)),
+		"ReleaseValue":                     at(unsafe.Offsetof(a.ReleaseValue)),
+		"ReleaseTensorTypeAndShapeInfo":    at(unsafe.Offsetof(a.ReleaseTensorTypeAndShapeInfo)),
+		"ReleaseSessionOptions":            at(unsafe.Offsetof(a.ReleaseSessionOptions)),
+		"ORT_LOGGING_LEVEL_ERROR":          C.ORT_LOGGING_LEVEL_ERROR,
+		"ORT_ENABLE_ALL":                   C.ORT_ENABLE_ALL,
+		"FLOAT":                            C.ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT,
+		"INT64":                            C.ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64,
+		"ORT_API_VERSION":                  C.ORT_API_VERSION,
+	}
+}

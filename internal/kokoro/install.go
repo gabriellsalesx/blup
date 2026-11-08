@@ -43,30 +43,55 @@ type platform struct {
 	ort        download
 	ortLib     string // the library inside ONNX Runtime's archive
 	ortLicense string
-	tools      download // zero when not built for this system yet
+	tools      download // not pinned yet (no checksum) on a system still without a build
+}
+
+// ready tells whether the platform's downloads are all pinned.
+func (p platform) ready() bool {
+	return p.ort.sha256 != "" && p.ort.size > 0 && p.tools.url != "" && p.tools.sha256 != "" && p.tools.size > 0
 }
 
 const ortRelease = "https://github.com/microsoft/onnxruntime/releases/download/v1.31.1/"
-const toolsRelease = "https://github.com/gabriellsalesx/blup/releases/download/voice-tools-1/"
+
+// ortIntelMac is the last ONNX Runtime with a build for Intel Macs.
+const ortIntelMac = "https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/"
+
+// toolsRelease holds the tools of every system, built together by
+// .github/workflows/voice-tools.yml and pinned by
+// studio/build/voice/pin-tools.sh.
+const toolsRelease = "https://github.com/gabriellsalesx/blup/releases/download/voice-tools-2/"
 
 var platforms = map[string]platform{
 	"linux/amd64": {
 		ort:        download{ortRelease + "onnxruntime-linux-x64-1.31.1.tgz", "c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9", 11413655},
 		ortLib:     "onnxruntime-linux-x64-1.31.1/lib/libonnxruntime.so.1.31.1",
 		ortLicense: "onnxruntime-linux-x64-1.31.1/LICENSE",
-		tools:      download{toolsRelease + "blup-voice-tools-linux-amd64.tar.gz", "43e5f9490eb284585f28253b8a299f75b0c4e979eeba8d3aac1b50d54c84a591", 1777126},
+		tools:      download{toolsRelease + "blup-voice-tools-linux-amd64.tar.gz", "51dba7d0c170f08e7837f2aedbf2f9ae916038ac8111d931da38cf62002c7d4f", 1737558},
 	},
-	// Built by the release workflow (macOS and Windows runners), then
-	// added here with their checksums.
 	"linux/arm64": {
 		ort:        download{ortRelease + "onnxruntime-linux-aarch64-1.31.1.tgz", "5317505e2da99be65f8e2775ba3c2afd6d2961fd78aba1bd8f56159f48820c78", 10332381},
 		ortLib:     "onnxruntime-linux-aarch64-1.31.1/lib/libonnxruntime.so.1.31.1",
 		ortLicense: "onnxruntime-linux-aarch64-1.31.1/LICENSE",
+		tools:      download{toolsRelease + "blup-voice-tools-linux-arm64.tar.gz", "6c4a691b91e6809eba0709954ffc97b66986bdce3dc706e48dd42521247d827b", 1525131},
 	},
 	"darwin/arm64": {
 		ort:        download{ortRelease + "onnxruntime-osx-arm64-1.31.1.tgz", "2e1344a1926ee50eb25b38153cb6992c3567515aef0e677a1a520a1798896d6f", 36936435},
 		ortLib:     "onnxruntime-osx-arm64-1.31.1/lib/libonnxruntime.1.31.1.dylib",
 		ortLicense: "onnxruntime-osx-arm64-1.31.1/LICENSE",
+		tools:      download{toolsRelease + "blup-voice-tools-darwin-arm64.tar.gz", "205013142dc9a95577657b3f8416683bb8444a35641876d1e3e7308c24bd99ba", 878286},
+	},
+	"darwin/amd64": {
+		ort:        download{ortIntelMac + "onnxruntime-osx-x86_64-1.23.2.tgz", "d10359e16347b57d9959f7e80a225a5b4a66ed7d7e007274a15cae86836485a6", 11676322},
+		ortLib:     "onnxruntime-osx-x86_64-1.23.2/lib/libonnxruntime.1.23.2.dylib",
+		ortLicense: "onnxruntime-osx-x86_64-1.23.2/LICENSE",
+		tools:      download{toolsRelease + "blup-voice-tools-darwin-amd64.tar.gz", "67ac6876bad411e431ecf31c4bd58727503287f07ed375f42cbb3929d6a532b7", 899513},
+	},
+	// A .zip: the DLL needs the Visual C++ runtime, which the tools carry.
+	"windows/amd64": {
+		ort:        download{ortRelease + "onnxruntime-win-x64-1.31.1.zip", "5869e26bb25314375f2d5ef1877e3ea06b1543d6c710e6e4a1ec2f7177ab4b2c", 82929944},
+		ortLib:     "onnxruntime-win-x64-1.31.1/lib/onnxruntime.dll",
+		ortLicense: "onnxruntime-win-x64-1.31.1/LICENSE",
+		tools:      download{toolsRelease + "blup-voice-tools-windows-amd64.tar.gz", "b20b87d0de98dadd4c4f407c3ad44de7ee2436330d8f3a23148ef22013198c5f", 1261905},
 	},
 }
 
@@ -99,10 +124,10 @@ const voiceSize = maxTokens * 256 * 4
 var ToolsOverride = os.Getenv("BLUP_VOICE_TOOLS")
 
 // current is this system's platform; ok is false when it has none (no
-// package of tools yet, or the session can't load ONNX Runtime).
+// pinned package of tools yet, or the session can't load ONNX Runtime).
 func current() (platform, bool) {
 	p, ok := platforms[runtime.GOOS+"/"+runtime.GOARCH]
-	if !ok || p.tools.url == "" {
+	if !ok || !p.ready() {
 		return p, false
 	}
 	if _, err := openSession("", ""); errors.Is(err, ErrUnsupported) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"sort"
@@ -162,7 +163,14 @@ func Phonemize(ctx context.Context, espeak, dataDir, voice, text string) (string
 
 // espeakIPA runs eSpeak NG on one piece of text (no punctuation).
 func espeakIPA(ctx context.Context, espeak, dataDir, lang, text string) (string, error) {
-	cmd := exec.CommandContext(ctx, espeak, "--path="+dataDir, "-q", "-b", "1", "--ipa", "--tie=^", "-v", lang)
+	// The data folder goes as "." with the program running in it: on
+	// Windows eSpeak NG reads its arguments in the ANSI code page, which
+	// would garble a folder with accents in the user's name.
+	if abs, err := filepath.Abs(espeak); err == nil {
+		espeak = abs // a relative path would be taken from Dir
+	}
+	cmd := exec.CommandContext(ctx, espeak, "--path=.", "-q", "-b", "1", "--ipa", "--tie=^", "-v", lang)
+	cmd.Dir = dataDir
 	cmd.Stdin = strings.NewReader(text)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb

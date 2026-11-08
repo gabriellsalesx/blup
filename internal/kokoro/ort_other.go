@@ -1,9 +1,9 @@
-//go:build !(cgo && (linux || darwin))
+//go:build !(cgo && (linux || darwin)) && !(windows && amd64)
 
 package kokoro
 
-// Without cgo (the blup CLI) or on Windows (still to come: there the
-// library is loaded without cgo), the local voice is not available.
+// Without cgo on Linux and macOS (the blup CLI), or on a system with no
+// loader yet, the local voice is not available.
 
 type session struct{}
 
