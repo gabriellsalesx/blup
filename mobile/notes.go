@@ -96,7 +96,7 @@ func vaultDir() (string, error) {
 }
 
 // notesAt is the notes folder of a vault. Only the phone's first vault starts
-// with the examples: the others are made empty, so the folder is there.
+// with the welcome note: the others are made empty, so the folder is there.
 func notesAt(root string) (string, error) {
 	dir := filepath.Join(root, "cofre")
 	if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {

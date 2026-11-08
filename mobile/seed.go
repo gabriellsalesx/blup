@@ -4,52 +4,23 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/gabriellsalesx/blup/internal/obsidian"
 )
 
-// The example vault of the app, with the age of each note in days.
-var examples = []struct {
-	path string
-	days int
-	tags []string
-	body string
-}{
-	{"Diário/Reunião de sexta.md", 0, []string{"trabalho", "mobile"}, "Fechamos o escopo do [[Blup no celular]] e o que entra primeiro.\n\n- [x] Mostrar as telas no emulador\n- [ ] Testar o editor com o teclado\n- [ ] Decidir a barra de navegação\n"},
-	{"Projetos/Blup no celular.md", 1, []string{"mobile", "produto"}, "O objetivo é levar as notas para o bolso, sem perder o que já funciona no computador.\n\n## Primeira versão\n\n- Notas e pastas\n- Busca\n- Calendário\n- Sincronização com o [[Blup Cloud]]\n\n## Fica para depois\n\nPublicar sites e narração.\n"},
-	{"Projetos/Blup Cloud.md", 2, []string{"produto"}, "Guarda as notas com a senha que só você conhece.\n\n> Sem a senha ou a chave de recuperação, ninguém abre as notas.\n\nVeja também [[Blup no celular]].\n"},
-	{"Ideias/Títulos para o blog.md", 4, []string{"escrita"}, "1. Como escrever todo dia sem travar\n2. Notas que viram site\n3. O que guardar e o que apagar\n"},
-	{"Ideias/Lista de leitura.md", 7, []string{"leitura"}, "- [ ] Como fazer anotações melhores\n- [x] Escrever para pensar\n- [ ] Um bom livro de design\n"},
-	{"Projetos/Blup/Mobile/Telas do app.md", 1, []string{"mobile"}, "Notas, Busca, Calendário e Conta na barra de baixo.\n"},
-	{"Projetos/Blup/Mobile/Testes no Android.md", 2, []string{"mobile"}, "- [x] Editor com teclado\n- [ ] Celular físico\n"},
-	{"Projetos/Blup/Site/Textos da página inicial.md", 3, []string{"escrita"}, "Escreva no Blup e publique sem complicação.\n"},
-	{"Projetos/Clientes/Modelo de proposta.md", 5, []string{"trabalho"}, "Objetivo, prazo e valor, nessa ordem.\n"},
-	{"Estudos/Go/Canais.md", 6, []string{"leitura"}, "Um canal liga duas goroutines sem memória compartilhada.\n"},
-	{"Estudos/Inglês/Verbos irregulares.md", 8, []string{"leitura"}, "- go, went, gone\n- write, wrote, written\n"},
-	{"Ideias/Viagens/Roteiro de férias.md", 9, []string{}, "Três dias na serra e dois na praia.\n"},
-	{"Diário/Domingo.md", 12, []string{"diario"}, "Dia calmo. Separei as ideias da semana em [[Títulos para o blog]].\n"},
+// The first vault of the phone starts with one note, in the app's language:
+// how the app works, for whoever opens it for the first time. It can be
+// edited or deleted like any other.
+var welcome = map[string]struct{ path, body string }{
+	"pt": {"Bem-vindo ao Blup.md", "# Bem-vindo ao Blup\n\nEsta é a sua primeira nota. Edite ou apague quando quiser.\n\n## O básico\n\n- Crie notas e pastas na tela de Notas.\n- Escreva em Markdown: **negrito**, *itálico*, listas e títulos.\n- Ligue uma nota a outra escrevendo o nome dela entre colchetes duplos, como `[[Ideias]]`.\n- Marque notas com tags, como `#trabalho`, e ache tudo depois na Busca.\n\n## Para começar\n\n- [x] Abrir o Blup\n- [ ] Criar a primeira nota\n- [ ] Conectar ao Blup Cloud\n\n## Blup Cloud\n\nEm Conta, conecte ao Blup Cloud para ter as mesmas notas no computador, com o Blup Studio. Elas são cifradas aqui no celular antes de sair: nem o Blup consegue ler.\n"},
+	"en": {"Welcome to Blup.md", "# Welcome to Blup\n\nThis is your first note. Edit or delete it whenever you like.\n\n## The basics\n\n- Create notes and folders on the Notes screen.\n- Write in Markdown: **bold**, *italic*, lists and headings.\n- Link a note to another by writing its name in double brackets, like `[[Ideas]]`.\n- Mark notes with tags, like `#work`, and find everything later in Search.\n\n## To get started\n\n- [x] Open Blup\n- [ ] Create your first note\n- [ ] Connect to Blup Cloud\n\n## Blup Cloud\n\nIn Account, connect to Blup Cloud to have the same notes on your computer, with Blup Studio. They are encrypted here on the phone before they leave: not even Blup can read them.\n"},
+	"es": {"Bienvenido a Blup.md", "# Bienvenido a Blup\n\nEsta es tu primera nota. Edítala o bórrala cuando quieras.\n\n## Lo básico\n\n- Crea notas y carpetas en la pantalla de Notas.\n- Escribe en Markdown: **negrita**, *cursiva*, listas y títulos.\n- Enlaza una nota con otra escribiendo su nombre entre corchetes dobles, como `[[Ideas]]`.\n- Marca notas con etiquetas, como `#trabajo`, y encuentra todo después en Buscar.\n\n## Para empezar\n\n- [x] Abrir Blup\n- [ ] Crear tu primera nota\n- [ ] Conectar a Blup Cloud\n\n## Blup Cloud\n\nEn Cuenta, conecta a Blup Cloud para tener las mismas notas en tu ordenador, con Blup Studio. Se cifran aquí en el móvil antes de salir: ni Blup puede leerlas.\n"},
 }
 
 func seed(dir string) error {
-	for _, e := range examples {
-		path := filepath.Join(dir, e.path)
-		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-			return err
-		}
-		when := time.Now().AddDate(0, 0, -e.days)
-		date := when.Format("2006-01-02")
-		head := "---\ncreated: " + date + "\nupdated: " + date + "\n---\n\n"
-		if err := os.WriteFile(path, []byte(head+e.body), 0o600); err != nil {
-			return err
-		}
-		if len(e.tags) > 0 {
-			if err := obsidian.SetProperties(path, obsidian.Prop{Key: "tags", Value: e.tags}); err != nil {
-				return err
-			}
-		}
-		if err := os.Chtimes(path, when, when); err != nil {
-			return err
-		}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
 	}
-	return nil
+	w := welcome[appLang()]
+	date := time.Now().Format("2006-01-02")
+	head := "---\ncreated: " + date + "\nupdated: " + date + "\n---\n\n"
+	return os.WriteFile(filepath.Join(dir, w.path), []byte(head+w.body), 0o600)
 }

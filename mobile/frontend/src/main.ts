@@ -11,6 +11,7 @@ SettingsService.Language()
   .then((saved) => {
     const lang = pickLanguage(saved);
     setLanguage(lang);
-    SettingsService.UseLanguage(lang).catch(() => {});
+    // Awaited: the first vault's welcome note is written in this language.
+    return SettingsService.UseLanguage(lang).catch(() => {});
   })
   .finally(() => mount(App, { target: document.getElementById("app")! }));
