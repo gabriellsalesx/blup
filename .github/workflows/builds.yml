@@ -3,7 +3,8 @@
 # publica nada: o blup update e o site não veem estes arquivos.
 #
 # Disparo manual (Actions > builds > Run workflow), com a versão que vai
-# dentro dos apps. Sem assinatura de desenvolvedor no Windows e no macOS (o
+# dentro dos apps. O release.yml também chama este workflow a cada tag
+# vX.Y.Z, e aí os arquivos vão para a release junto com os do Linux. Sem assinatura de desenvolvedor no Windows e no macOS (o
 # .app leva só a assinatura ad hoc). O APK sai assinado com a chave de
 # publicação do Blup Notes, vinda dos secrets:
 # - ANDROID_KEYSTORE_BASE64: o .jks em base64;
@@ -19,12 +20,19 @@ on:
         description: "Versão dentro dos apps (por exemplo 1.0.0-rc.1)"
         required: true
         default: "1.0.0-rc.1"
+  workflow_call:
+    inputs:
+      version:
+        description: "A tag (vX.Y.Z) ou a versão"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 env:
-  VERSION: ${{ inputs.version }}
+  # A tag v1.2.3 vira 1.2.3 dentro dos apps.
+  TAG: ${{ inputs.version }}
 
 jobs:
   studio-windows:
@@ -35,6 +43,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Versão
+        shell: bash
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: studio/go.mod
@@ -64,6 +75,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Versão
+        shell: bash
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: studio/go.mod
@@ -96,6 +110,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Versão
+        shell: bash
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: mobile/go.mod
@@ -125,10 +142,17 @@ jobs:
           wails3 task android:assemble:aab:release
           mkdir -p ../out
           mv bin/*.apk "../out/blup-notes_${VERSION}_android.apk"
-          mv bin/*.aab "../out/blup-notes_${VERSION}_android.aab"
+          mkdir -p ../out-aab
+          mv bin/*.aab "../out-aab/blup-notes_${VERSION}_android.aab"
           rm -f "$RUNNER_TEMP/release.jks"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: notes-android
           path: out/*
+          if-no-files-found: error
+      # O AAB é só para a Play Store: fica nos artefatos, fora da release.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: notes-android-aab
+          path: out-aab/*
           if-no-files-found: error

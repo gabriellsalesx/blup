@@ -172,10 +172,20 @@ jobs:
           path: dist-msix/*.msix
           if-no-files-found: error
 
-  # The Linux files go up to the release with their sha256 and the owner's
-  # Ed25519 signature over the list, as checksums.txt does for the CLI.
+  # The Windows installer, the macOS .dmg and the Blup Notes APK, from the
+  # same workflow as the test builds (builds.yml).
+  apps:
+    needs: release
+    uses: ./.github/workflows/builds.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets: inherit
+
+  # The Linux, Windows, macOS and Android files go up to the release with
+  # their sha256 and the owner's Ed25519 signature over the list, as
+  # checksums.txt does for the CLI.
   studio-publish:
-    needs: studio-linux
+    needs: [studio-linux, apps]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -188,7 +198,8 @@ jobs:
           go-version-file: go.mod
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: studio-linux
+          pattern: "{studio-linux,studio-windows,studio-macos,notes-android}"
+          merge-multiple: true
           path: dist-studio
       - name: Checksums, signature and upload
         env:
