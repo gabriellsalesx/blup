@@ -14,6 +14,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/i18n"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed all:frontend/dist
@@ -67,6 +68,10 @@ func main() {
 		Hidden:           hidden, // opened with the computer: straight to the tray
 	})
 	setupDesktop(studio, app, win)
+	// On a screen shorter than the window, keep its title bar on screen.
+	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		fitWindow(win, 900, 560)
+	})
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
