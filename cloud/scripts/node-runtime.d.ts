@@ -15,7 +15,7 @@ declare module "node:path" {
 	export function join(...parts:string[]):string;
 }
 declare module "node:child_process" {
-	export function spawnSync(cmd:string,args:string[],options:{stdio:"inherit"}):{status:number|null};
+	export function spawnSync(cmd:string,args:string[],options:{stdio:"inherit";env?:Record<string,string|undefined>}):{status:number|null};
 }
 declare module "node:url" {
 	export function pathToFileURL(path:string):URL;

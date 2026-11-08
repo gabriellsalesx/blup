@@ -23,6 +23,9 @@ import ts from "typescript";
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type Overrides = Record<string, Record<string, Json>>;
+// vars.json may also carry build_env: variables for the panels' build
+// (VITE_SENTRY_DSN, the Pulse project of the panels).
+const BUILD_ENV = "build_env";
 
 const CONFIGS = ["wrangler.jsonc", "wrangler.sites.jsonc", "wrangler.pulse.jsonc", "wrangler.deals.jsonc"] as const;
 // The sites Worker only gets what it reads; auth, Stripe, AI and CF_API_TOKEN stay in the Cloud Worker.
@@ -83,7 +86,7 @@ function writePrivate(path: string, content: string) {
 
 function prepareConfigs(): Record<string, string> {
 	const overrides = readJson<Overrides>(join(dir, "vars.json"));
-	for (const name of Object.keys(overrides)) if (!(CONFIGS as readonly string[]).includes(name)) fail(`vars.json: ${name} não é um dos arquivos de deploy`);
+	for (const name of Object.keys(overrides)) if (name !== BUILD_ENV && !(CONFIGS as readonly string[]).includes(name)) fail(`vars.json: ${name} não é um dos arquivos de deploy`);
 	const out: Record<string, string> = {};
 	for (const name of CONFIGS) {
 		const config = parseJsonc(name);
@@ -110,13 +113,21 @@ function prepareSecrets(): { cloud: string; sites: string } {
 	return { cloud, sites };
 }
 
-function run(cmd: string, args: string[]) {
+function run(cmd: string, args: string[], env: Record<string, string> = {}) {
 	console.log(`\n> ${cmd} ${args.join(" ")}`);
-	const r = spawnSync(cmd, args, { stdio: "inherit" });
+	const r = spawnSync(cmd, args, { stdio: "inherit", env: { ...process.env, ...env } });
 	if (r.status !== 0) fail(`Falhou: ${cmd} ${args.join(" ")}`);
 }
 
 const wrangler = (...args: string[]) => run("npx", ["wrangler", ...args]);
+
+// The panels' build, with build_env from vars.json.
+function build() {
+	const extra = readJson<Overrides>(join(dir, "vars.json"))[BUILD_ENV] ?? {};
+	const env = Object.fromEntries(Object.entries(extra).filter((e): e is [string, string] => typeof e[1] === "string"));
+	console.log(`Build com: ${Object.keys(env).join(", ") || "nenhuma variável extra"}`);
+	run("npm", ["run", "build"], env);
+}
 
 function main() {
 	const [command, ...flags] = process.argv.slice(2);
@@ -125,7 +136,7 @@ function main() {
 	const pulse = configs["wrangler.pulse.jsonc"]!, deals = configs["wrangler.deals.jsonc"]!;
 	switch (command) {
 		case "check":
-			run("npm", ["run", "build"]);
+			build();
 			for (const c of [sites, cloud, pulse, deals]) wrangler("deploy", "-c", c, "--env", "production", "--dry-run");
 			break;
 		case "migrate":
@@ -135,7 +146,7 @@ function main() {
 			const secrets = prepareSecrets();
 			if (flags.includes("--bootstrap")) wrangler("deploy", "-c", "wrangler.bootstrap.jsonc");
 			wrangler("d1", "migrations", "apply", "DB", "--remote", "--env", "production", "-c", cloud);
-			run("npm", ["run", "build"]);
+			build();
 			wrangler("deploy", "-c", sites, "--env", "production", "--secrets-file", secrets.sites);
 			wrangler("deploy", "-c", cloud, "--env", "production", "--secrets-file", secrets.cloud);
 			wrangler("deploy", "-c", pulse, "--env", "production");
