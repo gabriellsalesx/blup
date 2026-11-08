@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="wails_blue">#3B82F6</color>
+    <color name="wails_blue_dark">#2563EB</color>
+    <color name="wails_background">#09090B</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+</resources>

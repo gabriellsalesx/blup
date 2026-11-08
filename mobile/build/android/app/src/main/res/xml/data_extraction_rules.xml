@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 and later. The notes go into the phone's backup and transfer;
+     files/config never does: it holds the Blup Cloud sign-in and the notes
+     key (config/blup/credentials.toml), which must not leave the phone. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="config/" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="config/" />
+    </device-transfer>
+</data-extraction-rules>

@@ -1,0 +1,126 @@
+/* The editor rules of the Blup Studio (Editor.svelte), unchanged. */
+.editor .cm-tooltip-autocomplete { border: 1px solid var(--line); border-radius: .5rem; background: var(--panel); box-shadow: 0 10px 30px rgb(0 0 0 / .25); overflow: hidden; }
+.editor .cm-tooltip-autocomplete > ul { font-family: inherit !important; font-size: .875rem; max-height: 16rem !important; }
+.editor .cm-tooltip-autocomplete > ul > li { padding: .35rem .7rem !important; color: var(--text); }
+.editor .cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--soft) !important; color: var(--text) !important; }
+.editor .cm-completionDetail { margin-inline-start: .6rem; color: var(--muted); font-style: normal; font-size: .78rem; }
+.editor .cm-completionMatchedText { text-decoration: none; font-weight: 700; color: var(--blue); }
+.editor .cm-editor { min-height: 100%; background: var(--panel); font-size: var(--size, 1rem); }
+.editor .cm-editor.cm-focused { outline: none; }
+.editor .cm-scroller { overflow: visible; font-family: "Inter", ui-sans-serif, system-ui, sans-serif; line-height: 1.7; padding: 2rem 0; }
+.editor .cm-content { max-width: 46rem; margin-inline: auto; padding-inline: 2rem; caret-color: var(--text); }
+.editor.wide .cm-content { max-width: none; }
+.editor .cm-obs-comment { opacity: .75; }
+.editor .cm-callout { background: rgb(var(--c) / .1); border-inline-start: 3px solid rgb(var(--c)); padding-inline-start: .8rem !important; }
+.editor .cm-callout-head { color: rgb(var(--c)); font-weight: 700; border-start-start-radius: .3rem; padding-block-start: .3rem; }
+.editor .cm-callout-end { padding-block-end: .3rem; border-end-start-radius: .3rem; }
+.editor .cm-callout-head * { color: rgb(var(--c)) !important; }
+.editor .cm-callout :is(span) { font-style: normal; }
+.editor .cm-quote { border-inline-start: 3px solid var(--blue); padding-inline-start: .9rem !important; color: var(--muted); }
+.editor .cm-callout-icon { display: inline-flex; align-items: center; gap: .4rem; vertical-align: -3px; margin-inline-end: .35rem; }
+.editor .cm-callout-name { font-weight: 700; }
+.editor .cm-codeblock { background: var(--soft); padding-inline: 1rem !important; font-family: ui-monospace, monospace; font-size: .9em; }
+.editor .cm-codeblock-first { border-start-start-radius: .5rem; border-start-end-radius: .5rem; padding-block-start: .35rem; }
+.editor .cm-codeblock-last { border-end-start-radius: .5rem; border-end-end-radius: .5rem; padding-block-end: .35rem; }
+.editor .cm-code-head { display: inline-flex; align-items: center; justify-content: space-between; width: 100%; font-family: "Inter", ui-sans-serif, system-ui, sans-serif; }
+.editor .cm-code-head.raw { width: auto; float: inline-end; }
+.editor .cm-code-lang { color: var(--muted); font-size: .8rem; text-transform: lowercase; }
+.editor .cm-code-copy { padding: .1rem .55rem; border: 1px solid var(--line); border-radius: .35rem; background: var(--panel); color: var(--muted); font-size: .75rem; cursor: pointer; }
+.editor .cm-code-copy:hover { color: var(--blue); border-color: var(--blue); }
+.editor .cm-hr { display: inline-block; width: 100%; height: 0; vertical-align: middle; border-block-start: 1px solid var(--line); }
+.editor .cm-bullet { display: inline-block; width: 1ch; color: var(--muted); font-weight: 700; }
+.editor .cm-task-box { width: 1rem; height: 1rem; margin: 0 .25rem 0 0; vertical-align: -2px; accent-color: var(--blue); cursor: pointer; }
+.editor .cm-task-done { color: var(--muted); text-decoration: line-through; }
+.editor .cm-image { position: relative; display: block; width: fit-content; max-width: 100%; margin-block: .3rem; outline: none; }
+.editor .cm-image.moving { opacity: .5; }
+.editor .cm-image img { -webkit-user-drag: none; }
+.editor .cm-image.focused img { outline: 2px solid var(--blue); outline-offset: 2px; }
+/* A finger needs room: the square is small, its reach is not. */
+.editor .cm-image { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.editor .cm-image.focused { touch-action: none; }
+.editor .cm-image-move { position: absolute; inset: 1rem auto auto 1rem; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--bg); color: var(--blue); touch-action: none; }
+.editor .cm-image-remove { position: absolute; inset: 1rem 1rem auto auto; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--bg); color: var(--red); }
+.editor .cm-image img { display: block; max-width: 100%; max-height: 28rem; border-radius: .4rem; }
+.editor .cm-image-load { padding: .35rem .7rem; border: 1px dashed var(--line); border-radius: .4rem; color: var(--muted); font-size: .85em; cursor: pointer; }
+.editor .cm-image-load:hover { border-color: var(--blue); color: var(--blue); }
+.editor .cm-image.missing { color: var(--muted); font-size: .85em; }
+.editor .cm-highlight { background: color-mix(in srgb, #facc15 38%, transparent); border-radius: 3px; }
+.editor .cm-align-center { text-align: center; }
+.editor .cm-align-right { text-align: end; }
+.editor .cm-align-justify { text-align: justify; }
+.editor .cm-align-attr { color: var(--muted); font-size: .8em; opacity: .7; }
+.editor .cm-misspelled { background: color-mix(in srgb, var(--red) 24%, transparent); border-radius: 3px; box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--red) 70%, transparent); }
+.editor .cm-completionIcon { display: none; }
+.editor .cm-tooltip-autocomplete > ul > li[aria-selected]::after { content: "Tab"; float: inline-end; margin-inline-start: 1rem; padding: 0 .35rem; border: 1px solid var(--line); border-radius: .3rem; font-size: .7rem; color: var(--muted); }
+.editor .cm-completionLabel { font-weight: 500; }
+.editor .cm-md-table { display: inline-grid; grid-template-columns: 1.1rem minmax(0, auto) 1.1rem; grid-template-rows: 1.1rem auto 1.1rem; gap: .25rem; max-width: 100%; padding-block: .2rem; }
+.editor .cm-md-table-inner { grid-area: 2 / 2; min-width: 0; overflow-x: auto; }
+.editor .cm-md-table table { border-collapse: collapse; font-size: .95em; }
+.editor .cm-md-table th, .editor .cm-md-table td { min-width: 6rem; padding: .4rem .7rem; border: 1px solid var(--line); vertical-align: top; outline: none; white-space: pre-wrap; }
+.editor .cm-md-table th { background: var(--soft); font-weight: 700; }
+.editor .cm-md-table :is(th, td):focus { box-shadow: inset 0 0 0 2px var(--blue); }
+.editor .cm-md-table th:empty::before { content: attr(data-placeholder); color: var(--muted); font-weight: 500; }
+.editor .cm-md-bar { display: grid; place-items: center; padding: 0; border-radius: .35rem; background: var(--soft); color: var(--muted); font-size: .85rem; font-weight: 700; line-height: 1; visibility: hidden; }
+.editor .cm-md-bar.corner { grid-area: 1 / 1; }
+.editor .cm-md-bar.top { grid-area: 1 / 2; }
+.editor .cm-md-bar.left { grid-area: 2 / 1; }
+.editor .cm-md-bar.right { grid-area: 2 / 3; }
+.editor .cm-md-bar.bottom { grid-area: 3 / 2; }
+.editor .cm-md-table:hover .cm-md-bar, .editor .cm-md-table:focus-within .cm-md-bar { visibility: visible; }
+.editor .cm-md-bar:hover:not(:disabled) { background: var(--blue); color: #fff; }
+.editor .cm-md-bar:is(.top, .left, .corner):hover:not(:disabled) { background: var(--red); }
+.editor .cm-md-bar:disabled { opacity: .3; cursor: default; }
+.editor .cm-obs-comment, .editor .cm-obs-comment * { color: var(--muted) !important; font-style: italic; }
+.editor .cm-gutters { display: none; }
+.editor .cm-link-text { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.editor .cm-heading-line { position: relative; }
+.editor .cm-fold-chevron { position: absolute; inset-inline-start: -1.35rem; inset-block-start: 50%; translate: 0 -50%; display: grid; place-items: center; width: 1.1rem; height: 1.1rem; border-radius: .3rem; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .1s; }
+.editor .cm-heading-line:hover .cm-fold-chevron, .editor .cm-fold-chevron.folded { opacity: 1; }
+.editor .cm-fold-chevron:hover { background: var(--soft); color: var(--text); }
+.editor .cm-fold-chevron.folded svg { rotate: -90deg; }
+.editor .cm-foldPlaceholder { margin-inline-start: .4rem; padding: 0 .35rem; border: 1px solid var(--line); border-radius: .3rem; background: var(--soft); color: var(--muted); cursor: pointer; }
+.editor .cm-activeLine { background: transparent; }
+.editor .cm-line { color: var(--text); }
+.editor .cm-cursor, .editor .cm-dropCursor { border-left: 2px solid var(--text); margin-left: -1px; }
+.editor .cm-selectionBackground, .editor .cm-focused .cm-selectionBackground, .editor .cm-content ::selection { background: color-mix(in srgb, var(--blue) 30%, transparent) !important; }
+.editor .cm-selectionMatch { background: color-mix(in srgb, var(--blue) 15%, transparent); }
+
+/* For the phone: the Studio's margins are for a wide window. */
+.editor .cm-editor { flex: 1; min-height: 0; background: var(--bg); font-size: 1rem; height: auto; }
+.editor .cm-scroller { flex: 1; overflow: visible; padding-block: .5rem 3rem; }
+.editor .cm-content { padding-inline: 1.1rem; max-width: none; user-select: text; }
+.editor .cm-gutters { display: none; }
+.editor .cm-task-box { width: 1.25rem; height: 1.25rem; }
+
+/* The @ menu, made for fingers. */
+.editor .cm-tooltip-autocomplete { width: min(20rem, calc(100vw - 2rem)); }
+.editor .cm-tooltip-autocomplete > ul { max-height: 15rem !important; }
+.editor .cm-tooltip-autocomplete > ul > li { display: flex; align-items: center; min-height: 2.75rem; }
+.editor .cm-tooltip-autocomplete > ul > li[aria-selected] { background: color-mix(in srgb, var(--blue) 14%, transparent) !important; }
+.editor .cm-tooltip-autocomplete completion-section { display: block; padding: .5rem .7rem .2rem; font-size: .75rem; font-weight: 600; color: var(--muted); }
+.editor .cm-completionLabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editor .cm-tooltip-autocomplete > ul > li[aria-selected]::after { content: none; }
+
+/* Tables, the Studio's, with bars a finger can reach. A wide one scrolls
+   inside, so the note stays where it is. */
+.editor .cm-md-table { display: inline-grid; grid-template-columns: 0 minmax(0, auto) 0; grid-template-rows: 0 auto 0; max-width: 100%; padding-block: .2rem; }
+.editor .cm-md-table:focus-within { grid-template-columns: 1.7rem minmax(0, auto) 1.7rem; grid-template-rows: 1.7rem auto 1.7rem; gap: .25rem; }
+.editor .cm-md-table-inner { grid-area: 2 / 2; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; }
+.editor .cm-md-table table { border-collapse: collapse; font-size: .95em; }
+.editor .cm-md-table th, .editor .cm-md-table td { min-width: 6rem; padding: .4rem .7rem; border: 1px solid var(--line); vertical-align: top; outline: none; white-space: pre-wrap; overflow-wrap: normal; word-break: normal; user-select: text; }
+.editor .cm-md-table th { background: var(--soft); font-weight: 700; }
+.editor .cm-md-table :is(th, td):focus { box-shadow: inset 0 0 0 2px var(--blue); }
+.editor .cm-md-table th:empty::before { content: attr(data-placeholder); color: var(--muted); font-weight: 500; }
+.editor .cm-md-bar { display: grid; place-items: center; padding: 0; border-radius: .35rem; background: var(--soft); color: var(--muted); font-size: 1rem; font-weight: 700; line-height: 1; visibility: hidden; }
+.editor .cm-md-bar.corner { grid-area: 1 / 1; }
+.editor .cm-md-bar.top { grid-area: 1 / 2; }
+.editor .cm-md-bar.left { grid-area: 2 / 1; }
+.editor .cm-md-bar.right { grid-area: 2 / 3; }
+.editor .cm-md-bar.bottom { grid-area: 3 / 2; }
+.editor .cm-md-table:focus-within .cm-md-bar { visibility: visible; }
+.editor .cm-md-bar:active:not(:disabled) { background: var(--blue); color: #fff; }
+.editor .cm-md-bar:disabled { opacity: .3; }
+.cm-md-menu { position: fixed; z-index: 70; display: grid; min-width: 13rem; padding: .3rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 12px 34px rgb(0 0 0 / .28); }
+.cm-md-menu button { min-height: 2.75rem; padding: .4rem .6rem; border-radius: .35rem; font-size: .9rem; text-align: start; }
+.cm-md-menu button:active:not(:disabled) { background: var(--soft); }
+.cm-md-menu button:disabled { opacity: .4; }

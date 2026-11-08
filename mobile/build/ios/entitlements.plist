@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Applied to device builds only (task ios:package IOS_PLATFORM=device),
+         which go to TestFlight and the App Store: no debugger attaches to
+         them. To debug on a device, pass ENTITLEMENTS_FILE with
+         get-task-allow true. -->
+    <key>get-task-allow</key>
+    <false/>
+</dict>
+</plist>

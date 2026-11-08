@@ -1,0 +1,5 @@
+/* What the Studio's screens take from its app.css. */
+.btn { display: inline-flex; align-items: center; gap: .5rem; padding: .6rem .9rem; border-radius: .5rem; font-weight: 600; font-size: .95rem; background: var(--blue); color: #fff; }
+.btn:disabled { opacity: .45; }
+.btn.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+.muted { color: var(--muted); }

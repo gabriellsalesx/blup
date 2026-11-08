@@ -1,0 +1,61 @@
+<script lang="ts">
+  import { app } from "./lib/app.svelte";
+  import TabBar from "./ui/TabBar.svelte";
+  import Notes from "./screens/Notes.svelte";
+  import Search from "./screens/Search.svelte";
+  import { screens } from "./lib/screens";
+  import LockScreen from "./ui/LockScreen.svelte";
+  import NoteLayer from "./ui/NoteLayer.svelte";
+  import ErrorReportsAsk from "./ui/ErrorReportsAsk.svelte";
+  import { SettingsService } from "../bindings/github.com/gabriellsalesx/blup/mobile";
+  import { startPageReports } from "./lib/errorreports";
+
+  app.start();
+
+  // Relatórios de erro para o Blup (errors.go): perguntado uma vez, numa
+  // gaveta, depois de destrancar; com "sim", os erros da tela vão também.
+  let askReports = $state(false);
+  SettingsService.ErrorReports()
+    .then((r) => { startPageReports(r); askReports = r.answer === ""; })
+    .catch(() => {});
+  async function answerReports(yes: boolean | null) {
+    askReports = false;
+    if (yes === null) return;
+    try { startPageReports(await SettingsService.SetErrorReports(yes)); } catch { /* pergunta de novo na próxima vez */ }
+  }
+</script>
+
+<main>
+  {#if app.error}
+    <p class="error">{app.error}</p>
+  {:else}
+    <div class="screen" inert={!!app.current || !!app.place.board}>
+      {#if app.tab === "notes"}<Notes />
+      {:else if app.tab === "search"}<Search />
+      {:else if app.tab === "calendar"}{#await screens.calendar() then { default: Calendar }}<Calendar />{/await}
+      {:else}{#await screens.account() then { default: Account }}<Account />{/await}{/if}
+    </div>
+    {#if !app.keyboard && !app.place.event}<TabBar />{/if}
+    {#if app.current}
+      {#key app.noteKey}<NoteLayer>{#await screens.editor() then { default: Editor }}<Editor note={app.current} />{/await}</NoteLayer>{/key}
+    {:else if app.place.board}
+      {#key app.place.board}<NoteLayer>{#await screens.board() then { default: Board }}<Board path={app.place.board} />{/await}</NoteLayer>{/key}
+    {/if}
+  {/if}
+  {#if app.toast}
+    <div class="toast" role="status">
+      <span>{app.toast.text}</span>
+      {#if app.toast.action}<button onclick={() => { app.toast?.action?.run(); app.toast = null; }}>{app.toast.action.label}</button>{/if}
+    </div>
+  {/if}
+  {#if askReports && !app.locked && !app.error}<ErrorReportsAsk onAnswer={answerReports} />{/if}
+  {#if app.locked}<LockScreen />{/if}
+</main>
+
+<style>
+  main { position: relative; display: flex; flex-direction: column; height: calc(100% - var(--kb, 0px)); background: var(--bg); }
+  .screen { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .toast { position: fixed; inset-inline: 1rem; inset-block-end: calc(10rem + var(--sab)); z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1rem; border-radius: .7rem; background: var(--accent); color: var(--on-accent); font-size: .9rem; }
+  .toast button { font-weight: 700; }
+  .error { padding: 4rem 1rem; color: var(--red); overflow-wrap: anywhere; }
+</style>

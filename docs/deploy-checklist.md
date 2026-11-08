@@ -310,7 +310,7 @@ Achados da revisão geral antes do lançamento que ainda dependem de decisão ou
 - Stripe: os 14 preços com os lookup keys de `worker/plans.ts`; no Dashboard, depois das tentativas de cobrança, "Cancelar a assinatura" (o código já tira o plano após 14 dias de `past_due`); webhook com `charge.refunded`, `charge.dispute.created` e `radar.early_fraud_warning.created`, que agora cancelam a assinatura.
 - OpenRouter: limite de crédito na chave do Blup.
 - Turnstile: `TURNSTILE_SITE_KEY` de produção em `cloud/wrangler.jsonc` ainda é a chave de teste. Trocar pela real e conferir que a `TURNSTILE_SECRET_KEY` também é a real.
-- Blup Notes (celular): `cloudURL` fixo em `http://localhost:18820` (`studio-mobile-prototipo/cloud.go`). Passar o endereço de produção no build antes de ir às lojas.
+- Blup Notes (celular): o build de produção usa `https://cloud.getblup.io` (`mobile/cloud.go`); `localhost:18820` só existe no build de teste (`mobile/cloud_debug.go`).
 - Blup Notes (celular): release do Android sem keystore (sai com a chave de debug).
 - Variável `STUDIO_SENTRY_DSN` no GitHub (vars do repositório): o workflow de release já a repassa como `SENTRY_DSN`.
 

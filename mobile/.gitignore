@@ -1,0 +1,22 @@
+.task
+.wails
+bin
+frontend/dist
+frontend/node_modules
+build/android/.gradle
+build/android/build
+build/android/app/build
+build/android/app/src/main/jniLibs
+build/android/app/src/main/assets
+build/android/local.properties
+*.apk
+*.aab
+*.so
+*.keystore
+*.jks
+# Gerados pelo wails3 android overlay:gen a cada build (caminhos absolutos da máquina).
+build/android/overlay.json
+build/android/gen/
+
+# Binário do build no computador
+/mobile
