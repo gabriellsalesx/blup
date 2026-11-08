@@ -28,7 +28,7 @@ E-mails de códigos de acesso para contas existentes, lembretes e avisos de muda
 
 ## Planos executados
 
-Os limites vêm de `cloud/worker/plans.ts`. Os preços vêm do Stripe, pelos dez lookup keys mensais/anuais de Pro, Max, Ultra, Max + Pulse e Ultra + Pulse. As duas variantes Pulse mantêm integralmente os limites Cloud do plano-base. `plans.ts` não contém valores ou moeda fixos. Quantidades de armazenamento e tamanho de arquivo são multiplicadas por `1024 * 1024` no servidor.
+Os limites vêm de `cloud/worker/plans.ts`. Os preços vêm do Stripe, pelos 14 lookup keys mensais/anuais de Pro, Max, Ultra, Max + Pulse, Ultra + Pulse, Ultra + Deals e Ultra + Pulse + Deals. As duas variantes Pulse mantêm integralmente os limites Cloud do plano-base. `plans.ts` não contém valores ou moeda fixos. Quantidades de armazenamento e tamanho de arquivo são multiplicadas por `1024 * 1024` no servidor.
 
 | Limite | Grátis | Pro | Max | Ultra |
 | --- | --- | --- | --- | --- |
