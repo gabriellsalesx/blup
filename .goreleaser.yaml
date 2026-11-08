@@ -41,6 +41,11 @@ signs:
       - BLUP_RELEASE_KEY={{ envOrDefault "BLUP_RELEASE_KEY" "" }}
     output: true
 
+# Tags of the local voice's tools packages (voice-tools-N) are not versions.
+git:
+  ignore_tags:
+    - "voice-tools-*"
+
 changelog:
   disable: true # release notes are written by hand on GitHub (PT and EN)
 

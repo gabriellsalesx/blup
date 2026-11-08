@@ -33,6 +33,9 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The tag that started this run: other tags on the same commit
+          # (voice-tools-N) are not versions.
+          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
           # Ed25519 key that signs checksums.txt (scripts/sign-release).
           # Without it the release stops before publishing anything.
           BLUP_RELEASE_KEY: ${{ secrets.BLUP_RELEASE_KEY }}
