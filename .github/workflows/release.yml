@@ -107,6 +107,9 @@ jobs:
       - name: .deb
         working-directory: studio
         run: |
+          # The package's changelog, with the version being released.
+          printf -- '- semver: %s\n  date: %sT00:00:00Z\n  packager: %s\n  changes:\n    - note: Blup Studio %s\n' \
+            "${TAG#v}" "$(date -u +%F)" "$DEB_MAINTAINER" "${TAG#v}" > build/linux/nfpm/changelog.yml
           VERSION="${TAG#v}" GOARCH=amd64 wails3 tool package -name blup-studio -format deb \
             -config ./build/linux/nfpm/nfpm.yaml -out "$PWD/bin"
           lintian --fail-on error bin/blup-studio.deb

@@ -22,6 +22,9 @@ vendor: "Gabriell Sales"
 homepage: "https://github.com/gabriellsalesx/blup"
 license: "AGPL-3.0-only"
 release: "1"
+# Debian wants the package's changelog (changelog.Debian.gz): the release
+# workflow rewrites this file with the version being released.
+changelog: "./build/linux/nfpm/changelog.yml"
 
 # In /usr/bin: the Studio then leaves updates to the package manager
 # (app.UpdatesBy), and a new version comes as a new package.
@@ -53,6 +56,7 @@ contents:
 # without them the Studio hides the player (media.go).
 # No install scripts: dpkg's triggers update the menus and icon cache.
 depends:
+  - libc6 (>= 2.39)
   - libgtk-4-1 (>= 4.10)
   - libwebkitgtk-6.0-4
 recommends:

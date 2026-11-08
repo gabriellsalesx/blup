@@ -1,0 +1,7 @@
+# The .deb's changelog (chglog format, read by nfpm). The release workflow
+# rewrites it with the version and date being released.
+- semver: 1.0.0
+  date: 2026-11-08T00:00:00Z
+  packager: Blup <no-reply@getblup.io>
+  changes:
+    - note: Blup Studio 1.0.0
