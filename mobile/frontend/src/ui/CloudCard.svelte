@@ -34,7 +34,8 @@
     error = "";
     try {
       code = await CloudService.Login();
-    } catch {
+    } catch (e) {
+      console.error("blup cloud login", e);
       error = t.cloud.unreachable;
       return;
     }

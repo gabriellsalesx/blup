@@ -141,6 +141,12 @@ jobs:
           wails3 task android:package:fat VERSION="$VERSION" SENTRY_DSN="$SENTRY_DSN"
           wails3 task android:assemble:aab:release
           mkdir -p ../out
+          # A release must never carry the debug build's Blup Cloud address.
+          for so in arm64-v8a x86_64; do
+            if unzip -p bin/*.apk "lib/$so/libwails.so" | grep -a -q "localhost:18820"; then
+              echo "::error::lib/$so/libwails.so is a debug build (Blup Cloud on localhost)"; exit 1
+            fi
+          done
           mv bin/*.apk "../out/blup-notes_${VERSION}_android.apk"
           mkdir -p ../out-aab
           mv bin/*.aab "../out-aab/blup-notes_${VERSION}_android.aab"

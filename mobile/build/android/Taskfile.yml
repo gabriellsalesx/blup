@@ -51,10 +51,15 @@ tasks:
       - task: compile:go:shared
         vars:
           ARCH: '{{.ARCH | default .HOST_ARCH}}'
+          # Without these the release tasks compiled the Go side as a debug
+          # build (cloud_debug.go: Blup Cloud on localhost).
+          PRODUCTION: '{{.PRODUCTION}}'
+          VERSION: '{{.VERSION}}'
+          SENTRY_DSN: '{{.SENTRY_DSN}}'
     vars:
       # The app's version, in the error reports (errors.go); builds pass VERSION=x.y.z.
       VERSION: '{{.VERSION | default "1.0.0"}}'
-      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production,android -trimpath -buildvcs=false -ldflags="-w -s -X main.studioSentryDSN={{.SENTRY_DSN}} -X main.appVersion={{.VERSION}}"{{else}}-tags android,debug -buildvcs=false -gcflags=all="-l"{{end}}'
+      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production,android -trimpath -buildvcs=false -ldflags="-w -s -X main.studioSentryDSN={{.SENTRY_DSN}} -X main.appVersion={{.VERSION}} -X github.com/gabriellsalesx/blup/internal/app.Version={{.VERSION}}"{{else}}-tags android,debug -buildvcs=false -gcflags=all="-l"{{end}}'
     env:
       PRODUCTION: '{{.PRODUCTION | default "false"}}'
 
@@ -114,7 +119,7 @@ tasks:
     vars:
       # The app's version, in the error reports (errors.go); builds pass VERSION=x.y.z.
       VERSION: '{{.VERSION | default "1.0.0"}}'
-      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production,android -trimpath -buildvcs=false -ldflags="-w -s -X main.studioSentryDSN={{.SENTRY_DSN}} -X main.appVersion={{.VERSION}}"{{else}}-tags android,debug -buildvcs=false -gcflags=all="-l"{{end}}'
+      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production,android -trimpath -buildvcs=false -ldflags="-w -s -X main.studioSentryDSN={{.SENTRY_DSN}} -X main.appVersion={{.VERSION}} -X github.com/gabriellsalesx/blup/internal/app.Version={{.VERSION}}"{{else}}-tags android,debug -buildvcs=false -gcflags=all="-l"{{end}}'
 
   compile:go:all-archs:
     summary: Compile Go code for all Android architectures (fat APK)
@@ -151,6 +156,8 @@ tasks:
         vars:
           ARCH: amd64
           PRODUCTION: "true"
+          VERSION: '{{.VERSION}}'
+          SENTRY_DSN: '{{.SENTRY_DSN}}'
       - task: assemble:apk:release
 
   bundle:
@@ -178,6 +185,8 @@ tasks:
         vars:
           ARCH: amd64
           PRODUCTION: "true"
+          VERSION: '{{.VERSION}}'
+          SENTRY_DSN: '{{.SENTRY_DSN}}'
       - task: assemble:aab:release
 
   assemble:apk:

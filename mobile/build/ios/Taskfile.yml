@@ -56,7 +56,7 @@ tasks:
     vars:
       # The app's version, in the error reports (errors.go); builds pass VERSION=x.y.z.
       VERSION: '{{.VERSION | default "1.0.0"}}'
-      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production,ios -trimpath -buildvcs=false -ldflags="-w -s -X main.studioSentryDSN={{.SENTRY_DSN}} -X main.appVersion={{.VERSION}}"{{else}}-tags ios,debug -buildvcs=false -gcflags=all="-l"{{end}}'
+      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production,ios -trimpath -buildvcs=false -ldflags="-w -s -X main.studioSentryDSN={{.SENTRY_DSN}} -X main.appVersion={{.VERSION}} -X github.com/gabriellsalesx/blup/internal/app.Version={{.VERSION}}"{{else}}-tags ios,debug -buildvcs=false -gcflags=all="-l"{{end}}'
       DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
       OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
       SDK_PATH:
