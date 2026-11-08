@@ -199,6 +199,14 @@ No primeiro lançamento, preparar um arquivo JSON de secrets fora do repositóri
 
 ## 9. Ensaiar o bootstrap e publicar os Workers
 
+**Deploy sem os valores da conta no Git.** Os `wrangler*.jsonc` do repositório ficam com os placeholders. Os valores de produção (ID do D1, chave de site do Turnstile, zona SaaS, destino CNAME, endereço da Ponte) ficam em `~/.config/blup-deploy/vars.json`, e os secrets em `~/.config/blup-deploy/cloud.secrets.json`, os dois fora do repositório e só legíveis pelo dono. O [script de deploy](../cloud/scripts/deploy-production.ts) monta a configuração em `cloud/.deploy-*.jsonc` (ignorada pelo Git), recusa placeholder em produção e apaga os arquivos temporários no fim. Em `cloud/`:
+
+```sh
+node scripts/deploy-production.ts check              # build e dry-run dos quatro Workers
+node scripts/deploy-production.ts deploy --bootstrap # só na primeira vez, conta vazia
+node scripts/deploy-production.ts deploy             # migrações, build e publicação na ordem
+```
+
 - [ ] **BLOQUEANTE de staging para primeira conta vazia:** ensaiar o bootstrap. Sites referencia `PulseProject` no Cloud, e Cloud referencia `CachedSite` em Sites. Publicar Sites primeiro sem namespace Cloud existente não é uma ordem validada. A sequência é bootstrap Cloud, Sites com `PULSE_PROJECT` remoto, Cloud completo e painéis Pulse/Deals. Os arquivos [wrangler.bootstrap.jsonc](../cloud/wrangler.bootstrap.jsonc) e [bootstrap.ts](../cloud/worker/bootstrap.ts) têm bundle e nomes/tags verificados localmente; os três dry-runs passaram. Nenhum deploy remoto confirmou essa ordem.
 - [ ] **BLOQUEANTE:** conferir migrações, vars, secrets e Access antes da publicação completa.
 - [ ] **Somente instalação vazia:** criar previamente o script `blup-cloud-production` e os namespaces `SyncLive/PulseProject` pelo bootstrap abaixo, depois de preparar D1/R2. O bootstrap não usa D1, assets, `SITE_CACHE`, rotas públicas ou cron; responde 503. Não executar sobre Cloud ativo. Preservar nome e tags `v1/v2-pulse` iguais aos do Cloud completo.

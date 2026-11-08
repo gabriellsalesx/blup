@@ -1,24 +1,26 @@
 import { afterEach,beforeEach,describe,expect,it,vi } from "vitest";
 import { PriceCatalog,publicPlans,purchaseAvailable,validatePrices } from "./pricing";
 import { createStripe } from "./stripe-client";
+import { resetRatesForTest } from "./fx";
 
 function price(key="blup_pro_mensal",amount=1750,currency="brl"){
 	return {id:`price_${key}`,object:"price",active:true,lookup_key:key,unit_amount:amount,currency,type:"recurring",billing_scheme:"per_unit",recurring:{interval:key.endsWith("anual")?"year":"month",interval_count:1,usage_type:"licensed"},product:{id:"prod_fixture",active:true}};
 }
 const list=(...data:unknown[])=>({object:"list",has_more:false,data});
 beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(new Date("2026-11-02T12:00:00Z"));vi.stubGlobal("fetch",vi.fn(async()=>{throw new Error("External network forbidden");}));});
-afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
+afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();resetRatesForTest();});
 describe("Stripe display catalog",()=>{
 	it("reads monthly and annual amounts/currencies from the actual lookup response",async()=>{
 		const urls:string[]=[];
 		vi.stubGlobal("fetch",vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+			if(String(input).startsWith("https://api.frankfurter.dev/"))return Response.json({amount:1,base:"BRL",date:"2026-11-02",rates:{USD:0.2,EUR:0.1}});
 			urls.push(String(input));expect(new Headers(init?.headers).get("stripe-version")).toBe("2026-10-28.endive");
 			const asked=[...new URL(String(input)).searchParams].filter(([k])=>k.startsWith("lookup_keys")).map(([,v])=>v);
 			return Response.json(list(...[price(),price("blup_pro_anual",18900,"usd")].filter(p=>asked.includes(p.lookup_key))));
 		}));
 		const env={STRIPE_SECRET_KEY:"sk_test_audit_catalog_reads"};
 		const plans=await publicPlans(env),pro=plans.find(p=>p.name==="pro");
-		expect(pro).toMatchObject({prices:{monthly:{unitAmount:1750,currency:"brl"},yearly:{unitAmount:18900,currency:"usd"}}});
+		expect(pro).toMatchObject({prices:{monthly:{unitAmount:1750,currency:"brl",approx:{usd:350,eur:175}},yearly:{unitAmount:18900,currency:"usd",approx:null}}});
 		expect(pro).not.toHaveProperty("priceCents");expect(plans.find(p=>p.name==="max")?.prices.monthly).toBeNull();
 		expect(await purchaseAvailable(env,"pro",true)).toBe(true);expect(await purchaseAvailable(env,"max",false)).toBe(false);
 		// Stripe accepts at most 10 lookup_keys per list call.

@@ -19,6 +19,7 @@
   },
   "include": [
     "./stripe-setup.ts",
+    "./deploy-production.ts",
     "../worker/worker-configuration.d.ts",
     "./node-runtime.d.ts"
   ]

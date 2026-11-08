@@ -13,3 +13,6 @@ design/
 !.dev.vars.example
 *.pem
 *.key
+
+# Configuração de produção montada pelo scripts/deploy-production.ts (nunca no git)
+cloud/.deploy-*

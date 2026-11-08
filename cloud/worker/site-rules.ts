@@ -11,7 +11,7 @@ const SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 // Names Blup keeps for itself (or that would mislead a visitor).
 const RESERVED = new Set([
 	"www", "api", "app", "cloud", "staff", "admin", "blup", "getblup", "mail", "email", "smtp", "ftp",
-	"pulse", "status", "help", "support", "docs", "blog", "dashboard", "login", "signin", "signup", "account",
+	"pulse", "deals", "ingest", "status", "help", "support", "docs", "blog", "dashboard", "login", "signin", "signup", "account",
 	"billing", "pay", "security", "static", "assets", "cdn", "test", "dev", "staging",
 ]);
 

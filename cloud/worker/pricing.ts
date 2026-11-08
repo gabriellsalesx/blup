@@ -3,6 +3,7 @@ import type {Language} from "../shared/language";
 import { listPricesByLookup,validateStripePrices,type Price } from "./price-schema";
 import { PLANS,SUGGESTED,type Plan } from "./plans";
 import { createStripe } from "./stripe-client";
+import { approximate,brlRates } from "./fx";
 
 type Prices={monthly:Price|null;yearly:Price|null};
 const keys=PLANS.flatMap(p=>[p.lookupKey,p.yearlyLookupKey].filter((key):key is string=>key!==undefined));
@@ -52,8 +53,10 @@ function pricesOf(plan:Plan,values:ReadonlyMap<string,Price|null>):Prices{
 	return {monthly:plan.lookupKey?values.get(plan.lookupKey)??null:null,yearly:plan.yearlyLookupKey?values.get(plan.yearlyLookupKey)??null:null};
 }
 export async function publicPlans(env:Pick<Cloudflare.Env,"STRIPE_SECRET_KEY">,language:Language="pt"){
-	const values=await catalog(env).prices();
-	return PLANS.map(plan=>({name:plan.name,basePlan:plan.basePlan,pulse:plan.pulse,deals:plan.deals,label:planLabel(plan.name,language),limits:plan.limits,perks:planPerks(language,plan.name,plan.limits),suggested:plan.basePlan===SUGGESTED,prices:pricesOf(plan,values)}));
+	const [values,rates]=await Promise.all([catalog(env).prices(),brlRates()]);
+	// approx: the same price in USD and EUR cents, for display only.
+	const withApprox=(price:Price|null)=>price&&{...price,approx:approximate(price,rates)};
+	return PLANS.map(plan=>{const prices=pricesOf(plan,values);return {name:plan.name,basePlan:plan.basePlan,pulse:plan.pulse,deals:plan.deals,label:planLabel(plan.name,language),limits:plan.limits,perks:planPerks(language,plan.name,plan.limits),suggested:plan.basePlan===SUGGESTED,prices:{monthly:withApprox(prices.monthly),yearly:withApprox(prices.yearly)}};});
 }
 export async function purchaseAvailable(env:Pick<Cloudflare.Env,"STRIPE_SECRET_KEY">,name:string,annual:boolean){
 	const plan=PLANS.find(p=>p.name===name);

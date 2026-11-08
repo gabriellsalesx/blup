@@ -62,10 +62,18 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 suggested: boolean;
                 prices: {
                     monthly: {
+                        approx: {
+                            usd: number;
+                            eur: number;
+                        } | null;
                         unitAmount: number;
                         currency: string;
                     } | null;
                     yearly: {
+                        approx: {
+                            usd: number;
+                            eur: number;
+                        } | null;
                         unitAmount: number;
                         currency: string;
                     } | null;
