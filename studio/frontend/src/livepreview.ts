@@ -121,46 +121,60 @@ const allowed = new Set<string>();
 export function forgetImages() { loaded.clear(); }
 
 // A click or a tap on a picture gives it the focus: a line around it, a
-// square at each corner to hold and move it (the only way on a touch screen),
-// and a button that takes it out of the note. Delete does that too, and Esc
-// or a click anywhere else lets go of it.
+// button that moves it and one that takes it out of the note. While it has
+// the focus, dragging the picture itself (or the move button) carries it to
+// another line: the blue line tells where. Nothing resizes it. Without the
+// focus, the mouse can still drag it (dragstart below). Delete removes it,
+// and Esc or a click anywhere else lets go of it.
 const TRASH = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+// Lucide "move".
+const MOVE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="m15 19-3 3-3-3"/><path d="m19 9 3 3-3 3"/><path d="M2 12h20"/><path d="m5 9-3 3 3 3"/><path d="m9 5 3-3 3 3"/></svg>`;
+// How far a finger goes on the picture before it counts as moving it.
+const SLOP = 8;
 let letGo: (() => void) | null = null;
 
 function focusPicture(view: EditorView, box: HTMLElement, size: number, opts: LiveOptions) {
   if (box.classList.contains("focused")) return;
   letGo?.();
   const span = () => { const from = view.posAtDOM(box); return { from, to: from + size }; };
-  const parts: HTMLElement[] = [];
-  for (const corner of ["top-left", "top-right", "bottom-left", "bottom-right"]) {
-    const grip = document.createElement("span");
-    grip.className = `cm-image-grip ${corner}`;
-    grip.setAttribute("role", "button");
-    grip.setAttribute("aria-label", opts.text.moveImage);
-    grip.title = opts.text.moveImage;
-    // The notes on a phone slide away from under a finger: not this one.
-    grip.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
-    grip.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      grip.setPointerCapture(e.pointerId);
+
+  // Carries the picture from a pointer already held on el; started at once
+  // by the move button, after SLOP by the picture itself (a tap stays a tap).
+  const carry = (el: HTMLElement, e: PointerEvent, now: boolean) => {
+    const x0 = e.clientX, y0 = e.clientY;
+    let on = false;
+    el.setPointerCapture(e.pointerId);
+    const start = () => {
+      on = true;
       box.classList.add("moving");
       opts.onImageDrag?.(span());
-      const move = (ev: PointerEvent) => opts.onImagePoint?.(ev.clientX, ev.clientY);
-      const end = (ev: PointerEvent) => {
-        grip.removeEventListener("pointermove", move);
-        grip.removeEventListener("pointerup", end);
-        grip.removeEventListener("pointercancel", end);
-        box.classList.remove("moving");
-        if (ev.type === "pointerup") opts.onImageDrop?.(ev.clientX, ev.clientY);
-        opts.onImageDrag?.(null);
-      };
-      grip.addEventListener("pointermove", move);
-      grip.addEventListener("pointerup", end);
-      grip.addEventListener("pointercancel", end);
-    });
-    parts.push(grip);
-  }
+    };
+    if (now) start();
+    const move = (ev: PointerEvent) => {
+      if (!on && Math.hypot(ev.clientX - x0, ev.clientY - y0) < SLOP) return;
+      if (!on) start();
+      opts.onImagePoint?.(ev.clientX, ev.clientY);
+    };
+    const end = (ev: PointerEvent) => {
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", end);
+      el.removeEventListener("pointercancel", end);
+      if (!on) return;
+      box.classList.remove("moving");
+      if (ev.type === "pointerup") opts.onImageDrop?.(ev.clientX, ev.clientY);
+      opts.onImageDrag?.(null);
+    };
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+  };
+
+  const mover = document.createElement("button");
+  mover.type = "button";
+  mover.className = "cm-image-move";
+  mover.title = opts.text.moveImage;
+  mover.setAttribute("aria-label", opts.text.moveImage);
+  mover.innerHTML = MOVE;
   const remove = document.createElement("button");
   remove.type = "button";
   remove.className = "cm-image-remove";
@@ -168,7 +182,20 @@ function focusPicture(view: EditorView, box: HTMLElement, size: number, opts: Li
   remove.setAttribute("aria-label", opts.text.removeImage);
   remove.innerHTML = TRASH;
   remove.addEventListener("click", (e) => { e.stopPropagation(); opts.onImageRemove?.(span()); });
-  parts.push(remove);
+  const parts: HTMLElement[] = [mover, remove];
+
+  // The notes on a phone slide away from under a finger: not this picture.
+  const keepTouch = (e: TouchEvent) => e.stopPropagation();
+  const fromButton = (e: PointerEvent) => { e.preventDefault(); e.stopPropagation(); carry(mover, e, true); };
+  const fromPicture = (e: PointerEvent) => {
+    if (e.target !== box && !(e.target as HTMLElement).matches("img")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    carry(box, e, false);
+  };
+  mover.addEventListener("pointerdown", fromButton);
+  box.addEventListener("touchstart", keepTouch, { passive: true });
+  box.addEventListener("pointerdown", fromPicture);
 
   const outside = (e: Event) => { if (!box.contains(e.target as Node)) letGo?.(); };
   const keys = (e: KeyboardEvent) => {
@@ -185,7 +212,9 @@ function focusPicture(view: EditorView, box: HTMLElement, size: number, opts: Li
     letGo = null;
     document.removeEventListener("pointerdown", outside, true);
     box.removeEventListener("keydown", keys);
-    box.classList.remove("focused");
+    box.removeEventListener("touchstart", keepTouch);
+    box.removeEventListener("pointerdown", fromPicture);
+    box.classList.remove("focused", "moving");
     box.removeAttribute("tabindex");
     for (const part of parts) part.remove();
   };

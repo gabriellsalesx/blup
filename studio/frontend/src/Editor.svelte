@@ -773,11 +773,8 @@
   .editor :global(.cm-image) { position: relative; display: block; width: fit-content; max-width: 100%; margin-block: .3rem; outline: none; }
   .editor :global(.cm-image.moving) { opacity: .5; }
   .editor :global(.cm-image.focused img) { outline: 2px solid var(--blue); outline-offset: 2px; }
-  .editor :global(.cm-image-grip) { position: absolute; width: .75rem; height: .75rem; border: 2px solid var(--blue); border-radius: 2px; background: var(--bg); cursor: move; touch-action: none; }
-  .editor :global(.cm-image-grip.top-left) { inset: -.4rem auto auto -.4rem; }
-  .editor :global(.cm-image-grip.top-right) { inset: -.4rem -.4rem auto auto; }
-  .editor :global(.cm-image-grip.bottom-left) { inset: auto auto -.4rem -.4rem; }
-  .editor :global(.cm-image-grip.bottom-right) { inset: auto -.4rem -.4rem auto; }
+  .editor :global(.cm-image.focused) { touch-action: none; cursor: move; }
+  .editor :global(.cm-image-move) { position: absolute; inset: .6rem auto auto .6rem; display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--bg); color: var(--blue); cursor: move; touch-action: none; }
   .editor :global(.cm-image-remove) { position: absolute; inset: .6rem .6rem auto auto; display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--bg); color: var(--red); cursor: pointer; }
   .editor :global(.cm-image img) { display: block; max-width: 100%; max-height: 28rem; border-radius: .4rem; }
   .editor :global(.cm-image-load) { padding: .35rem .7rem; border: 1px dashed var(--line); border-radius: .4rem; color: var(--muted); font-size: .85em; cursor: pointer; }
