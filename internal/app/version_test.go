@@ -92,7 +92,7 @@ func TestBuildsWriteTheVersion(t *testing.T) {
 	}
 	// The .deb takes the release's version, which the workflow passes.
 	if !strings.Contains(readRepo(t, "studio/build/linux/nfpm/nfpm.yaml"), `version: "${VERSION}"`) ||
-		!strings.Contains(readRepo(t, ".github/workflows/release.yml"), `VERSION="${GITHUB_REF_NAME#v}" GOARCH=amd64 wails3 tool package`) {
+		!strings.Contains(readRepo(t, ".github/workflows/release.yml"), `VERSION="${TAG#v}" GOARCH=amd64 wails3 tool package`) {
 		t.Error("the .deb does not take the release's version")
 	}
 }
