@@ -126,6 +126,11 @@ func (s *Studio) OpenTerminal(agent string, cols, rows int) (string, error) {
 		_ = p.Resize(cols, rows)
 	}
 	name, args := shell()
+	// The full path: on Windows go-pty looks for a bare name inside c.Dir
+	// (the site's folder), not in PATH, and finds no powershell.exe there.
+	if full, err := exec.LookPath(name); err == nil {
+		name = full
+	}
 	c := p.Command(name, args...)
 	c.Dir = site.ContentDir()
 	c.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
