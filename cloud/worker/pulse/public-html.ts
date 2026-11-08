@@ -235,7 +235,9 @@ export function renderIncidentPage(page:PublicStatus,i:PublicIncident,now=Date.n
 // card per month, its incidents by day with how many, or that none was
 // reported; arrows go to the months before and after.
 const MONTH_FIRST=5;
-export type IncidentWindow={months:{key:string;start:number;end:number}[];older:string|null;newer:string|null};
+type IncidentMonth={key:string;start:number;end:number};
+// Three months, the newest first.
+export type IncidentWindow={months:[IncidentMonth,IncidentMonth,IncidentMonth];older:string|null;newer:string|null};
 export function renderIncidentHistory(page:PublicStatus,window:IncidentWindow,incidents:PublicIncident[],now=Date.now(),language:Language=page.language):string{
  const lang=language,t=<K extends MessageKey>(key:K,...args:TranslationArgs<(typeof messages)[K][0]>)=>translate(lang,key,...args);
  const stamp=new Intl.DateTimeFormat(lang,{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"});

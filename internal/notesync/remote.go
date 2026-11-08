@@ -49,6 +49,22 @@ type Chained interface {
 // this computer already synced with. Nothing was changed.
 var ErrForked = errors.New("notesync: the remote shows a version that does not continue the one already synced")
 
+// Stuck reports whether err is a sync that stopped for safety because the
+// remote shows a version that does not continue (ErrForked) or comes
+// before (ErrRolledBack) the one synced here. Nothing changed on either
+// side. It never clears by itself: only the person, told what it means,
+// starts over with Syncer.Forget.
+func Stuck(err error) bool {
+	return errors.Is(err, ErrForked) || errors.Is(err, ErrRolledBack)
+}
+
+// Forgetter is a Remote that keeps something of its own about the versions
+// it read (Blup Cloud: the manifests of old versions, which carry the
+// chain). Syncer.Forget empties it with the state.
+type Forgetter interface {
+	Forget() error
+}
+
 // ErrNotFastForward is returned by Remote.Commit when someone else saved a
 // new version since Head: Sync then compares again.
 var ErrNotFastForward = errors.New("notesync: the remote moved on")

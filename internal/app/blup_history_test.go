@@ -118,7 +118,7 @@ func TestRestoreNoteVersionStaysInNotes(t *testing.T) {
 		t.Fatal(err)
 	}
 	keys, _ := cloudcrypt.Derive(master)
-	creds := config.Credentials{BlupToken: "tok", NotesKey: base64.StdEncoding.EncodeToString(master)}
+	creds := config.Credentials{BlupToken: "tok", NotesKey: base64.StdEncoding.EncodeToString(master), NotesAccount: "u"}
 	if err := creds.Save(); err != nil {
 		t.Fatal(err)
 	}

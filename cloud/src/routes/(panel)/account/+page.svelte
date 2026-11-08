@@ -79,8 +79,12 @@
 	async function leaveEverywhere() {
 		if (!(await confirm({ title: t("leaveAllTitle"), message: t("leaveAllBody"), confirmLabel: t("leaveAllConfirm") }))) return;
 		busy = true;
-		try { await authClient.revokeSessions(); await authClient.signOut(); }
-		finally { location.replace(resolve("/(auth)/sign-in")); }
+		// A failed revocation must not look like success: the other devices
+		// would stay signed in.
+		const { error } = await authClient.revokeSessions();
+		if (error) { busy = false; return toast(()=>message(error), { kind: "error" }); }
+		await authClient.signOut();
+		location.replace(resolve("/(auth)/sign-in"));
 	}
 
 	async function deleteAccount() {

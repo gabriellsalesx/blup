@@ -60,7 +60,7 @@ const siteURL = (env: Cloudflare.Env, slug: string) => {
 // Every R2 object of a site, in pages of 1000 (list and delete both take that many).
 
 
-const created = z.object({ slug: z.string().refine(slugAllowed, "slug"), title: z.string().trim().min(1).max(200) }).strict();
+const created = z.strictObject({ slug: z.string().refine(slugAllowed, "slug"), title: z.string().trim().min(1).max(200) });
 
 export const sitesApi = new Hono<App>()
 	.use(signedIn)
@@ -86,7 +86,7 @@ export const sitesApi = new Hono<App>()
 		});
 	})
 
-	.put("/retained",validate("json",z.object({siteId:opaqueId}).strict()),async c=>{
+	.put("/retained",validate("json",z.strictObject({siteId:opaqueId})),async c=>{
 		const userId=c.get("userId"),{siteId}=c.req.valid("json");
 		if(!await ownSite(userId,siteId))return c.json({code:"NOT_FOUND"},404);
 		const plan=await planOf(userId);
@@ -154,7 +154,7 @@ export const sitesApi = new Hono<App>()
 	})
 
 	// Which of these files the site doesn't have yet (at most 1000 per call).
-	.post("/:id/missing", validate("param",idParam), validate("json", z.object({ hashes: z.array(z.string().regex(HASH)).max(1000) }).strict()), async (c) => {
+	.post("/:id/missing", validate("param",idParam), validate("json", z.strictObject({ hashes: z.array(z.string().regex(HASH)).max(1000) })), async (c) => {
 		const s = await ownSite(c.get("userId"), c.req.valid("param").id);
 		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
 		const hashes = [...new Set(c.req.valid("json").hashes)];

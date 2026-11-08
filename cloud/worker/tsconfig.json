@@ -10,6 +10,8 @@
 		"strict": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
+		"noImplicitOverride": true,
+		"noUncheckedIndexedAccess": true,
 		"skipLibCheck": true,
 		"noEmit": true,
 		"isolatedModules": true,

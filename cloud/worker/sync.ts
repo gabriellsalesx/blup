@@ -85,7 +85,7 @@ export const syncApi = new Hono<App>()
 	})
 	// Created once; afterwards only the password wrapping may change (a new
 	// notes password), never the recovery key's.
-	.put("/key", validate("json", z.object({ wrapped: wrappedKeyInput }).strict()), async (c) => {
+	.put("/key", validate("json", z.strictObject({ wrapped: wrappedKeyInput })), async (c) => {
 		const userId = c.get("userId");
 		const { wrapped } = c.req.valid("json");
 		const a = await account(userId);
@@ -104,7 +104,7 @@ export const syncApi = new Hono<App>()
 		const rows = await db.select({ id: vault.id, name: vault.name, head: vault.head, updatedAt: vault.updatedAt }).from(vault).where(eq(vault.userId, c.get("userId"))).orderBy(desc(vault.id)).limit(500);
 		return c.json({ vaults: rows });
 	})
-	.post("/vaults", validate("json", z.object({ name: b64.min(1) }).strict()), async (c) => {
+	.post("/vaults", validate("json", z.strictObject({ name: b64.min(1) })), async (c) => {
 		const userId = c.get("userId");
 		if (!(await account(userId))) return c.json({ code: "NO_KEY" }, 409);
 		const id = uuidv7();
@@ -165,7 +165,7 @@ export const syncApi = new Hono<App>()
 	})
 
 	// A new name, sealed by the Studio like the first one.
-	.patch("/vaults/:id",validate("param",idParam),validate("json",z.object({name:b64.min(1)}).strict()),async c=>{
+	.patch("/vaults/:id",validate("param",idParam),validate("json",z.strictObject({name:b64.min(1)})),async c=>{
 		const changed=await c.env.DB.prepare("UPDATE vault SET name=? WHERE id=? AND user_id=? RETURNING id").bind(c.req.valid("json").name,c.req.valid("param").id,c.get("userId")).first();
 		return changed?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
 	})
@@ -179,7 +179,7 @@ export const syncApi = new Hono<App>()
 		if(!parsed.success||[...form.keys()].some(k=>form.getAll(k).length!==1))return c.json({code:"INVALID"},400);
 		return c.json(await prepareTransfer(c.env,c.get("userId"),c.req.valid("param").id,parsed.data,await planOf(c.get("userId"))));
 	})
-	.post("/vaults/:id/commit",validate("param",idParam),validate("json",z.object({ticket:opaqueId}).strict()),async c=>{
+	.post("/vaults/:id/commit",validate("param",idParam),validate("json",z.strictObject({ticket:opaqueId})),async c=>{
 		const result=await commitTransfer(c.env,c.get("userId"),c.req.valid("param").id,c.req.valid("json").ticket);
 		if((await planOf(c.get("userId"))).limits.live)c.executionCtx.waitUntil(c.env.SYNC_LIVE.getByName(c.get("userId")).notify(c.req.valid("param").id,result.n));
 		return c.json(result);
@@ -189,7 +189,7 @@ export const syncApi = new Hono<App>()
 	})
 
 	// Which of these blocks are not stored yet (at most 1000 per call).
-	.post("/blocks/missing", validate("json", z.object({ ids: z.array(z.string().regex(BLOCK_ID)).max(1000) }).strict()), async (c) => {
+	.post("/blocks/missing", validate("json", z.strictObject({ ids: z.array(z.string().regex(BLOCK_ID)).max(1000) })), async (c) => {
 		const userId = c.get("userId");
 		const ids = [...new Set(c.req.valid("json").ids)];
 		const found = new Set<string>();

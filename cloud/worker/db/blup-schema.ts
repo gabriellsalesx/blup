@@ -310,3 +310,10 @@ export const aiModelSetting = sqliteTable("ai_model_setting", {
 	updatedBy: text("updated_by").notNull(),
 	updatedAt: integer("updated_at").notNull(),
 });
+
+// When a subscription went past_due (the webhook saw it first). The paid
+// plan holds for 14 days from it; then the account is on Grátis even while
+// Stripe keeps retrying. Cleared when the subscription is paid again.
+export const subscriptionGrace=sqliteTable("subscription_grace",{
+ subscriptionId:text("subscription_id").primaryKey(),userId:text("user_id").notNull(),pastDueSince:integer("past_due_since").notNull(),
+},t=>[index("subscription_grace_since_idx").on(t.pastDueSince),index("subscription_grace_user_idx").on(t.userId)]);

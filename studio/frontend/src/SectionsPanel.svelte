@@ -2,6 +2,7 @@
   import { AddSection, RemoveSection, RestoreSection, SaveHome } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
+  import Check from "@lucide/svelte/icons/check";
   import Saved from "./Saved.svelte";
   import { saver } from "./saving.svelte";
   import { t } from "./i18n";
@@ -67,7 +68,7 @@
         </div>
       {:else}
         <div class="row">
-          <span class="badge on">✓ {t.sec.present} · {sec.folder}</span>
+          <span class="badge on"><Check size={12} aria-hidden="true" /> {t.sec.present} · {sec.folder}</span>
           <button class="btn ghost" onclick={() => (asking = sec.kind)}>{t.remove}</button>
         </div>
       {/if}

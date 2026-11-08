@@ -549,3 +549,35 @@ func TestMaxFileSize(t *testing.T) {
 		t.Fatalf("plan = %d", got)
 	}
 }
+
+// Forget: com a base, A apagaria x.md no remoto (apagado aqui) e y.md aqui
+// (apagado no remoto). Sem ela, como um computador novo, nada é apagado
+// em lado nenhum: x.md volta do remoto, y.md sobe de novo.
+func TestForgetComparesWithoutDeleting(t *testing.T) {
+	f, _ := setup(t)
+	a := newComputer(t, f, "notas")
+	a.write(t, map[string]string{"x.md": "x", "y.md": "y", "z.md": "z"})
+	a.sync(t)
+	a.write(t, map[string]string{"x.md": "", "z.md": "z aqui"})
+	f.push("notas", map[string]string{"y.md": "", "z.md": "z lá"})
+
+	if err := a.s.Forget(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(a.s.StateFile); !os.IsNotExist(err) {
+		t.Fatalf("state kept: %v", err)
+	}
+	rep := a.sync(t)
+	if len(rep.Deleted)+len(rep.DeletedLocal) != 0 {
+		t.Fatalf("deleted: %+v", rep)
+	}
+	eq(t, "down", rep.Downloaded, "x.md")
+	eq(t, "up", rep.Uploaded, "y.md")
+	eq(t, "conflicts", rep.Conflicts, "z.md")
+	want := map[string]string{"x.md": "x", "y.md": "y", "z.md": "z aqui", rep.ConflictCopies[0]: "z lá"}
+	equalMaps(t, "A", a.files(t), want)
+	// Esquecer de novo sem estado nenhum não falha.
+	if err := a.s.Forget(); err != nil {
+		t.Fatal(err)
+	}
+}

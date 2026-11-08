@@ -37,8 +37,21 @@ export async function boundedBody(req: Request, max: number): Promise<Uint8Array
 		if (!parsed.success) throw new BodyError(400);
 		if (parsed.data > max) throw new BodyError();
 	}
-	if (!req.body) return new Uint8Array(0);
-	const reader = req.body.getReader(), chunks: Uint8Array[] = [];
+	return readBounded(req.body, max);
+}
+
+// An outside service's JSON answer, read up to max bytes whatever length it
+// claims (the same reading as boundedBody). Past the bound it throws, as an
+// answer that isn't JSON does: callers handle both as a failed answer.
+export async function boundedJson(res: Response, max: number): Promise<unknown> {
+	const length = res.headers.get("content-length");
+	if (length !== null && Number(length) > max) { await res.body?.cancel(); throw new BodyError(); }
+	return JSON.parse(new TextDecoder().decode(await readBounded(res.body, max))) as unknown;
+}
+
+async function readBounded(body: ReadableStream<Uint8Array> | null, max: number): Promise<Uint8Array<ArrayBuffer>> {
+	if (!body) return new Uint8Array(0);
+	const reader = body.getReader(), chunks: Uint8Array[] = [];
 	let size = 0;
 	try {
 		while (true) {

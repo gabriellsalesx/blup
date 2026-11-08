@@ -8,13 +8,13 @@ import {seal,affiliateOf} from "./store";
 const storeParam=z.object({store:storeSchema});
 // The body of each store, as the panel sends it (the store is in the path).
 const body=z.union([
- z.object({tag:z.string().max(64)}).strict(),
- z.object({word:z.string().max(64),tool:z.string().max(20).optional()}).strict(),
- z.object({appId:z.string().max(20),secret:z.string().max(128),country:z.string().max(2).optional()}).strict(),
- z.object({appKey:z.string().max(20),appSecret:z.string().max(128),trackingId:z.string().max(64)}).strict(),
- z.object({siteId:z.string().max(32)}).strict(),
- z.object({promoterId:z.string().max(64),showcase:z.string().max(70).optional()}).strict(),
- z.object({partner:z.string().max(64),utmMedium:z.string().max(64).optional(),utmCampaign:z.string().max(64).optional()}).strict(),
+ z.strictObject({tag:z.string().max(64)}),
+ z.strictObject({word:z.string().max(64),tool:z.string().max(20).optional()}),
+ z.strictObject({appId:z.string().max(20),secret:z.string().max(128),country:z.string().max(2).optional()}),
+ z.strictObject({appKey:z.string().max(20),appSecret:z.string().max(128),trackingId:z.string().max(64)}),
+ z.strictObject({siteId:z.string().max(32)}),
+ z.strictObject({promoterId:z.string().max(64),showcase:z.string().max(70).optional()}),
+ z.strictObject({partner:z.string().max(64),utmMedium:z.string().max(64).optional(),utmCampaign:z.string().max(64).optional()}),
 ]);
 // The IDs and keys are sealed at rest. The panel only ever learns whether
 // a store is configured, a few characters to recognize it and, for

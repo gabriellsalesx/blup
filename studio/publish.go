@@ -191,6 +191,30 @@ func (s *Studio) Sync() (app.SyncInfo, error) {
 	return info, err
 }
 
+// ResetSync is "Compare from scratch", offered only after a sync stopped
+// for safety (app.ErrSyncStuck) and confirmed by the person: this computer
+// forgets the last sync of the open site's notes and compares file by file
+// with Blup Cloud, as a new computer; what differs becomes a conflict copy
+// and no note is deleted.
+func (s *Studio) ResetSync() (app.SyncInfo, error) {
+	site, err := s.current()
+	if err != nil {
+		return app.SyncInfo{}, err
+	}
+	var info app.SyncInfo
+	err = running(func() (err error) {
+		info, err = app.ResetSync(context.Background(), site)
+		return err
+	})
+	s.mu.Lock()
+	start := err == nil && (s.live == nil || s.live.Gone()) && site.Sync.Remote == app.RemoteBlup
+	s.mu.Unlock()
+	if start {
+		s.startLive(site)
+	}
+	return info, err
+}
+
 // OpenNewGitHubRepo opens GitHub's "new repository" form filled in for the
 // site ("site", named name) or its notes ("notes"): Blup's key is limited
 // to chosen repositories and cannot create them.

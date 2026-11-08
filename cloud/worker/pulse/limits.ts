@@ -39,6 +39,11 @@ export async function pulseAccess(env:Cloudflare.Env,userId:string,now=Date.now(
  const old=pulsePlanSchema.safeParse(state?.plan);
  return {...none,plan:old.success?old.data:null,limits:old.success?pulseLimits[old.data]:null,readOnlyUntil:state?.until??null,readable:state?.purging===null&&state.until!==null&&state.until>now};
 }
-export function numericId(){const bytes=crypto.getRandomValues(new Uint8Array(7));bytes[0]&=31;let n=0;for(const b of bytes)n=n*256+b;return String(n||1);}
+// The plan a write counted on still holds when it lands (in the same
+// statement): a change of plan that turned the excess off in between makes
+// it fail (QUOTA) instead of creating something past the new limit.
+export const planHolds="EXISTS(SELECT 1 FROM pulse_account WHERE user_id=? AND last_plan=? AND resource_plan=? AND purge_started IS NULL AND read_only_until IS NULL)";
+export const planBinds=(userId:string,access:PulseAccess)=>[userId,access.plan??"",access.plan??""] as const;
+export function numericId(){const bytes=crypto.getRandomValues(new Uint8Array(7));bytes[0]=(bytes[0]??0)&31;let n=0;for(const b of bytes)n=n*256+b;return String(n||1);}
 export async function sha256(value:string){const bytes=new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)));return Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");}
 export function publicKey(){return Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,"0")).join("");}

@@ -3,14 +3,14 @@ import {z} from "zod";
 import {ownerMatches} from "../plans";
 import {validate,opaqueId} from "../validation";
 import {pulseWrite,ownedProject,type PulseApp} from "./access";
-import {projectId} from "./limits";
+import {projectId,planHolds,planBinds} from "./limits";
 import {monitorURL,monitorURLSchema,monitorOptions,monitorHeader,headerName,defaultMonitorOptions,type MonitorHeader} from "./monitor-http";
 import {optionsOf,openHeaders,sealHeaders,optionColumns,OPTION_SELECT,type OptionRow} from "./monitor-options";
 const params=z.object({monitor:opaqueId});
-const body=z.object({projectId,name:z.string().trim().min(1).max(80),url:monitorURLSchema,intervalMinutes:z.number().int().min(2).max(1440),options:monitorOptions.optional(),headers:z.array(monitorHeader).max(5).optional()}).strict();
+const body=z.strictObject({projectId,name:z.string().trim().min(1).max(80),url:monitorURLSchema,intervalMinutes:z.number().int().min(2).max(1440),options:monitorOptions.optional(),headers:z.array(monitorHeader).max(5).optional()});
 // On a change, a header without a value keeps the one stored for its name
 // (the panel never gets values back).
-const headerChange=z.array(z.object({name:headerName,value:monitorHeader.shape.value.nullable()}).strict()).max(5).refine(v=>new Set(v.map(h=>h.name.toLowerCase())).size===v.length);
+const headerChange=z.array(z.strictObject({name:headerName,value:monitorHeader.shape.value.nullable()})).max(5).refine(v=>new Set(v.map(h=>h.name.toLowerCase())).size===v.length);
 export const monitorsApi=new Hono<PulseApp>()
  .get("/",async c=>{
   const monitors=await c.env.DB.prepare(`SELECT id,project_id AS projectId,name,url,interval_minutes AS intervalMinutes,active,state,last_at AS lastAt,plan_disabled AS planDisabled,retire_at AS retireAt,${OPTION_SELECT},headers FROM pulse_monitor WHERE user_id=? AND (retire_at IS NULL OR retire_at>?) ORDER BY created_at,id LIMIT 50`).bind(c.get("session").user.id,Date.now()).all<{id:string;projectId:string;name:string;url:string;intervalMinutes:number;active:number;state:string;lastAt:number|null;planDisabled:number;retireAt:number|null;headers:string|null}&OptionRow>();
@@ -27,9 +27,9 @@ export const monitorsApi=new Hono<PulseApp>()
   let url:URL;try{url=monitorURL(input.url,ownerMatches(c.env.STAFF_OWNER_EMAIL,user.email,user.emailVerified));}catch{return c.json({code:"INVALID_TARGET"},400);}
   const id=crypto.randomUUID(),now=Date.now(),options=input.options??defaultMonitorOptions;
   let sealed:string|null;try{sealed=await sealHeaders(c.env,user.id,id,input.headers??[]);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
-  const made=await c.env.DB.prepare("INSERT INTO pulse_monitor(id,user_id,project_id,name,url,interval_minutes,next_at,created_at,method,expected_status,keyword,keyword_mode,timeout_seconds,headers) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_monitor WHERE user_id=? AND plan_disabled=0)<? AND (SELECT count(*) FROM pulse_monitor WHERE user_id=?)<50 AND EXISTS(SELECT 1 FROM pulse_project WHERE id=? AND user_id=? AND active=1 AND plan_disabled=0 AND deleted_at IS NULL) RETURNING id").bind(id,user.id,project.id,input.name,url.href,input.intervalMinutes,now,now,...optionColumns(options),sealed,user.id,access.limits?.monitors??0,user.id,project.id,user.id).first();return made?c.json({id},201):c.json({code:"QUOTA"},409);
+  const made=await c.env.DB.prepare(`INSERT INTO pulse_monitor(id,user_id,project_id,name,url,interval_minutes,next_at,created_at,method,expected_status,keyword,keyword_mode,timeout_seconds,headers) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_monitor WHERE user_id=? AND plan_disabled=0)<? AND (SELECT count(*) FROM pulse_monitor WHERE user_id=?)<50 AND EXISTS(SELECT 1 FROM pulse_project WHERE id=? AND user_id=? AND active=1 AND plan_disabled=0 AND deleted_at IS NULL) AND ${planHolds} RETURNING id`).bind(id,user.id,project.id,input.name,url.href,input.intervalMinutes,now,now,...optionColumns(options),sealed,user.id,access.limits?.monitors??0,user.id,project.id,user.id,...planBinds(user.id,access)).first();return made?c.json({id},201):c.json({code:"QUOTA"},409);
  })
- .patch("/:monitor",pulseWrite,validate("param",params),validate("json",z.object({name:body.shape.name.optional(),url:monitorURLSchema.optional(),intervalMinutes:body.shape.intervalMinutes.optional(),active:z.boolean().optional(),options:monitorOptions.optional(),headers:headerChange.optional()}).strict().refine(v=>Object.keys(v).length>0)),async c=>{
+ .patch("/:monitor",pulseWrite,validate("param",params),validate("json",z.strictObject({name:body.shape.name.optional(),url:monitorURLSchema.optional(),intervalMinutes:body.shape.intervalMinutes.optional(),active:z.boolean().optional(),options:monitorOptions.optional(),headers:headerChange.optional()}).refine(v=>Object.keys(v).length>0)),async c=>{
   const user=c.get("session").user,input=c.req.valid("json"),id=c.req.valid("param").monitor;
   const current=await c.env.DB.prepare(`SELECT name,url,interval_minutes AS intervalMinutes,active,plan_disabled AS planDisabled,${OPTION_SELECT},headers FROM pulse_monitor WHERE id=? AND user_id=?`).bind(id,user.id).first<{name:string;url:string;intervalMinutes:number;active:number;planDisabled:number;headers:string|null}&OptionRow>();if(!current)return c.json({code:"NOT_FOUND"},404);
   if(current.planDisabled)return c.json({code:"PLAN"},403);
@@ -48,7 +48,7 @@ export const monitorsApi=new Hono<PulseApp>()
  // A test alert to every destination of the monitor's project, telling it
  // apart by its name. Each destination takes one test a minute, like the
  // destination's own test.
- .post("/:monitor/test",pulseWrite,validate("param",params),validate("json",z.object({}).strict()),async c=>{
+ .post("/:monitor/test",pulseWrite,validate("param",params),validate("json",z.strictObject({})),async c=>{
   const owner=c.get("session").user.id,id=c.req.valid("param").monitor,now=Date.now();
   const monitor=await c.env.DB.prepare("SELECT m.project_id AS projectId FROM pulse_monitor m JOIN pulse_project p ON p.id=m.project_id WHERE m.id=? AND m.user_id=? AND m.plan_disabled=0 AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL").bind(id,owner).first<{projectId:string}>();if(!monitor)return c.json({code:"NOT_FOUND"},404);
   const channels=await c.env.DB.prepare("SELECT c.id FROM pulse_project_channel pc JOIN pulse_channel c ON c.id=pc.channel_id WHERE pc.project_id=? AND c.user_id=? AND c.active=1 LIMIT 4").bind(monitor.projectId,owner).all<{id:string}>();if(!channels.results.length)return c.json({code:"NO_CHANNELS"},409);

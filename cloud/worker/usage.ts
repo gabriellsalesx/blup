@@ -12,7 +12,7 @@ export const isStudio = eq(session.studioDevice, true);
 
 // Blup Studio installs signed in to an account now.
 async function devicesOf(userId: string): Promise<number> {
-	const [{ n }] = await db.select({ n: count() }).from(session).where(and(eq(session.userId, userId), isStudio, gt(session.expiresAt, new Date())));
+	const [{ n } = { n: 0 }] = await db.select({ n: count() }).from(session).where(and(eq(session.userId, userId), isStudio, gt(session.expiresAt, new Date())));
 	return n;
 }
 
@@ -34,7 +34,7 @@ export type Usage = {
 };
 
 export async function usageOf(userId: string): Promise<Usage> {
-	const [[acc], [{ n }], [sites], [deals], devices] = await Promise.all([
+	const [[acc], [{ n } = { n: 0 }], [sites], [deals], devices] = await Promise.all([
 		db.select({ storageBytes: syncAccount.storageBytes, lastSyncAt: syncAccount.lastSyncAt }).from(syncAccount).where(eq(syncAccount.userId, userId)).limit(1),
 		db.select({ n: count() }).from(vault).where(eq(vault.userId, userId)),
 		db.select({ n: count(), bytes: sum(site.bytes) }).from(site).where(eq(site.userId, userId)),

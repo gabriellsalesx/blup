@@ -26,7 +26,7 @@
  <figcaption class="grid gap-1.5 p-4 text-sm">
   {#if example}<span class="text-xs font-bold tracking-wider text-blup uppercase">{t("dealsExample")}</span>{/if}
   {#if style==="emoji"}
-   <p class="font-bold break-words">🔥 {shown}{#if discount}{" 📉"}{/if}</p>
+   <p class="font-bold break-words">🔥 {[shown,discount?"📉":""].filter(Boolean).join(" ")}</p>
    {#if description}<p class="mt-1.5 break-words">{description}</p>{/if}
    {#if priced||coupon}<div class="mt-1.5 grid gap-0.5">{#if priced}<p>💵 {t("dealsPostValue")}: <span class="font-semibold">{priced}</span></p>{/if}{#if coupon}<p class="break-words">🧾 {t("dealsCoupon")}: {coupon}</p>{/if}</div>{/if}
    <p class="mt-1.5 break-all">📌 {author?t("dealsWatchVideo"):t("dealsPostLink")}: <span class="text-blup underline">deals.getblup.site/r/…</span></p>
@@ -39,6 +39,6 @@
   {/if}
   {#if extra}<p class="break-words">{extra}</p>{/if}
   {#if socials.length}<p class="break-words text-blup">{socials.join(" · ")}</p>{/if}
-  <p class="text-neutral-500">{store}{#if affiliate}{" · "}{author?t("dealsVideoAd"):t("dealsAdNotice")}{/if}</p>
+  <p class="text-neutral-500">{[store,affiliate?(author?t("dealsVideoAd"):t("dealsAdNotice")):""].filter(Boolean).join(" · ")}</p>
  </figcaption>
 </figure>

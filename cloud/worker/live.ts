@@ -13,9 +13,9 @@ export class SyncLive extends DurableObject<Cloudflare.Env> {
 	}
 
 	// A Studio joining (the Worker already checked the session and plan).
-	async fetch(request: Request): Promise<Response> {
+	override async fetch(request: Request): Promise<Response> {
 		if (request.headers.get("Upgrade") !== "websocket") return new Response("Expected WebSocket", { status: 426 });
-		const [client, server] = Object.values(new WebSocketPair());
+		const { 0: client, 1: server } = new WebSocketPair();
 		this.ctx.acceptWebSocket(server);
 		return new Response(null, { status: 101, webSocket: client });
 	}
@@ -35,9 +35,9 @@ export class SyncLive extends DurableObject<Cloudflare.Env> {
 	}
 
 	// Studios only listen; anything they send is ignored.
-	async webSocketMessage(): Promise<void> {}
+	override async webSocketMessage(): Promise<void> {}
 
-	async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
+	override async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
 		ws.close(code, reason);
 	}
 }

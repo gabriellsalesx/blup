@@ -15,7 +15,7 @@ describe("auth configuration and logging",()=>{
 		expect(response.status).toBe(404);
 	});
 	it("keeps SDK errors from logging customer or credential fields",()=>{
-		const options=authOptions(drizzle(async()=>{throw new Error("No SQL");}),{}, {appUrl:"https://cloud.audit.invalid",rpID:"audit.invalid",secret:"audit-placeholder-long-secret",turnstileSecret:"fixture",stripeSecret:"sk_test_fixture",stripeWebhookSecret:"whsec_fixture",isBanned:async()=>false,sendCode:()=>{}});
+		const options=authOptions(drizzle(async()=>{throw new Error("No SQL");}),{}, {appUrl:"https://cloud.audit.invalid",rpID:"audit.invalid",secret:"audit-placeholder-long-secret",turnstileSecret:"fixture",stripeSecret:"sk_test_fixture",stripeWebhookSecret:"whsec_fixture",accountBlock:async()=>null,sendCode:()=>{}});
 		const log=vi.spyOn(console,"error").mockImplementation(()=>{});
 		try{
 			options.logger.log("error","customer@audit.invalid",{token:"private-fixture",query:"private-query"});

@@ -21,6 +21,11 @@ func TestRenameSite(t *testing.T) {
 	var sent []byte
 	status := 200
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/me" {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"id":"u","plan":{"name":"free","limits":{}}}`))
+			return
+		}
 		if r.Method == http.MethodPatch && r.URL.Path == "/api/sync/vaults/6f1c1f9e-1b2a-4c3d-9e8f-0a1b2c3d4e5f" {
 			sent, _ = io.ReadAll(r.Body)
 		}
@@ -30,7 +35,7 @@ func TestRenameSite(t *testing.T) {
 	defer srv.Close()
 	t.Setenv("BLUP_CLOUD_URL", srv.URL)
 	master := make([]byte, cloudcrypt.KeySize)
-	if err := (config.Credentials{BlupToken: "tok", NotesKey: base64.StdEncoding.EncodeToString(master)}).Save(); err != nil {
+	if err := (config.Credentials{BlupToken: "tok", NotesKey: base64.StdEncoding.EncodeToString(master), NotesAccount: "u"}).Save(); err != nil {
 		t.Fatal(err)
 	}
 	base := t.TempDir()

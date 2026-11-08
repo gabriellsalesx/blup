@@ -155,6 +155,30 @@ func TestChainAcrossLongGaps(t *testing.T) {
 	}
 }
 
+// Seguir a cadeia tem teto (chainWalk): um aparelho atrás de mais versões
+// do que isso, com todas guardadas, não fica travado com ErrForked para
+// sempre; a mais nova é aceita, como quando o meio já foi apagado.
+func TestChainWalkLimitIsNotAFork(t *testing.T) {
+	old := chainWalk
+	chainWalk = 1
+	defer func() { chainWalk = old }()
+	f := newFakeCloud(t)
+	keys := testKeys(t)
+	a, b := newDevice(t, f, keys), newDevice(t, f, keys)
+	a.write(t, "n.md", "0")
+	mustSync(t, a)
+	mustSync(t, b)
+	gap := chainBack*3 + 2
+	for i := range gap {
+		b.write(t, "n.md", fmt.Sprint(i+1))
+		mustSync(t, b)
+	}
+	mustSync(t, a)
+	if a.read("n.md") != fmt.Sprint(gap) {
+		t.Fatal("did not receive")
+	}
+}
+
 // O servidor não consegue forjar a cadeia: um "prev" que não aponta para a
 // versão anterior é recusado ao abrir o manifesto.
 func TestAttackChainLinkMustNameParent(t *testing.T) {

@@ -6,10 +6,10 @@ import {z} from "zod";
 // them, of a sane size, before keeping it.
 
 // A header link: a short name and an https address.
-export const navLink=z.object({
+export const navLink=z.strictObject({
  label:z.string().trim().min(1).max(40),
  url:z.url({protocol:/^https$/,hostname:z.regexes.domain}).max(2048).refine(v=>{const u=new URL(v);return !u.username&&!u.password;}),
-}).strict();
+});
 export const navLinks=z.array(navLink).max(5);
 export type NavLink=z.infer<typeof navLink>;
 // The stored list, or none when it is not one.
@@ -29,12 +29,14 @@ export const logoVersion=z.string().regex(/^[a-f0-9]{16}$/);
 // when the bytes are not one.
 export function webpSize(b:Uint8Array):{width:number;height:number}|null{
  const text=(at:number,n:number)=>String.fromCharCode(...b.subarray(at,at+n));
+// The 30 bytes read below are all there (checked first).
+ const at=(i:number)=>b[i]??0;
  if(b.length<30||text(0,4)!=="RIFF"||text(8,4)!=="WEBP")return null;
- const riff=(b[4]|b[5]<<8|b[6]<<16|b[7]<<24)>>>0;if(riff+8!==b.length)return null;
+ const riff=(at(4)|at(5)<<8|at(6)<<16|at(7)<<24)>>>0;if(riff+8!==b.length)return null;
  const chunk=text(12,4);
- if(chunk==="VP8 "){if(b[23]!==0x9d||b[24]!==0x01||b[25]!==0x2a)return null;return {width:(b[26]|b[27]<<8)&0x3fff,height:(b[28]|b[29]<<8)&0x3fff};}
- if(chunk==="VP8L"){if(b[20]!==0x2f)return null;const bits=(b[21]|b[22]<<8|b[23]<<16|b[24]<<24)>>>0;return {width:(bits&0x3fff)+1,height:((bits>>>14)&0x3fff)+1};}
- if(chunk==="VP8X")return {width:1+(b[24]|b[25]<<8|b[26]<<16),height:1+(b[27]|b[28]<<8|b[29]<<16)};
+ if(chunk==="VP8 "){if(at(23)!==0x9d||at(24)!==0x01||at(25)!==0x2a)return null;return {width:(at(26)|at(27)<<8)&0x3fff,height:(at(28)|at(29)<<8)&0x3fff};}
+ if(chunk==="VP8L"){if(at(20)!==0x2f)return null;const bits=(at(21)|at(22)<<8|at(23)<<16|at(24)<<24)>>>0;return {width:(bits&0x3fff)+1,height:((bits>>>14)&0x3fff)+1};}
+ if(chunk==="VP8X")return {width:1+(at(24)|at(25)<<8|at(26)<<16),height:1+(at(27)|at(28)<<8|at(29)<<16)};
  return null;
 }
 // The width and height of a PNG, or null when the bytes are not one.

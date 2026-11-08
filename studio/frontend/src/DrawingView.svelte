@@ -126,20 +126,21 @@
   }
 
   // Undo and redo: the whole drawing before each change.
-  let undoStack: string[] = [], redoStack: string[] = [];
+  // Undo keeps copies of the drawing (typed, no JSON round trip).
+  let undoStack: El[][] = [], redoStack: El[][] = [];
   let canUndo = $state(false), canRedo = $state(false);
-  const snap = () => JSON.stringify($state.snapshot(elements));
+  const snap = (): El[] => $state.snapshot(elements);
   function remember() {
     undoStack.push(snap());
     if (undoStack.length > 200) undoStack.shift();
     redoStack = [];
     canUndo = true; canRedo = false;
   }
-  function restore(from: string[], to: string[]) {
+  function restore(from: El[][], to: El[][]) {
     const s = from.pop();
     if (!s) return;
     to.push(snap());
-    elements = JSON.parse(s);
+    elements = s;
     selected = new Set(); editing = "";
     canUndo = undoStack.length > 0; canRedo = redoStack.length > 0;
     changed();

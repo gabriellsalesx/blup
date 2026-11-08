@@ -12,7 +12,7 @@
  import {confirm} from "#lib/confirm.svelte.ts";
  import {toast} from "#lib/toast.svelte.ts";
  import ActionMenu from "#lib/ui/ActionMenu.svelte";
- import {openCard,cardLink} from "#lib/card.ts";
+ import {cardLink} from "#lib/card.ts";
  import {pulseApi,parseResponse} from "../../lib/api";
  import Button from "#lib/ui/Button.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
@@ -46,11 +46,10 @@
   {@const s=stateOf(monitor)}
   {@const changed=since(monitor,histories[monitor.id])}
   {@const href=resolve("/monitors/[id]",{id:monitor.id})}
-  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-  <div onclick={(event)=>openCard(event,href)} onauxclick={(event)=>openCard(event,href)} class="relative grid cursor-pointer items-center gap-x-6 gap-y-3 rounded-xl border border-l-4 border-neutral-200 bg-white px-5 py-4 transition-colors hover:bg-neutral-50 sm:grid-cols-[minmax(0,1fr)_minmax(0,22rem)_12rem] dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60 {edge[s]}">
+  <div class="relative grid cursor-pointer items-center gap-x-6 gap-y-3 rounded-xl border border-l-4 border-neutral-200 bg-white px-5 py-4 transition-colors hover:bg-neutral-50 sm:grid-cols-[minmax(0,1fr)_minmax(0,22rem)_12rem] dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60 {edge[s]}">
    <a class={cardLink} {href} aria-label={monitor.name}></a>
    <span class="min-w-0"><span class="block truncate font-semibold">{monitor.name}</span><span class="block truncate text-sm underline {stateColor[s]}">{monitor.url}</span></span>
-   <span><UptimeBars days={bars(histories[monitor.id],30)} label={t("pulseHistory")}/></span>
+   <span class="relative z-10"><UptimeBars days={bars(histories[monitor.id],30)} label={t("pulseHistory")}/></span>
    <span class="flex items-center justify-between gap-2 sm:justify-end sm:text-right"><span><span class="block text-sm font-semibold {stateColor[s]}">{stateName(s)}</span>{#if changed}<span class="block text-xs text-neutral-500">{changed}</span>{/if}</span><ActionMenu label={t("pulseActions")} items={menu(monitor)}/></span>
   </div>
  {:else}<div class="rounded-xl border border-neutral-200 bg-white px-5 py-10 text-center text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">{t("pulseNoMonitors")}</div>{/each}

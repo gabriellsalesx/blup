@@ -29,6 +29,8 @@ import {softDelete,purgeAccounts,DAY as LIFE_DAY} from "../lifecycle";
 import {dealsLifecycle} from "./purge";
 import {dealsAccess} from "./access";
 import {gameTitle,giveawayTitle} from "./ai";
+// The item at i, or the test fails here (the list came out shorter).
+const nth=<T>(list:readonly T[]|undefined,i=0):T=>{const v=list?.[i];if(v===undefined)throw new Error(`no item ${i}`);return v;};
 
 let db:TestD1;
 const KEY=btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
@@ -72,7 +74,7 @@ describe("link conversion by store",()=>{
  it("asks Shopee for the short link with the signed request",async()=>{
   const {send,calls}=net({"open-api.affiliate.shopee.com.br":()=>Response.json({data:{generateShortLink:{shortLink:"https://s.shopee.com.br/abc"}}})});
   expect(await shopeeLink(new URL("https://shopee.com.br/Fone-i.1.2?sp_atk=x"),"12345","s".repeat(32),send,1_800_000_000_000)).toBe("https://s.shopee.com.br/abc");
-  const auth=calls[0].headers.get("authorization")??"",body=await calls[0].text();
+  const auth=nth(calls).headers.get("authorization")??"",body=await nth(calls).text();
   const expected=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(`12345${1_800_000_000}${body}${"s".repeat(32)}`))),b=>b.toString(16).padStart(2,"0")).join("");
   expect(auth).toBe(`SHA256 Credential=12345, Timestamp=1800000000, Signature=${expected}`);expect(body).toContain("https://shopee.com.br/Fone-i.1.2");expect(body).not.toContain("sp_atk");
  });
@@ -80,7 +82,7 @@ describe("link conversion by store",()=>{
   expect(await aliexpressSign({b:"2",a:"1"},"secret")).toMatch(/^[0-9A-F]{64}$/);
   const ok=net({"api-sg.aliexpress.com":()=>Response.json({aliexpress_affiliate_link_generate_response:{resp_result:{resp_code:200,result:{promotion_links:{promotion_link:[{promotion_link:"https://s.click.aliexpress.com/e/_abc"}]}}}}})});
   expect(await aliexpressLink(new URL("https://pt.aliexpress.com/item/1005001234567.html?spm=x"),"5000","k".repeat(32),"meu",ok.send,1)).toBe("https://s.click.aliexpress.com/e/_abc");
-  const query=new URL(ok.calls[0].url).searchParams;expect(query.get("source_values")).toBe("https://www.aliexpress.com/item/1005001234567.html");expect(query.get("tracking_id")).toBe("meu");
+  const query=new URL(nth(ok.calls).url).searchParams;expect(query.get("source_values")).toBe("https://www.aliexpress.com/item/1005001234567.html");expect(query.get("tracking_id")).toBe("meu");
   const {sign,...params}=Object.fromEntries(query);expect(sign).toBe(await aliexpressSign(params,"k".repeat(32)));
   const evil=net({"api-sg.aliexpress.com":()=>Response.json({aliexpress_affiliate_link_generate_response:{resp_result:{resp_code:200,result:{promotion_links:{promotion_link:[{promotion_link:"https://evil.invalid/x"}]}}}}})});
   expect(await convertLink(new URL("https://pt.aliexpress.com/item/1005001234567.html"),{store:"aliexpress",appKey:"5000",appSecret:"k".repeat(32),trackingId:"meu"},evil.send)).toMatchObject({affiliate:false,reason:"conversion_failed"});
@@ -242,7 +244,7 @@ describe("the daily cap and dedupe",()=>{
  });
  it("splits the cap across channels inside one batch",async()=>{
   const channels:string[]=[];for(let i=0;i<3;i++){const r=await call("/channels",{method:"POST",body:{type:"discord",webhook:`https://discord.com/api/webhooks/12345678901234567${i}/${"c".repeat(68)}`}});channels.push((await r.json() as {id:string}).id);}
-  const now=Date.now();for(let i=0;i<99;i++){const o=await upsertOffer(db.asD1(),offer({key:`f${i}`}),now);await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[channels[0]],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now,now});}
+  const now=Date.now();for(let i=0;i<99;i++){const o=await upsertOffer(db.asD1(),offer({key:`f${i}`}),now);await enqueue(db.asD1(),{owner:"alice",offerId:o.id,channels:[nth(channels)],link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now,now});}
   const last=await upsertOffer(db.asD1(),offer({key:"last"}),now);
   expect(await enqueue(db.asD1(),{owner:"alice",offerId:last.id,channels,link:"https://x.invalid",affiliate:false,huntId:null,sendAt:now,now})).toBe(1);
  });
@@ -281,8 +283,8 @@ describe("games, sending and clicks",()=>{
  });
  it("credits the source with an active link on Telegram and Discord",()=>{
   const game={title:"Jogo <x>",image:null,price:0,originalPrice:1999,currency:"USD",discount:100,link:"https://deals.audit.invalid/r/ABCDEFGH",affiliate:false,kind:"game_free",credit:"gamerpower"};
-  const text=telegramText(game,"pt");expect(text).toContain('<a href="https://www.gamerpower.com/">Via GamerPower</a>');expect(text).toContain("\nGrátis\n");expect(text).not.toContain("US$");expect(discordPayload(game,"en").embeds[0].description.split("\n")[0]).toBe("Free");expect(text).toContain("<b>Jogo &lt;x&gt;</b>");expect(text).not.toContain("#publi");
-  const embed=discordPayload(game,"en").embeds[0];expect(embed.author).toEqual({name:"GamerPower",url:"https://www.gamerpower.com/"});expect(embed.description).toBe("Free\n[See the deal](https://deals.audit.invalid/r/ABCDEFGH)");expect(discordPayload({...game,credit:null},"en").embeds[0]).not.toHaveProperty("author");expect(text.split("\n").at(-1)).toBe('<a href="https://www.gamerpower.com/">Via GamerPower</a>');expect(embed).not.toHaveProperty("footer");
+  const text=telegramText(game,"pt");expect(text).toContain('<a href="https://www.gamerpower.com/">Via GamerPower</a>');expect(text).toContain("\nGrátis\n");expect(text).not.toContain("US$");expect(nth(discordPayload(game,"en").embeds).description.split("\n")[0]).toBe("Free");expect(text).toContain("<b>Jogo &lt;x&gt;</b>");expect(text).not.toContain("#publi");
+  const embed=nth(discordPayload(game,"en").embeds);expect(embed.author).toEqual({name:"GamerPower",url:"https://www.gamerpower.com/"});expect(embed.description).toBe("Free\n[See the deal](https://deals.audit.invalid/r/ABCDEFGH)");expect(discordPayload({...game,credit:null},"en").embeds[0]).not.toHaveProperty("author");expect(text.split("\n").at(-1)).toBe('<a href="https://www.gamerpower.com/">Via GamerPower</a>');expect(embed).not.toHaveProperty("footer");
   expect(telegramText({...game,credit:"unknown"},"pt")).not.toContain("Via");expect(telegramText({...game,credit:null},"pt")).not.toContain("Via");
  });
  it("reads each source once per round for everyone, first only filling the catalog",async()=>{
@@ -305,10 +307,10 @@ describe("games, sending and clicks",()=>{
   const sent:{embeds:{title:string;url:string;description:string}[]}[]=[];
   const {send}=net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}});
   await dispatchDeals(state.env,send,now);
-  expect(sent).toHaveLength(1);expect(sent[0].embeds[0].url).toMatch(/^https:\/\/deals\.audit\.invalid\/r\/[A-Za-z0-9]{8}$/);expect(sent[0].embeds[0].description).toContain("#publi");
+  expect(sent).toHaveLength(1);expect(nth(nth(sent).embeds).url).toMatch(/^https:\/\/deals\.audit\.invalid\/r\/[A-Za-z0-9]{8}$/);expect(nth(nth(sent).embeds).description).toContain("#publi");
   await dispatchDeals(state.env,send,now+1000);expect(sent).toHaveLength(1);
   await dispatchDeals(state.env,send,now+3*60_000);expect(sent).toHaveLength(2);
-  const code=/\/r\/([A-Za-z0-9]{8})$/.exec(sent[0].embeds[0].url)?.[1];
+  const code=/\/r\/([A-Za-z0-9]{8})$/.exec(nth(nth(sent).embeds).url)?.[1];
   const go=(ua:string)=>serveDealsLink(new Request(`https://deals.audit.invalid/r/${code}`,{headers:{"user-agent":ua}}),state.env);
   const res=await go("Mozilla/5.0");expect(res.status).toBe(302);expect(res.headers.get("location")).toBe("https://www.amazon.com.br/dp/B000000001?tag=minhatag-20");
   await go("TelegramBot (like TwitterBot)");await go("Mozilla/5.0");
@@ -441,7 +443,7 @@ describe("the bot's sending budget",()=>{
   await telegramChannels(3);const at:number[]=[];
   const {send}=net({"api.telegram.org":()=>{at.push(performance.now());return Response.json({ok:true,result:{message_id:1}});}});
   const now=Date.now();await dispatchDeals(state.env,send,now);
-  expect(at).toHaveLength(3);for(let i=1;i<at.length;i++)expect(at[i]-at[i-1]).toBeGreaterThanOrEqual(35);
+  expect(at).toHaveLength(3);for(let i=1;i<at.length;i++)expect(nth(at,i)-nth(at,i-1)).toBeGreaterThanOrEqual(35);
   expect(budget()).toBeGreaterThanOrEqual(now+120);
  });
  it("still sends every channel in the run when the timer wakes a little early",async()=>{
@@ -492,7 +494,7 @@ describe("a new TikTok video",()=>{
   expect(db.sqlite.prepare("SELECT o.store,o.kind,o.title,o.price,o.currency,p.link,p.affiliate FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id").get()).toEqual({store:"tiktok",kind:"video",title:"Fone sem fio",price:8990,currency:"BRL",link:"https://www.tiktok.com/@ana/video/7430000000000000001",affiliate:1});
   const sent:{embeds:{title:string;description:string}[]}[]=[];
   await dispatchDeals(state.env,net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}}).send,Date.now());
-  expect(sent[0].embeds[0].title).toBe("Vídeo novo: Fone sem fio");expect(sent[0].embeds[0].description).toContain("Ver o vídeo");expect(sent[0].embeds[0].description).toContain("#publi");expect(sent[0].embeds[0].description).not.toContain("link de afiliado");
+  expect(nth(nth(sent).embeds).title).toBe("Vídeo novo: Fone sem fio");expect(nth(nth(sent).embeds).description).toContain("Ver o vídeo");expect(nth(nth(sent).embeds).description).toContain("#publi");expect(nth(nth(sent).embeds).description).not.toContain("link de afiliado");
  });
  it("refuses what is not a public TikTok video",async()=>{
   vi.stubGlobal("fetch",net({"www.tiktok.com/oembed":()=>new Response("{}",{status:400})}).send);
@@ -554,7 +556,7 @@ describe("Nuuvem in other countries",()=>{
   expect(db.sqlite.prepare("SELECT link,price_shown AS shown FROM deals_post").get()).toEqual({link:"https://click.linksynergy.com/deeplink?id=*AbCdEfGh1&mid=46796&murl=https%3A%2F%2Fwww.nuuvem.com%2Fmx-es%2Fitem%2Fhades",shown:0});
   const sent:{embeds:{description:string}[]}[]=[];
   await dispatchDeals(state.env,net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}}).send,Date.now()+1000);
-  expect(sent[0].embeds[0].description.split("\n")[0]).toBe("50% de desconto");expect(sent[0].embeds[0].description).not.toContain("R$");
+  expect(nth(nth(sent).embeds).description.split("\n")[0]).toBe("50% de desconto");expect(nth(nth(sent).embeds).description).not.toContain("R$");
  });
 });
 
@@ -580,7 +582,7 @@ describe("mirroring a public Telegram channel",()=>{
   expect(channelName.parse("https://t.me/s/promos_br")).toBe("promos_br");expect(channelName.parse("@promos_br")).toBe("promos_br");expect(channelName.safeParse("https://t.me/+abcdef").success).toBe(false);
   const read=readChannel(page(post(7,"🔥 <b>Fone Bluetooth</b><br/>de R$ 199,90 por R$ 89,90","https://amzn.to/abc")),"promos");
   expect(read).toMatchObject({title:"Promos & Cia",posts:[{id:7,links:["https://amzn.to/abc"],photo:"https://cdn4.telesco.pe/file/p7.jpg"}]});
-  expect(textPrices(read.posts[0].text)).toEqual({price:8990,before:19990});expect(textTitle(read.posts[0].text)).toBe("Fone Bluetooth");
+  expect(textPrices(nth(read.posts).text)).toEqual({price:8990,before:19990});expect(textTitle(nth(read.posts).text)).toBe("Fone Bluetooth");
  });
  it("posts each new product once with the person's own link, again only when cheaper",async()=>{
   const channel=await addDiscord();await call("/affiliates/amazon",{method:"PUT",body:{tag:"minhatag-20"}});
@@ -643,14 +645,14 @@ describe("store hunts on Shopee and AliExpress",()=>{
  it("takes from Shopee only what is on sale, with its own links",()=>{
   const found=shopeeOffers(shopee(node(1,"89.90",30),node(2,"50.00",0),node(3,"10.00",20,{offerLink:"https://evil.invalid/x"}),node(4,"5.00",10,{imageUrl:"https://evil.invalid/i.png"})),1000);
   expect(found.map(f=>[f.offer.externalId,f.link,f.offer.price,f.offer.discount,f.offer.originalPrice,f.offer.imageUrl])).toEqual([["1","https://s.shopee.com.br/off1",8990,30,null,"https://down-br.img.susercontent.com/file/1"],["4","https://s.shopee.com.br/off4",500,10,null,null]]);
-  expect(found[0].offer).toMatchObject({store:"shopee",kind:"store_deal",url:"https://shopee.com.br/product/1/1",currency:"BRL",key:"shopee:br:1:8990"});
+  expect(nth(found).offer).toMatchObject({store:"shopee",kind:"store_deal",url:"https://shopee.com.br/product/1/1",currency:"BRL",key:"shopee:br:1:8990"});
   expect(()=>shopeeOffers({errors:[{message:"Invalid Signature"}]})).toThrow(ShopRefused);
  });
  it("takes from AliExpress the reais price, the price before and the tracked link",()=>{
   const product=(id:number,over:Record<string,unknown>={})=>({product_id:id,product_title:`Item ${id}`,product_main_image_url:`https://ae01.alicdn.com/kf/${id}.jpg`,promotion_link:`https://s.click.aliexpress.com/e/_${id}`,target_sale_price:"45.90",target_sale_price_currency:"BRL",target_original_price:"91.80",discount:"50%",...over});
   const found=aliexpressOffers({aliexpress_affiliate_product_query_response:{resp_result:{resp_code:200,result:{products:{product:[product(10),product(11,{target_sale_price_currency:"USD"}),product(12,{promotion_link:"https://aliexpress.com.evil.invalid/x"}),product(13,{target_original_price:"45.90"})]}}}}});
   expect(found.map(f=>[f.offer.externalId,f.link,f.offer.price,f.offer.originalPrice,f.offer.discount])).toEqual([["10","https://s.click.aliexpress.com/e/_10",4590,9180,50]]);
-  expect(found[0].offer.url).toBe("https://www.aliexpress.com/item/10.html");
+  expect(nth(found).offer.url).toBe("https://www.aliexpress.com/item/10.html");
   expect(()=>aliexpressOffers({error_response:{code:"InvalidApiKey"}})).toThrow(ShopRefused);
   expect(()=>aliexpressOffers({type:"ISV",code:"IncompleteSignature",message:"x"})).toThrow(ShopRefused);
  });
@@ -669,7 +671,7 @@ describe("store hunts on Shopee and AliExpress",()=>{
   const t0=Date.now()+1000;
   await collectShops(state.env,send,t0);
   expect(asked).toEqual(["fone bluetooth","air fryer"]);
-  expect(calls[0].headers.get("authorization")).toMatch(/^SHA256 Credential=12345, Timestamp=[0-9]+, Signature=[0-9a-f]{64}$/);
+  expect(nth(calls).headers.get("authorization")).toMatch(/^SHA256 Credential=12345, Timestamp=[0-9]+, Signature=[0-9a-f]{64}$/);
   // Over the price limit (item 2) and under the discount (item 3) stay out.
   expect(db.sqlite.prepare("SELECT o.external_id AS id,p.link,p.affiliate FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id ORDER BY o.discount DESC").all()).toEqual([{id:"4",link:"https://s.shopee.com.br/off4",affiliate:1},{id:"1",link:"https://s.shopee.com.br/off1",affiliate:1}]);
   await collectShops(state.env,send,t0+10*60_000);expect(asked).toHaveLength(2);
@@ -697,7 +699,7 @@ describe("store hunts on Shopee and AliExpress",()=>{
   });
   await collectShops(state.env,send,Date.now()+1000);
   expect(calls.some(c=>c.url==="https://open-api.affiliate.shopee.com.my/graphql")).toBe(true);
-  expect(Object.fromEntries(["target_currency","ship_to_country","target_language","tracking_id"].map(k=>[k,aliAsked[0].get(k)]))).toEqual({target_currency:"JPY",ship_to_country:"JP",target_language:"JA",tracking_id:"meutrack"});
+  expect(Object.fromEntries(["target_currency","ship_to_country","target_language","tracking_id"].map(k=>[k,nth(aliAsked).get(k)]))).toEqual({target_currency:"JPY",ship_to_country:"JP",target_language:"JA",tracking_id:"meutrack"});
   // The yen has no decimals: 1980 yen is 1980, and over the limit (5000 yen) stays out.
   expect(db.sqlite.prepare("SELECT o.store,o.price,o.original_price AS before,o.currency,p.link FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id ORDER BY o.store").all()).toEqual([{store:"aliexpress",price:1980,before:3960,currency:"JPY",link:"https://s.click.aliexpress.com/e/_55"},{store:"shopee",price:2590,before:null,currency:"MYR",link:"https://s.shopee.com.my/x7"}]);
   expect(telegramText({title:"Lamp",price:1980,originalPrice:3960,currency:"JPY",discount:50,link:"https://deals.audit.invalid/r/x",affiliate:true,kind:"store_deal",credit:null,image:null},"en")).toContain("¥1,980");
@@ -716,11 +718,11 @@ describe("pace, opening lines and networks",()=>{
   // The first one goes now (nothing went before), the next ones 30 minutes apart.
   expect(times()).toEqual([now,now+30*60_000,now+60*60_000]);
   // An offer twice in a channel takes no time.
-  expect(await enqueue(db.asD1(),{owner:"alice",offerId:ids[0],channels:[channel],link:"https://x.invalid",affiliate:false,huntId:"h",sendAt:now,now,paced:true})).toBe(0);
+  expect(await enqueue(db.asD1(),{owner:"alice",offerId:nth(ids),channels:[channel],link:"https://x.invalid",affiliate:false,huntId:"h",sendAt:now,now,paced:true})).toBe(0);
   expect((await (await call("/settings",{user:"alice"})).json() as {behind:boolean}).behind).toBe(false);
   // Three hours: the queue spaces again, three hours apart.
   expect((await put({...base,pace:180})).status).toBe(200);
-  const spaced=times();expect(spaced[1]-spaced[0]).toBe(180*60_000);expect(spaced[2]-spaced[1]).toBe(180*60_000);
+  const spaced=times();expect(nth(spaced,1)-nth(spaced,0)).toBe(180*60_000);expect(nth(spaced,2)-nth(spaced,1)).toBe(180*60_000);
   // What would only go out after two days is left out, and the panel warns.
   const more=[];for(let i=0;i<20;i++)more.push(await enqueue(db.asD1(),{owner:"alice",offerId:(await upsertOffer(db.asD1(),offer({key:`m${i}`,title:`m${i}`}),Date.now())).id,channels:[channel],link:"https://x.invalid",affiliate:false,huntId:"h",sendAt:Date.now(),paced:true}));
   expect(more.filter(n=>n===0).length).toBeGreaterThan(0);
@@ -736,9 +738,9 @@ describe("pace, opening lines and networks",()=>{
   expect((await call("/offers",{method:"POST",user:"alice",body:{url:"https://www.amazon.com.br/dp/B000000001",channelIds:[channel]}})).status).toBe(201);
   for(const id of ["B000000002","B000000003"])expect((await call("/offers",{method:"POST",user:"alice",body:{url:`https://www.amazon.com.br/dp/${id}`,channelIds:[channel],queue:true}})).status).toBe(201);
   const rows=db.sqlite.prepare("SELECT paced,next_at AS at FROM deals_post ORDER BY created_at,rowid").all() as {paced:number;at:number}[];
-  expect(rows[0].paced).toBe(0);expect(rows[0].at).toBeLessThan(now+5_000);
+  expect(nth(rows).paced).toBe(0);expect(nth(rows).at).toBeLessThan(now+5_000);
   // In the queue: the first one now, the next one an hour later.
-  expect(rows.slice(1).map(r=>r.paced)).toEqual([1,1]);expect(rows[2].at-rows[1].at).toBe(60*60_000);
+  expect(rows.slice(1).map(r=>r.paced)).toEqual([1,1]);expect(nth(rows,2).at-nth(rows,1).at).toBe(60*60_000);
   const queued=await (await call("/offers?state=queued",{user:"alice"})).json() as {posts:{sendAt:string|null}[];nextCursor:string|null};
   expect(queued.posts.map(p=>Date.parse(p.sendAt!))).toEqual([...queued.posts.map(p=>Date.parse(p.sendAt!))].sort((a,b)=>a-b));
   expect(queued.nextCursor).toBeNull();
@@ -762,10 +764,10 @@ describe("pace, opening lines and networks",()=>{
   const sent:{embeds:{title:string;description:string}[]}[]=[];
   const {send}=net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}});
   await dispatchDeals(state.env,send,now);await dispatchDeals(state.env,send,now+3*60_000);
-  const titles=sent.map(s=>s.embeds[0].title).sort();
+  const titles=sent.map(s=>nth(s.embeds).title).sort();
   expect(titles).toEqual(["Atenção: Dark Mystery está grátis! Aproveite antes que acabe.","Corre: Fone na Amazon!"]);
-  expect(sent[0].embeds[0].description).toContain("Acompanhe \\*tudo\\* \\[aqui\\]");
-  expect(sent[0].embeds[0].description).toContain("[Instagram](https://instagram.com/blup) · [Telegram](https://t.me/blup)");
+  expect(nth(nth(sent).embeds).description).toContain("Acompanhe \\*tudo\\* \\[aqui\\]");
+  expect(nth(nth(sent).embeds).description).toContain("[Instagram](https://instagram.com/blup) · [Telegram](https://t.me/blup)");
   const text=telegramText({title:"Fone",image:null,price:null,originalPrice:null,currency:null,discount:null,link:"https://deals.audit.invalid/r/x",affiliate:false,kind:"product",credit:null,extra:"<b>oi</b>",socials:[{name:"X",url:"https://x.com/a"}]},"pt");
   expect(text).toContain("&lt;b&gt;oi&lt;/b&gt;");expect(text).toContain('<a href="https://x.com/a">X</a>');
  });
@@ -777,7 +779,7 @@ describe("pace, opening lines and networks",()=>{
   const sent:{embeds:{title:string;description:string}[]}[]=[];
   const {send}=net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}});
   await dispatchDeals(state.env,send,now);
-  const embed=sent[0].embeds[0];
+  const embed=nth(nth(sent).embeds);
   expect(embed.title).toBe("🔥 Achado do dia: Controle GameSir com 50% de desconto. 📉");
   const lines=embed.description.split("\n");
   expect(lines[0]).toBe("Compatível com \\*Switch\\*");
@@ -810,8 +812,8 @@ describe("the AI in the hunts and the channels",()=>{
   expect(db.sqlite.prepare("SELECT o.external_id AS id,o.short_title AS short,o.category,p.description FROM deals_post p JOIN deals_offer o ON o.id=p.offer_id").all()).toEqual([{id:"2",short:"Fone Bluetooth 5.3",category:"electronics",description:"Bom para treinar."}]);
   const sent:{embeds:{title:string;description:string}[]}[]=[];
   await dispatchDeals(state.env,net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}}).send,now);
-  expect(sent[0].embeds[0].title).toBe("Achado do dia: Fone Bluetooth 5.3 com 50% de desconto.");
-  expect(sent[0].embeds[0].description.split("\n")[0]).toBe("Bom para treinar.");
+  expect(nth(nth(sent).embeds).title).toBe("Achado do dia: Fone Bluetooth 5.3 com 50% de desconto.");
+  expect(nth(nth(sent).embeds).description.split("\n")[0]).toBe("Bom para treinar.");
  });
  it("goes on without the AI when it can't answer",async()=>{
   const channel=await addDiscord();
@@ -834,8 +836,8 @@ describe("the AI in the hunts and the channels",()=>{
   const {send}=net({"discord.com":async req=>{sent.push(await req.json());return Response.json({id:"1"});}});
   await dispatchDeals(state.env,send,now);
   expect(calls).toBe(1);expect(sent).toHaveLength(2);
-  expect(sent[0].embeds[0].title).toBe("Deal of the day: Fone");
-  expect(sent[0].embeds[0].description.split("\n")).toEqual(["Good and cheap","R$100.00","[See the deal](https://deals.audit.invalid/r/"+sent[0].embeds[0].description.split("/r/")[1].slice(0,8)+")","Follow us"]);
+  expect(nth(nth(sent).embeds).title).toBe("Deal of the day: Fone");
+  expect(nth(nth(sent).embeds).description.split("\n")).toEqual(["Good and cheap","R$100.00","[See the deal](https://deals.audit.invalid/r/"+nth(nth(sent).embeds).description.split("/r/")[1]?.slice(0,8)+")","Follow us"]);
   const listed=await (await call("/channels")).json() as {channels:{language:string|null}[]};
   expect(listed.channels.map(c=>c.language)).toEqual(["en","en"]);
  });

@@ -17,7 +17,7 @@ export async function startReadOnly(db:D1Database,userId:string,now=Date.now()){
   db.prepare("SELECT read_only_until AS until FROM deals_account WHERE user_id=?").bind(userId),
   db.prepare("UPDATE deals_post SET state='failed',error='PLAN',claim=NULL,claim_until=0 WHERE user_id=? AND state='queued' AND EXISTS(SELECT 1 FROM deals_account WHERE user_id=? AND read_only_until IS NOT NULL)").bind(userId,userId),
  ]);
- return (row.results[0] as {until:number|null}|undefined)?.until??null;
+ return (row?.results[0] as {until:number|null}|undefined)?.until??null;
 }
 // Daily: accounts that lost Deals without opening the panel start their
 // read-only window; those past it are purged (unless the plan came back).

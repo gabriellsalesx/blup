@@ -17,20 +17,32 @@ async function knownProject(env:Cloudflare.Env,id:string,keyHash:string):Promise
  known.set(key,{project,until:now+30_000});
  return project;
 }
+// Workers in another Cloudflare zone all reach us from one address
+// (developers.cloudflare.com/fundamentals/reference/http-headers, CF-Connecting-IP
+// in Worker subrequests): every customer's Worker, and Blup's own Sites
+// Worker, would share one bucket. Those count by the sending zone
+// (CF-Worker, set by Cloudflare) and the project instead.
+export const WORKERS_IP="2a06:98c0:3600::103";
+export function ingestLimitKey(req:Request,project:string){
+ const ip=req.headers.get("cf-connecting-ip")??"local";
+ if(ip!==WORKERS_IP)return `ingest:${ip}`;
+ const zone=(req.headers.get("cf-worker")??"").toLowerCase().slice(0,253);
+ return `ingest:worker:${/^[a-z0-9.-]+$/.test(zone)?zone:"?"}:${project}`;
+}
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"POST, OPTIONS","Access-Control-Allow-Headers":"Content-Type, Content-Encoding, X-Sentry-Auth","Access-Control-Expose-Headers":"Retry-After, X-Sentry-Rate-Limits, X-Sentry-Error","Access-Control-Max-Age":"600","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"};
 export async function pulseIngest(req:Request,env:Cloudflare.Env){
  const url=new URL(req.url),m=/^\/api\/([1-9][0-9]{0,15})\/(envelope|store)\/$/.exec(url.pathname);
  const respond=(body:unknown,status=200,extra:Record<string,string>={})=>Response.json(body,{status,headers:{...cors,...extra}});
- if(!m)return respond({detail:"NOT_FOUND"},404);
+ const projectId=m?.[1],route=m?.[2];
+ if(!projectId||!route)return respond({detail:"NOT_FOUND"},404);
  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:cors});
  if(req.method!=="POST")return respond({detail:"METHOD"},405,{Allow:"POST, OPTIONS"});
  try{
-  const ip=req.headers.get("cf-connecting-ip")??"local";
-  if(!(await env.PULSE_INGEST_LIMIT.limit({key:`ingest:${ip}`})).success)throw new IngestError(429,"IP",10);
-  const content=req.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
+  if(!(await env.PULSE_INGEST_LIMIT.limit({key:ingestLimitKey(req,projectId)})).success)throw new IngestError(429,"IP",10);
+  const content=req.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
   if(content&&!["application/x-sentry-envelope","application/json","text/plain"].includes(content))throw new IngestError(415,"CONTENT_TYPE");
-  const parsed=parseEnvelope(await ingestBytes(req),m[2]==="store"),key=authKey(req,m[1],parsed.dsn),keyHash=await sha256(key);
-  const project=await knownProject(env,m[1],keyHash);
+  const parsed=parseEnvelope(await ingestBytes(req),route==="store"),key=authKey(req,projectId,parsed.dsn),keyHash=await sha256(key);
+  const project=await knownProject(env,projectId,keyHash);
   if(!parsed.event)return respond({});
   // Errors only ("event" is sentry-ruby's name for one); performance data and the rest are skipped.
   if(parsed.event.type!==undefined&&parsed.event.type!=="default"&&parsed.event.type!=="error"&&parsed.event.type!=="event")return respond({});

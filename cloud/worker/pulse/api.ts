@@ -19,9 +19,9 @@ import {maintenanceApi} from "./maintenance";
 import {sourcemapUploadApi,sourcemapPanelApi,withOriginals} from "./sourcemaps";
 import {z} from "zod";
 import {validate,hashId,opaqueId} from "../validation";
-import {pulseIdParam,projectId,issueState,numericId,publicKey,sha256} from "./limits";
+import {pulseIdParam,projectId,issueState,numericId,publicKey,sha256,planHolds,planBinds} from "./limits";
 
-const projectBody=z.object({name:z.string().trim().min(1).max(80),platform:z.enum(platformIds)}).strict();
+const projectBody=z.strictObject({name:z.string().trim().min(1).max(80),platform:z.enum(platformIds)});
 const filters=z.object({state:issueState.optional(),environment:z.string().max(80).optional(),release:z.string().max(128).optional(),q:z.string().max(128).optional(),beforeId:hashId.optional(),before:z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),limit:z.coerce.number().int().min(1).max(50).default(30)});
 const issuesParam=z.object({project:projectId,issue:hashId});
 async function newKey(env:Cloudflare.Env,project:string,rotate=false){
@@ -31,7 +31,7 @@ async function newKey(env:Cloudflare.Env,project:string,rotate=false){
   env.DB.prepare("INSERT INTO pulse_key(id,project_id,hash,prefix,created_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM pulse_project WHERE id=? AND active=1 AND deleted_at IS NULL) RETURNING id").bind(id,project,await sha256(key),key.slice(0,8),now,project),
   env.DB.prepare("DELETE FROM pulse_key WHERE project_id=? AND revoked_at IS NOT NULL AND id NOT IN(SELECT id FROM pulse_key WHERE project_id=? ORDER BY created_at DESC,id DESC LIMIT 20)").bind(project,project),
  ]);
- if(!rows[rotate?1:0].results.length)throw new HTTPException(404,{res:Response.json({code:"NOT_FOUND"},{status:404})});
+ if(!rows[rotate?1:0]?.results.length)throw new HTTPException(404,{res:Response.json({code:"NOT_FOUND"},{status:404})});
  return {id,prefix:key.slice(0,8),dsn:`https://${key}@ingest.getblup.io/${project}`};
 }
 export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi).get("/public/:slug",validate("param",z.object({slug:pageSlug})),async c=>{if(!(await c.env.PULSE_PUBLIC_LIMIT.limit({key:`public:${c.req.header("cf-connecting-ip")??"local"}`})).success){c.header("Retry-After","60");return c.json({code:"TOO_MANY_REQUESTS"},429);}const page=await publicPage(c.env,c.req.valid("param").slug);return page?c.json(page):c.json({code:"NOT_FOUND"},404);}).route("/",sourcemapUploadApi).use("*",pulseSession).use("/projects/:project",projectWrite).use("/projects/:project/*",projectWrite)
@@ -54,10 +54,10 @@ export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi)
  })
  .post("/projects",pulseWrite,validate("json",projectBody),async c=>{
   const {name,platform}=c.req.valid("json"),owner=c.get("session").user.id,limit=c.get("access").limits?.projects??0,id=numericId();
-  const made=await c.env.DB.prepare("INSERT INTO pulse_project(id,user_id,name,platform,object_name,created_at) SELECT ?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_project WHERE user_id=? AND deleted_at IS NULL AND plan_disabled=0)<? AND (SELECT count(*) FROM pulse_project WHERE user_id=?)<10 RETURNING id").bind(id,owner,name,platform,crypto.randomUUID(),Date.now(),owner,limit,owner).first();if(!made)return c.json({code:"QUOTA"},409);
+  const made=await c.env.DB.prepare(`INSERT INTO pulse_project(id,user_id,name,platform,object_name,created_at) SELECT ?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_project WHERE user_id=? AND deleted_at IS NULL AND plan_disabled=0)<? AND (SELECT count(*) FROM pulse_project WHERE user_id=?)<10 AND ${planHolds} RETURNING id`).bind(id,owner,name,platform,crypto.randomUUID(),Date.now(),owner,limit,owner,...planBinds(owner,c.get("access"))).first();if(!made)return c.json({code:"QUOTA"},409);
   const key=await newKey(c.env,id);return c.json({id,name,platform,key},201);
  })
- .patch("/projects/:project",pulseWrite,validate("param",pulseIdParam),validate("json",z.object({name:z.string().trim().min(1).max(80).optional(),active:z.boolean().optional()}).strict().refine(v=>v.name!==undefined||v.active!==undefined)),async c=>{
+ .patch("/projects/:project",pulseWrite,validate("param",pulseIdParam),validate("json",z.strictObject({name:z.string().trim().min(1).max(80).optional(),active:z.boolean().optional()}).refine(v=>v.name!==undefined||v.active!==undefined)),async c=>{
   const p=await ownedProject(c.env,c.get("session").user.id,c.req.valid("param").project);if(!p)return c.json({code:"NOT_FOUND"},404);const body=c.req.valid("json");await c.env.DB.prepare("UPDATE pulse_project SET name=?,active=? WHERE id=? AND deleted_at IS NULL").bind(body.name??p.name,body.active===undefined?p.active:Number(body.active),p.id).run();return c.json({ok:true});
  })
  .delete("/projects/:project",validate("param",pulseIdParam),async c=>{
@@ -105,7 +105,7 @@ export const pulseApi=new Hono<PulseApp>().route("/telegram",telegramWebhookApi)
   // release's source map was sent.
   return c.json({events:await withOriginals(c.env,p.id,samples)});
  })
- .patch("/projects/:project/issues/:issue",pulseWrite,validate("param",issuesParam),validate("json",z.object({state:issueState}).strict()),async c=>{
+ .patch("/projects/:project/issues/:issue",pulseWrite,validate("param",issuesParam),validate("json",z.strictObject({state:issueState})),async c=>{
   const p=await ownedProject(c.env,c.get("session").user.id,c.req.valid("param").project);if(!p)return c.json({code:"NOT_FOUND"},404);
   const changed=await c.env.PULSE_PROJECT.getByName(p.objectName).setState(c.req.valid("param").issue,c.req.valid("json").state,Date.now()-(c.get("access").limits?.retentionDays??30)*86_400_000);return changed?c.json({ok:true},200):c.json({code:"NOT_FOUND"},404);
  })

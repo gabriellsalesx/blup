@@ -7,7 +7,9 @@ import { aiUsage } from "./db/schema";
 import { planOf } from "./account";
 import { z } from "zod";
 import { reserve, release, settle } from "./quota";
-import { validate } from "./validation";
+import { boundedJson, validate } from "./validation";
+// The most OpenRouter's model catalog and one chat answer may weigh.
+const CATALOG_MAX = 8 * 1024 * 1024, ANSWER_MAX = 1024 * 1024;
 import type { Plan } from "./plans";
 
 // AI through Blup Cloud (narration and translation), paid by the plan instead of the
@@ -57,7 +59,7 @@ export async function speechCatalog(env: Cloudflare.Env): Promise<{ models: Map<
 	try {
 		const res = await fetch(`${openRouter(env)}/models?output_modalities=speech`, { signal: AbortSignal.timeout(15_000) });
 		if (res.ok) {
-			const list = catalogSchema.parse(await res.json());
+			const list = catalogSchema.parse(await boundedJson(res, CATALOG_MAX));
 			for (const item of list.data) {
 				const parsed = speechSchema.safeParse(item);
 				if (!parsed.success) continue;
@@ -158,8 +160,8 @@ export async function aiUsageOf(userId: string, plan: Plan): Promise<AIUsage> {
 // OpenRouter's error shape, so the Studio's client reads it as usual.
 const fail = (message: string, code: string) => ({ code,error: { message, code } });
 
-const speechInput = z.object({model:z.string().min(1).max(200),input:z.string().min(1).max(MAX_INPUT*2).refine(s=>[...s].length<=MAX_INPUT),voice:z.string().max(100).default(""),response_format:z.literal("mp3").optional()}).strict();
-const translationInput = z.object({text:z.string().trim().min(1).max(MAX_TRANSLATE),from:z.enum(["pt","en","es"]),to:z.enum(["pt","en","es"])}).strict().refine(b=>b.from!==b.to);
+const speechInput = z.strictObject({model:z.string().min(1).max(200),input:z.string().min(1).max(MAX_INPUT*2).refine(s=>[...s].length<=MAX_INPUT),voice:z.string().max(100).default(""),response_format:z.literal("mp3").optional()});
+const translationInput = z.strictObject({text:z.string().trim().min(1).max(MAX_TRANSLATE),from:z.enum(["pt","en","es"]),to:z.enum(["pt","en","es"])}).refine(b=>b.from!==b.to);
 async function aiReservation(env:Cloudflare.Env,userId:string,cost:number) {
  const plan=await planOf(userId);
  if(!plan.limits.aiUsage) return {error:fail("O seu plano não inclui IA pelo Blup Cloud.","NO_AI")};
@@ -237,7 +239,7 @@ export async function chatModels(env: Cloudflare.Env): Promise<Map<string, ChatM
 	const models = new Map<string, ChatModel>();
 	try {
 		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/models`, { signal: AbortSignal.timeout(15_000) });
-		if (res.ok) for (const m of chatCatalog.parse(await res.json()).data) {
+		if (res.ok) for (const m of chatCatalog.parse(await boundedJson(res, CATALOG_MAX)).data) {
 			const prompt = Number(m.pricing.prompt), completion = Number(m.pricing.completion);
 			if (Number.isFinite(prompt) && Number.isFinite(completion) && prompt >= 0 && completion >= 0) models.set(m.id, { id: m.id, name: m.name ?? m.id, prompt, completion, thinks: m.reasoning?.mandatory === true });
 		}
@@ -270,13 +272,13 @@ export async function aiText(env: Cloudflare.Env, userId: string, feature: AIFea
 	const hold = admission.hold;
 	try {
 		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(60_000), redirect: "manual", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://getblup.io", "X-OpenRouter-Title": "Blup Cloud" }, body: JSON.stringify({ models, temperature: input.temperature ?? 0.7, max_tokens: input.maxTokens, reasoning: { effort: input.think ? "low" : "none" }, ...(input.json ? { response_format: { type: "json_object" } } : {}), messages: [{ role: "system", content: input.system }, { role: "user", content: input.user }] }) });
-		const raw: unknown = await res.json().catch(() => null);
+		const raw: unknown = await boundedJson(res, ANSWER_MAX).catch(() => null);
 		const cost = providerCost(raw, answered(res, raw) ? estimate : 0);
 		if (res.ok || usageSchema.safeParse(raw).success) await settle(env.DB, hold, [env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,?,?,?)").bind(userId, feature, input.maxTokens, cost)]);
 		const out = outputSchema.safeParse(raw), choice = out.success ? out.data.choices?.[0] : undefined;
 		const model = z.object({ model: z.string().max(200) }).safeParse(raw);
 		if (!res.ok || !choice?.message?.content?.trim() || (input.json && choice.finish_reason === "length")) return { code: "UPSTREAM", status: res.status === 429 ? 429 : 502 };
-		return { text: choice.message.content.trim(), model: model.success ? model.data.model : models[0] };
+		return { text: choice.message.content.trim(), model: model.success ? model.data.model : models[0] ?? "" };
 	} catch { return { code: "UPSTREAM", status: 502 }; }
 	finally { await release(env.DB, hold); }
 }
@@ -315,7 +317,7 @@ export const aiApi = new Hono<App>()
    const headerCost=z.coerce.number().pipe(costSchema).safeParse(res.headers.get("x-openrouter-cost")??res.headers.get("x-usage-cost")??undefined);
    let actual=headerCost.success?Math.ceil(headerCost.data*1e6):cost;
    if(!res.ok||res.headers.get("content-type")?.includes("application/json")){
-    const errorBody:unknown=await res.json().catch(()=>null);
+    const errorBody:unknown=await boundedJson(res,ANSWER_MAX).catch(()=>null);
     actual=providerCost(errorBody,headerCost.success?actual:0);
     if(actual) await settle(c.env.DB,hold,[c.env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,'narration',?,?)").bind(userId,chars,actual)]);
     return c.json(fail("A narração falhou agora. Tente de novo.","UPSTREAM"),res.status===429?429:502);
@@ -345,7 +347,7 @@ export const aiApi = new Hono<App>()
   try{
    if(!c.env.OPENROUTER_API_KEY) return c.json(fail("A tradução está indisponível agora.","UNAVAILABLE"),503);
    const res=await fetch(`${c.env.OPENROUTER_URL||"https://openrouter.ai/api/v1"}/chat/completions`,{method:"POST",signal:AbortSignal.timeout(120_000),redirect:"manual",headers:{Authorization:`Bearer ${c.env.OPENROUTER_API_KEY}`,"Content-Type":"application/json","HTTP-Referer":"https://getblup.io","X-OpenRouter-Title":"Blup Cloud"},body:JSON.stringify({models,temperature:0.2,max_tokens:maxTokens,reasoning:{effort:"none"},messages:[{role:"system",content:translatePrompt(from,to)},{role:"user",content:text}]})});
-   const raw:unknown=await res.json().catch(()=>null);
+   const raw:unknown=await boundedJson(res,ANSWER_MAX).catch(()=>null);
    const cost=providerCost(raw,answered(res,raw)?estimate:0);
    // Charge before validating content: truncated/malformed answers can cost.
    if(res.ok||usageSchema.safeParse(raw).success) await settle(c.env.DB,hold,[c.env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,'translation',?,?)").bind(userId,chars,cost)]);

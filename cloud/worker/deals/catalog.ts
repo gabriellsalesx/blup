@@ -77,7 +77,7 @@ export function nuuvemPage(url:string,country:string){
 // keys) and what it searches for; market the country AliExpress sells to
 // (its currency). maxPrice is in the minor units of the hunt's currency.
 export const shopStores=["shopee","aliexpress"] as const;
-export const huntFilters=z.object({aiFilter:z.boolean().optional(),aiExtract:z.boolean().optional(),categories:z.array(z.enum(dealCategories)).min(1).max(dealCategories.length).optional(),stores:z.array(storeSchema).max(storeSchema.options.length).optional(),store:z.enum(shopStores).optional(),market:z.enum(aliexpressCountries).optional(),keywords:z.array(z.string().trim().min(2).max(60).regex(/^[^\u0000-\u001f\u007f]+$/)).min(1).max(5).optional(),platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(1e13).optional(),gamesOnly:z.boolean().optional(),country:z.enum(nuuvemCountries).optional()}).strict();
+export const huntFilters=z.strictObject({aiFilter:z.boolean().optional(),aiExtract:z.boolean().optional(),categories:z.array(z.enum(dealCategories)).min(1).max(dealCategories.length).optional(),stores:z.array(storeSchema).max(storeSchema.options.length).optional(),store:z.enum(shopStores).optional(),market:z.enum(aliexpressCountries).optional(),keywords:z.array(z.string().trim().min(2).max(60).regex(/^[^\u0000-\u001f\u007f]+$/)).min(1).max(5).optional(),platforms:z.array(z.enum(platforms)).max(platforms.length).optional(),minDiscount:z.number().int().min(0).max(100).optional(),maxPrice:z.number().int().min(0).max(1e13).optional(),gamesOnly:z.boolean().optional(),country:z.enum(nuuvemCountries).optional()});
 export type HuntFilters=z.infer<typeof huntFilters>;
 export const huntKinds=["games_free","nuuvem_deals"] as const;
 export type HuntKind=(typeof huntKinds)[number];
@@ -169,6 +169,7 @@ export async function dealsCleanup(env:Cloudflare.Env,historyDays:number,now=Dat
   env.DB.prepare("DELETE FROM deals_offer WHERE last_seen_at<? AND NOT EXISTS(SELECT 1 FROM deals_post WHERE offer_id=deals_offer.id)").bind(cutoff),
   env.DB.prepare("DELETE FROM deals_telegram_link WHERE expires_at<?").bind(now-DAY),
   env.DB.prepare("DELETE FROM deals_telegram_update WHERE received_at<?").bind(now-DAY),
+  env.DB.prepare("DELETE FROM deals_bridge_nonce WHERE received_at<?").bind(now-15*60_000),
   // A store hunt's own reading goes with the hunt.
   env.DB.prepare("DELETE FROM deals_source WHERE kind IN('shopee','aliexpress') AND NOT EXISTS(SELECT 1 FROM deals_hunt WHERE source_id=deals_source.id)"),
  ]);

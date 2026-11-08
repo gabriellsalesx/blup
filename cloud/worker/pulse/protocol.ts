@@ -68,7 +68,7 @@ export function authKey(req:Request,project:string,dsn?:string){
  for(const [name,value] of url.searchParams){if(!["sentry_key","sentry_version","sentry_client","sentry_secret"].includes(name)||value.length>512)throw new IngestError(400,"AUTH");if(url.searchParams.getAll(name).length!==1)throw new IngestError(400,"AUTH");}
  if(url.searchParams.has("sentry_key")){if(!sentryVersion(url.searchParams.get("sentry_version")))throw new IngestError(400,"AUTH");keys.push(url.searchParams.get("sentry_key")??"");}
  const auth=req.headers.get("x-sentry-auth");
- if(auth){if(auth.length>4096||!auth.startsWith("Sentry "))throw new IngestError(400,"AUTH");const pairs=new Map<string,string>();for(const part of auth.slice(7).split(",")){const m=/^\s*(sentry_\w+)=(.*?)\s*$/.exec(part);if(!m||pairs.has(m[1]))throw new IngestError(400,"AUTH");pairs.set(m[1],m[2]);}if(!sentryVersion(pairs.get("sentry_version")))throw new IngestError(400,"AUTH");keys.push(pairs.get("sentry_key")??"");}
+ if(auth){if(auth.length>4096||!auth.startsWith("Sentry "))throw new IngestError(400,"AUTH");const pairs=new Map<string,string>();for(const part of auth.slice(7).split(",")){const [,name,value]=/^\s*(sentry_\w+)=(.*?)\s*$/.exec(part)??[];if(name===undefined||value===undefined||pairs.has(name))throw new IngestError(400,"AUTH");pairs.set(name,value);}if(!sentryVersion(pairs.get("sentry_version")))throw new IngestError(400,"AUTH");keys.push(pairs.get("sentry_key")??"");}
  if(dsn){let d:URL;try{d=new URL(dsn);}catch{throw new IngestError(400,"AUTH");}if(d.protocol!==url.protocol||d.host!==url.host||d.password||d.search||d.hash||d.pathname!==`/${project}`)throw new IngestError(403,"KEY");keys.push(d.username);}
- if(!keys.length||keys.some(k=>!/^([a-f0-9]{48})$/.test(k)||k!==keys[0]))throw new IngestError(403,"KEY");return keys[0];
+ const [key]=keys;if(key===undefined||keys.some(k=>!/^([a-f0-9]{48})$/.test(k)||k!==key))throw new IngestError(403,"KEY");return key;
 }

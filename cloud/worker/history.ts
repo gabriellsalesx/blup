@@ -10,8 +10,9 @@ type Version = { n: number; key: string; size: number; createdAt: Date };
 export function thin(versions: Version[], historyDays: number, now: number): Set<number> {
 	const keep = new Set<number>();
 	const sorted = [...versions].sort((a, b) => b.n - a.n);
-	if (!sorted.length) return keep;
-	keep.add(sorted[0].n);
+	const [newest] = sorted;
+	if (!newest) return keep;
+	keep.add(newest.n);
 	const seen = new Set<string>();
 	for (const v of sorted.slice(1)) {
 		const age = now - v.createdAt.getTime();

@@ -11,6 +11,7 @@
   import ArrowUp from "@lucide/svelte/icons/arrow-up";
   import ArrowDown from "@lucide/svelte/icons/arrow-down";
   import X from "@lucide/svelte/icons/x";
+  import Check from "@lucide/svelte/icons/check";
   import FieldInput from "./FieldInput.svelte";
   import { TYPES, asText, compare, keyOf, matches, nextColor, optionColor } from "./db";
   import { toast, toastError } from "./toast.svelte";
@@ -264,7 +265,7 @@
             {#each shown.filter((r) => asText(r.props?.[groupCol!.key]) === lane.value) as r (r.path)}
               <button class="bcard" draggable="true" ondragstart={() => (dragged = r)} ondragend={() => { dragged = null; overLane = null; }} onclick={() => onOpenNote(r.path)}>
                 <b>{r.name}</b>
-                {#each cardFields as c (c.key)}{#if asText(r.props?.[c.key])}<small><span class="muted">{c.name}:</span> {asText(r.props?.[c.key])}</small>{/if}{/each}
+                {#each cardFields as c (c.key)}{#if asText(r.props?.[c.key])}<small><span class="muted">{c.name}:</span> {#if typeof r.props?.[c.key] === "boolean"}<Check size={12} aria-hidden="true" />{:else}{asText(r.props?.[c.key])}{/if}</small>{/if}{/each}
               </button>
             {/each}
             <button class="lane-add" onclick={() => { adding = lane.value; newName = ""; }}><Plus size={14} />{d.newRecord}</button>

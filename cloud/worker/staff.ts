@@ -1,5 +1,5 @@
 import { queueAccountPurge } from "./site-cache-purge";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import { and, asc, count, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -28,6 +28,9 @@ type Role = "support" | "admin";
 type Staff = { email: string; role: Role; owner: boolean };
 type App = { Bindings: Cloudflare.Env; Variables: { staff: Staff } };
 
+// The e-mail in STAFF_OWNER_EMAIL, as Access gives e-mails (lowercase).
+const ownerEmail=(env:Cloudflare.Env)=>env.STAFF_OWNER_EMAIL?.trim().toLowerCase()||null;
+
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
 
 async function accessEmail(c: { req: { header: (n: string) => string | undefined; url: string }; env: Cloudflare.Env }): Promise<string | null> {
@@ -38,7 +41,7 @@ async function accessEmail(c: { req: { header: (n: string) => string | undefined
 	if (!token || !c.env.ACCESS_TEAM_DOMAIN || !c.env.ACCESS_AUD) return null;
 	jwks ??= createRemoteJWKSet(new URL(`${c.env.ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`));
 	try {
-		const { payload } = await jwtVerify(token, jwks, { issuer: c.env.ACCESS_TEAM_DOMAIN, audience: c.env.ACCESS_AUD });
+		const { payload } = await jwtVerify(token, jwks, { issuer: c.env.ACCESS_TEAM_DOMAIN, audience: c.env.ACCESS_AUD, algorithms: ["RS256"] });
 		return typeof payload.email === "string" ? payload.email.toLowerCase() : null;
 	} catch {
 		return null;
@@ -49,7 +52,7 @@ const onStaff = createMiddleware<App>(async (c, next) => {
 	const email = await accessEmail(c);
 	if (!email) return c.json({ code: "FORBIDDEN" }, 403);
 	let role: Role | null = null;
-	const owner = !!c.env.STAFF_OWNER_EMAIL && email === c.env.STAFF_OWNER_EMAIL.toLowerCase();
+	const owner = email === ownerEmail(c.env);
 	if (owner) role = "admin";
 	else {
 		const [s] = await db.select({ role: staff.role }).from(staff).where(eq(staff.email, email)).limit(1);
@@ -72,6 +75,33 @@ const ownerOnly = createMiddleware<App>(async (c, next) => {
 
 const log = (email: string, action: string, userId: string | null, detail?: string) =>
 	db.insert(staffLog).values({ staffEmail: email, action, userId, detail: detail ?? null });
+// An action and its log entry go in one D1 batch (a transaction): no change
+// without its entry, and no entry for a change that did not happen (the
+// entry is written only for a row that exists).
+const logFor = (d1: D1Database, email: string, action: string, from: "user" | "passkey", where: string, binds: string[], detail: string | null) =>
+	d1.prepare(`INSERT INTO staff_log(staff_email,action,user_id,detail) SELECT ?,?,${from === "user" ? "id" : "user_id"},${from === "passkey" ? "name" : "?"} FROM ${from} WHERE ${where}`).bind(email, action, ...(from === "passkey" ? [] : [detail]), ...binds);
+
+// The owner's own account (its e-mail is STAFF_OWNER_EMAIL): nobody on the
+// staff acts against it, so a stolen admin seat cannot lock the owner out.
+async function isOwnerAccount(env:Cloudflare.Env,id:string){
+	const owner=ownerEmail(env);
+	if(!owner)return false;
+	return !!await env.DB.prepare("SELECT id FROM user WHERE id=? AND lower(email)=?").bind(id,owner).first();
+}
+// A refused sensitive action: 403 with its code, and an entry in the log.
+type Refusal="OWNER_ONLY"|"OWNER_ACCOUNT";
+async function refuse(c:Context<App>,action:string,userId:string|null,code:Refusal,detail?:string){
+	await log(c.get("staff").email,`denied.${action}`,userId,detail?`${code} ${detail}`:code);
+	return c.json({code},403);
+}
+// Blocking or deleting the owner's account: refused even to the owner (no
+// way to lock oneself out). Ending its sessions or removing its passkeys:
+// the owner only.
+async function guardOwnerAccount(c:Context<App>,action:string,id:string,ownerToo:boolean){
+	if(!await isOwnerAccount(c.env,id))return null;
+	if(!ownerToo&&c.get("staff").owner)return null;
+	return refuse(c,action,id,"OWNER_ACCOUNT");
+}
 
 const statsSchema=z.object({total:z.number().int().min(0),recent:z.number().int().min(0),banned:z.number().int().min(0),plans:z.array(z.object({name:z.string(),label:z.string(),count:z.number().int().min(0)}))});
 const ACTIVE = ["active", "trialing", "past_due"];
@@ -101,7 +131,8 @@ export const staffApi = new Hono<App>()
 		const hit = await caches.default.match(key);
 		if (hit) return c.json(statsSchema.parse(await hit.json()),200);
 		const week = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-		const [[{ total }], [{ recent }], [{ banned }], paid] = await Promise.all([
+		// COUNT always answers one row (the defaults only satisfy the types).
+		const [[{ total } = { total: 0 }], [{ recent } = { recent: 0 }], [{ banned } = { banned: 0 }], paid] = await Promise.all([
 			db.select({ total: count() }).from(user),
 			db.select({ recent: count() }).from(user).where(gte(user.createdAt, week)),
 			db.select({ banned: count() }).from(user).where(eq(user.banned, true)),
@@ -142,7 +173,8 @@ export const staffApi = new Hono<App>()
 				.limit(size + 1);
 		}
 		const rows = found.slice(0, size);
-		const nextCursor = found.length > size ? key(rows[rows.length - 1]) : null;
+		const last = rows.at(-1);
+		const nextCursor = found.length > size && last ? key(last) : null;
 		const subs: { ref: string; plan: string }[] = [];
 		// The statuses consume three of D1's 100 bindings.
 		for (let i = 0; i < rows.length; i += 97) {
@@ -169,7 +201,9 @@ export const staffApi = new Hono<App>()
 		const [usage, ai, addons] = await Promise.all([usageOf(id), aiUsageOf(id, plan), addonUsageOf(c.env, id, plan)]);
 		const [state]=await db.select({deletedAt:resourceQuota.deletedAt,purgeAfter:resourceQuota.purgeAfter,purgeStarted:resourceQuota.purgeStarted}).from(resourceQuota).where(eq(resourceQuota.userId,id)).limit(1);
 		const stripeMode = /^[rs]k_live_/.test(c.env.STRIPE_SECRET_KEY) ? "" : "test/";
+		const owner=ownerEmail(c.env);
 		return c.json({
+			ownerAccount:!!owner&&u.email.toLowerCase()===owner,
 			deletion:{requestedAt:state?.deletedAt?new Date(state.deletedAt).toISOString():null,purgeAfter:state?.purgeAfter?new Date(state.purgeAfter).toISOString():null,restorable:!!state?.deletedAt&&!!state.purgeAfter&&state.purgeAfter>Date.now()&&!state.purgeStarted},
 			user: { id: u.id, email: hasEmail(u.email) ? u.email : null, emailVerified: u.emailVerified, createdAt: u.createdAt, banned: u.banned, banReason: u.banReason },
 			plan: { label: gift ? `${plan.label} (cortesia)` : plan.label, gift, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.cancelAt ?? active?.periodEnd ?? null, cancelAtPeriodEnd: !!(active?.cancelAtPeriodEnd || active?.cancelAt) },
@@ -188,69 +222,102 @@ export const staffApi = new Hono<App>()
 	// "I lost my laptop": every session ends; the person signs in again.
 	.post("/users/:id/sessions/revoke", validate("param",idParam), async (c) => {
 		const { id } = c.req.valid("param");
-		const gone = await db.delete(session).where(eq(session.userId, id)).returning({ id: session.id });
+		const denied=await guardOwnerAccount(c,"sessions.revoke",id,false);
+		if(denied)return denied;
+		const [, gone] = await c.env.DB.batch<{ id: string }>([
+			c.env.DB.prepare("INSERT INTO staff_log(staff_email,action,user_id,detail) VALUES(?,'sessions.revoke',?,(SELECT count(*) || ' sessões' FROM session WHERE user_id=?))").bind(c.get("staff").email, id, id),
+			c.env.DB.prepare("DELETE FROM session WHERE user_id=? RETURNING id").bind(id),
+		]);
 		await c.env.SYNC_LIVE.getByName(id).revoke();
-		await log(c.get("staff").email, "sessions.revoke", id, `${gone.length} sessões`);
-		return c.json({ revoked: gone.length });
+		return c.json({ revoked: gone?.results.length ?? 0 });
 	})
 
 	// A lost passkey: the person signs in by e-mail code and adds another.
 	.delete("/users/:id/passkeys/:pid", validate("param",idParam.extend({pid:opaqueId})), async (c) => {
 		const { id, pid } = c.req.valid("param");
-		const gone = await db.delete(passkey).where(and(eq(passkey.id, pid), eq(passkey.userId, id))).returning({ name: passkey.name });
-		if (!gone.length) return c.json({ code: "NOT_FOUND" }, 404);
-		await log(c.get("staff").email, "passkey.remove", id, gone[0].name ?? undefined);
+		const denied=await guardOwnerAccount(c,"passkey.remove",id,false);
+		if(denied)return denied;
+		const [, gone] = await c.env.DB.batch([
+			logFor(c.env.DB, c.get("staff").email, "passkey.remove", "passkey", "id=? AND user_id=?", [pid, id], null),
+			c.env.DB.prepare("DELETE FROM passkey WHERE id=? AND user_id=? RETURNING id").bind(pid, id),
+		]);
+		if (!gone?.results.length) return c.json({ code: "NOT_FOUND" }, 404);
 		return c.json({ ok: true });
 	})
 
-	.post("/users/:id/ban", adminOnly, validate("param",idParam), body(z.object({ reason: z.string().trim().min(3).max(300) }).strict()), async (c) => {
+	.post("/users/:id/ban", adminOnly, validate("param",idParam), body(z.strictObject({ reason: z.string().trim().min(3).max(300) })), async (c) => {
 		const { id } = c.req.valid("param");
 		const { reason } = c.req.valid("json");
-		await db.update(user).set({ banned: true, banReason: reason }).where(eq(user.id, id));
+		const denied=await guardOwnerAccount(c,"user.ban",id,true);
+		if(denied)return denied;
+		const [found] = await c.env.DB.batch([
+			c.env.DB.prepare("UPDATE user SET banned=1,ban_reason=? WHERE id=? RETURNING id").bind(reason, id),
+			c.env.DB.prepare("DELETE FROM session WHERE user_id=?").bind(id),
+			logFor(c.env.DB, c.get("staff").email, "user.ban", "user", "id=?", [id], reason),
+		]);
+		if (!found?.results.length) return c.json({ code: "NOT_FOUND" }, 404);
 		await queueAccountPurge(c.env.DB,id).run();
-		await db.delete(session).where(eq(session.userId, id));
 		await c.env.SYNC_LIVE.getByName(id).revoke();
-		await log(c.get("staff").email, "user.ban", id, reason);
 		return c.json({ ok: true });
 	})
 
 	.post("/users/:id/unban", adminOnly, validate("param",idParam), async (c) => {
 		const { id } = c.req.valid("param");
-		await db.update(user).set({ banned: false, banReason: null }).where(eq(user.id, id));
+		const [found] = await c.env.DB.batch([
+			c.env.DB.prepare("UPDATE user SET banned=0,ban_reason=NULL WHERE id=? RETURNING id").bind(id),
+			logFor(c.env.DB, c.get("staff").email, "user.unban", "user", "id=?", [id], null),
+		]);
+		if (!found?.results.length) return c.json({ code: "NOT_FOUND" }, 404);
 		await queueAccountPurge(c.env.DB,id).run();
-		await log(c.get("staff").email, "user.unban", id);
 		return c.json({ ok: true });
 	})
 
 	// Recoverable deletion: no impersonation and no subscription restarted.
 	.delete("/users/:id",adminOnly,validate("param",idParam),async c=>{
 	 const {id}=c.req.valid("param");
+	 const denied=await guardOwnerAccount(c,"user.delete",id,true);
+	 if(denied)return denied;
 	 if(!await c.env.DB.prepare("SELECT id FROM user WHERE id=?").bind(id).first())return c.json({code:"NOT_FOUND"},404);
-	 await softDelete(c.env,id);c.executionCtx.waitUntil(cancelDeletedBilling(c.env));await log(c.get("staff").email,"user.delete",id);
+	 await softDelete(c.env,id,Date.now(),[logFor(c.env.DB,c.get("staff").email,"user.delete","user","id=?",[id],null)]);c.executionCtx.waitUntil(cancelDeletedBilling(c.env));
 	 return c.json({ok:true});
 	})
 	.post("/users/:id/restore",validate("param",idParam),async c=>{
 	 const {id}=c.req.valid("param");
-	 if(!await restoreAccount(c.env.DB,id))return c.json({code:"NOT_FOUND"},404);
-	 await log(c.get("staff").email,"user.restore",id);return c.json({ok:true});
+	 if(!await restoreAccount(c.env.DB,id,Date.now(),c.get("staff").email))return c.json({code:"NOT_FOUND"},404);
+	 return c.json({ok:true});
 	})
 
-	// The team (admin only).
+	// The team (admin only). Making, unmaking or removing an admin: the
+	// owner only (checked by the e-mail in Access's token, never the body).
 	.get("/team", adminOnly, async (c) => {
 		const rows = await db.select().from(staff).orderBy(staff.email);
-		return c.json({ owner: c.env.STAFF_OWNER_EMAIL?.toLowerCase() ?? null, staff: rows });
+		return c.json({ owner: ownerEmail(c.env), staff: rows });
 	})
-	.post("/team", adminOnly, body(z.object({ email: z.email().max(254).transform((e) => e.toLowerCase()), role: z.enum(["support", "admin"]) }).strict()), async (c) => {
+	.post("/team", adminOnly, body(z.strictObject({ email: z.email().max(254).transform((e) => e.toLowerCase()), role: z.enum(["support", "admin"]) })), async (c) => {
 		const body = c.req.valid("json");
-		await db.insert(staff).values({ ...body, addedBy: c.get("staff").email }).onConflictDoUpdate({ target: staff.email, set: { role: body.role } });
-		await log(c.get("staff").email, "team.set", null, `${body.email} ${body.role}`);
+		const me = c.get("staff");
+		if (!me.owner) {
+			if (body.role === "admin") return refuse(c, "team.set", null, "OWNER_ONLY", `${body.email} ${body.role}`);
+			const [current] = await db.select({ role: staff.role }).from(staff).where(eq(staff.email, body.email)).limit(1);
+			if (current?.role === "admin") return refuse(c, "team.set", null, "OWNER_ONLY", `${body.email} ${body.role}`);
+		}
+		await db.batch([
+			// Not the owner: an admin made in the meantime keeps the role.
+			db.insert(staff).values({ ...body, addedBy: me.email }).onConflictDoUpdate({ target: staff.email, set: { role: body.role }, ...(me.owner ? {} : { setWhere: eq(staff.role, "support") }) }),
+			log(c.get("staff").email, "team.set", null, `${body.email} ${body.role}`),
+		]);
 		return c.json({ ok: true });
 	})
 	.delete("/team/:email", adminOnly, validate("param",z.object({email:z.email().max(254).toLowerCase()})), async (c) => {
 		const { email } = c.req.valid("param");
-		if (email === c.get("staff").email) return c.json({ code: "NOT_YOURSELF" }, 400);
-		await db.delete(staff).where(eq(staff.email, email));
-		await log(c.get("staff").email, "team.remove", null, email);
+		const me = c.get("staff");
+		if (email === me.email) return c.json({ code: "NOT_YOURSELF" }, 400);
+		if (!me.owner) {
+			const [current] = await db.select({ role: staff.role }).from(staff).where(eq(staff.email, email)).limit(1);
+			if (current?.role === "admin") return refuse(c, "team.remove", null, "OWNER_ONLY", email);
+		}
+		// Not the owner: only a support seat goes, even if it changed meanwhile.
+		await db.batch([db.delete(staff).where(me.owner ? eq(staff.email, email) : and(eq(staff.email, email), eq(staff.role, "support"))), log(me.email, "team.remove", null, email)]);
 		return c.json({ ok: true });
 	})
 
@@ -273,7 +340,7 @@ export const staffApi = new Hono<App>()
 		}));
 		return c.json({ features, catalog: chat.size > 0, speechCatalog: speech.live });
 	})
-	.put("/ai/:feature", ownerOnly, validate("param", z.object({ feature: z.enum(aiFeatureNames) })), body(z.object({ models: modelList, recommended: modelId.nullable().default(null) }).strict()), async (c) => {
+	.put("/ai/:feature", ownerOnly, validate("param", z.object({ feature: z.enum(aiFeatureNames) })), body(z.strictObject({ models: modelList, recommended: modelId.nullable().default(null) })), async (c) => {
 		const { feature } = c.req.valid("param"), { models, recommended } = c.req.valid("json"), spec = aiFeatures[feature];
 		if (!modelListFor(feature).safeParse(models).success) return c.json({ code: "TOO_MANY", max: spec.max }, 400);
 		// The marked one must be in the list.
@@ -290,8 +357,10 @@ export const staffApi = new Hono<App>()
 			const thinking = models.filter((m) => catalog.get(m)?.thinks);
 			if (thinking.length) return c.json({ code: "REASONING_MODEL", models: thinking }, 400);
 		}
-		await c.env.DB.prepare("INSERT INTO ai_model_setting(feature,models,recommended,updated_by,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(feature) DO UPDATE SET models=excluded.models,recommended=excluded.recommended,updated_by=excluded.updated_by,updated_at=excluded.updated_at").bind(feature, JSON.stringify(models), recommended, c.get("staff").email, Date.now()).run();
-		await log(c.get("staff").email, "ai.models", null, `${feature}: ${models.join(", ")}${recommended ? ` (marcado: ${recommended})` : ""}`);
+		await c.env.DB.batch([
+			c.env.DB.prepare("INSERT INTO ai_model_setting(feature,models,recommended,updated_by,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(feature) DO UPDATE SET models=excluded.models,recommended=excluded.recommended,updated_by=excluded.updated_by,updated_at=excluded.updated_at").bind(feature, JSON.stringify(models), recommended, c.get("staff").email, Date.now()),
+			c.env.DB.prepare("INSERT INTO staff_log(staff_email,action,detail) VALUES(?,'ai.models',?)").bind(c.get("staff").email, `${feature}: ${models.join(", ")}${recommended ? ` (marcado: ${recommended})` : ""}`),
+		]);
 		return c.json({ ok: true });
 	})
 
@@ -306,9 +375,9 @@ export const staffApi = new Hono<App>()
 			.where(cursor ? lt(staffLog.id, cursor) : undefined)
 			.orderBy(desc(staffLog.id))
 			.limit(size + 1);
-		const rows = found.slice(0, size);
+		const rows = found.slice(0, size), last = rows.at(-1);
 		return c.json({
 			items: rows.map((r) => ({ ...r.log, account: r.log.userId ? (r.email === null ? { gone: true, email: null } : { gone: false, email: hasEmail(r.email) ? r.email : null }) : null })),
-			nextCursor: found.length > size ? String(rows[rows.length - 1].log.id) : null,
+			nextCursor: found.length > size && last ? String(last.log.id) : null,
 		});
 	});

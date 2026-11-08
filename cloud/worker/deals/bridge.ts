@@ -1,6 +1,9 @@
 import {z} from "zod";
 import {failure,success,type Delivery} from "../pulse/transports";
 import {safeImage} from "./fetch";
+import {boundedJson} from "../validation";
+// The most a Bridge answer may weigh.
+const BRIDGE_MAX=256*1024;
 
 // The WhatsApp Bridge (cloud/bridge), seen from here: the signed requests
 // to it, a post to a Canal and forgetting a connection. Apart from the
@@ -32,7 +35,7 @@ export async function bridge(env:Cloudflare.Env,method:"GET"|"POST"|"DELETE",pat
   "content-type":"application/json","x-bridge-timestamp":at,"x-bridge-nonce":nonce,
   "x-bridge-signature":await signature(env.DEALS_BRIDGE_SECRET,at,nonce,method,url.pathname+url.search,raw),
  },...(body===undefined?{}:{body:raw})});
- return {status:res.status,data:res.status===204?null:await res.json().catch(()=>null)};
+ return {status:res.status,data:res.status===204?null:await boundedJson(res,BRIDGE_MAX).catch(()=>null)};
 }
 
 // A post to a Canal: the image (the store's, fetched here behind the same

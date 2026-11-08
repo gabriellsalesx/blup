@@ -27,11 +27,17 @@ export const targetHash=(type:ChannelType,target:string)=>sha256(`deals:${type}:
 // targets the same channel (a webhook's address, without its secret).
 export async function addChannel(env:Cloudflare.Env,owner:string,type:ChannelType,target:string,label:string,now=Date.now(),session:string|null=null,same=target){
  const hash=await targetHash(type,same);
- const existing=await env.DB.prepare("SELECT id FROM deals_channel WHERE user_id=? AND target_hash=?").bind(owner,hash).first<{id:string}>();
- if(existing){await env.DB.prepare("UPDATE deals_channel SET active=1,last_error=NULL,name=?,target=?,session_id=coalesce(?,session_id) WHERE id=?").bind(label,await seal(env,owner,existing.id,type,target),session,existing.id).run();return {id:existing.id,created:false};}
+ const update=async()=>{
+  const existing=await env.DB.prepare("SELECT id FROM deals_channel WHERE user_id=? AND target_hash=?").bind(owner,hash).first<{id:string}>();
+  if(!existing)return null;
+  await env.DB.prepare("UPDATE deals_channel SET active=1,last_error=NULL,name=?,target=?,session_id=coalesce(?,session_id) WHERE id=?").bind(label,await seal(env,owner,existing.id,type,target),session,existing.id).run();return {id:existing.id,created:false};
+ };
+ const known=await update();if(known)return known;
  const id=crypto.randomUUID(),sealed=await seal(env,owner,id,type,target);
- const row=await env.DB.prepare("INSERT INTO deals_channel(id,user_id,platform,name,target,target_hash,created_at,session_id) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM deals_channel WHERE user_id=?)<? RETURNING id").bind(id,owner,type,label,sealed,hash,now,session,owner,dealsLimits.channels).first<{id:string}>();
- return row?{id:row.id,created:true}:null;
+ // (user_id,target_hash) is unique: of two requests at once, one creates
+ // the channel and the other updates it.
+ const row=await env.DB.prepare("INSERT INTO deals_channel(id,user_id,platform,name,target,target_hash,created_at,session_id) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM deals_channel WHERE user_id=?)<? ON CONFLICT(user_id,target_hash) DO NOTHING RETURNING id").bind(id,owner,type,label,sealed,hash,now,session,owner,dealsLimits.channels).first<{id:string}>();
+ return row?{id:row.id,created:true}:await update();
 }
 
 export async function affiliateOf(env:Cloudflare.Env,owner:string,store:Store):Promise<Affiliate|null>{
@@ -51,18 +57,18 @@ export const shortCodeSchema=z.string().regex(/^[A-Za-z0-9]{8}$/);
 // What the person sets for all their posts (PUT /api/deals/settings): the
 // pace, the opening line per kind (missing: the default), the extra text
 // and the social networks, one of each, on their own sites.
-const written=z.string().trim().refine(t=>!hasAddress(t),{message:"ADDRESS"});
+const written=z.string().trim().refine(t=>!hasAddress(t),{error:"ADDRESS"});
 export const postStyles=["classic","emoji"] as const;
-export const settingsBody=z.object({
+export const settingsBody=z.strictObject({
  pace:z.literal(dealsPaces),style:z.enum(postStyles).default("classic"),
  // The AI in the hunts' posts: short names and a description.
- ai:z.object({titles:z.boolean(),describe:z.boolean()}).strict().default({titles:false,describe:false}),
+ ai:z.strictObject({titles:z.boolean(),describe:z.boolean()}).default({titles:false,describe:false}),
  headlines:z.partialRecord(z.enum(headlineKinds),written.pipe(z.string().min(1).max(HEADLINE_MAX))),
- extra:z.object({text:written.pipe(z.string().max(EXTRA_MAX)),on:z.boolean()}).strict(),
- socials:z.object({links:z.array(z.object({network:z.enum(socialIds),url:z.string().max(300)}).strict()).max(socialNetworks.length)
-  .refine(l=>new Set(l.map(x=>x.network)).size===l.length,{message:"DUPLICATE"})
-  .transform((l,ctx)=>l.map(x=>{const url=socialURL(x.network,x.url);if(!url)ctx.addIssue({code:"custom",message:"SOCIAL_URL",path:[x.network]});return {network:x.network,url:url??""};})),on:z.boolean()}).strict(),
-}).strict();
+ extra:z.strictObject({text:written.pipe(z.string().max(EXTRA_MAX)),on:z.boolean()}),
+ socials:z.strictObject({links:z.array(z.strictObject({network:z.enum(socialIds),url:z.string().max(300)})).max(socialNetworks.length)
+  .refine(l=>new Set(l.map(x=>x.network)).size===l.length,{error:"DUPLICATE"})
+  .transform((l,ctx)=>l.map(x=>{const url=socialURL(x.network,x.url);if(!url)ctx.addIssue({code:"custom",message:"SOCIAL_URL",path:[x.network]});return {network:x.network,url:url??""};})),on:z.boolean()}),
+});
 export type DealsSettings=z.infer<typeof settingsBody>&{paceLast:number;droppedAt:number|null};
 const savedHeadlines=z.partialRecord(z.enum(headlineKinds),z.string()).catch({});
 const savedSocials=z.array(z.object({network:z.enum(socialIds),url:z.string()})).catch([]);
@@ -124,8 +130,16 @@ export async function respace(db:D1Database,owner:string,pace:number,now=Date.no
  const last=(await db.prepare("SELECT max(sent_at) AS at FROM deals_post WHERE user_id=? AND paced=1 AND state='sent'").bind(owner).first<{at:number|null}>())?.at??0;
  const groups=new Map<number,string[]>();for(const r of rows.results)groups.set(r.at,[...(groups.get(r.at)??[]),r.id]);
  const step=pace*60_000;let at=step?Math.max(now,last+step):now,given=last;
+ // The daily cap still holds where the posts land: the day's other posts
+ // (sent, or queued outside the pace) count, and a day that is full moves
+ // the rest to the next one.
+ const taken=new Map((await db.prepare("SELECT day,count(*) AS n FROM deals_post WHERE user_id=? AND day>=? AND NOT(state='queued' AND paced=1 AND claim_until<=?) GROUP BY day").bind(owner,dayOf(now),now).all<{day:string;n:number}>()).results.map(r=>[r.day,r.n]));
  const updates:D1PreparedStatement[]=[];
- for(const ids of groups.values()){updates.push(db.prepare("UPDATE deals_post SET next_at=?,day=? WHERE user_id=? AND state='queued' AND id IN(SELECT value FROM json_each(?))").bind(at,dayOf(at),owner,JSON.stringify(ids)));given=at;if(step)at+=step;}
+ for(const ids of groups.values()){
+  for(let guard=0;(taken.get(dayOf(at))??0)+ids.length>dealsLimits.postsPerDay&&guard<400;guard++)at=Math.max(at,(Math.floor(at/DAY)+1)*DAY);
+  taken.set(dayOf(at),(taken.get(dayOf(at))??0)+ids.length);
+  updates.push(db.prepare("UPDATE deals_post SET next_at=?,day=? WHERE user_id=? AND state='queued' AND id IN(SELECT value FROM json_each(?))").bind(at,dayOf(at),owner,JSON.stringify(ids)));given=at;if(step)at+=step;
+ }
  updates.push(db.prepare("UPDATE deals_setting SET pace_last=? WHERE user_id=?").bind(given,owner));
  for(let i=0;i<updates.length;i+=50)await db.batch(updates.slice(i,i+50));
 }

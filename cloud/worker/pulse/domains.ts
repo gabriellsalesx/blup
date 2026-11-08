@@ -42,7 +42,7 @@ export const pulseDomainsApi=new Hono<PulseApp>()
   if(!c.get("access").writable||!c.get("access").limits?.customDomain||page.planDisabled){await disablePulseDomain(c.env,page.id,false,true);row=await read(c.env,page.id)??{...row,status:"disabled",ssl:"pending"};return c.json(display(c.env,row));}
   return c.json(await refresh(c.env,row));
  })
- .post("/:page/domain",pulseWrite,validate("param",pageParam),validate("json",z.object({hostname:hostnameSchema}).strict()),async c=>{
+ .post("/:page/domain",pulseWrite,validate("param",pageParam),validate("json",z.strictObject({hostname:hostnameSchema})),async c=>{
   const page=await ownedPage(c.env,c.get("session").user.id,c.req.valid("param").page);if(!page)return c.json({code:"NOT_FOUND"},404);if(page.planDisabled||!c.get("access").limits?.customDomain)return c.json({code:"PLAN"},403);
   if(!c.env.CF_API_TOKEN||!c.env.CF_ZONE_ID||!c.env.SITES_CNAME_TARGET)return c.json({code:"DOMAIN_UNAVAILABLE"},503);
   const hostname=c.req.valid("json").hostname,current=await read(c.env,page.id);if(current&&current.hostname!==hostname)return c.json({code:"DOMAIN_EXISTS"},409);

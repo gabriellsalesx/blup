@@ -1,10 +1,9 @@
-import { accountAllowed } from "./lifecycle";
 import { deviceMark,finishDevice } from "./devices";
 import { env, waitUntil } from "cloudflare:workers";
 import { betterAuth } from "better-auth";
 import { drizzle } from "drizzle-orm/d1";
 
-import { authOptions } from "./auth-options";
+import { accountBlock, authOptions } from "./auth-options";
 import { sendCode } from "./email";
 import * as schema from "./db/schema";
 
@@ -20,7 +19,7 @@ export const auth = betterAuth(
 		turnstileSecret: env.TURNSTILE_SECRET_KEY,
 		stripeSecret: env.STRIPE_SECRET_KEY,
 		stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
-		isBanned:async id=>!await accountAllowed(env.DB,id),
+		accountBlock:id=>accountBlock(env.DB,id),
 		deviceMark:(id,body)=>deviceMark(env.DB,id,body),
 		finishDevice:(id,body)=>finishDevice(env.DB,id,body),
 		// The e-mail goes out after the answer.

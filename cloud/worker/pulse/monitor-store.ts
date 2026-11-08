@@ -47,6 +47,6 @@ INSERT INTO meta VALUES('schema','2') ON CONFLICT(key) DO UPDATE SET value=exclu
   this.sql.exec("DELETE FROM monitor_state WHERE id IN(SELECT id FROM monitor_state WHERE last_at<=? LIMIT 500)",stateCutoff);
   this.sql.exec("DELETE FROM monitor_check WHERE id IN(SELECT id FROM monitor_check WHERE checked_at<=? LIMIT 500)",checkCutoff);
   this.sql.exec("DELETE FROM monitor_day WHERE (monitor_id,day) IN(SELECT monitor_id,day FROM monitor_day WHERE day<? LIMIT 500)",dayCutoff);
-  return this.sql.exec<{more:number}>("SELECT EXISTS(SELECT 1 FROM monitor_check WHERE checked_at<=?) OR EXISTS(SELECT 1 FROM monitor_day WHERE day<?) OR EXISTS(SELECT 1 FROM monitor_state WHERE last_at<=?) AS more",checkCutoff,dayCutoff,stateCutoff).toArray()[0].more===1;
+  return this.sql.exec<{more:number}>("SELECT EXISTS(SELECT 1 FROM monitor_check WHERE checked_at<=?) OR EXISTS(SELECT 1 FROM monitor_day WHERE day<?) OR EXISTS(SELECT 1 FROM monitor_state WHERE last_at<=?) AS more",checkCutoff,dayCutoff,stateCutoff).toArray()[0]?.more===1;
  }
 }

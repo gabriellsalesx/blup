@@ -48,7 +48,7 @@ func TestSyncVaultGone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := (config.Credentials{BlupToken: "tok", NotesKey: base64.StdEncoding.EncodeToString(master)}).Save(); err != nil {
+	if err := (config.Credentials{BlupToken: "tok", NotesKey: base64.StdEncoding.EncodeToString(master), NotesAccount: "u"}).Save(); err != nil {
 		t.Fatal(err)
 	}
 	site := settingsSite(t)

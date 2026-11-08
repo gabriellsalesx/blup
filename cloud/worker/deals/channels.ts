@@ -33,7 +33,7 @@ export const channelsApi=new Hono<DealsApp>()
  // A Discord webhook, or a webhook of the person's own system: its
  // signing secret is shown once, here (the same address again gets a new
  // one).
- .post("/",dealsWrite,validate("json",z.discriminatedUnion("type",[z.object({type:z.literal("discord"),webhook:discordWebhook}).strict(),z.object({type:z.literal("webhook"),url:customWebhook}).strict()])),async c=>{
+ .post("/",dealsWrite,validate("json",z.discriminatedUnion("type",[z.strictObject({type:z.literal("discord"),webhook:discordWebhook}),z.strictObject({type:z.literal("webhook"),url:customWebhook})])),async c=>{
   const owner=c.get("session").user.id,input=c.req.valid("json");
   const secret=input.type==="webhook"?newSecret():null;
   const label=input.type==="webhook"?input.url.label:input.webhook.label;
@@ -43,7 +43,7 @@ export const channelsApi=new Hono<DealsApp>()
   return c.json({id:saved.id,label,secret},saved.created?201:200);
  })
  // A webhook's new signing secret, shown once; the old one stops at once.
- .post("/:channel/secret",dealsWrite,validate("param",channelParam),validate("json",z.object({}).strict()),async c=>{
+ .post("/:channel/secret",dealsWrite,validate("param",channelParam),validate("json",z.strictObject({})),async c=>{
   const owner=c.get("session").user.id,id=c.req.valid("param").channel;
   const row=await c.env.DB.prepare("SELECT target FROM deals_channel WHERE id=? AND user_id=? AND platform='webhook'").bind(id,owner).first<{target:string}>();
   if(!row)return c.json({code:"NOT_FOUND"},404);
@@ -52,7 +52,7 @@ export const channelsApi=new Hono<DealsApp>()
   return c.json({secret});
  })
  // The language the channel's posts go out in (null: the account's).
- .patch("/:channel",dealsWrite,validate("param",channelParam),validate("json",z.object({language:z.enum(postLanguages).nullable()}).strict()),async c=>{
+ .patch("/:channel",dealsWrite,validate("param",channelParam),validate("json",z.strictObject({language:z.enum(postLanguages).nullable()})),async c=>{
   const row=await c.env.DB.prepare("UPDATE deals_channel SET language=? WHERE id=? AND user_id=? RETURNING id").bind(c.req.valid("json").language,c.req.valid("param").channel,c.get("session").user.id).first();
   return row?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
  })
@@ -66,13 +66,13 @@ export const channelsApi=new Hono<DealsApp>()
    c.env.DB.prepare("DELETE FROM deals_post WHERE channel_id=? AND user_id=? AND state='queued'").bind(id,owner),
    c.env.DB.prepare("UPDATE deals_hunt SET channels=(SELECT json_group_array(value) FROM json_each(deals_hunt.channels) WHERE value<>?) WHERE user_id=? AND EXISTS(SELECT 1 FROM json_each(deals_hunt.channels) WHERE value=?)").bind(id,owner,id),
   ]);
-  return removed.results.length?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
+  return removed?.results.length?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
  })
  // Examples, right away: the plain test and posts of each kind (as they
  // would really go out, marked as examples), one round a minute. On
  // WhatsApp one at a time: each takes the Canal's 30-minute turn. The
  // answer says whether all arrived (else why) and when it can go again.
- .post("/:channel/test",dealsWrite,validate("param",channelParam),validate("json",z.object({kinds:z.array(z.enum(sampleKinds)).min(1).max(sampleKinds.length).refine(k=>new Set(k).size===k.length)}).strict()),async c=>{
+ .post("/:channel/test",dealsWrite,validate("param",channelParam),validate("json",z.strictObject({kinds:z.array(z.enum(sampleKinds)).min(1).max(sampleKinds.length).refine(k=>new Set(k).size===k.length)})),async c=>{
   const owner=c.get("session").user.id,id=c.req.valid("param").channel,kinds=c.req.valid("json").kinds,now=Date.now();
   const row=await c.env.DB.prepare("SELECT c.platform,c.target,c.session_id AS sessionId,c.language AS channelLanguage,c.test_at AS testAt,u.language FROM deals_channel c JOIN user u ON u.id=c.user_id WHERE c.id=? AND c.user_id=?").bind(id,owner).first<{platform:string;target:string;sessionId:string|null;channelLanguage:string|null;testAt:number;language:string|null}>();
   if(!row)return c.json({code:"NOT_FOUND"},404);
@@ -105,7 +105,7 @@ export const channelsApi=new Hono<DealsApp>()
 // code; the bot answers with buttons to add it as admin to a channel or a
 // group; the chat where that same Telegram user adds it is the candidate.
 export const telegramApi=new Hono<DealsApp>()
- .post("/link",dealsWrite,validate("json",z.object({}).strict()),async c=>{
+ .post("/link",dealsWrite,validate("json",z.strictObject({})),async c=>{
   if(!botReady(c.env))return c.json({code:"TELEGRAM_UNAVAILABLE"},503);
   const owner=c.get("session").user.id,id=crypto.randomUUID(),code=publicKey(),now=Date.now();
   await c.env.DB.batch([c.env.DB.prepare("DELETE FROM deals_telegram_link WHERE user_id=? AND state<>'confirmed'").bind(owner),c.env.DB.prepare("INSERT INTO deals_telegram_link(id,user_id,hash,expires_at) VALUES(?,?,?,?)").bind(id,owner,await sha256(code),now+LINK_TTL)]);
@@ -117,7 +117,7 @@ export const telegramApi=new Hono<DealsApp>()
   const state=row.state==="confirmed"?"confirmed":row.expiresAt<=Date.now()?"expired":row.state==="candidate"?"candidate":"pending";
   return c.json({state:z.enum(["pending","candidate","expired","confirmed"]).parse(state),candidate:state==="candidate"&&row.chatId?{id:row.chatId,label:row.label??"Telegram"}:null,channelId:row.channelId});
  })
- .post("/link/:link/confirm",dealsWrite,validate("param",linkParam),validate("json",z.object({}).strict()),async c=>{
+ .post("/link/:link/confirm",dealsWrite,validate("param",linkParam),validate("json",z.strictObject({})),async c=>{
   const owner=c.get("session").user.id,id=c.req.valid("param").link,now=Date.now();
   const link=await c.env.DB.prepare("SELECT state,expires_at AS expiresAt,chat_id AS chatId,chat_label AS label,channel_id AS channelId FROM deals_telegram_link WHERE id=? AND user_id=?").bind(id,owner).first<{state:string;expiresAt:number;chatId:string|null;label:string|null;channelId:string|null}>();
   if(!link)return c.json({code:"NOT_FOUND"},404);
@@ -151,8 +151,8 @@ export const telegramWebhookApi=new Hono<{Bindings:Cloudflare.Env}>()
   if(!fresh)return c.json({ok:true});
   const message=update.message;
   if(message?.from&&!message.from.is_bot&&message.chat.type==="private"&&message.from.id===message.chat.id){
-   const match=new RegExp(`^/start(?:@${botName(c.env)})? ([a-f0-9]{48})$`).exec(message.text??"");if(!match)return c.json({ok:true});
-   const started=await c.env.DB.prepare("UPDATE deals_telegram_link SET state='started',telegram_user=? WHERE hash=? AND state IN('pending','started') AND expires_at>? RETURNING user_id AS userId").bind(String(message.from.id),await sha256(match[1]),now).first<{userId:string}>();
+   const code=new RegExp(`^/start(?:@${botName(c.env)})? ([a-f0-9]{48})$`).exec(message.text??"")?.[1];if(!code)return c.json({ok:true});
+   const started=await c.env.DB.prepare("UPDATE deals_telegram_link SET state='started',telegram_user=? WHERE hash=? AND state IN('pending','started') AND expires_at>? RETURNING user_id AS userId").bind(String(message.from.id),await sha256(code),now).first<{userId:string}>();
    if(!started)return c.json({ok:true});
    const language=languageOf((await c.env.DB.prepare("SELECT language FROM user WHERE id=?").bind(started.userId).first<{language:string|null}>())?.language)??"pt",r=replies[language],bot=botName(c.env);
    return c.json({method:"sendMessage",chat_id:message.chat.id,text:r.text,reply_markup:{inline_keyboard:[[{text:r.channel,url:`https://t.me/${bot}?startchannel&admin=post_messages`}],[{text:r.group,url:`https://t.me/${bot}?startgroup&admin=post_messages`}]]}});

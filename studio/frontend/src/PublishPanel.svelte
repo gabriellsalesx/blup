@@ -15,6 +15,7 @@
   import { toast } from "./toast.svelte";
   import CloudAccount from "./CloudAccount.svelte";
   import BlupDomain from "./BlupDomain.svelte";
+  import SyncFresh from "./SyncFresh.svelte";
   import Choice from "./ui/Choice.svelte";
 
   // Two screens in one: publishing the site (where it goes; its own domain
@@ -40,6 +41,14 @@
   let sync = $state<SyncInfo | null>(null);
   let syncing = $state(false);
   let syncError = $state("");
+  // The sync stopped for safety (the cloud shows a version that does not
+  // continue this device's): "Compare from scratch" instead of the error.
+  let syncStuck = $state(false);
+  const isStuck = (e: unknown) => {
+    const c = (e as { cause?: unknown } | null)?.cause;
+    return typeof c === "object" && c !== null && (c as { stuck?: unknown }).stuck === true;
+  };
+  function failed(e: unknown) { syncStuck = isStuck(e); syncError = syncStuck ? "" : msg(e); }
   // Where the notes go: Blup Cloud (encrypted) or a GitHub repository.
   let remote = $state("");
   let cloud = $state<BlupAccount | null>(null);
@@ -47,7 +56,7 @@
   SyncRemote().then((r) => (remote = r));
   async function pickRemote(r: string) {
     await SetSyncRemote(r);
-    remote = r; sync = null; syncError = ""; checkedCloud = false;
+    remote = r; sync = null; syncError = ""; syncStuck = false; checkedCloud = false;
   }
   const canSync = $derived(remote === "blup" ? cloud?.signedIn && cloud.notes === "ready" : !!conn?.github);
   // Blup Cloud ready for the first time: see what a sync would do (once).
@@ -184,12 +193,12 @@
   }
 
   async function checkSync() {
-    syncError = ""; syncing = true;
-    try { sync = await SyncStatus(); } catch (e) { syncError = msg(e); } finally { syncing = false; }
+    syncError = ""; syncStuck = false; syncing = true;
+    try { sync = await SyncStatus(); } catch (e) { failed(e); } finally { syncing = false; }
   }
   async function runSync() {
-    syncError = ""; syncing = true;
-    try { sync = await Sync(); toast(t.toast.synced); } catch (e) { syncError = msg(e); } finally { syncing = false; }
+    syncError = ""; syncStuck = false; syncing = true;
+    try { sync = await Sync(); toast(t.toast.synced); } catch (e) { failed(e); } finally { syncing = false; }
   }
 
   load().then(() => {
@@ -348,7 +357,9 @@
         <p>{p.syncHelp}</p>
         <small class="muted">{gr.notesHelp} <button class="link" onclick={() => newRepo("notes")}>{gr.create}</button></small>
       {/if}
-      {#if canSync}
+      {#if canSync && syncStuck}
+        <SyncFresh done={(info) => { syncStuck = false; sync = info; }} />
+      {:else if canSync}
         {#if sync}
           <p class="sum">{sync.upToDate && !sync.send && !sync.receive ? p.syncUpToDate : p.syncPlan.replace("{send}", String(sync.send)).replace("{receive}", String(sync.receive))} · <b>{sync.repo}</b></p>
           {#each sync.conflicts ?? [] as c (c)}<p class="bad">{p.conflict} {c}</p>{/each}

@@ -51,6 +51,10 @@
 	const id = $derived(params.id);
 
 	const d = $derived(data.detail);
+	// The owner's own account (STAFF_OWNER_EMAIL): nobody blocks or deletes
+	// it here, and only the owner ends its sessions or removes its passkeys.
+	// The API refuses the same.
+	const protectedAccess = $derived(d.ownerAccount && !data.me?.owner);
 	let busy = $state(false);
 	let banOpen = $state(false);
 	let reason = $state("");
@@ -151,7 +155,7 @@
 					<h2 class="font-semibold">Sessões</h2>
 					<p class="mt-0.5 text-sm text-neutral-500">{`${d.sessions.length} ${d.sessions.length === 1 ? "aparelho conectado" : "aparelhos conectados"}`}</p>
 				</div>
-				<Button variant="secondary" {busy} disabled={!d.sessions.length} onclick={revokeSessions}>Encerrar todas</Button>
+				<Button variant="secondary" {busy} disabled={!d.sessions.length || protectedAccess} title={protectedAccess ? "Só o dono encerra as sessões desta conta." : undefined} onclick={revokeSessions}>Encerrar todas</Button>
 			</div>
 			{#if d.sessions.length}
 				<ul class="mt-4 grid gap-2 text-sm">
@@ -172,7 +176,7 @@
 					<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-800">
 						<KeyRound class="size-4 text-neutral-500" />
 						<span class="flex-1"><b>{p.name || "Passkey"}</b> <span class="text-neutral-500">· {when(p.createdAt)}</span></span>
-						<button class="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800" aria-label="Remover passkey" title="Remover" disabled={busy} onclick={() => removePasskey(p.id, p.name || "Passkey")}><Trash class="size-4" /></button>
+						<button class="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800" aria-label="Remover passkey" title="Remover" disabled={busy || protectedAccess} onclick={() => removePasskey(p.id, p.name || "Passkey")}><Trash class="size-4" /></button>
 					</li>
 				{:else}
 					<li class="text-sm text-neutral-500">Nenhuma passkey.</li>
@@ -196,14 +200,18 @@
 				<Row title="Desbloquear a conta" help="A pessoa volta a entrar normalmente.">
 					{#snippet action()}<Button variant="secondary" {busy} onclick={() => run(() => staffApi.unban(id), "Conta desbloqueada")}>Desbloquear</Button>{/snippet}
 				</Row>
+			{:else if d.ownerAccount}
+				<Row title="Conta do dono" help="Esta é a conta do dono do Blup Cloud. Ninguém da equipe bloqueia nem exclui esta conta pela staff." />
 			{:else}
 				<Row title="Bloquear a conta" help="Tira a pessoa de todos os aparelhos e impede novos logins até desbloquear. Pedimos o motivo.">
 					{#snippet action()}<Button variant="secondary" {busy} onclick={() => { reason = ""; banOpen = true; }}>Bloquear</Button>{/snippet}
 				</Row>
 			{/if}
-			<Row title="Excluir a conta" help="Encerra as sessões, tira os sites do ar e solicita o cancelamento da assinatura. O suporte pode recuperar os dados por 30 dias; depois, a limpeza apaga tudo de vez.">
-				{#snippet action()}<Button class="bg-red-700! text-white!" {busy} disabled={!!d.deletion.requestedAt} onclick={removeAccount}>Excluir</Button>{/snippet}
-			</Row>
+			{#if !d.ownerAccount}
+				<Row title="Excluir a conta" help="Encerra as sessões, tira os sites do ar e solicita o cancelamento da assinatura. O suporte pode recuperar os dados por 30 dias; depois, a limpeza apaga tudo de vez.">
+					{#snippet action()}<Button class="bg-red-700! text-white!" {busy} disabled={!!d.deletion.requestedAt} onclick={removeAccount}>Excluir</Button>{/snippet}
+				</Row>
+			{/if}
 		{/if}
 	</div>
 

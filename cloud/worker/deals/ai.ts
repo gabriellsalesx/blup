@@ -129,7 +129,7 @@ ${DATA_RULE}`;
  if("code" in out)return null;
  const parsed=translated.safeParse(jsonOf(out.text));if(!parsed.success||parsed.data.texts.length!==texts.length)return null;
  const clean=parsed.data.texts.map(t=>cleanLine(t,600));
- return clean.every((t,i)=>t&&!hasAddress(t)===!hasAddress(texts[i]))?clean as string[]:null;
+ return clean.every((t,i)=>t&&!hasAddress(t)===!hasAddress(texts[i]??""))?clean as string[]:null;
 }
 
 // GamerPower's titles end with the store and "Giveaway": the game's name

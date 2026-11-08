@@ -115,7 +115,7 @@ export const sitesApi=new Hono<DealsApp>()
   const row=await readSiteDomain(c.env,site.id);
   return c.json(row?await refreshSiteDomain(c.env,row):null);
  })
- .post("/domain",dealsWrite,validate("json",z.object({hostname:hostnameSchema}).strict()),async c=>{
+ .post("/domain",dealsWrite,validate("json",z.strictObject({hostname:hostnameSchema})),async c=>{
   const site=await ownSite(c.env,c.get("session").user.id);if(!site)return c.json({code:"NOT_FOUND"},404);
   if(!c.env.CF_API_TOKEN||!c.env.CF_ZONE_ID||!c.env.SITES_CNAME_TARGET)return c.json({code:"DOMAIN_UNAVAILABLE"},503);
   const hostname=c.req.valid("json").hostname,current=await readSiteDomain(c.env,site.id);

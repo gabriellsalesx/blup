@@ -194,7 +194,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         reminderEmails: number;
                     };
                     gift: boolean;
-                    status: string;
+                    status: string | null;
                     renewsAt: string | null;
                     cancelsAtPeriodEnd: boolean;
                 };
@@ -395,6 +395,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
+                ownerAccount: boolean;
                 deletion: {
                     requestedAt: string | null;
                     purgeAfter: string | null;
@@ -562,6 +563,17 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
+                code: "OWNER_ONLY" | "OWNER_ACCOUNT";
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
                 revoked: number;
             };
             outputFormat: "json";
@@ -571,6 +583,18 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
 } & {
     "/users/:id/passkeys/:pid": {
         $delete: {
+            input: {
+                param: {
+                    id: string;
+                    pid: string;
+                };
+            };
+            output: {
+                code: "OWNER_ONLY" | "OWNER_ACCOUNT";
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
             input: {
                 param: {
                     id: string;
@@ -638,6 +662,56 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
+                code: "OWNER_ONLY" | "OWNER_ACCOUNT";
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    reason: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    reason: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            } & {
+                json: {
+                    reason: string;
+                };
+            };
+            output: {
                 code: string;
                 error: {
                     code: string;
@@ -674,29 +748,9 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             output: {
                 code: string;
-                error: {
-                    code: string;
-                    message: string;
-                };
             };
             outputFormat: "json";
-            status: 400;
-        } | {
-            input: {
-                param: {
-                    id: string;
-                };
-            } & {
-                json: {
-                    reason: string;
-                };
-            };
-            output: {
-                code: string;
-                fields: string[];
-            };
-            outputFormat: "json";
-            status: 400;
+            status: 404;
         } | {
             input: {
                 param: {
@@ -750,6 +804,17 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
                 ok: true;
             };
             outputFormat: "json";
@@ -785,6 +850,17 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
             };
             outputFormat: "json";
             status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                };
+            };
+            output: {
+                code: "OWNER_ONLY" | "OWNER_ACCOUNT";
+            };
+            outputFormat: "json";
+            status: 403;
         } | {
             input: {
                 param: {
@@ -867,7 +943,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         $get: {
             input: {};
             output: {
-                owner: string;
+                owner: string | null;
                 staff: {
                     email: string;
                     role: "admin" | "support";
@@ -882,6 +958,18 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
 } & {
     "/team": {
         $post: {
+            input: {
+                json: {
+                    email: string;
+                    role: "admin" | "support";
+                };
+            };
+            output: {
+                code: "OWNER_ONLY" | "OWNER_ACCOUNT";
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
             input: {
                 json: {
                     email: string;
@@ -927,6 +1015,17 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
 } & {
     "/team/:email": {
         $delete: {
+            input: {
+                param: {
+                    email: string;
+                };
+            };
+            output: {
+                code: "OWNER_ONLY" | "OWNER_ACCOUNT";
+            };
+            outputFormat: "json";
+            status: 403;
+        } | {
             input: {
                 param: {
                     email: string;
@@ -3296,15 +3395,15 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     plan: {
                         models: string[];
                         recommended: string | null;
-                    };
+                    } | undefined;
                     own: {
                         models: string[];
                         recommended: string | null;
-                    };
+                    } | undefined;
                 };
                 translate: {
-                    plan: string[];
-                    own: string[];
+                    plan: string[] | undefined;
+                    own: string[] | undefined;
                 };
             };
             outputFormat: "json";
@@ -8113,7 +8212,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 token: {
                     prefix: string;
                     createdAt: number;
-                };
+                } | null;
                 maps: {
                     release: string;
                     file: string;
@@ -10773,7 +10872,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: "INVALID" | "NOT_FOUND" | "DAILY_LIMIT";
             };
             outputFormat: "json";
-            status: 404 | 400 | 429;
+            status: 400 | 404 | 429;
         } | {
             input: {
                 json: {
@@ -10880,7 +10979,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: "FETCH_BLOCKED" | "FETCH_FAILED" | "NOT_A_VIDEO" | "VIDEO_NOT_FOUND";
             };
             outputFormat: "json";
-            status: 404 | 400 | 502;
+            status: 400 | 404 | 502;
         } | {
             input: {
                 json: {
@@ -10992,7 +11091,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: "INVALID" | "NOT_FOUND" | "DAILY_LIMIT";
             };
             outputFormat: "json";
-            status: 404 | 400 | 429;
+            status: 400 | 404 | 429;
         } | {
             input: {
                 json: {
@@ -11010,7 +11109,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: "FETCH_BLOCKED" | "FETCH_FAILED" | "NOT_A_VIDEO" | "VIDEO_NOT_FOUND";
             };
             outputFormat: "json";
-            status: 404 | 400 | 502;
+            status: 400 | 404 | 502;
         } | {
             input: {
                 json: {
@@ -11301,7 +11400,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: "CHANNEL_GONE" | "CHANNEL_REFUSED" | "CHANNEL_INVALID" | undefined;
             };
             outputFormat: "json";
-            status: 404 | 400 | 502;
+            status: 400 | 404 | 502;
         } | {
             input: {
                 json: {
@@ -11485,7 +11584,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: "CHANNEL_GONE" | "CHANNEL_REFUSED" | "CHANNEL_INVALID" | undefined;
             };
             outputFormat: "json";
-            status: 404 | 400 | 502;
+            status: 400 | 404 | 502;
         } | {
             input: {
                 json: {

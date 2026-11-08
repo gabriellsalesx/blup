@@ -50,7 +50,7 @@ const made:Record<"store_deal"|"product"|"game_free"|"nuuvem_deal",Record<Langua
 // is the Cloud's, where webhooks find the picture.
 export async function samplePost(db:D1Database,owner:string,kind:Exclude<SampleKind,"test">,lang:Language,account:Language,origin:string):Promise<Post>{
  const own=await settingsOf(db,owner),fake=made[kind][lang],free=kind==="game_free";
- const custom=headlineOf(own,kind)!==null;
+ const custom=headlineOf(own,kind)!==null,picture=`${pictures[kind]}.${lang}`;
  const title=openingLine({title:fake.title,kind,discount:fake.discount,store:fake.store,language:custom?account:lang},own);
- return {sample:true,store:fake.store,title,extra:own.extra.on&&own.extra.text?own.extra.text:null,socials:socialLinks(own),style:own.style,description:fake.description,coupon:fake.coupon,image:`${origin}/api/deals/samples/${pictures[kind]}.${lang}.jpg`,photo:sampleImage(`${pictures[kind]}.${lang}` as SampleImage),price:fake.price,originalPrice:fake.originalPrice,currency:fake.currency,discount:fake.discount,link:fake.link,affiliate:false,kind,credit:free?"gamerpower":null};
+ return {sample:true,store:fake.store,title,extra:own.extra.on&&own.extra.text?own.extra.text:null,socials:socialLinks(own),style:own.style,description:fake.description,coupon:fake.coupon,image:`${origin}/api/deals/samples/${pictures[kind]}.${lang}.jpg`,photo:isSampleImage(picture)?sampleImage(picture):null,price:fake.price,originalPrice:fake.originalPrice,currency:fake.currency,discount:fake.discount,link:fake.link,affiliate:false,kind,credit:free?"gamerpower":null};
 }

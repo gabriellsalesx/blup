@@ -10,6 +10,7 @@ import {pulseApi} from "./api";
 import {checkDue} from "./scheduler";
 import {publicPage,servePulsePage} from "./public";
 import {renderIncidentHistory} from "./public-html";
+import {at as nth} from "./test-at";
 let db:TestD1,storage:TestD1,store:MonitorStore;
 beforeEach(()=>{
  vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
@@ -61,7 +62,7 @@ it.each([Date.UTC(2026,10,15,23,5),Date.UTC(2026,10,30,23,5),Date.UTC(2026,11,31
 it("keeps cleanup scheduled while expired monitor checks exceed one batch",()=>{
  const now=Date.now(),old=now-8*86400000;
  for(let i=0;i<501;i++)store.record({id:`expired-${i}`,monitor:"monitor1",revision:1,scheduledAt:old,checkedAt:old,intervalMinutes:5,result:{outcome:"up",status:200,durationMs:1,reason:"http"}});
- expect(store.cleanup(30,now)).toBe(true);expect(store.sql.exec<{n:number}>("SELECT count(*) AS n FROM monitor_check").toArray()[0].n).toBe(1);expect(store.cleanup(30,now)).toBe(false);expect(store.sql.exec<{n:number}>("SELECT count(*) AS n FROM monitor_check").toArray()[0].n).toBe(0);
+ expect(store.cleanup(30,now)).toBe(true);expect(nth(store.sql.exec<{n:number}>("SELECT count(*) AS n FROM monitor_check").toArray()).n).toBe(1);expect(store.cleanup(30,now)).toBe(false);expect(nth(store.sql.exec<{n:number}>("SELECT count(*) AS n FROM monitor_check").toArray()).n).toBe(0);
 });
 it("enforces owner, interval and count; cron overlap cannot check twice",async()=>{
  expect((await request("/monitors","POST",{projectId:"2",name:"x",url:"https://example.com",intervalMinutes:5})).status).toBe(404);
@@ -87,7 +88,7 @@ it("publishes only explicit component names and incident text, escapes attacks a
  // The bars' "none" day keeps its own look: no page-wide rule for that name.
  expect(html).not.toMatch(/[}\n]\.none\{/);expect(html).not.toContain("<img");
  // The list links each incident to its own page, with every update.
- const incidentId=(page as {incidents:{id:string}[]}).incidents[0].id;expect(html).toContain(`href="incidents/${incidentId}?lang=en"`);expect(html).toContain('<a class="head-link" href="incidents?lang=en">');
+ const incidentId=nth((page as {incidents:{id:string}[]}).incidents).id;expect(html).toContain(`href="incidents/${incidentId}?lang=en"`);expect(html).toContain('<a class="head-link" href="incidents?lang=en">');
  const own=await servePulsePage(new Request(`https://pulse.audit.invalid/public-page/incidents/${incidentId}`),state.env),ownHtml=await own?.text()??"";
  expect(own?.status).toBe(200);expect(ownHtml).toContain("&lt;img src=x");expect(ownHtml).not.toContain("<img src=x");expect(ownHtml).toContain('href="../incidents?lang=en"');expect(ownHtml).toContain('class="brand" href="../"');
  // The previous incidents, three months at a time.
@@ -112,10 +113,10 @@ it("keeps how an incident leaves each service and when it was published",async()
  const listed=(await(await request(`/pages/${id}/incidents`)).json() as {incidents:{createdAt:number;impact:string;services:unknown[]}[]}).incidents[0];
  expect(listed).toMatchObject({createdAt:earlier,impact:"major_outage",updates:1,services:[{monitorId:monitor.id,status:"downtime"}]});
  let page=await publicPage(state.env,"status-services");if(!page||page.unavailable)throw new Error("page");
- expect(page.components[0]).toMatchObject({name:"Public API",incident:"downtime"});expect(page.incidents[0].services).toEqual([{name:"Public API",status:"downtime"}]);
+ expect(page.components[0]).toMatchObject({name:"Public API",incident:"downtime"});expect(nth(page.incidents).services).toEqual([{name:"Public API",status:"downtime"}]);
  expect((await request(`/pages/${id}/incidents/${incident}/updates`,"POST",{body:"Fixed",state:"resolved",services:[{monitorId:monitor.id,status:"resolved"}]})).status).toBe(201);
  page=await publicPage(state.env,"status-services");if(!page||page.unavailable)throw new Error("page");
- expect(page.components[0].incident).toBeNull();expect(page.incidents[0].services).toEqual([{name:"Public API",status:"resolved"}]);
+ expect(nth(page.components).incident).toBeNull();expect(nth(page.incidents).services).toEqual([{name:"Public API",status:"resolved"}]);
  expect(db.sqlite.prepare("SELECT impact FROM pulse_incident WHERE id=?").get(incident)?.impact).toBe("operational");
  const updates=(await(await request(`/pages/${id}/incidents/${incident}/updates`)).json() as {updates:{body:string;state:string}[]}).updates;
  expect(updates.map(u=>[u.body,u.state])).toEqual([["Fixed","resolved"],["Looking into it","investigating"]]);
@@ -146,10 +147,10 @@ it("schedules maintenance on a page's services and shows it while it lasts",asyn
  const listed=(await(await request(`/pages/${id}/maintenance`)).json() as {maintenance:{id:string;state:string;services:string[]}[]}).maintenance;
  expect(listed.map(m=>[m.state,m.services])).toEqual([["scheduled",[monitor.id]],["active",[monitor.id]]]);
  let page=await publicPage(state.env,"status-maintenance");if(!page||page.unavailable)throw new Error("page");
- expect(page.components[0].maintenance).toBe(true);expect(page.maintenance.map(m=>[m.title,m.state,m.services])).toEqual([["Database upgrade","active",["Public API"]],["Later","scheduled",["Public API"]]]);
+ expect(nth(page.components).maintenance).toBe(true);expect(page.maintenance.map(m=>[m.title,m.state,m.services])).toEqual([["Database upgrade","active",["Public API"]],["Later","scheduled",["Public API"]]]);
  const html=await(await servePulsePage(new Request("https://pulse.audit.invalid/status-maintenance/"),state.env))?.text();expect(html).toContain("Database upgrade");
  expect((await request(`/pages/${id}/maintenance/${maintenance}`,"PUT",{...body,startsAt:at(now-3_600_000),endsAt:at(now-60_000)})).status).toBe(200);
- page=await publicPage(state.env,"status-maintenance");if(!page||page.unavailable)throw new Error("page");expect(page.components[0].maintenance).toBe(false);expect(page.maintenance.map(m=>m.title)).toEqual(["Later"]);
+ page=await publicPage(state.env,"status-maintenance");if(!page||page.unavailable)throw new Error("page");expect(nth(page.components).maintenance).toBe(false);expect(page.maintenance.map(m=>m.title)).toEqual(["Later"]);
  expect((await request(`/pages/${id}/maintenance/${maintenance}`,"DELETE",undefined,"bob")).status).toBe(404);expect((await request(`/pages/${id}/maintenance/${maintenance}`,"DELETE")).status).toBe(200);
  expect(db.sqlite.prepare("SELECT count(*) AS n FROM pulse_maintenance_component WHERE maintenance_id=?").get(maintenance)?.n).toBe(0);
 });
@@ -173,7 +174,7 @@ it("checks with the monitor's method, statuses, keyword, timeout and headers",as
  expect(await checkHTTP("https://example.com/",false,site(200,"<h1>Erro interno</h1>"),{...base,keyword:{text:"Bem-vindo",mode:"contains"}})).toMatchObject({outcome:"down",reason:"keyword"});
  expect((await checkHTTP("https://example.com/",false,site(200,"<h1>BEM-VINDO</h1>"),{...base,keyword:{text:"bem-vindo",mode:"contains"}})).outcome).toBe("up");
  expect(await checkHTTP("https://example.com/",false,site(200,"Fatal error"),{...base,keyword:{text:"fatal error",mode:"absent"}})).toMatchObject({outcome:"down",reason:"keyword"});
- seen.length=0;await checkHTTP("https://example.com/",false,site(200),{...base,method:"HEAD"});expect(seen[0].method).toBe("HEAD");
+ seen.length=0;await checkHTTP("https://example.com/",false,site(200),{...base,method:"HEAD"});expect(nth(seen).method).toBe("HEAD");
  seen.length=0;const hop=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{const d=dns(input);if(d)return d;seen.push({url:String(input),method:"GET",auth:new Headers(init?.headers).get("authorization")});return String(input).startsWith("https://example.com/")?new Response(null,{status:302,headers:{location:"https://other.example.org/login"}}):new Response("ok");});
  await checkHTTP("https://example.com/api",false,hop,base,[{name:"Authorization",value:"Bearer secret-value"}]);
  expect(seen.map(s=>[new URL(s.url).hostname,s.auth])).toEqual([["example.com","Bearer secret-value"],["other.example.org",null]]);
@@ -214,7 +215,7 @@ it("shows the page's logo, links and title choice, and a badge and favicon with 
  expect((await upload(webp(120,40),"bob")).status).toBe(404);
  const sent=await upload(webp(120,40));expect(sent.status).toBe(201);const {version}=await sent.json() as {version:string};expect(version).toMatch(/^[a-f0-9]{16}$/);
  const listed=await(await request("/pages")).json() as {pages:{showTitle:boolean;links:unknown[];logos:{light:string|null;dark:string|null}}[]};
- expect((listed.pages[0] as unknown as {components:{description:string}[]}).components[0].description).toBe("Our <b>REST</b> API");
+ expect(nth((nth(listed.pages) as unknown as {components:{description:string}[]}).components).description).toBe("Our <b>REST</b> API");
  expect(listed.pages[0]).toMatchObject({showTitle:false,links:[{label:"Site <b>",url:"https://acme.example/"}],logos:{light:null,dark:version}});
  const served=await servePulsePage(new Request("https://pulse.audit.invalid/acme-status/"),state.env),html=await served?.text()??"";
  // No incident yet: no incidents card at all.
@@ -245,8 +246,8 @@ it("shows the page's logo, links and title choice, and a badge and favicon with 
 it("folds a month's incidents after the first days, with a show more",()=>{
  const day=Date.UTC(2026,10,10),incidents=Array.from({length:8},(_,i)=>({id:crypto.randomUUID(),title:`Incident ${i}`,state:"resolved",impact:"degraded",createdAt:new Date(day-i*86_400_000).toISOString(),updatedAt:new Date(day-i*86_400_000).toISOString(),services:[],updates:[]}));
  const page={title:"Acme",language:"en" as const,historyDays:90,components:[],incidents:[],maintenance:[],showTitle:true,links:[],logos:{light:null,dark:null}};
- const months=[{key:"2026-11",start:Date.UTC(2026,10,1),end:Date.UTC(2026,11,1)},{key:"2026-10",start:Date.UTC(2026,9,1),end:Date.UTC(2026,10,1)},{key:"2026-09",start:Date.UTC(2026,8,1),end:Date.UTC(2026,9,1)}];
+ const months:Parameters<typeof renderIncidentHistory>[1]["months"]=[{key:"2026-11",start:Date.UTC(2026,10,1),end:Date.UTC(2026,11,1)},{key:"2026-10",start:Date.UTC(2026,9,1),end:Date.UTC(2026,10,1)},{key:"2026-09",start:Date.UTC(2026,8,1),end:Date.UTC(2026,9,1)}];
  const html=renderIncidentHistory(page,{months,older:null,newer:null},incidents,day);
- const [visible,folded]=html.split('<details class="more">');
+ const parts=html.split('<details class="more">'),visible=nth(parts),folded=nth(parts,1);
  expect(visible.match(/class="inc"/g)).toHaveLength(5);expect(folded).toContain("Show 3 more incidents");expect(folded.match(/class="inc"/g)).toHaveLength(3);
 });

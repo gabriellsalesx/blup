@@ -14,8 +14,8 @@ const videoPath=/^\/@([A-Za-z0-9._]{1,64})\/video\/([0-9]{8,25})\/?$/;
 // The video's own address, without what the app adds to a shared link.
 export function videoOf(url:URL):Video|null{
  if(!tiktokHost.test(url.hostname.toLowerCase()))return null;
- const match=videoPath.exec(url.pathname);if(!match)return null;
- return {id:match[2],author:match[1],url:`https://www.tiktok.com/@${match[1]}/video/${match[2]}`};
+ const [,author,id]=videoPath.exec(url.pathname)??[];if(!author||!id)return null;
+ return {id,author,url:`https://www.tiktok.com/@${author}/video/${id}`};
 }
 const oembed=z.object({embed_product_id:z.string().regex(/^[0-9]{8,25}$/)}).loose();
 export async function tiktokVideo(raw:string,send:typeof fetch=fetch):Promise<Video>{

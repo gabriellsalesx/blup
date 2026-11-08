@@ -11,13 +11,16 @@ import worker from "./index";
 
 const ORIGIN="https://cloud.audit.invalid";
 let codes:Map<string,string>;
-let tables:Record<string,Record<string,unknown>[]>;
+type Row=Record<string,unknown>;
+let tables:{user:Row[];session:Row[];account:Row[];verification:Row[];passkey:Row[];subscription:Row[];deviceCode:Row[]};
+// The first row of a table (a test fails at once if it is missing).
+const first=(rows:Row[])=>{const row=rows[0];if(!row)throw new Error("missing row");return row;};
 let service:ReturnType<typeof makeAuth>;
 function makeAuth(){
 	const options=authOptions({} as never,{}, {
 		appUrl:ORIGIN,rpID:"audit.invalid",secret:"local-audit-placeholder-not-a-real-secret-123456789",
 		turnstileSecret:"audit-only-placeholder",stripeSecret:"sk_test_audit_only_placeholder",stripeWebhookSecret:"audit-only-placeholder",
-		isBanned:async()=>false,sendCode:(email,code)=>{codes.set(email,code);},
+		accountBlock:async()=>null,sendCode:(email,code)=>{codes.set(email,code);},
 	});
 	return betterAuth({...options,advanced:{...options.advanced,disableOriginCheck:false,disableCSRFCheck:false},database:memoryAdapter(tables),rateLimit:{enabled:false},logger:{disabled:true}});
 }
@@ -92,14 +95,14 @@ describe("Better Auth 1.7.14, actual plugins and endpoints",()=>{
 	it("creates a passkey-only account and verifies a cryptographically signed assertion",async()=>{
 		const {key,id,rp,res}=await registerPasskey();
 		expect(tables.user).toHaveLength(1);expect(tables.passkey).toHaveLength(1);
-		expect(String(tables.user[0].email)).toMatch(new RegExp(`@${NO_EMAIL_DOMAIN.replace(/\./g,"\\.")}$`));
-		expect(tables.user[0].emailVerified).toBe(false);expect(cookieOf(res)).toContain("session_token");
+		expect(String(first(tables.user).email)).toMatch(new RegExp(`@${NO_EMAIL_DOMAIN.replace(/\./g,"\\.")}$`));
+		expect(first(tables.user).emailVerified).toBe(false);expect(cookieOf(res)).toContain("session_token");
 		const start=await call("/passkey/generate-authenticate-options");
 		const {challenge}=await start.json() as {challenge:string};
 		const client=new TextEncoder().encode(JSON.stringify({type:"webauthn.get",challenge,origin:ORIGIN}));
 		const authData=join(rp,new Uint8Array([0x05,0,0,0,1]));
 		const signature=new Uint8Array(await crypto.subtle.sign({name:"ECDSA",hash:"SHA-256"},key.privateKey,join(authData,new Uint8Array(await crypto.subtle.digest("SHA-256",client)))));
-		const integer=(raw:Uint8Array)=>{let v=raw;while(v.length>1&&v[0]===0)v=v.slice(1);if(v[0]&128)v=join(new Uint8Array([0]),v);return join(new Uint8Array([2,v.length]),v);};
+		const integer=(raw:Uint8Array)=>{let v=raw;while(v.length>1&&v[0]===0)v=v.slice(1);if((v[0]??0)&128)v=join(new Uint8Array([0]),v);return join(new Uint8Array([2,v.length]),v);};
 		const der=join(integer(signature.slice(0,32)),integer(signature.slice(32)));
 		const response={id:b64(id),rawId:b64(id),type:"public-key",response:{clientDataJSON:b64(client),authenticatorData:b64(authData),signature:b64(join(new Uint8Array([0x30,der.length]),der))},clientExtensionResults:{}};
 		expect((await call("/passkey/verify-authentication",{response},cookieOf(start))).status).toBe(200);
@@ -146,13 +149,13 @@ describe("Better Auth 1.7.14, actual plugins and endpoints",()=>{
 	});
 	it("links an email to a passkey-only account only after verifying the new address",async()=>{
 		const {cookie}=await login();
-		tables.user[0].email=`fixture@${NO_EMAIL_DOMAIN}`; tables.user[0].emailVerified=false;
+		first(tables.user).email=`fixture@${NO_EMAIL_DOMAIN}`; first(tables.user).emailVerified=false;
 		const newEmail="linked@audit.invalid";
 		expect((await call("/email-otp/request-email-change",{newEmail},cookie)).status).toBe(200);
 		expect((await call("/email-otp/change-email",{newEmail,otp:"wrong"},cookie)).ok).toBe(false);
-		expect(tables.user[0].emailVerified).toBe(false);
+		expect(first(tables.user).emailVerified).toBe(false);
 		expect((await call("/email-otp/change-email",{newEmail,otp:codes.get(newEmail)},cookie)).status).toBe(200);
-		expect(tables.user[0].email).toBe(newEmail);expect(tables.user[0].emailVerified).toBe(true);
+		expect(first(tables.user).email).toBe(newEmail);expect(first(tables.user).emailVerified).toBe(true);
 	});
 	it("rejects unsigned Stripe events and reference IDs of another account",async()=>{
 		const {cookie}=await login();
@@ -186,4 +189,24 @@ describe("Better Auth 1.7.14, actual plugins and endpoints",()=>{
 		expect([403,404]).toContain(res.status);
 		expect(codes.has("attacker@audit.invalid")).toBe(false);
 	});
+ it("adds a passkey only from a recent browser sign in",async()=>{
+  const {cookie}=await login();
+  expect((await call("/passkey/generate-register-options",undefined,cookie)).status).toBe(200);
+  const s=tables.session[0];if(!s)throw new Error("Missing fixture session");
+  s.createdAt=new Date(Date.now()-2*3600_000);
+  const old=await call("/passkey/generate-register-options",undefined,cookie);
+  expect(old.status).toBe(403);expect(await old.json()).toMatchObject({code:"SESSION_EXPIRED"});
+  s.createdAt=new Date();s.studioDevice=true;
+  expect((await call("/passkey/generate-register-options",undefined,cookie)).status).toBe(403);
+  expect(tables.passkey).toHaveLength(0);
+ });
+ it("does not let the public device route pre-bind an account",async()=>{
+  const {cookie}=await login();const victim=tables.user[0]?.id;
+  expect((await call("/device/code",{client_id:"blup-studio",user_id:victim})).status).toBe(400);
+  expect(tables.deviceCode).toHaveLength(0);
+  expect((await call("/device/code",{client_id:"blup-studio"})).status).toBe(200);
+  expect((await call("/update-user",{name:"x".repeat(81)},cookie)).status).toBe(400);
+  expect((await call("/update-user",{name:"Ana",image:"javascript:alert(1)"},cookie)).status).toBe(400);
+  expect((await call("/update-user",{name:"Ana"},cookie)).status).toBe(200);expect(tables.user[0]?.name).toBe("Ana");
+ });
 });

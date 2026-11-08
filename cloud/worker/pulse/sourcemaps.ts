@@ -15,7 +15,7 @@ import type {SafeEvent} from "./event";
 export const SOURCEMAP_MAX_BYTES=20*1024*1024,SOURCEMAPS_PER_PROJECT=300,SOURCEMAP_BYTES_PER_PROJECT=512*1024*1024;
 const releaseName=z.string().min(1).max(128).regex(/^[^\s/\\][^\s]*$/);
 const fileName=z.string().min(1).max(160).regex(/^[\w.@~-]+\.(?:m?js|cjs)$/);
-const upload=z.object({release:releaseName,file:fileName}).strict();
+const upload=z.strictObject({release:releaseName,file:fileName});
 const objectKey=async(project:string,release:string,file:string)=>`${project}/${await sha256(`${release}\n${file}`)}.map`;
 
 // The build's side: no session, only the upload token of one project.
@@ -51,7 +51,7 @@ export const sourcemapPanelApi=new Hono<PulseApp>()
   ]) as [D1Result<{prefix:string;createdAt:number}>,D1Result<{release:string;file:string;size:number;uploadedAt:number}>];
   return c.json({token:token.results[0]??null,maps:maps.results,limit:SOURCEMAPS_PER_PROJECT,bytesLimit:SOURCEMAP_BYTES_PER_PROJECT});
  })
- .post("/projects/:project/upload-token",pulseWrite,validate("param",z.object({project:projectId})),validate("json",z.object({}).strict()),async c=>{
+ .post("/projects/:project/upload-token",pulseWrite,validate("param",z.object({project:projectId})),validate("json",z.strictObject({})),async c=>{
   const owner=c.get("session").user.id,project=c.req.valid("param").project,found=await ownedProject(c.env,owner,project);if(!found||!found.active||found.planDisabled)return c.json({code:"NOT_FOUND"},404);
   const token=publicKey(),now=Date.now();
   await c.env.DB.batch([c.env.DB.prepare("UPDATE pulse_upload_token SET revoked_at=? WHERE project_id=? AND revoked_at IS NULL").bind(now,project),c.env.DB.prepare("INSERT INTO pulse_upload_token(id,project_id,hash,prefix,created_at) VALUES(?,?,?,?,?)").bind(crypto.randomUUID(),project,await sha256(token),token.slice(0,8),now)]);

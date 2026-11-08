@@ -7,6 +7,7 @@
   import External from "@lucide/svelte/icons/external-link";
   import X from "@lucide/svelte/icons/x";
   import Plus from "@lucide/svelte/icons/plus";
+  import Check from "@lucide/svelte/icons/check";
   import NotePicker from "./NotePicker.svelte";
   import { optionColor, nextColor } from "./db";
   import { typedValue } from "./fieldvalue";
@@ -84,7 +85,7 @@
       <input type="text" bind:value={typed} placeholder={d.findOrCreate} use:focus onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (choices[0] && choices[0].value.toLowerCase() === typed.trim().toLowerCase()) choose(choices[0].value); else create(); } if (e.key === "Escape") menu = null; }} />
       <ul role="listbox" aria-label={column.name}>
         {#each choices as o (o.value)}
-          <li><button role="option" aria-selected={list.includes(o.value)} onclick={() => choose(o.value)}><span class="chip" style:--c={optionColor(o.color)}>{o.value}</span>{#if list.includes(o.value)}<span class="on">✓</span>{/if}</button></li>
+          <li><button role="option" aria-selected={list.includes(o.value)} onclick={() => choose(o.value)}><span class="chip" style:--c={optionColor(o.color)}>{o.value}</span>{#if list.includes(o.value)}<span class="on"><Check size={14} aria-hidden="true" /></span>{/if}</button></li>
         {/each}
         {#if typed.trim() && !option(typed.trim()) && onNewOption}
           <li><button onclick={create}><Plus size={14} />{d.createOption.replace("{name}", typed.trim())}</button></li>

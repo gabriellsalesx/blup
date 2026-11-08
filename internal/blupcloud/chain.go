@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gabriellsalesx/blup/internal/notesync"
@@ -40,8 +41,11 @@ import (
 // chainBack is how many earlier MACs a manifest carries (about 3 KB).
 const chainBack = 64
 
-// chainWalk bounds the versions fetched to follow the chain once.
-const chainWalk = 4096
+// chainWalk bounds the versions fetched to follow the chain once. Past it
+// the chain is not followed any further and the head is accepted, as when
+// the versions needed are no longer kept: refusing would lock a computer
+// that was away for long out of its notes for good (a var for the tests).
+var chainWalk = 4096
 
 // chainLink is the "prev" of a manifest of version n: N is n-1, MACs the
 // MACs of N, N-1, ... (none when N is 0, the first version of a vault).
@@ -124,6 +128,21 @@ func (r *Remote) Token(version string) string {
 	return ""
 }
 
+// Forget drops the chain MACs this Remote remembers and the cached
+// manifests of old versions (notesync.Forgetter): after the person chose to
+// compare from scratch, versions of the branch left behind must not be
+// read again as if they were part of the one accepted now (following the
+// chain through them would stop the sync once more).
+func (r *Remote) Forget() error {
+	r.mu.Lock()
+	r.macs = nil
+	r.mu.Unlock()
+	if r.Cache == "" {
+		return nil
+	}
+	return os.RemoveAll(r.Cache)
+}
+
 // Continues reports whether the head h descends from version, whose chain
 // MAC is token (notesync.Chained). It returns notesync.ErrForked when it
 // doesn't.
@@ -180,5 +199,5 @@ func (r *Remote) Continues(ctx context.Context, h notesync.Head, version, token 
 		}
 		cur, at = m.Prev, older
 	}
-	return forked(hd.n)
+	return nil // too far back to follow: as when no longer kept
 }

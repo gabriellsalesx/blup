@@ -10,7 +10,7 @@ import {createStripe} from "./stripe-client";
 import {siteLock,unlockSite} from "./quota";
 
 const resultSchema=z.object({state:z.enum(["pending","scheduled","restored","awaiting_webhook"]),effectiveAt:z.iso.datetime(),paymentUrl:z.string().nullable()});
-const ticketBody=z.object({ticket:opaqueId,keep:keepSchema.optional()}).strict();
+const ticketBody=z.strictObject({ticket:opaqueId,keep:keepSchema.optional()});
 const scheduleSchema=z.object({id:z.string().regex(/^sub_sched_[A-Za-z0-9_]+$/),subscription:z.string()});
 type Ticket={id:string;userId:string;subscriptionId:string;targetPlan:string;annual:number;prorationDate:number;fingerprint:string;quote:string;targetPrice:string|null;expiresAt:number;state:string;result:string|null;scheduleId:string|null};
 async function ticketOf(db:D1Database,owner:string,id:string){return db.prepare("SELECT id,user_id AS userId,subscription_id AS subscriptionId,target_plan AS targetPlan,annual,proration_date AS prorationDate,fingerprint,quote,target_price AS targetPrice,expires_at AS expiresAt,state,result,schedule_id AS scheduleId FROM pulse_billing_ticket WHERE id=? AND user_id=?").bind(id,owner).first<Ticket>();}
@@ -20,9 +20,9 @@ export const billingApi=new Hono<PulseApp>().use("*",pulseSession)
   if(error instanceof BillingFlowError){if(error.code==="BILLING_BUSY")c.header("Retry-After","1");return c.json({code:error.code},error.status);}
   console.error("[blup] billing_action_failed");return c.json({code:"BILLING_UNAVAILABLE"},502);
  })
- .post("/checkout",validate("json",z.object({plan:paidPlanNameSchema,annual:z.boolean()}).strict()),async c=>{const input=c.req.valid("json");return c.json(await checkout(c.env,c.get("session").user.id,planNamed(input.plan),input.annual));})
- .post("/portal",validate("json",z.object({}).strict()),async c=>c.json(await portal(c.env,c.get("session").user.id)))
- .post("/preview",validate("json",z.object({plan:planNameSchema,annual:z.boolean()}).strict()),async c=>{
+ .post("/checkout",validate("json",z.strictObject({plan:paidPlanNameSchema,annual:z.boolean()})),async c=>{const input=c.req.valid("json");return c.json(await checkout(c.env,c.get("session").user.id,planNamed(input.plan),input.annual));})
+ .post("/portal",validate("json",z.strictObject({})),async c=>c.json(await portal(c.env,c.get("session").user.id)))
+ .post("/preview",validate("json",z.strictObject({plan:planNameSchema,annual:z.boolean()})),async c=>{
   const owner=c.get("session").user.id,input=c.req.valid("json");
   return withSubscription(c.env,owner,async({stripe,sub})=>{
    if(sub.schedule)throw new BillingFlowError("BILLING_PENDING");

@@ -13,7 +13,7 @@ import {planLabel} from "../../shared/plan-i18n";
 let db:TestD1;
 beforeEach(()=>{
  db=new TestD1();
- for(const [id,plan] of [["deals","ultra_deals"],["both","ultra_pulse_deals"],["ultra","ultra"],["pulse","ultra_pulse"],["max","max_pulse"],["free","free"],["owner","free"]])seedUser(db,id,plan);
+ for(const [id,plan] of [["deals","ultra_deals"],["both","ultra_pulse_deals"],["ultra","ultra"],["pulse","ultra_pulse"],["max","max_pulse"],["free","free"],["owner","free"]] as const)seedUser(db,id,plan);
  Object.assign(state.env,{DB:db.asD1(),STAFF_OWNER_EMAIL:"owner@audit.invalid"});
 });
 afterEach(()=>{db.close();vi.restoreAllMocks();});

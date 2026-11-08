@@ -71,7 +71,7 @@ export default Sentry.withSentry((env:Cloudflare.Env)=>sentryOptions(env,"blup-s
 // RPC maintenance executes in the namespace that owns the cached fetch.
 // There is no public HTTP endpoint for triggering a purge.
 export class CachedSite extends WorkerEntrypoint<Cloudflare.Env,import("./serve-site").CachedSiteProps> {
- async fetch(req:Request){
+ override async fetch(req:Request){
   const props=cachedSiteProps.safeParse(this.ctx.props);
   if(!props.success)return new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});
   return serveDeploy(req,this.env,props.data);

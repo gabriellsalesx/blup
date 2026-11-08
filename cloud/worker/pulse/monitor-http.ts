@@ -48,18 +48,18 @@ export type CheckResult={outcome:"up"|"down"|"unknown";status:number|null;durati
 // How a monitor asks and what counts as up: the method, the statuses that
 // count (empty = any 2xx), a keyword that must (or must not) be in the page
 // and the time to wait. Request headers go apart (sealed at rest).
-export const monitorOptions=z.object({
+export const monitorOptions=z.strictObject({
  method:z.enum(["GET","HEAD"]),
  expectedStatus:z.array(z.number().int().min(100).max(599)).max(10).refine(v=>new Set(v).size===v.length),
- keyword:z.object({text:z.string().trim().min(1).max(200),mode:z.enum(["contains","absent"])}).strict().nullable(),
+ keyword:z.strictObject({text:z.string().trim().min(1).max(200),mode:z.enum(["contains","absent"])}).nullable(),
  timeoutSeconds:z.number().int().min(1).max(30),
-}).strict().refine(o=>!(o.keyword&&o.method==="HEAD"),{message:"A keyword needs the page body (GET)."});
+}).refine(o=>!(o.keyword&&o.method==="HEAD"),{error:"A keyword needs the page body (GET)."});
 export type MonitorOptions=z.infer<typeof monitorOptions>;
 export const defaultMonitorOptions:MonitorOptions={method:"GET",expectedStatus:[],keyword:null,timeoutSeconds:10};
 // Headers the runtime or the connection own, or that would say who we are.
 const reservedHeaders=new Set(["host","content-length","transfer-encoding","connection","upgrade","keep-alive","te","trailer","proxy-authorization","proxy-connection","user-agent","accept-encoding","expect","forwarded","x-forwarded-for","x-real-ip","cf-connecting-ip"]);
 export const headerName=z.string().regex(/^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,64}$/).refine(n=>!reservedHeaders.has(n.toLowerCase()));
-export const monitorHeader=z.object({name:headerName,value:z.string().max(1024).regex(/^[^\r\n\0]*$/)}).strict();
+export const monitorHeader=z.strictObject({name:headerName,value:z.string().max(1024).regex(/^[^\r\n\0]*$/)});
 export type MonitorHeader=z.infer<typeof monitorHeader>;
 const BODY_LIMIT=256*1024;
 // Reads at most the first 256 KB of a page, as text, then lets the rest go.

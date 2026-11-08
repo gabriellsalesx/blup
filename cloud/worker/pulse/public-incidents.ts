@@ -57,7 +57,8 @@ export function monthWindow(to:string|null,cutoff:number,now=Date.now()){
  let year=match?Number(match[1]):current.getUTCFullYear(),month=match?Number(match[2])-1:current.getUTCMonth();
  const latest=current.getUTCFullYear()*12+current.getUTCMonth();if(year*12+month>latest){year=current.getUTCFullYear();month=current.getUTCMonth();}
  const key=(y:number,m:number)=>{const d=new Date(Date.UTC(y,m,1));return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`;};
- const months=[0,1,2].map(i=>{const start=Date.UTC(year,month-i,1),end=Date.UTC(year,month-i+1,1);return {key:key(year,month-i),start,end};});
+ const back=(i:number)=>{const start=Date.UTC(year,month-i,1),end=Date.UTC(year,month-i+1,1);return {key:key(year,month-i),start,end};};
+ const months:[ReturnType<typeof back>,ReturnType<typeof back>,ReturnType<typeof back>]=[back(0),back(1),back(2)];
  const from=months[2].start,until=months[0].end;
  return {months,from,to:until,older:from>cutoff?key(year,month-3):null,newer:year*12+month<latest?key(year,month+3):null};
 }

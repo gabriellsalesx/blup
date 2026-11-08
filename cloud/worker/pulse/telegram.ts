@@ -2,14 +2,14 @@ import {Hono} from "hono";
 import {z} from "zod";
 import {validate,opaqueId} from "../validation";
 import {pulseWrite,type PulseApp} from "./access";
-import {publicKey,sha256} from "./limits";
+import {publicKey,sha256,planHolds,planBinds} from "./limits";
 import {sameSecret,sealTarget,chatIdSchema} from "./channel-crypto";
 import {cleanText} from "./event";
 import {projectChoice,usableProject,bindToProject,typeRoom,dropUnbound} from "./channels";
 const params=z.object({link:opaqueId});
 const botReady=(env:Cloudflare.Env)=>!!env.PULSE_TELEGRAM_TOKEN&&!!env.PULSE_TELEGRAM_WEBHOOK_SECRET&&!!env.PULSE_CHANNEL_KEY;
 export const telegramApi=new Hono<PulseApp>()
- .post("/link",pulseWrite,validate("json",z.object({}).strict()),async c=>{
+ .post("/link",pulseWrite,validate("json",z.strictObject({})),async c=>{
   if(!botReady(c.env))return c.json({code:"CHANNEL_UNAVAILABLE"},503);
   const owner=c.get("session").user.id,id=crypto.randomUUID(),code=publicKey(),now=Date.now();
   await c.env.DB.batch([c.env.DB.prepare("DELETE FROM pulse_telegram_link WHERE user_id=?").bind(owner),c.env.DB.prepare("INSERT INTO pulse_telegram_link(id,user_id,hash,expires_at) VALUES(?,?,?,?)").bind(id,owner,await sha256(code),now+600_000)]);return c.json({id,url:`https://t.me/BlupPulseBot?start=${code}`,expiresAt:new Date(now+600_000).toISOString()},201);
@@ -24,11 +24,11 @@ export const telegramApi=new Hono<PulseApp>()
   if(link.expiresAt<=now||link.state!=="candidate"||!chatIdSchema.safeParse(link.chatId).success||!link.chatId)return c.json({code:"LINK_EXPIRED"},409);
   const channel=id;let target:string;try{target=await sealTarget(c.env,owner,channel,"telegram",link.chatId);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
   const result=await c.env.DB.batch([
-   c.env.DB.prepare(`INSERT OR IGNORE INTO pulse_channel(id,user_id,type,target,label,created_at) SELECT ?,?,'telegram',?,?,? WHERE EXISTS(SELECT 1 FROM pulse_telegram_link WHERE id=? AND user_id=? AND state='candidate' AND expires_at>?) AND ${typeRoom} RETURNING id`).bind(channel,owner,target,link.label??"Telegram",now,id,owner,now,owner,"telegram",project,"telegram",c.get("access").limits?.projects??0),
+   c.env.DB.prepare(`INSERT OR IGNORE INTO pulse_channel(id,user_id,type,target,label,created_at) SELECT ?,?,'telegram',?,?,? WHERE EXISTS(SELECT 1 FROM pulse_telegram_link WHERE id=? AND user_id=? AND state='candidate' AND expires_at>?) AND ${typeRoom} AND ${planHolds} RETURNING id`).bind(channel,owner,target,link.label??"Telegram",now,id,owner,now,owner,"telegram",project,"telegram",c.get("access").limits?.projects??0,...planBinds(owner,c.get("access"))),
    c.env.DB.prepare("UPDATE pulse_telegram_link SET state='confirmed',channel_id=? WHERE id=? AND user_id=? AND EXISTS(SELECT 1 FROM pulse_channel WHERE id=? AND user_id=?)").bind(channel,id,owner,channel,owner),
    bindToProject(c.env.DB,owner,project,channel,"telegram"),
    ...dropUnbound(c.env.DB,owner),
-  ]);if(result[0].results.length)return c.json({id:channel},201);
+  ]);if(result[0]?.results.length)return c.json({id:channel},201);
   const existing=await c.env.DB.prepare("SELECT id FROM pulse_channel WHERE id=? AND user_id=?").bind(channel,owner).first();return existing?c.json({id:channel},200):c.json({code:"QUOTA"},409);
  });
 const telegramUpdate=z.object({update_id:z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),message:z.object({text:z.string().max(4096).optional(),chat:z.object({id:z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER),type:z.string().max(32),username:z.string().max(64).optional(),first_name:z.string().max(128).optional()}),from:z.object({id:z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),is_bot:z.boolean()}).optional()}).optional()});
@@ -36,8 +36,8 @@ export const telegramWebhookApi=new Hono<PulseApp>()
  .post("/webhook",async(c,next)=>{const token=z.string().min(1).max(256).safeParse(c.req.header("x-telegram-bot-api-secret-token"));if(!token.success||!sameSecret(token.data,c.env.PULSE_TELEGRAM_WEBHOOK_SECRET??""))return c.json({code:"UNAUTHORIZED"},401);return next();},validate("json",telegramUpdate),async c=>{
   const update=c.req.valid("json"),message=update.message;
   if(!message||message.chat.type!=="private"||!message.from||message.from.is_bot||message.from.id!==message.chat.id)return c.json({ok:true});
-  const match=/^\/start(?:@BlupPulseBot)? ([a-f0-9]{48})$/.exec(message.text??"");if(!match)return c.json({ok:true});
-  const now=Date.now(),hash=await sha256(match[1]);
+  const token=/^\/start(?:@BlupPulseBot)? ([a-f0-9]{48})$/.exec(message.text??"")?.[1];if(!token)return c.json({ok:true});
+  const now=Date.now(),hash=await sha256(token);
   if(!await c.env.DB.prepare("SELECT id FROM pulse_telegram_link WHERE hash=? AND state='pending' AND expires_at>?").bind(hash,now).first())return c.json({ok:true});
   await c.env.DB.batch([
    c.env.DB.prepare("INSERT OR IGNORE INTO pulse_telegram_update(id,received_at) VALUES(?,?)").bind(update.update_id,now),

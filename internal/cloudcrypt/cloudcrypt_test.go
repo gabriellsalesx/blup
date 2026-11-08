@@ -36,6 +36,11 @@ func TestPasswordAndRecovery(t *testing.T) {
 	if err != nil || !bytes.Equal(got, master) {
 		t.Fatalf("Recover = %x, %v", got, err)
 	}
+	// Pasted from a Windows file: line breaks with \r.
+	got, err = Recover(w, strings.ReplaceAll(recovery, " ", "\r\n"))
+	if err != nil || !bytes.Equal(got, master) {
+		t.Fatalf("Recover with CRLF = %x, %v", got, err)
+	}
 	if _, err := Recover(w, recovery[:len(recovery)-5]); err == nil {
 		t.Fatal("a truncated recovery key was accepted")
 	}

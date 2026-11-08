@@ -23,7 +23,7 @@ const MAX_POSTS=20;
 
 export type ChannelPost={id:number;at:number;text:string;links:string[];photo:string|null};
 export type ChannelPage={title:string|null;posts:ChannelPost[]};
-const attr=(html:string,re:RegExp)=>{const m=re.exec(html);return m?decodeEntities(m[1]):null;};
+const attr=(html:string,re:RegExp)=>{const m=re.exec(html)?.[1];return m===undefined?null:decodeEntities(m);};
 const httpsURL=(raw:string|null,host?:RegExp)=>{if(!raw)return null;try{const u=new URL(raw);return u.protocol==="https:"&&(!host||host.test(u.hostname))?u.href:null;}catch{return null;}};
 // The preview's own markup (tgme_widget_message): read as text and links
 // only, never kept or shown as HTML.
@@ -36,7 +36,7 @@ export function readChannel(html:string,name:string):ChannelPage{
   const at=Date.parse(attr(part,/<time datetime="([^"]{10,40})"/)??"");
   const body=/<div class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]{0,8192}?)<\/div>/.exec(part)?.[1]??"";
   const text=decodeEntities(body.replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g,"")).replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g,"").trim();
-  const links=[...body.matchAll(/<a [^>]*href="([^"]{1,2048})"/g),...part.matchAll(/class="tgme_widget_message_link_preview" href="([^"]{1,2048})"/g)].map(m=>httpsURL(decodeEntities(m[1]))).filter((v):v is string=>!!v&&!/^https:\/\/t\.me\//.test(v));
+  const links=[...body.matchAll(/<a [^>]*href="([^"]{1,2048})"/g),...part.matchAll(/class="tgme_widget_message_link_preview" href="([^"]{1,2048})"/g)].map(m=>httpsURL(decodeEntities(m[1]??""))).filter((v):v is string=>!!v&&!/^https:\/\/t\.me\//.test(v));
   const photo=httpsURL(attr(part,/tgme_widget_message_photo_wrap[^"]*"[^>]*background-image:url\('([^']{1,2048})'\)/),/(?:^|\.)telesco\.pe$/);
   posts.push({id,at:Number.isFinite(at)?at:0,text,links:[...new Set(links)],photo});
  }

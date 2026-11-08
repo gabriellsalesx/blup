@@ -383,7 +383,7 @@
     const a = ACTIONS.find((x) => keysOf(look.keys, x.key) === combo)?.key as Action | undefined;
     if (!a || (!notesVault && VAULT_ONLY.includes(a)) || (notesVault && a === "preview")) return; // each kind's own keys
     e.preventDefault();
-    if (a === "terminal") termOpen = !termOpen;
+    if (a === "terminal") toggleTerm();
     else if (a === "preview") togglePreview();
     else if (a === "sidebar") sideOpen = !sideOpen;
     else if (a === "settings") prefsOpen = true;
@@ -487,7 +487,10 @@
   let termOpen = $state(false);
   // Once opened, the terminals stay alive: closing the panel only hides it.
   let termStarted = $state(false);
-  $effect(() => { if (termOpen) termStarted = true; });
+  function toggleTerm() {
+    termOpen = !termOpen;
+    if (termOpen) termStarted = true;
+  }
   let termHeight = $state(300);
   const clampTerm = (h: number) => Math.min(Math.max(140, h), window.innerHeight - 200);
   function nudgeTerm(e: KeyboardEvent) {
@@ -543,7 +546,7 @@
   onDestroy(() => offNotes());
 
   // Live sync through Blup Cloud (paid plans): its state on the Sync button.
-  let cloud = $state<{ state: string; error?: string } | null>(null);
+  let cloud = $state<{ state: string; error?: string; stuck?: boolean } | null>(null);
   // After each sync the use may have changed (a refusal for the storage,
   // or space freed): the banner follows.
   const offCloud = Events.On("cloudSync", (ev) => {
@@ -594,7 +597,7 @@
   const checkHistory = () => CloudHistory().then((on) => (cloudHistory = on)).catch(() => {});
   checkHistory();
   $effect(() => { if (cloud?.state === "synced" && !cloudHistory) checkHistory(); });
-  const cloudTitle = $derived(!cloud ? undefined : cloud.state === "error" ? t.cloudError.replace("{error}", cloud.error ?? "") : cloud.state === "syncing" ? t.cloudSyncing : t.cloudSynced);
+  const cloudTitle = $derived(!cloud ? undefined : cloud.state === "error" && cloud.stuck ? t.pubs.stuck : cloud.state === "error" ? t.cloudError.replace("{error}", cloud.error ?? "") : cloud.state === "syncing" ? t.cloudSyncing : t.cloudSynced);
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pending = ""; // text not saved yet
@@ -791,7 +794,7 @@
       <button class="rib" class:active={screen === key} aria-label={label} data-tip={label} onclick={() => openScreen(key)}><Icon size={19} strokeWidth={1.75} /><span class="rib-name">{label}</span></button>
     {/each}
     <span class="sep"></span>
-    <button class="rib" class:active={termOpen} aria-label={termTip} data-tip={termTip} onclick={() => (termOpen = !termOpen)}><SquareTerminal size={19} strokeWidth={1.75} /><span class="rib-name">{t.term.button}</span></button>
+    <button class="rib" class:active={termOpen} aria-label={termTip} data-tip={termTip} onclick={toggleTerm}><SquareTerminal size={19} strokeWidth={1.75} /><span class="rib-name">{t.term.button}</span></button>
   </nav>
 
   {#if sideOpen}
@@ -877,7 +880,7 @@
       <strong class="title">{site.title}</strong>
     {/if}
     <span class="spacer"></span>
-    {#if !notesVault}<button class="btn ghost" onclick={togglePreview}>{previewOn ? "✓ " : ""}{t.preview}</button>{/if}
+    {#if !notesVault}<button class="btn ghost" onclick={togglePreview}>{#if previewOn}<Check size={14} aria-hidden="true" />{/if}{t.preview}</button>{/if}
     <button class="btn ghost" title={cloudTitle} onclick={() => go("publish", "sync")}>
       {#if cloud?.state === "syncing"}<span class="spin"><RefreshCw size={14} /></span>{:else if cloud?.state === "error"}<CloudAlert size={14} class="bad" />{:else if cloud}<CloudCheck size={14} />{/if}{t.sync}
     </button>

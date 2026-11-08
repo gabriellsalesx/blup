@@ -36,10 +36,15 @@
 		try { await staffApi.setMember(m, r); toast("Papel alterado"); await load(); }
 		catch { toast("Não deu certo.", { kind: "error" }); }
 	}
-	const roles = [{ value: "support", label: roleLabel("support") }, { value: "admin", label: roleLabel("admin") }] as const satisfies readonly { value: Role; label: string }[];
+	const allRoles = [{ value: "support", label: roleLabel("support") }, { value: "admin", label: roleLabel("admin") }] as const satisfies readonly { value: Role; label: string }[];
+	// Making, unmaking or removing an admin: the owner (STAFF_OWNER_EMAIL)
+	// only. The API refuses the same; here the controls are just off.
+	const owner = $derived(!!data.me?.owner);
+	const roles = $derived(owner ? allRoles : allRoles.filter((r) => r.value === "support"));
+	const locked = (m: { email: string; role: Role }) => m.email === data.me?.email || (!owner && m.role === "admin");
 </script>
 
-<PageHeader title="Equipe" lead="Suporte vê as contas e ajuda (sessões, passkeys). Admin também bloqueia, exclui contas e cuida da equipe. Libere o e-mail também no Cloudflare Access." />
+<PageHeader title="Equipe" lead="Suporte vê as contas e ajuda (sessões, passkeys). Admin também bloqueia, exclui contas e cuida do suporte. Só o dono promove, rebaixa ou tira um admin. Libere o e-mail também no Cloudflare Access." />
 
 <div class="mt-6">
 	<Row title="Adicionar" help="Quem entra pela primeira vez já fica com o papel escolhido.">
@@ -57,8 +62,8 @@
 				{#each team.staff as m (m.email)}
 					<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2.5 dark:border-neutral-800">
 						<span class="flex-1"><b>{m.email}</b><br /><span class="text-xs text-neutral-500">por {m.addedBy} · {when(m.createdAt)}</span></span>
-						<Select compact surface="bg-white dark:bg-neutral-900" label="Papel de {m.email}" options={roles} value={m.role} disabled={m.email === data.me?.email} onchange={(next) => change(m.email, next)} />
-						<button class="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 disabled:opacity-40 dark:hover:bg-neutral-800" aria-label="Tirar da equipe" title="Tirar da equipe" disabled={m.email === data.me?.email} onclick={() => remove(m.email)}><Trash class="size-4" /></button>
+						<Select compact surface="bg-white dark:bg-neutral-900" label="Papel de {m.email}" options={allRoles} value={m.role} disabled={!owner || m.email === data.me?.email} onchange={(next) => change(m.email, next)} />
+						<button class="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 disabled:opacity-40 dark:hover:bg-neutral-800" aria-label="Tirar da equipe" title={!owner && m.role === "admin" ? "Só o dono tira um admin da equipe" : "Tirar da equipe"} disabled={locked(m)} onclick={() => remove(m.email)}><Trash class="size-4" /></button>
 					</li>
 				{/each}
 			</ul>

@@ -975,6 +975,17 @@ export function RenameSite(dir: string, title: string): $CancellablePromise<$mod
 }
 
 /**
+ * ResetSync is "Compare from scratch", offered only after a sync stopped
+ * for safety (app.ErrSyncStuck) and confirmed by the person: this computer
+ * forgets the last sync of the open site's notes and compares file by file
+ * with Blup Cloud, as a new computer; what differs becomes a conflict copy
+ * and no note is deleted.
+ */
+export function ResetSync(): $CancellablePromise<app$0.SyncInfo> {
+    return $Call.ByID(2838786082);
+}
+
+/**
  * ResizeTerminal follows the panel's size.
  */
 export function ResizeTerminal(id: string, cols: number, rows: number): $CancellablePromise<void> {

@@ -56,7 +56,7 @@ layout. Bundled into one file by css.Build. */
   .docs-toc ul ul { padding: 0; }
   .docs-toc a { display: block; padding-block: .375rem; transition: color .15s; }
   .docs-toc ul ul a { padding-block: .25rem; }
-  .docs-toc ul ul a::before { content: "— "; opacity: .5; }
+  .docs-toc ul ul a::before { content: "· "; opacity: .5; }
   .docs-toc a:hover, .docs-toc a[aria-current] { color: var(--main-800); }
   .docs-toc a[aria-current] { font-weight: 500; }
 

@@ -9,7 +9,7 @@ import {maintenanceStateAt,MAINTENANCE_MAX_MS,MAINTENANCE_AHEAD_MS} from "./page
 // always comes from the window and the time now.
 const DAY=86_400_000;
 const maintenanceParam=z.object({page:opaqueId,maintenance:opaqueId});
-const maintenanceBody=z.object({title:z.string().trim().min(1).max(120),body:z.string().trim().max(2000),startsAt:z.iso.datetime({offset:true}),endsAt:z.iso.datetime({offset:true}),services:z.array(opaqueId).min(1).max(50).refine(v=>new Set(v).size===v.length)}).strict();
+const maintenanceBody=z.strictObject({title:z.string().trim().min(1).max(120),body:z.string().trim().max(2000),startsAt:z.iso.datetime({offset:true}),endsAt:z.iso.datetime({offset:true}),services:z.array(opaqueId).min(1).max(50).refine(v=>new Set(v).size===v.length)});
 type MaintenanceBody=z.infer<typeof maintenanceBody>;
 type Row={id:string;title:string;body:string;startsAt:number;endsAt:number;createdAt:number;updatedAt:number};
 // The window must end after it starts, last at most 30 days, end after the
@@ -38,7 +38,7 @@ export const maintenanceApi=new Hono<PulseApp>()
   const input=c.req.valid("json"),now=Date.now(),keep=(c.get("access").limits?.retentionDays??30)*DAY,window=await checkWindow(c.env,page,input,keep,now);if(!window)return c.json({code:"INVALID"},400);
   const id=crypto.randomUUID();
   const made=await c.env.DB.batch([c.env.DB.prepare("INSERT INTO pulse_maintenance(id,page_id,title,body,starts_at,ends_at,created_at,updated_at,expires_at) SELECT ?,?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM pulse_maintenance WHERE page_id=?)<100 RETURNING id").bind(id,page,input.title,input.body,window.startsAt,window.endsAt,now,now,window.endsAt+keep,page),...setServices(c.env.DB,id,input.services)]);
-  return made[0].results.length?c.json({id},201):c.json({code:"QUOTA"},409);
+  return made[0]?.results.length?c.json({id},201):c.json({code:"QUOTA"},409);
  })
  .put("/:page/maintenance/:maintenance",pulseWrite,validate("param",maintenanceParam),validate("json",maintenanceBody),async c=>{
   const {page,maintenance}=c.req.valid("param"),owned=await ownedPage(c.env,c.get("session").user.id,page);if(!owned)return c.json({code:"NOT_FOUND"},404);if(owned.planDisabled)return c.json({code:"PLAN"},403);
@@ -50,5 +50,5 @@ export const maintenanceApi=new Hono<PulseApp>()
  .delete("/:page/maintenance/:maintenance",validate("param",maintenanceParam),async c=>{
   const {page,maintenance}=c.req.valid("param");if(!await ownedPage(c.env,c.get("session").user.id,page))return c.json({code:"NOT_FOUND"},404);
   const gone=await c.env.DB.batch([c.env.DB.prepare("DELETE FROM pulse_maintenance_component WHERE maintenance_id IN(SELECT id FROM pulse_maintenance WHERE id=? AND page_id=?)").bind(maintenance,page),c.env.DB.prepare("DELETE FROM pulse_maintenance WHERE id=? AND page_id=? RETURNING id").bind(maintenance,page)]);
-  return gone[1].results.length?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
+  return gone[1]?.results.length?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
  });

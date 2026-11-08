@@ -19,10 +19,10 @@ const frame=z.object({filename:z.string().max(8192).optional(),abs_path:z.string
 const error=z.object({type:z.string().max(8192).optional(),value:z.string().max(204800).optional(),stacktrace:z.object({frames:z.array(frame).max(512)}).optional()});
 const schema=z.object({type:z.enum(["default","error","event"]).optional(),platform:z.string().max(80).optional(),level:z.enum(["fatal","error","warning","info","debug"]).optional(),message:z.union([z.string().max(204800),z.object({formatted:z.string().max(204800).optional(),message:z.string().max(204800).optional()})]).optional(),logentry:z.object({formatted:z.string().max(204800).optional(),message:z.string().max(204800).optional()}).optional(),exception:z.union([z.object({values:z.array(error).max(32)}),z.array(error).max(32)]).transform(v=>Array.isArray(v)?{values:v}:v).optional(),fingerprint:z.array(z.string().max(256)).max(32).optional(),environment:z.string().max(256).optional(),release:z.string().max(256).optional()});
 // The stored projection, checked again when read back from the project's SQLite.
-const storedFrame=z.object({filename:z.string(),function:z.string(),module:z.string(),line:z.number().int().nullable(),column:z.number().int().nullable(),inApp:z.boolean(),context:z.object({pre:z.array(z.string()).max(5),line:z.string(),post:z.array(z.string()).max(5)}).strict().optional()}).strict();
-const storedContext=z.object({method:z.string().optional(),route:z.string().optional(),browser:z.string().optional(),os:z.string().optional(),runtime:z.string().optional()}).strict();
-const storedCrumb=z.object({at:z.number().int().nullable(),type:z.string(),category:z.string(),level:z.string(),message:z.string()}).strict();
-export const storedEvent=z.object({id:z.string(),group:z.string(),title:z.string(),level:schema.shape.level.unwrap(),platform:z.string(),environment:z.string(),release:z.string(),message:z.string(),exceptions:z.array(z.object({type:z.string(),value:z.string(),frames:z.array(storedFrame)}).strict()),context:storedContext.optional(),breadcrumbs:z.array(storedCrumb).max(30).optional()}).strict();
+const storedFrame=z.strictObject({filename:z.string(),function:z.string(),module:z.string(),line:z.number().int().nullable(),column:z.number().int().nullable(),inApp:z.boolean(),context:z.strictObject({pre:z.array(z.string()).max(5),line:z.string(),post:z.array(z.string()).max(5)}).optional()});
+const storedContext=z.strictObject({method:z.string().optional(),route:z.string().optional(),browser:z.string().optional(),os:z.string().optional(),runtime:z.string().optional()});
+const storedCrumb=z.strictObject({at:z.number().int().nullable(),type:z.string(),category:z.string(),level:z.string(),message:z.string()});
+export const storedEvent=z.strictObject({id:z.string(),group:z.string(),title:z.string(),level:schema.shape.level.unwrap(),platform:z.string(),environment:z.string(),release:z.string(),message:z.string(),exceptions:z.array(z.strictObject({type:z.string(),value:z.string(),frames:z.array(storedFrame)})),context:storedContext.optional(),breadcrumbs:z.array(storedCrumb).max(30).optional()});
 export type SafeEvent=z.infer<typeof storedEvent>;
 // The route of a URL: its path only, with numbers, UUIDs and long hex ids
 // as ":id" (they name records, sometimes people).
@@ -79,7 +79,7 @@ export async function safeEvent(input:Record<string,unknown>,id:string,minidump=
  const parsed=schema.safeParse(raw);if(!parsed.success)throw new IngestError(400,"EVENT");const value=parsed.data;
  const exceptions=value.exception?.values.map(e=>({type:cleanText(e.type??"Error",128),value:cleanText(e.value??"",1024),frames:e.stacktrace?.frames.slice(-50).map(f=>{const code=codeOf(f);return {filename:cleanText((f.filename??f.abs_path??"").split(/[\\/]/).pop()?.split(/[?#]/)[0]??"",160),function:cleanText(f.function??"",128),module:cleanText(f.module??"",128),line:f.lineno??null,column:f.colno??null,inApp:f.in_app??false,...(code?{context:code}:{})};})??[]}))??[];
  // Code only around the ten app frames nearest the error, in each exception.
- for(const e of exceptions){let kept=0;for(let i=e.frames.length-1;i>=0;i--){const f=e.frames[i];if(f.context&&++kept>10)delete f.context;}}
+ for(const e of exceptions){let kept=0;for(let i=e.frames.length-1;i>=0;i--){const f=e.frames[i];if(f?.context&&++kept>10)delete f.context;}}
  const context=contextOf(raw),breadcrumbs=breadcrumbsOf(raw);
  const message=typeof value.message==="string"?value.message:value.message?.formatted??value.message?.message??value.logentry?.formatted??value.logentry?.message??"";
  // The title: the error's first line, without a trailing " (Type)" that

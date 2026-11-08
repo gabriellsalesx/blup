@@ -122,6 +122,7 @@ func NewKeys(password string) (master []byte, recovery string, w Wrapped, err er
 	if _, err = rand.Read(master); err != nil {
 		return nil, "", Wrapped{}, err
 	}
+	defer clear(rk)
 	if _, err = rand.Read(rk); err != nil {
 		return nil, "", Wrapped{}, err
 	}
@@ -143,6 +144,7 @@ func wrapPassword(master []byte, password string) (Wrapped, error) {
 	if err != nil {
 		return Wrapped{}, err
 	}
+	defer clear(kek)
 	sealed, err := seal(kek, []byte("blup password"), master, false)
 	if err != nil {
 		return Wrapped{}, err
@@ -156,6 +158,7 @@ func Unlock(w Wrapped, password string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer clear(kek)
 	master, err := open(kek, []byte("blup password"), w.ByPassword)
 	if err != nil {
 		return nil, ErrWrongPassword
@@ -169,6 +172,7 @@ func Recover(w Wrapped, recovery string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer clear(rk)
 	master, err := open(rk, []byte("blup recovery"), w.ByRecovery)
 	if err != nil {
 		return nil, ErrWrongPassword
@@ -195,7 +199,7 @@ func FormatRecovery(key []byte) string {
 // hyphens.
 func ParseRecovery(s string) ([]byte, error) {
 	s = strings.Map(func(r rune) rune {
-		if r == ' ' || r == '-' || r == '\t' || r == '\n' {
+		if r == ' ' || r == '-' || r == '\t' || r == '\n' || r == '\r' {
 			return -1
 		}
 		return r

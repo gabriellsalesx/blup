@@ -22,6 +22,7 @@
   import External from "@lucide/svelte/icons/external-link";
   import Brush from "@lucide/svelte/icons/paintbrush";
   import Pilcrow from "@lucide/svelte/icons/pilcrow";
+  import Check from "@lucide/svelte/icons/check";
   import ListPlus from "@lucide/svelte/icons/list-plus";
   import Scissors from "@lucide/svelte/icons/scissors";
   import CopyIcon from "@lucide/svelte/icons/copy";
@@ -672,7 +673,7 @@
                 {#if item.check}<hr />{/if}
                 <button role={item.check ? "menuitemcheckbox" : "menuitem"} aria-checked={item.check ? item.check() : undefined} onmousedown={(e) => e.preventDefault()}
                   onclick={(e) => { if (item.keep) e.stopPropagation(); else menuOpen = ""; item.run(); }}>
-                  {#if item.check}<span class="ico box" class:on={item.check()}>{#if item.check()}✓{/if}</span>
+                  {#if item.check}<span class="ico box" class:on={item.check()}>{#if item.check()}<Check size={12} strokeWidth={3} aria-hidden="true" />{/if}</span>
                   {:else if item.svg}<span class="ico" style:--tint={item.tint ?? null} class:tinted={item.tint}>{@html item.svg}</span>{/if}<span style:font-size={item.size || null} class:big={item.size}>{item.label}</span>
                 </button>
               {/each}

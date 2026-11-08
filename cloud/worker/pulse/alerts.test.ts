@@ -9,6 +9,7 @@ import {deliverDiscord,deliverTelegram} from "./transports";
 import {enqueueSignals,dispatchAlerts} from "./outbox";
 import {purgeProject} from "./cleanup";
 import {discordPayload,telegramPayload,slackPayload,webhookSignature,type AlertMessage} from "./alert-message";
+import {at as nth} from "./test-at";
 const note=(title:string):AlertMessage=>({event:"issue",label:"New issue",title,url:"https://pulse.getblup.io/issues",tone:"red",fields:[]});
 let db:TestD1;
 const WEBHOOK=`https://discord.com/api/webhooks/123456789012345678/${"test_fixture_".repeat(6)}`;
@@ -24,7 +25,7 @@ const request=(path:string,method="GET",body?:unknown,user="alice",headers:Recor
 async function channel(){return await(await request("/channels","POST",{projectId:"1",type:"discord",webhook:WEBHOOK})).json() as {id:string};}
 it("encrypts destinations with owner/channel/type binding and rejects forged targets",async()=>{
  const sealed=await sealTarget(state.env,"alice","channel","discord",WEBHOOK);expect(sealed).not.toContain(WEBHOOK);expect(await openTarget(state.env,"alice","channel","discord",sealed)).toBe(WEBHOOK);
- for(const [owner,id,type] of [["bob","channel","discord"],["alice","other","discord"],["alice","channel","telegram"]])await expect(openTarget(state.env,owner,id,type,sealed)).rejects.toThrow();
+ for(const [owner,id,type] of [["bob","channel","discord"],["alice","other","discord"],["alice","channel","telegram"]] as const)await expect(openTarget(state.env,owner,id,type,sealed)).rejects.toThrow();
  for(const url of ["http://discord.com/api/webhooks/123/token","https://discord.com.evil.invalid/api/webhooks/123/token","https://127.0.0.1/api/webhooks/123/token",WEBHOOK+"?thread_id=1","https://user:password@discord.com/api/webhooks/123/token"])expect(discordWebhook.safeParse(url).success).toBe(false);
 });
 it("returns masked channels, enforces ownership and does not send on create/read",async()=>{
@@ -67,7 +68,7 @@ it("sends a monitor test alert to the project's destinations with the monitor na
  expect((await request("/monitors/m2/test","POST",{})).status).toBe(404);expect((await request("/monitors/m1/test","POST",{extra:1})).status).toBe(400);
  expect((await request("/monitors/m1/test","POST",{})).status).toBe(202);expect((await request("/monitors/m1/test","POST",{})).status).toBe(429);
  const send=vi.fn(async(_input:RequestInfo|URL,_init?:RequestInit)=>new Response(null,{status:204}));vi.stubGlobal("fetch",send);await dispatchAlerts(state.env);
- expect(send).toHaveBeenCalledTimes(1);const sent=JSON.parse(String(send.mock.calls[0][1]?.body)) as ReturnType<typeof discordPayload>;expect(sent).toMatchObject({username:"Blup Pulse",allowed_mentions:{parse:[]},embeds:[{title:"Checkout API",url:"https://pulse.getblup.io/monitors/m1",fields:[{name:"Projeto",value:"App"},{name:"Endereço",value:"https://example.com/"}]}]});
+ expect(send).toHaveBeenCalledTimes(1);const sent=JSON.parse(String(nth(send.mock.calls)[1]?.body)) as ReturnType<typeof discordPayload>;expect(sent).toMatchObject({username:"Blup Pulse",allowed_mentions:{parse:[]},embeds:[{title:"Checkout API",url:"https://pulse.getblup.io/monitors/m1",fields:[{name:"Projeto",value:"App"},{name:"Endereço",value:"https://example.com/"}]}]});
 });
 it("binds a new destination to the chosen project, in place of the one it had",async()=>{
  expect((await request("/channels","POST",{type:"discord",webhook:WEBHOOK})).status).toBe(400);expect((await request("/channels","POST",{projectId:"2",type:"discord",webhook:WEBHOOK})).status).toBe(404);
@@ -84,7 +85,7 @@ it("shapes one alert as a Discord embed and as Telegram text with entities",()=>
  expect(tg.text).toBe("Blup Pulse · New issue\nTypeError: <b>x</b> is undefined\n\nProject: Meu App\nEnvironment: development\nRelease: -");
  const at=(e:{offset:number;length:number})=>tg.text.slice(e.offset,e.offset+e.length);
  expect(tg.entities.map(e=>[e.type,at(e)])).toEqual([["bold","Blup Pulse · New issue"],["bold","TypeError: <b>x</b> is undefined"],["text_link","TypeError: <b>x</b> is undefined"],["bold","Project: "],["bold","Environment: "],["bold","Release: "]]);
- expect(discordPayload({...message,title:"x".repeat(400)}).embeds[0].title).toHaveLength(256);
+ expect(nth(discordPayload({...message,title:"x".repeat(400)}).embeds).title).toHaveLength(256);
 });
 it("connects Slack and signed generic webhooks, refusing other or private addresses",async()=>{
  const SLACK="https://hooks.slack.com/services/T0ABCDEF1/B0ABCDEF2/abcdefghijklmnopqrstuvwx";
@@ -100,7 +101,7 @@ it("connects Slack and signed generic webhooks, refusing other or private addres
  state.env.PULSE_PROJECT={getByName:()=>({notification:async()=>({state:"open",title:"<!channel> Boom & co",environment:"production",release:"1.0.0"})})} as unknown as Cloudflare.Env["PULSE_PROJECT"];
  await enqueueSignals(state.env,"1",[{id:"event-s",refId:"group-s",kind:"issue",createdAt:Date.now()}]);await dispatchAlerts(state.env);
  const toSlack=calls.find(c=>c.url.startsWith("https://hooks.slack.com/")),toHook=calls.find(c=>c.url.startsWith("https://hooks.example.com/"));
- const slackBody=JSON.parse(String(toSlack?.init?.body)) as ReturnType<typeof slackPayload>;expect(slackBody.attachments[0].color).toBe("#ef4444");expect(JSON.stringify(slackBody)).not.toContain("<!channel>");expect(JSON.stringify(slackBody)).toContain("&lt;!channel&gt; Boom &amp; co");
+ const slackBody=JSON.parse(String(toSlack?.init?.body)) as ReturnType<typeof slackPayload>;expect(nth(slackBody.attachments).color).toBe("#ef4444");expect(JSON.stringify(slackBody)).not.toContain("<!channel>");expect(JSON.stringify(slackBody)).toContain("&lt;!channel&gt; Boom &amp; co");
  const body=String(toHook?.init?.body),headers=new Headers(toHook?.init?.headers);expect(JSON.parse(body)).toMatchObject({version:1,event:"issue",title:"<!channel> Boom & co",fields:[{name:"Projeto",value:"App"},{name:"Ambiente",value:"production"},{name:"Versão",value:"1.0.0"}]});
  const [t,v1]=(headers.get("x-blup-signature")??"").split(",").map(p=>p.split("=")[1]);expect(v1).toBe(await webhookSignature(secret,body,Number(t)*1000).then(s=>s.split("v1=")[1]));
  expect(toHook?.init?.redirect).toBe("manual");expect(headers.get("x-blup-event")).toBe("issue");
@@ -157,4 +158,11 @@ it("turns a Telegram destination off only when the chat itself is gone",async()=
  expect(telegramGone(400,"Bad Request: chat not found")).toBe(true);
  expect(telegramGone(400,"Bad Request: can't parse entities: unsupported start tag")).toBe(false);
  expect(telegramGone(400)).toBe(false);expect(telegramGone(500,"chat not found")).toBe(false);
+});
+it("lists every destination an Ultra account can have (ten projects, four types)",async()=>{
+ const insert=db.sqlite.prepare("INSERT INTO pulse_channel(id,user_id,type,target,label,created_at) VALUES(?,?,?,'x',?,?)");
+ const types=["discord","telegram","slack","webhook"];
+ for(let i=0;i<40;i++)insert.run(`ch${i}`,"bob",types[i%4],`D${i}`,i);
+ const list=await(await request("/channels","GET",undefined,"bob")).json() as {channels:unknown[]};
+ expect(list.channels).toHaveLength(40);
 });

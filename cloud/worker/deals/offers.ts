@@ -39,7 +39,7 @@ const cursor=z.string().regex(/^[0-9]{1,15}\.[A-Za-z0-9-]{1,64}$/).transform(v=>
 const PAGE=20;
 // What the person adds to one post: a few words about the product and the
 // coupon, as typed, with no address (the link is the post's own).
-const written=(max:number)=>z.string().trim().max(max).refine(t=>!hasAddress(t),{message:"ADDRESS"});
+const written=(max:number)=>z.string().trim().max(max).refine(t=>!hasAddress(t),{error:"ADDRESS"});
 const extras={description:written(300).optional(),coupon:written(60).optional()};
 
 type Channels=Awaited<ReturnType<typeof usableChannels>>;
@@ -71,13 +71,13 @@ async function checkVideo(url:string):Promise<Video|{code:"FETCH_BLOCKED"|"NOT_A
 }
 
 export const offersApi=new Hono<DealsApp>()
- .post("/preview",dealsWrite,validate("json",z.object({url:z.string().max(2048)}).strict()),async c=>{
+ .post("/preview",dealsWrite,validate("json",z.strictObject({url:z.string().max(2048)})),async c=>{
   try{
    const p=await previewOffer(c.env,c.get("session").user.id,c.req.valid("json").url);
    return c.json({store:p.store,title:p.title,image:p.image,price:p.price,currency:p.currency,link:p.link,affiliate:p.affiliate,...(p.reason?{reason:p.reason}:{})});
   }catch(e){const code=fetchFailure(e);if(!code)throw e;return code==="FETCH_BLOCKED"?c.json({code},400):c.json({code},502);}
  })
- .post("/",dealsWrite,validate("json",z.object({url:z.string().max(2048),channelIds:ids,sendAt:z.iso.datetime({offset:true}).optional(),queue:z.boolean().optional(),...extras}).strict()),async c=>{
+ .post("/",dealsWrite,validate("json",z.strictObject({url:z.string().max(2048),channelIds:ids,sendAt:z.iso.datetime({offset:true}).optional(),queue:z.boolean().optional(),...extras})),async c=>{
   const owner=c.get("session").user.id,input=c.req.valid("json"),now=Date.now();
   const ready=await readyToQueue(c.env.DB,owner,input,now);if("code" in ready)return c.json({code:ready.code},ready.status);
   let p:Preview;
@@ -93,11 +93,11 @@ export const offersApi=new Hono<DealsApp>()
  // A new TikTok video about a product: checked first, then announced. The
  // person names the product (TikTok tells nothing about it without its
  // API) and, if they want, its price; the click goes to the video.
- .post("/video/preview",dealsWrite,validate("json",z.object({url:z.string().max(2048)}).strict()),async c=>{
+ .post("/video/preview",dealsWrite,validate("json",z.strictObject({url:z.string().max(2048)})),async c=>{
   const video=await checkVideo(c.req.valid("json").url);
   return "code" in video?c.json({code:video.code},video.status):c.json({id:video.id,author:video.author,url:video.url});
  })
- .post("/video",dealsWrite,validate("json",z.object({url:z.string().max(2048),title:z.string().trim().min(1).max(200),price:z.number().int().min(0).max(100_000_00).optional(),channelIds:ids,sendAt:z.iso.datetime({offset:true}).optional(),queue:z.boolean().optional(),...extras}).strict()),async c=>{
+ .post("/video",dealsWrite,validate("json",z.strictObject({url:z.string().max(2048),title:z.string().trim().min(1).max(200),price:z.number().int().min(0).max(100_000_00).optional(),channelIds:ids,sendAt:z.iso.datetime({offset:true}).optional(),queue:z.boolean().optional(),...extras})),async c=>{
   const owner=c.get("session").user.id,input=c.req.valid("json"),now=Date.now();
   const title=cleanLine(input.title,200);if(!title)return c.json({code:"INVALID"},400);
   const ready=await readyToQueue(c.env.DB,owner,input,now);if("code" in ready)return c.json({code:ready.code},ready.status);
@@ -114,7 +114,7 @@ export const offersApi=new Hono<DealsApp>()
  // out, the sent and failed ones newest first.
  // A few words about a product, written by the AI with the person's plan
  // allowance (the Cloud's, in percent of the month).
- .post("/describe",dealsWrite,validate("json",z.object({title:z.string().trim().min(1).max(200),store:z.string().trim().max(40).optional(),price:z.string().trim().max(40).optional()}).strict()),async c=>{
+ .post("/describe",dealsWrite,validate("json",z.strictObject({title:z.string().trim().min(1).max(200),store:z.string().trim().max(40).optional(),price:z.string().trim().max(40).optional()})),async c=>{
   const input=c.req.valid("json"),language=languageOf(c.req.header("x-blup-language"))??"pt";
   const out=await describe(c.env,c.get("session").user.id,input,language);
   return "code" in out?c.json({code:out.code},out.status):c.json({text:out.text});

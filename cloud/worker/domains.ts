@@ -67,7 +67,7 @@ export const domainsApi=new Hono<App>()
 		}catch(e){if(e instanceof DomainError)return c.json({code:e.code},e.code==="DOMAIN_UNAVAILABLE"?503:e.code==="DOMAIN_TAKEN"?409:502);throw e;}
 
 	})
-	.post("/",validate("param",idParam),validate("json",z.object({hostname:hostnameSchema}).strict()),async c=>{
+	.post("/",validate("param",idParam),validate("json",z.strictObject({hostname:hostnameSchema})),async c=>{
 		if(!(await accountPlan(c.env,c.get("userId")))?.limits.customDomain)return c.json({code:"PLAN"},403);
 		if(!c.env.CF_API_TOKEN||!c.env.CF_ZONE_ID||!c.env.SITES_CNAME_TARGET)return c.json({code:"DOMAIN_UNAVAILABLE"},503);
 		const {id}=c.req.valid("param"),{hostname}=c.req.valid("json");

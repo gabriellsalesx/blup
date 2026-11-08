@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { boundedJson } from "./validation";
+// The most a Cloudflare or DNS answer may weigh.
+const PROVIDER_MAX=256*1024;
 
 const dnsRecord=z.object({type:z.enum(["TXT","CNAME"]),name:z.string().min(1).max(253),value:z.string().min(1).max(1024)});
 export const domainInfo=z.object({hostname:z.string(),status:z.enum(["pending_ownership","pending","active","error","disabled"]),disableAt:z.iso.datetime().nullable(),ssl:z.enum(["pending","active","error"]),records:z.array(dnsRecord).max(10)});
@@ -35,13 +38,13 @@ export async function providerCall(env:Cloudflare.Env,method:"GET"|"POST"|"DELET
    if(method==="POST"&&hostname){
     const lookup=new URL(path);lookup.searchParams.set("hostname.exact",hostname);lookup.searchParams.set("per_page","1");
     const found=await fetch(lookup,{headers:{Authorization:`Bearer ${env.CF_API_TOKEN}`},redirect:"manual",signal:AbortSignal.timeout(15_000)});
-    const existing=z.object({success:z.literal(true),result:z.array(providerHostname).max(1)}).safeParse(found.ok?await found.json():null);
+    const existing=z.object({success:z.literal(true),result:z.array(providerHostname).max(1)}).safeParse(found.ok?await boundedJson(found,PROVIDER_MAX):null);
     const match=existing.success?existing.data.result[0]:undefined;
     if(match?.hostname===hostname)return match;
    }
    throw new DomainError("DOMAIN_PROVIDER");
   }
-		const value:unknown=await res.json();
+		const value:unknown=await boundedJson(res,PROVIDER_MAX);
 		if(method==="DELETE"){
 			if(!z.object({success:z.literal(true)}).safeParse(value).success)throw new DomainError("DOMAIN_PROVIDER");
 			return null;
@@ -66,7 +69,7 @@ export async function provesOwnership(hostname:string,proof:string) {
 		const url=new URL("https://cloudflare-dns.com/dns-query");url.searchParams.set("name",name);url.searchParams.set("type","TXT");
 		const res=await fetch(url,{headers:{accept:"application/dns-json"},redirect:"manual",signal:AbortSignal.timeout(5000)});
 		if(!res.ok)return false;
-		const dns=z.object({Status:z.literal(0),Answer:z.array(z.object({name:z.string().max(254),type:z.number().int(),data:z.string().max(4096)})).max(100).optional()}).safeParse(await res.json());
+		const dns=z.object({Status:z.literal(0),Answer:z.array(z.object({name:z.string().max(254),type:z.number().int(),data:z.string().max(4096)})).max(100).optional()}).safeParse(await boundedJson(res,PROVIDER_MAX));
 		if(!dns.success)return false;
 		return dns.data.Answer?.some(r=>r.type===16&&r.name.toLowerCase().replace(/\.$/,"")===name&&r.data.replace(/^"|"$/g,"").replace(/"\s*"/g,"")===proof)??false;
 	}catch{return false;}
@@ -83,7 +86,7 @@ export async function removeDomainProvider(env:Cloudflare.Env,row:{hostname:stri
 		url.searchParams.set("hostname.exact",row.hostname);url.searchParams.set("per_page","1");
 		try{
 			const res=await fetch(url,{headers:{Authorization:`Bearer ${env.CF_API_TOKEN}`},redirect:"manual",signal:AbortSignal.timeout(15_000)});
-			const parsed=z.object({success:z.literal(true),result:z.array(providerHostname).max(1)}).safeParse(res.ok?await res.json():null);
+			const parsed=z.object({success:z.literal(true),result:z.array(providerHostname).max(1)}).safeParse(res.ok?await boundedJson(res,PROVIDER_MAX):null);
 			if(!parsed.success)throw new DomainError("DOMAIN_PROVIDER");
 			const match=parsed.data.result[0];
 			if(match&&match.hostname!==row.hostname)throw new DomainError("DOMAIN_PROVIDER");

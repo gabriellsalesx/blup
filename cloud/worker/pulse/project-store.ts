@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS pending_alert(id TEXT PRIMARY KEY,issue_id TEXT NOT N
 INSERT OR IGNORE INTO meta VALUES('schema','1');`);
  }
  seen(id:string,cutoff:number){return this.sql.exec<{id:string}>("SELECT id FROM seen WHERE id=? AND received_at>?",id,cutoff).toArray().length>0;}
- slots(month:string){return this.sql.exec<{slots:number}>("SELECT coalesce(sum(amount-used),0) AS slots FROM grant_slot WHERE month=?",month).toArray()[0].slots;}
- sequence(month:string){return this.sql.exec<{n:number}>("SELECT count(*) AS n FROM grant_slot WHERE month=?",month).toArray()[0].n;}
+ slots(month:string){return this.sql.exec<{slots:number}>("SELECT coalesce(sum(amount-used),0) AS slots FROM grant_slot WHERE month=?",month).toArray()[0]?.slots??0;}
+ sequence(month:string){return this.sql.exec<{n:number}>("SELECT count(*) AS n FROM grant_slot WHERE month=?",month).toArray()[0]?.n??0;}
  importGrant(grant:{id:string;amount:number},month:string){this.sql.exec("INSERT OR IGNORE INTO grant_slot(id,month,amount) VALUES(?,?,?)",grant.id,month,grant.amount);}
  accept(event:SafeEvent,plan:PulsePlan,now=Date.now()){
   const limits=pulseLimits[plan],cutoff=now-limits.retentionDays*86_400_000,month=monthOf(now),minute=Math.floor(now/60_000);
@@ -69,7 +69,7 @@ INSERT OR IGNORE INTO meta VALUES('schema','1');`);
  counts(cutoff:number,filter:{environment?:string;release?:string}){
   const where="i.last_at>? AND (? IS NULL OR i.environment=?) AND (? IS NULL OR i.release=?)",binds=[cutoff,filter.environment??null,filter.environment??null,filter.release??null,filter.release??null];
   const by=new Map(this.sql.exec<{state:string;n:number}>(`SELECT i.state,count(*) AS n FROM issue i WHERE ${where} GROUP BY i.state`,...binds).toArray().map(r=>[r.state,r.n]));
-  const occurrences=this.sql.exec<{n:number}>(`SELECT coalesce(sum(d.count),0) AS n FROM issue_day d JOIN issue i ON i.id=d.issue_id WHERE d.day>=? AND ${where}`,Math.floor(cutoff/86_400_000),...binds).toArray()[0].n;
+  const occurrences=this.sql.exec<{n:number}>(`SELECT coalesce(sum(d.count),0) AS n FROM issue_day d JOIN issue i ON i.id=d.issue_id WHERE d.day>=? AND ${where}`,Math.floor(cutoff/86_400_000),...binds).toArray()[0]?.n??0;
   const open=by.get("open")??0,resolved=by.get("resolved")??0,ignored=by.get("ignored")??0;
   return {open,resolved,ignored,total:open+resolved+ignored,occurrences};
  }
@@ -83,7 +83,7 @@ INSERT OR IGNORE INTO meta VALUES('schema','1');`);
  }
  samples(id:string,cutoff:number,limit=50){return this.sql.exec<{id:string;receivedAt:number;event:string}>("SELECT id,received_at AS receivedAt,event FROM sample WHERE issue_id=? AND received_at>? ORDER BY received_at DESC,id DESC LIMIT ?",id,cutoff,limit).toArray().flatMap(row=>{const event=storedSample(row.event);return event?[{...row,event}]:[];});}
  setState(id:string,state:Issue["state"],cutoff:number){return this.sql.exec("UPDATE issue SET state=? WHERE id=? AND last_at>? RETURNING id",state,id,cutoff).toArray().length>0;}
- usage(month:string){return {accepted:this.sql.exec<{n:number}>("SELECT coalesce(sum(used),0) AS n FROM grant_slot WHERE month=?",month).toArray()[0].n,bytes:this.sql.databaseSize};}
+ usage(month:string){return {accepted:this.sql.exec<{n:number}>("SELECT coalesce(sum(used),0) AS n FROM grant_slot WHERE month=?",month).toArray()[0]?.n??0,bytes:this.sql.databaseSize};}
  cleanup(cutoff:number,now=Date.now()){
   return this.transaction(()=>{
    for(const table of ["sample","seen"]){this.sql.exec(`DELETE FROM ${table} WHERE id IN (SELECT id FROM ${table} WHERE received_at<=? LIMIT 500)`,cutoff);}
@@ -92,7 +92,7 @@ INSERT OR IGNORE INTO meta VALUES('schema','1');`);
    this.sql.exec("DELETE FROM burst WHERE minute<?",Math.floor(now/60_000)-1);
    this.sql.exec("DELETE FROM grant_slot WHERE month<?",monthOf(cutoff));
    this.sql.exec("DELETE FROM pending_alert WHERE id IN(SELECT id FROM pending_alert WHERE created_at<=? LIMIT 500)",now-86_400_000);
-   return this.sql.exec<{n:number}>("SELECT EXISTS(SELECT 1 FROM seen WHERE received_at<=?) OR EXISTS(SELECT 1 FROM sample WHERE received_at<=?) OR EXISTS(SELECT 1 FROM issue WHERE last_at<=?) OR EXISTS(SELECT 1 FROM issue_day WHERE day<?) OR EXISTS(SELECT 1 FROM pending_alert WHERE created_at<=?) AS n",cutoff,cutoff,cutoff,Math.floor(cutoff/86_400_000),now-86_400_000).toArray()[0].n>0;
+   return (this.sql.exec<{n:number}>("SELECT EXISTS(SELECT 1 FROM seen WHERE received_at<=?) OR EXISTS(SELECT 1 FROM sample WHERE received_at<=?) OR EXISTS(SELECT 1 FROM issue WHERE last_at<=?) OR EXISTS(SELECT 1 FROM issue_day WHERE day<?) OR EXISTS(SELECT 1 FROM pending_alert WHERE created_at<=?) AS n",cutoff,cutoff,cutoff,Math.floor(cutoff/86_400_000),now-86_400_000).toArray()[0]?.n??0)>0;
   });
  }
 }

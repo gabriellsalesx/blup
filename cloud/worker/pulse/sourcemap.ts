@@ -28,7 +28,7 @@ type Segment=[column:number,source?:number,line?:number,sourceColumn?:number,nam
 function readSegment(text:string,at:number):{values:number[];next:number}{
  const values:number[]=[];let value=0,shift=0,i=at;
  for(;i<text.length;i++){
-  const c=text[i];if(c===","||c===";")break;
+  const c=text.charAt(i);if(c===","||c===";")break;
   const d=digit.get(c);if(d===undefined)throw new Error("BAD_MAPPING");
   value+=(d&31)<<shift;
   if(d&32){shift+=5;if(shift>30)throw new Error("BAD_MAPPING");continue;}
@@ -49,9 +49,10 @@ export class SourceMapLookup{
    while(this.at<text.length&&text[this.at]!==";"){
     if(text[this.at]===","){this.at++;continue;}
     const {values,next}=readSegment(text,this.at);this.at=next;
-    if(!values.length)continue;
-    column+=values[0];
-    if(values.length>=4){this.state.source+=values[1];this.state.line+=values[2];this.state.column+=values[3];if(values.length>=5)this.state.name+=values[4];segments.push(values.length>=5?[column,this.state.source,this.state.line,this.state.column,this.state.name]:[column,this.state.source,this.state.line,this.state.column]);}
+    const [first,source,sourceLine,sourceColumn,name]=values;
+    if(first===undefined)continue;
+    column+=first;
+    if(source!==undefined&&sourceLine!==undefined&&sourceColumn!==undefined){this.state.source+=source;this.state.line+=sourceLine;this.state.column+=sourceColumn;if(name!==undefined)this.state.name+=name;segments.push(name!==undefined?[column,this.state.source,this.state.line,this.state.column,this.state.name]:[column,this.state.source,this.state.line,this.state.column]);}
     else segments.push([column]);
    }
    segments.sort((a,b)=>a[0]-b[0]);
@@ -65,7 +66,7 @@ export class SourceMapLookup{
   this.decodeTo(line-1);
   const segments=this.lines[line-1];if(!segments?.length)return null;
   let lo=0,hi=segments.length-1,found=-1;const col=Math.max(0,column-1);
-  while(lo<=hi){const mid=(lo+hi)>>1;if(segments[mid][0]<=col){found=mid;lo=mid+1;}else hi=mid-1;}
+  while(lo<=hi){const mid=(lo+hi)>>1,at=segments[mid];if(at&&at[0]<=col){found=mid;lo=mid+1;}else hi=mid-1;}
   const seg=found>=0?segments[found]:null;if(!seg||seg[1]===undefined||seg[2]===undefined||seg[3]===undefined)return null;
   const raw=this.map.sources[seg[1]];if(raw===undefined||raw===null)return null;
   const file=sourcePath(raw,this.map.sourceRoot),content=this.map.sourcesContent?.[seg[1]];
@@ -81,14 +82,14 @@ export class SourceMapLookup{
 // no query; cleaned like any text.
 export function sourcePath(raw:string,root?:string){
  const joined=root&&!/^[a-z]+:/i.test(raw)?`${root.replace(/\/+$/,"")}/${raw}`:raw;
- const path=joined.replace(/^[a-z][\w+.-]*:\/\/\/?/i,"").replace(/^(?:\.\.?\/)+/,"").split(/[?#]/)[0];
+ const path=joined.replace(/^[a-z][\w+.-]*:\/\/\/?/i,"").replace(/^(?:\.\.?\/)+/,"").split(/[?#]/)[0]??"";
  return cleanText(path,240);
 }
 // Five lines of the original code each side of a line, cleaned and cut.
 function around(content:string,index:number){
  const lines=content.split(/\r?\n/),line=(v:string)=>cleanText(v,200);
  if(index<0||index>=lines.length)return undefined;
- return {pre:lines.slice(Math.max(0,index-5),index).map(line),line:line(lines[index]),post:lines.slice(index+1,index+6).map(line)};
+ return {pre:lines.slice(Math.max(0,index-5),index).map(line),line:line(lines[index]??""),post:lines.slice(index+1,index+6).map(line)};
 }
 // The name of the function a line is in, read upwards in the original code
 // (at most 80 lines): a function declaration, a function or arrow given to
@@ -97,10 +98,10 @@ const keywords=new Set(["if","for","while","switch","catch","return","function",
 export function enclosingFunction(content:string,index:number){
  const lines=content.split(/\r?\n/);
  for(let i=Math.min(index,lines.length-1);i>=0&&i>=index-80;i--){
-  const line=lines[i];
-  const declared=/\bfunction\s*\*?\s*([A-Za-z_$][\w$]*)\s*[<(]/.exec(line);if(declared)return declared[1];
-  const assigned=/\b([A-Za-z_$][\w$]*)\s*[:=]\s*(?:async\s+)?(?:function\b|\([^)]*\)\s*(?::[^=]+)?=>|[A-Za-z_$][\w$]*\s*=>)/.exec(line);if(assigned&&!keywords.has(assigned[1]))return assigned[1];
-  const method=/^\s*(?:(?:async|static|public|private|protected|get|set)\s+)*([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*(?::\s*[^{]+)?\{/.exec(line);if(method&&!keywords.has(method[1]))return method[1];
+  const line=lines[i]??"";
+  const declared=/\bfunction\s*\*?\s*([A-Za-z_$][\w$]*)\s*[<(]/.exec(line)?.[1];if(declared)return declared;
+  const assigned=/\b([A-Za-z_$][\w$]*)\s*[:=]\s*(?:async\s+)?(?:function\b|\([^)]*\)\s*(?::[^=]+)?=>|[A-Za-z_$][\w$]*\s*=>)/.exec(line)?.[1];if(assigned&&!keywords.has(assigned))return assigned;
+  const method=/^\s*(?:(?:async|static|public|private|protected|get|set)\s+)*([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*(?::\s*[^{]+)?\{/.exec(line)?.[1];if(method&&!keywords.has(method))return method;
  }
  return "";
 }

@@ -8,7 +8,7 @@ import type { Plan } from "./plans";
 const BLOCK_MAX=4*1024*1024+64,TTL=30*60_000;
 // Small encrypted-manifest growth for a rename, not an arbitrary upload.
 const MANIFEST_ALLOWANCE=4*1024;
-const declaredBlock=z.object({id:hashId,size:z.number().int().min(0).max(BLOCK_MAX)}).strict();
+const declaredBlock=z.strictObject({id:hashId,size:z.number().int().min(0).max(BLOCK_MAX)});
 const blockList=z.string().max(1_900_000).transform((value,ctx):unknown=>{
 	try{return JSON.parse(value);}catch{ctx.addIssue({code:"custom",message:"blocks"});return z.NEVER;}
 }).pipe(z.array(declaredBlock).max(20_000).refine(a=>new Set(a.map(b=>b.id)).size===a.length));

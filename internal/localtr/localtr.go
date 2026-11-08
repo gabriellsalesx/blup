@@ -19,10 +19,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/klauspost/compress/zstd"
 )
@@ -153,7 +155,7 @@ func fetch(ctx context.Context, f File, progress func(int64)) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := http.DefaultClient.Do(req)
+	res, err := downloader.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -214,3 +216,13 @@ func Serve(dir func() string, next http.Handler) http.Handler {
 		http.ServeFile(w, r, filepath.Join(dir(), name))
 	})
 }
+
+// downloader fetches large files: no total timeout (a slow link can take
+// long), but a server that never answers is dropped.
+var downloader = &http.Client{Transport: &http.Transport{
+	Proxy:                 http.ProxyFromEnvironment,
+	DialContext:           (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+	TLSHandshakeTimeout:   15 * time.Second,
+	ResponseHeaderTimeout: 60 * time.Second,
+	ForceAttemptHTTP2:     true,
+}}

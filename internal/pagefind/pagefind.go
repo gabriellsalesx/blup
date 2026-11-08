@@ -124,7 +124,7 @@ func extract(data []byte) ([]byte, error) {
 			return nil, err
 		}
 		if name := filepath.Base(h.Name); name == "pagefind" || name == "pagefind.exe" {
-			return io.ReadAll(tr)
+			return readMax(tr)
 		}
 	}
 }
@@ -167,3 +167,16 @@ func (c capped) Read(p []byte) (int, error) {
 }
 
 func (c capped) Close() error { return c.c.Close() }
+
+// readMax lê o arquivo extraído com o mesmo teto do download: um arquivo
+// compactado pequeno pode descompactar para algo enorme.
+func readMax(r io.Reader) ([]byte, error) {
+	b, err := io.ReadAll(io.LimitReader(r, maxDownload+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(b)) > maxDownload {
+		return nil, fmt.Errorf("arquivo extraído maior que %d MiB", maxDownload>>20)
+	}
+	return b, nil
+}

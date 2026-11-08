@@ -40,7 +40,8 @@ export function keyOf(name: string, taken: string[]) {
 export function asText(v: unknown): string {
   if (v == null) return "";
   if (Array.isArray(v)) return v.map(asText).join(", ");
-  if (typeof v === "boolean") return v ? "✓" : "";
+  // A ticked box is "true" (the cards draw it as a check icon).
+  if (typeof v === "boolean") return v ? "true" : "";
   return String(v).replace(/^\[\[|\]\]$/g, "");
 }
 

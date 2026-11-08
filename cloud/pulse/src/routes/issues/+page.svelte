@@ -13,7 +13,7 @@
  import X from "@lucide/svelte/icons/x";
  import {t,intlLocale} from "#lib/i18n.svelte.ts";
  import {errorMessage} from "#lib/i18n/errors.ts";
- import {openCard,cardLink} from "#lib/card.ts";
+ import {cardLink} from "#lib/card.ts";
  import Button from "#lib/ui/Button.svelte";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import Select from "#lib/ui/Select.svelte";
@@ -91,8 +91,7 @@
 <div class="mt-6 grid gap-3">
  {#each issues as issue(issue.id)}
   {@const href=issuePage(projectId,issue.id)}
-  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-  <div onclick={(event)=>openCard(event,href)} onauxclick={(event)=>openCard(event,href)} class="relative flex cursor-pointer items-center gap-4 rounded-xl border border-l-4 border-neutral-200 bg-white px-5 py-4 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60 {stateEdge[issue.state]}">
+  <div class="relative flex cursor-pointer items-center gap-4 rounded-xl border border-l-4 border-neutral-200 bg-white px-5 py-4 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60 {stateEdge[issue.state]}">
    <a class={cardLink} {href} aria-label={issue.title}></a>
    <div class="min-w-0 flex-1">
     <p class="flex items-center gap-2"><span class="line-clamp-2 font-semibold break-words">{issue.title}</span></p>

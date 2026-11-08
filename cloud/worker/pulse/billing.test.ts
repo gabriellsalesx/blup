@@ -10,6 +10,7 @@ import {planNamed} from "../plans";
 import {observePulseEntitlements} from "./entitlements";
 import {pulseAccess} from "./limits";
 import {claimHostname} from "../hostname-claim";
+import {at} from "./test-at";
 let db:TestD1,calls:{path:string;method:string;body:URLSearchParams;key:string|null}[];
 const price=(name="max_pulse",annual=false)=>({object:"price",id:`price_${name}${annual?"_annual":""}`,lookup_key:`blup_${name}_${annual?"anual":"mensal"}`,metadata:{blup_plan:name},product:{id:`prod_${name}`,metadata:{blup_plan:name},active:true},active:true,unit_amount:name==="max_pulse"?4990:12990,currency:"brl",type:"recurring",billing_scheme:"per_unit",recurring:{interval:annual?"year":"month",interval_count:1,usage_type:"licensed"}});
 const subscription=(name="max_pulse")=>({id:"sub_fixture",customer:"cus_fixture",status:"active",cancel_at_period_end:false,cancel_at:null,schedule:null as string|null,pending_update:null as {expires_at:number}|null,collection_method:"charge_automatically",discounts:[],default_tax_rates:[],automatic_tax:{enabled:false},items:{has_more:false,data:[{id:"si_fixture",quantity:1,current_period_start:Math.floor(Date.now()/1000)-100,current_period_end:Math.floor(Date.now()/1000)+86400,price:price(name)}]},latest_invoice:null as {id:string;status:string;hosted_invoice_url:string}|null});
@@ -47,14 +48,14 @@ it("previews a real proration and confirms on the same single item/date, without
  db.sqlite.prepare("UPDATE pulse_billing_ticket SET expires_at=? WHERE id=?").run(Date.now()-24*60*60_000,value.ticket);expect(await(await request("/state",undefined,"alice","GET")).json()).toMatchObject({change:null,paymentUrl:null});expect((await request("/confirm",{ticket:value.ticket},"bob")).status).toBe(404);
 });
 it("schedules Pulse removal at the paid end with no immediate price update",async()=>{
- const preview=await request("/preview",{plan:"max",annual:false}),value=await preview.json() as {ticket:string;quote:{mode:string;effectiveAt:string}};expect(value.quote.mode).toBe("scheduled");expect(Date.parse(value.quote.effectiveAt)).toBe(current.items.data[0].current_period_end*1000);expect((await request("/confirm",{ticket:value.ticket})).status).toBe(200);
+ const preview=await request("/preview",{plan:"max",annual:false}),value=await preview.json() as {ticket:string;quote:{mode:string;effectiveAt:string}};expect(value.quote.mode).toBe("scheduled");expect(Date.parse(value.quote.effectiveAt)).toBe(at(current.items.data).current_period_end*1000);expect((await request("/confirm",{ticket:value.ticket})).status).toBe(200);
  expect(calls.some(c=>c.path==="/v1/subscriptions/sub_fixture"&&c.method==="POST")).toBe(false);const update=calls.find(c=>c.path==="/v1/subscription_schedules/sub_sched_fixture");expect(update?.body.get("phases[0][items][0][price]")).toBe("price_max_pulse");expect(update?.body.get("phases[1][items][0][price]")).toBe("price_max");expect(update?.body.get("proration_behavior")).toBe("none");
 });
 it("restores a canceled legacy price after its lookup key was transferred",async()=>{
- current.cancel_at_period_end=true;current.items.data[0].price.lookup_key="";const quote=await buildQuote(db.asD1(),createStripe("sk_test_fixture"),flowSubscription.parse(current),"alice",planNamed("max_pulse"),false,Math.floor(Date.now()/1000));expect(quote).toMatchObject({mode:"restore",targetPrice:"price_max_pulse",recurringAmount:4990});expect(calls).toHaveLength(0);
+ current.cancel_at_period_end=true;at(current.items.data).price.lookup_key="";const quote=await buildQuote(db.asD1(),createStripe("sk_test_fixture"),flowSubscription.parse(current),"alice",planNamed("max_pulse"),false,Math.floor(Date.now()/1000));expect(quote).toMatchObject({mode:"restore",targetPrice:"price_max_pulse",recurringAmount:4990});expect(calls).toHaveLength(0);
 });
 it("rejects stale quotes and a simultaneous mutation with a short retry",async()=>{
- const value=await(await request("/preview",{plan:"ultra_pulse",annual:false})).json() as {ticket:string};current.items.data[0].price.id="price_changed";expect((await request("/confirm",{ticket:value.ticket})).status).toBe(409);
+ const value=await(await request("/preview",{plan:"ultra_pulse",annual:false})).json() as {ticket:string};at(current.items.data).price.id="price_changed";expect((await request("/confirm",{ticket:value.ticket})).status).toBe(409);
  db.sqlite.prepare("INSERT INTO site_lease VALUES(?,?,?)").run("billing:sub_fixture","held",Date.now()+60000);const busy=await request("/preview",{plan:"ultra_pulse",annual:false});expect(busy.status).toBe(503);expect(busy.headers.get("retry-after")).toBe("1");
 });
 it("never grants more Pulse resources than a downgraded account selected",async()=>{
@@ -91,7 +92,7 @@ it("inherits Cloud limits in both Pulse variants and rejects foreign resource se
 it("serializes initial checkout and reuses one persisted idempotency key instead of opening another subscription",async()=>{
  db.sqlite.exec("DELETE FROM subscription WHERE reference_id='alice'");
  const results=await Promise.all([request("/checkout",{plan:"max_pulse",annual:false}),request("/checkout",{plan:"max_pulse",annual:false})]);expect(results.map(r=>r.status).sort()).toEqual([200,503]);expect((await request("/checkout",{plan:"max_pulse",annual:false})).status).toBe(200);
- const checkouts=calls.filter(c=>c.path==="/v1/checkout/sessions"&&c.method==="POST");expect(checkouts).toHaveLength(2);expect(checkouts[0].key).toBe(checkouts[1].key);expect(checkouts[0].body.get("line_items[0][price]")).toBe("price_max_pulse");expect(checkouts[0].body.get("subscription_data[metadata][referenceId]")).toBe("alice");expect((await request("/checkout",{plan:"ultra_pulse",annual:false})).status).toBe(409);
+ const checkouts=calls.filter(c=>c.path==="/v1/checkout/sessions"&&c.method==="POST");expect(checkouts).toHaveLength(2);expect(at(checkouts).key).toBe(at(checkouts,1).key);expect(at(checkouts).body.get("line_items[0][price]")).toBe("price_max_pulse");expect(at(checkouts).body.get("subscription_data[metadata][referenceId]")).toBe("alice");expect((await request("/checkout",{plan:"ultra_pulse",annual:false})).status).toBe(409);
 });
 it("does not charge after account deletion or allow caller-provided customer/price",async()=>{
  expect((await request("/checkout",{plan:"max_pulse",annual:false,customer:"cus_other"})).status).toBe(400);db.sqlite.exec("INSERT INTO resource_quota(user_id,deleted_at) VALUES('alice',1)");expect((await request("/preview",{plan:"ultra_pulse",annual:false})).status).toBe(401);expect(calls).toHaveLength(0);

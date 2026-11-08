@@ -1,0 +1,3 @@
+-- Canais repetidos (duas requisições ao mesmo tempo): o mais antigo fica; os outros param e saem do índice.
+UPDATE `deals_channel` SET `target_hash`='duplicate:'||`id`,`active`=0,`last_error`='DESTINATION_DISABLED' WHERE `target_hash` IS NOT NULL AND EXISTS(SELECT 1 FROM `deals_channel` d WHERE d.`user_id`=`deals_channel`.`user_id` AND d.`target_hash`=`deals_channel`.`target_hash` AND (d.`created_at`<`deals_channel`.`created_at` OR d.`created_at`=`deals_channel`.`created_at` AND d.`id`<`deals_channel`.`id`));--> statement-breakpoint
+CREATE UNIQUE INDEX `deals_channel_owner_hash_unique` ON `deals_channel` (`user_id`,`target_hash`);

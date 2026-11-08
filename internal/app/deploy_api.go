@@ -356,7 +356,7 @@ func SyncStatus(ctx context.Context, site *config.Site) (SyncInfo, error) {
 		if gone := unlinkGoneVault(ctx, site, err); gone != nil {
 			return SyncInfo{}, gone
 		}
-		return SyncInfo{}, errors.New(describe(err))
+		return SyncInfo{}, syncFailed(err)
 	}
 	return SyncInfo{
 		Repo: repo, Send: len(plan.Uploaded) + len(plan.Deleted), Receive: len(plan.Downloaded) + len(plan.DeletedLocal),
@@ -376,11 +376,22 @@ func SyncNow(ctx context.Context, site *config.Site) (SyncInfo, error) {
 var syncMu sync.Mutex
 
 func syncSite(ctx context.Context, site *config.Site, share bool) (SyncInfo, error) {
+	return syncSiteWith(ctx, site, share, false)
+}
+
+// syncSiteWith is syncSite; fresh first forgets the last sync (the base and
+// the chain of versions), so it compares as a new computer (ResetSync).
+func syncSiteWith(ctx context.Context, site *config.Site, share, fresh bool) (SyncInfo, error) {
 	syncMu.Lock()
 	defer syncMu.Unlock()
 	sy, repo, err := syncer(ctx, site)
 	if err != nil {
 		return SyncInfo{}, err
+	}
+	if fresh {
+		if err := sy.Forget(); err != nil {
+			return SyncInfo{}, err
+		}
 	}
 	if share {
 		if err := writeShared(site); err != nil {
@@ -392,7 +403,7 @@ func syncSite(ctx context.Context, site *config.Site, share bool) (SyncInfo, err
 		if gone := unlinkGoneVault(ctx, site, err); gone != nil {
 			return SyncInfo{}, gone
 		}
-		return SyncInfo{}, errors.New(describe(err))
+		return SyncInfo{}, syncFailed(err)
 	}
 	// Settings changed on another computer.
 	if share && slices.Contains(rep.Downloaded, notesync.SiteFile) {

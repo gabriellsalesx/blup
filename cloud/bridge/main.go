@@ -70,7 +70,7 @@ func run(log *slog.Logger) error {
 		return err
 	}
 
-	tell := newNotifier(cfg, log)
+	tell := newNotifier(ctx, cfg, log)
 	m := newManager(box, st, log, tell.send, cfg)
 	if err := m.resume(ctx); err != nil {
 		return fmt.Errorf("religar as sessões: %w", err)
@@ -183,14 +183,15 @@ func healthcheck() int {
 // como os pedidos dele. Tenta três vezes; o Blup Cloud também consulta o
 // estado sozinho, então um aviso perdido não trava nada.
 type notifier struct {
+	ctx    context.Context // o do servidor: ao desligar, os avisos param
 	url    string
 	secret []byte
 	log    *slog.Logger
 	http   *http.Client
 }
 
-func newNotifier(cfg Config, log *slog.Logger) *notifier {
-	return &notifier{url: cfg.CallbackURL, secret: cfg.CallbackSecret, log: log, http: &http.Client{Timeout: 15 * time.Second}}
+func newNotifier(ctx context.Context, cfg Config, log *slog.Logger) *notifier {
+	return &notifier{ctx: ctx, url: cfg.CallbackURL, secret: cfg.CallbackSecret, log: log, http: &http.Client{Timeout: 15 * time.Second}}
 }
 
 func (n *notifier) send(id, state string) {
@@ -201,9 +202,13 @@ func (n *notifier) send(id, state string) {
 	go func() {
 		for try := 0; try < 3; try++ {
 			if try > 0 {
-				time.Sleep(time.Duration(try*try) * 5 * time.Second)
+				select {
+				case <-time.After(time.Duration(try*try) * 5 * time.Second):
+				case <-n.ctx.Done():
+					return
+				}
 			}
-			req, err := http.NewRequest(http.MethodPost, n.url, bytes.NewReader(body))
+			req, err := http.NewRequestWithContext(n.ctx, http.MethodPost, n.url, bytes.NewReader(body))
 			if err != nil {
 				return
 			}

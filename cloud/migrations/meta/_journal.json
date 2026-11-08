@@ -295,6 +295,34 @@
       "when": 1794085357488,
       "tag": "0041_indices_oferta_e_componente",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "6",
+      "when": 1794115184435,
+      "tag": "0042_canal_deals_unico",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "6",
+      "when": 1794115877936,
+      "tag": "0043_sessao_canal_deals",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1794116383514,
+      "tag": "0044_nonce_ponte_deals",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "6",
+      "when": 1794117300956,
+      "tag": "0045_carencia_pagamento",
+      "breakpoints": true
     }
   ]
 }

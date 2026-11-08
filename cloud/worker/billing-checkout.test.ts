@@ -35,13 +35,13 @@ it("replays a failed Checkout create minutes later with an expiry Stripe still a
  failCreate=true;expect((await request("/checkout","POST",{plan:"max",annual:false})).status).toBe(502);
  failCreate=false;vi.setSystemTime(Date.now()+10*60_000);
  expect((await request("/checkout","POST",{plan:"max",annual:false})).status).toBe(200);
- expect(posts).toHaveLength(2);expect(posts[0].key).toBe(posts[1].key);expect(posts[1].expiresAt-posts[1].at).toBeGreaterThanOrEqual(1800);
+ expect(posts).toHaveLength(2);{const [a,b]=posts;if(!a||!b)throw new Error("missing post");expect(a.key).toBe(b.key);expect(b.expiresAt-b.at).toBeGreaterThanOrEqual(1800);}
 });
 it("drops a never created Checkout row once Stripe could no longer accept its expiry",async()=>{
  failCreate=true;expect((await request("/checkout","POST",{plan:"max",annual:false})).status).toBe(502);
  failCreate=false;vi.setSystemTime(Date.now()+40*60_000);
  expect((await request("/checkout","POST",{plan:"max",annual:false})).status).toBe(200);
- expect(posts).toHaveLength(2);expect(posts[1].key).not.toBe(posts[0].key);expect(posts[1].expiresAt-posts[1].at).toBeGreaterThanOrEqual(1800);
+ expect(posts).toHaveLength(2);{const [a,b]=posts;if(!a||!b)throw new Error("missing post");expect(b.key).not.toBe(a.key);expect(b.expiresAt-b.at).toBeGreaterThanOrEqual(1800);}
 });
 it("cancels a stale never created Checkout without calling Stripe again",async()=>{
  failCreate=true;expect((await request("/checkout","POST",{plan:"max",annual:false})).status).toBe(502);

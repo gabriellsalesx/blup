@@ -208,5 +208,10 @@ describe("deals page",()=>{
   expect((await dealsApi.fetch(new Request("https://cloud.audit.invalid/site/logo/light",{method:"PUT",headers:{authorization:"Bearer alice","content-type":"image/png"},body:new Uint8Array([1,2,3])}),state.env)).status).toBe(400);
   const html=await (await visit("/ofertas-ana/"))!.text();expect(html).toContain(`/ofertas-ana/logo-light?v=${version}`);
   const logo=await visit(`/ofertas-ana/logo-light?v=${version}`);expect(logo?.status).toBe(200);expect(logo?.headers.get("cache-control")).toContain("immutable");
+  // Without the plan, the logo goes with the page (and its search).
+  db.sqlite.prepare("UPDATE subscription SET status='canceled' WHERE reference_id='alice'").run();
+  expect((await visit(`/ofertas-ana/logo-light?v=${version}`))?.status).toBe(404);
+  expect((await visit("/ofertas-ana/search?q=x"))?.status).toBe(404);
+  expect((await visit("/ofertas-ana/"))?.status).toBe(404);
  });
 });

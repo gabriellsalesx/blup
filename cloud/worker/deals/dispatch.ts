@@ -12,9 +12,11 @@ type Due={id:string;userId:string;channelId:string;code:string;link:string;attem
 // The post's opening line: the person's (or the default, in the account's
 // language) with the offer's name, discount and store; a video keeps its
 // own. A line that ends up empty falls back to the name.
+const isHeadlineKind=(kind:string):kind is HeadlineKind=>(headlineKinds as readonly string[]).includes(kind);
 export function openingLine(item:{title:string;kind:string;discount:number|null;store:string;language:string|null},own:Pick<DealsSettings,"headlines">){
- if(!(headlineKinds as readonly string[]).includes(item.kind))return item.title;
- const template=headlineOf(own,item.kind)??defaultHeadlines[languageOf(item.language)??"pt"][item.kind as HeadlineKind];
+ const kind=item.kind;
+ if(!isHeadlineKind(kind))return item.title;
+ const template=headlineOf(own,kind)??defaultHeadlines[languageOf(item.language)??"pt"][kind];
  return headline(template,{name:item.title,discount:item.discount,store:storeTitles[item.store]??""})||item.title;
 }
 export const shortLink=(env:Cloudflare.Env,code:string)=>`https://${env.DEALS_PUBLIC_HOST||"deals.getblup.site"}/r/${code}`;
@@ -109,7 +111,7 @@ export async function dispatchDeals(env:Cloudflare.Env,send:typeof fetch=fetch,n
      const key=`${item.userId}:${item.offerId}:${lang}`;
      if(texts.length&&!translations.has(key))translations.set(key,translate(env,item.userId,texts,lang).catch(()=>null));
      const done=texts.length?await translations.get(key)!:null;
-     if(done){let k=0;if(custom)title=done[k++];if(description)description=done[k++];if(extra)extra=done[k++];}
+     if(done){let k=0;if(custom)title=done[k++]??title;if(description)description=done[k++]??description;if(extra)extra=done[k++]??extra;}
     }
     result=await deliverPost(env,type,target,{store:item.store,title,extra,socials:socialLinks(own),style:own.style,description,coupon:item.coupon,image:item.image,price:item.priceShown?item.price:null,originalPrice:item.priceShown?item.originalPrice:null,currency:item.currency,discount:item.discount,link:shortLink(env,item.code),affiliate:!!item.affiliate,kind:item.kind,credit:item.credit,watch:item.kind==="video"?item.url:null},lang,send,item.sessionId?{session:item.sessionId,key:item.id}:undefined);
    }catch{result={sent:false,permanent:false,code:"CHANNEL_UNAVAILABLE",waitMs:300_000,global:false};}

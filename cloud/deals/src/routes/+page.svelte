@@ -56,7 +56,7 @@
     {:else}<span class="grid size-12 shrink-0 place-items-center rounded-lg bg-neutral-100 text-neutral-400 dark:bg-neutral-800" aria-hidden="true"><Tag class="size-5"/></span>{/if}
     <div class="min-w-0 flex-1">
      <p class="truncate font-semibold">{post.title}</p>
-     <p class="truncate text-sm text-neutral-500">{storeLabel(post.store)}{#if channelName(post.channelId)}{" · "}{channelName(post.channelId)}{/if}{#if post.sentAt}{" · "}{formatDate(post.sentAt)}{/if}</p>
+     <p class="truncate text-sm text-neutral-500">{[storeLabel(post.store),channelName(post.channelId),post.sentAt?formatDate(post.sentAt):""].filter(Boolean).join(" · ")}</p>
      {#if post.sendAt}<p class="flex items-center gap-1 text-sm text-neutral-500"><Clock class="size-3.5"/>{t("dealsSendsAt",{time:formatDate(post.sendAt)})}</p>{/if}
      {#if post.state==="failed"}<p class="text-sm text-red-700 dark:text-red-400">{failureText(post.lastError)}</p>{/if}
     </div>

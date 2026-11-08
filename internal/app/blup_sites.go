@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"os"
 	"sort"
@@ -39,25 +38,23 @@ func localVaults() map[string]string {
 	return out
 }
 
-func blupKeys() (*blupcloud.Client, *cloudcrypt.Keys, error) {
+// blupKeys is the client and the notes keys of the account signed in (a
+// key left by another account is forgotten first: accountKeys).
+func blupKeys(ctx context.Context) (*blupcloud.Client, *cloudcrypt.Keys, error) {
 	c, creds, err := blupClient()
 	if err != nil {
 		return nil, nil, errors.New(describe(err))
 	}
-	master, err := base64.StdEncoding.DecodeString(creds.NotesKey)
-	if err != nil || creds.NotesKey == "" {
-		return nil, nil, errors.New(describe(errNotesLocked))
-	}
-	keys, err := cloudcrypt.Derive(master)
+	keys, err := accountKeys(ctx, c, &creds)
 	if err != nil {
-		return nil, nil, errors.New(describe(errNotesLocked))
+		return nil, nil, errors.New(describe(err))
 	}
 	return c, keys, nil
 }
 
 // BlupSites lists the account's sites on Blup Cloud, by name.
 func BlupSites(ctx context.Context) ([]BlupSite, error) {
-	c, keys, err := blupKeys()
+	c, keys, err := blupKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +125,7 @@ func BringBlupSite(ctx context.Context, vault string) (*config.Site, error) {
 	}
 	// A name sealed before it was bound to the vault's id is sealed again
 	// now, once (best effort: it opens as it is anyway).
-	if c, keys, err := blupKeys(); err == nil {
+	if c, keys, err := blupKeys(ctx); err == nil {
 		_ = c.UpgradeVaultName(ctx, keys, vault)
 	}
 	return site, nil

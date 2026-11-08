@@ -96,5 +96,5 @@ export class PulseProject extends DurableObject<Cloudflare.Env>{
   const moreChecks=this.monitorStore.cleanup(access.limits?.retentionDays??30);
   await this.ctx.storage.setAlarm(Date.now()+(more||moreChecks?60_000:60*60*1000));
  });}
- async alarm(){const project=this.ctx.storage.sql.exec<{value:string}>("SELECT value FROM meta WHERE key='project'").toArray()[0]?.value;if(project)await this.cleanup(project);}
+ override async alarm(){const project=this.ctx.storage.sql.exec<{value:string}>("SELECT value FROM meta WHERE key='project'").toArray()[0]?.value;if(project)await this.cleanup(project);}
 }

@@ -101,7 +101,7 @@
 
  {#if mirror}
   <Card title={t("dealsMirrorChannel")} help={t("dealsMirrorChannelHelp")}>
-   {#if start?.mirror}<p class="mt-4 font-semibold">{t("dealsMirrorFixed",{channel:start.mirror.channel})}{#if start.mirror.title}{" · "}<span class="font-normal text-neutral-500">{start.mirror.title}</span>{/if}</p>
+   {#if start?.mirror}<p class="mt-4 font-semibold">{t("dealsMirrorFixed",{channel:start.mirror.channel})+(start.mirror.title?" · ":"")}{#if start.mirror.title}<span class="font-normal text-neutral-500">{start.mirror.title}</span>{/if}</p>
    {:else}
     <div class="mt-5"><TagInput id="mirror-channel" label={t("dealsMirrorChannel")} bind:tags={mirrors} max={10} maxlength={200} add={checkChannel}/></div>
     <p class="mt-1.5 text-sm text-neutral-500">{checking?t("dealsMirrorChecking"):t("dealsMirrorTagsHelp")}</p>

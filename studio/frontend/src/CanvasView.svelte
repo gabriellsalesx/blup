@@ -101,20 +101,21 @@
   }
 
   // Undo and redo: the whole canvas before each change.
-  let undoStack: string[] = [], redoStack: string[] = [];
+  // Undo keeps copies of the board (typed, no JSON round trip).
+  type Snap = { nodes: CNode[]; edges: CEdge[] };
+  let undoStack: Snap[] = [], redoStack: Snap[] = [];
   let canUndo = $state(false), canRedo = $state(false);
-  const snap = () => JSON.stringify({ nodes: $state.snapshot(nodes), edges: $state.snapshot(edges) });
+  const snap = (): Snap => ({ nodes: $state.snapshot(nodes), edges: $state.snapshot(edges) });
   function remember() {
     undoStack.push(snap());
     if (undoStack.length > 100) undoStack.shift();
     redoStack = [];
     canUndo = true; canRedo = false;
   }
-  function restore(from: string[], to: string[]) {
-    const s = from.pop();
-    if (!s) return;
+  function restore(from: Snap[], to: Snap[]) {
+    const c = from.pop();
+    if (!c) return;
     to.push(snap());
-    const c = JSON.parse(s);
     nodes = c.nodes; edges = c.edges;
     selected = new Set(); edgeSel = ""; editing = "";
     canUndo = undoStack.length > 0; canRedo = redoStack.length > 0;

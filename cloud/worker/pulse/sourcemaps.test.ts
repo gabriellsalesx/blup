@@ -8,6 +8,7 @@ vi.mock("cloudflare:workers",()=>({env:state.env,DurableObject:class{}}));
 vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})=>{const id=headers.get("authorization")?.replace("Bearer ","");return id&&!/^[a-f0-9]{48}$/.test(id)?{user:{id}}:null;}}}}));
 import {pulseApi} from "./api";
 import {SOURCEMAP_BYTES_PER_PROJECT,SOURCEMAPS_PER_PROJECT} from "./sourcemaps";
+import {at} from "./test-at";
 const source=`export function total(cart: {items:{price:number}[]}, coupon: any) {\n  const subtotal = cart.items.reduce((s, i) => s + i.price, 0);\n  const rate = coupon.discount.rate;\n  return subtotal * (1 - rate);\n}\n`;
 const built=transformSync(source,{loader:"ts",minify:true,sourcemap:"external",sourcefile:"src/checkout.ts",format:"esm"});
 // Where the minified code reads the coupon's discount (1-based, as SDKs send).
@@ -43,7 +44,7 @@ it("takes maps only with the project's upload token and shows originals when rea
  expect(JSON.stringify(listed)).not.toContain(token);
  state.samples=[{id:"e1",receivedAt:Date.now(),event:{id:"e1",group:"g",title:"x",level:"error",platform:"javascript",environment:"production",release:"1.0.0",message:"",exceptions:[{type:"TypeError",value:"x",frames:[{filename:"app.min.js",function:"i",module:"",line:1,column,inApp:true}]}]}}];
  const events=await(await call("/projects/1/issues/"+"a".repeat(64)+"/events",{auth:"alice"})).json() as {events:{originals:Record<string,{file:string;line:number}>}[]};
- expect(events.events[0].originals["0:0"]).toMatchObject({file:"src/checkout.ts",line:3});
+ expect(at(events.events).originals["0:0"]).toMatchObject({file:"src/checkout.ts",line:3});
  // A new token replaces the old one.
  await call("/projects/1/upload-token",{method:"POST",body:"{}",auth:"alice"});expect((await send("release=1.0.1&file=app.min.js",built.map)).status).toBe(401);
 });

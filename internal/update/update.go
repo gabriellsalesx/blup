@@ -373,7 +373,7 @@ func extract(name string, data []byte) ([]byte, error) {
 					return nil, err
 				}
 				defer rc.Close()
-				return io.ReadAll(rc)
+				return readMax(rc)
 			}
 		}
 		return nil, fmt.Errorf("%s not found in %s", want, name)
@@ -392,7 +392,7 @@ func extract(name string, data []byte) ([]byte, error) {
 			return nil, err
 		}
 		if filepath.Base(h.Name) == want && h.Typeflag == tar.TypeReg {
-			return io.ReadAll(tr)
+			return readMax(tr)
 		}
 	}
 }
@@ -468,4 +468,17 @@ func (c Cache) Save() error {
 		return err
 	}
 	return os.WriteFile(p, b, 0o644)
+}
+
+// readMax reads an extracted file with the same cap as the download: a small
+// archive can decompress to something huge.
+func readMax(r io.Reader) ([]byte, error) {
+	b, err := io.ReadAll(io.LimitReader(r, maxDownload+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(b)) > maxDownload {
+		return nil, fmt.Errorf("extracted file larger than %d MiB", maxDownload>>20)
+	}
+	return b, nil
 }

@@ -11,7 +11,7 @@ import { expireDomains } from "./domain-downgrade";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
 import { boundedStream,idParam,safeInt,validate,opaqueId,requestError } from "./validation";
-import { accountAllowed,softDelete,purgeAccounts,cancelDeletedBilling,downgradeNotices } from "./lifecycle";
+import { accountAllowed,softDelete,purgeAccounts,cancelDeletedBilling,downgradeNotices,expirePastDue } from "./lifecycle";
 import { approveDevice,approvalBody } from "./devices";
 import { readAgent } from "../shared/user-agent";
 import { expireReservations } from "./quota";
@@ -31,7 +31,7 @@ import { cleanExpiredAuth } from "./auth-cleanup";
 import { aiApi, aiUsageOf, studioAIApi } from "./ai";
 import { isStudio, usageOf } from "./usage";
 import {user as userTable, session as sessionTable } from "./db/schema";
-import { SEND_CODE_PATH, hasEmail } from "./auth-options";
+import { SEND_CODE_PATH, hasEmail, RECENT_SIGN_IN_MS } from "./auth-options";
 import { turnstileOk } from "./turnstile";
 import { mutationOriginAllowed, panelCorsOrigin } from "./security";
 import {reconcileAlerts,dispatchAlerts} from "./pulse/outbox";
@@ -132,10 +132,10 @@ app.post("/auth/device/approve",validate("json",approvalBody),async c=>{
  const result=await approveDevice(c.env.DB,s.user.id,c.req.valid("json").userCode,(await planOf(s.user.id)).limits.devices);
  return result==="OK"?c.json({success:true}):c.json({code:result},result==="DEVICES_LIMIT"?403:400);
 });
-app.post("/auth/delete-user",validate("json",z.object({}).strict()),async c=>{
+app.post("/auth/delete-user",validate("json",z.strictObject({})),async c=>{
  const s=await auth.api.getSession({headers:c.req.raw.headers});
  if(!s||!await accountAllowed(c.env.DB,s.user.id))return c.json({code:"UNAUTHORIZED"},401);
- if(!Number.isFinite(new Date(s.session.createdAt).getTime())||Date.now()-new Date(s.session.createdAt).getTime()>3600_000)return c.json({code:"SESSION_EXPIRED"},403);
+ if(!Number.isFinite(new Date(s.session.createdAt).getTime())||Date.now()-new Date(s.session.createdAt).getTime()>RECENT_SIGN_IN_MS)return c.json({code:"SESSION_EXPIRED"},403);
  await softDelete(c.env,s.user.id);
  c.executionCtx.waitUntil(cancelDeletedBilling(c.env));
  return c.json({success:true,message:"Conta excluída."});
@@ -181,7 +181,7 @@ const routes = app
 	.get("/config", (c) => c.json({ turnstileSiteKey: c.env.TURNSTILE_SITE_KEY }))
 	// The plans, for the panel and the Studio (no Stripe IDs).
 	.get("/plans", async c=>c.json(await publicPlans(c.env,requestLanguage(c.req.raw.headers))))
-	.put("/me/language",session,validate("json",z.object({language:languageSchema}).strict()),async c=>{
+	.put("/me/language",session,validate("json",z.strictObject({language:languageSchema})),async c=>{
 	 const {language}=c.req.valid("json");await db.update(userTable).set({language}).where(eq(userTable.id,c.get("session").user.id));return c.json({language});
 	})
 	.get("/me", session, async (c) => {
@@ -222,6 +222,9 @@ const routes = app
 	.delete("/devices/:id", session, validate("param",idParam), async (c) => {
 		const { user } = c.get("session");
 		await db.delete(sessionTable).where(and(eq(sessionTable.id, c.req.valid("param").id), eq(sessionTable.userId, user.id), isStudio));
+		// The live sync of the account closes too: the other devices reconnect
+		// by themselves, the one taken out can't (its session is gone).
+		await c.env.SYNC_LIVE.getByName(user.id).revoke();
 		return c.json({ ok: true });
 	})
 	.route("/staff",staffApi)
@@ -321,6 +324,6 @@ export default Sentry.withSentry(sentryOptions,{
 	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
 		if(controller.cron==="* * * * *"){ctx.waitUntil(all(checkDue(env).then(()=>reconcileAlerts(env)).then(()=>dispatchAlerts(env)),collectDeals(env).then(()=>collectMirrors(env)).then(()=>collectShops(env)).then(()=>dispatchDeals(env))));return;}
 		if (controller.cron === DAILY) ctx.waitUntil(all(pulseMaintenance(env,true),dealsCleanup(env,dealsLimits.historyDays),dealsLifecycle(env),cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cleanExpiredAuth(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))));
-		else ctx.waitUntil(all(pulseMaintenance(env),sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),downgradeNotices(env),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)).then(()=>watched(flushSitePurges(env))));
+		else ctx.waitUntil(all(pulseMaintenance(env),sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),expirePastDue(env).then(()=>downgradeNotices(env)),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)).then(()=>watched(flushSitePurges(env))));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>);

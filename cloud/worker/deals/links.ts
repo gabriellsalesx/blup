@@ -12,21 +12,21 @@ export type Store=z.infer<typeof storeSchema>;
 // rest, never sent back.
 const id=(max:number)=>z.string().trim().regex(new RegExp(`^[A-Za-z0-9_-]{2,${max}}$`));
 export const affiliateBody=z.discriminatedUnion("store",[
- z.object({store:z.literal("amazon"),tag:id(64)}).strict(),
- z.object({store:z.literal("mercadolivre"),word:id(64),tool:z.string().trim().regex(/^[0-9]{1,20}$/).optional()}).strict(),
+ z.strictObject({store:z.literal("amazon"),tag:id(64)}),
+ z.strictObject({store:z.literal("mercadolivre"),word:id(64),tool:z.string().trim().regex(/^[0-9]{1,20}$/).optional()}),
  // Shopee: the keys of the person's account and its country (each country
  // has its own program and API; Brazil when not said).
- z.object({store:z.literal("shopee"),appId:z.string().trim().regex(/^[0-9]{3,20}$/),secret:z.string().trim().regex(/^[A-Za-z0-9]{16,128}$/),country:z.enum(shopeeCountries).optional()}).strict(),
- z.object({store:z.literal("aliexpress"),appKey:z.string().trim().regex(/^[0-9]{3,20}$/),appSecret:z.string().trim().regex(/^[A-Za-z0-9]{16,128}$/),trackingId:id(64)}).strict(),
+ z.strictObject({store:z.literal("shopee"),appId:z.string().trim().regex(/^[0-9]{3,20}$/),secret:z.string().trim().regex(/^[A-Za-z0-9]{16,128}$/),country:z.enum(shopeeCountries).optional()}),
+ z.strictObject({store:z.literal("aliexpress"),appKey:z.string().trim().regex(/^[0-9]{3,20}$/),appSecret:z.string().trim().regex(/^[A-Za-z0-9]{16,128}$/),trackingId:id(64)}),
  // Nuuvem pays through Rakuten Advertising: the person's Rakuten ID (the
  // id= of any of their links, like *AbCdEfGh1).
- z.object({store:z.literal("nuuvem"),siteId:z.string().trim().regex(/^[A-Za-z0-9*/._-]{6,32}$/)}).strict(),
+ z.strictObject({store:z.literal("nuuvem"),siteId:z.string().trim().regex(/^[A-Za-z0-9*/._-]{6,32}$/)}),
  // Parceiro Magalu: the promoter_id of the person's links and, for their
  // own showcase on Magazine Você, its name (magazine<loja>).
- z.object({store:z.literal("magalu"),promoterId:id(64),showcase:z.string().trim().regex(/^magazine[a-z0-9_-]{1,60}$/i).optional()}).strict(),
+ z.strictObject({store:z.literal("magalu"),promoterId:id(64),showcase:z.string().trim().regex(/^magazine[a-z0-9_-]{1,60}$/i).optional()}),
  // Terabyte's partner program: the p= of the person's links and, if they
  // use them, the program's UTM medium and campaign.
- z.object({store:z.literal("terabyte"),partner:id(64),utmMedium:id(64).optional(),utmCampaign:id(64).optional()}).strict(),
+ z.strictObject({store:z.literal("terabyte"),partner:id(64),utmMedium:id(64).optional(),utmCampaign:id(64).optional()}),
 ]);
 export type Affiliate=z.infer<typeof affiliateBody>;
 // A few characters so the person recognizes what is saved.
@@ -145,7 +145,7 @@ export async function aliexpressLink(url:URL,appKey:string,appSecret:string,trac
  const body=await aliexpressCall(appKey,appSecret,"aliexpress.affiliate.link.generate",{promotion_link_type:"0",source_values:source,tracking_id:trackingId},send,now);
  const parsed=aliexpressResponse.safeParse(body);
  const links=parsed.success?parsed.data.aliexpress_affiliate_link_generate_response.resp_result.result.promotion_links:null;
- const link=links?(Array.isArray(links)?links:links.promotion_link)[0].promotion_link:null;
+ const link=links?(Array.isArray(links)?links:links.promotion_link)[0]?.promotion_link??null:null;
  if(!link||!aliexpressHost(link))throw new FetchError("FETCH_FAILED");
  return link;
 }

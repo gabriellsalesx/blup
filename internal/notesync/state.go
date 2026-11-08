@@ -116,6 +116,30 @@ func validStateSHA(s string) bool {
 	return true
 }
 
+// Forget drops what this computer knows of the last sync: the base of
+// every file and the chain of versions (the state file), and what the
+// Remote keeps of the versions it read (Forgetter). No note is touched,
+// here or on the remote. The next Sync then compares as on a new computer:
+// without a base, decide only uploads (only here), downloads (only there)
+// or keeps both versions as a conflict copy (different on each side); it
+// never deletes a file on either side, and accepts the head the remote
+// shows now. So it is never called on its own: only when the person,
+// told that the sync stopped (Stuck), asks to compare from scratch.
+func (s *Syncer) Forget() error {
+	if err := s.check(); err != nil {
+		return err
+	}
+	if f, ok := s.remote().(Forgetter); ok {
+		if err := f.Forget(); err != nil {
+			return err
+		}
+	}
+	if err := os.Remove(s.StateFile); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
 func (s *Syncer) saveState(st *state) error {
 	data, err := json.MarshalIndent(st, "", "  ")
 	if err != nil {

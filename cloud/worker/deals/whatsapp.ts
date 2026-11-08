@@ -60,7 +60,7 @@ export const whatsappApi=new Hono<DealsApp>()
  // over with a new name at the Bridge; one still alive is shown as it is,
  // unless fresh asks for a new start while it waits for the QR (only the
  // first QR of a connection lasts a minute; the next ones, 20 seconds).
- .post("/session",dealsWrite,validate("json",z.object({acceptRisk:z.literal(true),fresh:z.boolean().optional()}).strict()),async c=>{
+ .post("/session",dealsWrite,validate("json",z.strictObject({acceptRisk:z.literal(true),fresh:z.boolean().optional()})),async c=>{
   if(!bridgeReady(c.env))return c.json({code:"WHATSAPP_UNAVAILABLE"},503);
   const owner=c.get("session").user.id,now=Date.now();
   let row=await rowOf(c.env.DB,owner);
@@ -106,7 +106,7 @@ export const whatsappApi=new Hono<DealsApp>()
   const have=new Set(added.results.map(r=>r.hash));
   return c.json({channels:await Promise.all(list.map(async ch=>({id:ch.id,name:ch.name||"Canal",role:ch.role,added:have.has(await targetHash("whatsapp",ch.id))})))});
  })
- .post("/channels",dealsWrite,validate("json",z.object({channel:z.string().regex(/^[0-9]{6,32}$/)}).strict()),async c=>{
+ .post("/channels",dealsWrite,validate("json",z.strictObject({channel:z.string().regex(/^[0-9]{6,32}$/)})),async c=>{
   const owner=c.get("session").user.id,row=await rowOf(c.env.DB,owner);
   if(!row||row.state!=="connected"||!bridgeReady(c.env))return c.json({code:"NOT_CONNECTED"},409);
   // The name comes from WhatsApp, never from the request.
@@ -124,8 +124,8 @@ async function bridgeList(env:Cloudflare.Env,id:string){
 }
 
 // The Bridge's notice that a connection changed (signed with its own
-// secret, within five minutes). Repeating one is harmless: it only sets
-// the state again, and never over a newer one.
+// secret, within five minutes, each nonce once). A retry comes with a new
+// nonce and only sets the state again, never over a newer one.
 const notice=z.object({session:z.uuid(),state:z.enum(states),at:z.string().max(64)});
 export const whatsappCallbackApi=new Hono<DealsApp>()
  .post("/callback",async c=>{
@@ -137,6 +137,9 @@ export const whatsappCallbackApi=new Hono<DealsApp>()
   const when=Number(at),url=new URL(c.req.url);
   if(!/^[0-9]{1,12}$/.test(at)||Math.abs(Date.now()/1000-when)>300||!/^[0-9a-f]{32}$/.test(nonce))return c.json({code:"UNAUTHORIZED"},401);
   if(!sameSecret(got,await signature(secret,at,nonce,"POST",url.pathname+url.search,raw)))return c.json({code:"UNAUTHORIZED"},401);
+  // The same signed notice sent again (a replay) is refused.
+  const fresh=await c.env.DB.prepare("INSERT OR IGNORE INTO deals_bridge_nonce(nonce,received_at) VALUES(?,?) RETURNING nonce").bind(nonce,Date.now()).first();
+  if(!fresh)return c.json({code:"UNAUTHORIZED"},401);
   let body:unknown;try{body=JSON.parse(raw);}catch{return c.json({code:"BAD_REQUEST"},400);}
   const parsed=notice.safeParse(body);if(!parsed.success)return c.json({code:"BAD_REQUEST"},400);
   // A notice older than the saved state (a Bridge retry arriving late) does

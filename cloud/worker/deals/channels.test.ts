@@ -5,8 +5,10 @@ vi.mock("cloudflare:workers",()=>({env:state.env,DurableObject:class{}}));
 vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})=>{const id=headers.get("authorization")?.replace("Bearer ","");return id?{user:{id}}:null;}}}}));
 import {dealsApi} from "./api";
 import {upsertOffer,type OfferInput} from "./catalog";
-import {enqueue} from "./store";
+import {enqueue,addChannel} from "./store";
 import {dispatchDeals} from "./dispatch";
+// The item at i, or the test fails here (the list came out shorter).
+const nth=<T>(list:readonly T[]|undefined,i=0):T=>{const v=list?.[i];if(v===undefined)throw new Error(`no item ${i}`);return v;};
 
 // A channel's details: webhooks of the person's own system (signed like
 // Pulse's) and the examples sent from the panel.
@@ -67,8 +69,8 @@ describe("webhooks",()=>{
   const rotated=await (await call(`/channels/${made.id}/secret`,{method:"POST",body:{}})).json() as {secret:string};
   expect(rotated.secret).not.toBe(made.secret);
   got=[];expect(await (await call(`/channels/${made.id}/test`,{method:"POST",body:{kinds:["test"]}})).json()).toMatchObject({ok:true,sent:1});
-  expect(await signed(got[0],rotated.secret)).toBe(true);expect(await signed(got[0],made.secret)).toBe(false);
-  expect(await got[0].json()).toMatchObject({event:"test",test:true,deal:null});
+  expect(await signed(nth(got),rotated.secret)).toBe(true);expect(await signed(nth(got),made.secret)).toBe(false);
+  expect(await nth(got).json()).toMatchObject({event:"test",test:true,deal:null});
  });
  it("a 410 switches it off",async()=>{
   const made=await addOwn();status=410;
@@ -96,16 +98,16 @@ describe("examples",()=>{
   // The plain test is JSON; each example goes with its picture as a file.
   type Body={content?:string;embeds?:{title:string;description:string;image?:{url:string}}[]};
   const bodies=await Promise.all(got.map(async(g,i)=>{if(!i)return await g.json() as Body;const form=await g.formData(),file=form.get("files[0]") as File;expect(file.type).toBe("image/jpeg");expect(new Uint8Array(await file.arrayBuffer()).slice(0,2)).toEqual(new Uint8Array([0xff,0xd8]));return JSON.parse(String(form.get("payload_json"))) as Body;}));
-  for(const b of bodies.slice(1))expect(b.embeds?.[0].image?.url).toBe("attachment://exemplo.jpg");
-  expect(bodies[0].content).toContain("Teste do Blup Deals");
-  expect(bodies[1].embeds?.[0].title).toContain("Aventura Estelar");expect(bodies[1].embeds?.[0].description).toContain("Grátis");
-  expect(bodies[2].embeds?.[0].title).toContain("Promoção na Nuuvem: Cidade Neon");
-  expect(bodies[3].embeds?.[0].description).toContain("EXEMPLO10");
-  for(const b of bodies.slice(1))expect(b.embeds?.[0].description).toContain("Exemplo do Blup Deals");
+  for(const b of bodies.slice(1))expect(b.embeds?.[0]?.image?.url).toBe("attachment://exemplo.jpg");
+  expect(nth(bodies).content).toContain("Teste do Blup Deals");
+  expect(nth(bodies,1).embeds?.[0]?.title).toContain("Aventura Estelar");expect(nth(bodies,1).embeds?.[0]?.description).toContain("Grátis");
+  expect(nth(bodies,2).embeds?.[0]?.title).toContain("Promoção na Nuuvem: Cidade Neon");
+  expect(nth(bodies,3).embeds?.[0]?.description).toContain("EXEMPLO10");
+  for(const b of bodies.slice(1))expect(b.embeds?.[0]?.description).toContain("Exemplo do Blup Deals");
   // Again right away: refused, nothing sent.
   got=[];const again=await call(`/channels/${id}/test`,{method:"POST",body:{kinds:["test"]}});
   expect(again.status).toBe(429);expect(got).toHaveLength(0);
-  expect((await (await call("/channels")).json() as {channels:{testAgainAt:number}[]}).channels[0].testAgainAt).toBe(out.testAgainAt);
+  expect((await (await call("/channels")).json() as {channels:{testAgainAt:number}[]}).channels[0]?.testAgainAt).toBe(out.testAgainAt);
  },10_000);
  it("refuses kinds it does not know and repeated ones",async()=>{
   const {id}=await (await call("/channels",{method:"POST",body:{type:"discord",webhook:HOOK}})).json() as {id:string};
@@ -113,4 +115,18 @@ describe("examples",()=>{
   expect((await call(`/channels/${id}/test`,{method:"POST",body:{kinds:["test","test"]}})).status).toBe(400);
   expect((await call(`/channels/${id}/test`,{method:"POST",body:{kinds:[]}})).status).toBe(400);
  });
+});
+it("makes one channel of two requests at once for the same destination",async()=>{
+ const [a,b]=await Promise.all([addChannel(state.env,"alice","discord",HOOK,"Discord"),addChannel(state.env,"alice","discord",HOOK,"Discord")]);
+ expect(a?.id).toBeDefined();expect(b?.id).toBe(a?.id);
+ expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_channel WHERE user_id='alice'").get()).toEqual({n:1});
+ // The index itself refuses a second row with the same destination.
+ expect(()=>db.sqlite.prepare("INSERT INTO deals_channel(id,user_id,platform,name,target,target_hash,created_at) SELECT 'x',user_id,platform,name,target||'2',target_hash,1 FROM deals_channel WHERE user_id='alice'").run()).toThrow(/UNIQUE/);
+});
+it("keeps the oldest of channels made twice before the index",async()=>{
+ const fresh=new TestD1("0041_indices_oferta_e_componente.sql");seedUser(fresh,"carol","ultra_deals");
+ fresh.sqlite.exec("INSERT INTO deals_channel(id,user_id,platform,name,target,target_hash,created_at,active) VALUES('old','carol','discord','A','t1','h',1,1),('new','carol','discord','A','t2','h',2,1),('other','carol','discord','B','t3','h2',3,1)");
+ fresh.applyMigration("0042_canal_deals_unico.sql");
+ expect(fresh.sqlite.prepare("SELECT id,active,target_hash AS hash FROM deals_channel ORDER BY id").all()).toEqual([{id:"new",active:0,hash:"duplicate:new"},{id:"old",active:1,hash:"h"},{id:"other",active:1,hash:"h2"}]);
+ fresh.close();
 });

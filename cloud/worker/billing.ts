@@ -1,10 +1,9 @@
-import {observePulseEntitlements} from "./pulse/entitlements";
 import { z } from "zod";
 import type Stripe from "stripe";
 import { createStripe } from "./stripe-client";
 import { PLANS } from "./plans";
 import { siteLock,unlockSite } from "./quota";
-import { accountPlan,observePlan } from "./lifecycle";
+import { PAST_DUE_GRACE,settlePlan } from "./lifecycle";
 
 const id=z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/).max(255);
 const reference=z.union([id,z.object({id})]).transform(v=>typeof v==="string"?v:v.id);
@@ -17,30 +16,55 @@ const subscriptionSchema=z.object({
  cancel_at_period_end:z.boolean(),cancel_at:seconds.nullable(),canceled_at:seconds.nullable(),ended_at:seconds.nullable(),
  trial_start:seconds.nullable(),trial_end:seconds.nullable(),schedule:reference.nullable(),
  items:z.object({has_more:z.literal(false),data:z.array(z.object({
-  current_period_start:seconds,current_period_end:seconds,quantity:z.number().int().nonnegative().safe().nullable(),
+  current_period_start:seconds,current_period_end:seconds,quantity:z.number().int().nonnegative().nullable(),
   price:z.object({id,lookup_key:z.string().nullable(),metadata,product:z.object({id,metadata}),recurring:z.object({interval:z.enum(["day","week","month","year"]),interval_count:z.number().int().positive()})}),
  })).min(1).max(100)}),
 });
-const invoiceSchema=z.object({id,customer:reference.nullable(),amount_paid:z.number().int().nonnegative().safe(),amount_due:z.number().int().nonnegative().safe(),currency:z.string().regex(/^[a-z]{3}$/),parent:z.object({type:z.string(),subscription_details:z.object({subscription:reference}).nullable().optional()}).nullable()});
+const invoiceSchema=z.object({id,customer:reference.nullable(),amount_paid:z.number().int().nonnegative(),amount_due:z.number().int().nonnegative(),currency:z.string().regex(/^[a-z]{3}$/),parent:z.object({type:z.string(),subscription_details:z.object({subscription:reference}).nullable().optional()}).nullable()});
 const checkoutSchema=z.object({id,mode:z.enum(["subscription","payment","setup"]),subscription:reference.nullable()});
-const chargeSchema=z.object({id,customer:reference.nullable(),amount:z.number().int().nonnegative().safe(),amount_refunded:z.number().int().nonnegative().safe(),currency:z.string().regex(/^[a-z]{3}$/)});
-const disputeSchema=z.object({id,charge:reference,amount:z.number().int().nonnegative().safe(),currency:z.string().regex(/^[a-z]{3}$/)});
+const chargeSchema=z.object({id,customer:reference.nullable(),payment_intent:reference.nullable(),amount:z.number().int().nonnegative(),amount_refunded:z.number().int().nonnegative(),refunded:z.boolean(),currency:z.string().regex(/^[a-z]{3}$/)});
+const invoicePaymentsSchema=z.object({has_more:z.literal(false),data:z.array(z.object({invoice:reference})).max(10)});
+const customerSubscriptionsSchema=z.object({has_more:z.literal(false),data:z.array(z.object({id:id.startsWith("sub_"),customer:reference,status:z.string().max(40)})).max(100)});
+const cancelableSchema=z.object({id:id.startsWith("sub_"),object:z.literal("subscription"),customer:reference,metadata,status:z.string().max(40)});
+const disputeSchema=z.object({id,charge:reference,amount:z.number().int().nonnegative(),currency:z.string().regex(/^[a-z]{3}$/)});
 const warningSchema=z.object({id,charge:reference});
 const requestOptions={timeout:5000,maxNetworkRetries:0} as const;
 const moneyTypes=new Set(["invoice.paid","invoice.payment_failed","charge.refunded","charge.dispute.created","radar.early_fraud_warning.created"]);
 type Event=z.infer<typeof eventSchema>;
 type Money={customer:string|null;amount:number;currency:string};
+type Charge=z.infer<typeof chargeSchema>;
 type Receipt={userId:string|null};
 type Existing={id:string;plan:string;userId:string;customer:string|null;stripeId:string|null};
 type Lease={id:string;token:string};
 class BillingError extends Error {}
 
 async function receipt(db:D1Database,eventId:string){return db.prepare("SELECT user_id AS userId FROM stripe_webhook_event WHERE id=?").bind(eventId).first<Receipt>();}
-async function refreshPlan(env:Cloudflare.Env,userId:string|null){if(userId){const plan=await accountPlan(env,userId);if(plan)await observePlan(env.DB,userId,plan.name);await observePulseEntitlements(env,userId);}}
+async function refreshPlan(env:Cloudflare.Env,userId:string|null){if(userId)await settlePlan(env,userId);}
+const ended=["canceled","incomplete_expired"];
+
+// A full refund, a dispute or an early fraud warning ends the subscription
+// at once. Its subscription comes from the charge's invoice (read from the
+// API: InvoicePayment by PaymentIntent), else from the charge's customer.
+async function riskSubscriptions(stripe:Stripe,charge:Charge):Promise<string[]>{
+ if(!charge.customer)return [];
+ if(charge.payment_intent){
+  const payments=invoicePaymentsSchema.parse(await stripe.invoicePayments.list({payment:{type:"payment_intent",payment_intent:charge.payment_intent},limit:10},requestOptions));
+  const found=new Set<string>();
+  for(const payment of payments.data){
+   const invoice=invoiceSchema.parse(await stripe.invoices.retrieve(payment.invoice,{},requestOptions));
+   if(invoice.id!==payment.invoice||invoice.customer!==charge.customer)throw new BillingError();
+   const sub=invoice.parent?.type==="subscription_details"?invoice.parent.subscription_details?.subscription??null:null;
+   if(sub)found.add(sub);
+  }
+  if(found.size)return [...found];
+ }
+ const list=customerSubscriptionsSchema.parse(await stripe.subscriptions.list({customer:charge.customer,status:"all",limit:100},requestOptions));
+ return list.data.filter(sub=>sub.customer===charge.customer&&!ended.includes(sub.status)).map(sub=>sub.id);
+}
 
 // Only identifiers are read from the signed event. All mutable state and
 // amounts come from current API objects, never from the delivered snapshot.
-async function resolveEvent(stripe:Stripe,event:Event):Promise<{subscription:string|null;money:Money|null}> {
+async function resolveEvent(stripe:Stripe,event:Event):Promise<{subscription:string|null;money:Money|null;cancel?:string[]}> {
  const objectId=event.data.object.id;
  if(event.type.startsWith("customer.subscription."))return {subscription:id.startsWith("sub_").parse(objectId),money:null};
  if(event.type.startsWith("checkout.session.")){
@@ -56,19 +80,22 @@ async function resolveEvent(stripe:Stripe,event:Event):Promise<{subscription:str
  if(event.type==="charge.refunded"){
   const current=chargeSchema.parse(await stripe.charges.retrieve(objectId,{},requestOptions));
   if(current.id!==objectId)throw new BillingError();
-  return {subscription:null,money:{customer:current.customer,amount:current.amount_refunded,currency:current.currency}};
+  // A partial refund is only recorded; the full one cancels.
+  return {subscription:null,money:{customer:current.customer,amount:current.amount_refunded,currency:current.currency},cancel:current.refunded?await riskSubscriptions(stripe,current):[]};
  }
  if(event.type==="charge.dispute.created"){
   const current=disputeSchema.parse(await stripe.disputes.retrieve(objectId,{},requestOptions));
   if(current.id!==objectId)throw new BillingError();
   const charge=chargeSchema.parse(await stripe.charges.retrieve(current.charge,{},requestOptions));
-  return {subscription:null,money:{customer:charge.customer,amount:current.amount,currency:current.currency}};
+  if(charge.id!==current.charge)throw new BillingError();
+  return {subscription:null,money:{customer:charge.customer,amount:current.amount,currency:current.currency},cancel:await riskSubscriptions(stripe,charge)};
  }
  if(event.type==="radar.early_fraud_warning.created"){
   const current=warningSchema.parse(await stripe.radar.earlyFraudWarnings.retrieve(objectId,{},requestOptions));
   if(current.id!==objectId)throw new BillingError();
   const charge=chargeSchema.parse(await stripe.charges.retrieve(current.charge,{},requestOptions));
-  return {subscription:null,money:{customer:charge.customer,amount:charge.amount,currency:charge.currency}};
+  if(charge.id!==current.charge)throw new BillingError();
+  return {subscription:null,money:{customer:charge.customer,amount:charge.amount,currency:charge.currency},cancel:await riskSubscriptions(stripe,charge)};
  }
  return {subscription:null,money:null};
 }
@@ -108,9 +135,19 @@ async function subscriptionWrites(db:D1Database,stripe:Stripe,subscriptionId:str
  const item=matched?.item??current.items.data[0];
  if(!item||matched&&(item.price.recurring.interval_count!==1||!["month","year"].includes(item.price.recurring.interval)))throw new BillingError();
  const millis=(n:number|null)=>n===null?null:n*1000;
- const rowId=existing?.id??crypto.randomUUID();
- const writes=[db.prepare(`INSERT INTO subscription (id,plan,reference_id,stripe_customer_id,stripe_subscription_id,status,period_start,period_end,trial_start,trial_end,cancel_at_period_end,cancel_at,canceled_at,ended_at,seats,billing_interval,stripe_schedule_id)
- VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET plan=excluded.plan,stripe_customer_id=excluded.stripe_customer_id,stripe_subscription_id=excluded.stripe_subscription_id,status=excluded.status,period_start=excluded.period_start,period_end=excluded.period_end,trial_start=excluded.trial_start,trial_end=excluded.trial_end,cancel_at_period_end=excluded.cancel_at_period_end,cancel_at=excluded.cancel_at,canceled_at=excluded.canceled_at,ended_at=excluded.ended_at,seats=excluded.seats,billing_interval=excluded.billing_interval,stripe_schedule_id=excluded.stripe_schedule_id`).bind(rowId,matched?.plan??existing?.plan??"free",owner.id,current.customer,current.id,current.status,millis(item.current_period_start),millis(item.current_period_end),millis(current.trial_start),millis(current.trial_end),current.cancel_at_period_end?1:0,millis(current.cancel_at),millis(current.canceled_at),millis(current.ended_at),item.quantity,item.price.recurring.interval,current.schedule)];
+ const rowId=existing?.id??crypto.randomUUID(),now=Date.now();
+ // The grace starts when past_due is first seen and ends with a paid (or
+ // finished) subscription; Stripe's own unpaid keeps the original start.
+ const writes:D1PreparedStatement[]=[];
+ if(current.status==="past_due")writes.push(db.prepare("INSERT INTO subscription_grace(subscription_id,user_id,past_due_since) VALUES(?,?,?) ON CONFLICT(subscription_id) DO NOTHING").bind(rowId,owner.id,now));
+ else if(current.status!=="unpaid")writes.push(db.prepare("DELETE FROM subscription_grace WHERE subscription_id=?").bind(rowId));
+ // Past the grace, the local status is 'unpaid' while Stripe still says
+ // past_due: every reader of this table then sees the account on Grátis.
+ writes.push(db.prepare(`INSERT INTO subscription (id,plan,reference_id,stripe_customer_id,stripe_subscription_id,status,period_start,period_end,trial_start,trial_end,cancel_at_period_end,cancel_at,canceled_at,ended_at,seats,billing_interval,stripe_schedule_id)
+ VALUES (?,?,?,?,?,CASE WHEN ?='past_due' AND EXISTS(SELECT 1 FROM subscription_grace WHERE subscription_id=? AND past_due_since<=?) THEN 'unpaid' ELSE ? END,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET plan=excluded.plan,stripe_customer_id=excluded.stripe_customer_id,stripe_subscription_id=excluded.stripe_subscription_id,status=excluded.status,period_start=excluded.period_start,period_end=excluded.period_end,trial_start=excluded.trial_start,trial_end=excluded.trial_end,cancel_at_period_end=excluded.cancel_at_period_end,cancel_at=excluded.cancel_at,canceled_at=excluded.canceled_at,ended_at=excluded.ended_at,seats=excluded.seats,billing_interval=excluded.billing_interval,stripe_schedule_id=excluded.stripe_schedule_id`).bind(rowId,matched?.plan??existing?.plan??"free",owner.id,current.customer,current.id,current.status,rowId,now-PAST_DUE_GRACE,current.status,millis(item.current_period_start),millis(item.current_period_end),millis(current.trial_start),millis(current.trial_end),current.cancel_at_period_end?1:0,millis(current.cancel_at),millis(current.canceled_at),millis(current.ended_at),item.quantity,item.price.recurring.interval,current.schedule));
+ // A paid Checkout is finished: its saved row would keep offering the
+ // completed session and keep the panel's plan buttons disabled.
+ if(["active","trialing","past_due"].includes(current.status))writes.push(db.prepare("DELETE FROM billing_checkout WHERE user_id=?").bind(owner.id));
  return {userId:owner.id,writes};
 }
 
@@ -145,6 +182,21 @@ export async function stripeWebhook(request:Request,env:Cloudflare.Env):Promise<
    const owner=money.customer?await env.DB.prepare("SELECT id FROM user WHERE stripe_customer_id=? LIMIT 1").bind(money.customer).first<{id:string}>():null;
    if(userId&&owner?.id!==userId)throw new BillingError();
    userId??=owner?.id??null;
+   // Cancel at once, only a Blup customer's subscription, read now from
+   // Stripe. Before the receipt: a failure is retried by Stripe, and the
+   // idempotency key plus the status check keep a retry from repeating it.
+   // The plan drops with the customer.subscription.deleted that follows.
+   for(const subId of resolved.cancel??[]){
+    if(!owner||!money.customer)break;
+    const lockId=`billing:${subId}`,lease=await siteLock(env.DB,lockId);
+    if(!lease)return Response.json({code:"BILLING_BUSY"},{status:503,headers:{"Retry-After":"1"}});
+    locks.push({id:lockId,token:lease});
+    const sub=cancelableSchema.parse(await stripe.subscriptions.retrieve(subId,{},requestOptions));
+    if(sub.id!==subId||sub.customer!==money.customer||[sub.metadata.userId,sub.metadata.referenceId].some(value=>value&&value!==owner.id))throw new BillingError();
+    if(ended.includes(sub.status))continue;
+    const canceled=cancelableSchema.parse(await stripe.subscriptions.cancel(subId,{prorate:false,invoice_now:false,cancellation_details:{comment:`blup:${event.type}`}},{...requestOptions,idempotencyKey:`blup-risk-cancel:${event.id}:${subId}`}));
+    if(canceled.id!==subId)throw new BillingError();
+   }
    writes.push(env.DB.prepare("INSERT INTO billing_event (stripe_event_id,user_id,type,amount,currency) VALUES (?,?,?,?,?) ON CONFLICT(stripe_event_id) DO NOTHING").bind(event.id,userId,event.type,money.amount,money.currency));
   }
   // NOT NULL enforces the leases inside the transaction. If they expired

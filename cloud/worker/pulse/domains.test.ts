@@ -8,6 +8,7 @@ import {disablePulseDomain} from "./domain-lifecycle";
 import {servePulsePage} from "./public";
 import {pulseMaintenance} from "./cleanup";
 import {purgePulseAccount} from "./cleanup";
+import {at} from "./test-at";
 let db:TestD1,proved:boolean,providerFailure:boolean,calls:{method:string;path:string;body:unknown}[];
 beforeEach(()=>{
  vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
@@ -24,7 +25,7 @@ afterEach(()=>{db.close();vi.unstubAllGlobals();vi.restoreAllMocks();vi.useRealT
 const request=(method:string,body?:unknown,user="alice")=>pulseApi.fetch(new Request("https://cloud.audit.invalid/pages/page1/domain",{method,headers:{authorization:`Bearer ${user}`,"content-type":"application/json"},body:body===undefined?undefined:JSON.stringify(body)}),state.env);
 it("proves TXT ownership before provisioning and enables Early Hints without exposing credentials",async()=>{
  const pending=await request("POST",{hostname:"status.audit.invalid"});expect(pending.status).toBe(200);expect(await pending.json()).toMatchObject({status:"pending_ownership",records:[{type:"TXT",name:"_blup.status.audit.invalid"},{type:"CNAME"}]});expect(calls).toHaveLength(0);
- proved=true;db.sqlite.exec("UPDATE pulse_page_domain SET checked_at=NULL");const active=await request("GET");expect(active.status).toBe(200);expect(await active.json()).toMatchObject({status:"active",ssl:"active"});expect(calls[0].body).toMatchObject({hostname:"status.audit.invalid",ssl:{settings:{early_hints:"on"}}});expect(JSON.stringify(await(await request("GET")).json())).not.toContain("fixture-only");
+ proved=true;db.sqlite.exec("UPDATE pulse_page_domain SET checked_at=NULL");const active=await request("GET");expect(active.status).toBe(200);expect(await active.json()).toMatchObject({status:"active",ssl:"active"});expect(at(calls).body).toMatchObject({hostname:"status.audit.invalid",ssl:{settings:{early_hints:"on"}}});expect(JSON.stringify(await(await request("GET")).json())).not.toContain("fixture-only");
  expect((await servePulsePage(new Request("https://status.audit.invalid/"),state.env))?.status).toBe(200);
 });
 it("rejects another owner, forbidden hostname, extra body keys and a verified Cloud claim",async()=>{

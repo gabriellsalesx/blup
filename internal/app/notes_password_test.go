@@ -21,6 +21,10 @@ import (
 func TestNotesPasswordTooShortRefused(t *testing.T) {
 	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/me" {
+			w.Write([]byte(`{"id":"u","plan":{"name":"free","limits":{}}}`))
+			return
+		}
 		calls.Add(1)
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(`{"ok":true}`))

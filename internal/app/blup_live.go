@@ -20,7 +20,10 @@ type LiveState struct {
 	State string    `json:"state"` // "syncing", "synced", "error" or "gone" (deleted on another device)
 	At    time.Time `json:"at"`
 	Error string    `json:"error,omitempty"`
-	Info  SyncInfo  `json:"info"`
+	// Stuck: the error is a sync stopped for safety (ErrSyncStuck); the
+	// Sync screen offers "Compare from scratch".
+	Stuck bool     `json:"stuck,omitempty"`
+	Info  SyncInfo `json:"info"`
 }
 
 // Live is the live sync of one open site.
@@ -178,7 +181,7 @@ func (l *Live) sync(ctx context.Context) {
 		info, err := syncSite(ctx, l.site, true)
 		st := LiveState{State: "synced", At: time.Now(), Info: info}
 		if err != nil {
-			st = LiveState{State: "error", At: time.Now(), Error: err.Error()}
+			st = LiveState{State: "error", At: time.Now(), Error: err.Error(), Stuck: errors.Is(err, ErrSyncStuck)}
 		}
 		if errors.Is(err, ErrVaultGone) {
 			st.State = "gone"

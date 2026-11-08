@@ -173,6 +173,9 @@ func (c *Client) Speak(ctx context.Context, model, text, voice string) ([]byte, 
 	return nil, last
 }
 
+// maxAudio caps one synthesized clip; a longer answer is a broken response.
+const maxAudio = 64 << 20
+
 func (c *Client) speak(ctx context.Context, body []byte) (audio []byte, retry bool, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base()+"/audio/speech", bytes.NewReader(body))
 	if err != nil {
@@ -194,9 +197,12 @@ func (c *Client) speak(ctx context.Context, body []byte) (audio []byte, retry bo
 	if strings.Contains(res.Header.Get("Content-Type"), "application/json") {
 		return nil, false, apiError(res)
 	}
-	audio, err = io.ReadAll(res.Body)
+	audio, err = io.ReadAll(io.LimitReader(res.Body, maxAudio+1))
 	if err != nil {
 		return nil, true, err
+	}
+	if int64(len(audio)) > maxAudio {
+		return nil, false, fmt.Errorf("openrouter: audio larger than %d MiB", maxAudio>>20)
 	}
 	if len(audio) == 0 {
 		return nil, true, errors.New("openrouter: empty audio")

@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -266,7 +267,7 @@ func SaveSocial(site *config.Site, links []string) error {
 			l = "mailto:" + l
 		case !strings.HasPrefix(l, "mailto:"):
 			if err := validURL(l); err != nil {
-				return errors.New(l + ": " + err.Error())
+				return fmt.Errorf("%s: %w", l, err)
 			}
 		}
 		out = append(out, l)
@@ -375,7 +376,7 @@ func SaveCookies(site *config.Site, c config.Cookies, privacyPage bool, contact 
 		*v = strings.TrimSpace(*v)
 		if *v != "" {
 			if err := CheckCookieTool(t.key, *v); err != nil {
-				return "", errors.New(t.key + ": " + err.Error())
+				return "", fmt.Errorf("%s: %w", t.key, err)
 			}
 		}
 	}

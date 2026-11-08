@@ -81,7 +81,10 @@
   $effect(() => {
     const v = where === "vault" ? vault : where === "pick" ? pickedFolder : "";
     if (!v) { needsAdjust = false; return; }
-    NeedsLinkAdjust(v).then((n) => (needsAdjust = n));
+    // An older answer (the folder changed meanwhile) is dropped.
+    let current = true;
+    NeedsLinkAdjust(v).then((n) => { if (current) needsAdjust = n; }, () => { if (current) needsAdjust = false; });
+    return () => { current = false; };
   });
 
   const ready = $derived.by(() => {

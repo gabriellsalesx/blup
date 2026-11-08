@@ -17,6 +17,10 @@ import (
 func TestNotesPasswordLostRace(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/me" {
+			w.Write([]byte(`{"id":"u","plan":{"name":"free","limits":{}}}`))
+			return
+		}
 		if r.Method == http.MethodPut && r.URL.Path == "/api/sync/key" {
 			w.WriteHeader(http.StatusConflict)
 			w.Write([]byte(`{"code":"KEY_EXISTS"}`))

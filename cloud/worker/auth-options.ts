@@ -1,7 +1,8 @@
 import {requestLanguage,type Language} from "../shared/language";
 import {cloudPaths} from "../shared/panel-paths";
 import type { BetterAuthOptions } from "better-auth";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import { z } from "zod";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP, captcha, deviceAuthorization, bearer } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
@@ -29,10 +30,28 @@ type AuthConfig = {
 	turnstileSecret: string;
 	stripeSecret: string;
 	stripeWebhookSecret: string;
-	isBanned: (userId: string) => Promise<boolean>;
+	// Why the account can't sign in (null: it can).
+	accountBlock: (userId: string) => Promise<AccountBlock | null>;
 	deviceMark?: (userId:string,body:unknown)=>Promise<boolean>;
 	finishDevice?: (userId:string,body:unknown)=>Promise<void>;
 	sendCode: (email: string, code: string, kind: string,language:Language) => void;
+};
+
+// Blocked by the staff (BANNED) or deleted by its owner and still
+// recoverable for 30 days (ACCOUNT_DELETED). Both stop a sign in only after
+// the code or the passkey proved who it is, so neither tells whether an
+// e-mail has an account.
+export type AccountBlock = "BANNED" | "ACCOUNT_DELETED";
+const blockRow = z.object({ banned: z.union([z.number(), z.boolean()]), deletedAt: z.number().nullable() });
+export async function accountBlock(d1: D1Database, userId: string): Promise<AccountBlock | null> {
+	const row = blockRow.safeParse(await d1.prepare("SELECT u.banned AS banned,q.deleted_at AS deletedAt FROM user u LEFT JOIN resource_quota q ON q.user_id=u.id WHERE u.id=?").bind(userId).first());
+	// No account (or an unexpected row): refused, as before.
+	if (!row.success || row.data.banned) return "BANNED";
+	return row.data.deletedAt === null ? null : "ACCOUNT_DELETED";
+}
+const BLOCK_MESSAGE: Record<AccountBlock, string> = {
+	BANNED: "Esta conta está bloqueada. Fale com o suporte.",
+	ACCOUNT_DELETED: "Esta conta está em exclusão. Fale com o suporte para recuperar.",
 };
 
 // The OTP send route Turnstile guards (without the /api/auth base path).
@@ -43,6 +62,29 @@ export const SEND_CODE_PATH = "/email-otp/send-verification-otp";
 // RFC 2606) until the person links theirs.
 export const NO_EMAIL_DOMAIN = "sem-email.blup.invalid";
 export const hasEmail = (email: string) => !email.endsWith(`@${NO_EMAIL_DOMAIN}`);
+
+// A new passkey is a lasting way into the account: only a recent sign in
+// adds one (a stolen session could otherwise keep the account after every
+// session is revoked), and never a Blup Studio token (the Studio has no
+// use for it). The same window as deleting the account.
+export const RECENT_SIGN_IN_MS = 3600_000;
+const PASSKEY_REGISTRATION = new Set(["/passkey/generate-register-options", "/passkey/verify-registration"]);
+// The Studio asks for a code with its client ID only: no account pre-bound
+// (user_id) by whoever calls this public route.
+const deviceCodeBody = z.strictObject({ client_id: z.string().min(1).max(64), scope: z.string().max(256).optional() });
+// The profile changes only the name (the panel's field allows 80).
+const updateUserBody = z.strictObject({ name: z.string().trim().max(80) });
+
+export const guardAuthRequest = createAuthMiddleware(async (ctx) => {
+	if (ctx.path === "/device/code" && !deviceCodeBody.safeParse(ctx.body).success) throw new APIError("BAD_REQUEST", { error: "invalid_request", code: "INVALID" });
+	if (ctx.path === "/update-user" && !updateUserBody.safeParse(ctx.body).success) throw new APIError("BAD_REQUEST", { code: "INVALID", message: "Pedido inválido." });
+	if (!PASSKEY_REGISTRATION.has(ctx.path)) return;
+	const signedIn = await getSessionFromCtx(ctx);
+	if (!signedIn) return;
+	const created = new Date(signedIn.session.createdAt).getTime();
+	const studio = z.object({ studioDevice: z.union([z.literal(true), z.literal(1)]) }).safeParse(signedIn.session).success;
+	if (studio || !Number.isFinite(created) || Date.now() - created > RECENT_SIGN_IN_MS) throw new APIError("FORBIDDEN", { code: "SESSION_EXPIRED", message: "Entre de novo para adicionar uma passkey." });
+});
 
 export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Record<string, unknown>, cfg: AuthConfig) {
 	// Fetch, not Node's http: the Worker's runtime.
@@ -70,7 +112,7 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 		advanced: { database: { generateId: () => uuidv7() }, ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
 		// No passwords: codes and passkeys only.
 		emailAndPassword: { enabled: false },
-		// A blocked account (by the staff) can't sign in.
+		// A blocked (by the staff) or deleted account can't sign in.
 		user: {
 			// The person deletes the account from the panel (a recent sign in is
 			// required). A paid subscription ends in Stripe first.
@@ -81,13 +123,15 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 				language:{type:"string",defaultValue:"pt",input:false},
 			},
 		},
+		hooks: { before: guardAuthRequest },
 		session: {additionalFields:{studioDevice:{type:"boolean",defaultValue:false,input:false}}},
 		databaseHooks: {
 			user:{create:{before:async(user,ctx)=>({data:{...user,language:requestLanguage(ctx?.headers)}})}},
 			session: {
 				create: {
 					before: async (session,ctx) => {
-						if (await cfg.isBanned(session.userId)) throw new APIError("FORBIDDEN", { message: "Esta conta está bloqueada. Fale com o suporte.", code: "BANNED" });
+						const block = await cfg.accountBlock(session.userId);
+						if (block) throw new APIError("FORBIDDEN", { message: BLOCK_MESSAGE[block], code: block });
 						const device=ctx?.path==="/device/token";
 						if(device && cfg.deviceMark && !await cfg.deviceMark(session.userId,ctx?.body))throw new APIError("FORBIDDEN",{code:"DEVICES_LIMIT",message:"Aprovação de aparelho inválida ou expirada."});
 						return {data:{...session,studioDevice:device&&!!cfg.deviceMark}};

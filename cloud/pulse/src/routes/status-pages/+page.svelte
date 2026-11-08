@@ -14,7 +14,7 @@
  import {toast} from "#lib/toast.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
  import ActionMenu from "#lib/ui/ActionMenu.svelte";
- import {openCard,cardLink} from "#lib/card.ts";
+ import {cardLink} from "#lib/card.ts";
  import PageHeader from "#lib/ui/PageHeader.svelte";
  import Badge from "#lib/ui/Badge.svelte";
  import {pulseApi,parseResponse} from "../../lib/api";
@@ -44,8 +44,7 @@
 <div class="mt-8 grid gap-3">
  {#each pages as page(page.id)}
   {@const href=resolve("/status-pages/[id]",{id:page.id})}
-  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-  <div onclick={(event)=>openCard(event,href)} onauxclick={(event)=>openCard(event,href)} class="relative flex cursor-pointer items-center gap-3 rounded-xl border border-l-4 border-neutral-200 bg-white px-5 py-4 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60 {page.published?edge.live:edge.off}">
+  <div class="relative flex cursor-pointer items-center gap-3 rounded-xl border border-l-4 border-neutral-200 bg-white px-5 py-4 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60 {page.published?edge.live:edge.off}">
    <a class={cardLink} {href} aria-label={page.title}></a>
    <div class="min-w-0 flex-1"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{page.title}</span><Badge tone={page.published?"green":"neutral"}>{page.published?t("pulsePublished"):t("pulseDraft")}</Badge></p><a class="relative z-10 mt-0.5 inline-flex max-w-full items-center gap-1 text-sm underline {page.published?address.live:address.off}" href={`https://pulse.getblup.site/${page.slug}/`} target="_blank" rel="noopener noreferrer"><span class="truncate">pulse.getblup.site/{page.slug}/</span><ExternalLink class="size-3.5 shrink-0"/></a></div>
    <ActionMenu label={t("pulseActions")} items={[{label:t("pulseEdit"),Icon:Pencil,onselect:()=>void goto(href)},...(page.writable?[{label:page.published?t("pulseUnpublish"):t("pulsePublish"),Icon:page.published?EyeOff:Eye,onselect:()=>void publish(page)}]:[]),{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void remove(page)}]}/>

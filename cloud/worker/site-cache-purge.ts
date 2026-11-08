@@ -1,5 +1,5 @@
 // Tags contain only server-generated identifiers, never a supplied host.
-export function siteTags(siteId:string,deploy?:string){
+export function siteTags(siteId:string,deploy?:string):[string,...string[]]{
 	return [`site:${siteId}`,...(deploy?[`deploy:${siteId}:${deploy}`]:[])];
 }
 export function queueSitePurge(db:D1Database,siteId:string){

@@ -37,7 +37,7 @@ export async function rakutenToken(credentials:Credentials,send:typeof fetch=fet
 const creditWords=/\b(?:points?|pontos|crystals?|cristais|gems?|gemas|diamonds?|diamantes|coins?|moedas|gold|silver|tokens?|cr[eé]ditos?|credits?|v-?bucks|robux|gift ?cards?|cart[aã]o|recarga|top-?up)\b/i;
 export const isCredit=(title:string)=>creditWords.test(title)||/\s-\s[0-9][0-9.,]*\s/.test(title);
 
-const tag=(item:string,name:string)=>{const m=new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]{0,4096}?)</${name}>`).exec(item);return m?decodeEntities(m[1].trim()):null;};
+const tag=(item:string,name:string)=>{const m=new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]{0,4096}?)</${name}>`).exec(item)?.[1];return m===undefined?null:decodeEntities(m.trim());};
 const total=(xml:string)=>{const n=Number(/<TotalPages>([0-9]{1,6})<\/TotalPages>/.exec(xml)?.[1]);return Number.isInteger(n)?n:0;};
 const httpsOnly=(raw:string|null,host:RegExp)=>{if(!raw)return null;try{const u=new URL(raw);return u.protocol==="https:"&&host.test(u.hostname)?u:null;}catch{return null;}};
 // The games of one page that are on sale: the sale price is the price,
@@ -46,6 +46,7 @@ const httpsOnly=(raw:string|null,host:RegExp)=>{if(!raw)return null;try{const u=
 export function nuuvemOffers(xml:string,now=Date.now()):OfferInput[]{
  const out:OfferInput[]=[];
  for(const [,item] of xml.matchAll(/<item>([\s\S]{0,65536}?)<\/item>/g)){
+  if(item===undefined)continue;
   if(tag(item,"mid")!==NUUVEM_MID)continue;
   const sku=tag(item,"sku")??"",title=cleanLine(tag(item,"productname")??"",200);
   const list=priceCents(tag(item,"price")),sale=priceCents(tag(item,"saleprice"));

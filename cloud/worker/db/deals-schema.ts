@@ -1,3 +1,4 @@
+import {sql} from "drizzle-orm";
 import {sqliteTable,text,integer,index,primaryKey,uniqueIndex} from "drizzle-orm/sqlite-core";
 
 // Blup Deals. Sources and offers are shared by every account (each source
@@ -25,7 +26,7 @@ export const dealsChannel=sqliteTable("deals_channel",{
  // When the panel may send examples to it again (one round a minute; on
  // WhatsApp, the Canal's turn).
  testAt:integer("test_at").notNull().default(0),
-},t=>[index("deals_channel_owner_idx").on(t.userId,t.id),uniqueIndex("deals_channel_target_idx").on(t.userId,t.platform,t.target),index("deals_channel_retire_idx").on(t.retireAt),index("deals_channel_hash_idx").on(t.targetHash)]);
+},t=>[index("deals_channel_owner_idx").on(t.userId,t.id),uniqueIndex("deals_channel_target_idx").on(t.userId,t.platform,t.target),index("deals_channel_retire_idx").on(t.retireAt),index("deals_channel_hash_idx").on(t.targetHash),uniqueIndex("deals_channel_owner_hash_unique").on(t.userId,t.targetHash),index("deals_channel_session_idx").on(t.sessionId).where(sql`${t.sessionId} IS NOT NULL`)]);
 
 // The account's ID or tag at each store (matt_word, tag...) and, for the
 // stores searched with the account's own API key, that key sealed like a
@@ -118,6 +119,11 @@ export const dealsTelegramLink=sqliteTable("deals_telegram_link",{
 export const dealsTelegramUpdate=sqliteTable("deals_telegram_update",{
  id:integer("id").primaryKey(),receivedAt:integer("received_at").notNull(),applied:integer("applied").notNull().default(0),
 },t=>[index("deals_telegram_update_received_idx").on(t.receivedAt)]);
+// The nonces of the WhatsApp Bridge's notices seen lately: one repeated
+// within the signature's five minutes is refused (kept 15 minutes).
+export const dealsBridgeNonce=sqliteTable("deals_bridge_nonce",{
+ nonce:text("nonce").primaryKey(),receivedAt:integer("received_at").notNull(),
+},t=>[index("deals_bridge_nonce_received_idx").on(t.receivedAt)]);
 // Whether an account has had Deals, to follow it when the plan goes (like
 // pulse_account): readOnlyUntil is set the first time the plan is missing
 // (14 days to read and export), then the private Deals data is purged.

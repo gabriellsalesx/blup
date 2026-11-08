@@ -25,8 +25,8 @@ export async function sendReminder(env:Cloudflare.Env,email:string,preferred?:La
  catch(e){console.error("[blup] reminder_send_failed",safeMailCode(typeof e==="object"&&e!==null&&"code" in e?e.code:undefined));return false;}
 }
 function sender(from: string) {
-	const m = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(from);
-	return m ? { name: m[1], email: m[2] } : from;
+	const [, name = "", email] = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(from) ?? [];
+	return email ? { name, email } : from;
 }
 
 // The logo is a PNG served by this Worker (static/email/blup.png, the

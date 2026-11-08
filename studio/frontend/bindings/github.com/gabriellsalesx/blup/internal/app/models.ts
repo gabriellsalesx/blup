@@ -501,6 +501,12 @@ export interface LiveState {
     "state": string;
     "at": string;
     "error"?: string;
+
+    /**
+     * Stuck: the error is a sync stopped for safety (ErrSyncStuck); the
+     * Sync screen offers "Compare from scratch".
+     */
+    "stuck"?: boolean;
     "info": SyncInfo;
 }
 

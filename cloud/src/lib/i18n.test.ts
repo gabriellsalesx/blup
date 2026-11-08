@@ -33,6 +33,12 @@ describe("panel language and localized errors",()=>{
   i18n.locale="en";expect(errorMessage({detail:{data:{code:"QUOTA"}},statusCode:413})).toContain("storage");
   expect(errorMessage({code:"UNKNOWN",message:"private provider payload"})).toBe("Something went wrong. Please try again.");
  });
+ it("tells a deleted account from a blocked one at sign in",()=>{
+  i18n.locale="pt";expect(errorMessage({code:"ACCOUNT_DELETED",status:403})).toBe("Esta conta está em exclusão. Fale com o suporte para recuperar.");
+  expect(errorMessage({code:"BANNED",status:403})).toBe("Esta conta está bloqueada. Fale com o suporte.");
+  i18n.locale="en";expect(errorMessage({code:"ACCOUNT_DELETED"})).toBe("This account is being deleted. Contact support to recover it.");
+  i18n.locale="es";expect(errorMessage({code:"BANNED"})).toBe("Esta cuenta está bloqueada. Contacta con soporte.");
+ });
  it("changes existing translated expressions and leaves staff in Portuguese",()=>{
   const label=()=>t("plan");i18n.locale="en";expect(label()).toBe("Plan");i18n.locale="pt";expect(label()).toBe("Plano");
   i18n.locale="es";i18n.staff=true;expect(t("save")).toBe("Salvar");expect(intlLocale()).toBe("pt-BR");

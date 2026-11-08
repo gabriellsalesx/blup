@@ -8,6 +8,8 @@ import { ensureQuota } from "./quota";
 import { createStripe } from "./stripe-client";
 import { removeDomainProvider } from "./domain-provider";
 import { sendDowngrade } from "./email";
+import { observePulseEntitlements } from "./pulse/entitlements";
+import { disconnectExcessDevices } from "./devices";
 
 export const DAY=86_400_000;
 export async function accountAllowed(db:D1Database,userId:string) {
@@ -40,18 +42,56 @@ export async function observePlan(db:D1Database,userId:string,name:string,now=Da
  return readPlanState(db,userId);
 }
 
+// A failed payment (past_due) keeps the paid plan for 14 days from the
+// moment the webhook first saw it (subscription_grace). Past that, the
+// account is on Grátis everywhere, even while Stripe keeps retrying; a
+// recovered payment brings the plan back through the webhook.
+export const PAST_DUE_GRACE=14*DAY;
+// The subscription (alias `s`) that gives its paid plan. Bind
+// `now-PAST_DUE_GRACE` to its one placeholder.
+export const PAID_SUBSCRIPTION="(s.status IN ('active','trialing') OR s.status='past_due' AND EXISTS(SELECT 1 FROM subscription_grace g WHERE g.subscription_id=s.id AND g.past_due_since>?))";
+
 // Used by the public Worker too. No session or owner-supplied e-mail is
 // trusted: owner gift and subscription are looked up in D1.
-export async function accountPlan(env:Cloudflare.Env,userId:string) {
-	const row=await env.DB.prepare("SELECT email,email_verified AS verified,(SELECT plan FROM subscription WHERE reference_id=user.id AND status IN ('active','trialing','past_due') LIMIT 1) AS plan FROM user WHERE id=? AND banned=0").bind(userId).first<{email:string;verified:number;plan:string|null}>();
+export async function accountPlan(env:Cloudflare.Env,userId:string,now=Date.now()) {
+	const row=await env.DB.prepare(`SELECT email,email_verified AS verified,(SELECT s.plan FROM subscription s WHERE s.reference_id=user.id AND ${PAID_SUBSCRIPTION} LIMIT 1) AS plan FROM user WHERE id=? AND banned=0`).bind(now-PAST_DUE_GRACE,userId).first<{email:string;verified:number;plan:string|null}>();
 	if(!row) return null;
 	const plan=planNamed(ownerMatches(env.STAFF_OWNER_EMAIL,row.email,!!row.verified)?GIFT_PLAN:row.plan);
 	return plan;
 }
 
-export async function softDelete(env:Cloudflare.Env,userId:string,now=Date.now()) {
+// Applies the effective plan after it may have changed (webhook, end of
+// the grace): plan state, Pulse, and the devices over the new limit, whose
+// live sync is closed (the ones that stay reconnect by themselves).
+export async function settlePlan(env:Cloudflare.Env,userId:string,now=Date.now()) {
+	const plan=await accountPlan(env,userId,now);
+	if(plan)await observePlan(env.DB,userId,plan.name,now);
+	await observePulseEntitlements(env,userId,now);
+	if(!plan)return null;
+	if(await disconnectExcessDevices(env.DB,userId,plan.limits.devices,now)){
+		try{await env.SYNC_LIVE.getByName(userId).revoke();}catch{console.error("[blup] live_revocation_retry");}
+	}
+	return plan;
+}
+
+// The grace that ends without a Stripe event. The local status becomes
+// 'unpaid' (Stripe's own "retries go on, access is revoked"), so every
+// reader of the subscription table sees Grátis; the webhook keeps it so
+// while Stripe says past_due, and writes 'active' when the payment is
+// recovered. The guard makes it a no-op if the webhook got there first.
+export async function expirePastDue(env:Cloudflare.Env,now=Date.now()) {
+	const due=await env.DB.prepare("SELECT g.subscription_id AS id FROM subscription_grace g JOIN subscription s ON s.id=g.subscription_id WHERE g.past_due_since<=? AND s.status='past_due' ORDER BY g.past_due_since LIMIT 50").bind(now-PAST_DUE_GRACE).all<{id:string}>();
+	for(const {id} of due.results){
+		const row=await env.DB.prepare("UPDATE subscription SET status='unpaid' WHERE id=? AND status='past_due' AND EXISTS(SELECT 1 FROM subscription_grace WHERE subscription_id=subscription.id AND past_due_since<=?) RETURNING reference_id AS userId").bind(id,now-PAST_DUE_GRACE).first<{userId:string}>();
+		if(row)try{await settlePlan(env,row.userId,now);}catch{console.error("[blup] plan_settle_retry");}
+	}
+}
+
+// `audit`: the staff's log entry, written in the same transaction.
+export async function softDelete(env:Cloudflare.Env,userId:string,now=Date.now(),audit:D1PreparedStatement[]=[]) {
 	await ensureQuota(env.DB,userId);
 	await env.DB.batch([
+		...audit,
 		queueAccountPurge(env.DB,userId),
 		env.DB.prepare("UPDATE resource_quota SET deleted_at=?,purge_after=?,billing_cancel_pending=1 WHERE user_id=? AND deleted_at IS NULL").bind(now,now+30*DAY,userId),
 		env.DB.prepare("DELETE FROM session WHERE user_id=?").bind(userId),
@@ -62,10 +102,17 @@ export async function softDelete(env:Cloudflare.Env,userId:string,now=Date.now()
 	]);
 	try{await env.SYNC_LIVE.getByName(userId).revoke();}catch{console.error("[blup] live_revocation_retry");}
 }
-export async function restoreAccount(db:D1Database,userId:string,now=Date.now()) {
-	const row=await db.prepare("UPDATE resource_quota SET deleted_at=NULL,purge_after=NULL WHERE user_id=? AND deleted_at IS NOT NULL AND purge_after>? AND purge_started IS NULL RETURNING user_id").bind(userId,now).first();
-	if(row)await queueAccountPurge(db,userId).run();
-	return !!row;
+// With `staffEmail`, the staff's log entry goes in the same transaction,
+// only when the account is really restored.
+export async function restoreAccount(db:D1Database,userId:string,now=Date.now(),staffEmail?:string) {
+	const restorable="FROM resource_quota WHERE user_id=? AND deleted_at IS NOT NULL AND purge_after>? AND purge_started IS NULL";
+	const results=await db.batch<{user_id:string}>([
+		...(staffEmail?[db.prepare(`INSERT INTO staff_log(staff_email,action,user_id) SELECT ?,'user.restore',user_id ${restorable}`).bind(staffEmail,userId,now)]:[]),
+		db.prepare(`UPDATE resource_quota SET deleted_at=NULL,purge_after=NULL WHERE user_id IN (SELECT user_id ${restorable}) RETURNING user_id`).bind(userId,now),
+	]);
+	const ok=!!results.at(-1)?.results.length;
+	if(ok)await queueAccountPurge(db,userId).run();
+	return ok;
 }
 
 export async function deletePrefix(bucket:R2Bucket,prefix:string) {
@@ -95,7 +142,7 @@ export async function purgeAccounts(env:Cloudflare.Env,now=Date.now()) {
 			env.DB.prepare("DELETE FROM vault_head_block WHERE vault_id IN (SELECT id FROM vault WHERE user_id=?)").bind(id),
 			env.DB.prepare("DELETE FROM sync_transfer_block WHERE ticket_id IN (SELECT id FROM sync_transfer WHERE user_id=?)").bind(id),
 			env.DB.prepare("DELETE FROM vault_version WHERE vault_id IN (SELECT id FROM vault WHERE user_id=?)").bind(id),
-			...["vault","sync_block","sync_account","site","ai_usage","reminder","reminder_month","device_approval","resource_reservation","sync_transfer","sync_garbage","stripe_webhook_event","pulse_billing_ticket","pulse_selection","billing_checkout"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(id)),
+			...["vault","sync_block","sync_account","site","ai_usage","reminder","reminder_month","device_approval","resource_reservation","sync_transfer","sync_garbage","subscription_grace","stripe_webhook_event","pulse_billing_ticket","pulse_selection","billing_checkout"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(id)),
 			env.DB.prepare("DELETE FROM subscription WHERE reference_id=?").bind(id),
 			env.DB.prepare("DELETE FROM device_code WHERE user_id=?").bind(id),
 			env.DB.prepare("DELETE FROM billing_event WHERE user_id=?").bind(id),
@@ -117,7 +164,7 @@ export async function cancelDeletedBilling(env:Cloudflare.Env){
 				const stripe=createStripe(env.STRIPE_SECRET_KEY);
 				for await(const checkout of stripe.checkout.sessions.list({customer:row.customer,status:"open"})){if(checkout.mode==="subscription")await stripe.checkout.sessions.expire(checkout.id);}
 				for await(const sub of stripe.subscriptions.list({customer:row.customer,status:"all"})){
-					if(!["canceled","incomplete_expired"].includes(sub.status))await stripe.subscriptions.cancel(sub.id);
+					if(!["canceled","incomplete_expired"].includes(sub.status))await stripe.subscriptions.cancel(sub.id,{},{idempotencyKey:`blup-deleted-cancel:${row.id}:${sub.id}`});
 				}
 			}
 			await env.DB.batch([

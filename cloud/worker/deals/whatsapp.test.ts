@@ -9,6 +9,8 @@ import {enqueue} from "./store";
 import {dispatchDeals} from "./dispatch";
 import {purgeDealsAccount} from "./purge";
 import {signature} from "./bridge";
+// The item at i, or the test fails here (the list came out shorter).
+const nth=<T>(list:readonly T[]|undefined,i=0):T=>{const v=list?.[i];if(v===undefined)throw new Error(`no item ${i}`);return v;};
 
 // The WhatsApp Canais through the Bridge, with a fake Bridge that checks
 // every signature as the real one (cloud/bridge/auth.go) does.
@@ -94,7 +96,7 @@ describe("connecting WhatsApp",()=>{
   const r=await call("/whatsapp/channels");expect(r.status).toBe(503);expect(await r.json()).toEqual({code:"WHATSAPP_UNAVAILABLE"});
   expect((await (await call("/whatsapp/session",{method:"POST",body:{acceptRisk:true}})).json() as {code:string}).code).toBe("WHATSAPP_UNAVAILABLE");
   // An example then: the Bridge is down, the Canal is not to blame.
-  const channel=(await (await call("/channels")).json() as {channels:{id:string}[]}).channels[0].id;
+  const channel=nth((await (await call("/channels")).json() as {channels:{id:string}[]}).channels).id;
   expect(await (await call(`/channels/${channel}/test`,{method:"POST",body:{kinds:["test"]}})).json()).toMatchObject({ok:false,code:"BRIDGE_UNAVAILABLE"});
   expect(await (await call("/channels")).json()).toMatchObject({channels:[{lastError:null,active:true}]});
   reply=bridgeOK;
@@ -131,6 +133,13 @@ describe("the Bridge's notices",()=>{
   expect((await notice({session:id,state:"banned",at:"x"},CALLBACK,Math.floor(Date.now()/1000)-600)).status).toBe(401);
   expect(session()?.state).toBe("connected");
  });
+ it("refuses the same signed notice sent twice (a replay)",async()=>{
+  await connected();const id=session()!.id,at=String(Math.floor(Date.now()/1000)),nonce="ab".repeat(16);
+  const raw=JSON.stringify({session:id,state:"logged_out",at:new Date().toISOString()});
+  const send=async()=>(await call("/whatsapp/callback",{method:"POST",raw,headers:{"x-bridge-timestamp":at,"x-bridge-nonce":nonce,"x-bridge-signature":await sig(CALLBACK,at,nonce,"POST","/whatsapp/callback",raw)}})).status;
+  expect(await send()).toBe(200);
+  expect(await send()).toBe(401);
+ });
  it("does not let a late, older notice undo a newer state",async()=>{
   await connected();const id=session()!.id;
   expect((await notice({session:id,state:"logged_out",at:new Date().toISOString()})).status).toBe(200);
@@ -165,7 +174,7 @@ describe("posting in a Canal",()=>{
   await dispatchDeals(state.env,fake,now);
   const posts=calls.filter(c=>c.path.endsWith("/posts"));
   expect(posts).toHaveLength(1);
-  const sent=posts[0].body as {channel:string;key:string;text:string;image:string};
+  const sent=nth(posts).body as {channel:string;key:string;text:string;image:string};
   expect(sent.channel).toBe(CANAL);
   expect(sent.key).toMatch(/^deals:/);
   expect(sent.text.split("\n")[0]).toBe("*Oferta do dia: Fone JBL Tune 520BT*");

@@ -127,8 +127,8 @@ func LoadBlupAccount(ctx context.Context) (BlupAccount, error) {
 	if err != nil {
 		return BlupAccount{}, errors.New(describe(err))
 	}
-	if err := bindNotesKey(&creds, me.ID); err != nil {
-		return BlupAccount{}, err
+	if err := bindNotesKey(ctx, c, &creds, me.ID); err != nil {
+		return BlupAccount{}, errors.New(describe(err))
 	}
 	a := BlupAccount{
 		SignedIn: true, ID: me.ID, Plan: me.Plan.Name, Label: me.Plan.Label,
@@ -241,14 +241,21 @@ func CreateNotesPassword(ctx context.Context, password string) (string, error) {
 	if err != nil {
 		return "", errors.New(describe(err))
 	}
+	// The account first: the key is kept with it, and once the cloud has
+	// the wrapped key a failure here would leave it with no owner.
+	owner, err := NotesOwner(ctx, c)
+	if err != nil {
+		return "", errors.New(describe(err))
+	}
 	master, recovery, w, err := cloudcrypt.NewKeys(password)
 	if err != nil {
 		return "", err
 	}
+	defer clear(master)
 	if err := c.SaveKey(ctx, w); err != nil {
 		return "", errors.New(describe(err))
 	}
-	creds.SetNotesKey(base64.StdEncoding.EncodeToString(master), notesOwner(ctx, c))
+	creds.SetNotesKey(base64.StdEncoding.EncodeToString(master), owner)
 	return recovery, creds.Save()
 }
 
@@ -256,6 +263,10 @@ func CreateNotesPassword(ctx context.Context, password string) (string, error) {
 // the recovery key.
 func UnlockNotes(ctx context.Context, secret string) error {
 	c, creds, err := blupClient()
+	if err != nil {
+		return errors.New(describe(err))
+	}
+	owner, err := NotesOwner(ctx, c)
 	if err != nil {
 		return errors.New(describe(err))
 	}
@@ -267,32 +278,110 @@ func UnlockNotes(ctx context.Context, secret string) error {
 	if err != nil {
 		return errors.New(describe(err))
 	}
-	creds.SetNotesKey(base64.StdEncoding.EncodeToString(master), notesOwner(ctx, c))
+	defer clear(master)
+	creds.SetNotesKey(base64.StdEncoding.EncodeToString(master), owner)
 	return creds.Save()
 }
 
-// bindNotesKey forgets a notes key of another account than the one signed
-// in (account, from /me), and adopts a key saved before keys had an
-// account (config.Credentials.BindNotesKey), saving when it changed.
-func bindNotesKey(creds *config.Credentials, account string) error {
+func bindNotesKey(ctx context.Context, c *blupcloud.Client, creds *config.Credentials, account string) error {
+	return BindNotesKey(ctx, c, creds, account)
+}
+
+// BindNotesKey forgets a notes key of another account than the one signed
+// in with c (account, from /me), and adopts a key saved without an account
+// (config.Credentials.BindNotesKey), saving when it changed. A key without
+// an account is adopted only if it can be this account's: one that opens
+// none of the account's vault names, or kept while the account has no
+// notes key at all, belongs to someone else and is forgotten (the notes
+// are then locked until this account's password is typed). The phone
+// shares it.
+func BindNotesKey(ctx context.Context, c *blupcloud.Client, creds *config.Credentials, account string) error {
+	if account != "" && creds.NotesKey != "" && creds.NotesAccount == "" {
+		fits, err := keyFitsAccount(ctx, c, creds.NotesKey)
+		if err != nil {
+			return err
+		}
+		if !fits {
+			creds.ForgetNotesKey()
+			return creds.Save()
+		}
+	}
 	if !creds.BindNotesKey(account) {
 		return nil
 	}
 	return creds.Save()
 }
 
-// NotesOwner is the id of the account signed in with c, to keep with the
-// notes key. Offline it is "": the key is then adopted by this same session
-// at the next reading of the account (config.Credentials.BindNotesKey).
-func notesOwner(ctx context.Context, c *blupcloud.Client) string {
-	if me, err := c.Me(ctx); err == nil {
-		return me.ID
+// keyFitsAccount reports whether the notes key (base64) can be the one of
+// the account signed in with c. It is false only when it surely is not:
+// not a key, the account has no notes key, or it has vaults and the key
+// opens none of their names. With no vault there is nothing to tell by.
+func keyFitsAccount(ctx context.Context, c *blupcloud.Client, key string) (bool, error) {
+	master, err := base64.StdEncoding.DecodeString(key)
+	if err != nil {
+		return false, nil
 	}
-	return ""
+	keys, err := cloudcrypt.Derive(master)
+	clear(master)
+	if err != nil {
+		return false, nil
+	}
+	if _, err := c.Key(ctx); errors.Is(err, blupcloud.ErrNoKey) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	vaults, err := c.Vaults(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, v := range vaults {
+		if _, _, err := keys.OpenName(v.ID, v.Name); err == nil {
+			return true, nil
+		}
+	}
+	return len(vaults) == 0, nil
 }
 
-// NotesOwner is notesOwner for the phone, which shares this package.
-func NotesOwner(ctx context.Context, c *blupcloud.Client) string { return notesOwner(ctx, c) }
+// NotesOwner is the id of the account signed in with c, kept with the
+// notes key. It needs the cloud, as creating or opening the key does: a
+// key is never kept without its account.
+func NotesOwner(ctx context.Context, c *blupcloud.Client) (string, error) {
+	me, err := c.Me(ctx)
+	if err != nil {
+		return "", err
+	}
+	if me.ID == "" {
+		return "", blupcloud.ErrBadAnswer
+	}
+	return me.ID, nil
+}
+
+// accountKeys are the subkeys of the notes key, checked against the
+// account signed in with c first (BindNotesKey): a key left here by
+// another account never seals anything of this one.
+func accountKeys(ctx context.Context, c *blupcloud.Client, creds *config.Credentials) (*cloudcrypt.Keys, error) {
+	me, err := c.Me(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := bindNotesKey(ctx, c, creds, me.ID); err != nil {
+		return nil, err
+	}
+	if creds.NotesKey == "" {
+		return nil, errNotesLocked
+	}
+	master, err := base64.StdEncoding.DecodeString(creds.NotesKey)
+	if err != nil {
+		return nil, errNotesLocked
+	}
+	defer clear(master)
+	keys, err := cloudcrypt.Derive(master)
+	if err != nil {
+		return nil, errNotesLocked
+	}
+	return keys, nil
+}
 
 // OpenNotesKey opens the master key with what was typed: the notes
 // password exactly as typed, then without the spaces around it (pasted
@@ -338,8 +427,8 @@ func blupRemote(ctx context.Context, site *config.Site) (*blupcloud.Remote, erro
 	if err != nil {
 		return nil, errors.New(describe(err))
 	}
-	if err := bindNotesKey(&creds, me.ID); err != nil {
-		return nil, err
+	if err := bindNotesKey(ctx, c, &creds, me.ID); err != nil {
+		return nil, errors.New(describe(err))
 	}
 	if creds.NotesKey == "" {
 		return nil, errors.New(describe(errNotesLocked))
@@ -349,6 +438,7 @@ func blupRemote(ctx context.Context, site *config.Site) (*blupcloud.Remote, erro
 		return nil, errors.New(describe(errNotesLocked))
 	}
 	keys, err := cloudcrypt.Derive(master)
+	clear(master)
 	if err != nil {
 		return nil, errors.New(describe(errNotesLocked))
 	}
@@ -401,6 +491,42 @@ func PurgeHistory(ctx context.Context, site *config.Site) (blupcloud.HistoryPurg
 		return r, errors.New(describe(err))
 	}
 	return r, nil
+}
+
+// ErrSyncStuck: the sync of the site's notes stopped for safety, because
+// Blup Cloud shows a version that does not continue the one this computer
+// synced (notesync.Stuck). Nothing was deleted, and it stays stopped until
+// the person chooses to compare from scratch (ResetSync).
+var ErrSyncStuck = errors.New("sync stuck")
+
+// SyncStuckError says it in the person's words; errors.Is finds
+// ErrSyncStuck. Stuck travels to the window with the error (Wails puts
+// the error's JSON in its cause), so the screen offers "Compare from
+// scratch" without reading the message.
+type SyncStuckError struct {
+	Stuck bool `json:"stuck"`
+}
+
+func (SyncStuckError) Error() string        { return i18n.T("blup.sync_stuck") }
+func (SyncStuckError) Is(target error) bool { return target == ErrSyncStuck }
+
+// syncFailed is the error of a sync as the person reads it.
+func syncFailed(err error) error {
+	if notesync.Stuck(err) {
+		return SyncStuckError{Stuck: true}
+	}
+	return errors.New(describe(err))
+}
+
+// ResetSync is "Compare from scratch": this computer forgets what it knew
+// of the site's last sync (the base of every file, the chain of versions
+// and the cached old versions) and syncs as a new computer. No note is
+// deleted on either side: what differs is kept twice (conflict copy), what
+// only one side has goes to the other. It accepts the version Blup Cloud
+// shows now, so the screens only offer it after a stuck sync and after the
+// person confirms; nothing calls it on its own.
+func ResetSync(ctx context.Context, site *config.Site) (SyncInfo, error) {
+	return syncSiteWith(ctx, site, true, true)
 }
 
 // ErrVaultGone: the site's notes were deleted from Blup Cloud on another
@@ -499,13 +625,9 @@ func renameBlupVault(ctx context.Context, id, title string) error {
 	if err != nil {
 		return err
 	}
-	master, err := base64.StdEncoding.DecodeString(creds.NotesKey)
-	if creds.NotesKey == "" || err != nil {
-		return errNotesLocked
-	}
-	keys, err := cloudcrypt.Derive(master)
+	keys, err := accountKeys(ctx, c, &creds)
 	if err != nil {
-		return errNotesLocked
+		return err
 	}
 	return c.RenameSealed(ctx, keys, id, title)
 }

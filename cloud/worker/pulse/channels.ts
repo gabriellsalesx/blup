@@ -1,19 +1,22 @@
 import {Hono} from "hono";
 import {z} from "zod";
 import {validate,opaqueId} from "../validation";
-import {discordWebhook,slackWebhook,customWebhook,sealTarget,openTarget,webhookTarget,channelType,newSecret} from "./channel-crypto";
+import {discordWebhook,slackWebhook,customWebhook,sealTarget,openTarget,webhookTarget,channelType,channelTypes,newSecret} from "./channel-crypto";
 import {pulseWrite,ownedProject,type PulseApp} from "./access";
-import {projectId} from "./limits";
+import {projectId,planHolds,planBinds} from "./limits";
+// One destination of each type per project, and at most ten projects
+// (the projects route): the whole list fits.
+export const MAX_CHANNELS=10*channelTypes.length;
 const channelParam=z.object({channel:opaqueId});
 // Every destination belongs to one project. A new one is made for a project
 // and becomes its destination of that type, in the same batch that creates
 // it; the one it replaces is deleted with its queue, so no destination is
 // ever left without a project.
-export const projectChoice=z.object({projectId}).strict();
+export const projectChoice=z.strictObject({projectId});
 // The alerts a destination can be tested with: a plain test, or an example
 // of each kind it sends for a project (marked as a test).
 export const testKinds=["test","issue","regression","monitor_down","monitor_up"] as const;
-const testRequest=z.union([z.object({}).strict(),z.object({projectId,kinds:z.array(z.enum(testKinds)).min(1).max(testKinds.length).refine(v=>new Set(v).size===v.length)}).strict()]);
+const testRequest=z.union([z.strictObject({}),z.strictObject({projectId,kinds:z.array(z.enum(testKinds)).min(1).max(testKinds.length).refine(v=>new Set(v).size===v.length)})]);
 // One test per destination a minute; the dispatcher sends at each minute.
 export const TEST_SPACING_MS=60_000;
 const nextRound=(now:number)=>Math.floor(now/60_000)*60_000+60_000;
@@ -38,7 +41,7 @@ export const dropUnbound=(db:D1Database,owner:string)=>{const unbound="SELECT id
 export const bindToProject=(db:D1Database,owner:string,project:string,channel:string,type:z.infer<typeof channelType>)=>db.prepare("INSERT INTO pulse_project_channel(project_id,channel_id,type) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM pulse_channel WHERE id=? AND user_id=? AND type=?) ON CONFLICT(project_id,type) DO UPDATE SET channel_id=excluded.channel_id").bind(project,channel,type,channel,owner,type);
 export const channelsApi=new Hono<PulseApp>()
  .get("/",async c=>{
-  const channels=await c.env.DB.prepare("SELECT id,type,label,active,last_error AS lastError,test_at AS testAt FROM pulse_channel WHERE user_id=? ORDER BY created_at LIMIT 20").bind(c.get("session").user.id).all<{id:string;type:string;label:string;active:number;lastError:string|null;testAt:number}>();
+  const channels=await c.env.DB.prepare("SELECT id,type,label,active,last_error AS lastError,test_at AS testAt FROM pulse_channel WHERE user_id=? ORDER BY created_at LIMIT ?").bind(c.get("session").user.id,MAX_CHANNELS).all<{id:string;type:string;label:string;active:number;lastError:string|null;testAt:number}>();
   const bindings=await c.env.DB.prepare("SELECT p.project_id AS projectId,p.channel_id AS channelId FROM pulse_project_channel p JOIN pulse_channel c ON c.id=p.channel_id WHERE c.user_id=?").bind(c.get("session").user.id).all<{projectId:string;channelId:string}>();
   return c.json({channels:c.get("access").readable?channels.results.map(({testAt,...row})=>({...row,type:channelType.parse(row.type),active:!!row.active,testAgainAt:testAt>0?testAt+TEST_SPACING_MS:0})):[],bindings:c.get("access").readable?bindings.results:[]});
  })
@@ -50,12 +53,12 @@ export const channelsApi=new Hono<PulseApp>()
   const secret=input.type==="webhook"?newSecret():null;
   const destination=input.type==="webhook"?{target:JSON.stringify({url:input.url.url,secret}),label:input.url.label}:{target:input.webhook.url,label:input.webhook.label};
   let target:string;try{target=await sealTarget(c.env,owner,id,input.type,destination.target);}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}
-  const [made]=await c.env.DB.batch([c.env.DB.prepare(`INSERT INTO pulse_channel(id,user_id,type,target,label,created_at) SELECT ?,?,?,?,?,? WHERE ${typeRoom} RETURNING id`).bind(id,owner,input.type,target,destination.label,Date.now(),owner,input.type,input.projectId,input.type,c.get("access").limits?.projects??0),bindToProject(c.env.DB,owner,input.projectId,id,input.type),...dropUnbound(c.env.DB,owner)]);
-  return made.results.length?c.json({id,label:destination.label,secret},201):c.json({code:"QUOTA"},409);
+  const [made]=await c.env.DB.batch([c.env.DB.prepare(`INSERT INTO pulse_channel(id,user_id,type,target,label,created_at) SELECT ?,?,?,?,?,? WHERE ${typeRoom} AND ${planHolds} RETURNING id`).bind(id,owner,input.type,target,destination.label,Date.now(),owner,input.type,input.projectId,input.type,c.get("access").limits?.projects??0,...planBinds(owner,c.get("access"))),bindToProject(c.env.DB,owner,input.projectId,id,input.type),...dropUnbound(c.env.DB,owner)]);
+  return made?.results.length?c.json({id,label:destination.label,secret},201):c.json({code:"QUOTA"},409);
  })
  // A new address for a Discord, Slack or webhook destination (a webhook
  // keeps its signing secret). Telegram is linked again instead.
- .patch("/:channel",pulseWrite,validate("param",channelParam),validate("json",z.object({address:z.string().max(2048)}).strict()),async c=>{
+ .patch("/:channel",pulseWrite,validate("param",channelParam),validate("json",z.strictObject({address:z.string().max(2048)})),async c=>{
   const id=c.req.valid("param").channel,owner=c.get("session").user.id,stored=await ownChannel(c.env.DB,id,owner);if(!stored)return c.json({code:"NOT_FOUND"},404);
   const type=channelType.parse(stored.type);if(type==="telegram")return c.json({code:"INVALID"},400);
   const parsed=addressOf[type].safeParse(c.req.valid("json").address);if(!parsed.success)return c.json({code:"INVALID"},400);
@@ -67,7 +70,7 @@ export const channelsApi=new Hono<PulseApp>()
   await resave(c.env.DB,id,owner,target,parsed.data.label);return c.json({label:parsed.data.label});
  })
  // A webhook's new signing secret, shown once; the old one stops at once.
- .post("/:channel/secret",pulseWrite,validate("param",channelParam),validate("json",z.object({}).strict()),async c=>{
+ .post("/:channel/secret",pulseWrite,validate("param",channelParam),validate("json",z.strictObject({})),async c=>{
   const id=c.req.valid("param").channel,owner=c.get("session").user.id,stored=await ownChannel(c.env.DB,id,owner);if(!stored||stored.type!=="webhook")return c.json({code:"NOT_FOUND"},404);
   const secret=newSecret();let target:string,label:string;
   try{const current=webhookTarget.parse(JSON.parse(await openTarget(c.env,owner,id,"webhook",stored.target)));label=`Webhook · ${new URL(current.url).hostname}`.slice(0,80);target=await sealTarget(c.env,owner,id,"webhook",JSON.stringify({url:current.url,secret}));}catch{return c.json({code:"CHANNEL_UNAVAILABLE"},503);}

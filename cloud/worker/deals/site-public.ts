@@ -107,6 +107,12 @@ export async function serveDealsSite(req:Request,env:Cloudflare.Env):Promise<Res
  if(!["GET","HEAD"].includes(req.method))return new Response(null,{status:405,headers:{allow:"GET, HEAD","cache-control":"no-store"}});
  if(!(await env.DEALS_PUBLIC_LIMIT.limit({key:`site:${req.headers.get("cf-connecting-ip")??"local"}`})).success)return new Response("Too many requests",{status:429,headers:{"retry-after":"60","cache-control":"no-store"}});
 
+ // Without the Deals plan (or a domain the account lost), nothing of the
+ // page answers: not its logos, its search or its HTML. Checked before the
+ // 304 and the edge cache, so a lost plan takes the page down at once.
+ const now=Date.now(),day=Math.floor(now/86_400_000);
+ if((await dealsAccess(env,site.userId,now)).readOnly)return own?null:notFound();
+
  // The logos: a version in the address keeps them for a year.
  if(rest==="/logo-light"||rest==="/logo-dark"){
   const variant=rest==="/logo-light"?"light":"dark",object=await env.DEALS_ASSETS.get(siteLogoKey(site.id,variant));
@@ -120,20 +126,14 @@ export async function serveDealsSite(req:Request,env:Cloudflare.Env):Promise<Res
  // The search dialog's results, as the person types (eight at most).
  if(rest==="/search"){
   const json=(body:unknown,status=200)=>new Response(req.method==="HEAD"?null:JSON.stringify(body),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":status===200?"public, max-age=60":"no-store","x-content-type-options":"nosniff"}});
-  if((await dealsAccess(env,site.userId,Date.now())).readOnly)return json({code:"NOT_FOUND"},404);
   if(!query.q)return json({results:[]});
   const info:SiteInfo={slug:site.slug,title:site.title,description:site.description,language:languageOf(site.language)??"pt",logos:{light:site.logoLight,dark:site.logoDark},showTitle:site.showTitle===1,links:linksOf(site.links),socials:socialsOf(site.socials)};
-  const {deals}=await dealsOf(env,site.id,{q:query.q},Date.now());
+  const {deals}=await dealsOf(env,site.id,{q:query.q},now);
   return json({results:deals.slice(0,8).map(d=>searchResult({base:own?"":`/${site.slug}`,lang,site:info},d))});
  }
  // The page's version: what it shows changes only with the site or a new
  // deal (and the day, for offers that run out). A visit that has it gets
  // 304 at once.
- const now=Date.now(),day=Math.floor(now/86_400_000);
- // Without the Deals plan (or a domain the account lost), no page: checked
- // before the 304 and the edge cache, so a lost plan takes the page down
- // at once.
- if((await dealsAccess(env,site.userId,now)).readOnly)return own?null:notFound();
  // A deal's page changes with its own post and prices too.
  const detail=deal?await detailOf(env,site.id,deal[1]!,now):null;
  if(deal&&!detail)return notFound();

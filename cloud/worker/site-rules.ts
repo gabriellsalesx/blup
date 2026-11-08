@@ -61,20 +61,20 @@ export function pathAllowed(p: string): boolean {
 
 // A deploy as the Studio sends it: each file's path, the hash of what is
 // stored, its media type and whether it is stored gzipped.
-export const deploySchema = z.object({
+export const deploySchema = z.strictObject({
 	files: z
 		.array(
-			z.object({
+			z.strictObject({
 				path: z.string().refine(pathAllowed),
 				hash: z.string().regex(HASH),
 				type: z.string().regex(/^[a-z0-9.+-]+\/[a-z0-9.+-]+(?:; ?charset=utf-8)?$/i).max(100),
 				gz: z.boolean(),
-			}).strict(),
+			}),
 		)
 		.min(1)
 		.max(20_000)
 		.refine((files) => new Set(files.map((f) => f.path)).size === files.length, "duplicate path"),
-}).strict();
+});
 type DeployFiles = z.infer<typeof deploySchema>["files"];
 
 // The manifest kept in R2: path -> [hash, type, gzipped].
@@ -118,7 +118,7 @@ export function cacheControl(path: string, type: string): string {
 export function acceptsGzip(header: string | null): boolean {
 	let gzip: number | undefined, wildcard = 0;
 	for (const part of (header ?? "").toLowerCase().split(",")) {
-		const [coding, ...params] = part.trim().split(";");
+		const [coding = "", ...params] = part.trim().split(";");
 		if (coding.trim() !== "gzip" && coding.trim() !== "*") continue;
 		const q = params.map(p => p.trim()).find(p => p.startsWith("q="));
 		const value = q ? Number(q.slice(2)) : 1;

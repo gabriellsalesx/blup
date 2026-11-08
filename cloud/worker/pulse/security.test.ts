@@ -10,8 +10,9 @@ const state=vi.hoisted(()=>({env:{} as Cloudflare.Env}));
 vi.mock("cloudflare:workers",()=>({env:state.env,DurableObject:class{constructor(readonly ctx:DurableObjectState,readonly env:Cloudflare.Env){}}}));
 vi.mock("../auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})=>{const id=headers.get("authorization")?.replace("Bearer ","");return id?{user:{id}}:null;}}}}));
 import {pulseApi} from "./api";
-import {pulseIngest} from "./ingest";
+import {pulseIngest,ingestLimitKey,WORKERS_IP} from "./ingest";
 import {PulseProject} from "./project";
+import {at} from "./test-at";
 
 // This adapter preserves real SQLite queries and transaction rollback;
 // only the workerd cursor transport is represented structurally.
@@ -41,7 +42,7 @@ describe("Pulse protocol and privacy",()=>{
   expect(()=>normalizeEventId(raw(),"b".repeat(32))).toThrow(IngestError);
   expect(normalizeEventId({event_id:"12345678-1234-1234-1234-123456789abc"})).toBe("12345678123412341234123456789abc");
  });
- it("accepts the official Go 0.50 exception array without retaining absolute paths",async()=>{const event=await safeEvent({platform:"go",exception:[{type:"Error",value:"failure",stacktrace:{frames:[{abs_path:"/application/main.go",function:"main",lineno:4,in_app:true}]}}]},"a".repeat(32));expect(event.exceptions[0].frames[0].filename).toBe("main.go");expect(JSON.stringify(event)).not.toContain("/application/");});
+ it("accepts the official Go 0.50 exception array without retaining absolute paths",async()=>{const event=await safeEvent({platform:"go",exception:[{type:"Error",value:"failure",stacktrace:{frames:[{abs_path:"/application/main.go",function:"main",lineno:4,in_app:true}]}}]},"a".repeat(32));expect(at(at(event.exceptions).frames).filename).toBe("main.go");expect(JSON.stringify(event)).not.toContain("/application/");});
  it("takes an empty fingerprint as the default grouping (Java SDKs)",async()=>{
   const frames=[{filename:"Main.java",function:"teste.Main.checkout",lineno:9,in_app:true}];
   const withEmpty=await safeEvent({platform:"java",fingerprint:[],exception:{values:[{type:"RuntimeException",value:"failure",stacktrace:{frames}}]}},"f".repeat(32));
@@ -59,7 +60,7 @@ describe("Pulse protocol and privacy",()=>{
  it("takes sentry-ruby's events: type event, and a title without the class and code highlight",async()=>{
   const event=await safeEvent({platform:"ruby",type:"event",fingerprint:[],exception:{values:[{type:"RuntimeError",value:"Falha no checkout (RuntimeError)\n\n    raise \"x\"\n    ^^^^^",stacktrace:{frames:[{filename:"lib/loja.rb",function:"checkout",lineno:3,in_app:true}]}}]}},"9".repeat(32));
   expect(event.title).toBe("Falha no checkout");
-  expect(event.exceptions[0].value).toContain("^^^^^");
+  expect(at(event.exceptions).value).toContain("^^^^^");
   expect((await safeEvent({platform:"python",exception:{values:[{type:"KeyError",value:"faltou (id)"}]}},"8".repeat(32))).title).toBe("faltou (id)");
  });
  it("takes JSON null as a missing field (sentry-elixir)",async()=>{
@@ -121,7 +122,7 @@ describe("Pulse atomic admission and retention",()=>{
   const e=engine(local),sql={exec:e.sql.exec.bind(e.sql),databaseSize:pulseLimits.max_pulse.projectBytes-1024*1024} as ProjectSQL,limited=new ProjectStore(sql,e.transaction),now=Date.now(),month=new Date(now).toISOString().slice(0,7),event=await safeEvent(raw(),"a".repeat(32));limited.importGrant({id:"capacity",amount:32},month);expect(()=>limited.accept(event,"max_pulse",now)).toThrow(IngestError);expect(limited.usage(month).accepted).toBe(0);expect(limited.seen(event.id,0)).toBe(false);
  });
  it("paginates issues sharing the same timestamp without skipping IDs",async()=>{
-  const now=Date.now();store.importGrant({id:"pagination",amount:32},new Date(now).toISOString().slice(0,7));for(let i=1;i<=3;i++)store.accept(await safeEvent(raw(i.toString().repeat(32),["alpha failure","beta failure","gamma failure"][i-1]),i.toString().repeat(32)),"max_pulse",now);const first=store.issues(0,{limit:2}),last=first[1];const next=store.issues(0,{limit:2,before:last.lastAt,beforeId:last.id});expect(new Set([...first,...next].map(i=>i.id)).size).toBe(3);
+  const now=Date.now();store.importGrant({id:"pagination",amount:32},new Date(now).toISOString().slice(0,7));for(let i=1;i<=3;i++)store.accept(await safeEvent(raw(i.toString().repeat(32),at(["alpha failure","beta failure","gamma failure"],i-1)),i.toString().repeat(32)),"max_pulse",now);const first=store.issues(0,{limit:2}),last=at(first,1);const next=store.issues(0,{limit:2,before:last.lastAt,beforeId:last.id});expect(new Set([...first,...next].map(i=>i.id)).size).toBe(3);
  });
  it("lists the environments and releases of recent issues, newest first",async()=>{
   const now=Date.now();store.importGrant({id:"facets",amount:32},new Date(now).toISOString().slice(0,7));
@@ -135,8 +136,8 @@ describe("Pulse atomic admission and retention",()=>{
   const now=Date.now();store.importGrant({id:"counts",amount:32},new Date(now).toISOString().slice(0,7));
   for(const [id,title,environment,release] of [["1","one","production","1.0.0"],["2","two","production","1.1.0"],["3","three","staging","1.0.0"]] as const)store.accept(await safeEvent({...raw(id.repeat(32),title),environment,release},id.repeat(32)),"max_pulse",now);
   // A second occurrence of "one" (same group, new event).
-  const again=await safeEvent({...raw("4".repeat(32),"one"),environment:"production",release:"1.0.0"},"4".repeat(32));store.accept({...again,group:store.issues(0,{q:"one",limit:1})[0].id},"max_pulse",now);
-  const [two,three]=[store.issues(0,{q:"two",limit:1})[0],store.issues(0,{q:"three",limit:1})[0]];store.setState(two.id,"resolved",0);store.setState(three.id,"ignored",0);
+  const again=await safeEvent({...raw("4".repeat(32),"one"),environment:"production",release:"1.0.0"},"4".repeat(32));store.accept({...again,group:at(store.issues(0,{q:"one",limit:1})).id},"max_pulse",now);
+  const [two,three]=[at(store.issues(0,{q:"two",limit:1})),at(store.issues(0,{q:"three",limit:1}))];store.setState(two.id,"resolved",0);store.setState(three.id,"ignored",0);
   expect(store.counts(0,{})).toEqual({open:1,resolved:1,ignored:1,total:3,occurrences:4});
   expect(store.counts(0,{environment:"production"})).toEqual({open:1,resolved:1,ignored:0,total:2,occurrences:3});
   expect(store.counts(0,{release:"1.0.0"})).toMatchObject({open:1,ignored:1,total:2});
@@ -154,10 +155,10 @@ describe("Pulse atomic admission and retention",()=>{
  });
  it("deduplicates before consuming quota or reopening resolved issues; keeps only 100 samples",async()=>{
   const now=Date.now(),month=new Date(now).toISOString().slice(0,7),event=await safeEvent(raw(),"a".repeat(32));store.importGrant({id:"g",amount:300},month);
-  expect(store.accept(event,"ultra_pulse",now).duplicate).toBe(false);store.setState(event.group,"resolved",0);expect(store.accept(event,"ultra_pulse",now).duplicate).toBe(true);expect(store.issues(0,{limit:10})[0].state).toBe("resolved");
+  expect(store.accept(event,"ultra_pulse",now).duplicate).toBe(false);store.setState(event.group,"resolved",0);expect(store.accept(event,"ultra_pulse",now).duplicate).toBe(true);expect(at(store.issues(0,{limit:10})).state).toBe("resolved");
   for(let i=1;i<103;i++)store.accept({...event,id:i.toString(16).padStart(32,"0")},"ultra_pulse",now+i);
   expect(store.samples(event.group,0,100)).toHaveLength(100);expect(store.issues(0,{limit:10})[0]).toMatchObject({count:103,state:"open"});expect(store.usage(month).accepted).toBe(103);
-  store.setState(event.group,"ignored",0);store.accept({...event,id:"b".repeat(32)},"ultra_pulse",now+104);expect(store.issues(0,{limit:10})[0].state).toBe("ignored");
+  store.setState(event.group,"ignored",0);store.accept({...event,id:"b".repeat(32)},"ultra_pulse",now+104);expect(at(store.issues(0,{limit:10})).state).toBe("ignored");
  });
  it("skips stored samples that no longer match the event projection",async()=>{
   const now=Date.now(),event=await safeEvent(raw(),"c".repeat(32));store.importGrant({id:"g",amount:10},new Date(now).toISOString().slice(0,7));
@@ -181,7 +182,7 @@ describe("Pulse actual routes and DO",()=>{
  it("keeps monitor writes inside the same project physical capacity boundary",async()=>{
   const created=await(await request("/projects","POST",{name:"Capacity",platform:"go"})).json() as {id:string};d1.sqlite.prepare("INSERT INTO pulse_monitor(id,user_id,project_id,name,url,interval_minutes,next_at,created_at) VALUES('capacity-monitor','alice',?,'monitor','https://example.com',5,0,0)").run(created.id);
   const e=engine(local),sql={exec:e.sql.exec.bind(e.sql),databaseSize:pulseLimits.max_pulse.projectBytes-1024*1024} as ProjectSQL,ctx={waitUntil:(p:Promise<unknown>)=>p.catch(()=>{}),storage:{sql,transactionSync:e.transaction,getAlarm:async()=>null,setAlarm:async()=>{}}} as unknown as DurableObjectState,object=new PulseProject(ctx,state.env),now=Date.now();
-  const result=await object.recordChecks([{id:"capacity-check",monitor:"capacity-monitor",revision:1,scheduledAt:now,checkedAt:now,intervalMinutes:5,result:{outcome:"up",status:200,durationMs:1,reason:"http"}}]);expect(result[0].state).toBe("unknown");expect(local.sqlite.prepare("SELECT count(*) AS n FROM monitor_check").get()?.n).toBe(0);
+  const result=await object.recordChecks([{id:"capacity-check",monitor:"capacity-monitor",revision:1,scheduledAt:now,checkedAt:now,intervalMinutes:5,result:{outcome:"up",status:200,durationMs:1,reason:"http"}}]);expect(at(result).state).toBe("unknown");expect(local.sqlite.prepare("SELECT count(*) AS n FROM monitor_check").get()?.n).toBe(0);
  });
  it("rotates concurrent DSNs atomically and keeps only one active key",async()=>{
   const created=await(await request("/projects","POST",{name:"Rotation",platform:"go"})).json() as {id:string};const rotations=await Promise.all([request(`/projects/${created.id}/keys`,"POST"),request(`/projects/${created.id}/keys`,"POST")]);expect(rotations.map(r=>r.status)).toEqual([201,201]);expect(d1.sqlite.prepare("SELECT count(*) AS n FROM pulse_key WHERE project_id=? AND revoked_at IS NULL").get(created.id)?.n).toBe(1);
@@ -235,7 +236,7 @@ describe("what an occurrence keeps beyond the error",()=>{
   user:{email:"a@b.co",ip_address:"1.2.3.4"},
   breadcrumbs:{values:[{timestamp:1793710000.5,category:"ui.click",message:"button#pay"},{type:"http",category:"fetch",data:{method:"post",url:"https://api.example.com/charge/99?card=4242",status_code:402}},{category:"navigation",data:{from:"/cart?ref=x",to:"/checkout/7"}},{category:"console",message:"token=abc123 failed"},"not a crumb"]}};
  it("keeps code only of app frames, cleaned and bounded",async()=>{
-  const event=await safeEvent(full,"c".repeat(32)),[lib,own]=event.exceptions[0].frames;
+  const event=await safeEvent(full,"c".repeat(32)),frames=at(event.exceptions).frames,lib=at(frames),own=at(frames,1);
   expect(lib.context).toBeUndefined();
   expect(own.context?.pre).toEqual(["c","d","e","f","const key='[secret]';"]);
   expect(own.context?.line).toBe("return order.customer.id; // mail me at [email]");
@@ -249,10 +250,27 @@ describe("what an occurrence keeps beyond the error",()=>{
  it("keeps the trail of actions, with HTTP calls and page changes as method, route and status",async()=>{
   const event=await safeEvent(full,"c".repeat(32));
   expect(event.breadcrumbs?.map(b=>[b.category,b.message])).toEqual([["ui.click","button#pay"],["fetch","POST /charge/:id 402"],["navigation","/cart → /checkout/:id"],["console","token=[secret] failed"]]);
-  expect(event.breadcrumbs?.[0].at).toBe(1793710000500);
+  expect(at(event.breadcrumbs??[]).at).toBe(1793710000500);
  });
  it("drops odd shapes of these parts without losing the error",async()=>{
   const event=await safeEvent({...full,request:"x",contexts:[1],breadcrumbs:{values:"nope"},exception:{values:[{type:"E",stacktrace:{frames:[{function:"f",in_app:true,pre_context:"bad",context_line:5}]}}]}},"c".repeat(32));
-  expect(event.context).toBeUndefined();expect(event.breadcrumbs).toBeUndefined();expect(event.exceptions[0].frames[0].context).toBeUndefined();expect(event.title).toBe("E");
+  expect(event.context).toBeUndefined();expect(event.breadcrumbs).toBeUndefined();expect(at(at(event.exceptions).frames).context).toBeUndefined();expect(event.title).toBe("E");
  });
+});
+it("counts Workers of other zones by their zone and project, not their shared address",()=>{
+ const req=(headers:Record<string,string>)=>new Request("https://ingest.audit.invalid/api/1/envelope/",{method:"POST",headers});
+ expect(ingestLimitKey(req({"cf-connecting-ip":"203.0.113.9"}),"1")).toBe("ingest:203.0.113.9");
+ expect(ingestLimitKey(req({"cf-connecting-ip":WORKERS_IP,"cf-worker":"Customer.example"}),"7")).toBe("ingest:worker:customer.example:7");
+ expect(ingestLimitKey(req({"cf-connecting-ip":WORKERS_IP,"cf-worker":"getblup.site"}),"7")).not.toBe(ingestLimitKey(req({"cf-connecting-ip":WORKERS_IP,"cf-worker":"customer.example"}),"7"));
+ expect(ingestLimitKey(req({"cf-connecting-ip":WORKERS_IP,"cf-worker":"bad zone/\n"}),"7")).toBe("ingest:worker:?:7");
+});
+it("refuses a creation that counted on a plan changed while it ran",async()=>{
+ const db=state.env.DB,prepare=db.prepare.bind(db);
+ // The downgrade lands between the request's plan check and its insert.
+ db.prepare=((sql:string)=>{if(sql.startsWith("INSERT INTO pulse_project("))d1.sqlite.prepare("UPDATE pulse_account SET last_plan='max_pulse',resource_plan='max_pulse' WHERE user_id='bob'").run();return prepare(sql);}) as typeof db.prepare;
+ try{
+  const res=await request("/projects","POST",{name:"Late",platform:"javascript"},"bob");
+  expect(res.status).toBe(409);
+  expect(d1.sqlite.prepare("SELECT count(*) AS n FROM pulse_project WHERE user_id='bob'").get()).toEqual({n:0});
+ }finally{db.prepare=prepare;}
 });

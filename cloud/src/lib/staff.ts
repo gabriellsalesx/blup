@@ -58,6 +58,13 @@ export const actionLabel: Record<string, string> = {
 	"team.set": "Mudou a equipe",
 	"team.remove": "Tirou da equipe",
 	"ai.models": "Mudou os modelos de IA",
+	// Refused: only the owner (STAFF_OWNER_EMAIL) may do these.
+	"denied.sessions.revoke": "Tentou encerrar as sessões (negado)",
+	"denied.passkey.remove": "Tentou remover uma passkey (negado)",
+	"denied.user.ban": "Tentou bloquear a conta (negado)",
+	"denied.user.delete": "Tentou excluir a conta (negado)",
+	"denied.team.set": "Tentou mudar um admin (negado)",
+	"denied.team.remove": "Tentou tirar um admin da equipe (negado)",
 };
 
 // Stripe's money events, in the staff's words (and whether they need a look).

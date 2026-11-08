@@ -86,7 +86,7 @@
    {#each incidents as item(item.id)}
     {@const href=resolve("/status-pages/[id]/incidents/[incident]",{id:page.id,incident:item.id})}
     <ListItem {href} label={item.title}>
-     <div class="flex items-center gap-4"><StateMark tone={toneOf(item)} label={stateLabel(item.state)}/><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{item.title}</span><Badge tone={item.state==="resolved"?"green":"amber"}>{stateLabel(item.state)}</Badge></p><p class="text-sm text-neutral-500" title={formatDate(new Date(item.createdAt))}>{t("pulseIncidentCreated",{time:ago(item.createdAt)})}</p></div></div>
+     <div class="flex items-center gap-4"><StateMark tone={toneOf(item)} label={stateLabel(item.state)}/><div class="min-w-0"><p class="flex flex-wrap items-center gap-2 font-semibold"><span class="truncate">{item.title}</span><Badge tone={item.state==="resolved"?"green":"amber"}>{stateLabel(item.state)}</Badge></p><p class="relative z-10 text-sm text-neutral-500" title={formatDate(new Date(item.createdAt))}>{t("pulseIncidentCreated",{time:ago(item.createdAt)})}</p></div></div>
      {#snippet actions()}<span class="text-sm text-neutral-500">{item.updates===1?t("pulseOneUpdate"):t("pulseManyUpdates",{count:String(item.updates)})}</span>{/snippet}
      {#snippet menu()}{#if writable}<ActionMenu label={t("pulseActions")} items={[{label:t("pulseConfigure"),Icon:Settings,onselect:()=>void goto(resolve("/status-pages/[id]/incidents/[incident]/settings",{id:pageId,incident:item.id}))},{label:t("pulseSeeUpdates"),Icon:FileText,onselect:()=>void goto(href)},{label:t("delete"),Icon:Trash2,danger:true,onselect:()=>void removeIncident(item)}]}/>{/if}{/snippet}
     </ListItem>

@@ -87,7 +87,10 @@ describe("signed Stripe reconciliation against current provider state",()=>{
   expect(calls).toHaveLength(2);expect(rows()[0]).toMatchObject({stripeId:"sub_audit",status:"active"});
  });
  it("records refunds, disputes and early fraud warnings from current Stripe objects only",async()=>{
-  objects.set("/v1/charges/ch_audit",{id:"ch_audit",customer:"cus_audit",amount:4990,amount_refunded:2000,currency:"brl"});
+  objects.set("/v1/charges/ch_audit",{id:"ch_audit",customer:"cus_audit",payment_intent:null,amount:4990,amount_refunded:2000,refunded:false,currency:"brl"});
+  // Disputes and fraud warnings cancel (billing-rules.test.ts); here the
+  // customer's only subscription has already ended.
+  objects.set("/v1/subscriptions",{has_more:false,data:[{id:"sub_audit",customer:"cus_audit",status:"canceled"}]});
   objects.set("/v1/disputes/dp_audit",{id:"dp_audit",charge:"ch_audit",amount:4990,currency:"brl"});
   objects.set("/v1/radar/early_fraud_warnings/issfr_audit",{id:"issfr_audit",charge:"ch_audit"});
   expect((await deliver(hookEvent("evt_refund","charge.refunded","ch_audit",{amount_refunded:999999,customer:"cus_foreign"}))).status).toBe(200);
@@ -161,5 +164,15 @@ describe("signed Stripe reconciliation against current provider state",()=>{
   await cleanWebhookReceipts(d1.asD1());expect(receipts()).toEqual({n:5});
   const query=d1.statements.at(-1)!.sql;
   expect(JSON.stringify(d1.sqlite.prepare("EXPLAIN QUERY PLAN "+query).all(Date.now()))).toContain("stripe_webhook_event_processed_idx");
+ });
+ it("clears the finished Checkout once the paid subscription is reconciled",async()=>{
+  const seed=(user:string)=>d1.sqlite.prepare("INSERT INTO billing_checkout(user_id,id,plan,annual,params,session_id,url,expires_at) VALUES(?,?,'max',0,'{}','cs_done','https://checkout.stripe.com/c/pay/cs_done',?)").run(user,`intent_${user}`,Date.now()+3_600_000);
+  seed("alice");seed("bob");
+  objects.set("/v1/subscriptions/sub_audit",current("sub_audit","incomplete"));
+  expect((await deliver(hookEvent("evt_incomplete"))).status).toBe(200);
+  expect(d1.sqlite.prepare("SELECT user_id AS userId FROM billing_checkout ORDER BY user_id").all()).toEqual([{userId:"alice"},{userId:"bob"}]);
+  objects.set("/v1/subscriptions/sub_audit",current());
+  expect((await deliver(hookEvent("evt_paid"))).status).toBe(200);
+  expect(d1.sqlite.prepare("SELECT user_id AS userId FROM billing_checkout ORDER BY user_id").all()).toEqual([{userId:"bob"}]);
  });
 });

@@ -81,10 +81,18 @@ func (s *Studio) startReminders() {
 		})
 		reminders.svc, reminders.ok = svc, true
 		loadSent()
+		// The app's context ends when it quits, and the checks with it.
+		ctx := application.Get().Context()
 		go func() {
+			tick := time.NewTicker(30 * time.Second)
+			defer tick.Stop()
 			for {
 				s.remind(time.Now())
-				time.Sleep(30 * time.Second)
+				select {
+				case <-ctx.Done():
+					return
+				case <-tick.C:
+				}
 			}
 		}()
 	})

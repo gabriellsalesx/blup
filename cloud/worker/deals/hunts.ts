@@ -69,15 +69,15 @@ export const huntsApi=new Hono<DealsApp>()
  })
  // Words for a store hunt, from what the channel is about (the AI, with
  // the plan's allowance).
- .post("/suggest",dealsWrite,validate("json",z.object({topic:z.string().trim().min(2).max(120)}).strict()),async c=>{
+ .post("/suggest",dealsWrite,validate("json",z.strictObject({topic:z.string().trim().min(2).max(120)})),async c=>{
   const out=await suggest(c.env,c.get("session").user.id,c.req.valid("json").topic,languageOf(c.req.header("x-blup-language"))??"pt");
   return "code" in out?c.json({code:out.code},out.status):c.json({searches:out.searches});
  })
- .post("/mirror/check",dealsWrite,validate("json",z.object({channel:z.string().max(200)}).strict()),async c=>{
+ .post("/mirror/check",dealsWrite,validate("json",z.strictObject({channel:z.string().max(200)})),async c=>{
   const checked=await checkChannel(c.req.valid("json").channel);
   return "code" in checked?c.json({code:checked.code},checked.status):c.json(checked);
  })
- .post("/",dealsWrite,validate("json",z.object({kind:z.enum(allKinds),channelIds,filters:huntFilters,channel:z.string().max(200).optional()}).strict()),async c=>{
+ .post("/",dealsWrite,validate("json",z.strictObject({kind:z.enum(allKinds),channelIds,filters:huntFilters,channel:z.string().max(200).optional()})),async c=>{
   const owner=c.get("session").user.id,input=c.req.valid("json"),now=Date.now();
   if(!fits(input.kind,input.filters)||(input.kind==="mirror")!==(input.channel!==undefined))return c.json({code:"INVALID"},400);
   // Nuuvem's sales earn only with the person's Rakuten ID; a store hunt
@@ -100,7 +100,7 @@ export const huntsApi=new Hono<DealsApp>()
   else if(!mirror)await feedNow(c.env,id);
   return c.json({id},201);
  })
- .patch("/:hunt",dealsWrite,validate("param",huntParam),validate("json",z.object({active:z.boolean().optional(),channelIds:channelIds.optional(),filters:huntFilters.optional()}).strict()),async c=>{
+ .patch("/:hunt",dealsWrite,validate("param",huntParam),validate("json",z.strictObject({active:z.boolean().optional(),channelIds:channelIds.optional(),filters:huntFilters.optional()})),async c=>{
   const owner=c.get("session").user.id,id=c.req.valid("param").hunt,input=c.req.valid("json");
   const current=await c.env.DB.prepare(`SELECT kind FROM deals_hunt WHERE id=? AND user_id=? AND kind IN(${kinds})`).bind(id,owner).first<{kind:Kind}>();
   if(!current)return c.json({code:"NOT_FOUND"},404);
@@ -120,7 +120,7 @@ export const huntsApi=new Hono<DealsApp>()
    c.env.DB.prepare("DELETE FROM deals_post WHERE hunt_id=? AND user_id=? AND state='queued'").bind(id,owner),
    c.env.DB.prepare("DELETE FROM deals_source WHERE id=? AND kind IN('shopee','aliexpress') AND NOT EXISTS(SELECT 1 FROM deals_hunt WHERE id=?)").bind(shopSourceId(id),id),
   ]);
-  return removed.results.length?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
+  return removed?.results.length?c.json({ok:true}):c.json({code:"NOT_FOUND"},404);
  });
 
 export const statsApi=new Hono<DealsApp>()
