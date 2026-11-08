@@ -2,6 +2,11 @@ package i18n
 
 var messages = map[Lang]map[string]string{
 	EN: {
+		"reports.q":            "Send error reports to Blup?",
+		"reports.help":         "Only unexpected errors, without your notes, your name or your computer's name. Change it later with: blup reports on|off",
+		"reports.usage":        "Error reports are %s. Use: blup reports on|off",
+		"reports.saved_on":     "Error reports on. Thank you!",
+		"reports.saved_off":    "Error reports off.",
 		"update.err_signature": "This release is not signed by Blup, so nothing was changed. Download it from the official site.",
 		"update.err_not_newer": "The release found is not newer than yours, so nothing was changed.",
 
@@ -429,6 +434,11 @@ Usage:
 		"cf.err_large":           "A file is bigger than 25 MB, the Cloudflare limit. Make it smaller or remove it from the site folder.",
 	},
 	PT: {
+		"reports.q":            "Enviar relatórios de erro ao Blup?",
+		"reports.help":         "Só erros inesperados, sem as suas notas, o seu nome ou o nome do computador. Mude depois com: blup reports on|off",
+		"reports.usage":        "Os relatórios de erro estão em %s. Use: blup reports on|off",
+		"reports.saved_on":     "Relatórios de erro ligados. Obrigado!",
+		"reports.saved_off":    "Relatórios de erro desligados.",
 		"update.err_signature": "Esta versão não tem a assinatura do Blup, então nada foi alterado. Baixe pelo site oficial.",
 		"update.err_not_newer": "A versão encontrada não é mais nova que a sua, então nada foi alterado.",
 
@@ -856,6 +866,11 @@ Uso:
 		"cf.err_large":           "Um arquivo passa de 25 MB, o limite da Cloudflare. Diminua ou tire ele da pasta do site.",
 	},
 	ES: {
+		"reports.q":            "¿Enviar informes de errores a Blup?",
+		"reports.help":         "Solo errores inesperados, sin tus notas, tu nombre ni el nombre del equipo. Cámbialo luego con: blup reports on|off",
+		"reports.usage":        "Los informes de errores están en %s. Usa: blup reports on|off",
+		"reports.saved_on":     "Informes de errores activados. ¡Gracias!",
+		"reports.saved_off":    "Informes de errores desactivados.",
 		"update.err_signature": "Esta versión no tiene la firma de Blup, así que no se cambió nada. Descárgala desde el sitio oficial.",
 		"update.err_not_newer": "La versión encontrada no es más nueva que la tuya, así que no se cambió nada.",
 

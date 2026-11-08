@@ -9,6 +9,7 @@ vi.mock("./auth",()=>({db:new Proxy({},{get:(_,key)=>{const v=Reflect.get(runtim
 }},handler:async()=>Response.json({ok:true})}}));
 import worker from "./index";
 import sitesEntry from "./sites-entry";
+import { forgetSiteHeads } from "./serve-site";
 import { observePlan,DAY,downgradeNotices } from "./lifecycle";
 import { expireDomains,disableExpiredDomain } from "./domain-downgrade";
 import { expireTransfers } from "./sync-transfers";
@@ -17,7 +18,7 @@ let db:TestD1,notes:TestBucket,sites:TestBucket,pending:Promise<unknown>[],mail:
 const ctx={waitUntil:(p:Promise<unknown>)=>pending.push(p)} as unknown as ExecutionContext;
 const H="e".repeat(64),MB=1024*1024;
 beforeEach(()=>{
-	vi.useFakeTimers();vi.setSystemTime(new Date("2026-11-02T12:00:00Z"));
+	forgetSiteHeads();vi.useFakeTimers();vi.setSystemTime(new Date("2026-11-02T12:00:00Z"));
 	db=new TestD1();notes=new TestBucket();sites=new TestBucket();pending=[];mail=[];
 	runtime.db=drizzle(db.asD1(),{schema});
 	Object.assign(runtime.env,{DB:db.asD1(),NOTES:notes.asR2(),SITES:sites.asR2(),APP_URL:"https://cloud.audit.invalid",SITES_DOMAIN:"getblup.site",STAFF_HOST:"",STAFF_OWNER_EMAIL:"",STAFF_DEV_EMAIL:"",CF_ZONE_ID:"f".repeat(32),CF_API_TOKEN:"audit-placeholder",SITES_CNAME_TARGET:"sites.audit.invalid",EMAIL_MODE:"send",MAIL_FROM:"Blup <fixture@audit.invalid>",EMAIL:{send:async(m:{text:string;html:string})=>{mail.push(m);}},ABUSE_LIMIT:{limit:async()=>({success:true})},BULK_LIMIT:{limit:async()=>({success:true})},OTP_LIMIT:{limit:async()=>({success:true})},SYNC_LIVE:{getByName:()=>({notify:async()=>{},revoke:async()=>{}})}});

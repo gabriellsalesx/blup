@@ -8,7 +8,7 @@
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Self from "./ContextMenu.svelte";
 
-  // A right-click menu, like Obsidian's: icons, lines between groups and
+  // A right-click menu: icons, lines between groups and
   // submenus that open to the side on hover. It stays inside the window.
   let { x, y, items, onClose, nested = false }: { x: number; y: number; items: MenuEntry[]; onClose: () => void; nested?: boolean } = $props();
 

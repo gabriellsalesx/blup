@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 )
 
 func TestNewer(t *testing.T) {
@@ -277,5 +278,18 @@ func TestApplyRefusesPlainHTTP(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "http://evil.example/x", nil)
 	if httpsOnly(req, nil) == nil {
 		t.Fatal("redirect to http allowed")
+	}
+}
+
+// The archive download must not inherit the 60 second limit of the API
+// calls: that limit covers reading the body, and a release archive on a
+// slow connection takes longer.
+func TestDownloadTimeoutIsLong(t *testing.T) {
+	c := &Client{}
+	if got := c.downloader().Timeout; got < 10*time.Minute {
+		t.Fatalf("download timeout %v", got)
+	}
+	if c.downloader().CheckRedirect == nil {
+		t.Fatal("download client follows redirects off HTTPS")
 	}
 }

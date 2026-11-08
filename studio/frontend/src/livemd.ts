@@ -6,7 +6,7 @@
 // the cursor is on the link (typing, the arrows, or a right-click), to
 // edit them. Images and code stay as written.
 //
-// Headings fold like Obsidian's: a chevron at their left (on hover, or
+// Headings fold: a chevron at their left (on hover, or
 // always when folded) hides everything down to the next heading of the
 // same level or higher.
 import { EditorView, Decoration, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";

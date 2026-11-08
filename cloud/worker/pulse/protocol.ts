@@ -1,6 +1,8 @@
+/// <reference path="./node-zlib.d.ts" />
 import {z} from "zod";
 import {boundedBody,BodyError} from "../validation";
 import {projectId} from "./limits";
+import {brotliDecompressSync} from "node:zlib";
 
 export class IngestError extends Error{constructor(readonly status:400|403|413|415|429|503,readonly code:string,readonly wait=0){super(code);}}
 const jsonObject=z.record(z.string(),z.unknown());
@@ -19,6 +21,13 @@ export async function ingestBytes(req:Request):Promise<Uint8Array<ArrayBuffer>>{
  let raw:Uint8Array<ArrayBuffer>;try{raw=await boundedBody(req,1024*1024);}catch{throw new IngestError(413,"ENVELOPE_SIZE");}
  const encoding=req.headers.get("content-encoding")?.toLowerCase()??"identity";
  if(encoding==="identity")return raw;
+ // sentry-python sends "br" when the brotli module is installed; Relay
+ // takes gzip, deflate and br (develop.sentry.dev, envelopes). Workers have
+ // no "br" DecompressionStream, so node:zlib, capped at the same 1 MiB.
+ if(encoding==="br"){
+  try{return new Uint8Array(brotliDecompressSync(raw,{maxOutputLength:1024*1024}));}
+  catch(e){throw e instanceof RangeError?new IngestError(413,"ENVELOPE_SIZE"):new IngestError(400,"COMPRESSION");}
+ }
  if(encoding!=="gzip"&&encoding!=="deflate")throw new IngestError(415,"ENCODING");
  try{
   const stream=new Blob([raw]).stream().pipeThrough(new DecompressionStream(encoding));

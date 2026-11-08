@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type Stripe from "stripe";
 export type Price={unitAmount:number;currency:string};
 const priceSchema=z.object({
 	id:z.string().regex(/^price_[A-Za-z0-9_]+$/).max(128),object:z.literal("price"),active:z.boolean(),
@@ -29,3 +30,15 @@ export function validateStripePrices(value:unknown,intervals:ReadonlyMap<string,
 	return result;
 }
 
+
+// Stripe's GET /v1/prices takes at most 10 lookup_keys per call (API
+// reference, "List all prices", 2026-10-28.endive). The catalog has more,
+// so it is read in chunks and merged into one list for validateStripePrices.
+export const LOOKUP_KEYS_PER_CALL=10;
+export async function listPricesByLookup(stripe:Stripe,keys:readonly string[],options:Stripe.RequestOptions={timeout:5_000,maxNetworkRetries:0}){
+	const chunks:string[][]=[];
+	for(let i=0;i<keys.length;i+=LOOKUP_KEYS_PER_CALL)chunks.push(keys.slice(i,i+LOOKUP_KEYS_PER_CALL));
+	const pages=await Promise.all(chunks.map(chunk=>stripe.prices.list({active:true,type:"recurring",lookup_keys:chunk,limit:100,expand:["data.product"]},options)));
+	const lists=pages.map(page=>listSchema.parse(page));
+	return {object:"list" as const,has_more:false as const,data:lists.flatMap(list=>list.data)};
+}

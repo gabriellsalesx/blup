@@ -9,11 +9,21 @@ import type { SyntaxNode } from "@lezer/common";
 import SpellWorker from "./spell.worker.ts?worker";
 import type { SpellReply, SpellRequest } from "./spell.worker.ts";
 
-const worker = new SpellWorker();
+// The worker starts on the first question (spell check off: never); the
+// dictionary chosen before that goes to it then.
+let worker: Worker | null = null;
+let setup: Extract<SpellRequest, { type: "setup" }> = { type: "setup", lang: "pt", words: [] };
 let nextId = 0;
 const waiting = new Map<number, (r: SpellReply) => void>();
-worker.onmessage = (e: MessageEvent<SpellReply>) => { waiting.get(e.data.id)?.(e.data); waiting.delete(e.data.id); };
-const send = (msg: SpellRequest) => worker.postMessage(msg);
+function started() {
+  if (!worker) {
+    worker = new SpellWorker();
+    worker.onmessage = (e: MessageEvent<SpellReply>) => { waiting.get(e.data.id)?.(e.data); waiting.delete(e.data.id); };
+    worker.postMessage(setup);
+  }
+  return worker;
+}
+const send = (msg: SpellRequest) => started().postMessage(msg);
 // A request that waits for its reply: the id is added here.
 type Question = SpellRequest extends infer R ? (R extends { id: number } ? Omit<R, "id"> : never) : never;
 type Answer<T extends Question["type"]> = Extract<SpellReply, { type: T | "error" }>;
@@ -31,13 +41,15 @@ let generation = 0; // grows when the dictionary changes: the editors redraw
 const listeners = new Set<() => void>();
 
 export function setupSpell(lang: string, words: string[]) {
-  send({ type: "setup", lang, words: [...words] });
+  setup = { type: "setup", lang, words: [...words] };
+  worker?.postMessage(setup);
   known = new Map();
   generation++;
   listeners.forEach((f) => f());
 }
 export function addWord(word: string) {
-  send({ type: "add", word });
+  setup.words.push(word);
+  worker?.postMessage({ type: "add", word });
   known.set(word, true);
   generation++;
   listeners.forEach((f) => f());

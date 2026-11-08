@@ -99,7 +99,12 @@ func askNotifications() {
 }
 
 func (s *Studio) remind(now time.Time) {
-	on := s.Prefs().Notifications
+	if !s.Prefs().Notifications {
+		// Off: nothing is read; the empty list cancels the e-mails
+		// waiting in Blup Cloud, as before.
+		pushMail(nil, now)
+		return
+	}
 	g, err := config.LoadGlobal()
 	if err != nil {
 		return
@@ -113,7 +118,7 @@ func (s *Studio) remind(now time.Time) {
 		}
 		evs, _ := app.Events(site)
 		for _, ev := range evs {
-			if ev.Remind == "" || !on {
+			if ev.Remind == "" {
 				continue
 			}
 			// The reminder comes at most a week before; the e-mail list

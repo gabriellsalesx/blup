@@ -20,7 +20,7 @@
   import Preview from "./Preview.svelte";
   import FileMenu from "./FileMenu.svelte";
   import ContextMenu, { type MenuEntry } from "./ContextMenu.svelte";
-  import SettingsModal, { DOCS } from "./SettingsModal.svelte";
+  import { DOCS } from "./docs";
   import Gear from "@lucide/svelte/icons/settings";
   import CircleHelp from "@lucide/svelte/icons/circle-question-mark";
   import { look, setPref } from "./theme.svelte";
@@ -82,10 +82,11 @@
   const TrashPanel = lazy(() => import("./TrashPanel.svelte"));
   const AuthorsPanel = lazy(() => import("./AuthorsPanel.svelte"));
   const AttachmentsPanel = lazy(() => import("./AttachmentsPanel.svelte"));
+  const SettingsModal = lazy(() => import("./SettingsModal.svelte"));
 
   let { site, onBack, onSwitch }: { site: SiteInfo; onBack: () => void; onSwitch: (s: SiteInfo) => void } = $props();
 
-  // The files panel, like Obsidian's: tabs (files, search), tools (new
+  // The files panel: tabs (files, search), tools (new
   // note, new folder, expand, collapse), the tree and the site switcher.
   let sideOpen = $state(true);
   let sideTab = $state<"files" | "search">("files");
@@ -332,7 +333,7 @@
   let previewOn = $state(!look.previewOff && untrack(() => site.kind) !== "notes");
 
   // The files panel and the preview are as wide as the user drags them
-  // (their edge, like Obsidian), within limits that keep the editor usable;
+  // (their edge), within limits that keep the editor usable;
   // saved in the Studio's choices. A double-click goes back to the default.
   const SIDE = 256, SIDE_MIN = 180, SIDE_MAX = 480, PREV_MIN = 300, EDITOR_MIN = 360, RIBBON = 48;
   let sideW = $state(look.sideWidth || SIDE);
@@ -509,13 +510,19 @@
   let outside = $state(false);
   const offNotes = Events.On("notesChanged", async (ev) => {
     const list = String(ev.data ?? "").split("\n");
-    try { tree = (await LoadTree()).children ?? []; } catch {}
+    const isOpen = (p: string) => !!current && p.toLowerCase() === current.toLowerCase();
     // A canvas or a drawing looks after itself.
-    if (!current || board || !list.some((p) => p.toLowerCase() === current.toLowerCase())) return;
-    const note = await ReadNote(current).catch(() => null);
+    const mine = !!current && !board && list.some(isOpen);
+    const note = mine ? await ReadNote(current).catch(() => null) : null;
     // Our own saves come back here too: only a text that is neither what
-    // we wrote last nor what is being typed came from outside.
-    if (!note || same(note.body, pending) || same(note.body, written)) return;
+    // we wrote last nor what is being typed came from outside. A save of
+    // the open note alone changes no name: the tree isn't read again
+    // (a walk of the whole vault on every save).
+    const ours = !!note && (same(note.body, pending) || same(note.body, written));
+    if (!(ours && list.every(isOpen))) {
+      try { tree = (await LoadTree()).children ?? []; } catch {}
+    }
+    if (!note || ours) return;
     if (status === "saved") applyOutside(note);
     else outside = true;
   });
@@ -763,7 +770,7 @@
 <svelte:window onresize={fit} onkeydown={shortcut} onclick={() => (switching = false)} />
 
 <div class="ws" class:names={look.railNames} class:no-preview={!previewOn} class:no-side={!sideOpen} class:resizing style:--side="{sideW}px" style:--prev={prevW ? `${prevW}px` : "minmax(0, 1fr)"}>
-  <!-- The ribbon, like Obsidian's: icons only, the name on hover. -->
+  <!-- The ribbon: icons only, the name on hover. -->
   <nav class="ribbon">
     <button class="rib" aria-label={t.side.toggle} data-tip={t.side.toggle} onclick={() => (sideOpen = !sideOpen)}><PanelLeft size={19} strokeWidth={1.75} /><span class="rib-name">{t.side.toggle}</span></button>
     <span class="sep"></span>
@@ -826,7 +833,7 @@
           </ul>
         </div>
       {/if}
-      <!-- The site switcher, like Obsidian's vault switcher. -->
+      <!-- The site switcher. -->
       <div class="switcher">
         <button class="vault" onclick={(e) => { e.stopPropagation(); switching = !switching; if (switching) loadSites(); }} aria-expanded={switching}>{#if switching}<ChevronsDownUp size={15} />{:else}<ChevronsUpDown size={15} />{/if}<span>{site.title}</span></button>
         <button class="foot" title={t.prefs.helpIcon} onclick={() => OpenURL(DOCS)}><CircleHelp size={17} strokeWidth={1.75} /></button>
@@ -936,7 +943,7 @@
     </section>
   {/if}
   {#if prefsOpen}
-    <SettingsModal start={prefsTab} siteLang={settings?.lang} onClose={() => { prefsOpen = false; prefsTab = "general"; }} onPublish={() => { prefsOpen = false; screen = "publish"; }} />
+    {#await SettingsModal() then { default: C }}<C start={prefsTab} siteLang={settings?.lang} onClose={() => { prefsOpen = false; prefsTab = "general"; }} onPublish={() => { prefsOpen = false; screen = "publish"; }} />{/await}
   {/if}
   {#if cloudTip && !showTip}
     <!-- Once there is a site: keeping the notes in the cloud (optional). -->

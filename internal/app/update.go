@@ -28,7 +28,9 @@ func init() {
 // never more than two seconds, silent on any failure. When a newer version
 // exists it asks; it never updates without asking.
 func offerUpdate(ctx context.Context) (updated bool) {
-	if Version == "dev" || os.Getenv("BLUP_NO_UPDATE_CHECK") != "" || !ui.Interactive() {
+	// A store or the system's packages bring new versions (UpdatesBy): the
+	// executable is not ours to replace, so do not offer it.
+	if Version == "dev" || os.Getenv("BLUP_NO_UPDATE_CHECK") != "" || !ui.Interactive() || UpdatesBy() != "" {
 		return false
 	}
 	cache := update.LoadCache()

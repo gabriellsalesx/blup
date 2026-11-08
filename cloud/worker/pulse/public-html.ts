@@ -214,7 +214,7 @@ function incidentParts(lang:Language,stamp:Intl.DateTimeFormat){
 function shell(page:PublicStatus,lang:Language,title:string,body:string,now:number,root=""){
  const t=<K extends MessageKey>(key:K,...args:TranslationArgs<(typeof messages)[K][0]>)=>translate(lang,key,...args);
  const state=overallOf(page);
- return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(title)}</title><script>${THEME_SCRIPT}</script><link rel="icon" type="image/svg+xml" href="${faviconOf(state.tone)}"><meta name="description" content="${escape(t(state.key))}"><style>${css}</style></head><body>${headerOf(page,lang,key=>t(key),root)}<div class="wrap">
+ return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60"><title>${escape(title)}</title><script>${THEME_SCRIPT}</script><link rel="icon" type="image/svg+xml" href="${faviconOf(state.tone)}"><meta name="description" content="${escape(t(state.key))}"><meta property="og:type" content="website"><meta property="og:title" content="${escape(title)}"><meta property="og:description" content="${escape(t(state.key))}"><meta property="og:site_name" content="${escape(page.title)}"><style>${css}</style></head><body>${headerOf(page,lang,key=>t(key),root)}<div class="wrap">
 ${body}
 <footer><span>© ${new Date(now).getUTCFullYear()} ${escape(page.title)}</span><span>${escape(t("pulseMadeWith"))} <a href="https://getblup.io/blup-pulse/" rel="noopener">Blup Pulse</a></span></footer>
 </div></body></html>`;

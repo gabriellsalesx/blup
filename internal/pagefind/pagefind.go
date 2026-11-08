@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // Pinned is the Pagefind release used.
@@ -133,13 +134,36 @@ func get(ctx context.Context, url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := downloader.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	resp.Body = capped{io.LimitReader(resp.Body, maxDownload+1), resp.Body}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GET %s: %s", url, resp.Status)
 	}
 	return io.ReadAll(resp.Body)
 }
+
+// downloader baixa o Pagefind: um teto de tempo para uma conexão que trava e
+// um de tamanho (maxDownload) para uma resposta que nunca termina.
+var downloader = &http.Client{Timeout: 20 * time.Minute}
+
+const maxDownload = 256 << 20
+
+// capped lê no máximo maxDownload bytes e falha se a resposta for maior.
+type capped struct {
+	r io.Reader
+	c io.Closer
+}
+
+func (c capped) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	if lr, ok := c.r.(*io.LimitedReader); ok && lr.N <= 0 && err == nil {
+		return n, fmt.Errorf("download maior que %d MiB", maxDownload>>20)
+	}
+	return n, err
+}
+
+func (c capped) Close() error { return c.c.Close() }

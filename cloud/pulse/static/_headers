@@ -8,3 +8,8 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# SvelteKit's built files carry a hash in their names: a new build makes new
+# names, so the browser may keep these for a year without asking again.
+/_app/immutable/*
+  Cache-Control: public, max-age=31536000, immutable

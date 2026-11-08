@@ -89,6 +89,12 @@ export function selectionFor(quote:BillingQuote,selected:z.infer<typeof keepSche
  if(quote.limits&&all.projects.length&&keep.projects.length===0)throw new BillingFlowError("BILLING_SELECTION_REQUIRED");
  if(quote.resources.monitors.some(m=>keep.monitors.includes(m.id)&&!keep.projects.includes(m.projectId)))throw new BillingFlowError("BILLING_SELECTION_REQUIRED");return keep;
 }
+// Stripe accepts expires_at from 30 minutes to 24 hours after the session is
+// created. The saved params are replayed after a lost or failed create, so a
+// one hour expiry leaves a half hour window to replay them; past that, a row
+// without a session can no longer be created and is dropped.
+export const CHECKOUT_TTL_SECONDS=3600;
+export const checkoutReplayable=(saved:{sessionId:string|null;expiresAt:number},now=Date.now())=>!!saved.sessionId||saved.expiresAt-now>31*60_000;
 export const checkoutParamsSchema=z.object({mode:z.literal("subscription"),customer:z.string(),client_reference_id:z.string(),line_items:z.array(z.object({price:z.string(),quantity:z.literal(1)})).length(1),success_url:z.url(),cancel_url:z.url(),locale:z.enum(["pt-BR","en","es"]),expires_at:seconds,metadata:meta,subscription_data:z.object({metadata:meta,billing_mode:z.object({type:z.literal("flexible")})})});
 export async function checkout(env:Cloudflare.Env,userId:string,plan:Plan,annual:boolean){
  const token=await siteLock(env.DB,`billing-account:${userId}`,60_000);if(!token)throw new BillingFlowError("BILLING_BUSY",503);
@@ -98,11 +104,11 @@ export async function checkout(env:Cloudflare.Env,userId:string,plan:Plan,annual
   const subscriptions=z.object({has_more:z.literal(false),data:z.array(z.object({id,status:z.string()})).max(100)}).parse(await stripe.subscriptions.list({customer:owner.customer,status:"all",limit:100},stripeOptions));
   if(subscriptions.data.some(s=>!["canceled","incomplete_expired"].includes(s.status)))throw new BillingFlowError("BILLING_USE_PREVIEW");
   let saved=await env.DB.prepare("SELECT id,plan,annual,params,session_id AS sessionId,url,expires_at AS expiresAt FROM billing_checkout WHERE user_id=?").bind(userId).first<{id:string;plan:string;annual:number;params:string;sessionId:string|null;url:string|null;expiresAt:number}>();
-  if(saved&&saved.expiresAt<=Date.now()){await env.DB.prepare("DELETE FROM billing_checkout WHERE user_id=? AND id=?").bind(userId,saved.id).run();saved=null;}
+  if(saved&&(saved.expiresAt<=Date.now()||!checkoutReplayable(saved))){await env.DB.prepare("DELETE FROM billing_checkout WHERE user_id=? AND id=?").bind(userId,saved.id).run();saved=null;}
   if(saved&&(saved.plan!==plan.name||!!saved.annual!==annual))throw new BillingFlowError("BILLING_CHECKOUT_PENDING");
   if(!saved){
    const open=z.object({has_more:z.literal(false),data:z.array(z.object({id,mode:z.string(),url:z.string().nullable(),expires_at:seconds})).max(10)}).parse(await stripe.checkout.sessions.list({customer:owner.customer,status:"open",limit:10},stripeOptions));if(open.data.some(s=>s.mode==="subscription"))throw new BillingFlowError("BILLING_CHECKOUT_PENDING");
-   const price=await selectedPrice(stripe,plan,annual),intent=crypto.randomUUID(),expires=Math.floor(Date.now()/1000)+1800;
+   const price=await selectedPrice(stripe,plan,annual),intent=crypto.randomUUID(),expires=Math.floor(Date.now()/1000)+CHECKOUT_TTL_SECONDS;
    const params=checkoutParamsSchema.parse({mode:"subscription",customer:owner.customer,client_reference_id:userId,line_items:[{price:price.id,quantity:1}],success_url:`${env.APP_URL}${cloudPaths.plan}?${checkoutParam}=success`,cancel_url:`${env.APP_URL}${cloudPaths.plan}`,locale:stripeLocale[languageOf(owner.language)??"en"],expires_at:expires,metadata:{blup_plan:plan.name},subscription_data:{metadata:{userId,referenceId:userId,blup_plan:plan.name},billing_mode:{type:"flexible"}}});
    await env.DB.prepare("INSERT INTO billing_checkout(user_id,id,plan,annual,params,expires_at) VALUES(?,?,?,?,?,?)").bind(userId,intent,plan.name,annual?1:0,JSON.stringify(params),expires*1000).run();saved={id:intent,plan:plan.name,annual:annual?1:0,params:JSON.stringify(params),sessionId:null,url:null,expiresAt:expires*1000};
   }

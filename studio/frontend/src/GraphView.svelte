@@ -18,7 +18,7 @@
   // neighbors; a click opens it; dragging moves the map (or a note), the
   // wheel zooms.
   //
-  // Its choices are in a panel at the top right (240px, like Obsidian's),
+  // Its choices are in a panel at the top right (240px),
   // in four parts that open and close: Filters (search, folder, tag, tags
   // as dots, loose notes, around the open note and how far, canvases and
   // drawings), Groups (colors by folder or tag), Display (arrows, when
@@ -423,7 +423,7 @@
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   .empty { position: absolute; inset: 0; display: grid; place-items: center; }
 
-  /* Like Obsidian's: 240px wide, 12px from the corner, 13px text,
+  /* 240px wide, 12px from the corner, 13px text,
      scrolling without a bar when the window is short. */
   .gpanel { position: absolute; z-index: 3; inset-block-start: 12px; inset-inline-end: 12px; width: 240px; max-height: calc(100% - 16px); overflow-y: auto; scrollbar-width: none; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / .2); font-size: 13px; }
   .gpanel::-webkit-scrollbar { display: none; }
@@ -456,7 +456,7 @@
 
   .group { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .4rem; }
   .swatch { width: 1.25rem; height: 1.25rem; border-radius: 50%; border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--line); }
-  /* Like Obsidian's "New group": a full-width soft button. */
+  /* "New group": a full-width soft button. */
   .gadd { display: flex; align-items: center; justify-content: center; gap: .35rem; width: 100%; padding: 6px 8px; border-radius: .45rem; background: var(--soft); color: var(--text); font-size: 13px; font-weight: 500; }
   .gadd:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 12%, var(--soft)); }
   .gadd:disabled { opacity: .4; }

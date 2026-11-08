@@ -118,11 +118,19 @@ async function deliver(env:Cloudflare.Env,hunt:Hunt,product:Product,post:Channel
 const productKey=(url:URL)=>`${url.hostname.replace(/^www\./,"")}${url.pathname.replace(/\/+$/,"")}`.slice(0,512);
 const huntRow=z.object({id:z.string(),userId:z.string(),filters:z.string().transform(v=>huntFilters.catch({}).parse(JSON.parse(v))),channels:z.string().transform(v=>z.array(z.string()).catch([]).parse(JSON.parse(v)))});
 
+// What one run may spend (it shares the minute's cron with the other
+// sources and the queue): about 25 seconds and 250 deliveries. A post in
+// progress always reaches all its hunts; the posts after the budget wait
+// for the next run (the cursor stops at the last one done).
+export type MirrorBudget={perRun?:number;timeMs?:number;deliveries?:number;clock?:()=>number};
 // Each run reads the channels whose turn it is (a few a minute), each at
 // most every 10 minutes, and only while some active mirror uses it.
-export async function collectMirrors(env:Cloudflare.Env,send:typeof fetch=fetch,now=Date.now(),perRun=5){
+export async function collectMirrors(env:Cloudflare.Env,send:typeof fetch=fetch,now=Date.now(),{perRun=5,timeMs=25_000,deliveries=250,clock=Date.now}:MirrorBudget={}){
+ const started=clock();let delivered=0;
+ const spent=()=>clock()-started>=timeMs||delivered>=deliveries;
  const due=await env.DB.prepare("SELECT s.id,s.key,s.cursor,s.last_at AS lastAt FROM deals_source s WHERE s.kind='telegram' AND s.next_at<=? AND s.claim_until<=? AND EXISTS(SELECT 1 FROM deals_hunt h WHERE h.source_id=s.id AND h.kind='mirror' AND h.active=1 AND h.plan_disabled=0 AND (h.retire_at IS NULL OR h.retire_at>?)) ORDER BY s.next_at LIMIT ?").bind(now,now,now,perRun).all<{id:string;key:string;cursor:string|null;lastAt:number|null}>();
  for(const source of due.results){
+  if(spent())break;
   const claim=crypto.randomUUID();
   if(!await env.DB.prepare("UPDATE deals_source SET claim=?,claim_until=? WHERE id=? AND claim_until<=? RETURNING id").bind(claim,now+120_000,source.id,now).first())continue;
   const name=source.key.replace(/^telegram:/,"");
@@ -133,20 +141,24 @@ export async function collectMirrors(env:Cloudflare.Env,send:typeof fetch=fetch,
     const code=read.status===404?"CHANNEL_GONE":read.status===429?"RATE_LIMIT":"CHANNEL_REFUSED";
     await env.DB.prepare("UPDATE deals_source SET next_at=?+min(failures+1,6)*1800000,failures=failures+1,error=?,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(now,code,source.id,claim).run();continue;
    }
-   const last=Number(source.cursor??0),newest=Math.max(last,...read.page.posts.map(p=>p.id));
+   const last=Number(source.cursor??0);let newest=Math.max(last,...read.page.posts.map(p=>p.id)),cut=false;
    // The first read only marks where the channel is (no flood of old posts).
    const fresh=source.lastAt===null?[]:read.page.posts.filter(p=>p.id>last&&now-p.at<=FRESH).sort((a,b)=>a.id-b.id).slice(-MAX_POSTS);
    if(fresh.length){
     const hunts=(await env.DB.prepare("SELECT id,user_id AS userId,filters,channels FROM deals_hunt WHERE source_id=? AND kind='mirror' AND active=1 AND plan_disabled=0 AND (retire_at IS NULL OR retire_at>?) ORDER BY id LIMIT 500").bind(source.id,now).all()).results.flatMap(r=>{const h=huntRow.safeParse(r);return h.success?[h.data]:[];});
     const allowed=new Map<string,boolean>(),reading:Reading=new Map();
     for(const hunt of hunts)if(!allowed.has(hunt.userId))allowed.set(hunt.userId,!(await dealsAccess(env,hunt.userId)).readOnly);
+    let done=last;
     for(const post of fresh){
+     if(spent()){cut=true;newest=done;break;}
+     done=post.id;
      const product=await productOf(post,send);if(!product)continue;
      const offer=await upsertOffer(env.DB,{key:`mirror:${product.store}:${productKey(product.url)}:${product.price??"?"}`,store:product.store,externalId:productKey(product.url),sourceId:source.id,title:product.title,url:product.url.href,imageUrl:product.image,price:product.price,originalPrice:product.before,currency:product.price===null?null:"BRL",kind:"product",platforms:[],discount:product.before&&product.price?Math.round((1-product.price/product.before)*100):null,credit:null,expiresAt:now+DAY},now);
-     for(const hunt of hunts)if(allowed.get(hunt.userId))await deliver(env,hunt,product,post,offer.id,reading,send,now).catch(()=>0);
+     for(const hunt of hunts)if(allowed.get(hunt.userId)){delivered++;await deliver(env,hunt,product,post,offer.id,reading,send,now).catch(()=>0);}
     }
    }
-   await env.DB.prepare("UPDATE deals_source SET next_at=?,last_at=?,cursor=?,config=?,failures=0,error=NULL,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(now+ROUND,now,String(newest),JSON.stringify({title:read.page.title}),source.id,claim).run();
+   // Cut short by the budget: the rest of the posts on the next run.
+   await env.DB.prepare("UPDATE deals_source SET next_at=?,last_at=?,cursor=?,config=?,failures=0,error=NULL,claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(cut?now+60_000:now+ROUND,now,String(newest),JSON.stringify({title:read.page.title}),source.id,claim).run();
   }catch{
    await env.DB.prepare("UPDATE deals_source SET next_at=?+min(failures+1,6)*600000,failures=failures+1,error='FETCH_FAILED',claim=NULL,claim_until=0 WHERE id=? AND claim=?").bind(now,source.id,claim).run();
   }

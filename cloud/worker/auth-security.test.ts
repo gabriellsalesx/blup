@@ -164,6 +164,22 @@ describe("Better Auth 1.7.14, actual plugins and endpoints",()=>{
 		const res=await worker.fetch(new Request(ORIGIN+"/api/auth"+path,{method:"POST",headers:{origin:ORIGIN,"content-type":"application/json"},body:JSON.stringify({response:{},createSession:true})}),{APP_URL:ORIGIN,STAFF_HOST:"",OTP_LIMIT:{limit:async()=>({success:true})}} as unknown as Cloudflare.Env,{} as ExecutionContext);
 		expect([403,404]).toContain(res.status);
 	});
+	it("never sends a password reset code (there are no passwords)",async()=>{
+		const email="alice@audit.invalid";await login(email);codes.clear();
+		for(const [path,body] of [["/email-otp/request-password-reset",{email}],["/forget-password/email-otp",{email}],["/email-otp/reset-password",{email,otp:"000000",password:"audit-placeholder-123"}]] as const){
+			const res=await worker.fetch(new Request(ORIGIN+"/api/auth"+path,{method:"POST",headers:{origin:ORIGIN,"content-type":"application/json"},body:JSON.stringify(body)}),{APP_URL:ORIGIN,STAFF_HOST:""} as unknown as Cloudflare.Env,{} as ExecutionContext);
+			expect(res.status).toBe(404);
+		}
+		expect(codes.size).toBe(0);
+	});
+	it("limits code checks and passkey options per address",async()=>{
+		const limit=vi.fn(async({key}:{key:string})=>({success:key!=="auth:203.0.113.9"}));
+		const env={APP_URL:ORIGIN,STAFF_HOST:"",ABUSE_LIMIT:{limit}} as unknown as Cloudflare.Env;
+		const res=await worker.fetch(new Request(ORIGIN+"/api/auth/sign-in/email-otp",{method:"POST",headers:{origin:ORIGIN,"content-type":"application/json","cf-connecting-ip":"203.0.113.9"},body:JSON.stringify({email:"a@audit.invalid",otp:"000000"})}),env,{} as ExecutionContext);
+		expect(res.status).toBe(429);
+		const options=await worker.fetch(new Request(ORIGIN+"/api/auth/passkey/generate-authenticate-options",{headers:{"cf-connecting-ip":"203.0.113.9"}}),env,{} as ExecutionContext);
+		expect(options.status).toBe(429);expect(limit).toHaveBeenCalledWith({key:"auth:203.0.113.9"});
+	});
 	it("cannot bypass the support-only email change restriction with a trailing slash",async()=>{
 		const {cookie}=await login();
 		const res=await worker.fetch(new Request(ORIGIN+"/api/auth/email-otp/request-email-change/",{method:"POST",headers:{origin:ORIGIN,cookie,"content-type":"application/json"},body:JSON.stringify({newEmail:"attacker@audit.invalid"})}),{APP_URL:ORIGIN,STAFF_HOST:""} as unknown as Cloudflare.Env,{} as ExecutionContext);

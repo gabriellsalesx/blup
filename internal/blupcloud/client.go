@@ -341,6 +341,10 @@ func StartLogin(ctx context.Context) (*Login, error) {
 	}, nil
 }
 
+// slowDown is what a "slow_down" answer adds between polls (RFC 8628,
+// section 3.5); tests shorten it.
+var slowDown = 5 * time.Second
+
 // Wait polls until the code is approved (the token), refused, or expired.
 func (l *Login) Wait(ctx context.Context) (string, error) {
 	for {
@@ -363,15 +367,34 @@ func (l *Login) Wait(ctx context.Context) (string, error) {
 			return r.AccessToken, nil
 		case errors.As(err, &e) && e.OAuth == "authorization_pending":
 		case errors.As(err, &e) && e.OAuth == "slow_down":
-			l.interval += 5 * time.Second
+			l.interval += slowDown
 		case errors.As(err, &e) && e.OAuth == "access_denied":
 			return "", ErrDenied
 		case errors.As(err, &e) && e.OAuth == "expired_token", time.Now().After(l.expires):
 			return "", ErrExpired
+		case err != nil && ctx.Err() == nil && transientLoginError(err):
+			// A dropped connection or a hiccup of the cloud: the code is
+			// still good, so keep asking until it expires.
 		case err != nil:
 			return "", err
 		}
 	}
+}
+
+// transientLoginError tells whether polling for a sign in may go on after
+// err: the network failed (no answer at all), the cloud failed (5xx,
+// "server_error") or asked to slow down (429). A refusal (4xx with an OAuth
+// error) is final.
+func transientLoginError(err error) bool {
+	var netErr *url.Error // what http.Client.Do returns when nothing came back
+	if errors.As(err, &netErr) {
+		return true
+	}
+	var e *apiError
+	if !errors.As(err, &e) {
+		return false
+	}
+	return e.Status >= 500 || e.Status == http.StatusTooManyRequests || e.OAuth == "server_error"
 }
 
 // Account is who is signed in and their plan.

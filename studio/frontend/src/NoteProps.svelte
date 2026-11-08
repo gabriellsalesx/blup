@@ -9,7 +9,7 @@
   import { isJson, type Json, type JsonProps } from "./db";
   import { t } from "./i18n";
 
-  // A vault note's properties, like Obsidian's, and only these: when it was
+  // A vault note's properties, and only these: when it was
   // made, when it changed last (both filled in by themselves, see
   // Workspace.save, and editable), and its tags. onEdit changes them (the
   // workspace keeps props up to date).

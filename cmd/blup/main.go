@@ -11,7 +11,14 @@ import (
 )
 
 func main() {
+	defer func() {
+		if v := recover(); v != nil {
+			app.ReportPanic(v)
+			panic(v)
+		}
+	}()
 	if err := app.Run(context.Background(), os.Args[1:]); err != nil {
+		app.Report(err)
 		if ui.Aborted(err) {
 			os.Exit(130)
 		}

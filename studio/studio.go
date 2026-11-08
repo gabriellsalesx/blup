@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -413,9 +414,9 @@ func (s *Studio) previewMap() (string, []mapPage, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	res, err := http.DefaultClient.Do(req)
+	res, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("reading the preview map: %w", err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {

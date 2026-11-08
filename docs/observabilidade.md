@@ -15,6 +15,7 @@ Crie um projeto por parte na sua conta do Pulse e guarde a DSN de cada um:
 | Painéis no navegador (Cloud, staff, Pulse, Deals) | `javascript` | `VITE_SENTRY_DSN=... npm run build` (e no build de cada painel) |
 | Ponte do WhatsApp | `go` | variável `SENTRY_DSN` do contêiner |
 | Blup Studio (desktop) | `go` | `SENTRY_DSN=... task build` (vai para `-X main.studioSentryDSN`) |
+| Blup CLI | `go` | variável `CLI_SENTRY_DSN` do repositório no release (vai para `-X .../internal/app.SentryDSN`); `BLUP_SENTRY_DSN=...` para testar |
 | Blup Notes (celular) | `go` | `SENTRY_DSN=... task android:build` |
 
 Os erros saem marcados com o ambiente:
@@ -32,6 +33,7 @@ Cada erro leva a versão de quem o mandou, e o Pulse mostra essa versão no prob
 | Painéis | `blup-paineis@1.0.0` | idem |
 | Ponte | `blup-bridge@1.0.0` | `docker build --build-arg VERSION=1.1.0` |
 | Studio desktop | `blup-studio@1.0.0` | `VERSION=1.1.0 task build` |
+| CLI | `blup-cli@<versão da tag>` | a tag do release |
 | Blup Notes (celular) | `blup-notes@1.0.0` | `VERSION=1.1.0 wails3 task android:build` |
 
 - O Cloud, os Sites e os painéis leem a versão de um lugar só, `cloud/shared/version.ts`, que puxa do `package.json`. Os bundles levam só esse campo, não o arquivo inteiro.
@@ -67,7 +69,7 @@ Detalhes:
   - a pasta pessoal, que vira `~` nos caminhos;
   - o nome do computador.
 
-  Os relatórios só ligam depois do **aceite**. A pergunta aparece na primeira abertura, num modal no desktop e numa gaveta no celular, e a resposta pode mudar nas configurações. "Agora não" pergunta de novo na próxima vez.
+  Os relatórios só ligam depois do **aceite**. A pergunta aparece na primeira abertura, num modal no desktop e numa gaveta no celular, e a resposta pode mudar nas configurações. "Agora não" pergunta de novo na próxima vez. No CLI a pergunta aparece uma vez, no modo interativo, e muda com `blup reports on|off`.
 - O próprio Pulse ainda tira o que sobrar ao receber (ver `docs/spec/blup-pulse.md`).
 
 ## Testar nesta máquina

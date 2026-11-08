@@ -1,7 +1,7 @@
 import {z} from "zod";
 import {languageTag,type Language} from "../../shared/language";
 import {currencyDigits} from "../../shared/deals-markets";
-import {success,failure,wait,json,postSigned,type Delivery} from "../pulse/transports";
+import {success,failure,wait,json,postSigned,telegramGone,type Delivery} from "../pulse/transports";
 import {discordWebhook} from "../pulse/channel-crypto";
 
 // One post: the offer as the channel sees it. link is the short link;
@@ -125,7 +125,7 @@ export function sendWebhook(target:string,p:Post|null,language:Language,send:typ
 
 export const dealsChatId=z.string().regex(/^-?[1-9][0-9]{0,15}$/).refine(v=>Number.isSafeInteger(Number(v)));
 const botToken=(env:Cloudflare.Env)=>/^[0-9]+:[A-Za-z0-9_-]{20,200}$/.test(env.DEALS_TELEGRAM_TOKEN??"")?env.DEALS_TELEGRAM_TOKEN:null;
-const telegramResult=z.discriminatedUnion("ok",[z.object({ok:z.literal(true),result:z.object({message_id:z.number().int().nonnegative()})}),z.object({ok:z.literal(false),error_code:z.number().int(),parameters:z.object({retry_after:z.number().int().nonnegative().optional()}).optional()})]);
+const telegramResult=z.discriminatedUnion("ok",[z.object({ok:z.literal(true),result:z.object({message_id:z.number().int().nonnegative()})}),z.object({ok:z.literal(false),error_code:z.number().int(),description:z.string().max(1024).optional(),parameters:z.object({retry_after:z.number().int().nonnegative().optional()}).optional()})]);
 async function telegramCall(token:string,method:string,body:object|FormData,send:typeof fetch){
  const res=await send(`https://api.telegram.org/bot${token}/${method}`,{method:"POST",redirect:"manual",signal:AbortSignal.timeout(15_000),...(body instanceof FormData?{body}:{headers:{"content-type":"application/json"},body:JSON.stringify(body)})});
  return {res,result:telegramResult.safeParse(await json(res))};
@@ -145,7 +145,7 @@ export async function sendTelegram(env:Cloudflare.Env,target:string,text:string,
   if((photo||image)&&result.success&&!result.data.ok&&result.data.error_code===400)({res,result}=await telegramCall(token,"sendMessage",{chat_id:chat.data,text,parse_mode:"HTML",link_preview_options:{is_disabled:true}},send));
   if(!result.success)return failure("PROVIDER");if(result.data.ok)return res.ok?success(1000):failure("PROVIDER");
   if(result.data.error_code===429)return failure("RATE_LIMIT",wait(result.data.parameters?.retry_after??res.headers.get("retry-after")),false,true);
-  if([400,403,404].includes(result.data.error_code))return failure("DESTINATION_DISABLED",0,true);
+  if(telegramGone(result.data.error_code,result.data.description))return failure("DESTINATION_DISABLED",0,true);
   return failure("PROVIDER");
  }catch{return failure("PROVIDER");}
 }

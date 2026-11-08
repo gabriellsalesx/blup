@@ -7,6 +7,7 @@ import {dealsAccess} from "./access";
 import {affiliateOf,enqueue,postedLately,settingsOf,accountLanguage,DAY} from "./store";
 import {curate,describe} from "./ai";
 import {money} from "./message";
+import {FetchError} from "./fetch";
 import {storeTitles} from "../../shared/deals-post";
 
 // A store hunt: Shopee's or AliExpress's own search, with the person's own
@@ -31,13 +32,24 @@ const https=(raw:string|null|undefined,host:RegExp)=>{if(!raw)return null;try{co
 const shopeeImageHost=/(?:^|\.)(?:susercontent\.com|shopee\.com\.br)$/;
 const shopeeNode=z.object({itemId:z.union([z.number().int().positive(),z.string().regex(/^[0-9]{1,20}$/)]),productName:z.string().max(512),imageUrl:z.string().max(1024).nullish(),productLink:z.string().max(2048),offerLink:z.string().max(2048),priceMin:z.string().max(32),priceDiscountRate:z.number().int().min(0).max(100).nullish()}).loose();
 const shopeeAnswer=z.object({data:z.object({productOfferV2:z.object({nodes:z.array(z.unknown()).max(100)})})});
+// Shopee's errors carry a code in extensions: 10000 (its own failure) and
+// 10030 (the rate limit) pass, so the hunt tries again in a few minutes;
+// any other (10020 signature or credential, 10031 to 10035 the account
+// without access) is the store refusing the keys.
+const shopeeErrors=z.object({errors:z.array(z.unknown()).min(1).max(20)}).loose();
+const shopeeCode=z.object({extensions:z.object({code:z.union([z.number(),z.string()])}).loose()}).loose();
+const shopeePassing=new Set(["10000","10030"]);
+function shopeeFailure(errors:unknown[]):Error{
+ const codes=errors.map(e=>{const c=shopeeCode.safeParse(e);return c.success?String(c.data.extensions.code):null;});
+ return codes.length&&codes.every(c=>c!==null&&shopeePassing.has(c))?new FetchError("FETCH_FAILED"):new ShopRefused();
+}
 // Shopee's answer to productOfferV2: the items on sale, in the account
 // country's money. Shopee gives the discount but not the price before, so
 // the post says the price and the discount.
 export function shopeeOffers(value:unknown,now=Date.now(),country:ShopeeCountry="br"):Found[]{
  const currency=shopeeCurrency[country],digits=currencyDigits(currency);
  const parsed=shopeeAnswer.safeParse(value);
- if(!parsed.success){if(z.object({errors:z.array(z.unknown()).min(1)}).loose().safeParse(value).success)throw new ShopRefused();return [];}
+ if(!parsed.success){const errors=shopeeErrors.safeParse(value);if(errors.success)throw shopeeFailure(errors.data.errors);return [];}
  return parsed.data.data.productOfferV2.nodes.flatMap(raw=>{
   const n=shopeeNode.safeParse(raw);if(!n.success)return [];
   const title=cleanLine(n.data.productName,200),price=priceMinor(n.data.priceMin,digits),discount=n.data.priceDiscountRate??0;
@@ -49,6 +61,16 @@ export function shopeeOffers(value:unknown,now=Date.now(),country:ShopeeCountry=
 }
 const aliProduct=z.object({product_id:z.union([z.number().int().positive(),z.string().regex(/^[0-9]{1,24}$/)]),product_title:z.string().max(512),product_main_image_url:z.string().max(1024).nullish(),product_detail_url:z.string().max(2048).nullish(),promotion_link:z.string().max(2048).nullish(),target_sale_price:z.string().max(32).nullish(),target_sale_price_currency:z.string().max(8).nullish(),target_original_price:z.string().max(32).nullish(),discount:z.string().max(8).nullish()}).loose();
 const aliAnswer=z.object({aliexpress_affiliate_product_query_response:z.object({resp_result:z.object({resp_code:z.union([z.number(),z.string()]),result:z.object({products:z.union([z.array(z.unknown()),z.object({product:z.array(z.unknown())}).loose()]).optional()}).loose().optional()}).loose()}).loose()}).loose();
+// The gateway's error ({type,code,message}, alone or in error_response):
+// a call limit or the gateway's own failure (ISP, SYSTEM) passes and the
+// hunt tries again; a developer error (ISV: bad keys, signature, app) is
+// the store refusing them.
+const aliErrorBody=z.object({type:z.string().max(32).optional(),code:z.union([z.string().max(128),z.number()]).optional()}).loose();
+const aliError=z.union([z.object({error_response:aliErrorBody}).loose().transform(v=>v.error_response),z.object({type:z.string().max(32),code:z.string().max(128)}).loose()]);
+function aliFailure(error:z.infer<typeof aliErrorBody>):Error{
+ const type=(error.type??"").toUpperCase(),code=String(error.code??"");
+ return /CallLimit|Throttl|Frequency|ServiceUnavailable/i.test(code)||type==="ISP"||type==="SYSTEM"?new FetchError("FETCH_FAILED"):new ShopRefused();
+}
 // AliExpress's answer to aliexpress.affiliate.product.query, in the
 // currency asked (target_currency): the sale price, the price before and the link
 // with the person's tracking ID. An error answer (bad keys, a refused
@@ -56,7 +78,7 @@ const aliAnswer=z.object({aliexpress_affiliate_product_query_response:z.object({
 export function aliexpressOffers(value:unknown,now=Date.now(),currency="BRL"):Found[]{
  const digits=currencyDigits(currency);
  const parsed=aliAnswer.safeParse(value);
- if(!parsed.success){if(z.union([z.object({error_response:z.unknown()}).loose(),z.object({type:z.string(),code:z.string()}).loose()]).safeParse(value).success)throw new ShopRefused();return [];}
+ if(!parsed.success){const error=aliError.safeParse(value);if(error.success)throw aliFailure(error.data);return [];}
  const result=parsed.data.aliexpress_affiliate_product_query_response.resp_result;
  if(String(result.resp_code)!=="200")return [];
  const products=result.result?.products,list=Array.isArray(products)?products:products?.product??[];

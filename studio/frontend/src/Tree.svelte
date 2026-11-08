@@ -17,7 +17,7 @@
   import Database from "@lucide/svelte/icons/database";
   import type { Node } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
 
-  // The notes, like Obsidian's file explorer: folders open and close (open
+  // The notes, as a file explorer: folders open and close (open
   // is shared, so "collapse all" works), a vertical guide line inside each
   // open folder; clicking a folder also makes it the place for new notes.
   // Right-click opens the item's menu (onMenu). A database is its records'
@@ -26,7 +26,7 @@
   // note, a folder open or closed, a canvas, a drawing); a note's sits
   // where a folder's chevron is. Notes can be dragged onto a canvas.
   //
-  // Renaming is right there, like Obsidian: the name becomes a field, all
+  // Renaming is right there: the name becomes a field, all
   // of it selected. Enter or clicking away keeps it, Esc gives up
   // (onRename gets null).
   //

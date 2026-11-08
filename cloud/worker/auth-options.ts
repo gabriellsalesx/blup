@@ -55,7 +55,9 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 		basePath: "/api/auth",
 		// The Worker owns signed webhook reconciliation. The plugin's snapshot
 		// handler must never write an older event after that reconciliation.
-		disabledPaths: ["/stripe/webhook","/subscription/success","/subscription/upgrade","/subscription/billing-portal","/subscription/cancel","/subscription/restore"],
+		// There are no passwords: the e-mail OTP plugin's password reset
+		// routes would send codes to any account without Turnstile.
+		disabledPaths: ["/stripe/webhook","/subscription/success","/subscription/upgrade","/subscription/billing-portal","/subscription/cancel","/subscription/restore","/email-otp/request-password-reset","/forget-password/email-otp","/email-otp/reset-password"],
 		secret: cfg.secret,
 		trustedOrigins: [cfg.appUrl,...[cfg.pulseUrl,cfg.dealsUrl].filter((url):url is string=>!!url)],
 		database: drizzleAdapter(db, { provider: "sqlite", schema }),
@@ -63,7 +65,9 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 		// D1 index, and not guessable. The uuid package keeps a counter within
 		// the millisecond (Workers freeze Date.now() during a request) and
 		// draws the rest from crypto.getRandomValues.
-		advanced: { database: { generateId: () => uuidv7() } },
+		// The client's address is the one Cloudflare sets (X-Forwarded-For
+		// would be whatever the client sent): sessions and Turnstile use it.
+		advanced: { database: { generateId: () => uuidv7() }, ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
 		// No passwords: codes and passkeys only.
 		emailAndPassword: { enabled: false },
 		// A blocked account (by the staff) can't sign in.

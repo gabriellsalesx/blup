@@ -13,14 +13,17 @@ describe("Stripe display catalog",()=>{
 		const urls:string[]=[];
 		vi.stubGlobal("fetch",vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
 			urls.push(String(input));expect(new Headers(init?.headers).get("stripe-version")).toBe("2026-10-28.endive");
-			return Response.json(list(price(),price("blup_pro_anual",18900,"usd")));
+			const asked=[...new URL(String(input)).searchParams].filter(([k])=>k.startsWith("lookup_keys")).map(([,v])=>v);
+			return Response.json(list(...[price(),price("blup_pro_anual",18900,"usd")].filter(p=>asked.includes(p.lookup_key))));
 		}));
 		const env={STRIPE_SECRET_KEY:"sk_test_audit_catalog_reads"};
 		const plans=await publicPlans(env),pro=plans.find(p=>p.name==="pro");
 		expect(pro).toMatchObject({prices:{monthly:{unitAmount:1750,currency:"brl"},yearly:{unitAmount:18900,currency:"usd"}}});
 		expect(pro).not.toHaveProperty("priceCents");expect(plans.find(p=>p.name==="max")?.prices.monthly).toBeNull();
 		expect(await purchaseAvailable(env,"pro",true)).toBe(true);expect(await purchaseAvailable(env,"max",false)).toBe(false);
-		expect(urls).toHaveLength(1);expect(urls[0]).toContain("active=true");expect(urls[0]).toContain("blup_ultra_anual");expect(urls[0]).toContain("data.product");
+		// Stripe accepts at most 10 lookup_keys per list call.
+		expect(urls).toHaveLength(2);for(const url of urls){expect(url).toContain("active=true");expect(url).toContain("data.product");expect([...new URL(url).searchParams.keys()].filter(k=>k.startsWith("lookup_keys")).length).toBeLessThanOrEqual(10);}
+		expect(urls.join(" ")).toContain("blup_ultra_anual");expect(urls.join(" ")).toContain("blup_ultra_pulse_deals_anual");
 	});
 	it("coalesces concurrent refreshes and refreshes only after ten minutes",async()=>{
 		const load=vi.fn(async()=>list(price()));const catalog=new PriceCatalog(load);

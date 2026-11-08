@@ -36,6 +36,22 @@ async function liveDeploy(env:Cloudflare.Env,slug:string,customHostname:string|u
  }
  return row;
 }
+// Who may be served, kept 10 seconds per site and address in this isolate:
+// a visited site reads D1 a few times a minute, not on every request. A
+// new deploy, a ban or a lost plan shows within those 10 seconds.
+type LiveDeploy=Awaited<ReturnType<typeof liveDeploy>>;
+const heads=new Map<string,{row:LiveDeploy;until:number}>();
+const HEAD_MS=10_000,MAX_HEADS=1024;
+export function forgetSiteHeads(){heads.clear();}
+async function currentDeploy(env:Cloudflare.Env,slug:string,customHostname:string|undefined):Promise<LiveDeploy>{
+ const key=`${slug}\n${customHostname??""}`,now=Date.now(),hit=heads.get(key);
+ if(hit&&hit.until>now)return hit.row;
+ heads.delete(key);
+ const row=await liveDeploy(env,slug,customHostname);
+ if(heads.size>=MAX_HEADS){const oldest=heads.keys().next().value;if(oldest!==undefined)heads.delete(oldest);}
+ heads.set(key,{row,until:now+HEAD_MS});
+ return row;
+}
 
 async function manifestOf(env: Cloudflare.Env, siteId: string, deploy: string): Promise<Manifest | null> {
 	const key = `${siteId}:${deploy}`;
@@ -103,7 +119,7 @@ export async function serveDeploy(req:Request,env:Cloudflare.Env,props:CachedSit
 
 export async function serveSite(req: Request, env: Cloudflare.Env, ctx: ExecutionContext, slug: string, customHostname?:string): Promise<Response> {
  if(req.method!=="GET"&&req.method!=="HEAD")return new Response(null,{status:405,headers:{allow:"GET, HEAD","cache-control":"no-store"}});
- const live=await liveDeploy(env,slug,customHostname);
+ const live=await currentDeploy(env,slug,customHostname);
  if(!live?.deploy)return notFound();
  const original=new URL(req.url),url=new URL("https://public-site.internal");url.pathname=original.pathname;
  // Do not forward cookies, authorization, ranges, or arbitrary vary values.

@@ -15,7 +15,9 @@
 <PageHeader title="Registro"/>
 <p class="mt-1 text-sm text-neutral-500">Tudo o que a equipe fez: quem, o quê, em qual conta e quando.</p>
 
-{#if pager.items.length || !pager.busy}
+{#if pager.failed && !pager.items.length}
+	<p class="mt-6 text-sm text-red-700 dark:text-red-400">Não deu para carregar o registro. Tente de novo.</p>
+{:else if pager.items.length || !pager.busy}
 	<div class="mt-6 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
 		<table class="w-full text-left text-sm">
 			<thead class="bg-neutral-50 text-xs text-neutral-500 uppercase dark:bg-neutral-900">

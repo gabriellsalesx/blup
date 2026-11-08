@@ -5,6 +5,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 test("the Studio's texts name no other note app", () => {
-  const src = readFileSync(new URL("../src/i18n.ts", import.meta.url), "utf8");
+  const src = ["i18n.ts", "i18n-en.ts", "i18n-es.ts"].map((f) => readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8")).join("\n");
   assert.doesNotMatch(src, /obsidian/i);
 });

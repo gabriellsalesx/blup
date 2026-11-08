@@ -14,17 +14,22 @@ export function createPager<T>(load: (cursor: string | null) => Promise<Page<T>>
 	// The cursor each page started at (null: the first page).
 	let starts = $state<(string | null)[]>([null]);
 
+	// Only the newest request shows: an older answer that arrives late (a
+	// search typed further meanwhile) is dropped.
+	let seq = 0;
 	async function show(cursor: string | null) {
+		const mine = ++seq;
 		busy = true;
 		failed = false;
 		try {
 			const page = await load(cursor);
+			if (mine !== seq) return;
 			items = page.items;
 			next = page.nextCursor;
 		} catch {
-			failed = true;
+			if (mine === seq) failed = true;
 		} finally {
-			busy = false;
+			if (mine === seq) busy = false;
 		}
 	}
 

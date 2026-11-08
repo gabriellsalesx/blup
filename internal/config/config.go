@@ -21,6 +21,9 @@ const SiteFile = "blup.toml"
 type Global struct {
 	Lang  string   `toml:"lang"`
 	Sites []string `toml:"sites"`
+	// ErrorReports is the CLI's answer about sending errors to Blup: ""
+	// (not asked yet), "on" or "off" (internal/app/reports.go).
+	ErrorReports string `toml:"error_reports,omitempty"`
 }
 
 // Credentials is ~/.config/blup/credentials.toml (mode 0600).

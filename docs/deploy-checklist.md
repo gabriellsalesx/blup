@@ -299,17 +299,17 @@ Achados da revisão geral antes do lançamento que ainda dependem de decisão ou
 
 **Bloqueiam o deploy**
 - Turnstile: `TURNSTILE_SITE_KEY` de produção em `cloud/wrangler.jsonc` ainda é a chave de teste. Trocar pela real e conferir que a `TURNSTILE_SECRET_KEY` também é a real.
-- Studio no celular: `cloudURL` fixo em `http://localhost:18820` (`studio-mobile-prototipo/cloud.go`). Passar o endereço de produção no build antes de ir às lojas.
-- Studio no celular: release do Android sem keystore (sai com a chave de debug).
+- Blup Notes (celular): `cloudURL` fixo em `http://localhost:18820` (`studio-mobile-prototipo/cloud.go`). Passar o endereço de produção no build antes de ir às lojas.
+- Blup Notes (celular): release do Android sem keystore (sai com a chave de debug).
 - Variável `STUDIO_SENTRY_DSN` no GitHub (vars do repositório): o workflow de release já a repassa como `SENTRY_DSN`.
 
 **Melhorias recomendadas (não bloqueiam)**
-- Pulse: guardar acesso e chave do projeto na memória do Durable Object por 30 a 60 s; hoje cada evento faz cerca de 15 leituras no D1.
-- Pulse: upload de source map com rate limit por token e cota em bytes.
-- Deals: orçamento de tempo e quantidade no espelhamento (`worker/deals/mirror.ts`).
-- Sites: cache em memória de 10 a 30 s do `siteHead` (`worker/serve-site.ts`), para não consultar o D1 em toda visita.
+- API de comentários e feedback dos blogs: hoje em `blup-api.<conta>.workers.dev` (`internal/config/config.go`, `FeedbackAPI`, e `docs/spec/configuracao.md`). Publicar o Worker em `api.getblup.io` (rota ou custom domain na Cloudflare), trocar o padrão no código e manter o endereço antigo respondendo até as versões antigas do CLI e do Studio saírem de uso.
+- Deals: link curto `/r/` aceita qualquer https (redirecionador aberto); limitar a lojas conhecidas ou mostrar aviso.
+- Deals: um 429 do Telegram pausa o bot para todas as contas; pausar só o canal.
+- Worker dos sites: tirar o Stripe do `lifecycle.ts` para o bundle encolher.
 - Deals: mover `worker/deals/sample-images.ts` (1 MB em base64) para os static assets.
-- Ponte: chaves das sessões sem criptografia em repouso; usar volume cifrado e Access ou WAF na frente do Tunnel.
+- Ponte: chaves das sessões sem criptografia em repouso; usar disco ou banco cifrado e WAF na frente da Ponte.
 - Registrar getblup.site na Public Suffix List.
-- Celular: CSP no `frontend/index.html`, credenciais no Keystore/Keychain, `minSdk` 26 ou mais e itens do iOS (`get-task-allow`, `NSAllowsLocalNetworking`, `ITSAppUsesNonExemptEncryption`, `PrivacyInfo.xcprivacy`).
+- Blup Notes: CSP no `frontend/index.html`, credenciais no Keystore/Keychain, `minSdk` 26 ou mais e itens do iOS (`get-task-allow`, `NSAllowsLocalNetworking`, `ITSAppUsesNonExemptEncryption`, `PrivacyInfo.xcprivacy`).
 - Desktop: job de macOS com Developer ID e notarização; certificado de assinatura do Windows para fora da Store.

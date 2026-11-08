@@ -1,11 +1,13 @@
 import {DurableObject} from "cloudflare:workers";
 import {ProjectStore,type Issue} from "./project-store";
 import {type SafeEvent} from "./event";
-import {pulseAccess,monthOf,monthWait} from "./limits";
+import {pulseAccess,monthOf,monthWait,type PulseAccess,type PulsePlan} from "./limits";
 import {reserveGrant} from "./quota";
 import {IngestError} from "./protocol";
 import {enqueueSignals,type AlertSignal} from "./outbox";
 import {MonitorStore,type MonitorObservation} from "./monitor-store";
+
+const ADMISSION_MS=30_000;
 
 export class PulseProject extends DurableObject<Cloudflare.Env>{
  private readonly store:ProjectStore;
@@ -13,20 +15,36 @@ export class PulseProject extends DurableObject<Cloudflare.Env>{
  private tail:Promise<unknown>=Promise.resolve();
  constructor(ctx:DurableObjectState,env:Cloudflare.Env){super(ctx,env);this.store=new ProjectStore(ctx.storage.sql,fn=>ctx.storage.transactionSync(fn));this.monitorStore=new MonitorStore(ctx.storage.sql,fn=>ctx.storage.transactionSync(fn));}
  private serial<T>(fn:()=>Promise<T>):Promise<T>{const result=this.tail.then(fn);this.tail=result.catch(()=>{});return result;}
+ // Who may send to this project (the key, the project and the account's
+ // plan), kept 30 seconds: a busy project reads D1 a few times a minute,
+ // not ~15 times per event. A revoked key, a removed project or a lost
+ // plan stops being accepted within those 30 seconds.
+ private admitted:{key:string;userId:string;plan:PulsePlan;limits:NonNullable<PulseAccess["limits"]>;until:number}|null=null;
+ private async admit(project:string,keyHash:string,now:number,fresh=false){
+  const key=`${project}\n${keyHash}`;
+  if(!fresh&&this.admitted?.key===key&&this.admitted.until>now)return this.admitted;
+  this.admitted=null;
+  const row=await this.env.DB.prepare("SELECT p.user_id AS userId FROM pulse_project p JOIN pulse_key k ON k.project_id=p.id WHERE p.id=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL AND k.hash=? AND k.revoked_at IS NULL").bind(project,keyHash).first<{userId:string}>();
+  if(!row)throw new IngestError(403,"KEY");
+  const access=await pulseAccess(this.env,row.userId,now);if(!access.writable||!access.plan||!access.limits)throw new IngestError(403,"PLAN");
+  // A plan that came down this month may already be over its events.
+  const monthly=await this.env.DB.prepare("SELECT reserved FROM pulse_month WHERE user_id=? AND month=?").bind(row.userId,monthOf(now)).first<{reserved:number}>();
+  if((monthly?.reserved??0)>access.limits.events)throw new IngestError(429,"MONTHLY",monthWait(now));
+  this.admitted={key,userId:row.userId,plan:access.plan,limits:access.limits,until:now+ADMISSION_MS};
+  return this.admitted;
+ }
  async ingest(project:string,keyHash:string,event:SafeEvent){return this.serial(async()=>{
   try{
    const now=Date.now();
-   const row=await this.env.DB.prepare("SELECT p.user_id AS userId FROM pulse_project p JOIN pulse_key k ON k.project_id=p.id WHERE p.id=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL AND k.hash=? AND k.revoked_at IS NULL").bind(project,keyHash).first<{userId:string}>();
-   if(!row)throw new IngestError(403,"KEY");
-   const access=await pulseAccess(this.env,row.userId,now);if(!access.writable||!access.plan||!access.limits)throw new IngestError(403,"PLAN");
-   const cutoff=now-access.limits.retentionDays*86_400_000;
+   let admitted=await this.admit(project,keyHash,now);
+   const cutoff=now-admitted.limits.retentionDays*86_400_000;
    if(this.store.seen(event.id,cutoff))return {ok:true as const,id:event.id,duplicate:true};
-   if(this.store.slots(monthOf(now))===0){const grant=await reserveGrant(this.env.DB,row.userId,project,this.store.sequence(monthOf(now)),access.limits.events,now);this.store.importGrant(grant,monthOf(now));}
-   const stillActive=await this.env.DB.prepare("SELECT p.id FROM pulse_project p JOIN pulse_key k ON k.project_id=p.id WHERE p.id=? AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL AND k.hash=? AND k.revoked_at IS NULL").bind(project,keyHash).first();
-   const current=await pulseAccess(this.env,row.userId);if(!stillActive||!current.writable||!current.plan||!current.limits)throw new IngestError(403,"KEY");
-   const monthly=await this.env.DB.prepare("SELECT reserved FROM pulse_month WHERE user_id=? AND month=?").bind(row.userId,monthOf(now)).first<{reserved:number}>();
-   if((monthly?.reserved??0)>current.limits.events)throw new IngestError(429,"MONTHLY",monthWait(now));
-   const result=this.store.accept(event,current.plan,now);
+   if(this.store.slots(monthOf(now))===0){
+    const grant=await reserveGrant(this.env.DB,admitted.userId,project,this.store.sequence(monthOf(now)),admitted.limits.events,now);this.store.importGrant(grant,monthOf(now));
+    // Reserving waited on D1: the key and the plan are read again.
+    admitted=await this.admit(project,keyHash,Date.now(),true);
+   }
+   const result=this.store.accept(event,admitted.plan,now);
    this.ctx.waitUntil(this.flushAlerts(project).catch(()=>console.error("[blup] pulse_alert_enqueue_retry")));
    this.ctx.storage.sql.exec("INSERT INTO meta VALUES('project',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",project);
    const nextAlarm=now+60*60*1000,scheduled=await this.ctx.storage.getAlarm();
@@ -68,7 +86,7 @@ export class PulseProject extends DurableObject<Cloudflare.Env>{
   return results;
  });}
  async monitorHistory(monitor:string,retentionDays:number){return this.monitorStore.history(monitor,retentionDays);}
- private async reset(){await this.ctx.storage.deleteAll();}
+ private async reset(){this.admitted=null;await this.ctx.storage.deleteAll();}
  async purge(){return this.serial(()=>this.reset());}
  async cleanup(project:string){return this.serial(async()=>{
   const row=await this.env.DB.prepare("SELECT user_id AS userId FROM pulse_project WHERE id=? AND deleted_at IS NULL").bind(project).first<{userId:string}>();

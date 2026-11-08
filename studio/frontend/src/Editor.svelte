@@ -120,7 +120,7 @@
   let fix = $state<{ from: number; to: number; word: string; x: number; y: number; list: string[] | null } | null>(null);
   let mouseButton = 0;
 
-  // The editor's right-click menu, like Obsidian's.
+  // The editor's right-click menu.
   let ctx = $state<{ x: number; y: number } | null>(null);
   let picking = $state(false); // the note picker of "Link to a note"
   const sel = () => view.state.selection.main;
@@ -223,7 +223,7 @@
   }
   let view: EditorView;
 
-  // [[ lists the notes, like Obsidian; the chosen one becomes a Markdown
+  // [[ lists the notes; the chosen one becomes a Markdown
   // link ([Name](path.md)), which the site turns into a link.
   function noteLinks(ctx: CompletionContext) {
     const m = ctx.matchBefore(/\[\[[^\]\n|#]*/);

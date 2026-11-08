@@ -72,3 +72,33 @@ func TestBlupLimit(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+// Blup Cloud takes at most 16000 characters a part: paragraphs are packed
+// up to MaxPart, never one past it (only a paragraph alone may be longer).
+func TestSplitStaysUnderMax(t *testing.T) {
+	para := strings.Repeat("palavra ", 875) + "\n\n" // 7002 bytes
+	text := strings.Repeat("x", 8990) + "\n\n" + para + para + para
+	parts := Split(text, MaxPart)
+	if strings.Join(parts, "") != text {
+		t.Fatal("parts don't add up to the text")
+	}
+	for _, p := range parts {
+		if len(p) > MaxPart {
+			t.Fatalf("part of %d bytes", len(p))
+		}
+	}
+}
+
+func TestOpenRouterAttribution(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-OpenRouter-Title") != "Blup Studio" || r.Header.Get("HTTP-Referer") == "" {
+			http.Error(w, "no attribution", 400)
+			return
+		}
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"Hi"},"finish_reason":"stop"}]}`))
+	}))
+	defer srv.Close()
+	if out, err := (&Client{Key: "k", BaseURL: srv.URL}).Text(context.Background(), "Oi", "pt", "en", nil); err != nil || out != "Hi" {
+		t.Fatalf("out = %q, err = %v", out, err)
+	}
+}

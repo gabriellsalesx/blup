@@ -36,10 +36,12 @@ export function monitorURL(raw:string,allowBlup=false):URL{
 }
 export const monitorURLSchema=z.string().max(2048);
 const dnsSchema=z.object({Status:z.literal(0),Answer:z.array(z.object({type:z.number().int(),data:z.string().max(1024)})).max(100).optional()});
+// "RESOLVER": our own DNS over HTTPS lookup failed (not the site's name),
+// so a monitor check says nothing about the site (unknown, not down).
 export async function publicDNS(host:string,signal:AbortSignal,send:typeof fetch=fetch){
  const ip=host.replace(/^\[|\]$/g,"");if(z.ipv4().safeParse(ip).success||z.ipv6().safeParse(ip).success)return;
  let found=false;
- for(const type of ["A","AAAA"]){const url=new URL("https://cloudflare-dns.com/dns-query");url.searchParams.set("name",host);url.searchParams.set("type",type);const res=await send(url,{headers:{accept:"application/dns-json"},redirect:"manual",signal});if(!res.ok)throw new Error("DNS");const parsed=dnsSchema.safeParse(await res.json());if(!parsed.success)throw new Error("DNS");for(const answer of parsed.data.Answer??[]){if(answer.type===1||answer.type===28){if(!(answer.type===1?publicIPv4(answer.data):publicIPv6(answer.data)))throw new Error("INVALID_TARGET");found=true;}}}
+ for(const type of ["A","AAAA"]){const url=new URL("https://cloudflare-dns.com/dns-query");url.searchParams.set("name",host);url.searchParams.set("type",type);const res=await send(url,{headers:{accept:"application/dns-json"},redirect:"manual",signal});if(!res.ok)throw new Error("RESOLVER");const parsed=dnsSchema.safeParse(await res.json().catch(()=>{throw new Error("RESOLVER");}));if(!parsed.success)throw new Error("DNS");for(const answer of parsed.data.Answer??[]){if(answer.type===1||answer.type===28){if(!(answer.type===1?publicIPv4(answer.data):publicIPv6(answer.data)))throw new Error("INVALID_TARGET");found=true;}}}
  if(!found)throw new Error("DNS");
 }
 export type CheckResult={outcome:"up"|"down"|"unknown";status:number|null;durationMs:number;reason:"http"|"timeout"|"network"|"blocked"|"gap"|"keyword"};
@@ -89,6 +91,6 @@ export async function checkHTTP(raw:string,allowBlup=false,send:typeof fetch=fet
    else await res.body?.cancel();
    return {outcome:"up",status:res.status,durationMs:Date.now()-start,reason:"http"};
   }
- }catch(e){return {outcome:e instanceof Error&&e.message==="INVALID_TARGET"?"unknown":"down",status:null,durationMs:Date.now()-start,reason:e instanceof Error&&e.message==="INVALID_TARGET"?"blocked":signal.aborted?"timeout":"network"};}
+ }catch(e){const message=e instanceof Error?e.message:"";return {outcome:message==="INVALID_TARGET"||message==="RESOLVER"&&!signal.aborted?"unknown":"down",status:null,durationMs:Date.now()-start,reason:message==="INVALID_TARGET"?"blocked":signal.aborted?"timeout":"network"};}
  return {outcome:"unknown",status:null,durationMs:Date.now()-start,reason:"gap"};
 }

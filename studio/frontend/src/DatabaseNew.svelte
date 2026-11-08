@@ -43,7 +43,6 @@
       </button>
     {/each}
   </div>
-  <!-- svelte-ignore a11y_autofocus -->
   <TextField label={d.dbName} bind:value={name} autofocus oninput={() => (typed = true)} />
   <div class="actions">
     <button type="button" class="btn ghost" onclick={onClose}>{t.ob.cancel}</button>

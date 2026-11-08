@@ -1,7 +1,7 @@
 // Blup Studio: the Blup CLI in a window. Notes and folders on the left, a
 // Markdown editor in the middle and the site's live preview on the right;
 // everything is plain .md files on disk, so it works offline and the notes
-// still open in Obsidian, VS Code or any editor.
+// still open in any Markdown editor.
 package main
 
 import (

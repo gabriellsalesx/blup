@@ -83,6 +83,13 @@ describe("Pulse protocol and privacy",()=>{
   const bomb=new Blob(["a".repeat(1_100_000)]).stream().pipeThrough(new CompressionStream("gzip"));const init={method:"POST",body:bomb,duplex:"half",headers:{"content-encoding":"gzip"}};await expect(ingestBytes(new Request("https://ingest.audit.invalid",init))).rejects.toMatchObject({status:413});
   await expect(ingestBytes(new Request("https://ingest.audit.invalid",{method:"POST",body:"x",headers:{"content-encoding":"zstd"}}))).rejects.toMatchObject({status:415});
  });
+ it("takes brotli as sentry-python sends it, with the same size cap",async()=>{
+  const {brotliCompressSync}=await import("node:zlib");
+  const br=(body:Uint8Array|string)=>new Request("https://ingest.audit.invalid",{method:"POST",body:new Uint8Array(brotliCompressSync(body)),headers:{"content-encoding":"br"}});
+  expect(parseEnvelope(await ingestBytes(br(envelope(raw())))).event?.event_id).toBe("a".repeat(32));
+  await expect(ingestBytes(br("a".repeat(1_100_000)))).rejects.toMatchObject({status:413});
+  await expect(ingestBytes(new Request("https://ingest.audit.invalid",{method:"POST",body:"not brotli",headers:{"content-encoding":"br"}}))).rejects.toMatchObject({status:400});
+ });
  it("drops private structures and groups only sanitized bounded data",async()=>{
   const value=await safeEvent({...raw(),request:{data:"PRIVATE_NOTE",headers:{authorization:"PRIVATE_TOKEN"}},user:{email:"PRIVATE_EMAIL"},extra:{note:"PRIVATE_EXTRA"},contexts:{note:"PRIVATE_CONTEXT"},breadcrumbs:[{message:"clicked",data:{note:"PRIVATE_CRUMB"}}],message:"token=unsafe person@example.com /home/person/private.md",exception:undefined},"a".repeat(32));
   const encoded=JSON.stringify(value);for(const forbidden of ["PRIVATE_","unsafe","person@example.com","/home/person"])expect(encoded).not.toContain(forbidden);
@@ -195,13 +202,29 @@ describe("Pulse actual routes and DO",()=>{
   const object=new PulseProject(ctx,state.env),now=Date.now(),clock=vi.spyOn(Date,"now").mockReturnValue(now);
   try{await object.ingest(created.id,await sha256(key),await safeEvent(raw(),"a".repeat(32)));clock.mockReturnValue(now+30*60_000);await object.ingest(created.id,await sha256(key),await safeEvent(raw(),"b".repeat(32)));expect(alarm).toBe(now+60*60_000);expect(set).toHaveBeenCalledTimes(1);}finally{clock.mockRestore();}
  });
+ it("reads D1 once per 30 seconds for a busy key, not on every event",async()=>{
+  const made=await (await request("/projects","POST",{name:"Busy",platform:"go"})).json() as {id:string;key:{dsn:string}};const key=new URL(made.key.dsn).username;
+  const e=engine(local),ctx={waitUntil:(p:Promise<unknown>)=>p.catch(()=>{}),storage:{sql:e.sql,transactionSync:e.transaction,getAlarm:async()=>null,setAlarm:async()=>{}}} as unknown as DurableObjectState;const object=new PulseProject(ctx,state.env);Object.assign(state.env,{PULSE_PROJECT:{getByName:()=>object}});
+  const send=(id:string)=>pulseIngest(new Request(`https://ingest.audit.invalid/api/${made.id}/envelope/?sentry_key=${key}&sentry_version=7`,{method:"POST",body:envelope(raw(id)),headers:{"content-type":"text/plain"}}),state.env);
+  expect((await send("1".repeat(32))).status).toBe(200);
+  // The first event's new issue alert is queued in the background.
+  await new Promise(r=>setTimeout(r,20));
+  const reads=vi.spyOn(state.env.DB,"prepare");
+  try{for(const id of ["2","3","4","5"])expect((await send(id.repeat(32))).status).toBe(200);expect(reads).not.toHaveBeenCalled();}finally{reads.mockRestore();}
+  // A project that is turned off stops within the window too.
+  d1.sqlite.prepare("UPDATE pulse_project SET active=0 WHERE id=?").run(made.id);
+  const clock=vi.spyOn(Date,"now").mockReturnValue(Date.now()+31_000);try{expect((await send("6".repeat(32))).status).toBe(403);}finally{clock.mockRestore();}
+ });
  it("persists before success, returns compatible 429/CORS, and rejects a revoked DSN",async()=>{
   const made=await (await request("/projects","POST",{name:"App",platform:"go"})).json() as {id:string;key:{dsn:string}};const key=new URL(made.key.dsn).username;
   const e=engine(local),ctx={waitUntil:(p:Promise<unknown>)=>p.catch(()=>{}),storage:{sql:e.sql,transactionSync:e.transaction,getAlarm:async()=>null,setAlarm:async()=>{}}} as unknown as DurableObjectState;const object=new PulseProject(ctx,state.env);Object.assign(state.env,{PULSE_PROJECT:{getByName:()=>object}});
   const send=()=>pulseIngest(new Request(`https://ingest.audit.invalid/api/${made.id}/envelope/?sentry_key=${key}&sentry_version=7`,{method:"POST",body:envelope(raw()),headers:{"content-type":"text/plain"}}),state.env);
   expect((await send()).status).toBe(200);expect((await send()).status).toBe(200);expect(store.usage(new Date().toISOString().slice(0,7)).accepted).toBe(1);
   Object.assign(state.env,{PULSE_INGEST_LIMIT:{limit:async()=>({success:false})}});const limited=await send();expect(limited.status).toBe(429);expect(limited.headers.get("retry-after")).toBe("10");expect(limited.headers.get("x-sentry-rate-limits")).toContain("error;default");expect(limited.headers.get("access-control-allow-origin")).toBe("*");
-  Object.assign(state.env,{PULSE_INGEST_LIMIT:{limit:async()=>({success:true})}});d1.sqlite.prepare("UPDATE pulse_key SET revoked_at=1 WHERE hash=?").run(await sha256(key));expect((await send()).status).toBe(403);
+  Object.assign(state.env,{PULSE_INGEST_LIMIT:{limit:async()=>({success:true})}});d1.sqlite.prepare("UPDATE pulse_key SET revoked_at=1 WHERE hash=?").run(await sha256(key));
+  // The key and the plan are kept 30 seconds (in the isolate and in the
+  // project's object): a revoked DSN stops within that window.
+  const later=Date.now()+31_000,clock=vi.spyOn(Date,"now").mockReturnValue(later);try{expect((await send()).status).toBe(403);}finally{clock.mockRestore();}
  });
 });
 describe("what an occurrence keeps beyond the error",()=>{

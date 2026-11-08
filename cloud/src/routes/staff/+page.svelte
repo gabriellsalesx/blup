@@ -66,6 +66,8 @@
 		</table>
 	</div>
 	<Pager {pager} />
+{:else if pager.failed}
+	<p class="mt-6 text-sm text-red-700 dark:text-red-400">Não deu para buscar. Tente de novo.</p>
 {:else if !pager.busy}
 	<p class="mt-6 text-sm text-neutral-500">Nenhuma conta encontrada.</p>
 {/if}

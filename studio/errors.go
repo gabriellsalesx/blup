@@ -60,11 +60,13 @@ func startReports(on bool) {
 		return
 	}
 	err := sentry.Init(sentry.ClientOptions{
-		Dsn:              dsn,
-		Environment:      reportsEnvironment(),
-		Release:          "blup-studio@" + app.Version,
-		ServerName:       runtime.GOOS, // never the computer's own name
-		SendDefaultPII:   false,
+		Dsn:         dsn,
+		Environment: reportsEnvironment(),
+		Release:     "blup-studio@" + app.Version,
+		ServerName:  runtime.GOOS, // never the computer's own name
+		// No user data from the integrations (SendDefaultPII is deprecated
+		// since sentry-go v0.50 in favour of DataCollection).
+		DataCollection:   &sentry.DataCollection{UserInfo: sentry.Set(false)},
 		EnableTracing:    false,
 		AttachStacktrace: true,
 		BeforeSend:       scrubReport,
@@ -95,15 +97,23 @@ func scrubReport(event *sentry.Event, _ *sentry.EventHint) *sentry.Event {
 	event.User = sentry.User{}
 	event.Request = nil
 	event.Message = scrub(event.Message)
+	scrubFrames := func(st *sentry.Stacktrace) {
+		if st == nil {
+			return
+		}
+		for j := range st.Frames {
+			f := &st.Frames[j]
+			f.AbsPath, f.Filename = scrub(f.AbsPath), scrub(f.Filename)
+		}
+	}
 	for i := range event.Exception {
 		ex := &event.Exception[i]
 		ex.Value = scrub(ex.Value)
-		if ex.Stacktrace != nil {
-			for j := range ex.Stacktrace.Frames {
-				f := &ex.Stacktrace.Frames[j]
-				f.AbsPath, f.Filename = scrub(f.AbsPath), scrub(f.Filename)
-			}
-		}
+		scrubFrames(ex.Stacktrace)
+	}
+	// CaptureMessage with AttachStacktrace puts the frames in Threads.
+	for i := range event.Threads {
+		scrubFrames(event.Threads[i].Stacktrace)
 	}
 	for i := range event.Breadcrumbs {
 		event.Breadcrumbs[i].Message = scrub(event.Breadcrumbs[i].Message)

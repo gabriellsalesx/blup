@@ -34,9 +34,17 @@ func (c *Client) ReminderEmails(ctx context.Context) (ReminderUse, error) {
 // SetReminders replaces the reminders not sent yet (an empty list cancels
 // them all).
 func (c *Client) SetReminders(ctx context.Context, list []Reminder) (ReminderUse, error) {
-	if list == nil {
-		list = []Reminder{}
+	// The cloud refuses the whole list over a repeated id (400), which
+	// would keep every reminder from going: the first of each stays.
+	seen := make(map[string]bool, len(list))
+	out := make([]Reminder, 0, len(list))
+	for _, r := range list {
+		if !seen[r.ID] {
+			seen[r.ID] = true
+			out = append(out, r)
+		}
 	}
+	list = out
 	return reminderUse(func(r any) error {
 		return c.do(ctx, http.MethodPut, "/reminders", map[string]any{"reminders": list}, "", r)
 	})

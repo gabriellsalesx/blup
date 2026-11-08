@@ -100,6 +100,14 @@ app.post("/auth/passkey/verify-registration", async (c, next) => {
 	await next();
 });
 
+// Sign-in steps that write rows or check codes without a session: 120 a
+// minute per address (Better Auth's own rate limit is off on Workers).
+app.on(["GET","POST"],["/auth/sign-in/email-otp","/auth/device/code","/auth/passkey/generate-register-options","/auth/passkey/generate-authenticate-options"],async(c,next)=>{
+	const { success } = await c.env.ABUSE_LIMIT.limit({ key: `auth:${c.req.header("cf-connecting-ip") ?? "local"}` });
+	if (!success) { c.header("Retry-After","60"); return c.json({ code: "TOO_MANY_REQUESTS", message: "Muitos pedidos. Espere um minuto." }, 429); }
+	await next();
+});
+
 // Linking an e-mail is for accounts made with a passkey. Changing a real
 // e-mail goes through support for now (it would need the current one
 // confirmed first).
@@ -269,7 +277,10 @@ const SECURITY_HEADERS: Record<string, string> = {
 function secure(res: Response): Response {
 	if (res.status === 101) return res; // a WebSocket: copying it would drop the socket
 	const out = new Response(res.body, res);
-	for (const [k, v] of Object.entries(SECURITY_HEADERS)) if (!out.headers.has(k)) out.headers.set(k, v);
+	// A page meant for other sites' iframes (the Pulse badge) says so in its
+	// own CSP; X-Frame-Options: DENY would still block it in old browsers.
+	const framed = /frame-ancestors \*/.test(out.headers.get("Content-Security-Policy") ?? "");
+	for (const [k, v] of Object.entries(SECURITY_HEADERS)) if (!out.headers.has(k) && !(framed && k === "X-Frame-Options")) out.headers.set(k, v);
 	return out;
 }
 

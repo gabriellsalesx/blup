@@ -19,9 +19,10 @@ func TestScrubReport(t *testing.T) {
 		Message:    "abrir " + home + "/Notas/Diário.md",
 		User:       sentry.User{Email: "ana@x.com"},
 		Exception:  []sentry.Exception{{Value: "open " + home + "/Notas/x.md: no such file", Stacktrace: &sentry.Stacktrace{Frames: []sentry.Frame{{AbsPath: home + "/go/x.go"}}}}},
+		Threads:    []sentry.Thread{{Stacktrace: &sentry.Stacktrace{Frames: []sentry.Frame{{AbsPath: home + "/go/y.go"}}}}},
 		Contexts:   map[string]sentry.Context{"device": {"name": "notebook-da-ana", "arch": "amd64"}},
 	}, nil)
-	all := e.Message + e.Exception[0].Value + e.Exception[0].Stacktrace.Frames[0].AbsPath
+	all := e.Message + e.Exception[0].Value + e.Exception[0].Stacktrace.Frames[0].AbsPath + e.Threads[0].Stacktrace.Frames[0].AbsPath
 	if strings.Contains(all, home) || !strings.Contains(e.Message, "~/Notas") {
 		t.Fatal("pasta pessoal", all)
 	}

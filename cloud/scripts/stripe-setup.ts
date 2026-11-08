@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { PLANS } from "../worker/plans.ts";
 import { createStripe } from "../worker/stripe-client.ts";
-import { validateStripePrices } from "../worker/price-schema.ts";
+import { listPricesByLookup,validateStripePrices } from "../worker/price-schema.ts";
 
 export async function checkCatalog(secret:string,log:(message:string)=>void=console.log):Promise<boolean>{
  if(!/^(?:sk|rk)_(?:test|live)_[A-Za-z0-9_]+$/.test(secret)||secret.includes("coloque")){
@@ -13,7 +13,7 @@ export async function checkCatalog(secret:string,log:(message:string)=>void=cons
  log(/^(?:sk|rk)_live_/.test(secret)?"Conferindo Stripe em produção (somente leitura).":"Conferindo Stripe no sandbox (somente leitura).");
  const keys=PLANS.flatMap(p=>[p.lookupKey,p.yearlyLookupKey].filter((k):k is string=>k!==undefined));
  const intervals=new Map(PLANS.flatMap(p=>[...(p.lookupKey?[[p.lookupKey,"month"] as const]:[]),...(p.yearlyLookupKey?[[p.yearlyLookupKey,"year"] as const]:[])]));
- const values=validateStripePrices(await createStripe(secret).prices.list({active:true,type:"recurring",lookup_keys:keys,limit:100,expand:["data.product"]},{timeout:5_000,maxNetworkRetries:0}),intervals);
+ const values=validateStripePrices(await listPricesByLookup(createStripe(secret),keys),intervals);
  let valid=true;
  for(const key of keys){
   const price=values.get(key);

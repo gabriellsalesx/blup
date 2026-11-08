@@ -19,4 +19,20 @@ export default defineConfig({
     strictPort: true,
   },
   plugins: [svelte(), wails("./bindings"), devSocket()],
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          // The error reports' SDK in a chunk of its own, loaded only when
+          // they are on (errorreports.ts). Svelte's runtime goes first in
+          // a chunk of its own: else the group takes it along (a
+          // dependency of @sentry/svelte) and the opening fetches the SDK.
+          groups: [
+            { name: "svelte", test: /node_modules[\\/]svelte[\\/]/, priority: 2 },
+            { name: "sentry", test: /node_modules[\\/]@sentry[\\/]/, priority: 1 },
+          ],
+        },
+      },
+    },
+  },
 });

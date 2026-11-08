@@ -7,7 +7,7 @@ describe("read-only Stripe setup",()=>{
 		vi.stubGlobal("fetch",vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{requests.push({url:String(input),method:init?.method??"GET"});return Response.json({object:"list",has_more:false,data:[]});}));
 		const messages:string[]=[];
 		expect(await checkCatalog("rk_test_audit_fixture",message=>messages.push(message))).toBe(false);
-		expect(requests).toHaveLength(1);expect(requests[0]?.method).toBe("GET");expect(messages.join(" ")).toContain("blup_pro_anual");expect(messages.join(" ")).not.toContain("rk_test_");
+		expect(requests).toHaveLength(2);expect(requests.every(r=>r.method==="GET"&&[...new URL(r.url).searchParams.keys()].filter(k=>k.startsWith("lookup_keys")).length<=10)).toBe(true);expect(messages.join(" ")).toContain("blup_pro_anual");expect(messages.join(" ")).not.toContain("rk_test_");
 	});
 	it("does not send a missing or placeholder credential to the network",async()=>{
 		const fetchMock=vi.fn();vi.stubGlobal("fetch",fetchMock);

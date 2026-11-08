@@ -22,6 +22,10 @@ func TestFolderGoneRestartsPreview(t *testing.T) {
 	onFolderGone = func() { gone <- struct{}{} }
 	watchMu.Unlock()
 	watchNotes(root)
+	watchMu.Lock()
+	ready := watchReady
+	watchMu.Unlock()
+	<-ready // the folders are watched in the background
 	t.Cleanup(func() {
 		watchNotes("")
 		watchMu.Lock()

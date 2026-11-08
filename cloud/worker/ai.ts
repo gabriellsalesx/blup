@@ -37,6 +37,11 @@ const catalogSchema = z.object({ data: z.array(z.unknown()).max(5000) });
 const speechSchema = z.object({ id: z.string().min(1).max(200), name: z.string().max(200).nullish(), pricing: z.object({prompt:z.string().max(32)}), supported_voices:z.array(z.string().max(100)).max(5000).nullish() });
 const costSchema = z.number().finite().min(0).max(Number.MAX_SAFE_INTEGER / 1e6);
 const usageSchema = z.object({usage:z.object({cost:costSchema}).optional()});
+// OpenRouter answers a failure after the provider took the request with a
+// 200 whose body is only {"error":...} (no choices): that one is not an
+// answer, so without a usage.cost it is not charged at the estimate.
+const errorBody = z.object({ error: z.unknown().refine((e) => e !== undefined && e !== null) });
+const answered = (res: Response, raw: unknown) => res.ok && !errorBody.safeParse(raw).success;
 const outputSchema = z.object({choices:z.array(z.object({message:z.object({content:z.string().max(256_000).nullable().optional()}).optional(),finish_reason:z.string().nullable().optional()})).max(16).optional()});
 
 export type SpeechModel = { name: string; perCharMicros: number; voices: string[] };
@@ -74,8 +79,12 @@ export async function speechCatalog(env: Cloudflare.Env): Promise<{ models: Map<
 // isn't one of the model's.
 export async function voicePrice(env: Cloudflare.Env, model: string, voice: string): Promise<number | null> {
 	if (!(await modelsFor(env.DB, "studio_voice")).includes(model)) return null;
-	if (model === VOICE_MODEL) return VOICE.test(voice) ? PER_CHAR_MICROS : null;
+	// The recommended model at its own price: its voices of the four
+	// locales, and any other OpenRouter lists for it (the Studio offers
+	// pt-PT, en-GB... from that same list).
+	if (model === VOICE_MODEL && VOICE.test(voice)) return PER_CHAR_MICROS;
 	const m = (await speechCatalog(env)).models.get(model);
+	if (model === VOICE_MODEL) return m?.voices.includes(voice) ? PER_CHAR_MICROS : null;
 	if (!m || voice.length > 100) return null;
 	if (m.voices.length ? !m.voices.includes(voice) : voice !== "") return null;
 	return m.perCharMicros;
@@ -260,9 +269,9 @@ export async function aiText(env: Cloudflare.Env, userId: string, feature: AIFea
 	if (!admission.hold) return { code: admission.error.code as "NO_AI" | "AI_MONTH_LIMIT" | "AI_WEEK_LIMIT", status: 402 };
 	const hold = admission.hold;
 	try {
-		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(60_000), redirect: "manual", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://getblup.io", "X-Title": "Blup Cloud" }, body: JSON.stringify({ models, temperature: input.temperature ?? 0.7, max_tokens: input.maxTokens, usage: { include: true }, reasoning: { effort: input.think ? "low" : "none" }, ...(input.json ? { response_format: { type: "json_object" } } : {}), messages: [{ role: "system", content: input.system }, { role: "user", content: input.user }] }) });
+		const res = await fetch(`${env.OPENROUTER_URL || "https://openrouter.ai/api/v1"}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(60_000), redirect: "manual", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://getblup.io", "X-OpenRouter-Title": "Blup Cloud" }, body: JSON.stringify({ models, temperature: input.temperature ?? 0.7, max_tokens: input.maxTokens, reasoning: { effort: input.think ? "low" : "none" }, ...(input.json ? { response_format: { type: "json_object" } } : {}), messages: [{ role: "system", content: input.system }, { role: "user", content: input.user }] }) });
 		const raw: unknown = await res.json().catch(() => null);
-		const cost = providerCost(raw, res.ok ? estimate : 0);
+		const cost = providerCost(raw, answered(res, raw) ? estimate : 0);
 		if (res.ok || usageSchema.safeParse(raw).success) await settle(env.DB, hold, [env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,?,?,?)").bind(userId, feature, input.maxTokens, cost)]);
 		const out = outputSchema.safeParse(raw), choice = out.success ? out.data.choices?.[0] : undefined;
 		const model = z.object({ model: z.string().max(200) }).safeParse(raw);
@@ -301,7 +310,7 @@ export const aiApi = new Hono<App>()
   const hold=admission.hold;
   try {
    if(!c.env.OPENROUTER_API_KEY) return c.json(fail("A narração está indisponível agora.","UNAVAILABLE"),503);
-   const res=await fetch(`${c.env.OPENROUTER_URL||"https://openrouter.ai/api/v1"}/audio/speech`,{method:"POST",signal:AbortSignal.timeout(120_000),redirect:"manual",headers:{Authorization:`Bearer ${c.env.OPENROUTER_API_KEY}`,"Content-Type":"application/json","HTTP-Referer":"https://getblup.io","X-Title":"Blup Cloud"},body:JSON.stringify({model,input,...(voice?{voice}:{}),response_format:"mp3"})});
+   const res=await fetch(`${c.env.OPENROUTER_URL||"https://openrouter.ai/api/v1"}/audio/speech`,{method:"POST",signal:AbortSignal.timeout(120_000),redirect:"manual",headers:{Authorization:`Bearer ${c.env.OPENROUTER_API_KEY}`,"Content-Type":"application/json","HTTP-Referer":"https://getblup.io","X-OpenRouter-Title":"Blup Cloud"},body:JSON.stringify({model,input,...(voice?{voice}:{}),response_format:"mp3"})});
    // Audio responses may expose the provider cost as a numeric header.
    const headerCost=z.coerce.number().pipe(costSchema).safeParse(res.headers.get("x-openrouter-cost")??res.headers.get("x-usage-cost")??undefined);
    let actual=headerCost.success?Math.ceil(headerCost.data*1e6):cost;
@@ -335,9 +344,9 @@ export const aiApi = new Hono<App>()
   const hold=admission.hold;
   try{
    if(!c.env.OPENROUTER_API_KEY) return c.json(fail("A tradução está indisponível agora.","UNAVAILABLE"),503);
-   const res=await fetch(`${c.env.OPENROUTER_URL||"https://openrouter.ai/api/v1"}/chat/completions`,{method:"POST",signal:AbortSignal.timeout(120_000),redirect:"manual",headers:{Authorization:`Bearer ${c.env.OPENROUTER_API_KEY}`,"Content-Type":"application/json","HTTP-Referer":"https://getblup.io","X-Title":"Blup Cloud"},body:JSON.stringify({models,temperature:0.2,max_tokens:maxTokens,usage:{include:true},messages:[{role:"system",content:translatePrompt(from,to)},{role:"user",content:text}]})});
+   const res=await fetch(`${c.env.OPENROUTER_URL||"https://openrouter.ai/api/v1"}/chat/completions`,{method:"POST",signal:AbortSignal.timeout(120_000),redirect:"manual",headers:{Authorization:`Bearer ${c.env.OPENROUTER_API_KEY}`,"Content-Type":"application/json","HTTP-Referer":"https://getblup.io","X-OpenRouter-Title":"Blup Cloud"},body:JSON.stringify({models,temperature:0.2,max_tokens:maxTokens,reasoning:{effort:"none"},messages:[{role:"system",content:translatePrompt(from,to)},{role:"user",content:text}]})});
    const raw:unknown=await res.json().catch(()=>null);
-   const cost=providerCost(raw,res.ok?estimate:0);
+   const cost=providerCost(raw,answered(res,raw)?estimate:0);
    // Charge before validating content: truncated/malformed answers can cost.
    if(res.ok||usageSchema.safeParse(raw).success) await settle(c.env.DB,hold,[c.env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,'translation',?,?)").bind(userId,chars,cost)]);
    const out=outputSchema.safeParse(raw),choice=out.success?out.data.choices?.[0]:undefined;

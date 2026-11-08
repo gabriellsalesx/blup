@@ -1,7 +1,7 @@
 # A Ponte do WhatsApp (cloud/bridge) na hospedagem, a cada mudança na main.
 #
-# Compila aqui, porque a compilação passa de 1 GB de memória e a aplicação
-# tem 512 MB, e envia só o binário. O envio junta os arquivos: os
+# Compila aqui, porque a compilação pede mais memória do que a aplicação
+# tem, e envia só o binário. O envio junta os arquivos: os
 # certificados do banco e o resto que já estão na aplicação continuam. Na
 # aplicação, o comando de início é ./bridge.
 #

@@ -1,15 +1,18 @@
 <script lang="ts">
   import Home from "./Home.svelte";
   import Workspace from "./Workspace.svelte";
-  import Onboarding from "./Onboarding.svelte";
-  import Welcome from "./Welcome.svelte";
-  import VaultOnboarding from "./VaultOnboarding.svelte";
   import type { SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import { Sites, ErrorReports, SetErrorReports } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import ErrorReportsAsk from "./ErrorReportsAsk.svelte";
   import { startPageReports } from "./errorreports";
   import { look, setPref } from "./theme.svelte";
   import Toaster from "./Toaster.svelte";
+  import { lazy } from "./lazy";
+
+  // Screens of the first steps, shown once or rarely: loaded when asked.
+  const Welcome = lazy(() => import("./Welcome.svelte"));
+  const Onboarding = lazy(() => import("./Onboarding.svelte"));
+  const VaultOnboarding = lazy(() => import("./VaultOnboarding.svelte"));
 
   // The open site, the new site screens, or the list of sites.
   let site = $state<SiteInfo | null>(null);
@@ -51,15 +54,15 @@
 {#if !ready}
   <!-- Finding the last site. -->
 {:else if welcome}
-  <Welcome onStart={() => (welcome = false)} onOpen={(s) => { welcome = false; site = s; }} />
+  {#await Welcome() then { default: C }}<C onStart={() => (welcome = false)} onOpen={(s) => { welcome = false; site = s; }} />{/await}
 {:else if site}
   {#key site.dir}
     <Workspace {site} onBack={() => (site = null)} onSwitch={(s) => (site = s)} />
   {/key}
 {:else if creatingVault}
-  <VaultOnboarding onCancel={() => (creatingVault = false)} onDone={(v) => { creatingVault = false; site = v; }} />
+  {#await VaultOnboarding() then { default: C }}<C onCancel={() => (creatingVault = false)} onDone={(v) => { creatingVault = false; site = v; }} />{/await}
 {:else if creating}
-  <Onboarding canCancel onCancel={() => (creating = false)} onDone={(s) => { creating = false; site = s; }} />
+  {#await Onboarding() then { default: C }}<C canCancel onCancel={() => (creating = false)} onDone={(s) => { creating = false; site = s; }} />{/await}
 {:else}
   <Home onOpen={(s) => (site = s)} onNew={() => (creating = true)} onNewVault={() => (creatingVault = true)} />
 {/if}

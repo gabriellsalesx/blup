@@ -610,6 +610,23 @@ describe("mirroring a public Telegram channel",()=>{
   const listed=await(await call("/hunts")).json() as {hunts:{kind:string;mirror:{channel:string;title:string|null;error:string|null}|null}[]};
   expect(listed.hunts).toEqual([expect.objectContaining({kind:"mirror",mirror:{channel:"promos",title:"Promos & Cia",error:null}})]);
  });
+ it("stops at the run's budget and leaves the rest of the posts for the next run",async()=>{
+  const channel=await addDiscord();await call("/affiliates/amazon",{method:"PUT",body:{tag:"minhatag-20"}});
+  const html_=(b:string)=>new Response(b,{headers:{"content-type":"text/html; charset=utf-8"}});
+  let html=page(post(1,"Velho","https://amzn.to/old"));
+  const {send}=net({"t.me/s/promos":()=>html_(html),"amzn.to":req=>new Response(null,{status:301,headers:{location:`https://www.amazon.com.br/Item/dp/${new URL(req.url).pathname==="/a"?"B0AAAAAAA1":"B0BBBBBBB2"}`}}),"www.amazon.com.br":()=>html_(`<meta property="og:title" content="Produto"><meta property="product:price:amount" content="10.00"><meta property="product:price:currency" content="BRL">`)});
+  vi.stubGlobal("fetch",send);
+  expect((await call("/hunts",{method:"POST",body:{kind:"mirror",channel:"promos",channelIds:[channel],filters:{}}})).status).toBe(201);
+  const t0=Date.now();
+  await collectMirrors(state.env,send,t0);
+  html=page(post(2,"Primeiro","https://amzn.to/a"),post(3,"Segundo","https://amzn.to/b"));
+  await collectMirrors(state.env,send,t0+11*60_000,{deliveries:1});
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(1);
+  expect(db.sqlite.prepare("SELECT cursor,next_at AS nextAt FROM deals_source WHERE id='telegram:promos'").get()).toEqual({cursor:"2",nextAt:t0+12*60_000});
+  await collectMirrors(state.env,send,t0+12*60_000);
+  expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_post").get()?.n).toBe(2);
+  expect(db.sqlite.prepare("SELECT cursor FROM deals_source WHERE id='telegram:promos'").get()).toEqual({cursor:"3"});
+ });
  it("pauses a channel that is gone or refuses, with the reason",async()=>{
   const channel=await addDiscord();
   vi.stubGlobal("fetch",net({"t.me/s/promos":()=>new Response("<html><div class=\"tgme_channel_info\"></div></html>",{headers:{"content-type":"text/html"}})}).send);

@@ -1,8 +1,5 @@
-<script module lang="ts">
-  export const DOCS = "https://getblup.pages.dev/bento/docs/";
-</script>
-
 <script lang="ts">
+  import { DOCS } from "./docs";
   import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails, AIConsent, SetAIConsent, ErrorReports, SetErrorReports } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { startPageReports } from "./errorreports";
@@ -39,7 +36,7 @@
   import { look, setPref, spellLang, spell } from "./theme.svelte";
   import { t, setLanguage } from "./i18n";
 
-  // The Studio's settings, like Obsidian's: a window with sections on the
+  // The Studio's settings: a window with sections on the
   // left. They are the Studio's (and Blup's), not the open site's.
   // siteLang is the open site's language: the AI tab shows only its voices.
   let { onClose, onPublish, start = "general", siteLang = "" }: { onClose: () => void; onPublish: () => void; start?: string; siteLang?: string } = $props();
@@ -191,7 +188,7 @@
   async function changeLang(l: string) {
     try {
       await SetLanguage(l);
-      setLanguage(l);
+      await setLanguage(l);
       lang = l;
       spell();
     } catch (e) { toastError(e); }

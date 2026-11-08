@@ -97,6 +97,18 @@ func (c *Client) http() *http.Client {
 	return &http.Client{Timeout: 60 * time.Second, CheckRedirect: httpsOnly}
 }
 
+// downloadTimeout bounds the archive download. The 60 second limit of the
+// API calls covers reading the body too, so a release archive on a slow
+// connection would always fail with it.
+const downloadTimeout = 20 * time.Minute
+
+func (c *Client) downloader() *http.Client {
+	if c.HTTP != nil {
+		return c.HTTP
+	}
+	return &http.Client{Timeout: downloadTimeout, CheckRedirect: httpsOnly}
+}
+
 // httpsOnly refuses a redirect off HTTPS: GitHub sends the download to its
 // file servers, always over HTTPS.
 func httpsOnly(req *http.Request, via []*http.Request) error {
@@ -140,14 +152,14 @@ func (c *Client) Latest(ctx context.Context) (Release, error) {
 	req.Header.Set("Accept", "application/vnd.github+json")
 	resp, err := c.http().Do(req)
 	if err != nil {
-		return Release{}, err
+		return Release{}, fmt.Errorf("checking for updates: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return Release{}, fmt.Errorf("checking for updates: %s", resp.Status)
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return Release{}, err
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxSmall*8)).Decode(&r); err != nil {
+		return Release{}, fmt.Errorf("checking for updates: %w", err)
 	}
 	rel := Release{Version: strings.TrimPrefix(r.Tag, "v"), Notes: strings.TrimSpace(r.Body), URL: r.HTMLURL, assets: map[string]string{}}
 	for _, a := range r.Assets {
@@ -390,9 +402,13 @@ func (c *Client) get(ctx context.Context, url string, limit int64) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.http().Do(req)
+	hc := c.http()
+	if limit > maxSmall {
+		hc = c.downloader()
+	}
+	resp, err := hc.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("downloading the update: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -400,7 +416,7 @@ func (c *Client) get(ctx context.Context, url string, limit int64) ([]byte, erro
 	}
 	b, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("downloading the update: %w", err)
 	}
 	if int64(len(b)) > limit {
 		return nil, fmt.Errorf("GET %s: file too large", url)

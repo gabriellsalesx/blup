@@ -90,6 +90,15 @@ describe("deals page",()=>{
   db.sqlite.prepare("UPDATE subscription SET plan='max' WHERE reference_id='alice'").run();
   expect((await visit("/ofertas-ana/?q=x"))?.status).toBe(404);
   db.sqlite.prepare("UPDATE subscription SET plan='ultra_deals' WHERE reference_id='alice'").run();
+  // A banned account's page stops at once, even for a visit that has its version.
+  const seen=(await visit("/ofertas-ana/"))!;expect(seen.status).toBe(200);
+  // A lost plan too: no 304 from the version the visitor already has.
+  db.sqlite.prepare("UPDATE subscription SET plan='max' WHERE reference_id='alice'").run();
+  expect((await serveDealsSite(new Request(`https://${HOST}/ofertas-ana/`,{headers:{"if-none-match":seen.headers.get("etag")??""}}),state.env))?.status).toBe(404);
+  db.sqlite.prepare("UPDATE subscription SET plan='ultra_deals' WHERE reference_id='alice'").run();
+  db.sqlite.prepare("UPDATE user SET banned=1 WHERE id='alice'").run();
+  expect((await serveDealsSite(new Request(`https://${HOST}/ofertas-ana/`,{headers:{"if-none-match":seen.headers.get("etag")??""}}),state.env))?.status).toBe(404);
+  db.sqlite.prepare("UPDATE user SET banned=0 WHERE id='alice'").run();
   expect((await call(`/channels/${site.channelId}`,{method:"DELETE"})).status).toBe(200);
   expect(db.sqlite.prepare("SELECT count(*) AS n FROM deals_site").get()).toEqual({n:0});
   expect((await visit("/ofertas-ana/"))?.status).toBe(404);

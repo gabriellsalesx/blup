@@ -240,3 +240,21 @@ func TestModelsRefusesBadPricesAndHugeLists(t *testing.T) {
 		t.Fatal("a huge list was read")
 	}
 }
+
+// A failure after the provider took the request comes as a 200 with a JSON
+// error: never kept as audio.
+func TestSpeakErrorIn200(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-OpenRouter-Title") != "Blup Studio" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"error":{"code":502,"message":"provider failed"}}`))
+	}))
+	defer srv.Close()
+	audio, err := (&Client{Key: "k", BaseURL: srv.URL}).Speak(context.Background(), DefaultModel, "Olá", "")
+	if err == nil || audio != nil || !strings.Contains(err.Error(), "provider failed") {
+		t.Fatalf("audio %d bytes, err %v", len(audio), err)
+	}
+}

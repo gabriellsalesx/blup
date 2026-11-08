@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -203,17 +204,17 @@ func appInstalled(ctx context.Context, f config.Feedback) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	res, err := http.DefaultClient.Do(req)
+	res, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("checking the comments app: %w", err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		return false, fmt.Errorf("%s: %s", f.LoginAPI(), res.Status)
 	}
 	var v struct{ Installed bool }
-	if err := json.NewDecoder(res.Body).Decode(&v); err != nil {
-		return false, err
+	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<16)).Decode(&v); err != nil {
+		return false, fmt.Errorf("checking the comments app: %w", err)
 	}
 	return v.Installed, nil
 }

@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/svelte";
 import type { HandleClientError } from "@sveltejs/kit/hooks";
 import { BLUP_VERSION } from "../../shared/version";
 
@@ -7,12 +6,23 @@ import { BLUP_VERSION } from "../../shared/version";
 // replay), nothing personal. The DSN of each panel comes at build time
 // (VITE_SENTRY_DSN); without it, as on this computer, nothing is sent.
 // https://docs.sentry.io/platforms/javascript/guides/svelte/
+// The SDK (about 90 KB) is its own chunk, loaded after the panel starts and
+// only when there is a DSN, so it never delays the first screen.
+
+type SentrySDK = typeof import("./sentry-sdk");
+let sdk: Promise<SentrySDK> | undefined;
 
 export type Panel = "cloud" | "pulse" | "deals" | "staff";
 
 export function startErrors(panel: Panel, dsn: string | undefined = import.meta.env.VITE_SENTRY_DSN) {
 	if (!dsn || typeof window === "undefined") return;
 	const local = ["localhost", "127.0.0.1"].includes(location.hostname) || location.hostname.endsWith(".localhost");
+	sdk = import("./sentry-sdk").then((Sentry) => { init(Sentry, panel, dsn, local); return Sentry; });
+	// A failed download (offline, a new deploy) leaves the panel as it is.
+	sdk.catch(() => { sdk = undefined; });
+}
+
+function init(Sentry: SentrySDK, panel: Panel, dsn: string, local: boolean) {
 	Sentry.init({
 		dsn,
 		environment: local ? "development" : "production",
@@ -49,5 +59,5 @@ export function startErrors(panel: Panel, dsn: string | undefined = import.meta.
 // Only the unexpected ones ("unknown"); a 404 or an error(...) of the app
 // is not a bug.
 export const handleError: HandleClientError = ({ kind, error }) => {
-	if (kind === "unknown") Sentry.captureException(error);
+	if (kind === "unknown") void sdk?.then((Sentry) => Sentry.captureException(error), () => {});
 };

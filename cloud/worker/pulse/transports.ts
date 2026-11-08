@@ -3,6 +3,10 @@ import {discordWebhook,slackWebhook,chatIdSchema} from "./channel-crypto";
 import {boundedBody} from "../validation";
 import {discordPayload,telegramPayload,slackPayload,webhookPayload,webhookSignature,type AlertMessage} from "./alert-message";
 import {webhookTarget} from "./channel-crypto";
+// Whether Telegram says the chat itself is gone (blocked, removed, never
+// existed). Any other 400 (a message it could not read, for instance) is
+// passing and must not turn the destination off for good.
+export function telegramGone(code:number,description=""){return code===403||code===404||code===400&&/chat not found|chat_id is empty|peer_id_invalid|group chat was upgraded|bot was kicked|user is deactivated|have no rights to send|not enough rights/i.test(description);}
 import {monitorURL,publicDNS} from "./monitor-http";
 export type Delivery={sent:boolean;permanent:boolean;code:string|null;waitMs:number;global:boolean};
 export const success=(waitMs=0):Delivery=>({sent:true,permanent:false,code:null,waitMs,global:false});
@@ -25,10 +29,10 @@ export async function deliverTelegram(env:Cloudflare.Env,target:string,message:A
  if(!/^[0-9]+:[A-Za-z0-9_-]{20,200}$/.test(env.PULSE_TELEGRAM_TOKEN??""))return failure("CHANNEL_UNAVAILABLE",300_000);
  try{
   const res=await fetch(`https://api.telegram.org/bot${env.PULSE_TELEGRAM_TOKEN}/sendMessage`,{method:"POST",redirect:"manual",signal:AbortSignal.timeout(10_000),headers:{"content-type":"application/json"},body:JSON.stringify({chat_id:parsed.data,...telegramPayload(message),link_preview_options:{is_disabled:true}})}),body=await json(res);
-  const result=z.discriminatedUnion("ok",[z.object({ok:z.literal(true),result:z.object({message_id:z.number().int().nonnegative()})}),z.object({ok:z.literal(false),error_code:z.number().int(),parameters:z.object({retry_after:z.number().int().nonnegative().optional()}).optional()})]).safeParse(body);
+  const result=z.discriminatedUnion("ok",[z.object({ok:z.literal(true),result:z.object({message_id:z.number().int().nonnegative()})}),z.object({ok:z.literal(false),error_code:z.number().int(),description:z.string().max(1024).optional(),parameters:z.object({retry_after:z.number().int().nonnegative().optional()}).optional()})]).safeParse(body);
   if(!result.success)return failure("PROVIDER");if(result.data.ok)return res.ok?success(1000):failure("PROVIDER");
   if(result.data.error_code===429)return failure("RATE_LIMIT",wait(result.data.parameters?.retry_after??res.headers.get("retry-after")),false,true);
-  if([400,403,404].includes(result.data.error_code))return failure("DESTINATION_DISABLED",0,true);
+  if(telegramGone(result.data.error_code,result.data.description))return failure("DESTINATION_DISABLED",0,true);
   return failure("PROVIDER");
  }catch{return failure("PROVIDER");}
 }

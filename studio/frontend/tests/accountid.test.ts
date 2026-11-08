@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const src = readFileSync(new URL("../src/i18n.ts", import.meta.url), "utf8");
+const src = ["i18n.ts", "i18n-en.ts", "i18n-es.ts"].map((f) => readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8")).join("\n");
 
 test("the help text is exactly the approved one", () => {
   for (const help of ["Em caso de ajuda, informe seu ID.", "If you need help, share your ID.", "Si necesitas ayuda, comparte tu ID."])

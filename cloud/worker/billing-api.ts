@@ -5,7 +5,7 @@ import {validate,opaqueId} from "./validation";
 import {pulseSession,type PulseApp} from "./pulse/access";
 import {planNamed} from "./plans";
 import {planNameSchema,paidPlanNameSchema} from "../shared/pulse-plans";
-import {BillingFlowError,withSubscription,buildQuote,subscriptionFingerprint,quoteSchema,keepSchema,selectionFor,stripeOptions,stripeURL,flowSubscription,checkout,portal,checkoutParamsSchema} from "./billing-flow";
+import {BillingFlowError,withSubscription,buildQuote,subscriptionFingerprint,quoteSchema,keepSchema,selectionFor,stripeOptions,stripeURL,flowSubscription,checkout,portal,checkoutParamsSchema,checkoutReplayable} from "./billing-flow";
 import {createStripe} from "./stripe-client";
 import {siteLock,unlockSite} from "./quota";
 
@@ -99,7 +99,7 @@ export const billingApi=new Hono<PulseApp>().use("*",pulseSession)
  .delete("/checkout",async c=>{
   const owner=c.get("session").user.id,lock=await siteLock(c.env.DB,`billing-account:${owner}`,60_000);if(!lock)throw new BillingFlowError("BILLING_BUSY",503);
   try{
-   const saved=await c.env.DB.prepare("SELECT id,params,session_id AS sessionId FROM billing_checkout WHERE user_id=?").bind(owner).first<{id:string;params:string;sessionId:string|null}>();if(saved&&!saved.sessionId){const session=z.object({id:z.string()}).parse(await createStripe(c.env.STRIPE_SECRET_KEY).checkout.sessions.create(checkoutParamsSchema.parse(JSON.parse(saved.params)),{...stripeOptions,idempotencyKey:`blup-checkout:${saved.id}`}));saved.sessionId=session.id;}if(saved?.sessionId)await createStripe(c.env.STRIPE_SECRET_KEY).checkout.sessions.expire(saved.sessionId,{},stripeOptions);else if(saved)throw new BillingFlowError("BILLING_CHECKOUT_PENDING");
+   const saved=await c.env.DB.prepare("SELECT id,params,session_id AS sessionId,expires_at AS expiresAt FROM billing_checkout WHERE user_id=?").bind(owner).first<{id:string;params:string;sessionId:string|null;expiresAt:number}>();if(saved&&!saved.sessionId&&checkoutReplayable(saved)){const session=z.object({id:z.string()}).parse(await createStripe(c.env.STRIPE_SECRET_KEY).checkout.sessions.create(checkoutParamsSchema.parse(JSON.parse(saved.params)),{...stripeOptions,idempotencyKey:`blup-checkout:${saved.id}`}));saved.sessionId=session.id;}if(saved?.sessionId)await createStripe(c.env.STRIPE_SECRET_KEY).checkout.sessions.expire(saved.sessionId,{},stripeOptions);else if(saved&&checkoutReplayable(saved))throw new BillingFlowError("BILLING_CHECKOUT_PENDING");
    await c.env.DB.prepare("DELETE FROM billing_checkout WHERE user_id=?").bind(owner).run();return c.json({ok:true});
   }finally{await unlockSite(c.env.DB,`billing-account:${owner}`,lock);}
  });

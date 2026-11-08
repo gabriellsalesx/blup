@@ -36,6 +36,12 @@ it("limits redirects to three hops and turns network timeout into a bounded fail
  const send=vi.fn(async(input:RequestInfo|URL)=>String(input).startsWith("https://cloudflare-dns.com/")?Response.json({Status:0,Answer:[{type:1,data:"93.184.216.34"}]}):new Response(null,{status:302,headers:{location:"/next"}}));expect(await checkHTTP("https://example.com/",false,send)).toMatchObject({outcome:"down",status:302});expect(send).toHaveBeenCalledTimes(12);
  expect(await checkHTTP("https://example.com/",false,async()=>{throw new TypeError("network");})).toMatchObject({outcome:"down",reason:"network"});
 });
+it("treats a failure of our own DNS lookup as unknown, and a missing name as down",async()=>{
+ const site=vi.fn(async()=>new Response("ok"));
+ for(const resolver of [new Response("busy",{status:429}),new Response("<html>",{status:200})]){const send=vi.fn(async(input:RequestInfo|URL)=>String(input).startsWith("https://cloudflare-dns.com/")?resolver.clone():site());expect(await checkHTTP("https://example.com/",false,send)).toMatchObject({outcome:"unknown",reason:"network"});}
+ const missing=vi.fn(async(input:RequestInfo|URL)=>String(input).startsWith("https://cloudflare-dns.com/")?Response.json({Status:3}):site());expect(await checkHTTP("https://example.com/",false,missing)).toMatchObject({outcome:"down",reason:"network"});
+ expect(site).not.toHaveBeenCalled();
+});
 it("requires two consecutive failures/successes, ignores duplicate checks and records gaps",()=>{
  const now=Date.UTC(2026,10,15,12),base={id:"one",monitor:"monitor1",revision:1,scheduledAt:now,checkedAt:now,intervalMinutes:5,result:{outcome:"down" as const,status:500,durationMs:1,reason:"http" as const}};
  expect(store.record(base).state).toBe("unknown");expect(store.record(base).duplicate).toBe(true);

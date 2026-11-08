@@ -52,10 +52,15 @@ func Run(ctx context.Context, args []string) error {
 		}
 	} else if err := chooseLanguageIfNeeded(&g); err != nil {
 		return err
+	} else if err := askReports(&g); err != nil {
+		return err
 	}
+	startReports(g)
 	switch cmd {
 	case "":
 		return menu(ctx, &g)
+	case "reports", "relatorios":
+		return setReports(&g, args[1:])
 	case "new", "novo":
 		return newSite(ctx, &g)
 	case "preview", "ver":

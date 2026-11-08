@@ -78,10 +78,10 @@ it("binds a new destination to the chosen project, in place of the one it had",a
  expect(db.sqlite.prepare("SELECT type FROM pulse_project_channel WHERE project_id='1' ORDER BY type").all()).toEqual([{type:"discord"},{type:"telegram"}]);
 });
 it("shapes one alert as a Discord embed and as Telegram text with entities",()=>{
- const message:AlertMessage={event:"issue",label:"New issue",title:"TypeError: <b>x</b> is undefined",url:"https://pulse.getblup.io/issues?project=1",tone:"red",fields:[{name:"Project",value:"Tiro Seguro"},{name:"Environment",value:"development"},{name:"Release",value:""}]};
- expect(discordPayload(message).embeds[0]).toEqual({author:{name:"New issue"},title:"TypeError: <b>x</b> is undefined",url:"https://pulse.getblup.io/issues?project=1",color:0xef4444,fields:[{name:"Project",value:"Tiro Seguro",inline:true},{name:"Environment",value:"development",inline:true},{name:"Release",value:"-",inline:true}]});
+ const message:AlertMessage={event:"issue",label:"New issue",title:"TypeError: <b>x</b> is undefined",url:"https://pulse.getblup.io/issues?project=1",tone:"red",fields:[{name:"Project",value:"Meu App"},{name:"Environment",value:"development"},{name:"Release",value:""}]};
+ expect(discordPayload(message).embeds[0]).toEqual({author:{name:"New issue"},title:"TypeError: <b>x</b> is undefined",url:"https://pulse.getblup.io/issues?project=1",color:0xef4444,fields:[{name:"Project",value:"Meu App",inline:true},{name:"Environment",value:"development",inline:true},{name:"Release",value:"-",inline:true}]});
  const tg=telegramPayload(message);
- expect(tg.text).toBe("Blup Pulse · New issue\nTypeError: <b>x</b> is undefined\n\nProject: Tiro Seguro\nEnvironment: development\nRelease: -");
+ expect(tg.text).toBe("Blup Pulse · New issue\nTypeError: <b>x</b> is undefined\n\nProject: Meu App\nEnvironment: development\nRelease: -");
  const at=(e:{offset:number;length:number})=>tg.text.slice(e.offset,e.offset+e.length);
  expect(tg.entities.map(e=>[e.type,at(e)])).toEqual([["bold","Blup Pulse · New issue"],["bold","TypeError: <b>x</b> is undefined"],["text_link","TypeError: <b>x</b> is undefined"],["bold","Project: "],["bold","Environment: "],["bold","Release: "]]);
  expect(discordPayload({...message,title:"x".repeat(400)}).embeds[0].title).toHaveLength(256);
@@ -150,4 +150,11 @@ it("keeps every destination in a project: a replaced one and a removed project's
  expect((await request("/projects/1/channels","PUT",{channelIds:[second.id]})).status).toBe(404);
  state.env.PULSE_PROJECT={getByName:()=>({purge:async()=>{}})} as unknown as Cloudflare.Env["PULSE_PROJECT"];Object.assign(state.env,{PULSE_SOURCEMAPS:{list:async()=>({objects:[],truncated:false}),delete:async()=>{}}});
  await purgeProject(state.env,"1","one");expect(ids()).not.toContain(second.id);expect(ids()).toHaveLength(2);
+});
+it("turns a Telegram destination off only when the chat itself is gone",async()=>{
+ const {telegramGone}=await import("./transports");
+ expect(telegramGone(403,"Forbidden: bot was blocked by the user")).toBe(true);
+ expect(telegramGone(400,"Bad Request: chat not found")).toBe(true);
+ expect(telegramGone(400,"Bad Request: can't parse entities: unsupported start tag")).toBe(false);
+ expect(telegramGone(400)).toBe(false);expect(telegramGone(500,"chat not found")).toBe(false);
 });

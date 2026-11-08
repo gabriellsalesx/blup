@@ -95,22 +95,31 @@ func cutSpace(s string) (lead, body, trail string) {
 }
 
 // Split cuts text into parts of at most max bytes at blank lines outside
-// code blocks (a longer paragraph stays whole).
+// code blocks: paragraphs are packed into a part while they fit, so a part
+// only goes over max when one paragraph (or code block) alone does.
 func Split(text string, max int) []string {
 	var parts []string
-	var cur strings.Builder
+	var cur, block strings.Builder
 	fence := false
+	flush := func() {
+		if cur.Len() > 0 && cur.Len()+block.Len() > max {
+			parts = append(parts, cur.String())
+			cur.Reset()
+		}
+		cur.WriteString(block.String())
+		block.Reset()
+	}
 	for line := range strings.Lines(text) {
 		trim := strings.TrimSpace(line)
 		if strings.HasPrefix(trim, "```") || strings.HasPrefix(trim, "~~~") {
 			fence = !fence
 		}
-		cur.WriteString(line)
-		if !fence && trim == "" && cur.Len() >= max*3/4 {
-			parts = append(parts, cur.String())
-			cur.Reset()
+		block.WriteString(line)
+		if !fence && trim == "" {
+			flush()
 		}
 	}
+	flush()
 	if cur.Len() > 0 {
 		parts = append(parts, cur.String())
 	}
@@ -168,7 +177,7 @@ func (c *Client) post(ctx context.Context, url string, body []byte) (text string
 	req.Header.Set("Authorization", "Bearer "+c.Key)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("HTTP-Referer", "https://github.com/gabriellsalesx/blup")
-	req.Header.Set("X-Title", "Blup Studio")
+	req.Header.Set("X-OpenRouter-Title", "Blup Studio")
 	hc := c.HTTP
 	if hc == nil {
 		hc = &http.Client{Timeout: 3 * time.Minute}

@@ -107,13 +107,13 @@ export async function feedHunt(env:Cloudflare.Env,hunt:Hunt,since:number,now=Dat
   link=offer=>({link:nuuvemLink(new URL(nuuvemPage(offer.url,country)),affiliate.siteId),affiliate:true,priceShown:country==="br"});
  }
  const order=hunt.kind==="nuuvem_deals"?"coalesce(discount,0) DESC,first_seen_at DESC,id":"first_seen_at DESC,id";
- const rows=await env.DB.prepare(`SELECT id,title,url,price,discount,platforms,kind FROM deals_offer WHERE kind=? AND first_seen_at>=? AND (expires_at IS NULL OR expires_at>?) ORDER BY ${order} LIMIT 200`).bind(offerKind[hunt.kind],since,now).all<CatalogRow>();
+ const rows=await env.DB.prepare(`SELECT id,title,url,price,discount,platforms,kind FROM deals_offer WHERE kind=? AND first_seen_at>=? AND (expires_at IS NULL OR expires_at>?) AND NOT EXISTS(SELECT 1 FROM deals_post p WHERE p.offer_id=deals_offer.id AND p.user_id=?) ORDER BY ${order} LIMIT 200`).bind(offerKind[hunt.kind],since,now,hunt.userId).all<CatalogRow>();
+ // (Offers this account already posted are left out in the same read.)
  // A description by the AI, when the account asked for it in the hunts' posts.
  const own=await settingsOf(env.DB,hunt.userId),language=own.ai.describe?await accountLanguage(env.DB,hunt.userId):"pt";
  let sent=0;
  for(const offer of rows.results){
   if(sent>=PER_ROUND)break;if(!matches(hunt.filters,offer))continue;
-  const fresh=await env.DB.prepare("SELECT 1 FROM deals_offer WHERE id=? AND NOT EXISTS(SELECT 1 FROM deals_post WHERE offer_id=? AND user_id=?)").bind(offer.id,offer.id,hunt.userId).first();if(!fresh)continue;
   const words=own.ai.describe?await describe(env,hunt.userId,{title:offer.kind==="game_free"?gameTitle(offer.title):offer.title,store:hunt.kind==="nuuvem_deals"?"Nuuvem":null,price:offer.kind==="game_free"?"free":null},language):null;
   const queued=await enqueue(env.DB,{owner:hunt.userId,offerId:offer.id,channels:hunt.channels,...link(offer),huntId:hunt.id,sendAt:now,now,paced:true,description:words&&"text" in words?words.text:null});
   if(queued)sent++;else if(!await env.DB.prepare("SELECT 1 FROM deals_post WHERE offer_id=? AND user_id=?").bind(offer.id,hunt.userId).first())break;

@@ -1,6 +1,6 @@
 import {planLabel,planPerks} from "../shared/plan-i18n";
 import type {Language} from "../shared/language";
-import { validateStripePrices,type Price } from "./price-schema";
+import { listPricesByLookup,validateStripePrices,type Price } from "./price-schema";
 import { PLANS,SUGGESTED,type Plan } from "./plans";
 import { createStripe } from "./stripe-client";
 
@@ -43,7 +43,7 @@ function catalog(env:Pick<Cloudflare.Env,"STRIPE_SECRET_KEY">){
 		const secret=env.STRIPE_SECRET_KEY;
 		current={secret,catalog:new PriceCatalog(async()=>{
 			if(!secret)throw new Error("Pricing unavailable");
-			return createStripe(secret).prices.list({active:true,type:"recurring",lookup_keys:keys,limit:100,expand:["data.product"]},{timeout:5_000,maxNetworkRetries:0});
+			return listPricesByLookup(createStripe(secret),keys);
 		})};
 	}
 	return current.catalog;

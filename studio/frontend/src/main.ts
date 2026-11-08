@@ -18,6 +18,7 @@ installUndo();
 const lang = Language();
 primeSound();
 lang
+  .catch(() => navigator.language.toLowerCase().slice(0, 2))
   .then(setLanguage)
   .catch(() => {})
   .then(loadTheme)

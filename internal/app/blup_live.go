@@ -27,6 +27,7 @@ type LiveState struct {
 type Live struct {
 	site   *config.Site
 	report func(LiveState)
+	ctx    context.Context // ends with Stop
 	cancel context.CancelFunc
 
 	mu      sync.Mutex
@@ -57,7 +58,7 @@ func StartLive(site *config.Site, report func(LiveState)) *Live {
 		return nil
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	l := &Live{site: site, report: report, cancel: cancel}
+	l := &Live{site: site, report: report, ctx: ctx, cancel: cancel}
 	go l.run(ctx)
 	return l
 }
@@ -87,13 +88,15 @@ func (l *Live) Changed() {
 		l.again = true
 		return
 	}
-	if time.Now().Before(l.quiet) {
+	// Stopped: a change no longer starts a sync (nor one cut short by
+	// Stop, which ends l.ctx).
+	if time.Now().Before(l.quiet) || l.ctx.Err() != nil {
 		return
 	}
 	if l.timer != nil {
 		l.timer.Stop()
 	}
-	l.timer = time.AfterFunc(liveDelay, func() { l.sync(context.Background()) })
+	l.timer = time.AfterFunc(liveDelay, func() { l.sync(l.ctx) })
 }
 
 func (l *Live) run(ctx context.Context) {
@@ -101,7 +104,20 @@ func (l *Live) run(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	me, err := c.Me(ctx)
+	// Offline at the start: asked again with growing pauses, so the live
+	// sync begins once the network is back. Signed out or a plan without
+	// it: by button.
+	var me blupcloud.Account
+	for wait := 10 * time.Second; ; wait = min(wait*2, 5*time.Minute) {
+		if me, err = c.Me(ctx); err == nil || errors.Is(err, blupcloud.ErrSignedOut) {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(wait):
+		}
+	}
 	if err != nil || !me.Plan.Limits.Live {
 		return // by button
 	}

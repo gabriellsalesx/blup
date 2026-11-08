@@ -1,4 +1,4 @@
-// Markdown tables drawn as tables in the editor, like Obsidian's live
+// Markdown tables drawn as tables in the editor, as in a live
 // preview: the cells are typed in place, Tab and Enter move between them,
 // the "+" on the right and bottom edges add a column or a row, and a
 // right-click on a cell inserts or deletes rows and columns. The note keeps

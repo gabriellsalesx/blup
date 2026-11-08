@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { PageProps } from "./$types";
-	import { untrack } from "svelte";
 	import { goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
 	import ArrowUp from "@lucide/svelte/icons/arrow-up";
@@ -28,7 +27,8 @@
 	const name = $derived(params.feature as AIFeature);
 	const info = $derived(featureInfo[name]);
 	const tab = $derived(tabOf(name));
-	let ai = $state<AIModels | null>(untrack(() => data.ai));
+	// The lists as loaded, replaced by what the API answers after each save.
+	let ai = $derived<AIModels | null>(data.ai);
 	const list = $derived(ai?.features.find((f) => f.feature === name) ?? null);
 	const voice = $derived(list?.kind === "speech");
 	const role = $derived(markName(list?.kind ?? "chat"));

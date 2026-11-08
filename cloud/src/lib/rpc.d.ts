@@ -3875,6 +3875,18 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: string;
             };
             outputFormat: "json";
+            status: 429;
+        } | {
+            input: {
+                query: {
+                    release: string;
+                    file: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
             status: 413;
         } | {
             input: {
@@ -8109,6 +8121,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     uploadedAt: number;
                 }[];
                 limit: number;
+                bytesLimit: number;
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;

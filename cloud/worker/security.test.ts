@@ -24,7 +24,7 @@ import { cleanUp } from "./cleanup";
 import { pulseCorsPath, dealsCorsPath, panelCorsOrigin, mutationOriginAllowed } from "./security";
 import { cleanSites } from "./sites-cleanup";
 import { DAY,softDelete,restoreAccount,purgeAccounts,cancelDeletedBilling,observePlan } from "./lifecycle";
-import { serveSite } from "./serve-site";
+import { forgetSiteHeads,serveSite } from "./serve-site";
 
 let d1: TestD1;
 let notes: TestBucket;
@@ -34,7 +34,7 @@ const HASH = "a".repeat(64);
 const ctx = {waitUntil:(p:Promise<unknown>) => pending.push(p),passThroughOnException:()=>{}} as unknown as ExecutionContext;
 
 beforeEach(() => {
- vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
+ forgetSiteHeads();vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
 	d1 = new TestD1(); notes = new TestBucket(); sites = new TestBucket(); pending = []; state.mails = [];state.mailFailures=0;state.mailCalls=0;
 	state.db = drizzle(d1.asD1(), {schema});
 	Object.assign(state.env, {DB:d1.asD1(),NOTES:notes.asR2(),SITES:sites.asR2(),APP_URL:"https://cloud.audit.invalid",STAFF_HOST:"staff.audit.invalid",SITES_DOMAIN:"getblup.site",OTP_LIMIT:{limit:async()=>({success:true})},ABUSE_LIMIT:{limit:async()=>({success:true})},BULK_LIMIT:{limit:async()=>({success:true})},TURNSTILE_SITE_KEY:"audit-sitekey"});
@@ -418,7 +418,7 @@ describe("round two: publication and deletion lifecycle",()=>{
 		const now=Date.now();d1.sqlite.exec("UPDATE site SET deploy='fixture-deploy' WHERE id='site-a';UPDATE subscription SET status='canceled' WHERE reference_id='alice'");
 		await sites.put("s/site-a/d/fixture-deploy",JSON.stringify({"/index.html":[HASH,"text/plain",0]}));await sites.put(`s/site-a/f/${HASH}`,"public");
 		await observePlan(state.env.DB,"alice","free",now);
-		const serve=()=>serveSite(new Request("https://alice-site.getblup.site/"),state.env,ctx,"alice-site");
+		const serve=()=>{forgetSiteHeads();return serveSite(new Request("https://alice-site.getblup.site/"),state.env,ctx,"alice-site");};
 		expect((await serve()).status).toBe(200);
 		d1.sqlite.prepare("UPDATE resource_quota SET grace_until=? WHERE user_id='alice'").run(now-1);expect((await serve()).status).toBe(404);
 		d1.sqlite.exec("UPDATE subscription SET status='active' WHERE reference_id='alice'");expect((await serve()).status).toBe(200);

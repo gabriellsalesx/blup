@@ -21,8 +21,11 @@ import {DetailPage,SHARE_SCRIPT,HISTORY_DAYS,type PricePoint,type SiteDetail} fr
 type Found={id:string;userId:string;slug:string;title:string;description:string;language:string;logoLight:string|null;logoDark:string|null;showTitle:number;links:string;socials:string;updatedAt:number;latest:number|null};
 const found=`SELECT s.id,s.user_id AS userId,s.slug,s.title,s.description,s.language,s.logo_light AS logoLight,s.logo_dark AS logoDark,s.show_title AS showTitle,s.links,s.socials,s.updated_at AS updatedAt,
  (SELECT max(p.sent_at) FROM deals_post p WHERE p.channel_id=s.channel_id AND p.state='sent') AS latest FROM deals_site s`;
-const siteBySlug=(env:Cloudflare.Env,slug:string)=>env.DB.prepare(`${found} WHERE s.slug=?`).bind(slug).first<Found>();
-const siteByHost=(env:Cloudflare.Env,host:string)=>env.DB.prepare(`${found} JOIN deals_site_domain d ON d.site_id=s.id WHERE d.hostname=? AND d.verified_at IS NOT NULL AND d.status='active' AND d.ssl='active'`).bind(host).first<Found>();
+// A banned or deleted account's page stops at once (as its /r/ links),
+// before the version check and the edge cache answer for it.
+const served="EXISTS(SELECT 1 FROM user u LEFT JOIN resource_quota q ON q.user_id=u.id WHERE u.id=s.user_id AND u.banned=0 AND q.deleted_at IS NULL)";
+const siteBySlug=(env:Cloudflare.Env,slug:string)=>env.DB.prepare(`${found} WHERE s.slug=? AND ${served}`).bind(slug).first<Found>();
+const siteByHost=(env:Cloudflare.Env,host:string)=>env.DB.prepare(`${found} JOIN deals_site_domain d ON d.site_id=s.id WHERE d.hostname=? AND d.verified_at IS NOT NULL AND d.status='active' AND d.ssl='active' AND ${served}`).bind(host).first<Found>();
 
 type DealRow={platforms:string;endsAt:number|null;code:string;title:string;image:string|null;price:number|null;originalPrice:number|null;currency:string|null;discount:number|null;store:string;coupon:string|null;description:string|null;category:string|null;sentAt:number;kind:string};
 const https=z.url({protocol:/^https$/}).max(2048);
@@ -127,6 +130,10 @@ export async function serveDealsSite(req:Request,env:Cloudflare.Env):Promise<Res
  // deal (and the day, for offers that run out). A visit that has it gets
  // 304 at once.
  const now=Date.now(),day=Math.floor(now/86_400_000);
+ // Without the Deals plan (or a domain the account lost), no page: checked
+ // before the 304 and the edge cache, so a lost plan takes the page down
+ // at once.
+ if((await dealsAccess(env,site.userId,now)).readOnly)return own?null:notFound();
  // A deal's page changes with its own post and prices too.
  const detail=deal?await detailOf(env,site.id,deal[1]!,now):null;
  if(deal&&!detail)return notFound();
@@ -142,8 +149,6 @@ export async function serveDealsSite(req:Request,env:Cloudflare.Env):Promise<Res
  const cache=typeof caches==="undefined"?null:caches.default,key=new Request(`https://deals-site.cache/${site.id}/${etag.slice(1,-1)}`);
  const kept=await cache?.match(key);
  if(kept)return new Response(req.method==="HEAD"?null:kept.body,{headers});
- // Without the Deals plan (or a domain the account lost), no page.
- if((await dealsAccess(env,site.userId,now)).readOnly)return own?null:notFound();
  const info:SiteInfo={slug:site.slug,title:site.title,description:site.description,language:languageOf(site.language)??"pt",logos:{light:site.logoLight,dark:site.logoDark},showTitle:site.showTitle===1,links:linksOf(site.links),socials:socialsOf(site.socials)};
  const shared={now,site:info,lang,base:own?"":`/${site.slug}`,origin:url.origin,links:`https://${env.DEALS_PUBLIC_HOST||"deals.getblup.site"}`};
  let html:string;

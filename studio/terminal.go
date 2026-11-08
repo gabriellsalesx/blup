@@ -228,13 +228,19 @@ var (
 	// watcher misses it, so the preview starts again (a Bento home that
 	// was the section cards may now be the only section left).
 	onFolderGone func()
+	// watchReady closes when the current watcher has gone through the
+	// notes' folders (the tests wait for it).
+	watchReady chan struct{}
 )
 
 // notesChanged tells the window which notes changed (one per line).
 var notesChanged = func(list string) { application.Get().Event.Emit("notesChanged", list) }
 
 // watchNotes tells the window when notes change on disk (an agent, another
-// editor), at most every half second. Hidden folders are left out.
+// editor), at most every half second. Hidden folders are left out. The
+// folders are gone through in the watcher's own goroutine, so opening a
+// big vault doesn't wait for it; another site opened meanwhile closes this
+// watcher, and the walk stops at its next folder.
 func watchNotes(root string) {
 	watchMu.Lock()
 	defer watchMu.Unlock()
@@ -250,7 +256,10 @@ func watchNotes(root string) {
 		return
 	}
 	watcher = w
+	ready := make(chan struct{})
+	watchReady = ready
 	// The folders at the top of the notes, to know a removed name was one.
+	// Only the goroutine below touches it.
 	top := map[string]bool{}
 	add := func(dir string) {
 		filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
@@ -263,12 +272,16 @@ func watchNotes(root string) {
 			if filepath.Dir(p) == root {
 				top[p] = true
 			}
-			_ = w.Add(p)
+			if err := w.Add(p); errors.Is(err, fsnotify.ErrClosed) {
+				return filepath.SkipAll // another site opened: this walk is over
+			}
 			return nil
 		})
 	}
-	add(root)
 	go func() {
+		// Changes during the walk wait in the system's queue, read below.
+		add(root)
+		close(ready)
 		var timer *time.Timer
 		changed := map[string]bool{}
 		var mu sync.Mutex

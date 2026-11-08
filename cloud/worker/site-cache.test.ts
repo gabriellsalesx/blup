@@ -4,7 +4,7 @@ vi.mock("cloudflare:workers",()=>({WorkerEntrypoint:class{
 	constructor(readonly ctx:ExecutionContext,readonly env:Cloudflare.Env){}
 }}));
 import { CachedSite } from "./sites-entry";
-import { serveDeploy,serveSite } from "./serve-site";
+import { forgetSiteHeads,serveDeploy,serveSite } from "./serve-site";
 import { drainSitePurges,expiredSitePurges,queueAccountPurge,queueSitePurge,siteTags } from "./site-cache-purge";
 import { softDelete,restoreAccount } from "./lifecycle";
 import { providerCall } from "./domain-provider";
@@ -12,7 +12,7 @@ import { providerCall } from "./domain-provider";
 let db:TestD1,bucket:TestBucket,env:Cloudflare.Env;
 const HASH="8".repeat(64);
 beforeEach(()=>{
-	db=new TestD1();bucket=new TestBucket();seedUser(db,"cache-owner","max");
+	forgetSiteHeads();db=new TestD1();bucket=new TestBucket();seedUser(db,"cache-owner","max");
 	env={DB:db.asD1(),SITES:bucket.asR2(),SITES_DOMAIN:"getblup.site",SYNC_LIVE:{getByName:()=>({revoke:async()=>{}})}} as unknown as Cloudflare.Env;
 	vi.stubGlobal("fetch",vi.fn(async()=>{throw new Error("Network forbidden");}));
 });
@@ -44,14 +44,16 @@ describe("Workers Cache gateway and entrypoint",()=>{
 		expect(res.headers.get("link")).toContain("</css/bento.abcd.css>; rel=preload; as=style");
 		expect(res.headers.get("link")).toContain("</fonts/inter-latin.woff2>; rel=preload; as=font");
 	});
-	it("rechecks D1 before every hit and does not invoke a cached site after revocation",async()=>{
+	it("rechecks D1 within 10 seconds of a hit and does not invoke a cached site after revocation",async()=>{
 		await deploy("cache-one","cached-revocation");
 		const fetchCached=vi.fn(async()=>new Response("cached public body",{headers:{"cache-control":"public, max-age=600"}}));
 		const loopback={exports:{CachedSite:()=>({fetch:fetchCached})}} as unknown as ExecutionContext;
 		const req=new Request("https://cache-one.getblup.site/");
 		expect((await serveSite(req,env,loopback,"cache-one")).status).toBe(200);
 		db.sqlite.exec("UPDATE user SET banned=1 WHERE id='cache-owner'");
-		const blocked=await serveSite(req,env,loopback,"cache-one");expect(blocked.status).toBe(404);expect(blocked.headers.get("cache-control")).toBe("no-store");expect(fetchCached).toHaveBeenCalledTimes(1);
+		// Who may be served is kept 10 seconds in the isolate.
+		const clock=vi.spyOn(Date,"now").mockReturnValue(Date.now()+11_000);
+		const blocked=await serveSite(req,env,loopback,"cache-one").finally(()=>clock.mockRestore());expect(blocked.status).toBe(404);expect(blocked.headers.get("cache-control")).toBe("no-store");expect(fetchCached).toHaveBeenCalledTimes(1);
 	});
 	it("tags successful deploy responses and never caches a missing file",async()=>{
 		await deploy("cache-tags","tags-v1");

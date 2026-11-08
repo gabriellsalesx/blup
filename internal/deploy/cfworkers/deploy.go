@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -386,7 +387,7 @@ func (c *Client) uploadBucket(ctx context.Context, accountID, jwt string, files 
 			if err != nil {
 				return nil, "", "", err
 			}
-			p := "/accounts/" + accountID + "/workers/assets/upload/" + files[0].hash
+			p := "/accounts/" + url.PathEscape(accountID) + "/workers/assets/upload/" + url.PathEscape(files[0].hash)
 			return bytes.NewBuffer(data), files[0].contentType, p, nil
 		}
 		var buf bytes.Buffer
@@ -410,7 +411,7 @@ func (c *Client) uploadBucket(ctx context.Context, accountID, jwt string, files 
 		if err := w.Close(); err != nil {
 			return nil, "", "", err
 		}
-		return &buf, w.FormDataContentType(), "/accounts/" + accountID + "/workers/assets/upload?base64=true", nil
+		return &buf, w.FormDataContentType(), "/accounts/" + url.PathEscape(accountID) + "/workers/assets/upload?base64=true", nil
 	}
 
 	attempts, gateway := 0, 0

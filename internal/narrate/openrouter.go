@@ -189,6 +189,11 @@ func (c *Client) speak(ctx context.Context, body []byte) (audio []byte, retry bo
 		retry = res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500
 		return nil, retry, apiError(res)
 	}
+	// A failure after the provider took the request comes as a 200 with a
+	// JSON error body, never audio.
+	if strings.Contains(res.Header.Get("Content-Type"), "application/json") {
+		return nil, false, apiError(res)
+	}
 	audio, err = io.ReadAll(res.Body)
 	if err != nil {
 		return nil, true, err
@@ -201,9 +206,10 @@ func (c *Client) speak(ctx context.Context, body []byte) (audio []byte, retry bo
 
 func (c *Client) headers(req *http.Request) {
 	req.Header.Set("Authorization", "Bearer "+c.Key)
-	// OpenRouter's app attribution.
+	// OpenRouter's app attribution (X-OpenRouter-Title; X-Title is its
+	// older name).
 	req.Header.Set("HTTP-Referer", "https://github.com/gabriellsalesx/blup")
-	req.Header.Set("X-Title", "Blup Studio")
+	req.Header.Set("X-OpenRouter-Title", "Blup Studio")
 }
 
 // apiError reads OpenRouter's error body ({"error":{"message":...}}).

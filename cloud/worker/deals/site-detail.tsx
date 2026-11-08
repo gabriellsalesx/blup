@@ -2,6 +2,7 @@
 /** @jsxImportSource hono/jsx */
 import {languageTag,type Language} from "../../shared/language";
 import {money} from "./message";
+import {currencyDigits} from "../../shared/deals-markets";
 import {Shell,Icon,dealHref,translator,placeOf,untilOf,type SiteDeal,type SitePageProps,type Translate} from "./site-page";
 
 // A deal's own page (/o/<code>/): the photo, the price, the coupon and the
@@ -87,7 +88,7 @@ export function DetailPage(props:DetailPageProps){
  const stats=deal.currency&&!free?priceStats(deal.prices,deal.price,props.now):null;
  const posted=new Intl.DateTimeFormat(languageTag[lang],{dateStyle:"long",timeZone:"America/Sao_Paulo"}).format(deal.sentAt);
  // Search engines: a product with its offer.
- const data={"@context":"https://schema.org","@type":"Product",name:deal.title,...(deal.image?{image:deal.image}:{}),...(deal.description?{description:deal.description}:{}),...(deal.price!==null&&deal.currency?{offers:{"@type":"Offer",price:(deal.price/100).toFixed(2),priceCurrency:deal.currency,url:go,availability:deal.expired?"https://schema.org/Discontinued":"https://schema.org/InStock"}}:{})};
+ const data={"@context":"https://schema.org","@type":"Product",name:deal.title,...(deal.image?{image:deal.image}:{}),...(deal.description?{description:deal.description}:{}),...(deal.price!==null&&deal.currency?{offers:{"@type":"Offer",price:(deal.price/10**currencyDigits(deal.currency)).toFixed(currencyDigits(deal.currency)),priceCurrency:deal.currency,url:go,availability:deal.expired?"https://schema.org/Discontinued":"https://schema.org/InStock"}}:{})};
  return <Shell page={props} title={`${deal.title} · ${site.title}`} description={deal.description||(store?`${deal.title} · ${store}`:deal.title)} canonical={canonical} alternates={alternates} image={deal.image} data={data} scripts={[SHARE_SCRIPT]}>
   <p class="back"><a href={`${props.base}/${lang!==site.language?`?lang=${lang}`:""}`}><Icon name="back" small/>{t("dealsSiteBack")}</a></p>
   <article class="detail">

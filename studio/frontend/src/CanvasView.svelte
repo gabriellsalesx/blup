@@ -23,7 +23,7 @@
   import { resolveHref, resolveWiki, type NoteRef } from "./notelinks";
   import { t } from "./i18n";
 
-  // A canvas of the vault, like Obsidian's: an endless board of cards
+  // A canvas of the vault: an endless board of cards
   // (text, notes of the vault, web addresses, groups) joined by arrows.
   // Saved by itself a moment after each change, as JSON Canvas.
   //
@@ -435,7 +435,7 @@
     editing = "edge:" + id;
   }
 
-  // Changed on disk by something else (Obsidian, an AI): opened again,
+  // Changed on disk by something else (another app, an AI): opened again,
   // unless there are changes of its own; notes on cards are read again.
   const off = Events.On("notesChanged", async (ev) => {
     const list = String(ev.data ?? "").split("\n").map((p) => p.toLowerCase());
@@ -602,7 +602,7 @@
   .world { position: absolute; inset-inline-start: 0; inset-block-start: 0; transform-origin: 0 0; }
   .edges { position: absolute; inset-inline-start: 0; inset-block-start: 0; width: 1px; height: 1px; overflow: visible; }
 
-  /* Cards, like Obsidian's: a border in the card's color, a hint of it
+  /* Cards: a border in the card's color, a hint of it
      inside. */
   .ccard { position: absolute; display: flex; border: 2px solid var(--c, var(--line)); border-radius: .6rem; background: color-mix(in srgb, var(--c, transparent) 10%, var(--panel)); box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
   .ccard.sel { outline: 2px solid var(--blue); outline-offset: 2px; }

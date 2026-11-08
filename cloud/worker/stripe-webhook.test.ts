@@ -86,6 +86,25 @@ describe("signed Stripe reconciliation against current provider state",()=>{
   expect(d1.sqlite.prepare("SELECT user_id,amount,currency FROM billing_event").all()).toEqual([{user_id:"alice",amount:2468,currency:"brl"}]);
   expect(calls).toHaveLength(2);expect(rows()[0]).toMatchObject({stripeId:"sub_audit",status:"active"});
  });
+ it("records refunds, disputes and early fraud warnings from current Stripe objects only",async()=>{
+  objects.set("/v1/charges/ch_audit",{id:"ch_audit",customer:"cus_audit",amount:4990,amount_refunded:2000,currency:"brl"});
+  objects.set("/v1/disputes/dp_audit",{id:"dp_audit",charge:"ch_audit",amount:4990,currency:"brl"});
+  objects.set("/v1/radar/early_fraud_warnings/issfr_audit",{id:"issfr_audit",charge:"ch_audit"});
+  expect((await deliver(hookEvent("evt_refund","charge.refunded","ch_audit",{amount_refunded:999999,customer:"cus_foreign"}))).status).toBe(200);
+  expect((await deliver(hookEvent("evt_dispute","charge.dispute.created","dp_audit",{amount:999999}))).status).toBe(200);
+  expect((await deliver(hookEvent("evt_fraud","radar.early_fraud_warning.created","issfr_audit",{charge:"ch_foreign"}))).status).toBe(200);
+  expect(d1.sqlite.prepare("SELECT stripe_event_id AS id,user_id,type,amount,currency FROM billing_event ORDER BY billing_event.id").all()).toEqual([
+   {id:"evt_refund",user_id:"alice",type:"charge.refunded",amount:2000,currency:"brl"},
+   {id:"evt_dispute",user_id:"alice",type:"charge.dispute.created",amount:4990,currency:"brl"},
+   {id:"evt_fraud",user_id:"alice",type:"radar.early_fraud_warning.created",amount:4990,currency:"brl"},
+  ]);
+  // Money events never change the plan by themselves.
+  expect(rows()).toEqual([{stripeId:null,status:"incomplete",plan:"max"}]);
+ });
+ it("acknowledges an event type it does not use without calling Stripe",async()=>{
+  expect((await deliver(hookEvent("evt_other","customer.created","cus_audit"))).status).toBe(200);
+  expect(calls).toHaveLength(0);expect(receipts()).toEqual({n:1});
+ });
  it("uses current checkout identifiers instead of the snapshot",async()=>{
   objects.set("/v1/checkout/sessions/cs_audit",{id:"cs_audit",mode:"subscription",subscription:"sub_audit"});
   expect((await deliver(hookEvent("evt_checkout","checkout.session.completed","cs_audit",{subscription:"sub_foreign"}))).status).toBe(200);
