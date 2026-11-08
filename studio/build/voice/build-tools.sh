@@ -44,7 +44,7 @@ x= # executable suffix
 # Fully static programs on Linux and Windows (libtool wants -all-static at
 # link time). macOS has no static system library: there the programs only
 # link Apple's, checked below.
-static=()
+static=() # (expanded with ${static[@]+...}: macOS bash 3.2 rejects an empty array under set -u)
 [ "$os" != darwin ] && static=(LDFLAGS=-all-static)
 # The oldest macOS the tools run on.
 [ "$os" = darwin ] && export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-11.0}
@@ -97,7 +97,7 @@ else
       --with-sonic=no --with-pcaudiolib=no --with-klatt=no --with-speechplayer=no \
       --with-extdict-ru=no --with-extdict-cmn=no --with-extdict-yue=no
     # One job: its data steps race each other in parallel.
-    make "${static[@]}" >/dev/null 2>&1
+    make ${static[@]+"${static[@]}"} >/dev/null 2>&1
   )
   espeak_bin=$espeak_src/src/espeak-ng
   espeak_data=$espeak_src/espeak-ng-data
@@ -111,7 +111,7 @@ fi
     ac_cv_header_termcap_h=no ac_cv_header_ncurses_termcap_h=no \
     ac_cv_lib_termcap_initscr=no ac_cv_lib_curses_initscr=no ac_cv_lib_ncurses_initscr=no \
     am_cv_func_iconv=no
-  make -j"$jobs" "${static[@]}" >/dev/null
+  make -j"$jobs" ${static[@]+"${static[@]}"} >/dev/null
 )
 
 # Only what Portuguese, English and Spanish need from eSpeak NG's data.

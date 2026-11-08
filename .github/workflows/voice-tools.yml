@@ -51,6 +51,13 @@ jobs:
           name: blup-voice-tools-${{ matrix.name }}
           path: ${{ runner.temp }}/vt/blup-voice-tools-${{ matrix.name }}.tar.gz
           if-no-files-found: error
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # Instala a voz local de verdade com o pacote recém-compilado e fala
+      # nas três línguas (TestRealInstall, em internal/kokoro).
+      - name: Testar a voz com este pacote
+        run: BLUP_VOICE_TOOLS_FILE="$RUNNER_TEMP/vt/blup-voice-tools-${{ matrix.name }}.tar.gz" go test -count=1 -run TestRealInstall -v ./internal/kokoro
 
   windows:
     runs-on: windows-latest
@@ -88,3 +95,12 @@ jobs:
           name: blup-voice-tools-windows-amd64
           path: ${{ runner.temp }}/vt/blup-voice-tools-windows-amd64.tar.gz
           if-no-files-found: error
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # Sem cgo, como o Studio do Windows é compilado.
+      - name: Testar a voz com este pacote
+        shell: bash
+        env:
+          CGO_ENABLED: "0"
+        run: BLUP_VOICE_TOOLS_FILE="$RUNNER_TEMP/vt/blup-voice-tools-windows-amd64.tar.gz" go test -count=1 -run TestRealInstall -v ./internal/kokoro
