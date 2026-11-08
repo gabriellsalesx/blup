@@ -71,7 +71,7 @@ func BlupSites(ctx context.Context) ([]BlupSite, error) {
 		if v.Head == 0 {
 			continue // never synced: nothing to bring
 		}
-		title, err := keys.OpenName(v.Name)
+		title, _, err := keys.OpenName(v.ID, v.Name)
 		if err != nil {
 			continue
 		}
@@ -125,6 +125,11 @@ func BringBlupSite(ctx context.Context, vault string) (*config.Site, error) {
 	}
 	if err := RememberSite(dir); err != nil {
 		return nil, err
+	}
+	// A name sealed before it was bound to the vault's id is sealed again
+	// now, once (best effort: it opens as it is anyway).
+	if c, keys, err := blupKeys(); err == nil {
+		_ = c.UpgradeVaultName(ctx, keys, vault)
 	}
 	return site, nil
 }

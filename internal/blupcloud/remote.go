@@ -19,6 +19,9 @@ import (
 // It is sealed before leaving the computer.
 type manifest struct {
 	Files map[string]manifestFile `json:"files"`
+	// Prev chains this version to the ones before it (chain.go). Manifests
+	// saved before the chain have none; older clients ignore it.
+	Prev *chainLink `json:"prev,omitempty"`
 }
 
 type manifestFile struct {
@@ -41,6 +44,9 @@ type Remote struct {
 
 	mu    sync.Mutex
 	known map[string][]string // sha -> blocks already in the vault
+	// macs are the chain MACs of the versions this Remote read or saved
+	// (notesync.Chained.Token).
+	macs map[int64][]byte
 	// held are sealed blocks the cloud refused for the storage limit
 	// (413 QUOTA): they wait for the version to be prepared (see
 	// prepare.go), which only goes up if it doesn't grow the use.
@@ -48,8 +54,9 @@ type Remote struct {
 }
 
 type head struct {
-	n int64
-	m manifest
+	n   int64
+	m   manifest
+	mac []byte // chain MAC of version n (nil when n is 0)
 }
 
 func (r *Remote) ID() string { return "blup:" + r.Vault }
@@ -88,16 +95,13 @@ func (r *Remote) Head(ctx context.Context, _ bool) (notesync.Head, error) {
 		if err != nil {
 			return notesync.Head{}, err
 		}
-		plain, err := r.Keys.OpenManifest(r.Vault, n, sealed)
-		if err != nil {
-			return notesync.Head{}, err
-		}
 		// Checked before anything here changes: a manifest that makes
 		// no sense is an error, never an empty vault (which would delete
 		// the notes on this computer).
-		if h.m, err = parseManifest(plain); err != nil {
+		if h.m, h.mac, err = r.openManifest(n, sealed); err != nil {
 			return notesync.Head{}, err
 		}
+		r.remember(n, h.mac)
 	}
 	out := notesync.Head{Extra: h}
 	if n > 0 {
@@ -249,6 +253,7 @@ func (r *Remote) Commit(ctx context.Context, h notesync.Head, changes []notesync
 			}
 		}
 	}
+	next.Prev = cur.link()
 	plain, err := json.Marshal(next)
 	if err != nil {
 		return "", err
@@ -272,6 +277,12 @@ func (r *Remote) Commit(ctx context.Context, h notesync.Head, changes []notesync
 	if err != nil {
 		return "", err
 	}
+	// The cloud numbers versions one after the other: a number other than
+	// the one sealed into the manifest is not the version just saved.
+	if n != cur.n+1 {
+		return "", fmt.Errorf("%w: saved as version %d, sealed as %d", ErrBadAnswer, n, cur.n+1)
+	}
+	r.remember(n, r.Keys.ManifestMAC(r.Vault, n, plain))
 	return strconv.FormatInt(n, 10), nil
 }
 

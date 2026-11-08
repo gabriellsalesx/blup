@@ -31,6 +31,9 @@ type fakeCloud struct {
 	showHead int64  // > 0: answer this head instead of the real one
 	vaultID  string // id answered by CreateVault and Vaults
 	seen     []string
+	// race runs (unlocked) when a version is sent, before it is saved:
+	// another device saving first, for the 409 flow.
+	race func()
 }
 
 func newFakeCloud(t *testing.T) *fakeCloud {
@@ -79,6 +82,12 @@ func (f *fakeCloud) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(404)
 	case strings.HasSuffix(p, "/versions") && r.Method == http.MethodPost:
+		if race := f.race; race != nil {
+			f.race = nil
+			f.mu.Unlock()
+			race()
+			f.mu.Lock()
+		}
 		r.ParseMultipartForm(64 << 20)
 		parent, _ := strconv.ParseInt(r.FormValue("parent"), 10, 64)
 		if parent != f.head {

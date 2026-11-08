@@ -51,20 +51,14 @@ func (r *Remote) manifestAt(ctx context.Context, n int64) (manifest, error) {
 			return manifest{}, err
 		}
 	}
-	plain, err := r.Keys.OpenManifest(r.Vault, n, sealed)
+	m, mac, err := r.openManifest(n, sealed)
 	if err != nil {
 		if !fresh {
 			_ = os.Remove(cached) // a damaged copy: fetched again next time
 		}
 		return manifest{}, err
 	}
-	m, err := parseManifest(plain)
-	if err != nil {
-		if !fresh {
-			_ = os.Remove(cached)
-		}
-		return manifest{}, err
-	}
+	r.remember(n, mac)
 	// Kept only once it opened and made sense: the cache never holds what
 	// the cloud made up.
 	if fresh && cached != "" && os.MkdirAll(r.Cache, 0o700) == nil {

@@ -61,7 +61,7 @@ func TestAttackSwapsRefused(t *testing.T) {
 		t.Fatal("flag change not detected")
 	}
 	// O nome de um cofre e um manifesto não se confundem.
-	n, _ := k.SealName("Meu blog")
+	n, _ := k.SealName("cofreA", "Meu blog")
 	if _, err := k.OpenManifest("cofreA", 1, n); err == nil {
 		t.Fatal("name opened as manifest")
 	}
@@ -134,16 +134,78 @@ func TestAttackWrappedKeyTampering(t *testing.T) {
 	}
 }
 
-// Limite conhecido do formato 1 (ver a auditoria): o nome selado de um
-// cofre não está amarrado ao id do cofre, então o servidor pode trocar os
-// nomes de dois cofres da mesma conta. O conteúdo continua protegido (o
-// manifesto é amarrado ao cofre e à versão). Se este teste falhar, o
-// formato mudou: confira a migração dos nomes já selados.
-func TestKnownLimitVaultNameNotBound(t *testing.T) {
+// O servidor troca os nomes de dois cofres da mesma conta (formato 2): o
+// nome de um não abre no outro, e mexer no byte de formato para cair na
+// leitura antiga também não abre.
+func TestAttackVaultNameSwapDetected(t *testing.T) {
 	master, _, _ := newKeys(t, "senha")
 	k, _ := Derive(master)
-	a, _ := k.SealName("Trabalho")
-	if name, err := k.OpenName(a); err != nil || name != "Trabalho" {
-		t.Fatalf("name: %q %v", name, err)
+	a, _ := k.SealName("cofreA", "Trabalho")
+	b, _ := k.SealName("cofreB", "Pessoal")
+	if a[0] != formatNameV2 {
+		t.Fatalf("format byte %d", a[0])
+	}
+	if name, legacy, err := k.OpenName("cofreA", a); err != nil || legacy || name != "Trabalho" {
+		t.Fatalf("own name: %q %v %v", name, legacy, err)
+	}
+	if _, _, err := k.OpenName("cofreA", b); !errors.Is(err, ErrCorrupt) {
+		t.Fatalf("name of vault B opened as vault A: %v", err)
+	}
+	if _, _, err := k.OpenName("cofreB", a); !errors.Is(err, ErrCorrupt) {
+		t.Fatalf("name of vault A opened as vault B: %v", err)
+	}
+	// Rebaixar o byte para o formato 1 não faz o nome abrir sem o id.
+	down := bytes.Clone(a)
+	down[0] = format
+	if _, _, err := k.OpenName("cofreB", down); err == nil {
+		t.Fatal("downgraded name opened")
+	}
+	// Um nome não abre como manifesto, nem um manifesto como nome.
+	m, _ := k.SealManifest("cofreA", 1, []byte(`{"files":{}}`))
+	if _, _, err := k.OpenName("cofreA", m); err == nil {
+		t.Fatal("manifest opened as a name")
+	}
+	if _, err := k.OpenManifest("cofreA", 1, a); err == nil {
+		t.Fatal("name opened as a manifest")
+	}
+	if _, err := k.SealName("", "x"); err == nil {
+		t.Fatal("name sealed without a vault id")
+	}
+}
+
+// Limite que sobra do formato 1: um nome antigo, selado antes do formato 2,
+// não está amarrado a cofre nenhum, então ainda abre em qualquer cofre (e
+// OpenName avisa que é antigo, para ser selado de novo no próximo PATCH).
+func TestKnownLimitLegacyVaultNameNotBound(t *testing.T) {
+	master, _, _ := newKeys(t, "senha")
+	k, _ := Derive(master)
+	a, _ := k.SealLegacyName("Trabalho")
+	for _, vault := range []string{"cofreA", "cofreB"} {
+		if name, legacy, err := k.OpenName(vault, a); err != nil || !legacy || name != "Trabalho" {
+			t.Fatalf("legacy name in %s: %q %v %v", vault, name, legacy, err)
+		}
+	}
+}
+
+// O MAC da cadeia de manifestos depende do cofre, da versão, do conteúdo
+// e da conta: o servidor não o calcula nem o reaproveita em outro lugar.
+func TestAttackManifestMACBound(t *testing.T) {
+	master, _, _ := newKeys(t, "senha")
+	other, _, _ := newKeys(t, "senha")
+	k, _ := Derive(master)
+	k2, _ := Derive(other)
+	base := k.ManifestMAC("cofreA", 3, []byte("x"))
+	for name, mac := range map[string][]byte{
+		"vault":   k.ManifestMAC("cofreB", 3, []byte("x")),
+		"version": k.ManifestMAC("cofreA", 4, []byte("x")),
+		"content": k.ManifestMAC("cofreA", 3, []byte("y")),
+		"account": k2.ManifestMAC("cofreA", 3, []byte("x")),
+	} {
+		if bytes.Equal(mac, base) {
+			t.Fatalf("MAC does not depend on the %s", name)
+		}
+	}
+	if !bytes.Equal(base, k.ManifestMAC("cofreA", 3, []byte("x"))) || len(base) != 32 {
+		t.Fatal("MAC is not deterministic")
 	}
 }

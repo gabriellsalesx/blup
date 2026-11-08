@@ -72,3 +72,25 @@ func TestSitePasswordFileMode(t *testing.T) {
 		t.Fatalf("with a password: %o, want 600", got)
 	}
 }
+
+func TestBindNotesKey(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		in               Credentials
+		account          string
+		changed          bool
+		key, notesAcount string
+	}{
+		{"same account", Credentials{NotesKey: "k", NotesAccount: "a"}, "a", false, "k", "a"},
+		{"other account", Credentials{NotesKey: "k", NotesAccount: "a"}, "b", true, "", ""},
+		{"legacy key adopted", Credentials{NotesKey: "k"}, "a", true, "k", "a"},
+		{"no key", Credentials{}, "a", false, "", ""},
+		{"account without key", Credentials{NotesAccount: "a"}, "a", true, "", ""},
+		{"unknown account", Credentials{NotesKey: "k", NotesAccount: "a"}, "", false, "k", "a"},
+	} {
+		c := tc.in
+		if got := c.BindNotesKey(tc.account); got != tc.changed || c.NotesKey != tc.key || c.NotesAccount != tc.notesAcount {
+			t.Errorf("%s: changed %v, %+v", tc.name, got, c)
+		}
+	}
+}

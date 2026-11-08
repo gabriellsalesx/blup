@@ -1,0 +1,15 @@
+{
+  "block": "AQCqfRYOPfP+oSeVj+rsBKrgwNbR5C7ZUexh3K08zb2F5Iy9k2e3g9U6bFQo7kjSboMx0IVAUQMwttLwjv77QD4g6rmfbaedUFT89NR3OQLZSStMz36k1Q==",
+  "block_id": "2845ba0293522a8aa4aaba8668211dbe367c5ae9992d6f6a081b81b50ef44214",
+  "block_plain": "# Nota antiga\n\nconteúdo cifrado no formato 1\n",
+  "comment": "Gerado com o formato 1 (antes do nome v2 e da cadeia de manifestos). Não regenere: é a prova de que o que já foi cifrado continua abrindo.",
+  "manifest": "AQEee5Y3clrs9EZgqzFRKJOrUFHlQ9n70+WErTJbE2tZc6/AjRNQhY46zZLCpGGXyCKQ+3qxztTLNn+flvUXCK9qoqElYDq7saYuqE3LMMW5pdeYYzhb5lcAM74/ie/ZVhYhCy4/fSd43jKWMYQre32gMQQqdAqmCwwzhPMB6XrrUh/4piCdEK3f5Y8h/+NauiXuLZbCbOyXCvxurNYiJ+Vl5eFZ3+bbypRi4WuPt0IdeAK2MA==",
+  "manifest_n": 3,
+  "manifest_plain": "{\"files\":{\"antiga.md\":{\"sha\":\"e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\",\"size\":0,\"mode\":\"100644\",\"blocks\":[\"055f44eea20fb5eb3d7d13915f663f26973d73909fefda91fda06b37daa25a97\"]}}}",
+  "master": "AAcOFRwjKjE4P0ZNVFtiaXB3foWMk5qhqK+2vcTL0tk=",
+  "name_a": "AQDsriek27HfnEpCSJtDAcafOvL83m+6iIG4Ka96+DaV6PnVAviO6l+7VAhYUEvhXuM=",
+  "name_a_plain": "Trabalho",
+  "name_b": "AQBqAvRPaZCyIi7WgXltXVo1kQalx+XS+fxnASHGX6gQDehvd08VaJsuwTUZcJTXzw==",
+  "name_b_plain": "Pessoal",
+  "vault": "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
+}

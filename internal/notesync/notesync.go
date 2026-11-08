@@ -324,6 +324,11 @@ func (s *Syncer) snapshot(ctx context.Context, prevp **state, write bool, report
 		if o, ok := s.remote().(Ordered); ok && (head.Version == "" || o.Older(head.Version, prev.Commit)) {
 			return head, nil, nil, rep, fmt.Errorf("%w (%q, synced %q)", ErrRolledBack, head.Version, prev.Commit)
 		}
+		if c, ok := s.remote().(Chained); ok && prev.Chain != "" {
+			if err := c.Continues(ctx, head, prev.Commit, prev.Chain); err != nil {
+				return head, nil, nil, rep, err
+			}
+		}
 	}
 	remote := remoteFiles(head.Files, &rep, skip)
 	if prev != nil && len(remote) == 0 && len(prev.Files) > 1 {
@@ -825,6 +830,9 @@ func (s *Syncer) newState(prev *state, entries []*entry, commit string) *state {
 	st := &state{
 		Version: stateVersion, Remote: s.remote().ID(),
 		Commit: commit, SyncedAt: s.now().UTC(), Files: map[string]fileState{},
+	}
+	if c, ok := s.remote().(Chained); ok {
+		st.Chain = c.Token(commit)
 	}
 	// Paths left out of the plan (skipped) keep their old snapshot.
 	planned := map[string]bool{}

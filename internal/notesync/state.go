@@ -35,10 +35,13 @@ type state struct {
 	Remote  string `json:"remote"`
 	// Owner, Repo and Branch name the GitHub remote in files saved before
 	// Remote existed.
-	Owner    string               `json:"owner,omitempty"`
-	Repo     string               `json:"repo,omitempty"`
-	Branch   string               `json:"branch,omitempty"`
-	Commit   string               `json:"commit"`
+	Owner  string `json:"owner,omitempty"`
+	Repo   string `json:"repo,omitempty"`
+	Branch string `json:"branch,omitempty"`
+	Commit string `json:"commit"`
+	// Chain is the remote's token for Commit (Chained); "" when the remote
+	// has none or the state was saved before it existed.
+	Chain    string               `json:"chain,omitempty"`
 	SyncedAt time.Time            `json:"synced_at"`
 	Files    map[string]fileState `json:"files"`
 }

@@ -66,8 +66,12 @@ func TestRenameSite(t *testing.T) {
 	if json.Unmarshal(sent, &body) != nil {
 		t.Fatalf("sent %s", sent)
 	}
-	if name, err := keys.OpenName(body.Name); err != nil || name != "Trabalho" {
-		t.Fatalf("name = %q %v", name, err)
+	// Sealed bound to the vault's id (format 2): it opens only there.
+	if name, legacy, err := keys.OpenName("6f1c1f9e-1b2a-4c3d-9e8f-0a1b2c3d4e5f", body.Name); err != nil || legacy || name != "Trabalho" {
+		t.Fatalf("name = %q %v %v", name, legacy, err)
+	}
+	if _, _, err := keys.OpenName("0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b", body.Name); err == nil {
+		t.Fatal("the name opened as another vault's")
 	}
 	// The Cloud failing doesn't stop the name here.
 	status = 500

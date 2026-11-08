@@ -101,6 +101,12 @@ func parseManifest(plain []byte) (manifest, error) {
 	if err := json.Unmarshal(raw, &m.Files); err != nil || m.Files == nil {
 		return manifest{}, fmt.Errorf("%w: manifest files unreadable", ErrBadAnswer)
 	}
+	// The chain (chain.go): checked against the version by openManifest.
+	if raw, ok := root["prev"]; ok {
+		if err := json.Unmarshal(raw, &m.Prev); err != nil || m.Prev == nil {
+			return manifest{}, fmt.Errorf("%w: manifest prev unreadable", ErrBadAnswer)
+		}
+	}
 	if len(m.Files) > maxManifestFiles {
 		return manifest{}, fmt.Errorf("%w: manifest too large", ErrBadAnswer)
 	}

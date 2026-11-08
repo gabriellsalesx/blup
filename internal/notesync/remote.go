@@ -32,6 +32,23 @@ type Ordered interface {
 // computer already synced with. Nothing was changed.
 var ErrRolledBack = errors.New("notesync: the remote shows an older version than the one already synced")
 
+// Chained is a Remote whose versions name the ones before them (Blup Cloud's
+// manifest chain). Sync saves the token of the version it synced with and
+// refuses a head that does not descend from it: a remote showing another
+// branch (two different versions with the same number) or an old version.
+type Chained interface {
+	// Token is the token of a version read by Head or saved by Commit (""
+	// when unknown).
+	Token(version string) string
+	// Continues reports whether head descends from version, whose token is
+	// token; ErrForked (or ErrRolledBack) when it doesn't.
+	Continues(ctx context.Context, head Head, version, token string) error
+}
+
+// ErrForked: the remote shows a version that does not continue the one
+// this computer already synced with. Nothing was changed.
+var ErrForked = errors.New("notesync: the remote shows a version that does not continue the one already synced")
+
 // ErrNotFastForward is returned by Remote.Commit when someone else saved a
 // new version since Head: Sync then compares again.
 var ErrNotFastForward = errors.New("notesync: the remote moved on")

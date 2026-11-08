@@ -61,11 +61,32 @@ Notas cifradas, manifestos, referências, histórico e arquivos de sites somam n
 
 Na criação inicial de `/sync/key`, somente quem inseriu a linha recebe 201; quem perde a corrida recebe `409 KEY_EXISTS`. Atualização do embrulho existente exige preservar `by_recovery`. A migração `0012` remove o backup `previous_key` que não tinha leitor; o servidor conserva o embrulho atual. Não existe fluxo de troca da senha das notas na CLI ou no Studio; a função sem consumidor `cloudcrypt.ChangePassword` foi removida.
 
-O servidor guarda os embrulhos e parâmetros. O cliente abre a chave no computador e guarda sua representação base64 em `credentials.toml`, modo `0600`. Base64 não cifra esse arquivo local. HKDF-SHA256 deriva subchaves distintas para conteúdo, identificadores e manifestos. Sem senha, recuperação ou uma cópia local da chave, a aplicação não oferece recuperação do conteúdo pela staff.
+O servidor guarda os embrulhos e parâmetros. O cliente abre a chave no computador e guarda sua representação base64 em `credentials.toml`, modo `0600`. Base64 não cifra esse arquivo local. Junto dela fica `notes_account`, o id da conta dona da chave, gravado sempre que a chave é gravada. Ao ler a conta (`/me`), ao entrar e antes de sincronizar, o Studio e o celular comparam esse id com o da sessão: igual, segue; diferente, apagam `notes_key` e `notes_account` e tratam as notas como trancadas, pedindo a senha das notas da conta nova. Uma `notes_key` salva antes, sem `notes_account`, é adotada pela conta logada na primeira leitura, sem pedir a senha de novo. HKDF-SHA256 deriva subchaves distintas para conteúdo (`blup block v1`), identificadores (`blup block id v1`), manifestos e nomes de cofre (`blup manifest v1`) e a cadeia de manifestos (`blup manifest chain v1`). Sem senha, recuperação ou uma cópia local da chave, a aplicação não oferece recuperação do conteúdo pela staff.
 
 Arquivos são divididos em blocos de até 4 MiB. DEFLATE é aplicado quando reduz o tamanho, seguido de XChaCha20-Poly1305 com nonce aleatório e dados associados. O ID é HMAC-SHA256 do bloco em claro com a subchave de identificação. Blocos iguais na mesma conta podem ser reutilizados; o servidor vê igualdade e tamanho cifrado, mas não recebe um hash público do texto original para testar dicionários de conteúdo.
 
-O manifesto cifrado contém `files`, mapa de caminho para SHA de blob Git, tamanho, modo e lista de blocos. O nome do cofre também é cifrado. O servidor recebe separadamente referências de IDs de blocos em claro para limpeza. Não recebe os nomes dos arquivos. Observa quantidade de blocos, tamanhos armazenados, versões, horários, conta e tráfego. Como uma nota menor que 4 MiB vira um bloco só, o tamanho desse bloco (o texto comprimido mais 42 bytes) e o horário em que ele aparece deixam estimar quantas notas há e quando uma nota de certo tamanho mudou. Esconder isso exige preenchimento dos blocos, um formato novo. Veja o [modelo de segurança](../seguranca.md).
+O manifesto cifrado contém `files`, mapa de caminho para SHA de blob Git, tamanho, modo e lista de blocos, e `prev`, a cadeia descrita abaixo. Ele é selado com os dados associados `manifest <cofre> <n>`, então o servidor não troca versões nem cofres. O nome do cofre também é cifrado.
+
+### Formato dos valores selados
+
+Todo valor selado é `formato (1 byte) | flag (1 byte: 0 puro, 1 DEFLATE) | nonce (24 bytes) | cifra`, e os dois primeiros bytes entram nos dados associados. Formato 1 vale para blocos, manifestos, embrulhos da chave e nomes de cofre antigos. Formato 2 só existe para nomes de cofre.
+
+| Valor | Formato | Dados associados |
+| --- | --- | --- |
+| Nome de cofre v1 (antigo) | 1 | `vault name`, sem ligação com o cofre |
+| Nome de cofre v2 | 2 | `vault name v2 <id do cofre>` |
+
+`Keys.SealName(id, nome)` sela sempre no formato 2. `Keys.OpenName(id, valor)` lê o byte de formato: um valor de formato 2 só abre com o id do seu cofre, e trocar o byte para 1 invalida a autenticação; um valor de formato 1 abre como antes e volta marcado como antigo. O cofre ganha id só ao ser criado, então `Client.CreateNamedVault` cria com um nome v1 e logo faz o PATCH com o v2; se esse PATCH falhar, o cofre fica com o v1, que continua abrindo. Um nome v1 é regravado em v2 só quando o aparelho já escreve o nome (renomear, `Client.RenameSealed`) ou quando liga o cofre (trazer o site no Studio, `Link` no celular, `Client.UpgradeVaultName`, uma vez por cofre). Abrir ou listar nomes nunca escreve.
+
+### Cadeia de manifestos
+
+Todo manifesto novo leva, dentro da cifra, `"prev": {"n": n-1, "macs": [MAC(n-1), MAC(n-2), ...]}`, com até 64 MACs, do mais novo para o mais antigo. `MAC(n)` é HMAC-SHA256 com a subchave `blup manifest chain v1` sobre `manifest chain <n> <cofre>\0` seguido do manifesto em claro exatamente como foi aberto. A primeira versão de um cofre leva `{"n": 0, "macs": []}`. Ao abrir, o cliente exige `prev.n = n - 1`, no máximo 64 MACs de 32 bytes e nenhum MAC a mais do que versões anteriores.
+
+O adaptador implementa `notesync.Chained`. O estado da sync (`sync-state.json` no Studio, `state.json` no celular) guarda, além do número da versão, o campo `chain` com o MAC dela. Na sync seguinte, com `chain` salvo, o cliente aceita o `head` só se: for a mesma versão com o mesmo MAC; ou for mais novo e listar o MAC salvo na posição certa. Quando o `head` está mais de 64 versões à frente, o cliente segue a cadeia pelas versões que o servidor ainda guarda (`GET /versions/:n`, com o cache local), conferindo cada uma contra o MAC listado pela seguinte. Caso contrário recusa com `notesync.ErrForked` e nada muda no aparelho (mensagem `blup.err_forked`, e `cloudForked` no celular).
+
+Compatibilidade: clientes antigos leem só `files` (`parseManifest` ignora chaves desconhecidas) e gravam manifestos sem `prev`. Um manifesto sem `prev` é aceito; a cadeia começa no primeiro manifesto com `prev`, que lista o MAC do anterior mesmo que ele seja antigo. Um manifesto sem `prev` mais novo do que um encadeado só pode ter sido gravado por um Blup antigo (o servidor não sela manifestos), então também é aceito e a cadeia recomeça depois dele. Um estado sem `chain`, salvo por versão anterior, vale como aparelho sem cadeia conhecida.
+
+O conflito legítimo não quebra a cadeia: se outra máquina salvou antes, o servidor responde 409, o cliente lê o novo `head`, que continua a versão salva no estado, e monta o próximo manifesto em cima dele. Os testes estão em `internal/blupcloud/chain_test.go` e `internal/cloudcrypt/attack_test.go`; os dados no formato antigo estão em `testdata/format1.json`, gerado antes da mudança. O servidor recebe separadamente referências de IDs de blocos em claro para limpeza. Não recebe os nomes dos arquivos. Observa quantidade de blocos, tamanhos armazenados, versões, horários, conta e tráfego. Como uma nota menor que 4 MiB vira um bloco só, o tamanho desse bloco (o texto comprimido mais 42 bytes) e o horário em que ele aparece deixam estimar quantas notas há e quando uma nota de certo tamanho mudou. Esconder isso exige preenchimento dos blocos, um formato novo. Veja o [modelo de segurança](../seguranca.md).
 
 ## Persistência e protocolo
 
@@ -104,7 +125,7 @@ O upload de bloco aceita até 4 MiB mais 64 bytes; manifesto até 32 MiB. O clie
 
 `Remote.Commit` cifra o manifesto para `parent + 1`. O servidor exige o mesmo `head` e confirma o avanço por operação condicional no D1. Se outra máquina avançou antes, responde 409 `MOVED`; o adaptador converte para `notesync.ErrNotFastForward` e o motor compara novamente. A conciliação preserva versões conflitantes em arquivos separados, como no destino GitHub.
 
-O adaptador implementa `notesync.Ordered`: depois de sincronizar uma versão, o cliente recusa `head` vazio, não numérico ou inferior ao número conhecido, com `ErrRolledBack`. Isso impede aceitar uma versão antiga ainda autenticamente cifrada naquele computador; sem base local anterior, não fornece uma âncora externa para identificar todo rollback. IDs de cofre têm validação de formato antes de compor rotas/pastas, e leituras HTTP limitam o corpo a 64 MiB.
+O adaptador implementa `notesync.Ordered`: depois de sincronizar uma versão, o cliente recusa `head` vazio, não numérico ou inferior ao número conhecido, com `ErrRolledBack`. Isso impede aceitar uma versão antiga ainda autenticamente cifrada naquele computador. A [cadeia de manifestos](#cadeia-de-manifestos) recusa também uma versão de outro ramo com número igual ou maior. Sem base local anterior, nenhuma das duas fornece uma âncora externa para identificar todo rollback. IDs de cofre têm validação de formato antes de compor rotas/pastas, e leituras HTTP limitam o corpo a 64 MiB.
 
 ## Armazenamento e preparação transacional
 

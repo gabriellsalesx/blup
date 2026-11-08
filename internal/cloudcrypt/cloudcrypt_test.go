@@ -129,9 +129,9 @@ func TestManifestsAndNames(t *testing.T) {
 	if _, err := k.OpenManifest("v2", 7, sealed); !errors.Is(err, ErrCorrupt) {
 		t.Fatalf("vault swap: %v", err)
 	}
-	name, _ := k.SealName("Meu blog")
-	if got, err := k.OpenName(name); err != nil || got != "Meu blog" {
-		t.Fatalf("OpenName = %q, %v", got, err)
+	name, _ := k.SealName("v1", "Meu blog")
+	if got, legacy, err := k.OpenName("v1", name); err != nil || legacy || got != "Meu blog" {
+		t.Fatalf("OpenName = %q, %v, %v", got, legacy, err)
 	}
 }
 

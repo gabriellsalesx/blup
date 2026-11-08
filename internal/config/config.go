@@ -41,6 +41,49 @@ type Credentials struct {
 	// Cloud (base64), opened once with the notes password. Without it here
 	// the notes cannot be read, so it never leaves this computer in clear.
 	NotesKey string `toml:"notes_key,omitempty"`
+	// NotesAccount is the id of the Blup Cloud account NotesKey belongs to,
+	// written with it (SetNotesKey). A session that ends (expired, or ended
+	// in the panel) only removes BlupToken: without this, another account
+	// signing in here would find the previous account's key and seal its
+	// notes with it.
+	NotesAccount string `toml:"notes_account,omitempty"`
+}
+
+// SetNotesKey keeps the notes key of account (base64 master key).
+func (c *Credentials) SetNotesKey(key, account string) {
+	c.NotesKey, c.NotesAccount = key, account
+}
+
+// ForgetNotesKey removes the notes key and its account.
+func (c *Credentials) ForgetNotesKey() {
+	c.NotesKey, c.NotesAccount = "", ""
+}
+
+// BindNotesKey checks the notes key against the account signed in now
+// (its id, from /me). A key of another account is forgotten: the notes are
+// then locked, as on a new device, until this account's notes password is
+// typed. A key saved before NotesAccount existed is taken as this
+// account's: it was opened by whoever was signed in, and asking those who
+// already use it for the password again would only get in the way. It
+// reports whether c changed (to be saved).
+func (c *Credentials) BindNotesKey(account string) bool {
+	switch {
+	case account == "":
+		return false
+	case c.NotesKey == "":
+		if c.NotesAccount == "" {
+			return false
+		}
+		c.NotesAccount = ""
+		return true
+	case c.NotesAccount == account:
+		return false
+	case c.NotesAccount == "":
+		c.NotesAccount = account
+		return true
+	}
+	c.ForgetNotesKey()
+	return true
 }
 
 // SiteVersion is the format of blup.toml this Blup writes. When a release

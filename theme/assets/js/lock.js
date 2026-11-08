@@ -1,9 +1,12 @@
 // Unlocks a password-protected post. The content was encrypted at build time
 // (AES-256-GCM, key from PBKDF2-SHA256; see internal/lock); nothing readable
-// is in the page until the right password is typed. Passwords that worked
-// are remembered for this tab only (sessionStorage), so the site-wide
-// password unlocks the other protected posts without asking again.
-const KEY = "blup:passwords";
+// is in the page until the right password is typed. A password that worked
+// opens the other protected posts of this same page (and those "load more"
+// brings in), and is forgotten when the page closes: nothing is kept in the
+// browser's storage, where other scripts of the site could read it.
+const tried = [];
+// Older versions kept the passwords in sessionStorage: clean that up.
+try { sessionStorage.removeItem("blup:passwords"); } catch {}
 const enc = new TextEncoder();
 const bytes = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 
@@ -16,14 +19,8 @@ async function decrypt(password, d) {
   return new TextDecoder().decode(plain);
 }
 
-function remembered() {
-  try { return JSON.parse(sessionStorage.getItem(KEY)) || []; } catch { return []; }
-}
 function remember(pw) {
-  try {
-    const list = [pw, ...remembered().filter((p) => p !== pw)].slice(0, 5);
-    sessionStorage.setItem(KEY, JSON.stringify(list));
-  } catch {}
+  if (!tried.includes(pw)) tried.unshift(pw);
 }
 
 async function setup(box) {
@@ -40,7 +37,7 @@ async function setup(box) {
     box.classList.add("is-unlocked");
   };
 
-  for (const pw of remembered()) {
+  for (const pw of tried) {
     try { open(await decrypt(pw, data)); return; } catch {}
   }
 

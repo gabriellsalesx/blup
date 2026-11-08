@@ -9,7 +9,8 @@
 //   - The recovery key is 32 random bytes shown once (base32 groups); it
 //     wraps a second copy of the master key.
 //   - Subkeys come from the master key through HKDF-SHA256: one encrypts
-//     blocks, one names blocks, one encrypts manifests.
+//     blocks, one names blocks, one encrypts manifests (and vault names),
+//     one chains manifests (ManifestMAC).
 //   - A block is a piece of a file (up to BlockSize), compressed when that
 //     helps and sealed with XChaCha20-Poly1305. Its id is an HMAC of the
 //     plain piece, so equal pieces are stored once without letting the cloud
@@ -43,8 +44,13 @@ const KeySize = 32
 // every upload well under the Workers request body limit.
 const BlockSize = 4 << 20
 
-// format is the first byte of every sealed value.
-const format = 1
+// format is the first byte of every sealed value. formatNameV2 marks a
+// vault name bound to the vault's id (SealName); format 1 names, sealed
+// before it, are bound to nothing and still open (OpenName).
+const (
+	format       = 1
+	formatNameV2 = 2
+)
 
 const (
 	flagPlain      = 0
@@ -203,7 +209,7 @@ func ParseRecovery(s string) ([]byte, error) {
 
 // Keys are the subkeys of a master key.
 type Keys struct {
-	block, id, manifest []byte
+	block, id, manifest, chain []byte
 }
 
 // Derive returns the subkeys of a master key.
@@ -223,6 +229,9 @@ func Derive(master []byte) (*Keys, error) {
 		return nil, err
 	}
 	if k.manifest, err = sub("blup manifest v1"); err != nil {
+		return nil, err
+	}
+	if k.chain, err = sub("blup manifest chain v1"); err != nil {
 		return nil, err
 	}
 	return &k, nil
@@ -278,15 +287,51 @@ func (k *Keys) OpenManifest(vault string, n int64, sealed []byte) ([]byte, error
 	return open(k.manifest, manifestAD(vault, n), sealed)
 }
 
-// SealName encrypts a vault name (it is not bound to anything else).
-func (k *Keys) SealName(name string) ([]byte, error) {
+// ManifestMAC names the opened manifest plain of version n of a vault: an
+// HMAC-SHA256 under the chain subkey. Each new manifest carries the MACs of
+// the versions before it, so a computer that saw a version can tell
+// whether a newer one descends from it (blupcloud: the manifest chain).
+func (k *Keys) ManifestMAC(vault string, n int64, plain []byte) []byte {
+	m := hmac.New(sha256.New, k.chain)
+	m.Write(fmt.Appendf(nil, "manifest chain %d %s\x00", n, vault))
+	m.Write(plain)
+	return m.Sum(nil)
+}
+
+// SealName encrypts the name of vault (format 2): the name is bound to the
+// vault's id, so the cloud can't show one vault's name on another.
+func (k *Keys) SealName(vault, name string) ([]byte, error) {
+	if vault == "" {
+		return nil, errors.New("cloudcrypt: a vault name needs the vault id")
+	}
+	return sealFormat(formatNameV2, k.manifest, nameAD(vault), []byte(name), false)
+}
+
+// SealLegacyName encrypts a vault name in format 1, bound to nothing. It
+// is only for a vault that has no id yet (it is being created): the name
+// is sealed again with SealName as soon as the id is known.
+func (k *Keys) SealLegacyName(name string) ([]byte, error) {
 	return seal(k.manifest, []byte("vault name"), []byte(name), false)
 }
 
-// OpenName decrypts a vault name.
-func (k *Keys) OpenName(sealed []byte) (string, error) {
+// OpenName decrypts the name of vault. A format 2 name only opens for its
+// own vault; a format 1 name (sealed before format 2) opens anywhere, and
+// legacy says so: it should be sealed again with SealName at the next
+// rename the device makes anyway.
+func (k *Keys) OpenName(vault string, sealed []byte) (name string, legacy bool, err error) {
+	if len(sealed) > 0 && sealed[0] == formatNameV2 {
+		if vault == "" {
+			return "", false, ErrCorrupt
+		}
+		b, err := openFormat(formatNameV2, k.manifest, nameAD(vault), sealed)
+		return string(b), false, err
+	}
 	b, err := open(k.manifest, []byte("vault name"), sealed)
-	return string(b), err
+	return string(b), err == nil, err
+}
+
+func nameAD(vault string) []byte {
+	return []byte("vault name v2 " + vault)
 }
 
 func manifestAD(vault string, n int64) []byte {
@@ -296,6 +341,10 @@ func manifestAD(vault string, n int64) []byte {
 // seal is format byte, flag byte, 24-byte nonce, ciphertext. The format and
 // flag bytes are authenticated too.
 func seal(key, ad, plain []byte, compress bool) ([]byte, error) {
+	return sealFormat(format, key, ad, plain, compress)
+}
+
+func sealFormat(f byte, key, ad, plain []byte, compress bool) ([]byte, error) {
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return nil, err
@@ -307,7 +356,7 @@ func seal(key, ad, plain []byte, compress bool) ([]byte, error) {
 		}
 	}
 	out := make([]byte, 2+aead.NonceSize(), 2+aead.NonceSize()+len(plain)+aead.Overhead())
-	out[0], out[1] = format, flag
+	out[0], out[1] = f, flag
 	if _, err := rand.Read(out[2:]); err != nil {
 		return nil, err
 	}
@@ -315,12 +364,19 @@ func seal(key, ad, plain []byte, compress bool) ([]byte, error) {
 }
 
 func open(key, ad, sealed []byte) ([]byte, error) {
+	return openFormat(format, key, ad, sealed)
+}
+
+// openFormat only opens a value of format f: the format byte is part of
+// the authenticated data too, so it can't be changed to reach another
+// reading of the same value.
+func openFormat(f byte, key, ad, sealed []byte) ([]byte, error) {
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return nil, err
 	}
 	head := 2 + aead.NonceSize()
-	if len(sealed) < head+aead.Overhead() || sealed[0] != format {
+	if len(sealed) < head+aead.Overhead() || sealed[0] != f {
 		return nil, ErrCorrupt
 	}
 	plain, err := aead.Open(nil, sealed[2:head], sealed[head:], append(sealed[:2:2], ad...))

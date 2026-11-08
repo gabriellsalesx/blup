@@ -38,6 +38,7 @@ func init() {
 		knownError{errNotesLocked, "blup.err_locked"},
 		knownError{ErrNotesPasswordShort, "blup.err_password_short"},
 		knownError{notesync.ErrRolledBack, "blup.err_rolled_back"},
+		knownError{notesync.ErrForked, "blup.err_forked"},
 	)
 }
 
@@ -126,6 +127,9 @@ func LoadBlupAccount(ctx context.Context) (BlupAccount, error) {
 	if err != nil {
 		return BlupAccount{}, errors.New(describe(err))
 	}
+	if err := bindNotesKey(&creds, me.ID); err != nil {
+		return BlupAccount{}, err
+	}
 	a := BlupAccount{
 		SignedIn: true, ID: me.ID, Plan: me.Plan.Name, Label: me.Plan.Label,
 		Live: me.Plan.Limits.Live, HistoryDays: me.Plan.Limits.HistoryDays, MaxFileMB: me.Plan.Limits.MaxFileMB,
@@ -208,7 +212,8 @@ func BlupSignOut(ctx context.Context) (pending bool, err error) {
 		}
 		pending = true
 	}
-	creds.BlupToken, creds.NotesKey = "", ""
+	creds.BlupToken = ""
+	creds.ForgetNotesKey()
 	return pending, creds.Save()
 }
 
@@ -243,7 +248,7 @@ func CreateNotesPassword(ctx context.Context, password string) (string, error) {
 	if err := c.SaveKey(ctx, w); err != nil {
 		return "", errors.New(describe(err))
 	}
-	creds.NotesKey = base64.StdEncoding.EncodeToString(master)
+	creds.SetNotesKey(base64.StdEncoding.EncodeToString(master), notesOwner(ctx, c))
 	return recovery, creds.Save()
 }
 
@@ -262,9 +267,32 @@ func UnlockNotes(ctx context.Context, secret string) error {
 	if err != nil {
 		return errors.New(describe(err))
 	}
-	creds.NotesKey = base64.StdEncoding.EncodeToString(master)
+	creds.SetNotesKey(base64.StdEncoding.EncodeToString(master), notesOwner(ctx, c))
 	return creds.Save()
 }
+
+// bindNotesKey forgets a notes key of another account than the one signed
+// in (account, from /me), and adopts a key saved before keys had an
+// account (config.Credentials.BindNotesKey), saving when it changed.
+func bindNotesKey(creds *config.Credentials, account string) error {
+	if !creds.BindNotesKey(account) {
+		return nil
+	}
+	return creds.Save()
+}
+
+// NotesOwner is the id of the account signed in with c, to keep with the
+// notes key. Offline it is "": the key is then adopted by this same session
+// at the next reading of the account (config.Credentials.BindNotesKey).
+func notesOwner(ctx context.Context, c *blupcloud.Client) string {
+	if me, err := c.Me(ctx); err == nil {
+		return me.ID
+	}
+	return ""
+}
+
+// NotesOwner is notesOwner for the phone, which shares this package.
+func NotesOwner(ctx context.Context, c *blupcloud.Client) string { return notesOwner(ctx, c) }
 
 // OpenNotesKey opens the master key with what was typed: the notes
 // password exactly as typed, then without the spaces around it (pasted
@@ -304,6 +332,15 @@ func blupRemote(ctx context.Context, site *config.Site) (*blupcloud.Remote, erro
 	if err != nil {
 		return nil, errors.New(describe(err))
 	}
+	// The key must be this account's: one left by another account is
+	// forgotten here, and the notes are locked.
+	me, err := c.Me(ctx)
+	if err != nil {
+		return nil, errors.New(describe(err))
+	}
+	if err := bindNotesKey(&creds, me.ID); err != nil {
+		return nil, err
+	}
 	if creds.NotesKey == "" {
 		return nil, errors.New(describe(errNotesLocked))
 	}
@@ -315,19 +352,11 @@ func blupRemote(ctx context.Context, site *config.Site) (*blupcloud.Remote, erro
 	if err != nil {
 		return nil, errors.New(describe(errNotesLocked))
 	}
-	me, err := c.Me(ctx)
-	if err != nil {
-		return nil, errors.New(describe(err))
-	}
 	if site.Sync.Vault != "" && !blupcloud.ValidVaultID(site.Sync.Vault) {
 		return nil, blupcloud.ErrBadVault // it names a folder here
 	}
 	if site.Sync.Vault == "" {
-		name, err := keys.SealName(site.Title)
-		if err != nil {
-			return nil, err
-		}
-		v, err := c.CreateVault(ctx, name)
+		v, err := c.CreateNamedVault(ctx, keys, site.Title)
 		if err != nil {
 			return nil, errors.New(describe(err))
 		}
@@ -478,9 +507,5 @@ func renameBlupVault(ctx context.Context, id, title string) error {
 	if err != nil {
 		return errNotesLocked
 	}
-	name, err := keys.SealName(title)
-	if err != nil {
-		return err
-	}
-	return c.RenameVault(ctx, id, name)
+	return c.RenameSealed(ctx, keys, id, title)
 }
