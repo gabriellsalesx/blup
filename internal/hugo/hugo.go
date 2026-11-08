@@ -13,6 +13,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/gabriellsalesx/blup/internal/proc"
 	"io"
 	"net/http"
 	"os"
@@ -116,7 +117,7 @@ func Download(ctx context.Context, progress func(done, total int64)) (Binary, er
 
 // Command builds an exec.Cmd running Hugo inside dir.
 func (b Binary) Command(ctx context.Context, dir string, args ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, b.Path, args...)
+	cmd := proc.Hide(exec.CommandContext(ctx, b.Path, args...))
 	cmd.Dir = dir
 	return cmd
 }
@@ -218,7 +219,7 @@ func get(ctx context.Context, url string, progress func(done, total int64)) ([]b
 var versionRE = regexp.MustCompile(`v(\d+\.\d+\.\d+)`)
 
 func version(ctx context.Context, path string) (string, error) {
-	out, err := exec.CommandContext(ctx, path, "version").Output()
+	out, err := proc.Hide(exec.CommandContext(ctx, path, "version")).Output()
 	if err != nil {
 		return "", err
 	}

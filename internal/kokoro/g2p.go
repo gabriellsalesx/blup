@@ -3,6 +3,7 @@ package kokoro
 import (
 	"bytes"
 	"context"
+	"github.com/gabriellsalesx/blup/internal/proc"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -169,12 +170,11 @@ func espeakIPA(ctx context.Context, espeak, dataDir, lang, text string) (string,
 	if abs, err := filepath.Abs(espeak); err == nil {
 		espeak = abs // a relative path would be taken from Dir
 	}
-	cmd := exec.CommandContext(ctx, espeak, "--path=.", "-q", "-b", "1", "--ipa", "--tie=^", "-v", lang)
+	cmd := proc.Hide(exec.CommandContext(ctx, espeak, "--path=.", "-q", "-b", "1", "--ipa", "--tie=^", "-v", lang))
 	cmd.Dir = dataDir
 	cmd.Stdin = strings.NewReader(text)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
-	hideWindow(cmd)
 	if err := cmd.Run(); err != nil {
 		if msg := strings.TrimSpace(errb.String()); msg != "" {
 			return "", &toolError{"espeak-ng", msg}

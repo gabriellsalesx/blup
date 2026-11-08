@@ -12,6 +12,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/gabriellsalesx/blup/internal/proc"
 	"math"
 	"os"
 	"os/exec"
@@ -224,12 +225,11 @@ func (e Engine) encode(ctx context.Context, pcm []float32) ([]byte, error) {
 		v = float32(math.Max(-1, math.Min(1, float64(v))))
 		binary.LittleEndian.PutUint16(raw[i*2:], uint16(int16(v*32767)))
 	}
-	cmd := exec.CommandContext(ctx, e.lame(), "--quiet", "-r", "-s", "24", "--bitwidth", "16",
-		"--signed", "--little-endian", "-m", "m", "-b", "64", "-q", "2", "-", "-")
+	cmd := proc.Hide(exec.CommandContext(ctx, e.lame(), "--quiet", "-r", "-s", "24", "--bitwidth", "16",
+		"--signed", "--little-endian", "-m", "m", "-b", "64", "-q", "2", "-", "-"))
 	cmd.Stdin = bytes.NewReader(raw)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
-	hideWindow(cmd)
 	if err := cmd.Run(); err != nil {
 		if msg := strings.TrimSpace(errb.String()); msg != "" {
 			return nil, &toolError{"lame", msg}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gabriellsalesx/blup/internal/proc"
 	"net/url"
 	"os"
 	"os/exec"
@@ -234,7 +235,7 @@ func ToSystemTrash(path string) error {
 	case "windows":
 		script := "Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory('" +
 			strings.ReplaceAll(path, "'", "''") + "', 'OnlyErrorDialogs', 'SendToRecycleBin')"
-		return exec.Command("powershell", "-NoProfile", "-Command", script).Run()
+		return proc.Hide(exec.Command("powershell", "-NoProfile", "-Command", script)).Run()
 	case "darwin":
 		return moveDir(path, freeName(filepath.Join(home, ".Trash"), filepath.Base(path)))
 	}

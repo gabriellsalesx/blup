@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/gabriellsalesx/blup/internal/proc"
 	"io"
 	"net/http"
 	"os"
@@ -73,7 +74,7 @@ func Ensure(ctx context.Context) (string, error) {
 
 // Index writes the search index of the site in dir to dir/pagefind.
 func Index(ctx context.Context, bin, dir string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, bin, "--site", dir, "--output-subdir", "pagefind", "--quiet")
+	cmd := proc.Hide(exec.CommandContext(ctx, bin, "--site", dir, "--output-subdir", "pagefind", "--quiet"))
 	return cmd.CombinedOutput()
 }
 
