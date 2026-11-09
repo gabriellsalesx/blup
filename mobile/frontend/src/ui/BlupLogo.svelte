@@ -10,7 +10,10 @@
 </svg>
 
 <style>
-	.blup-logo { color: light-dark(#0e1b45, #ffffff); }
+	/* Plain values, by the theme: light-dark() needs a WebView from Chrome 123. */
+	.blup-logo { color: #0e1b45; }
+	:global(:root[data-theme="dark"]) .blup-logo { color: #ffffff; }
+	@media (prefers-color-scheme: dark) { :global(:root:not([data-theme="light"])) .blup-logo { color: #ffffff; } }
 	.blup-logo :global(.eye) {
 		transform-box: fill-box;
 		transform-origin: 50% 50%;

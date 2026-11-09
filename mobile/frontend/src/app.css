@@ -7,17 +7,17 @@
 }
 :root {
   color-scheme: light dark;
-  --bg: light-dark(#fafafa, #09090b);
-  --panel: light-dark(#ffffff, #0f0f12);
-  --line: light-dark(#e4e4e7, #27272a);
-  --muted: light-dark(#71717a, #a1a1aa);
-  --text: light-dark(#18181b, #f4f4f5);
-  --soft: light-dark(#f4f4f5, #18181b);
-  --accent: light-dark(#1e293b, #e2e8f0);
-  --on-accent: light-dark(#ffffff, #0f172a);
+  --bg: #fafafa;
+  --panel: #ffffff;
+  --line: #e4e4e7;
+  --muted: #71717a;
+  --text: #18181b;
+  --soft: #f4f4f5;
+  --accent: #1e293b;
+  --on-accent: #ffffff;
+  --blue-text: #2563eb;
+  --red: #b91c1c;
   --blue: #3b82f6;
-  --blue-text: light-dark(#2563eb, #60a5fa);
-  --red: light-dark(#b91c1c, #f87171);
   --sat: 0px;
   --sab: 0px;
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -25,6 +25,36 @@
   color: var(--text);
   background: var(--bg);
   -webkit-tap-highlight-color: transparent;
+}
+/* The dark tokens. The Android WebView only has light-dark() from Chrome
+   123: one not updated would show no colours at all (dark text on the dark
+   window), so the two sets are plain values, by the theme applyTheme sets
+   and, before it does, by the phone's. */
+:root[data-theme="dark"] {
+  --bg: #09090b;
+  --panel: #0f0f12;
+  --line: #27272a;
+  --muted: #a1a1aa;
+  --text: #f4f4f5;
+  --soft: #18181b;
+  --accent: #e2e8f0;
+  --on-accent: #0f172a;
+  --blue-text: #60a5fa;
+  --red: #f87171;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #09090b;
+    --panel: #0f0f12;
+    --line: #27272a;
+    --muted: #a1a1aa;
+    --text: #f4f4f5;
+    --soft: #18181b;
+    --accent: #e2e8f0;
+    --on-accent: #0f172a;
+    --blue-text: #60a5fa;
+    --red: #f87171;
+  }
 }
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
