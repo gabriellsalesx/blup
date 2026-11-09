@@ -19,8 +19,13 @@
         <span class="count">{{ len $col }}</span>
       </header>
       {{- with $col }}
+      {{- /* Done grows with the product: its first cards show, the rest
+      open with "See all" (plain HTML, no script), so the column doesn't
+      run far below the others. */}}
+      {{- $shown := . }}{{ $rest := slice }}
+      {{- if and (eq $status "done") (gt (len .) 5) }}{{ $shown = first 5 . }}{{ $rest = after 5 . }}{{ end }}
       <ul>
-        {{- range . }}
+        {{- range $shown }}
         <li>
           <a class="roadmap-card" href="{{ .RelPermalink }}">
             <h3>{{ partial "title.html" . }}</h3>
@@ -30,6 +35,22 @@
         </li>
         {{- end }}
       </ul>
+      {{- with $rest }}
+      <details class="column-more">
+        <summary><span class="more">{{ T "roadmapMore" (dict "Count" (len $col)) }}</span><span class="less">{{ T "roadmapLess" }}</span></summary>
+        <ul>
+          {{- range . }}
+          <li>
+            <a class="roadmap-card" href="{{ .RelPermalink }}">
+              <h3>{{ partial "title.html" . }}</h3>
+              {{- with partial "description.html" . }}<p>{{ . }}</p>{{ end }}
+              <footer><span>{{ with .Params.category }}{{ . }}{{ else }}{{ with .GetTerms "tags" }}{{ (index . 0).LinkTitle }}{{ else }}{{ T (printf "status_%s" $status) }}{{ end }}{{ end }}</span>{{ partial "bento/feedback-mini.html" (dict "page" . "mode" "card") }}</footer>
+            </a>
+          </li>
+          {{- end }}
+        </ul>
+      </details>
+      {{- end }}
       {{- else }}
       <p class="empty">{{ T "roadmapEmpty" }}</p>
       {{- end }}

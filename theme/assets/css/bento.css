@@ -176,7 +176,17 @@ layout. Bundled into one file by css.Build. */
   .roadmap-head p { font-size: .875rem; color: var(--main-500); }
   .board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(16.25rem, 85%); gap: 1.5rem; overflow-x: auto; scroll-snap-type: x mandatory; padding-block-end: .5rem; }
   @media (width >= 48rem) { .board { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; } }
-  .column { scroll-snap-align: start; min-height: 25rem; padding: 1rem .75rem; border-radius: 1rem; background: var(--main-100); }
+  /* Each column as tall as its cards: a long one no longer stretches the
+     others into empty space. */
+  .board { align-items: start; }
+  .column { scroll-snap-align: start; padding: 1rem .75rem; border-radius: 1rem; background: var(--main-100); }
+  .column-more { margin-block-start: .75rem; }
+  .column-more > ul { margin-block-start: .75rem; }
+  .column-more summary { display: flex; justify-content: center; padding: .5rem; border-radius: .625rem; font-size: .875rem; font-weight: 600; color: var(--main-600); cursor: pointer; list-style: none; }
+  .column-more summary::-webkit-details-marker { display: none; }
+  .column-more summary:hover { background: color-mix(in srgb, var(--main-25) 60%, transparent); color: var(--main-900); }
+  .column-more .less, .column-more[open] .more { display: none; }
+  .column-more[open] .less { display: inline; }
   .column-head { display: flex; align-items: center; gap: .5rem; padding-inline: .5rem; margin-block-end: 1rem; }
   .column-head h2 { font-size: .875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--main-800); }
   .column-head .dot { width: .625rem; height: .625rem; border-radius: 50%; background: var(--dot); }
