@@ -26,6 +26,7 @@ declare module "@wailsio/runtime" {
             "publishDone": main$0.PublishDone;
             "publishLine": main$0.Progress;
             "republish": main$0.Republish;
+            "studioUpdate": main$0.UpdateProgress;
             "syncDone": main$0.SyncDone;
             "syncProgress": main$0.SyncJob;
             "term": main$0.TermData;

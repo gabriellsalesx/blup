@@ -938,6 +938,12 @@ export interface UpdateInfo {
      * UpdatesBy); then nothing is looked up.
      */
     "updatesBy": string;
+
+    /**
+     * SelfUpdate: this install can download and put the new version in
+     * place itself (StudioSelfUpdate); else the site's download page.
+     */
+    "selfUpdate": boolean;
 }
 
 /**

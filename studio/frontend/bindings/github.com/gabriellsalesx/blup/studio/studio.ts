@@ -440,6 +440,15 @@ export function Disconnect(account: string): $CancellablePromise<void> {
 }
 
 /**
+ * DownloadUpdate downloads and checks the newest Blup Studio for this
+ * install and returns its version. It doesn't install anything: that is
+ * InstallUpdate, when the person chooses to restart.
+ */
+export function DownloadUpdate(): $CancellablePromise<string> {
+    return $Call.ByID(2096439571);
+}
+
+/**
  * EmptyTrash deletes everything in the trash.
  */
 export function EmptyTrash(): $CancellablePromise<void> {
@@ -524,6 +533,14 @@ export function InstallLocalTranslate(): $CancellablePromise<void> {
  */
 export function InstallLocalVoice(): $CancellablePromise<void> {
     return $Call.ByID(2762221990);
+}
+
+/**
+ * InstallUpdate puts the downloaded version in place, starts it once this
+ * Studio has closed and closes it.
+ */
+export function InstallUpdate(): $CancellablePromise<void> {
+    return $Call.ByID(191718440);
 }
 
 /**

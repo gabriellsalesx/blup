@@ -35,6 +35,7 @@
   import Switch from "./Switch.svelte";
   import { look, setPref, spellLang, spell } from "./theme.svelte";
   import { t, setLanguage } from "./i18n";
+  import { updateJob, downloadUpdate, installUpdate, updatePercent } from "./updatejob.svelte";
 
   // The Studio's settings: a window with sections on the
   // left. They are the Studio's (and Blup's), not the open site's.
@@ -512,13 +513,32 @@
         <div class="text"><b>{s.version}</b><small>Blup Studio {shownVersion}</small></div>
         <button class="btn ghost" onclick={() => OpenURL("https://center.getblup.site/changelog/")}>{s.news}</button>
       </div>
-      <div class="item">
-        <div class="text"><b>{s.update}</b>
-          <small class:warn={update?.newer}>{version === "dev" ? s.updateDev : update?.updatesBy ? updatesBy(update.updatesBy) : updateState === "checking" ? s.updateChecking : updateState === "fail" ? s.updateFail : update?.newer ? s.updateNew.replace("{v}", update.latest) : update?.latest ? s.updateCurrent : ""}</small>
+      <div class="item column">
+        <div class="row">
+          <div class="text"><b>{s.update}</b>
+            <small class:warn={update?.newer}>{version === "dev" ? s.updateDev : update?.updatesBy ? updatesBy(update.updatesBy) : updateState === "checking" ? s.updateChecking : updateState === "fail" ? s.updateFail : update?.newer ? s.updateNew.replace("{v}", update.latest) : update?.latest ? s.updateCurrent : ""}</small>
+          </div>
+          <!-- A store or the system's packages update it: nothing to look for here.
+               This install updates itself (selfUpdate): download here, then
+               restart; else the site's download page. -->
+          {#if update?.newer && !update.updatesBy}
+            {#if update.selfUpdate && updateJob.phase === "ready"}<button class="btn" onclick={installUpdate}>{s.updateRestart}</button>
+            {:else if update.selfUpdate && updateJob.phase === "installing"}<button class="btn" disabled>{s.updateInstalling}</button>
+            {:else if update.selfUpdate && updateJob.phase !== "downloading"}<button class="btn" onclick={downloadUpdate}>{s.updateNow}</button>
+            {:else if !update.selfUpdate}<button class="btn" onclick={() => OpenURL(downloadPage())}>{s.updateGet}</button>{/if}
+          {:else if version !== "dev" && !update?.updatesBy}<button class="btn ghost" disabled={updateState === "checking"} onclick={checkUpdate}>{s.updateCheck}</button>{/if}
         </div>
-        <!-- A store or the system's packages update it: nothing to look for here. -->
-        {#if update?.newer && !update.updatesBy}<button class="btn" onclick={() => OpenURL(downloadPage())}>{s.updateGet}</button>
-        {:else if version !== "dev" && !update?.updatesBy}<button class="btn ghost" disabled={updateState === "checking"} onclick={checkUpdate}>{s.updateCheck}</button>{/if}
+        {#if updateJob.phase === "downloading"}
+          <div class="dl" role="progressbar" aria-label={s.updateDownloading} aria-valuemin="0" aria-valuemax="100" aria-valuenow={updatePercent()}>
+            <span style:width={`${Math.max(2, updatePercent())}%`}></span>
+          </div>
+          <small class="muted">{s.updateDownloading} {updateJob.total ? `${mb(updateJob.done)}/${mb(updateJob.total)} MB` : ""}</small>
+        {:else if updateJob.phase === "ready"}
+          <small class="muted">{s.updateReadyHelp}</small>
+        {:else if updateJob.phase === "failed"}
+          <p class="bad">{s.updateDlFail}</p>
+          <div class="row"><button class="btn ghost" onclick={() => OpenURL(downloadPage())}>{s.updateSite}</button></div>
+        {/if}
       </div>
       <div class="item">
         <div class="text"><b>{s.help}</b><small>{s.helpHelp}</small></div>

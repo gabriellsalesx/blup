@@ -64,6 +64,11 @@ export const PublishLine = "publishLine";
 export const Republish = "republish";
 
 /**
+ * Name of the custom event "studioUpdate".
+ */
+export const StudioUpdate = "studioUpdate";
+
+/**
  * Name of the custom event "syncDone".
  */
 export const SyncDone = "syncDone";

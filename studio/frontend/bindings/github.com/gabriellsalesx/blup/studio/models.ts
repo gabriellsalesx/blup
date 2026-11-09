@@ -539,6 +539,14 @@ export interface TranslateSiteProgress {
 }
 
 /**
+ * UpdateProgress is how much of the new version came.
+ */
+export interface UpdateProgress {
+    "done": number;
+    "total": number;
+}
+
+/**
  * Vault is an Obsidian vault found on the computer.
  */
 export interface Vault {

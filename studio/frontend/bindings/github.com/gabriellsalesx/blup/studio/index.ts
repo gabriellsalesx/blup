@@ -39,6 +39,7 @@ export type {
     TranslateSiteDone,
     TranslateSiteJob,
     TranslateSiteProgress,
+    UpdateProgress,
     Vault,
     VersionText,
     VoiceProgress

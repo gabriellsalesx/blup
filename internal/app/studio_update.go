@@ -19,6 +19,9 @@ type UpdateInfo struct {
 	// UpdatesBy: a store or the system's packages bring new versions (see
 	// UpdatesBy); then nothing is looked up.
 	UpdatesBy string `json:"updatesBy"`
+	// SelfUpdate: this install can download and put the new version in
+	// place itself (StudioSelfUpdate); else the site's download page.
+	SelfUpdate bool `json:"selfUpdate"`
 }
 
 // CheckUpdate looks for a newer release: from the day's cache, or from
@@ -42,5 +45,7 @@ func CheckUpdate(ctx context.Context, force bool) (UpdateInfo, error) {
 	}
 	info.Latest, info.Notes, info.URL = cache.Latest, cache.Notes, cache.URL
 	info.Newer = update.Newer(cache.Latest, Version)
+	kind, _ := StudioSelfUpdate()
+	info.SelfUpdate = kind != ""
 	return info, nil
 }
