@@ -110,7 +110,7 @@ func DeleteSite(ctx context.Context, dir string, c DeleteChoice) ([]DeleteProble
 			// Only a Worker Blup published (URL set): a name chosen but never
 			// published may be another Worker of the account.
 			if d.Worker != "" && d.URL != "" {
-				if cf, err := cloudflareClient(ctx); err != nil {
+				if cf, err := savedCloudflare(); err != nil {
 					fail("published", err, "https://dash.cloudflare.com/")
 				} else if err := cf.Delete(ctx, d.Account, d.Worker); err != nil {
 					fail("published", err, "https://dash.cloudflare.com/"+d.Account+"/workers/services/view/"+d.Worker+"/production/settings")
@@ -161,7 +161,9 @@ func DeleteSite(ctx context.Context, dir string, c DeleteChoice) ([]DeleteProble
 
 func deleteRepo(ctx context.Context, owner, repo, part string, fail func(string, error, string)) {
 	link := "https://github.com/" + owner + "/" + repo + "/settings#danger-zone"
-	c, _, err := githubClient(ctx)
+	// The saved key, never a question: the Studio has no terminal to ask in
+	// (githubClient asks for the key there, and fails with a TTY error).
+	c, _, err := savedGitHub(ctx)
 	if err != nil {
 		fail(part, err, link)
 		return

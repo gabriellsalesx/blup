@@ -64,3 +64,20 @@ func TestDefaultNotesDirStaysInBlup(t *testing.T) {
 		t.Errorf("plain title changed: %q", got)
 	}
 }
+
+// TestCreateSiteWithFeedback: the Studio's own Bento part, the feedback
+// board, can be picked when the site is created, not only added later.
+func TestCreateSiteWithFeedback(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	var g config.Global
+	notes, dir := filepath.Join(t.TempDir(), "Notas"), filepath.Join(t.TempDir(), "site")
+	if _, err := CreateSite(&g, NewSiteOptions{Vault: notes, Dir: dir, Model: "bento", Sections: []string{"docs", "feedback"}, Title: "P", Lang: "pt"}); err != nil {
+		t.Fatal(err)
+	}
+	if have := obsidian.Sections(notes); have["feedback"] == "" || have["docs"] == "" || have["roadmap"] != "" {
+		t.Fatalf("sections = %v", have)
+	}
+	if _, err := CreateSite(&g, NewSiteOptions{Vault: t.TempDir(), Dir: filepath.Join(t.TempDir(), "s"), Model: "bento", Sections: []string{"podcast"}, Title: "P"}); err == nil {
+		t.Fatal("a blog section on Bento must be refused")
+	}
+}

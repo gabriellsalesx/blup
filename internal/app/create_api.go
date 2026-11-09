@@ -95,7 +95,7 @@ func CreateSite(g *config.Global, o NewSiteOptions) (*config.Site, error) {
 		return nil, errors.New(i18n.T("new.sections_none"))
 	}
 	for _, k := range o.Sections {
-		if !slices.Contains(docsKinds, k) {
+		if !slices.Contains(sectionKinds("bento"), k) {
 			return nil, errors.New("unknown section " + k)
 		}
 	}

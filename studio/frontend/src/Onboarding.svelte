@@ -166,7 +166,7 @@
 
   const sectionList = $derived([
     ["docs", t.sec.docs, t.sec.docsHelp], ["roadmap", t.sec.roadmap, t.sec.roadmapHelp], ["changelog", t.sec.changelog, t.sec.changelogHelp],
-    ["help", t.sec.help, t.sec.helpHelp], ["blog", t.sec.blog, t.sec.blogHelp],
+    ["help", t.sec.help, t.sec.helpHelp], ["blog", t.sec.blog, t.sec.blogHelp], ["feedback", t.sec.feedback, t.sec.feedbackHelp],
   ]);
   function toggle(k: string, on: boolean) { sections = on ? [...sections, k] : sections.filter((s) => s !== k); }
   let home = $state("");
