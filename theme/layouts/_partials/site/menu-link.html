@@ -20,6 +20,9 @@ Params: page (the current page), line. */ -}}
   {{- $want := lower $target -}}
   {{- range site.Sections }}{{ if or (eq (lower .Title) $want) (eq (lower .LinkTitle) $want) (and .File (eq (lower .File.Dir) (printf "%s/" $want))) }}{{ $dest = . }}{{ break }}{{ end }}{{ end -}}
   {{- if not $dest }}{{ range site.RegularPages }}{{ if or (eq (lower .Title) $want) (and .File (eq (lower .File.ContentBaseName) $want)) }}{{ $dest = . }}{{ break }}{{ end }}{{ end }}{{ end -}}
+  {{- /* A translation's menu keeps the original note's names: find the
+  page of this language that translates it (same translationKey). */ -}}
+  {{- if not $dest }}{{ range site.Pages }}{{ if eq (lower (string .Params.translationKey)) $want }}{{ $dest = . }}{{ break }}{{ end }}{{ end }}{{ end -}}
   {{- if not $dest }}{{ warnf "menu: %q is not a folder or note of the site" $target }}{{ end -}}
 {{- end -}}
 {{- with $dest -}}
