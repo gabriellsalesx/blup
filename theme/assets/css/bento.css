@@ -163,6 +163,8 @@ layout. Bundled into one file by css.Build. */
   .chip { display: inline-flex; align-items: center; gap: .375rem; padding: .125rem .5rem; border: 1px solid var(--main-200); border-radius: 9999px; font-size: .75rem; color: var(--main-700); background: var(--main-25); }
   .chip::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--dot, var(--main-400)); }
   .release .prose { font-size: 1rem; }
+  .release-feedback { max-width: 48rem; margin-inline: auto; padding-inline: var(--gutter); }
+  .release-feedback:empty { display: none; }
   .release .prose.clip { max-height: 15rem; overflow: hidden; mask-image: linear-gradient(to bottom, #000 55%, transparent); -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent); }
   .release-more { display: inline-block; margin-block-start: .75rem; font-size: .9375rem; font-weight: 600; color: var(--main-900); text-decoration: underline; text-underline-offset: .2em; }
   .release-more:hover { color: var(--main-600); }

@@ -31,6 +31,8 @@
   {{ partial "bento/feedback-mini.html" (dict "page" $p "mode" "reactions") }}
   {{- else }}
   {{ partial "bento/body.html" $p }}
-  {{ partial "bento/feedback.html" $p }}
+  {{- /* Its reactions and comments go below the version, wide and in the
+  middle (changelog-entry.html): in the grid they fell in the narrow
+  column, under the version's sticky title. */}}
   {{- end }}
 </article>
