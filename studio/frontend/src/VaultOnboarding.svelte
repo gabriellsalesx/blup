@@ -5,6 +5,7 @@
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import StepScreen from "./ui/StepScreen.svelte";
   import TextField from "./ui/TextField.svelte";
+  import CloudBring from "./CloudBring.svelte";
   import { t } from "./i18n";
 
   // A new vault of notes, the same idea as a new site but for notes alone:
@@ -61,6 +62,7 @@
       <button type="button" class="link" onclick={pick}>{folder ? v.otherFolder : v.useFolder}</button>
     </div>
   </form>
+  <CloudBring title={v.fromCloud} onBrought={onDone} />
   {#if recent.length}
     <div class="recent">
       <b>{v.recent}</b>

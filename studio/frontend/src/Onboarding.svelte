@@ -5,6 +5,7 @@
   import type { SiteInfo, Vault, RecentSite } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { CloudSite } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Switch from "./Switch.svelte";
+  import CloudBring from "./CloudBring.svelte";
   import Check from "@lucide/svelte/icons/check";
   import Loader from "@lucide/svelte/icons/loader-circle";
   import { t } from "./i18n";
@@ -186,6 +187,7 @@
       <button class="btn big" onclick={next}>{o.start}</button>
       <button class="link-btn" onclick={openExisting}>{o.haveSite}</button>
       {#if openMsg}<p class="muted small">{openMsg}</p>{/if}
+      <CloudBring title={t.wel.blupCloudTitle} onBrought={onDone} />
       {#if cloud.length}
         <div class="recent">
           <b>{t.wel.cloudTitle}</b>
