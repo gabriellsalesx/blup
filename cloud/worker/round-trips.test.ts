@@ -84,7 +84,26 @@ describe("round trips of the upload routes",()=>{
 		console.info("PUT /sync/blocks/:id (ticket)",m);
 		expect(m.status).toBe(200);expect(m.sessions).toBe(1);expect(m.d1).toBeLessThanOrEqual(4);expect(m.r2).toBe(1);
 		expect(db.sqlite.prepare("SELECT count(*) AS n FROM site_lease WHERE site_id LIKE 'sync-block:%'").get()?.n).toBe(0);
-		expect((await send(`/sync/vaults/vault-1/commit`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({ticket})})).status).toBe(200);
+		const commit=await measure(()=>send(`/sync/vaults/vault-1/commit`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({ticket})}));
+		console.info("POST /sync/vaults/:id/commit",commit);
+		expect(commit.status).toBe(200);expect(commit.sessions).toBe(1);expect(commit.d1).toBeLessThanOrEqual(6);
+		expect(db.sqlite.prepare("SELECT count(*) AS n FROM site_lease").get()?.n).toBe(0);
+		expect(db.sqlite.prepare("SELECT head FROM vault WHERE id='vault-1'").get()?.head).toBe(1);
+	});
+	it("a failed ticket write leaves no object behind, even one still being written",async()=>{
+		const original=notes.put.bind(notes);
+		vi.spyOn(notes,"put").mockImplementation(async(key,body,options)=>{
+			if(key.endsWith("/r"))throw new Error("R2 unavailable");
+			// The manifest lands after the failure was seen.
+			if(key.endsWith("/m"))await new Promise(resolve=>setTimeout(resolve,20));
+			return original(key,body,options);
+		});
+		const form=new FormData();form.set("parent","0");form.set("blocks","[]");form.set("manifest",new File(["m"],"manifest"));
+		expect((await send("/sync/vaults/vault-1/prepare",{method:"POST",body:form})).status).toBe(500);
+		await new Promise(resolve=>setTimeout(resolve,50));
+		expect([...notes.objects.keys()].filter(k=>k.startsWith("u/owner/t/"))).toEqual([]);
+		expect(db.sqlite.prepare("SELECT count(*) AS n FROM site_lease").get()?.n).toBe(0);
+		expect(db.sqlite.prepare("SELECT count(*) AS n FROM resource_reservation").get()?.n).toBe(0);
 	});
 	it("PUT /sites/:id/files/:hash",async()=>{
 		const body=new TextEncoder().encode("<h1>hi</h1>"),hash=await hex(body);

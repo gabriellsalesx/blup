@@ -21,9 +21,6 @@ function usable(row:Transfer|null|undefined){
 	if(row.completed_version===0||row.completed_version===null&&row.expires_at<=Date.now())throw new SyncError("TICKET_EXPIRED",410);
 	return row;
 }
-async function owned(env:Cloudflare.Env,userId:string,id:string){
-	return usable(await transferRead(env,userId,id).first<Transfer>());
-}
 async function renew(env:Cloudflare.Env,row:Transfer){
 	const until=Math.min(Date.now()+TTL,row.created_at+24*3600_000);
 	if(until<=Date.now())throw new SyncError("TICKET_EXPIRED",410);
@@ -40,10 +37,14 @@ export async function prepareTransfer(env:Cloudflare.Env,userId:string,vaultId:s
 	const ticket=crypto.randomUUID(),key=`u/${userId}/t/${ticket}`,now=Date.now();
 	let hold:Awaited<ReturnType<typeof reserve>>=null;
 	try{
-		const vault=await env.DB.prepare("SELECT head FROM vault WHERE id=? AND user_id=?").bind(vaultId,userId).first<{head:number}>();
+		const [vaultRow,accountRow]=await env.DB.batch([
+			env.DB.prepare("SELECT head FROM vault WHERE id=? AND user_id=?").bind(vaultId,userId),
+			env.DB.prepare("SELECT user_id FROM sync_account WHERE user_id=?").bind(userId),
+		]);
+		const vault=vaultRow?.results[0] as {head:number}|undefined;
 		if(!vault)throw new SyncError("NOT_FOUND",404);
 		if(vault.head!==input.parent)throw new SyncError("MOVED",409,vault.head);
-		if(!await env.DB.prepare("SELECT user_id FROM sync_account WHERE user_id=?").bind(userId).first())throw new SyncError("NO_KEY",409);
+		if(!accountRow?.results.length)throw new SyncError("NO_KEY",409);
 		await ensureHeadReferences(env,userId);
 		const existing=new Map<string,number>();
 		// Up to 20 000 blocks in chunks of 99 (D1's bound values): one batch.
@@ -72,9 +73,15 @@ export async function prepareTransfer(env:Cloudflare.Env,userId:string,vaultId:s
 		}
 		hold=await reserve(env.DB,userId,"storage",amount,limit,undefined,TTL);
 		if(!hold)throw new SyncError("QUOTA",413);
-		await env.NOTES.put(`${key}/m`,input.manifest.stream());
-		await env.NOTES.put(`${key}/r`,refBytes);
-		await env.NOTES.put(`${key}/p`,JSON.stringify({refs,cleanup,newBytes}));
+		// Three independent objects of the ticket, written at the same time.
+		// All of them end before a failure is thrown, so the clean-up below
+		// never races a write still in flight.
+		const written=await Promise.allSettled([
+			env.NOTES.put(`${key}/m`,input.manifest.stream()),
+			env.NOTES.put(`${key}/r`,refBytes),
+			env.NOTES.put(`${key}/p`,JSON.stringify({refs,cleanup,newBytes})),
+		]);
+		for(const w of written)if(w.status==="rejected")throw w.reason;
 		const writes=[leaseGuard(env.DB,userId,lease),env.DB.prepare("INSERT INTO sync_transfer(id,user_id,vault_id,parent,key,size,reservation_id,reserved,lease,expires_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(ticket,userId,vaultId,input.parent,key,size,hold.id,amount,lease,now+TTL,now)];
 		for(let i=0;i<missing.length;i+=33){const part=missing.slice(i,i+33);writes.push(env.DB.prepare(`INSERT INTO sync_transfer_block(ticket_id,block_id,size) VALUES ${part.map(()=>"(?,?,?)").join(",")}`).bind(...part.flatMap(b=>[ticket,b.id,b.size])));}
 		await env.DB.batch(writes);
@@ -121,37 +128,51 @@ export async function putPreparedBlock(env:Cloudflare.Env,userId:string,ticket:s
  }
 }
 export async function commitTransfer(env:Cloudflare.Env,userId:string,vaultId:string,ticket:string){
-	const commitLock=await siteLock(env.DB,`sync-commit:${ticket}`);if(!commitLock)throw new SyncError("SYNC_BUSY",409);
+	const commitKey=`sync-commit:${ticket}`,commitLock=crypto.randomUUID();
+	// The lock and everything the commit reads, in one transaction.
+	const [locked,transfer,vaultRow,notReady,blocks]=await env.DB.batch([
+		siteLockStatement(env.DB,commitKey,commitLock),
+		transferRead(env,userId,ticket),
+		env.DB.prepare("SELECT head FROM vault WHERE id=? AND user_id=?").bind(vaultId,userId),
+		env.DB.prepare("SELECT block_id FROM sync_transfer_block WHERE ticket_id=? AND ready=0 LIMIT 1").bind(ticket),
+		env.DB.prepare("SELECT block_id AS id,size,object_key AS objectKey FROM sync_transfer_block WHERE ticket_id=?").bind(ticket),
+	]);
+	if(!locked?.results.length)throw new SyncError("SYNC_BUSY",409);
+	let unlocked=false;
+	const unlocks=(lease:string)=>[unlockStatement(env.DB,syncLockKey(userId),lease),unlockStatement(env.DB,commitKey,commitLock)];
 	try{
-		const row=await owned(env,userId,ticket);
+		const row=usable(transfer?.results[0] as Transfer|undefined);
 		if(row.vault_id!==vaultId)throw new SyncError("NOT_FOUND",404);
-		if(row.completed_version!==null){await unlockSync(env.DB,userId,row.lease);return {n:row.completed_version};}
+		if(row.completed_version!==null){await env.DB.batch(unlocks(row.lease));unlocked=true;return {n:row.completed_version};}
 		await renew(env,row);
-		const vault=await env.DB.prepare("SELECT head FROM vault WHERE id=? AND user_id=?").bind(vaultId,userId).first<{head:number}>();
+		const vault=vaultRow?.results[0] as {head:number}|undefined;
 		if(!vault)throw new SyncError("NOT_FOUND",404);
 		if(vault.head!==row.parent)throw new SyncError("MOVED",409,vault.head);
-		const notReady=await env.DB.prepare("SELECT block_id FROM sync_transfer_block WHERE ticket_id=? AND ready=0 LIMIT 1").bind(ticket).first();
-		if(notReady)throw new SyncError("MISSING_BLOCKS",409);
+		if(notReady?.results.length)throw new SyncError("MISSING_BLOCKS",409);
 		const stored=await env.NOTES.get(`${row.key}/p`);if(!stored)throw new SyncError("TICKET_EXPIRED",410);
 		const plan=transferPlanSchema.parse(await stored.json());
-		const blocks=await env.DB.prepare("SELECT block_id AS id,size,object_key AS objectKey FROM sync_transfer_block WHERE ticket_id=?").bind(ticket).all<{id:string;size:number;objectKey:string|null}>();
-		if(blocks.results.some(b=>!b.objectKey))throw new SyncError("SYNC_METADATA_UNAVAILABLE",503);
+		const ready=(blocks?.results??[]) as {id:string;size:number;objectKey:string|null}[];
+		if(ready.some(b=>!b.objectKey))throw new SyncError("SYNC_METADATA_UNAVAILABLE",503);
 		const n=row.parent+1,now=Date.now();
 		const writes=[leaseGuard(env.DB,userId,row.lease),
 			env.DB.prepare("UPDATE vault SET head=CASE WHEN head=? THEN head ELSE NULL END WHERE id=? AND user_id=?").bind(row.parent,vaultId,userId),
 			env.DB.prepare("INSERT INTO vault_version(vault_id,n,key,size,created_at) VALUES (?,?,?,?,?)").bind(vaultId,n,row.key,row.size,now)];
-		for(let i=0;i<blocks.results.length;i+=24){const part=blocks.results.slice(i,i+24);writes.push(env.DB.prepare(`INSERT INTO sync_block(user_id,id,size,object_key) VALUES ${part.map(()=>"(?,?,?,?)").join(",")}`).bind(...part.flatMap(b=>[userId,b.id,b.size,b.objectKey])));}
+		for(let i=0;i<ready.length;i+=24){const part=ready.slice(i,i+24);writes.push(env.DB.prepare(`INSERT INTO sync_block(user_id,id,size,object_key) VALUES ${part.map(()=>"(?,?,?,?)").join(",")}`).bind(...part.flatMap(b=>[userId,b.id,b.size,b.objectKey])));}
 		writes.push(...cleanupWrites(env.DB,userId,plan.cleanup,now),...headReferenceWrites(env.DB,vaultId,plan.refs),
 			env.DB.prepare("UPDATE vault SET head=?,updated_at=? WHERE id=?").bind(n,now,vaultId),
 			env.DB.prepare("UPDATE sync_account SET storage_bytes=storage_bytes+?,last_sync_at=?,updated_at=? WHERE user_id=?").bind(plan.newBytes,now,now,userId),
 			env.DB.prepare("UPDATE sync_transfer SET completed_version=?,expires_at=? WHERE id=?").bind(n,now+86_400_000,ticket),
 			env.DB.prepare("DELETE FROM sync_transfer_block WHERE ticket_id=?").bind(ticket));
-		await settle(env.DB,{id:row.reservation_id,userId,kind:"storage",amount:row.reserved},writes);
+		// The version, the reservation's release and the commit's unlock
+		// commit together. The sync lease stays until the garbage is drained
+		// (no other preparation overlaps that refund).
+		await settle(env.DB,{id:row.reservation_id,userId,kind:"storage",amount:row.reserved},writes,[unlockStatement(env.DB,commitKey,commitLock)]);
+		unlocked=true;
 		await drainSyncGarbage(env,userId);
 		await env.NOTES.delete(`${row.key}/p`).catch(()=>{});
 		await unlockSync(env.DB,userId,row.lease);
 		return {n};
-	}finally{await unlockSite(env.DB,`sync-commit:${ticket}`,commitLock);}
+	}finally{if(!unlocked)await unlockSite(env.DB,commitKey,commitLock);}
 }
 export async function cancelTransfer(env:Cloudflare.Env,userId:string,ticket:string){
 	const lock=await siteLock(env.DB,`sync-commit:${ticket}`);if(!lock)throw new SyncError("SYNC_BUSY",409);

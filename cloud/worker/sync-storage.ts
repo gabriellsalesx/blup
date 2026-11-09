@@ -10,11 +10,6 @@ export async function lockSync(db:D1Database,userId:string,ttl=120_000){
  const row=await db.prepare("INSERT INTO site_lease(site_id,token,expires_at) SELECT ?,?,? WHERE NOT EXISTS(SELECT 1 FROM site_lease WHERE site_id>=? AND site_id<? AND expires_at>?) ON CONFLICT(site_id) DO UPDATE SET token=excluded.token,expires_at=excluded.expires_at WHERE expires_at<=? RETURNING token").bind(syncLockKey(userId),token,now+ttl,prefix,prefix+"~",now,now).first();
  return row?token:null;
 }
-export async function lockUpload(db:D1Database,userId:string,id:string){
- const token=crypto.randomUUID(),now=Date.now(),key=uploadPrefix(userId)+id;
- const row=await db.prepare("INSERT INTO site_lease(site_id,token,expires_at) SELECT ?,?,? WHERE NOT EXISTS(SELECT 1 FROM site_lease WHERE site_id=? AND expires_at>?) ON CONFLICT(site_id) DO UPDATE SET token=excluded.token,expires_at=excluded.expires_at WHERE expires_at<=? RETURNING token").bind(key,token,now+120_000,syncLockKey(userId),now,now).first();
- return row?{key,token}:null;
-}
 // One trip to D1 before a block upload (no ticket): the block's lock is
 // taken only when the account has a key and the block is not stored yet,
 // then the storage is reserved only while that lock is this request's.
@@ -31,7 +26,6 @@ export function uploadClaim(db:D1Database,userId:string,id:string,size:number,li
 export function uploadGuard(db:D1Database,userId:string,lock:{key:string;token:string}){
  return db.prepare("UPDATE resource_quota SET storage=CASE WHEN deleted_at IS NULL AND EXISTS(SELECT 1 FROM site_lease WHERE site_id=? AND token=? AND expires_at>?) THEN storage ELSE NULL END WHERE user_id=?").bind(lock.key,lock.token,Date.now(),userId);
 }
-export const unlockUpload=(db:D1Database,lock:{key:string;token:string})=>unlockSite(db,lock.key,lock.token);
 export const unlockSync=(db:D1Database,userId:string,token:string)=>unlockSite(db,syncLockKey(userId),token);
 export class SyncError extends Error{
 	constructor(readonly code:string,readonly status:400|404|409|410|413|503,readonly head?:number){super(code);}
@@ -61,11 +55,16 @@ async function refsOf(env:Cloudflare.Env,key:string):Promise<string[]>{
 }
 export async function cleanupPlan(env:Cloudflare.Env,userId:string,drop:StoredVersion[],additionalRefs:string[]=[],now=Date.now()):Promise<CleanupPlan>{
 	const all=await versionsOf(env.DB,userId),remove=new Set(drop.map(v=>v.key)),keep=new Set(additionalRefs),candidates=new Set<string>();
-	for(const v of all){
-		const obj=await env.NOTES.get(`${v.key}/r`);
-		if(!obj){if(remove.has(v.key))continue;throw new SyncError("SYNC_METADATA_UNAVAILABLE",503);}
-		const refs=(await obj.text()).split("\n").filter(Boolean);
-		for(const id of refs)(remove.has(v.key)?candidates:keep).add(id);
+	// The reference lists are read from R2 16 at a time, not one after the
+	// other (one trip each: a long history used to add up).
+	for(let i=0;i<all.length;i+=16){
+		const part=all.slice(i,i+16);
+		const lists=await Promise.all(part.map(async v=>{const obj=await env.NOTES.get(`${v.key}/r`);return obj?(await obj.text()).split("\n").filter(Boolean):null;}));
+		part.forEach((v,j)=>{
+			const refs=lists[j];
+			if(!refs){if(remove.has(v.key))return;throw new SyncError("SYNC_METADATA_UNAVAILABLE",503);}
+			for(const id of refs)(remove.has(v.key)?candidates:keep).add(id);
+		});
 	}
 	const blocks:StoredBlock[]=[];let after="";
 	for(;;){
