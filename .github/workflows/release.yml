@@ -97,6 +97,40 @@ jobs:
       - name: Build and AppImage
         working-directory: studio
         run: wails3 task linux:create:appimage VERSION="${TAG#v}"
+      # Wails bundles WebKit with GStreamer but none of its plugins: on Arch
+      # and Fedora a post's narration (<audio>) found no sound output and
+      # WebKit closed the window. add-gstreamer.sh bundles the plugins from
+      # this Ubuntu (the same GStreamer), then they are checked to load with
+      # only the AppImage's libraries, here and on Arch.
+      - name: Sound in the AppImage (GStreamer plugins)
+        working-directory: studio/bin
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          sudo apt-get install -y gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            gstreamer1.0-pulseaudio gstreamer1.0-alsa gstreamer1.0-tools
+          curl -fsSL -o "$RUNNER_TEMP/appimagetool" \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-x86_64.AppImage
+          chmod +x "$RUNNER_TEMP/appimagetool"
+          APPIMAGETOOL="$RUNNER_TEMP/appimagetool" ../build/linux/appimage/add-gstreamer.sh \
+            blup-studio-x86_64.AppImage "$RUNNER_TEMP/with-sound.AppImage"
+          mv "$RUNNER_TEMP/with-sound.AppImage" blup-studio-x86_64.AppImage
+          chmod +x blup-studio-x86_64.AppImage
+          rm -rf "$RUNNER_TEMP/check" && mkdir -p "$RUNNER_TEMP/check" && cd "$RUNNER_TEMP/check"
+          "$OLDPWD/blup-studio-x86_64.AppImage" --appimage-extract >/dev/null
+          cp "$(command -v gst-inspect-1.0)" squashfs-root/gst-inspect-1.0
+          cat > check.sh <<'CHECK'
+          set -e
+          lib=/a/usr/lib
+          export LD_LIBRARY_PATH="$lib" GST_PLUGIN_SYSTEM_PATH_1_0="$lib/gstreamer-1.0" GST_PLUGIN_PATH_1_0="$lib/gstreamer-1.0" \
+            GST_PLUGIN_SCANNER_1_0="$lib/gstreamer-1.0/gst-plugin-scanner" GST_REGISTRY_1_0=/tmp/gst-registry.bin
+          for e in autoaudiosink pulsesink playbin uridecodebin appsrc appsink audioconvert audioresample volume mpg123audiodec qtdemux opusdec vorbisdec; do
+            /a/gst-inspect-1.0 "$e" >/dev/null || { echo "GStreamer element missing in the AppImage: $e"; exit 1; }
+          done
+          echo "GStreamer elements load"
+          CHECK
+          docker run --rm -v "$PWD/squashfs-root:/a:ro" -v "$PWD/check.sh:/check.sh:ro" ubuntu:24.04 sh /check.sh
+          docker run --rm -v "$PWD/squashfs-root:/a:ro" -v "$PWD/check.sh:/check.sh:ro" archlinux:latest sh /check.sh
       - name: Metainfo and desktop file
         working-directory: studio
         run: |
