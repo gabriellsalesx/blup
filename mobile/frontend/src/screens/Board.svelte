@@ -14,6 +14,10 @@
   const notes = $derived(app.notes.map((n) => ({ name: n.title, path: n.id })));
   const fail = (e: string) => app.say({ text: message(e) });
   let save: (() => Promise<void>) | undefined;
+  // The sync brought a new version of the file: the view opens it again
+  // (it only says so when nothing of its own is waiting to be saved).
+  let version = $state(0);
+  const reopen = () => version++;
 
   async function remove() {
     try {
@@ -22,7 +26,7 @@
       app.back();
       await app.refresh();
       app.sync();
-      app.say({ text: t.common.inTrash, action: { label: t.common.undo, run: async () => { await CalendarService.Restore(where); await app.refresh(); app.sync(); } } });
+      app.say({ text: t.common.inTrash, action: { label: t.common.undo, run: () => app.restore(where) } });
     } catch (e) { fail(String(e)); }
   }
   onDestroy(() => { void app.refresh().then(() => app.sync()); });
@@ -46,19 +50,21 @@
 </div>
 <div class="stage">
   <!-- Each kind loads only when one of its own opens. -->
+  {#key version}
   {#if kind === "canvas"}
     {#await import("../desk/CanvasView.svelte") then { default: CanvasView }}
-      <CanvasView {path} {notes} onStatus={() => {}} onError={fail} onOpenNote={(p) => app.open(p)} onOutside={() => {}} bindSave={(s) => (save = s)} />
+      <CanvasView {path} {notes} onStatus={() => {}} onError={fail} onOpenNote={(p) => app.open(p)} onOutside={reopen} bindSave={(s) => (save = s)} />
     {/await}
   {:else if kind === "drawing"}
     {#await import("../desk/DrawingView.svelte") then { default: DrawingView }}
-      <DrawingView {path} onStatus={() => {}} onError={fail} onOutside={() => {}} bindSave={(s) => (save = s)} />
+      <DrawingView {path} onStatus={() => {}} onError={fail} onOutside={reopen} bindSave={(s) => (save = s)} />
     {/await}
   {:else if kind === "database"}
     {#await import("../desk/DatabaseView.svelte") then { default: DatabaseView }}
       <DatabaseView {path} {notes} onOpenNote={(p) => app.open(p)} onStatus={() => {}} onError={fail} bindSave={(s) => (save = s)} />
     {/await}
   {/if}
+  {/key}
 </div>
 
 <style>

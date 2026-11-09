@@ -29,6 +29,7 @@
   import { toast } from "./toast.svelte";
   import { t } from "./i18n";
   import { pinch } from "./pinch";
+  import { serial } from "../lib/serial";
 
   // A drawing of the vault: the Studio's own sketchbook. Pick a tool on
   // top (or its key), draw on the endless board; the style of what is
@@ -105,11 +106,13 @@
     dirty = true;
     onStatus("unsaved");
     clearTimeout(timer);
-    timer = setTimeout(save, 400);
+    timer = setTimeout(() => void save(), 400);
   }
-  async function save() {
+  // One save at a time (serial), and only of what was read: a file that
+  // failed to open is never written over with an empty board.
+  const save = serial(async () => {
     clearTimeout(timer);
-    if (!dirty) return;
+    if (!dirty || !loaded) return;
     dirty = false;
     onStatus("saving");
     try {
@@ -121,7 +124,7 @@
       onStatus("unsaved");
       onError(clean(e));
     }
-  }
+  });
 
   // Undo and redo: the whole drawing before each change.
   // Undo keeps copies of the drawing (typed, no JSON round trip).
@@ -568,7 +571,7 @@
     if (now.trimEnd() !== written.trimEnd() && !dirty) onOutside();
   });
   onMount(() => bindSave?.(save));
-  onDestroy(() => { off(); save(); });
+  onDestroy(() => { off(); void save(); });
 
   const sel = $derived(chosen.length && !editing && drag?.kind !== "draw" ? bounds(chosen) : null);
   const line = $derived(chosen.length === 1 && isPath(chosen[0]) && chosen[0].type !== "pen" ? chosen[0] : null);

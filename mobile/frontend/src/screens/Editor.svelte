@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onDestroy, onMount, untrack } from "svelte";
+  import { Events } from "@wailsio/runtime";
   import { EditorView, basicSetup } from "codemirror";
   import { tooltips } from "@codemirror/view";
+  import { Transaction } from "@codemirror/state";
   import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
   import { languages } from "@codemirror/language-data";
   import { syntaxHighlighting } from "@codemirror/language";
@@ -36,6 +38,7 @@
   import Redo2 from "@lucide/svelte/icons/redo-2";
   import { NotesService, type Note } from "../../bindings/github.com/gabriellsalesx/blup/mobile";
   import { app, message } from "../lib/app.svelte";
+  import { serial } from "../lib/serial";
   import FolderPick from "../ui/FolderPick.svelte";
   import MentionedIn from "../ui/MentionedIn.svelte";
   import NotePanel from "../ui/NotePanel.svelte";
@@ -79,21 +82,44 @@
   let view: EditorView; // made once the text has come (start)
   let timer: ReturnType<typeof setTimeout>;
 
-  async function save() {
+  // One save at a time (serial): a pause in the typing while the last save
+  // is still on its way must not send its text alongside it.
+  const save = serial(async () => {
     clearTimeout(timer);
     if (body === saved) return;
     const text = body;
     head = headOf(await NotesService.Save(id, head + text));
     saved = text;
     await app.refreshNotes(); // a pause in the typing: only the notes change
-  }
+  });
+  // The save of a pause in the typing: nobody waits for it, so it says
+  // itself when it fails (the mark at the top stays on "saving").
+  const saveSoon = () => save().catch((e) => app.say({ text: message(e) }));
+
+  // The sync changed this note on disk (it came changed from another
+  // device): the text on screen is read again, so the next save does not
+  // put the old one back over it. Something typed and not saved yet stays,
+  // as the phone's version does in a sync.
+  const offChanged = Events.On("notesChanged", async (ev) => {
+    const list = String(ev.data ?? "").split("\n").map((p) => p.toLowerCase());
+    if (!view || !list.includes(id.toLowerCase())) return;
+    await save().catch(() => {});
+    if (body !== saved) return;
+    const text = await NotesService.Read(id).catch(() => null);
+    if (text === null || gone || body !== saved || text === head + saved) return;
+    head = headOf(text);
+    const next = text.slice(head.length);
+    saved = next;
+    const at = Math.min(view.state.selection.main.head, next.length);
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next }, selection: { anchor: at }, annotations: Transaction.addToHistory.of(false) });
+  });
 
   async function rename() {
     const next = name.trim();
     if (!next) name = title;
     if (!next || next === title) return;
-    await save();
     try {
+      await save();
       const to = await NotesService.Rename(id, next);
       id = to;
       title = next;
@@ -226,7 +252,7 @@
           if (!u.docChanged) return;
           body = u.state.doc.toString();
           clearTimeout(timer);
-          timer = setTimeout(save, 500);
+          timer = setTimeout(saveSoon, 500);
         }),
       ],
     });
@@ -318,25 +344,35 @@
   const hold = (e: Event) => e.preventDefault();
 
   async function remove() {
-    await save(); // what was just typed goes to the trash too
-    deleted = true;
-    await app.trashNote(id);
-    history.go(-2);
+    try {
+      await save(); // what was just typed goes to the trash too
+      deleted = true;
+      await app.trashNote(id);
+      history.go(-2);
+    } catch (e) {
+      deleted = false;
+      app.say({ text: message(e) });
+    }
   }
 
   // Leaving an untouched new note does not keep an empty file.
   onDestroy(async () => {
+    offChanged();
     leaveCell();
     gone = true;
     clearTimeout(timer);
     if (deleted) return;
-    if (fresh && !body.trim() && name.trim() === title) {
-      await NotesService.Delete(id);
-      await app.refresh();
-      return;
+    try {
+      if (fresh && !body.trim() && name.trim() === title) {
+        await NotesService.Delete(id);
+        await app.refresh();
+        return;
+      }
+      await rename();
+      await save();
+    } catch (e) {
+      app.say({ text: message(e) });
     }
-    await rename();
-    await save();
     app.sync(); // the Cloud gets the note as the person leaves it, whenever the last sync was
   });
 </script>

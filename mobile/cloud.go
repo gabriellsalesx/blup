@@ -9,7 +9,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
@@ -21,6 +23,19 @@ import (
 	"github.com/gabriellsalesx/blup/internal/notesync"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
+
+func init() {
+	// The files the sync changed, one per line, by their path in the vault.
+	application.RegisterEvent[string]("notesChanged")
+}
+
+// notesChanged tells the screen which files of the open vault changed on
+// disk. Without the app (the tests), there is no screen to tell.
+var notesChanged = func(list string) {
+	if a := application.Get(); a != nil {
+		a.Event.Emit("notesChanged", list)
+	}
+}
 
 // cloudURL is the Blup Cloud the app talks to. Empty, it is the real one
 // (blupcloud.DefaultURL, over HTTPS); a build can give another with
@@ -512,6 +527,11 @@ func (s *CloudService) sync(ctx context.Context, fresh bool) (SyncResult, error)
 	}
 	if err != nil {
 		return SyncResult{}, err
+	}
+	// An open note, canvas or drawing reads itself again (or says so) when
+	// the sync changed its file under it, as in the Studio.
+	if changed := slices.Concat(r.Downloaded, r.DeletedLocal); len(changed) > 0 {
+		notesChanged(strings.Join(changed, "\n"))
 	}
 	// Events may have come with the notes: their alarms go on the list.
 	// Nothing came, nothing to do: the list is as the phone left it.

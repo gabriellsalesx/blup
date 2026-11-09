@@ -21,6 +21,7 @@
   import { resolveHref, resolveWiki, type NoteRef } from "./notelinks";
   import { t } from "./i18n";
   import { pinch } from "./pinch";
+  import { serial } from "../lib/serial";
 
   // A canvas of the vault: an endless board of cards
   // (text, notes of the vault, web addresses, groups) joined by arrows.
@@ -79,11 +80,13 @@
     dirty = true;
     onStatus("unsaved");
     clearTimeout(timer);
-    timer = setTimeout(save, 400);
+    timer = setTimeout(() => void save(), 400);
   }
-  async function save() {
+  // One save at a time (serial), and only of what was read: a file that
+  // failed to open is never written over with an empty board.
+  const save = serial(async () => {
     clearTimeout(timer);
-    if (!dirty) return;
+    if (!dirty || !loaded) return;
     dirty = false;
     onStatus("saving");
     try {
@@ -95,7 +98,7 @@
       onStatus("unsaved");
       onError(clean(e));
     }
-  }
+  });
 
   // Undo and redo: the whole canvas before each change.
   // Undo keeps copies of the board (typed, no JSON round trip).
@@ -450,7 +453,7 @@
     if (now.trimEnd() !== written.trimEnd() && !dirty) onOutside();
   });
   onMount(() => bindSave?.(save));
-  onDestroy(() => { off(); save(); });
+  onDestroy(() => { off(); void save(); });
 
   const arrowTo = $derived(drag?.kind === "arrow" ? drag : null);
   const box = $derived(drag?.kind === "box" ? drag : null);
