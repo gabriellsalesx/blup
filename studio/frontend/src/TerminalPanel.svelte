@@ -37,8 +37,8 @@
   const installed = $derived(agents.filter((a) => a.installed));
   const missing = $derived(agents.filter((a) => !a.installed));
 
-  // The theme's colors, resolved: the variables hold light-dark(...), which
-  // the terminal can't read, so a probe element turns them into rgb().
+  // The theme's colors, resolved: the terminal can't read var(...), so a
+  // probe element turns them into rgb().
   function resolve(value: string) {
     const probe = document.createElement("span");
     probe.style.color = value;

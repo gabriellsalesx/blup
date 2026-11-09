@@ -94,7 +94,7 @@
   input[type="date"] { justify-self: start; padding: .2rem .4rem; border: 1px solid transparent; border-radius: .35rem; background: transparent; color: var(--text); font: inherit; font-size: .92rem; color-scheme: light dark; }
   input[type="date"]:hover, input[type="date"]:focus { border-color: var(--line); outline: none; }
   .tags { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
-  .chip { display: inline-flex; align-items: center; gap: .2rem; padding: .12rem .3rem .12rem .6rem; border-radius: 999px; background: color-mix(in srgb, var(--blue) 16%, transparent); color: light-dark(#1d4ed8, #93c5fd); font-size: .88rem; }
+  .chip { display: inline-flex; align-items: center; gap: .2rem; padding: .12rem .3rem .12rem .6rem; border-radius: 999px; background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--chip-text); font-size: .88rem; }
   .chip button { display: grid; place-items: center; padding: .1rem; border-radius: 999px; color: inherit; opacity: .75; }
   .chip button:hover { opacity: 1; background: color-mix(in srgb, currentColor 18%, transparent); }
   .tagadd { position: relative; }

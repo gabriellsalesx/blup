@@ -1108,7 +1108,7 @@
   @keyframes ring-spin { to { transform: rotate(1turn); } }
   @media (prefers-reduced-motion: reduce) { .ring.spin::before { animation: none; } }
   .pct { font-size: .5rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-  .ok { display: grid; color: light-dark(#16a34a, #4ade80); }
+  .ok { display: grid; color: var(--good); }
   /* The screen's name at once on hover (the system's tip waits a second). */
   .rib[data-tip]:hover::after, .rib[data-tip]:focus-visible::after { content: attr(data-tip); position: absolute; z-index: 50; inset-inline-start: calc(100% + .5rem); padding: .3rem .55rem; border-radius: .4rem; background: var(--text); color: var(--bg); font-size: .78rem; font-weight: 500; white-space: nowrap; pointer-events: none; }
   /* Names next to the icons (Settings > Look). */

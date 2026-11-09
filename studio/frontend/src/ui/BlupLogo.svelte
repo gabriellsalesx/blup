@@ -10,7 +10,7 @@
 </svg>
 
 <style>
-	.blup-logo { color: light-dark(#0e1b45, #ffffff); }
+	.blup-logo { color: var(--logo); }
 	.blup-logo :global(.eye) {
 		transform-box: fill-box;
 		transform-origin: 50% 50%;
