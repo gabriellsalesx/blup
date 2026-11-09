@@ -4,7 +4,8 @@ sizes (when the slot is fixed, "112px"; by default the page's width on
 phones). */ -}}
 {{- $img := .img -}}
 {{- if in (slice "image/svg+xml" "image/gif") $img.MediaType.Type -}}
-<img src="{{ $img.RelPermalink }}" alt="{{ .alt }}"{{ with .class }} class="{{ . }}"{{ end }}{{ if not .eager }} loading="lazy"{{ end }}>
+{{- /* A GIF knows its size (an SVG may not): the page keeps its place. */ -}}
+<img src="{{ $img.RelPermalink }}"{{ if eq $img.MediaType.Type "image/gif" }} width="{{ $img.Width }}" height="{{ $img.Height }}"{{ end }} alt="{{ .alt }}"{{ with .class }} class="{{ . }}"{{ end }}{{ if not .eager }} loading="lazy"{{ end }}>
 {{- else -}}
   {{- $ratio := .ratio -}}
   {{- $set := slice -}}
