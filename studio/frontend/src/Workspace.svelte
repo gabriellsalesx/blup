@@ -799,7 +799,7 @@
     {/if}
     <span class="grow"></span>
     {#if !notesVault && (job.running || job.finished)}
-      <button class="rib job" class:active={screen === "langs"} aria-label={jobTip} data-tip={jobTip} onclick={() => openScreen("langs")}>
+      <button class="rib job" aria-label={jobTip} data-tip={jobTip} onclick={() => openScreen("langs")}>
         {#if job.running}<span class="ring" style:--p={jobPct} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={jobPct}><span class="pct">{jobPct}%</span></span>
         {:else}<span class="ok"><CircleCheck size={19} strokeWidth={1.75} /></span>{/if}
         <span class="rib-name">{jobTip}</span>
@@ -1056,6 +1056,8 @@
   .ws.names .sep { width: auto; margin-inline: .3rem; }
   .rib:hover { background: var(--soft); color: var(--text); }
   .rib.active { background: var(--soft); color: var(--text); }
+  /* The translation's ring is a sign, not a screen: no highlight. */
+  .rib.job, .rib.job:hover { background: none; }
   .sep { width: 1.4rem; height: 1px; margin-block: .35rem; background: var(--line); }
   .grow { flex: 1; }
   /* The files panel is as tall as the window, never taller: its list
