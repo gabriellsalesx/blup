@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
@@ -105,8 +104,9 @@ func needConsent(dest string) error {
 }
 
 // noteLocked tells whether a note is password protected, as the theme reads
-// "password" (theme/layouts/_partials/locked.html): any value but empty,
-// false or zero.
+// "password" (theme/layouts/_partials/locked.html, Hugo's "with"): any
+// value but nothing, false, zero or an empty text. A text of spaces counts
+// (the theme encrypts with it), as does "false" written as text.
 func noteLocked(n obsidian.Note) bool {
 	switch v := n.Props["password"].(type) {
 	case nil:
@@ -114,7 +114,7 @@ func noteLocked(n obsidian.Note) bool {
 	case bool:
 		return v
 	case string:
-		return strings.TrimSpace(v) != ""
+		return v != ""
 	case int:
 		return v != 0
 	case float64:

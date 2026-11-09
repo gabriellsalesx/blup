@@ -593,6 +593,14 @@ export interface NarrationCost {
 }
 
 /**
+ * NarrationFailure is a note the batch could not narrate, and why.
+ */
+export interface NarrationFailure {
+    "rel": string;
+    "error": string;
+}
+
+/**
  * NarrationItem is a note the batch would narrate.
  */
 export interface NarrationItem {
@@ -609,15 +617,17 @@ export interface NarrationItem {
 /**
  * NarrationPlan is what narrating the blog's posts would do: posts of the
  * site's language without a narration (Missing) or with an out of date one
- * (Outdated), translations per language, password protected posts left
- * out (Locked), the voice of each language and, when some go through Blup
- * Cloud, what they would use of the month's AI allowance.
+ * (Outdated), translations per language, posts left out because of their
+ * password (Locked) or because they link an audio of their own (OwnAudio),
+ * the voice of each language and, when some go through Blup Cloud, what
+ * they would use of the month's AI allowance.
  */
 export interface NarrationPlan {
     "missing": number;
     "outdated": number;
     "translations": { [_ in string]?: number } | null;
     "locked": number;
+    "ownAudio": number;
     "total": number;
     "chars": number;
     "voices": NarrationVoice[] | null;
@@ -644,6 +654,12 @@ export interface NarrationVoice {
     "engine": string;
     "notes": number;
     "chars": number;
+
+    /**
+     * USD is what OpenRouter's price list says the person's key pays for
+     * these notes (0 when not known: priced otherwise, or not read).
+     */
+    "usd": number;
 }
 
 /**

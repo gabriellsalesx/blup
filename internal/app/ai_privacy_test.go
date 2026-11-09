@@ -191,6 +191,9 @@ func TestNoteLocked(t *testing.T) {
 		"password: \"false\"": true, // the theme locks it, with "false" as the password
 		"password: false":     false,
 		"password: \"\"":      false,
+		"password: \"  \"":    true, // the theme encrypts with it
+		"password: yes":       true,
+		"password: 0":         false,
 		"password:":           false,
 		"title: x":            false,
 	}

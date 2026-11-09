@@ -207,8 +207,8 @@ export function CalendarEvents(): $CancellablePromise<app$0.Event[] | null> {
 }
 
 /**
- * CancelNarrateSite stops the batch after the note being read (the notes
- * done keep their narration).
+ * CancelNarrateSite stops the batch now: the note being read is left as
+ * it was, the notes done keep their narration.
  */
 export function CancelNarrateSite(): $CancellablePromise<void> {
     return $Call.ByID(2349697960);
@@ -654,7 +654,7 @@ export function NarrationHash(rel: string): $CancellablePromise<string> {
 /**
  * NarrationPlan is what narrating the open blog's posts would do, with
  * what it would use of the month's AI allowance when some voice goes
- * through Blup Cloud.
+ * through Blup Cloud, and of the person's OpenRouter key when it is theirs.
  */
 export function NarrationPlan(): $CancellablePromise<app$0.NarrationPlan> {
     return $Call.ByID(3741638863);
@@ -1368,9 +1368,10 @@ export function Sites(): $CancellablePromise<$models.SiteInfo[] | null> {
 
 /**
  * StartNarrateSite narrates the open blog's posts that have no narration
- * or an out of date one, in the background. What would stop every note
- * (no voice, no key, the consent, an allowance too small) comes back now;
- * the progress goes out as "narrateSite" and the end as
+ * or an out of date one, in the background. The background is claimed
+ * first (never with the site's translation); what would stop every note
+ * (no voice, no key, the consent, an allowance too small) comes back now
+ * and frees it. The progress goes out as "narrateSite" and the end as
  * "narrateSiteDone". Starting again while it runs only keeps it going.
  */
 export function StartNarrateSite(): $CancellablePromise<void> {

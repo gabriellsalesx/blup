@@ -27,7 +27,7 @@
   import { ACTIONS, comboOf, keysOf, type Action } from "./keys";
   import { toast, toastError } from "./toast.svelte";
   import { job, LANG_NAMES } from "./translatejob.svelte";
-  import { narrateJob, narratePercent, onNoteNarrated } from "./narratejob.svelte";
+  import { narrateJob, narratePercent, onNoteNarrated, narratesSite } from "./narratejob.svelte";
   import { syncJob, syncStepText, startSync, onSyncDone } from "./syncjob.svelte";
   import { publishJob, publishStep } from "./publishjob.svelte";
   import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
@@ -570,8 +570,8 @@
   // A note the batch narration just went past, open here with nothing
   // unsaved: its properties show the new narration (only its properties
   // changed on disk, which the check above takes for our own save).
-  const offNarrated = onNoteNarrated(async (rel) => {
-    if (!current || rel.toLowerCase() !== current.toLowerCase() || status !== "saved") return;
+  const offNarrated = onNoteNarrated(async (rel, dir) => {
+    if (dir !== site.dir || !current || rel.toLowerCase() !== current.toLowerCase() || status !== "saved") return;
     const note = await ReadNote(current).catch(() => null);
     if (note && status === "saved" && rel.toLowerCase() === current.toLowerCase()) applyOutside(note);
   });
@@ -870,8 +870,8 @@
         <span class="rib-name">{syncTip}</span>
       </button>
     {/if}
-    {#if !notesVault && (narrateJob.running || narrateJob.finished)}
-      {@const narrTip = narrateJob.running ? t.narrAll.ringWorking.replace("{done}", String(narrateJob.done)).replace("{total}", String(narrateJob.total)) : t.narrAll.ringDone}
+    {#if !notesVault && narratesSite(site.dir) && (narrateJob.running || narrateJob.finished)}
+      {@const narrTip = narrateJob.preparing ? t.narrAll.preparing : narrateJob.running ? t.narrAll.ringWorking.replace("{done}", String(narrateJob.done)).replace("{total}", String(narrateJob.total)) : t.narrAll.ringDone}
       <button class="rib job" aria-label={narrTip} data-tip={narrTip} onclick={() => openScreen("podcast")}>
         {#if narrateJob.running}<span class="ring" class:spin={!narrateJob.total} style:--p={narrateJob.total ? narratePercent() : 25} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={narrateJob.total ? narratePercent() : undefined}>{#if narrateJob.total}<span class="pct">{narratePercent()}%</span>{/if}</span>
         {:else}<span class="ok"><CircleCheck size={19} strokeWidth={1.75} /></span>{/if}
@@ -1017,7 +1017,7 @@
         {:else if screen === "sections"}{#await SectionsPanel() then { default: C }}<C {settings} {reload} onTree={(n) => (tree = n.children ?? [])} />{/await}
         {:else if screen === "comments"}{#await CommentsPanel() then { default: C }}<C {settings} {reload} />{/await}
         {:else if screen === "feedback"}{#await FeedbackPanel() then { default: C }}<C />{/await}
-        {:else if screen === "podcast"}{#await PodcastPanel() then { default: C }}<C />{/await}
+        {:else if screen === "podcast"}{#await PodcastPanel() then { default: C }}<C siteDir={site.dir} />{/await}
         {:else if screen === "cookies"}{#await CookiesPanel() then { default: C }}<C {settings} {reload} onOpenNote={openNote} />{/await}
         {:else if screen === "publish"}{#await PublishPanel() then { default: C }}<C autostart={autostart} notes={notesVault} />{/await}
         {:else if screen === "sync"}{#await PublishPanel() then { default: C }}<C autostart="sync" />{/await}

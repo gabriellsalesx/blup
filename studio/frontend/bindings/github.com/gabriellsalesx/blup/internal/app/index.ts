@@ -33,6 +33,7 @@ export type {
     ModelOption,
     Narration,
     NarrationCost,
+    NarrationFailure,
     NarrationItem,
     NarrationPlan,
     NarrationVoice,

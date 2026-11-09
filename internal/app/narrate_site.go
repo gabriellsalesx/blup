@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net"
+	"os"
 	"path"
 	"strings"
 	"unicode/utf8"
@@ -12,15 +14,24 @@ import (
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/kokoro"
+	"github.com/gabriellsalesx/blup/internal/narrate"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
 )
 
 // Narrating every post of a blog at once (the Podcast screen), with the
 // same rules as one note's narration (Narrate): what the site publishes as
 // a post, never a password protected one (nor its translations: the audio
-// would give the text away), only text that changed since its narration.
-// Translations are read in their own language, with the voice chosen for
-// it.
+// would give the text away), only text that changed since its narration,
+// and never over an audio the person linked themselves. Translations are
+// read in their own language, with the voice chosen for it.
+
+// What only says what went wrong, so the batch can tell a note that failed
+// alone from something every note would hit.
+var (
+	errAllowanceShort = errors.New("narration: not enough AI allowance left")
+	errPriceUnknown   = errors.New("narration: voice price unknown")
+	errNoVoice        = errors.New("narration: no voice")
+)
 
 // NarrationItem is a note the batch would narrate.
 type NarrationItem struct {
@@ -38,18 +49,23 @@ type NarrationVoice struct {
 	Engine string `json:"engine"` // "local", "blup" or "openrouter"
 	Notes  int    `json:"notes"`
 	Chars  int    `json:"chars"`
+	// USD is what OpenRouter's price list says the person's key pays for
+	// these notes (0 when not known: priced otherwise, or not read).
+	USD float64 `json:"usd"`
 }
 
 // NarrationPlan is what narrating the blog's posts would do: posts of the
 // site's language without a narration (Missing) or with an out of date one
-// (Outdated), translations per language, password protected posts left
-// out (Locked), the voice of each language and, when some go through Blup
-// Cloud, what they would use of the month's AI allowance.
+// (Outdated), translations per language, posts left out because of their
+// password (Locked) or because they link an audio of their own (OwnAudio),
+// the voice of each language and, when some go through Blup Cloud, what
+// they would use of the month's AI allowance.
 type NarrationPlan struct {
 	Missing      int              `json:"missing"`
 	Outdated     int              `json:"outdated"`
 	Translations map[string]int   `json:"translations"`
 	Locked       int              `json:"locked"`
+	OwnAudio     int              `json:"ownAudio"`
 	Total        int              `json:"total"`
 	Chars        int              `json:"chars"`
 	Voices       []NarrationVoice `json:"voices"`
@@ -65,14 +81,17 @@ type NarrationPlan struct {
 const minNarrationSpaces = 3
 
 // narrationState is what a note's narration is now: "" when it has none,
-// "done" when up to date, "outdated" when the text changed since (or its
-// file is gone).
+// "own" when it links an audio the Studio did not make (no audio_hash: the
+// person's own recording, which is never written over), "done" when up to
+// date, "outdated" when the text changed since (or its file is gone).
 func narrationState(site *config.Site, n obsidian.Note, text string) string {
 	link := n.String("audio")
-	if link == "" {
+	switch {
+	case link == "":
 		return ""
-	}
-	if n.String("audio_hash") != textHash(text) || attachmentFile(site, link) == "" {
+	case n.String("audio_hash") == "":
+		return "own"
+	case n.String("audio_hash") != textHash(text) || attachmentFile(site, link) == "":
 		return "outdated"
 	}
 	return "done"
@@ -101,11 +120,31 @@ func isPost(site *config.Site, rel string, n obsidian.Note) bool {
 type candidate int
 
 const (
-	notPost  candidate = iota // not a post, or nothing to narrate in it
+	notPost  candidate = iota // not a post (or its original is not), or gone
 	upToDate                  // a post whose narration is up to date (or too short)
-	locked                    // a password protected post
+	locked                    // a password protected post, or a translation of one
+	ownAudio                  // a post that links an audio of its own
 	needed                    // a post to narrate
 )
+
+// originGate is what the note's original makes of a translation: notPost
+// when the original is not a post (a draft, kept off the site, gone),
+// locked when it has a password, needed (go on) otherwise and for an
+// original itself.
+func originGate(site *config.Site, rel string) candidate {
+	original, _ := NoteOrigin(site, rel)
+	if original == rel {
+		return needed
+	}
+	n, err := ReadSiteNote(site, original)
+	switch {
+	case err != nil || !isPost(site, original, n):
+		return notPost
+	case noteLocked(n):
+		return locked
+	}
+	return needed
+}
 
 // narrationCandidate reads the note at rel and tells what it is to the
 // batch, with the item when it needs a narration.
@@ -118,12 +157,17 @@ func narrationCandidate(site *config.Site, rel, lang string) (NarrationItem, can
 	if noteLocked(n) {
 		return item, locked, n
 	}
+	if gate := originGate(site, rel); gate != needed {
+		return item, gate, n
+	}
 	if strings.Count(text, " ") < minNarrationSpaces {
 		return item, upToDate, n
 	}
 	switch narrationState(site, n, text) {
 	case "done":
 		return item, upToDate, n
+	case "own":
+		return item, ownAudio, n
 	case "outdated":
 		item.Outdated = true
 	}
@@ -133,7 +177,8 @@ func narrationCandidate(site *config.Site, rel, lang string) (NarrationItem, can
 
 // NarrationTodo is what narrating the blog's posts would do, with the
 // voice chosen for each language (voices, by language code; "" for none).
-// It reads the notes only: the cost is NarrationPlanCost's.
+// It reads the notes only: the costs are NarrationPlanCost's and
+// NarrationOpenRouterCost's.
 func NarrationTodo(site *config.Site, voices map[string]string) (NarrationPlan, error) {
 	plan := NarrationPlan{Translations: map[string]int{}, Items: []NarrationItem{}, Voices: []NarrationVoice{}}
 	originals, err := siteOriginals(site)
@@ -148,6 +193,8 @@ func NarrationTodo(site *config.Site, voices map[string]string) (NarrationPlan, 
 		case locked:
 			plan.Locked++
 			continue // its translations neither: the audio would give the text away
+		case ownAudio:
+			plan.OwnAudio++
 		case needed:
 			plan.Items = append(plan.Items, item)
 			if item.Outdated {
@@ -161,9 +208,12 @@ func NarrationTodo(site *config.Site, voices map[string]string) (NarrationPlan, 
 			if tr == "" {
 				continue
 			}
-			if titem, kind, _ := narrationCandidate(site, tr, lang); kind == needed {
+			switch titem, kind, _ := narrationCandidate(site, tr, lang); kind {
+			case needed:
 				plan.Items = append(plan.Items, titem)
 				plan.Translations[lang]++
+			case ownAudio:
+				plan.OwnAudio++
 			}
 		}
 	}
@@ -251,6 +301,32 @@ func NarrationPlanCost(ctx context.Context, site *config.Site, plan NarrationPla
 	return &cost, nil
 }
 
+// NarrationOpenRouterCost fills in what the voices read with the person's
+// OpenRouter key would cost, from OpenRouter's price list (left at 0 when
+// the model is priced otherwise or the list can't be read: the screen
+// then says how many characters go to the key).
+func NarrationOpenRouterCost(ctx context.Context, plan *NarrationPlan, voices map[string]string) {
+	var list []narrate.ModelInfo
+	for i, v := range plan.Voices {
+		if v.Engine != "openrouter" {
+			continue
+		}
+		if list == nil {
+			l, err := speechModels(ctx)
+			if err != nil || len(l) == 0 {
+				return
+			}
+			list = l
+		}
+		model, _ := splitChoice(voiceFor(v.Lang, voices[v.Lang]))
+		for _, m := range list {
+			if m.ID == model && m.PerThousand > 0 {
+				plan.Voices[i].USD = float64(v.Chars) / 1000 * m.PerThousand
+			}
+		}
+	}
+}
+
 // costOfMicros is what micros of AI use are of the allowance (as costOf).
 func costOfMicros(u blupcloud.AIUsage, micros int64) NarrationCost {
 	var c NarrationCost
@@ -288,32 +364,66 @@ func NarrateReady(site *config.Site, plan NarrationPlan, voices map[string]strin
 	return nil
 }
 
-// SiteNarration is what narrating the blog's posts did.
+// NarrationFailure is a note the batch could not narrate, and why.
+type NarrationFailure struct {
+	Rel   string `json:"rel"`
+	Error string `json:"error"`
+}
+
+// SiteNarration is what narrating the blog's posts did: notes narrated,
+// notes left out because they changed meanwhile (no longer posts, a
+// password, deleted, already up to date), and the ones that failed.
 type SiteNarration struct {
-	Done int `json:"done"`
-	// Failed are the notes that could not be narrated this time (the
-	// rest went on); narrating again tries only them.
-	Failed []string `json:"failed"`
+	Done    int                `json:"done"`
+	Skipped int                `json:"skipped"`
+	Failed  []NarrationFailure `json:"failed"`
 }
 
 // narrateNote narrates one note (Narrate, a seam for the tests).
 var narrateNote = Narrate
 
-// sameErrorStop is how many notes in a row failing with the same error
-// stop the batch: that is something every note would hit (the allowance
-// ran out, the connection fell), not a note of its own.
-const sameErrorStop = 3
+// sameKindStop is how many notes in a row failing the same way stop the
+// batch: that is something every note would hit (the connection fell),
+// not a note of its own.
+const sameKindStop = 3
+
+// failureKind tells what kind of failure err is, for the batch: stop is
+// true for what every note would hit at once (no consent, no key, the
+// allowance or credits used up, signed out, no voice); kind compares
+// failures note after note (known kinds by what they wrap, any other by
+// its text).
+func failureKind(err error) (kind string, stop bool) {
+	var consent *ConsentError
+	var netErr net.Error
+	switch {
+	case errors.As(err, &consent), errors.Is(err, ErrNoAIKey), errors.Is(err, narrate.ErrNoCredits),
+		errors.Is(err, narrate.ErrInvalidKey), errors.Is(err, blupcloud.ErrSignedOut),
+		errors.Is(err, errAllowanceShort), errors.Is(err, errNoVoice):
+		return "stop", true
+	case errors.Is(err, errPriceUnknown):
+		return "price", false
+	case errors.Is(err, narrate.ErrModelGone):
+		return "model", false
+	case errors.As(err, &netErr):
+		return "network", false
+	}
+	return "other:" + err.Error(), false
+}
 
 // NarrateSite narrates the plan's notes one by one, each with the voice
 // chosen for its language, and links each narration in its note (audio,
-// audio_hash, audio_seconds), as narrating it alone does. progress gets
-// the notes done of total and the note being read. A note that fails alone
-// is listed in Failed and the rest go on; the same failure on several
-// notes in a row (or a cancel) stops the batch, with the notes done kept.
+// audio_hash, audio_seconds), as narrating it alone does. Each note is
+// checked again right before it is read: one that stopped being a post,
+// got a password (or its original did), was deleted or is already up to
+// date is left out. progress gets the notes done of total and the note
+// being read. A note that fails alone is listed in Failed with why, and
+// the rest go on; what every note would hit (or the same kind of failure
+// on several notes in a row, or a cancel, which stops the note being read
+// too) stops the batch, with the notes done kept.
 func NarrateSite(ctx context.Context, site *config.Site, plan NarrationPlan, voices map[string]string, progress func(done, total int, note string)) (SiteNarration, error) {
-	res := SiteNarration{Failed: []string{}}
+	res := SiteNarration{Failed: []NarrationFailure{}}
 	total := len(plan.Items)
-	lastErr, streak := "", 0
+	lastKind, streak := "", 0
 	for i, it := range plan.Items {
 		if err := ctx.Err(); err != nil {
 			return res, err
@@ -321,30 +431,42 @@ func NarrateSite(ctx context.Context, site *config.Site, plan NarrationPlan, voi
 		if progress != nil {
 			progress(i, total, it.Rel)
 		}
+		if _, kind, _ := narrationCandidate(site, it.Rel, it.Lang); kind != needed {
+			res.Skipped++
+			continue
+		}
 		r, err := narrateNote(ctx, site, it.Rel, voices[it.Lang], nil)
 		if err == nil {
 			err = linkNarration(site, it.Rel, r)
+			if errors.Is(err, os.ErrNotExist) {
+				// Deleted while it was read: its audio goes too.
+				if f := attachmentFile(site, r.Link); f != "" {
+					os.Remove(f)
+				}
+				res.Skipped++
+				continue
+			}
 		}
 		if err != nil {
 			if ctx.Err() != nil {
 				return res, ctx.Err()
 			}
-			var consent *ConsentError
-			if errors.As(err, &consent) || errors.Is(err, ErrNoAIKey) {
+			kind, stop := failureKind(err)
+			if stop {
 				return res, err
 			}
-			res.Failed = append(res.Failed, it.Rel)
-			if err.Error() == lastErr {
+			res.Failed = append(res.Failed, NarrationFailure{Rel: it.Rel, Error: err.Error()})
+			if kind == lastKind {
 				streak++
 			} else {
-				lastErr, streak = err.Error(), 1
+				lastKind, streak = kind, 1
 			}
-			if streak >= sameErrorStop {
+			if streak >= sameKindStop {
 				return res, err
 			}
 			continue
 		}
-		lastErr, streak = "", 0
+		lastKind, streak = "", 0
 		res.Done++
 	}
 	if progress != nil {
@@ -353,13 +475,16 @@ func NarrateSite(ctx context.Context, site *config.Site, plan NarrationPlan, voi
 	return res, nil
 }
 
-// linkNarration writes the narration's properties in its note.
+// linkNarration writes the narration's properties in its note, which must
+// still be there (os.ErrNotExist when it was deleted meanwhile: it is not
+// made again). The note's lock keeps the editor's save and this write from
+// losing each other's change.
 func linkNarration(site *config.Site, rel string, r Narration) error {
 	p, err := notesPath(site, rel)
 	if err != nil {
 		return err
 	}
-	return obsidian.SetProperties(p,
+	return obsidian.UpdateProperties(p,
 		obsidian.Prop{Key: "audio", Value: r.Link},
 		obsidian.Prop{Key: "audio_hash", Value: r.Hash},
 		obsidian.Prop{Key: "audio_seconds", Value: int64(math.Round(r.Seconds))},
@@ -369,10 +494,10 @@ func linkNarration(site *config.Site, rel string, r Narration) error {
 // ErrBatchAllowance: the batch would use more of the month's AI allowance
 // than is left.
 func ErrBatchAllowance(site *config.Site, c NarrationCost) error {
-	return errors.New(byLang(site,
+	return friendlyErr{byLang(site,
 		fmt.Sprintf("Narrar todos usaria %d%% do seu uso de IA do mês, e agora sobram %d%%. Narre alguns posts por vez, use a voz no computador (grátis) ou um plano maior.", c.Percent, c.Left),
 		fmt.Sprintf("Narrating them all would use %d%% of your monthly AI allowance, and %d%% is left now. Narrate a few posts at a time, use the voice on the computer (free) or a bigger plan.", c.Percent, c.Left),
-		fmt.Sprintf("Narrarlos todos usaría %d%% de tu cuota mensual de IA, y ahora te queda %d%%. Narra algunos posts a la vez, usa la voz de la computadora (gratis) o un plan mayor.", c.Percent, c.Left)))
+		fmt.Sprintf("Narrarlos todos usaría %d%% de tu cuota mensual de IA, y ahora te queda %d%%. Narra algunos posts a la vez, usa la voz de la computadora (gratis) o un plan mayor.", c.Percent, c.Left)), errAllowanceShort}
 }
 
 // ErrBatchTranslating: the site's translation runs; narrating meanwhile
@@ -391,4 +516,13 @@ func ErrBatchNarrating(site *config.Site) error {
 		"Os posts estão sendo narrados agora. Espere a narração terminar para traduzir.",
 		"The posts are being narrated now. Wait for the narration to finish to translate.",
 		"Los posts se están narrando ahora. Espera a que termine la narración para traducir."))
+}
+
+// errTranslationOfHidden: a translation whose original is not a post (a
+// draft, hidden, kept off the site) is not narrated alone either.
+func errTranslationOfHidden(site *config.Site) error {
+	return errors.New(byLang(site,
+		"O post original desta tradução não é publicado (rascunho, escondido ou fora do site): a tradução também não ganha narração.",
+		"The original post of this translation is not published (a draft, hidden or kept off the site): the translation is not narrated either.",
+		"El post original de esta traducción no se publica (borrador, oculto o fuera del sitio): la traducción tampoco se narra."))
 }

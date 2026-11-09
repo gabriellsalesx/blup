@@ -12,18 +12,24 @@ import (
 // Narrating every post of the open blog at once (the Podcast screen), in
 // the background like the site's translation: one batch at a time, going
 // on while the person works on other screens (the side strip shows it),
-// each language with the voice chosen for it.
+// each language with the voice chosen for it. The batch belongs to its
+// site: the window shows it only while that site is open.
 
-// NarrateSiteJob is the batch running now (Running false when none).
+// NarrateSiteJob is the batch now (Running false when none). Preparing:
+// it was claimed and checks its notes, voices and cost before the first
+// note (nothing to stop yet).
 type NarrateSiteJob struct {
-	Running bool   `json:"running"`
-	Done    int    `json:"done"`
-	Total   int    `json:"total"`
-	Note    string `json:"note"`
+	Running   bool   `json:"running"`
+	Preparing bool   `json:"preparing"`
+	Site      string `json:"site"` // the folder of the site being narrated
+	Done      int    `json:"done"`
+	Total     int    `json:"total"`
+	Note      string `json:"note"`
 }
 
 // NarrateSiteProgress is how far the batch went, heard as "narrateSite".
 type NarrateSiteProgress struct {
+	Site  string `json:"site"`
 	Done  int    `json:"done"`
 	Total int    `json:"total"`
 	Note  string `json:"note"`
@@ -31,10 +37,12 @@ type NarrateSiteProgress struct {
 
 // NarrateSiteDone is how the batch ended, heard as "narrateSiteDone".
 type NarrateSiteDone struct {
-	Done      int      `json:"done"`
-	Failed    []string `json:"failed"`
-	Error     string   `json:"error"`
-	Cancelled bool     `json:"cancelled"`
+	Site      string                 `json:"site"`
+	Done      int                    `json:"done"`
+	Skipped   int                    `json:"skipped"`
+	Failed    []app.NarrationFailure `json:"failed"`
+	Error     string                 `json:"error"`
+	Cancelled bool                   `json:"cancelled"`
 }
 
 var narrJob struct {
@@ -43,14 +51,61 @@ var narrJob struct {
 	cancel context.CancelFunc
 }
 
+// jobsMu is taken to claim either background job of the notes (the
+// site's translation, the narration of its posts): one claims while the
+// other can't, before any slow check, so the two never run together.
+var jobsMu sync.Mutex
+
+// errNarratingNow / errTranslatingNow: the other background job holds the
+// notes (the screen gets the message in the site's language).
+var (
+	errNarratingNow   = errors.New("narrate: the posts are being narrated")
+	errTranslatingNow = errors.New("translate: the site is being translated")
+)
+
 func init() {
 	application.RegisterEvent[NarrateSiteProgress]("narrateSite")
 	application.RegisterEvent[NarrateSiteDone]("narrateSiteDone")
 }
 
+func narrateRunning() bool {
+	narrJob.Lock()
+	defer narrJob.Unlock()
+	return narrJob.st.Running
+}
+
+// claimNarrJob takes the background for the narration of site's posts:
+// false when a narration runs already (taken meanwhile), with
+// errTranslatingNow when the translation holds it.
+func claimNarrJob(site string, cancel context.CancelFunc) (bool, error) {
+	jobsMu.Lock()
+	defer jobsMu.Unlock()
+	siteJob.Lock()
+	translating := siteJob.st.Running
+	siteJob.Unlock()
+	if translating {
+		return false, errTranslatingNow
+	}
+	narrJob.Lock()
+	defer narrJob.Unlock()
+	if narrJob.st.Running {
+		return false, nil
+	}
+	narrJob.st = NarrateSiteJob{Running: true, Preparing: true, Site: site}
+	narrJob.cancel = cancel
+	return true, nil
+}
+
+func releaseNarrJob() {
+	narrJob.Lock()
+	defer narrJob.Unlock()
+	narrJob.st = NarrateSiteJob{}
+	narrJob.cancel = nil
+}
+
 // NarrationPlan is what narrating the open blog's posts would do, with
 // what it would use of the month's AI allowance when some voice goes
-// through Blup Cloud.
+// through Blup Cloud, and of the person's OpenRouter key when it is theirs.
 func (s *Studio) NarrationPlan(ctx context.Context) (app.NarrationPlan, error) {
 	site, err := s.current()
 	if err != nil {
@@ -66,6 +121,7 @@ func (s *Studio) NarrationPlan(ctx context.Context) (app.NarrationPlan, error) {
 		plan.CostError = err.Error()
 	}
 	plan.Cost = cost
+	app.NarrationOpenRouterCost(ctx, &plan, voices)
 	return plan, nil
 }
 
@@ -76,79 +132,78 @@ func (s *Studio) NarrateSiteState() NarrateSiteJob {
 	return narrJob.st
 }
 
-// CancelNarrateSite stops the batch after the note being read (the notes
-// done keep their narration).
+// CancelNarrateSite stops the batch now: the note being read is left as
+// it was, the notes done keep their narration.
 func (s *Studio) CancelNarrateSite() {
 	narrJob.Lock()
 	defer narrJob.Unlock()
-	if narrJob.cancel != nil {
+	if narrJob.cancel != nil && !narrJob.st.Preparing {
 		narrJob.cancel()
 	}
 }
 
 // StartNarrateSite narrates the open blog's posts that have no narration
-// or an out of date one, in the background. What would stop every note
-// (no voice, no key, the consent, an allowance too small) comes back now;
-// the progress goes out as "narrateSite" and the end as
+// or an out of date one, in the background. The background is claimed
+// first (never with the site's translation); what would stop every note
+// (no voice, no key, the consent, an allowance too small) comes back now
+// and frees it. The progress goes out as "narrateSite" and the end as
 // "narrateSiteDone". Starting again while it runs only keeps it going.
 func (s *Studio) StartNarrateSite(ctx context.Context) error {
 	site, err := s.current()
 	if err != nil {
 		return err
 	}
-	if s.NarrateSiteState().Running {
-		return nil
+	jctx, cancel := context.WithCancel(context.Background())
+	ok, err := claimNarrJob(site.Dir(), cancel)
+	if !ok {
+		cancel()
+		if errors.Is(err, errTranslatingNow) {
+			return app.ErrBatchTranslating(site)
+		}
+		return err
 	}
-	if s.TranslateSiteState().Running {
-		return app.ErrBatchTranslating(site)
+	fail := func(err error) error {
+		releaseNarrJob()
+		cancel()
+		return err
 	}
 	voices := s.Prefs().Voices
 	plan, err := app.NarrationTodo(site, voices)
 	if err != nil {
-		return err
+		return fail(err)
 	}
 	if len(plan.Items) == 0 {
-		return nil
+		return fail(nil)
 	}
 	if err := app.NarrateReady(site, plan, voices); err != nil {
-		return err
+		return fail(err)
 	}
 	cost, err := app.NarrationPlanCost(ctx, site, plan, voices)
 	if err != nil {
-		return err
+		return fail(err)
 	}
 	if cost != nil && !cost.Enough {
-		return app.ErrBatchAllowance(site, *cost)
+		return fail(app.ErrBatchAllowance(site, *cost))
 	}
-	jctx, cancel := context.WithCancel(context.Background())
 	narrJob.Lock()
-	if narrJob.st.Running { // another start took it meanwhile
-		narrJob.Unlock()
-		cancel()
-		return nil
-	}
-	narrJob.st = NarrateSiteJob{Running: true, Total: len(plan.Items)}
-	narrJob.cancel = cancel
+	narrJob.st = NarrateSiteJob{Running: true, Site: site.Dir(), Total: len(plan.Items)}
 	narrJob.Unlock()
 	go func() {
 		defer cancel()
 		res, err := app.NarrateSite(jctx, site, plan, voices, func(done, total int, note string) {
 			narrJob.Lock()
-			narrJob.st = NarrateSiteJob{Running: true, Done: done, Total: total, Note: note}
+			narrJob.st = NarrateSiteJob{Running: true, Site: site.Dir(), Done: done, Total: total, Note: note}
 			narrJob.Unlock()
-			application.Get().Event.Emit("narrateSite", NarrateSiteProgress{done, total, note})
+			application.Get().Event.Emit("narrateSite", NarrateSiteProgress{site.Dir(), done, total, note})
 		})
-		end := NarrateSiteDone{Done: res.Done, Failed: res.Failed}
+		end := NarrateSiteDone{Site: site.Dir(), Done: res.Done, Skipped: res.Skipped, Failed: res.Failed}
 		switch {
 		case errors.Is(err, context.Canceled):
 			end.Cancelled = true
 		case err != nil:
 			end.Error = err.Error()
 		}
-		narrJob.Lock()
-		narrJob.st = NarrateSiteJob{}
-		narrJob.cancel = nil
-		narrJob.Unlock()
+		releaseNarrJob()
 		application.Get().Event.Emit("narrateSiteDone", end)
 	}()
 	return nil

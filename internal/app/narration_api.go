@@ -297,10 +297,10 @@ func cloudOf(voice string) string {
 
 // errNoLocalVoice: no voice was chosen and the local one is not installed.
 func errNoLocalVoice(lang string) error {
-	return errors.New(byLangCode(lang,
+	return friendlyErr{byLangCode(lang,
 		"Escolha uma voz nas configurações de narração, ou baixe a voz no computador (grátis).",
 		"Pick a voice in the narration settings, or download the voice on the computer (free).",
-		"Elige una voz en la configuración de narración, o descarga la voz en la computadora (gratis)."))
+		"Elige una voz en la configuración de narración, o descarga la voz en la computadora (gratis)."), errNoVoice}
 }
 
 // resolveOpenRouter checks a choice against OpenRouter's current list, so
@@ -453,8 +453,13 @@ func Narrate(ctx context.Context, site *config.Site, rel, voice string, progress
 	if err != nil {
 		return Narration{}, err
 	}
-	if noteLocked(note) {
+	// A translation goes by its original too: a protected original's
+	// translation would give the text away, a draft's would publish it.
+	switch gate := originGate(site, rel); {
+	case noteLocked(note) || gate == locked:
 		return Narration{}, errors.New(byLang(site, "Posts com senha não ganham narração: o áudio entregaria o texto.", "Password protected posts are not narrated: the audio would give the text away.", "Los posts con contraseña no tienen narración: el audio revelaría el texto."))
+	case gate == notPost:
+		return Narration{}, errTranslationOfHidden(site)
 	}
 	if strings.Count(text, " ") < 3 {
 		return Narration{}, errors.New(byLang(site, "A nota ainda não tem texto para narrar.", "The note has no text to narrate yet.", "La nota todavía no tiene texto para narrar."))
@@ -535,7 +540,7 @@ func speakOpenRouter(ctx context.Context, lang, text, choice string, progress fu
 		}
 		a, err := client.Speak(ctx, model, part, voice)
 		if errors.Is(err, narrate.ErrModelGone) {
-			return nil, 0, "", errors.New(byLangCode(lang, "O modelo de voz saiu do OpenRouter agora há pouco. Escolha outro nas configurações de IA.", "The voice model just left OpenRouter. Pick another in the AI settings.", "El modelo de voz acaba de salir de OpenRouter. Elige otro en la configuración de IA."))
+			return nil, 0, "", friendlyErr{byLangCode(lang, "O modelo de voz saiu do OpenRouter agora há pouco. Escolha outro nas configurações de IA.", "The voice model just left OpenRouter. Pick another in the AI settings.", "El modelo de voz acaba de salir de OpenRouter. Elige otro en la configuración de IA."), narrate.ErrModelGone}
 		}
 		if err != nil {
 			return nil, 0, "", err

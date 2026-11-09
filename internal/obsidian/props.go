@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -81,7 +82,68 @@ func (n Note) List(key string) []string {
 // SetProperties changes properties of the note at path, keeping the others,
 // their order and the text. The note is created when missing.
 func SetProperties(path string, props ...Prop) error {
+	return setProperties(path, true, props)
+}
+
+// UpdateProperties is SetProperties for a note that must exist: a note
+// gone meanwhile (deleted, renamed) is not made again, and the error is
+// os.ErrNotExist.
+func UpdateProperties(path string, props ...Prop) error {
+	return setProperties(path, false, props)
+}
+
+// The notes' writes that read the note first (its properties, its text)
+// take the note's lock, so two of them (the editor's save, a background
+// job's properties) never read the same note and write over each other's
+// change. Each write lands whole: a file next to it, renamed over it.
+var noteLocks sync.Map // path → *sync.Mutex
+
+func lockNote(path string) func() {
+	if abs, err := filepath.Abs(path); err == nil {
+		path = abs
+	}
+	m, _ := noteLocks.LoadOrStore(path, &sync.Mutex{})
+	mu := m.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
+
+// writeNote writes data to path at once: a temporary file in the same
+// folder, renamed over it (keeping the note's permissions).
+func writeNote(path string, data []byte) error {
+	// A note that is a link to another file: the file changes, the link stays.
+	if real, err := filepath.EvalSymlinks(path); err == nil {
+		path = real
+	}
+	mode := os.FileMode(0o644)
+	if fi, err := os.Stat(path); err == nil {
+		mode = fi.Mode().Perm()
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(mode); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
+}
+
+func setProperties(path string, create bool, props []Prop) error {
+	defer lockNote(path)()
 	b, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) && !create {
+		return err
+	}
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
@@ -139,7 +201,7 @@ func SetProperties(path string, props ...Prop) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte(text), 0o644)
+	return writeNote(path, []byte(text))
 }
 
 // splitFrontMatter separates the YAML between the opening "---" lines from
@@ -166,6 +228,7 @@ func splitFrontMatter(s string) (fm, body string) {
 
 // SetBody replaces the text of the note at path, keeping its properties.
 func SetBody(path, body string) error {
+	defer lockNote(path)()
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -173,7 +236,7 @@ func SetBody(path, body string) error {
 	s := string(b)
 	fm, _ := splitFrontMatter(s)
 	if fm == "" && !strings.HasPrefix(strings.ReplaceAll(strings.TrimPrefix(s, "\ufeff"), "\r\n", "\n"), "---\n") {
-		return os.WriteFile(path, []byte(body), 0o644)
+		return writeNote(path, []byte(body))
 	}
-	return os.WriteFile(path, []byte("---\n"+fm+"---\n"+body), 0o644)
+	return writeNote(path, []byte("---\n"+fm+"---\n"+body))
 }

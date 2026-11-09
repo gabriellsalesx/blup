@@ -141,17 +141,27 @@ export interface NarrateProgress {
  * NarrateSiteDone is how the batch ended, heard as "narrateSiteDone".
  */
 export interface NarrateSiteDone {
+    "site": string;
     "done": number;
-    "failed": string[] | null;
+    "skipped": number;
+    "failed": app$0.NarrationFailure[] | null;
     "error": string;
     "cancelled": boolean;
 }
 
 /**
- * NarrateSiteJob is the batch running now (Running false when none).
+ * NarrateSiteJob is the batch now (Running false when none). Preparing:
+ * it was claimed and checks its notes, voices and cost before the first
+ * note (nothing to stop yet).
  */
 export interface NarrateSiteJob {
     "running": boolean;
+    "preparing": boolean;
+
+    /**
+     * the folder of the site being narrated
+     */
+    "site": string;
     "done": number;
     "total": number;
     "note": string;
@@ -161,6 +171,7 @@ export interface NarrateSiteJob {
  * NarrateSiteProgress is how far the batch went, heard as "narrateSite".
  */
 export interface NarrateSiteProgress {
+    "site": string;
     "done": number;
     "total": number;
     "note": string;

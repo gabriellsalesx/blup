@@ -2,7 +2,7 @@
   import { onDestroy } from "svelte";
   import { Podcast, SavePodcast, PickCover, LinkedImage, OpenURL, NarrationPlan } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { PodcastInfo, NarrationPlan as Plan } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
-  import { narrateJob, startNarrateSite, cancelNarrateSite, narratePercent, onNarrateEnd } from "./narratejob.svelte";
+  import { narrateJob, startNarrateSite, cancelNarrateSite, narratePercent, onNarrateEnd, narratesSite } from "./narratejob.svelte";
   import { Clipboard } from "@wailsio/runtime";
   import TextField from "./ui/TextField.svelte";
   import Switch from "./Switch.svelte";
@@ -15,6 +15,8 @@
   // section's note, read by the theme's feed), its cover, how many
   // episodes there are (posts with a narration) and the feed to give to
   // Spotify and Apple Podcasts once.
+  // siteDir: the open site's folder (a batch of another site isn't shown here).
+  let { siteDir }: { siteDir: string } = $props();
   const p = t.pod;
   const CATEGORIES = Object.keys(p.cats);
   const NAMES: Record<string, string> = { pt: "Português", en: "English", es: "Español" };
@@ -86,9 +88,11 @@
   const minutes = $derived(plan ? Math.max(1, Math.round(plan.chars / 900)) : 0);
   const blocked = $derived(!!plan && (!!plan.costError || (!!plan.cost && !plan.cost.enough)));
   const noteName = (n: string) => n.split("/").pop()?.replace(/\.md$/i, "") ?? "";
+  // The batch of this site (one of another site open before isn't shown).
+  const mine = $derived(narrateJob.running && narratesSite(siteDir));
   function narrateAll() {
     confirming = false;
-    startNarrateSite();
+    startNarrateSite(siteDir);
   }
 
   async function copy(url: string) {
@@ -110,7 +114,9 @@
     <section class="card">
       <h2>{a.title}</h2>
       <p class="muted">{a.lead}</p>
-      {#if narrateJob.running}
+      {#if mine && narrateJob.preparing}
+        <small class="muted">{a.preparing}</small>
+      {:else if mine}
         <div class="nbar" role="progressbar" aria-label={a.title} aria-valuemin="0" aria-valuemax="100" aria-valuenow={narratePercent()}>
           <span style:width="{Math.max(3, narratePercent())}%"></span>
         </div>
@@ -126,6 +132,7 @@
           {#if plan.outdated}<li>{a.outdated.replace("{n}", String(plan.outdated))}</li>{/if}
           {#each Object.entries(plan.translations ?? {}) as [lang, n] (lang)}<li>{a.translations.replace("{n}", String(n)).replace("{lang}", NAMES[lang] ?? lang)}</li>{/each}
           {#if plan.locked}<li class="muted">{a.locked.replace("{n}", String(plan.locked))}</li>{/if}
+          {#if plan.ownAudio}<li class="muted">{a.ownAudio.replace("{n}", String(plan.ownAudio))}</li>{/if}
         </ul>
         {#if plan.total === 0}
           <p>{a.none}</p>
@@ -134,6 +141,9 @@
             <small class="muted">{a.voice.replace("{lang}", NAMES[v.lang] ?? v.lang).replace("{name}", v.name).replace("{engine}", a[v.engine as "local" | "blup" | "openrouter"] ?? v.engine)}</small>
           {/each}
           <small class="muted">{a.minutes.replace("{min}", String(minutes))}</small>
+          {#each (plan.voices ?? []).filter((v) => v.engine === "openrouter") as v (v.lang)}
+            <small class="muted">{(v.usd > 0 ? a.openrouterUSD : a.openrouterChars).replace("{lang}", NAMES[v.lang] ?? v.lang).replace("{usd}", v.usd.toFixed(2)).replace("{chars}", v.chars.toLocaleString())}</small>
+          {/each}
           {#if plan.cost}<small class:bad={!plan.cost.enough} class:muted={plan.cost.enough}>{(plan.cost.enough ? a.cost : a.costLow).replace("{pct}", String(plan.cost.percent)).replace("{left}", String(plan.cost.left))}</small>{/if}
           {#if plan.costError}<small class="bad">{plan.costError}</small>{/if}
           {#if confirming}
@@ -143,7 +153,7 @@
               <button class="btn ghost" onclick={() => (confirming = false)}>{a.no}</button>
             </div>
           {:else}
-            <div class="row"><button class="btn" disabled={blocked} onclick={() => (confirming = true)}>{a.button.replace("{n}", String(plan.total))}</button></div>
+            <div class="row"><button class="btn" disabled={blocked || narrateJob.running} onclick={() => (confirming = true)}>{a.button.replace("{n}", String(plan.total))}</button></div>
           {/if}
         {/if}
       {/if}

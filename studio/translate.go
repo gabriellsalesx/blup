@@ -196,8 +196,12 @@ func (s *Studio) StartTranslateSite(ctx context.Context, lang string) error {
 	if err := app.TranslateReady(ctx, provider); err != nil {
 		return err
 	}
-	// Checked again: another start may have taken the job meanwhile.
+	// Checked again: another start (or the narration) may have taken the
+	// background meanwhile.
 	if ok, err := claimSiteJob(lang); !ok {
+		if errors.Is(err, errNarratingNow) {
+			return app.ErrBatchNarrating(site)
+		}
 		return err
 	}
 	go func() {
@@ -242,6 +246,11 @@ func siteJobBusy(lang string) (bool, error) {
 // language: never two batches, and never a silent "started" for a
 // language that is not the one running.
 func claimSiteJob(lang string) (bool, error) {
+	jobsMu.Lock()
+	defer jobsMu.Unlock()
+	if narrateRunning() {
+		return false, errNarratingNow
+	}
 	siteJob.Lock()
 	defer siteJob.Unlock()
 	if siteJob.st.Running {
