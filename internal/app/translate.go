@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -280,6 +281,9 @@ type friendlyErr struct {
 func (e friendlyErr) Error() string { return e.msg }
 func (e friendlyErr) Unwrap() error { return e.err }
 
+// writeTranslation keeps the translations being written one at a time.
+var writeTranslation sync.Mutex
+
 func translateNoteWith(ctx context.Context, c *translate.Client, site *config.Site, rel, lang string, progress func(done, total int)) (string, error) {
 	original, _ := NoteOrigin(site, rel)
 	op, err := notesPath(site, original)
@@ -293,31 +297,50 @@ func translateNoteWith(ctx context.Context, c *translate.Client, site *config.Si
 	if noteLocked(n) {
 		return "", errLockedCloud(site)
 	}
-	title, err := c.Text(ctx, noteTitle(n, original), site.Lang, lang, nil)
-	if err != nil {
-		return "", friendly(err)
+	// Two requests at once: the text, and every short field (title,
+	// description, the properties' texts) together in one.
+	type answer struct {
+		text string
+		err  error
 	}
+	bodyDone := make(chan answer, 1)
+	go func() {
+		t, err := c.Text(ctx, n.Body, site.Lang, lang, progress)
+		bodyDone <- answer{t, err}
+	}()
 	desc := n.String("description")
-	if desc != "" {
-		if desc, err = c.Text(ctx, desc, site.Lang, lang, nil); err != nil {
-			return "", friendly(err)
-		}
+	fields := []string{noteTitle(n, original), desc}
+	ptexts := PropTexts(n)
+	keys := slices.Sorted(maps.Keys(ptexts))
+	for _, k := range keys {
+		fields = append(fields, ptexts[k]...)
 	}
-	body, err := c.Text(ctx, n.Body, site.Lang, lang, progress)
-	if err != nil {
-		return "", friendly(err)
+	got, ferr := c.Fields(ctx, fields, site.Lang, lang)
+	b := <-bodyDone
+	if ferr != nil {
+		return "", friendly(ferr)
+	}
+	if b.err != nil {
+		return "", friendly(b.err)
+	}
+	title, body := got[0], b.text
+	if desc != "" {
+		desc = got[1]
 	}
 	props := map[string]any{}
-	for k, v := range PropTexts(n) {
-		out := make([]string, len(v))
-		for i, text := range v {
-			if out[i], err = c.Text(ctx, text, site.Lang, lang, nil); err != nil {
-				return "", friendly(err)
-			}
-			out[i] = strings.TrimSpace(out[i])
+	at := 2
+	for _, k := range keys {
+		out := make([]string, len(ptexts[k]))
+		for i := range out {
+			out[i] = strings.TrimSpace(got[at])
+			at++
 		}
 		props[k] = out
 	}
+	// Writing is one note at a time (the file's free name in the folder,
+	// the site's languages): the requests above run side by side.
+	writeTranslation.Lock()
+	defer writeTranslation.Unlock()
 	return WriteTranslation(site, rel, lang, title, desc, body, props)
 }
 
@@ -698,11 +721,6 @@ type SiteTranslation struct {
 	Failed []string `json:"failed"`
 }
 
-// TranslateSite translates every note of the site into lang that has no
-// translation yet, or an out of date one, with the AI in the cloud chosen
-// (provider). Password protected posts are left out and counted.
-// progress gets the notes done of total and the note being translated. It
-// stops at the first error (the notes done stay).
 // TranslateReady says whether provider can translate now (a key, a plan
 // with AI, the consent), before a batch starts on its own.
 func TranslateReady(ctx context.Context, provider string) error {
@@ -710,6 +728,17 @@ func TranslateReady(ctx context.Context, provider string) error {
 	return err
 }
 
+// siteWorkers is how many notes a batch translates side by side: two
+// requests each, under Blup Cloud's 120 AI requests a minute an account.
+const siteWorkers = 3
+
+// TranslateSite translates every note of the site into lang that has no
+// translation yet, or an out of date one, with the AI in the cloud chosen
+// (provider), a few notes at a time. Password protected posts are left
+// out and counted. progress gets the notes done of total and a note being
+// translated. A note that fails alone is listed in Failed and the rest go
+// on; what holds for every note (no key, no allowance) stops the batch
+// (the notes done stay).
 func TranslateSite(ctx context.Context, site *config.Site, lang, provider string, progress func(done, total int, note string)) (SiteTranslation, error) {
 	var res SiteTranslation
 	if lang == site.Lang || !slices.Contains(config.SiteLangs, lang) {
@@ -737,21 +766,57 @@ func TranslateSite(ctx context.Context, site *config.Site, lang, provider string
 	if err != nil {
 		return res, err
 	}
-	for i, rel := range todo {
-		if progress != nil {
-			progress(i, len(todo), rel)
-		}
-		if _, err := translateNoteWith(ctx, c, site, rel, lang, nil); err != nil {
-			// What holds for every note (no key, no allowance, cancelled)
-			// stops here; a note that failed alone is left for later.
-			if ctx.Err() != nil || errors.Is(err, translate.ErrInvalidKey) || errors.Is(err, translate.ErrNoCredits) || errors.Is(err, translate.ErrLimit) {
-				return res, err
+	// A few notes at a time (siteWorkers): each waits mostly on the AI,
+	// so side by side the batch takes a fraction of the time, at the same
+	// cost. What holds for every note (no key, no allowance, cancelled)
+	// stops them all; a note that failed alone is left for later.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var mu sync.Mutex
+	var fatal error
+	done := 0
+	next := make(chan string)
+	var wg sync.WaitGroup
+	for range min(siteWorkers, len(todo)) {
+		wg.Go(func() {
+			for rel := range next {
+				mu.Lock()
+				if progress != nil && fatal == nil {
+					progress(done, len(todo), rel)
+				}
+				mu.Unlock()
+				_, err := translateNoteWith(ctx, c, site, rel, lang, nil)
+				mu.Lock()
+				switch {
+				case err == nil:
+					res.Done++
+				case ctx.Err() != nil || errors.Is(err, translate.ErrInvalidKey) || errors.Is(err, translate.ErrNoCredits) || errors.Is(err, translate.ErrLimit):
+					if fatal == nil {
+						fatal = err
+					}
+					cancel()
+				default:
+					res.Failed = append(res.Failed, rel)
+				}
+				done++
+				mu.Unlock()
 			}
-			res.Failed = append(res.Failed, rel)
-			continue
-		}
-		res.Done++
+		})
 	}
+feed:
+	for _, rel := range todo {
+		select {
+		case next <- rel:
+		case <-ctx.Done():
+			break feed
+		}
+	}
+	close(next)
+	wg.Wait()
+	if fatal != nil {
+		return res, fatal
+	}
+	slices.Sort(res.Failed)
 	if progress != nil {
 		progress(len(todo), len(todo), "")
 	}

@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -161,15 +163,23 @@ func (c *Client) part(ctx context.Context, text, from, to string) (string, error
 		body, _ = json.Marshal(req)
 	}
 	var last error
-	for try := range 3 {
+	var wait time.Duration
+	for try := range 4 {
 		if try > 0 {
 			select {
 			case <-ctx.Done():
 				return "", ctx.Err()
-			case <-time.After(time.Duration(try*try) * 2 * time.Second):
+			case <-time.After(max(wait, time.Duration(try*try)*2*time.Second)):
 			}
 		}
 		out, retry, err := c.post(ctx, url, body)
+		wait = 0
+		var busy *busyError
+		if errors.As(err, &busy) {
+			// Too many requests: wait as long as the server asks (at most
+			// a minute), then go on.
+			wait = min(busy.after, time.Minute)
+		}
 		if err == nil {
 			return out, nil
 		}
@@ -205,6 +215,10 @@ func (c *Client) post(ctx context.Context, url string, body []byte) (text string
 	}
 	if res.StatusCode != http.StatusOK {
 		err := apiError(res.StatusCode, b)
+		if res.StatusCode == http.StatusTooManyRequests {
+			after, _ := strconv.Atoi(res.Header.Get("Retry-After"))
+			return "", true, &busyError{err, time.Duration(after) * time.Second}
+		}
 		return "", !errors.Is(err, ErrCut) && (res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500), err
 	}
 	if c.Blup {
@@ -258,3 +272,85 @@ func apiError(status int, b []byte) error {
 	}
 	return fmt.Errorf("translate: HTTP %d: %s", status, msg)
 }
+
+// fieldMark opens each field in a request that carries several (an HTML
+// comment: the prompt keeps HTML exactly).
+var fieldMark = regexp.MustCompile(`<!--f(\d+)-->`)
+
+// Fields translates short texts (a title, a description, a property's
+// texts) in one request instead of one each, and gives them back in the
+// same order. An answer that doesn't come back with every field, each in
+// its place, falls back to one request per text.
+func (c *Client) Fields(ctx context.Context, texts []string, from, to string) ([]string, error) {
+	out := make([]string, len(texts))
+	var idx []int
+	var b strings.Builder
+	for i, t := range texts {
+		if strings.TrimSpace(t) == "" {
+			out[i] = t
+			continue
+		}
+		fmt.Fprintf(&b, "<!--f%d-->\n%s\n", len(idx), strings.TrimSpace(t))
+		idx = append(idx, i)
+	}
+	switch len(idx) {
+	case 0:
+		return out, nil
+	case 1:
+		t, err := c.Text(ctx, texts[idx[0]], from, to, nil)
+		out[idx[0]] = t
+		return out, err
+	}
+	if got, err := c.part(ctx, strings.TrimSpace(b.String()), from, to); err == nil {
+		if fields, ok := splitFields(got, len(idx)); ok {
+			for k, i := range idx {
+				out[i] = fields[k]
+			}
+			return out, nil
+		}
+	} else if ctx.Err() != nil || errors.Is(err, ErrInvalidKey) || errors.Is(err, ErrNoCredits) || errors.Is(err, ErrLimit) {
+		// What holds for every request: one per text would fail the same.
+		return nil, err
+	}
+	for _, i := range idx {
+		t, err := c.Text(ctx, texts[i], from, to, nil)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = t
+	}
+	return out, nil
+}
+
+// splitFields reads n fields back from an answer, each after its mark, in
+// order; false when one is missing, repeated, out of place or empty.
+func splitFields(s string, n int) ([]string, bool) {
+	locs := fieldMark.FindAllStringSubmatchIndex(s, -1)
+	if len(locs) != n || strings.TrimSpace(s[:locs[0][0]]) != "" {
+		return nil, false
+	}
+	out := make([]string, n)
+	for k, l := range locs {
+		if s[l[2]:l[3]] != strconv.Itoa(k) {
+			return nil, false
+		}
+		end := len(s)
+		if k+1 < n {
+			end = locs[k+1][0]
+		}
+		out[k] = strings.TrimSpace(s[l[1]:end])
+		if out[k] == "" {
+			return nil, false
+		}
+	}
+	return out, true
+}
+
+// busyError is a 429: the server asks to wait after before the next try.
+type busyError struct {
+	err   error
+	after time.Duration
+}
+
+func (e *busyError) Error() string { return e.err.Error() }
+func (e *busyError) Unwrap() error { return e.err }

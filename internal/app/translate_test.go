@@ -3,13 +3,16 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	yamlv3 "go.yaml.in/yaml/v3"
 
@@ -87,9 +90,9 @@ func TestTranslateSite(t *testing.T) {
 	creds.OpenRouterToken = "k"
 	_ = SetAIConsent(AIOpenRouter, true)
 	_ = creds.Save()
-	calls := 0
+	var calls atomic.Int64
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
+		calls.Add(1)
 		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": "ES"}, "finish_reason": "stop"}}})
 	}))
 	defer srv.Close()
@@ -117,8 +120,8 @@ func TestTranslateSite(t *testing.T) {
 			t.Fatalf("es = %+v", s)
 		}
 	}
-	before := calls
-	if n, _ := TranslateSite(context.Background(), site, "es", AIOpenRouter, nil); n.Done != 0 || calls != before {
+	before := calls.Load()
+	if n, _ := TranslateSite(context.Background(), site, "es", AIOpenRouter, nil); n.Done != 0 || calls.Load() != before {
 		t.Fatal("up to date notes should not be translated again")
 	}
 }
@@ -314,5 +317,40 @@ func TestTranslateSiteGoesOnPastAFailedNote(t *testing.T) {
 	limit = true
 	if _, err := TranslateSite(context.Background(), site, "es", AIOpenRouter, nil); err == nil {
 		t.Fatal("a used up allowance must stop the batch")
+	}
+}
+
+// TestTranslateSiteSideBySide: the batch sends a few notes at once, never
+// more than siteWorkers.
+func TestTranslateSiteSideBySide(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	creds, _ := config.LoadCredentials()
+	creds.OpenRouterToken = "k"
+	_ = SetAIConsent(AIOpenRouter, true)
+	_ = creds.Save()
+	var now, peak atomic.Int64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := now.Add(1)
+		for p := peak.Load(); n > p && !peak.CompareAndSwap(p, n); p = peak.Load() {
+		}
+		time.Sleep(30 * time.Millisecond)
+		now.Add(-1)
+		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": "ES"}, "finish_reason": "stop"}}})
+	}))
+	defer srv.Close()
+	openRouterURL = srv.URL
+	defer func() { openRouterURL = "" }()
+	site := settingsSite(t)
+	site.Lang = "pt"
+	for i := range 10 {
+		write(t, site.ContentDir(), fmt.Sprintf("N%d.md", i), "Texto.")
+	}
+	n, err := TranslateSite(context.Background(), site, "es", AIOpenRouter, nil)
+	if err != nil || len(n.Failed) != 0 || n.Done < 10 {
+		t.Fatalf("res = %+v, %v", n, err)
+	}
+	// Two requests a note (text, fields), siteWorkers notes at a time.
+	if p := peak.Load(); p < 3 || p > 2*siteWorkers {
+		t.Fatalf("peak = %d requests at once", p)
 	}
 }

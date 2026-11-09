@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSplitKeepsCodeWhole(t *testing.T) {
@@ -150,5 +151,61 @@ func TestCutAloneFails(t *testing.T) {
 	_, err := (&Client{Key: "s", BaseURL: srv.URL, Blup: true}).Text(context.Background(), "um parágrafo só", "pt", "en", nil)
 	if !errors.Is(err, ErrCut) || n != 1 {
 		t.Fatalf("err = %v, calls = %d", err, n)
+	}
+}
+
+// TestFieldsInOneRequest: the short texts go together, each after its
+// mark, and come back in their places; an answer that loses a mark falls
+// back to one request per text.
+func TestFieldsInOneRequest(t *testing.T) {
+	broken := false
+	var sent []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Text string }
+		_ = json.NewDecoder(r.Body).Decode(&b)
+		sent = append(sent, b.Text)
+		out := strings.ToUpper(b.Text)
+		out = strings.ReplaceAll(out, "<!--F", "<!--f")
+		if broken && strings.Contains(out, "<!--f1-->") {
+			out = strings.Replace(out, "<!--f1-->", "", 1)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{"text": out})
+	}))
+	defer srv.Close()
+	c := &Client{Key: "s", BaseURL: srv.URL, Blup: true}
+	got, err := c.Fields(context.Background(), []string{"título", "", "descrição", "tag"}, "pt", "en")
+	if err != nil || strings.Join(got, "|") != "TÍTULO||DESCRIÇÃO|TAG" || len(sent) != 1 {
+		t.Fatalf("got %q, %v, sent %q", got, err, sent)
+	}
+	broken, sent = true, nil
+	got, err = c.Fields(context.Background(), []string{"um", "dois"}, "pt", "en")
+	if err != nil || strings.Join(got, "|") != "UM|DOIS" || len(sent) != 3 {
+		t.Fatalf("fallback: got %q, %v, sent %q", got, err, sent)
+	}
+}
+
+// TestWaitsWhatTheServerAsks: a 429 with Retry-After waits that long and
+// tries again, instead of failing the note.
+func TestWaitsWhatTheServerAsks(t *testing.T) {
+	n := 0
+	var first time.Time
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n++
+		if n == 1 {
+			first = time.Now()
+			w.Header().Set("Retry-After", "3")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte(`{"error":{"message":"Muitos pedidos","code":"TOO_MANY_REQUESTS"}}`))
+			return
+		}
+		if time.Since(first) < 3*time.Second {
+			t.Errorf("tried again after %v", time.Since(first))
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{"text": "ok"})
+	}))
+	defer srv.Close()
+	out, err := (&Client{Key: "s", BaseURL: srv.URL, Blup: true}).Text(context.Background(), "olá", "pt", "en", nil)
+	if err != nil || out != "ok" || n != 2 {
+		t.Fatalf("out %q, err %v, calls %d", out, err, n)
 	}
 }
