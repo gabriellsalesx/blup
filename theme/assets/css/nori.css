@@ -58,6 +58,12 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-title { font-size: 1.875rem; font-weight: 600; line-height: 2.25rem; letter-spacing: -.01em; color: var(--main-900); text-wrap: balance; }
   .nori-lede-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-block-start: .25rem; }
   .nori-lede { font-size: 1.875rem; font-weight: 600; line-height: 2.25rem; letter-spacing: -.01em; color: light-dark(#8b8b8b, #656565); } /* large text, 3:1 on the page in both schemes */
+  /* On a phone a long lede at title size fills the screen: smaller and
+  lighter there, still the larger text of the page. */
+  @media (width < 48rem) {
+    .nori-head .nori-title { font-size: 1.625rem; line-height: 2rem; }
+    .nori-head .nori-lede { font-size: 1.25rem; font-weight: 500; line-height: 1.75rem; letter-spacing: 0; color: var(--main-600); text-wrap: pretty; }
+  }
   .nori-meta { font-size: .8125rem; line-height: 1.25rem; color: var(--main-600); font-variant-numeric: tabular-nums; }
 
   .nori-feed { position: relative; display: flex; align-items: center; height: 2.25rem; flex-shrink: 0; }
@@ -106,6 +112,12 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-row-title { display: flex; align-items: center; gap: .5rem; }
   .nori-row-title h2 { font-size: 1rem; font-weight: 500; line-height: 1.25; color: var(--main-900); }
   .nori-row-top .nori-meta { flex-shrink: 0; }
+  /* On a phone the date beside the title squeezes it into a narrow
+  column: the date goes under the title, which takes the whole width. */
+  @media (width < 36rem) {
+    .nori-row-top { flex-direction: column; align-items: flex-start; gap: .25rem; }
+    .nori-row-title h2 { text-wrap: pretty; }
+  }
   .nori-row-bottom { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
   .nori-row-bottom:has(.nori-row-desc:empty):not(:has(.nori-avatars)) { display: none; }
   .nori-row-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 1rem; line-height: 1.25; color: var(--main-600); }
