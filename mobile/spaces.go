@@ -324,7 +324,9 @@ func (s *SpaceService) Rename(ctx context.Context, id, title string) (bool, erro
 	if err != nil {
 		return false, nil
 	}
-	k, err := keys(creds)
+	// Only the keys of the account signed in now seal the name: a key left
+	// here by another account would seal one this account can't open.
+	k, err := accountKeys(ctx, c, &creds)
 	if err != nil {
 		return false, nil
 	}

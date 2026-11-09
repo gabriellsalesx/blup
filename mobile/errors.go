@@ -150,7 +150,9 @@ func reportsView(answer string) ErrorReports {
 // ErrorReports é pedido pela tela ao abrir: aí os relatórios ligam, se a
 // pessoa já disse sim (antes disso a pasta do app pode não estar pronta).
 func (c *SettingsService) ErrorReports() (ErrorReports, error) {
+	settingsLock.Lock()
 	s, err := readSettings()
+	settingsLock.Unlock()
 	if err == nil {
 		startReports(s.Reports == "on")
 	}
