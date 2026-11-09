@@ -278,7 +278,10 @@ layout. Bundled into one file by css.Build. */
     .fbb-item { gap: .875rem; padding: 1rem; }
     .fbb-vote { width: 2.75rem; height: 3.25rem; }
     .fbb-tools { width: 100%; }
-    .fbb-search { flex: 1; } .fbb-search input { width: 100%; }
+    /* The search on a line of its own, the whole width: next to the sort
+       it had room for a few letters of what was typed. 16px keeps phones
+       from zooming in on it. */
+    .fbb-search { flex: 1 1 100%; } .fbb-search input { width: 100%; min-width: 0; font-size: 1rem; }
     .fbb-new { width: 100%; justify-content: center; }
   }
   .fbb-detail { display: grid; gap: .875rem; }
