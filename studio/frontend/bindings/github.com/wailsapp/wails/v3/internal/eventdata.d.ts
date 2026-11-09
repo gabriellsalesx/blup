@@ -23,6 +23,7 @@ declare module "@wailsio/runtime" {
             "previewRestarted": string;
             "progress": main$0.Progress;
             "republish": main$0.Republish;
+            "syncProgress": main$0.SyncProgress;
             "term": main$0.TermData;
             "translate": main$0.TranslateProgress;
             "translateInstall": main$0.TranslateInstallProgress;

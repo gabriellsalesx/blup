@@ -94,6 +94,23 @@
 
   const off = Events.On("progress", (ev) => { log.push(ev.data); });
   onDestroy(() => off());
+  // How far a sync is: the step and, sending or receiving, X of Y.
+  let syncStep = $state<{ phase: string; done: number; total: number } | null>(null);
+  const offStep = Events.On("syncProgress", (ev) => { if (syncing && ev.data) syncStep = ev.data; });
+  onDestroy(() => offStep());
+  const stepText = $derived.by(() => {
+    if (!syncStep) return "";
+    const n = (s: string) => s.replace("{done}", String(syncStep!.done)).replace("{total}", String(syncStep!.total));
+    switch (syncStep.phase) {
+      case "scan": return p.stepScan;
+      case "compare": return p.stepCompare;
+      case "upload": return n(p.stepUpload);
+      case "download": return n(p.stepDownload);
+      case "commit": return p.stepCommit;
+      case "retry": return p.stepRetry;
+      default: return "";
+    }
+  });
 
   async function load() {
     error = "";
@@ -194,11 +211,11 @@
 
   async function checkSync() {
     syncError = ""; syncStuck = false; syncing = true;
-    try { sync = await SyncStatus(); } catch (e) { failed(e); } finally { syncing = false; }
+    try { sync = await SyncStatus(); } catch (e) { failed(e); } finally { syncing = false; syncStep = null; }
   }
   async function runSync() {
     syncError = ""; syncStuck = false; syncing = true;
-    try { sync = await Sync(); toast(t.toast.synced); } catch (e) { failed(e); } finally { syncing = false; }
+    try { sync = await Sync(); toast(t.toast.synced); } catch (e) { failed(e); } finally { syncing = false; syncStep = null; }
   }
 
   load().then(() => {
@@ -372,6 +389,12 @@
           <button class="btn ghost" disabled={syncing} onclick={checkSync}><Refresh size={14} />{p.syncCheck}</button>
           <button class="btn" disabled={syncing} onclick={runSync}>{syncing ? p.syncing : p.syncNow}</button>
         </div>
+        {#if syncing && stepText}
+          <div class="step">
+            {#if syncStep?.total}<div class="sbar" role="progressbar" aria-valuemin="0" aria-valuemax={syncStep.total} aria-valuenow={syncStep.done}><span style:width="{Math.max(2, (syncStep.done / syncStep.total) * 100)}%"></span></div>{/if}
+            <small class="muted">{stepText}</small>
+          </div>
+        {/if}
       {/if}
       {#if syncError}<p class="bad">{syncError}</p>{/if}
     </section>
@@ -380,6 +403,9 @@
 </div>
 
 <style>
+  .step { display: grid; gap: .35rem; }
+  .sbar { height: 6px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+  .sbar span { display: block; height: 100%; border-radius: inherit; background: var(--blue); transition: width .3s ease; }
   .box { padding: .75rem 1rem; border-radius: .5rem; background: var(--soft); }
   .status { align-items: center; }
   .spacer { flex: 1; }

@@ -365,6 +365,21 @@ func SyncStatus(ctx context.Context, site *config.Site) (SyncInfo, error) {
 }
 
 // SyncNow sends and receives the notes, and the site's settings with them.
+// syncProgressKey carries, in a context, who hears how far a sync went.
+type syncProgressKey struct{}
+
+// WithSyncProgress is ctx with fn hearing each step of the syncs run with
+// it (reading the notes, sending X of Y, receiving X of Y, saving): a long
+// first sync shows it moving instead of a still "Syncing…".
+func WithSyncProgress(ctx context.Context, fn func(notesync.Progress)) context.Context {
+	return context.WithValue(ctx, syncProgressKey{}, fn)
+}
+
+func syncProgressOf(ctx context.Context) func(notesync.Progress) {
+	fn, _ := ctx.Value(syncProgressKey{}).(func(notesync.Progress))
+	return fn
+}
+
 func SyncNow(ctx context.Context, site *config.Site) (SyncInfo, error) {
 	return syncSite(ctx, site, true)
 }
@@ -398,7 +413,7 @@ func syncSiteWith(ctx context.Context, site *config.Site, share, fresh bool) (Sy
 			return SyncInfo{}, err
 		}
 	}
-	rep, err := sy.Sync(ctx, nil)
+	rep, err := sy.Sync(ctx, syncProgressOf(ctx))
 	if err != nil {
 		if gone := unlinkGoneVault(ctx, site, err); gone != nil {
 			return SyncInfo{}, gone

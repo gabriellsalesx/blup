@@ -13,6 +13,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/deploy/cfworkers"
+	"github.com/gabriellsalesx/blup/internal/notesync"
 	"github.com/gabriellsalesx/blup/internal/ui"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -169,6 +170,26 @@ func (s *Studio) SyncStatus(ctx context.Context) (app.SyncInfo, error) {
 	return app.SyncStatus(ctx, site)
 }
 
+// SyncProgress is how far the sync of the notes went, heard by the window
+// as "syncProgress": phase ("scan", "compare", "upload", "download",
+// "commit", "retry", "done") and, sending or receiving, done of total.
+type SyncProgress struct {
+	Phase string `json:"phase"`
+	Done  int    `json:"done"`
+	Total int    `json:"total"`
+}
+
+func init() {
+	application.RegisterEvent[SyncProgress]("syncProgress")
+}
+
+// syncProgress is a context whose syncs tell the window how far they went.
+func syncProgress() context.Context {
+	return app.WithSyncProgress(context.Background(), func(p notesync.Progress) {
+		application.Get().Event.Emit("syncProgress", SyncProgress{string(p.Phase), p.Done, p.Total})
+	})
+}
+
 // Sync sends and receives the notes (private GitHub repository).
 func (s *Studio) Sync() (app.SyncInfo, error) {
 	site, err := s.current()
@@ -177,7 +198,7 @@ func (s *Studio) Sync() (app.SyncInfo, error) {
 	}
 	var info app.SyncInfo
 	err = running(func() (err error) {
-		info, err = app.SyncNow(context.Background(), site)
+		info, err = app.SyncNow(syncProgress(), site)
 		return err
 	})
 	// The first sync through Blup Cloud creates the vault: live sync can
@@ -203,7 +224,7 @@ func (s *Studio) ResetSync() (app.SyncInfo, error) {
 	}
 	var info app.SyncInfo
 	err = running(func() (err error) {
-		info, err = app.ResetSync(context.Background(), site)
+		info, err = app.ResetSync(syncProgress(), site)
 		return err
 	})
 	s.mu.Lock()

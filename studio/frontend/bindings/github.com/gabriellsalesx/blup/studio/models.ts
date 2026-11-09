@@ -415,6 +415,17 @@ export interface SiteInfo {
 }
 
 /**
+ * SyncProgress is how far the sync of the notes went, heard by the window
+ * as "syncProgress": phase ("scan", "compare", "upload", "download",
+ * "commit", "retry", "done") and, sending or receiving, done of total.
+ */
+export interface SyncProgress {
+    "phase": string;
+    "done": number;
+    "total": number;
+}
+
+/**
  * TermData is a piece of a terminal's output (base64: it may split a
  * character), or its end (Exit).
  */

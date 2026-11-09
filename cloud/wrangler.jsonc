@@ -9,6 +9,12 @@
 	// A limpeza diária das versões antigas e dos blocos sem uso (04:00 UTC).
 	"triggers": { "crons": ["0 4 * * *", "*/5 * * * *", "* * * * *"] },
 	"upload_source_maps": true,
+	// Smart Placement: o Worker roda perto do D1, não perto de quem pede.
+	// Cada pedido faz várias consultas seguidas (sessão, plano, cota,
+	// trava...); longe do banco, cada uma custava ~250 ms (um bloco da
+	// sincronização levava ~3 s). Os assets (_app, fontes) continuam saindo
+	// do ponto mais perto do usuário.
+	"placement": { "mode": "smart" },
 	// O painel (SvelteKit estático) é servido como assets. O Worker roda
 	// antes de tudo, menos dos arquivos com hash (_app) e das fontes: assim
 	// pulse.getblup.site e deals.getblup.site respondem as páginas públicas
@@ -94,6 +100,7 @@
 	"env": {
 		"production": {
 			"workers_dev": false,
+			"placement": { "mode": "smart" },
 			"triggers": { "crons": ["0 4 * * *", "*/5 * * * *", "* * * * *"] },
 			"preview_urls": false,
 			"routes": [

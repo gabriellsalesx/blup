@@ -28,6 +28,7 @@ export type {
     Renamed,
     Republish,
     SiteInfo,
+    SyncProgress,
     TermData,
     TranslateInstallProgress,
     TranslateProgress,
