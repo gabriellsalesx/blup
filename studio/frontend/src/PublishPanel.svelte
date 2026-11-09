@@ -339,7 +339,7 @@
         </div>
         {#if log.length}
           <ul class="log">
-            {#each log as l, i (i)}<li class={l.kind}>{#if l.kind === "ok"}<Check size={14} />{:else if l.kind === "warn" || l.kind === "error"}<Alert size={14} />{:else}<span class="dot">•</span>{/if}{l.text}</li>{/each}
+            {#each log as l, i (i)}<li class="k-{l.kind}">{#if l.kind === "ok"}<Check size={14} />{:else if l.kind === "warn" || l.kind === "error"}<Alert size={14} />{:else if l.kind === "spin" && i === log.length - 1 && publishing}<span class="spin"><Loader size={14} /></span>{:else}<span class="dot">•</span>{/if}{l.text}</li>{/each}
           </ul>
         {/if}
         {#if live && !publishing && log.length}
@@ -430,9 +430,9 @@
   .link { color: var(--blue); text-decoration: underline; font-size: inherit; }
   .log { list-style: none; padding: .75rem; display: grid; gap: .35rem; max-height: 16rem; overflow: auto; border-radius: .5rem; background: var(--bg); font-size: .85rem; }
   .log li { display: flex; gap: .45rem; align-items: center; color: var(--muted); }
-  .log li.ok { color: #16a34a; }
-  .log li.warn { color: #b45309; }
-  .log li.error { color: var(--red); }
+  .log li.k-ok { color: #16a34a; }
+  .log li.k-warn { color: #b45309; }
+  .log li.k-error { color: var(--red); }
   .dot { width: 14px; text-align: center; }
   .spin { display: inline-grid; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }

@@ -261,3 +261,47 @@ func TestSamePromptAsBlupCloud(t *testing.T) {
 		t.Fatal("cloud/worker/ai.ts translatePrompt has other rules than translate.Prompt")
 	}
 }
+
+// TestLinkTargetsNeverReachTheModel: link, image and [[note]] targets go
+// as marks and come back exactly, even from a model that would translate
+// a path ("Publishing" into "Publicação"); the alias of a [[note]] and the
+// text of a link are translated.
+func TestLinkTargetsNeverReachTheModel(t *testing.T) {
+	var sent string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Text string }
+		_ = json.NewDecoder(r.Body).Decode(&b)
+		sent = b.Text
+		out := strings.NewReplacer("Publishing", "Publicação", "See", "Veja", "the intro", "a introdução", "and", "e").Replace(b.Text)
+		_ = json.NewEncoder(w).Encode(map[string]string{"text": out})
+	}))
+	defer srv.Close()
+	in := "See [Custom domain](../Publishing/Custom%20domain.md \"Publishing\") and [[Docs/Intro#Start|the intro]] and [[Notes]] and ![x](../Publishing/a.png)."
+	out, err := (&Client{Key: "s", BaseURL: srv.URL, Blup: true}).Text(context.Background(), in, "en", "pt", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Veja [Custom domain](../Publishing/Custom%20domain.md \"Publicação\") e [[Docs/Intro#Start|a introdução]] e [[Notes]] e ![x](../Publishing/a.png)."
+	if out != want {
+		t.Fatalf("out  = %q\nwant = %q", out, want)
+	}
+	if strings.Contains(sent, "../Publishing") || strings.Contains(sent, "Docs/Intro") {
+		t.Fatalf("a target went to the model: %q", sent)
+	}
+}
+
+// TestLostLinkKeepsTheOriginal: an answer without one of the marks lost a
+// link; after one more try, the original stays.
+func TestLostLinkKeepsTheOriginal(t *testing.T) {
+	n := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n++
+		_ = json.NewEncoder(w).Encode(map[string]string{"text": "Veja o domínio próprio."})
+	}))
+	defer srv.Close()
+	in := "See [Custom domain](../Publishing/Custom%20domain.md)."
+	out, err := (&Client{Key: "s", BaseURL: srv.URL, Blup: true}).Text(context.Background(), in, "en", "pt", nil)
+	if err != nil || out != in || n != 2 {
+		t.Fatalf("out %q, err %v, calls %d", out, err, n)
+	}
+}

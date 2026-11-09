@@ -151,14 +151,20 @@ func Split(text string, max int) []string {
 // model that took a lone word for a question) is tried once more and then
 // left out: the original stays, never a chat answer in its place.
 func (c *Client) part(ctx context.Context, text, from, to string) (string, error) {
-	var out string
-	var err error
+	// The targets of links, images and [[notes]] never go to the model: a
+	// model told to keep them still translated "../Publishing/Custom
+	// domain.md" into a folder that doesn't exist. They go as marks and
+	// come back exactly as they were.
+	masked, targets := protectLinks(text)
 	for range 2 {
-		if out, err = c.send(ctx, "<text>\n"+text+"\n</text>", from, to); err != nil {
+		out, err := c.send(ctx, "<text>\n"+masked+"\n</text>", from, to)
+		if err != nil {
 			return "", err
 		}
-		if t, ok := unwrap(out, text); ok {
-			return t, nil
+		if t, ok := unwrap(out, masked); ok {
+			if t, ok = restoreLinks(t, targets); ok {
+				return t, nil
+			}
 		}
 	}
 	return "", errNotTranslation
@@ -415,3 +421,55 @@ type busyError struct {
 
 func (e *busyError) Error() string { return e.err.Error() }
 func (e *busyError) Unwrap() error { return e.err }
+
+// mdTarget is the target of a Markdown link or image: ](target "title").
+var mdTarget = regexp.MustCompile(`(\]\()(<[^>]+>|[^)\s]+)((?:\s+"[^"]*")?\))`)
+
+// wikiTarget is a [[Note]], [[Note#heading]] or [[Note|alias]]: the note
+// (and heading) is the target; the alias is text, translated.
+var wikiTarget = regexp.MustCompile(`\[\[([^\]|]+)((?:\|[^\]]*)?)\]\]`)
+
+// linkMark stands for a target while the text is with the model.
+var linkMark = regexp.MustCompile(`#blup-(\d+)`)
+
+// protectLinks swaps each link, image and [[note]] target for a mark
+// (#blup-N), returning the targets in order.
+func protectLinks(s string) (string, []string) {
+	var targets []string
+	mark := func(t string) string {
+		targets = append(targets, t)
+		return "#blup-" + strconv.Itoa(len(targets)-1)
+	}
+	s = mdTarget.ReplaceAllStringFunc(s, func(m string) string {
+		g := mdTarget.FindStringSubmatch(m)
+		return g[1] + mark(g[2]) + g[3]
+	})
+	s = wikiTarget.ReplaceAllStringFunc(s, func(m string) string {
+		g := wikiTarget.FindStringSubmatch(m)
+		return "[[" + mark(g[1]) + g[2] + "]]"
+	})
+	return s, targets
+}
+
+// restoreLinks puts the targets back in place of their marks; false when
+// a mark is missing, repeated or unknown (the answer lost a link).
+func restoreLinks(s string, targets []string) (string, bool) {
+	if len(targets) == 0 {
+		return s, !linkMark.MatchString(s)
+	}
+	seen := make([]bool, len(targets))
+	ok := true
+	out := linkMark.ReplaceAllStringFunc(s, func(m string) string {
+		n, err := strconv.Atoi(m[len("#blup-"):])
+		if err != nil || n >= len(targets) || seen[n] {
+			ok = false
+			return m
+		}
+		seen[n] = true
+		return targets[n]
+	})
+	for _, v := range seen {
+		ok = ok && v
+	}
+	return out, ok
+}
