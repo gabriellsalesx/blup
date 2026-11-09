@@ -13,3 +13,7 @@
 # names, so the browser may keep these for a year without asking again.
 /_app/immutable/*
   Cache-Control: public, max-age=31536000, immutable
+
+# The font (always the same file, Inter): a month without asking again.
+/fonts/*
+  Cache-Control: public, max-age=2592000
