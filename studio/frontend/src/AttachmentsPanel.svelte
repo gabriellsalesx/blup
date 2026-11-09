@@ -174,7 +174,7 @@
   .empty { padding: 2rem; border: 1px dashed var(--line); border-radius: .75rem; text-align: center; }
   .shade { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / .45); }
   /* Centered in the window, like the settings. */
-  .dialog { position: fixed; z-index: 41; inset: 0; margin: auto; width: min(34rem, calc(100% - 2rem)); height: fit-content; max-height: calc(100% - 2rem); overflow: auto; display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
+  .dialog { position: fixed; z-index: 41; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(34rem, calc(100% - 2rem)); max-height: calc(100% - 2rem); overflow: auto; display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
   /* The name and the X stay at the top while the rest scrolls. */
   .head { position: sticky; z-index: 1; inset-block-start: -1.25rem; display: flex; align-items: center; gap: .75rem; margin: -1.25rem -1.25rem -.25rem; padding: 1.1rem 1.25rem .6rem; background: var(--panel); border-block-end: 1px solid var(--line); }
   .head h2 { flex: 1; min-width: 0; font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

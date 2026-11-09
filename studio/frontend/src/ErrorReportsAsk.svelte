@@ -30,7 +30,7 @@
 
 <style>
   .shade { position: fixed; inset: 0; z-index: 80; background: rgb(0 0 0 / .5); }
-  .dialog { position: fixed; z-index: 81; inset: 0; margin: auto; width: min(30rem, calc(100% - 2rem)); height: fit-content; max-height: calc(100% - 2rem); overflow: auto; display: grid; gap: .85rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); color: var(--text); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
+  .dialog { position: fixed; z-index: 81; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(30rem, calc(100% - 2rem)); max-height: calc(100% - 2rem); overflow: auto; display: grid; gap: .85rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); color: var(--text); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
   .head { display: flex; align-items: center; gap: .6rem; color: var(--blue); }
   .head h2 { flex: 1; font-size: 1.05rem; font-weight: 700; color: var(--text); }
   p { margin: 0; font-size: .92rem; line-height: 1.45; }

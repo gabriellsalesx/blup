@@ -54,7 +54,7 @@
 <style>
   .shade { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / .45); }
   .form { display: grid; gap: .9rem; }
-  .dialog { position: fixed; z-index: 61; inset: 0; margin: auto; width: min(34rem, calc(100% - 2rem)); height: fit-content; padding: 1.25rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
+  .dialog { position: fixed; z-index: 61; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(34rem, calc(100% - 2rem)); padding: 1.25rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
   header { display: flex; align-items: center; }
   h2 { flex: 1; font-size: 1.1rem; font-weight: 700; }
   .close { display: grid; place-items: center; padding: .3rem; border-radius: .4rem; color: var(--muted); }

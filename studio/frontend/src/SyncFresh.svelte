@@ -65,7 +65,7 @@
   .stuck p { font-size: .9rem; }
   .row { display: flex; justify-content: flex-end; }
   .shade { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / .5); }
-  .dialog { position: fixed; z-index: 61; inset: 0; margin: auto; width: min(30rem, calc(100% - 2rem)); height: fit-content; max-height: calc(100% - 2rem); overflow: auto; display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
+  .dialog { position: fixed; z-index: 61; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(30rem, calc(100% - 2rem)); max-height: calc(100% - 2rem); overflow: auto; display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
   .head { display: flex; align-items: center; gap: .75rem; }
   .head h2 { flex: 1; font-size: 1.05rem; font-weight: 700; }
   .close { display: grid; place-items: center; padding: .3rem; border-radius: .4rem; color: var(--muted); }

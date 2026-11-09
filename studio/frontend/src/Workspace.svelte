@@ -1001,7 +1001,7 @@
   .ws.no-side { grid-template-columns: var(--rail) minmax(0, 1fr) var(--prev); }
   /* The edges to drag: a thin line that lights up under the mouse. */
   .tip-shade { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / .45); }
-  .tip { position: fixed; z-index: 41; inset: 0; margin: auto; height: fit-content; display: grid; justify-items: center; gap: .9rem; width: min(26rem, calc(100% - 2rem)); padding: 1.75rem 1.5rem 1.5rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); text-align: center; }
+  .tip { position: fixed; z-index: 41; top: 50%; left: 50%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: .9rem; width: min(26rem, calc(100% - 2rem)); padding: 1.75rem 1.5rem 1.5rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); text-align: center; }
   .tip img { width: 4rem; height: 4rem; }
   .tip b { font-size: 1.1rem; }
   .tip p { margin-block: .4rem 1rem; font-size: .9rem; color: var(--muted); }

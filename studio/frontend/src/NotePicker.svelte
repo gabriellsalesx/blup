@@ -31,7 +31,7 @@
 
 <style>
   .shade { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / .45); }
-  .picker { position: fixed; z-index: 61; inset: 0; margin: auto; width: min(32rem, calc(100% - 2rem)); height: fit-content; max-height: 70%; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: .75rem; padding: 1.1rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
+  .picker { position: fixed; z-index: 61; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(32rem, calc(100% - 2rem)); max-height: 70%; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: .75rem; padding: 1.1rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--panel); box-shadow: 0 24px 60px rgb(0 0 0 / .35); }
   header { display: flex; align-items: center; }
   h2 { flex: 1; font-size: 1rem; font-weight: 700; }
   .close { display: grid; place-items: center; padding: .3rem; border-radius: .4rem; color: var(--muted); }
