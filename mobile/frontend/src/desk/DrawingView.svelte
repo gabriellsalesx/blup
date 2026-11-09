@@ -2,6 +2,7 @@
   import { onDestroy, onMount, tick, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
   import { BoardFile, ReadBoard, SaveBoard, SaveBoardImage } from "./studio";
+  import { NotesChanged } from "../../bindings/events";
   import MousePointer from "@lucide/svelte/icons/mouse-pointer-2";
   import Palette from "@lucide/svelte/icons/palette";
   import Hand from "@lucide/svelte/icons/hand";
@@ -38,12 +39,13 @@
   //
   // Moving around: the hand (or Space, or the middle button) drags the
   // board, the wheel scrolls it, Ctrl and the wheel (or a pinch) zoom.
-  let { path, onStatus, onError, onOutside, bindSave }: {
+  let { path, onStatus, onError, onOutside, onGone, bindSave }: {
     path: string;
     bindSave?: (save: () => Promise<void>) => void; // the workspace saves first before a rename, move or delete
     onStatus: (s: "saved" | "saving" | "unsaved") => void;
     onError: (e: string) => void;
     onOutside: () => void; // changed on disk by someone else
+    onGone?: () => void; // deleted or renamed elsewhere (a sync)
   } = $props();
   const td = t.draw;
 
@@ -563,11 +565,19 @@
   }
 
   // Changed on disk by something else (an AI in the terminal, sync):
-  // opened again, unless there are changes of its own.
-  const off = Events.On("notesChanged", async (ev) => {
-    const list = String(ev.data ?? "").split("\n").map((p) => p.toLowerCase());
+  // opened again, unless there are changes of its own. Gone (deleted or
+  // renamed by a sync), it is closed and never saved again.
+  const off = Events.On(NotesChanged, async (ev) => {
+    const list = ev.data.split("\n").map((p) => p.toLowerCase());
     if (!list.includes(path.toLowerCase())) return;
-    const now = await ReadBoard(path).catch(() => written);
+    const now = await ReadBoard(path).catch(() => null);
+    if (now === null) {
+      clearTimeout(timer);
+      loaded = false; // save() writes nothing from here on
+      dirty = false;
+      onGone?.();
+      return;
+    }
     if (now.trimEnd() !== written.trimEnd() && !dirty) onOutside();
   });
   onMount(() => bindSave?.(save));

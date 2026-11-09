@@ -37,6 +37,7 @@
   import Undo2 from "@lucide/svelte/icons/undo-2";
   import Redo2 from "@lucide/svelte/icons/redo-2";
   import { NotesService, type Note } from "../../bindings/github.com/gabriellsalesx/blup/mobile";
+  import { NotesChanged } from "../../bindings/events";
   import { app, message } from "../lib/app.svelte";
   import { serial } from "../lib/serial";
   import FolderPick from "../ui/FolderPick.svelte";
@@ -99,14 +100,22 @@
   // The sync changed this note on disk (it came changed from another
   // device): the text on screen is read again, so the next save does not
   // put the old one back over it. Something typed and not saved yet stays,
-  // as the phone's version does in a sync.
-  const offChanged = Events.On("notesChanged", async (ev) => {
-    const list = String(ev.data ?? "").split("\n").map((p) => p.toLowerCase());
+  // as the phone's version does in a sync. Deleted or renamed on another
+  // device (nothing typed waiting), it is not made again: the app says so
+  // and goes back.
+  const offChanged = Events.On(NotesChanged, async (ev) => {
+    const list = ev.data.split("\n").map((p) => p.toLowerCase());
     if (!view || !list.includes(id.toLowerCase())) return;
     await save().catch(() => {});
     if (body !== saved) return;
     const text = await NotesService.Read(id).catch(() => null);
-    if (text === null || gone || body !== saved || text === head + saved) return;
+    if (gone) return;
+    if (text === null) {
+      deleted = true; // nothing to keep on leaving: no save makes it again
+      app.gone(id);
+      return;
+    }
+    if (body !== saved || text === head + saved) return;
     head = headOf(text);
     const next = text.slice(head.length);
     saved = next;

@@ -14,6 +14,14 @@
   let busy = $state(false);
   let error = $state("");
   const account = $derived(app.account);
+  // Opened with no internet: the session is there (signed out is no
+  // error), only the account could not be read. Not the same as signed out.
+  const offline = $derived(!account && app.accountFailed);
+  let retrying = $state(false);
+  async function retry() {
+    retrying = true;
+    try { await app.retry(); } finally { retrying = false; }
+  }
 
   async function run(work: () => Promise<unknown>) {
     busy = true;
@@ -89,11 +97,13 @@
 
   // Ready with no vault linked (now, or once the sign in or the password is
   // through, even when it ended with the sheet closed): the account's
-  // vaults to pick from, asked once.
-  let asked = false;
+  // vaults to pick from, asked once; asked again on coming back to the app
+  // (or the network back) when the last try failed.
+  let asked = -1; // the app.resumed it was asked at
   $effect(() => {
-    if (account?.notes !== "ready" || account.vault || app.recovery || asked) return;
-    asked = true;
+    const at = app.resumed;
+    if (account?.notes !== "ready" || account.vault || app.recovery || asked === at || untrack(() => vaults) !== null) return;
+    asked = at;
     untrack(loadVaults);
   });
 </script>
@@ -104,7 +114,7 @@
     <img src="/blups/blup.svg" alt="" width="52" height="52" />
     <div>
       <b>Blup Cloud</b>
-      <span>{t.account.localOnly}</span>
+      <span>{offline ? t.cloud.offline : t.account.localOnly}</span>
     </div>
   </div>
   {/if}
@@ -119,6 +129,9 @@
     <code>{app.login.code}</code>
     <p class="muted">{t.cloud.waiting}</p>
     <button class="plain" onclick={() => app.cancelLogin()}>{t.common.cancel}</button>
+  {:else if offline}
+    <p>{t.cloud.offlineLead}</p>
+    <button class="main" disabled={retrying || app.syncing} onclick={retry}>{retrying || app.syncing ? t.common.syncing : t.common.syncNow}</button>
   {:else if !account?.signedIn}
     <p>{t.cloud.connectLead}</p>
     <button class="main" onclick={login}>{t.cloud.connect}</button>
@@ -168,7 +181,8 @@
     <button class="main" disabled={app.syncing} onclick={() => app.sync()}>{app.syncing ? t.common.syncing : t.common.syncNow}</button>
   {/if}
 
-  {#if error || (app.syncError && !app.syncStuck)}<p class="bad">{error || app.syncError}</p>{/if}
+  {#if offline && !error}<p class="bad">{t.cloud.unreachable}</p>
+  {:else if error || (app.syncError && !app.syncStuck)}<p class="bad">{error || app.syncError}</p>{/if}
   {#if account?.signedIn && !app.recovery}
     <button class="plain" disabled={busy} onclick={signOut}>{t.cloud.signOut}</button>
   {/if}

@@ -50,6 +50,20 @@ export interface ErrorReports {
 }
 
 /**
+ * LiveSync is told to the screen after each sync of the live room.
+ */
+export interface LiveSync {
+    "result": SyncResult;
+    "error": string;
+
+    /**
+     * Stuck: the sync stopped for safety; the Cloud card offers "Compare
+     * from scratch".
+     */
+    "stuck": boolean;
+}
+
+/**
  * LoginCode is what the person checks in the browser.
  */
 export interface LoginCode {

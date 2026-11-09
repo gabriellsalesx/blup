@@ -17,7 +17,8 @@
   // is on each day written in it. The chosen day, the options to add and what
   // is coming up open in sheets. Each event is a note in Agenda.
   const locale = $derived(t.locale);
-  const today = iso(new Date());
+  // Today follows the clock (app.today changes at midnight and on coming back).
+  const today = $derived(app.today);
   const first = parse(app.day);
   let month = $state(first.getMonth());
   let year = $state(first.getFullYear());
@@ -35,10 +36,11 @@
     const lang = shown.lang;
     return { ...holidays(year - 1, lang), ...holidays(year, lang), ...holidays(year + 1, lang) };
   });
-  const nowMonth = new Date().getMonth(), nowYear = new Date().getFullYear();
+  const nowMonth = $derived(parse(today).getMonth());
+  const nowYear = $derived(parse(today).getFullYear());
   const title = $derived(new Intl.DateTimeFormat(locale, parse(app.day).getFullYear() === nowYear ? { day: "numeric", month: "long" } : { day: "numeric", month: "long", year: "numeric" }).format(parse(app.day)));
   // How much of this year has gone by.
-  const yearDone = Math.round(((parse(today).getTime() - new Date(nowYear, 0, 1).getTime()) / 864e5 + 1) / ((new Date(nowYear + 1, 0, 1).getTime() - new Date(nowYear, 0, 1).getTime()) / 864e5) * 100);
+  const yearDone = $derived(Math.round(((parse(today).getTime() - new Date(nowYear, 0, 1).getTime()) / 864e5 + 1) / ((new Date(nowYear + 1, 0, 1).getTime() - new Date(nowYear, 0, 1).getTime()) / 864e5) * 100));
   const longDay = (s: string) => new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(parse(s));
   const monthNames = $derived(Array.from({ length: 12 }, (_, i) => new Intl.DateTimeFormat(locale, { month: "short" }).format(new Date(2026, i, 1)).replace(".", "")));
   // The week's initials, Sunday first (4 January 2026 is a Sunday).

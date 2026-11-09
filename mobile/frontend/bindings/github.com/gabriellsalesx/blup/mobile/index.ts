@@ -20,6 +20,7 @@ export type {
     Account,
     Device,
     ErrorReports,
+    LiveSync,
     LoginCode,
     Node,
     Note,

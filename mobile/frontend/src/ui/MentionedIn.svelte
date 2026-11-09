@@ -11,10 +11,17 @@
 
   let from = $state<Mention[]>([]);
   let open = $state((() => { try { return localStorage.getItem("blup.backlinks") === "open"; } catch { return false; } })());
+  // Each question numbered: only the last one's answer is shown, even when
+  // an older one comes back after it (or fails after it).
+  let asked = 0;
   $effect(() => {
     const me = id;
     void app.notes; // read again when the notes change
-    NotesService.Mentions(me).then((list) => { if (me === id) from = list ?? []; }).catch(() => (from = []));
+    const n = ++asked;
+    NotesService.Mentions(me).then(
+      (list) => { if (n === asked && me === id) from = list ?? []; },
+      () => { if (n === asked && me === id) from = []; },
+    );
   });
   function toggle() {
     open = !open;

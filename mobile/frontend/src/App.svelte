@@ -16,12 +16,16 @@
   // gaveta, depois de destrancar; com "sim", os erros da tela vão também.
   let askReports = $state(false);
   SettingsService.ErrorReports()
-    .then((r) => { startPageReports(r); askReports = r.answer === ""; })
+    .then((r) => { startPageReports(r); app.reportsAnswer = r.answer; askReports = r.answer === ""; })
     .catch(() => {});
   async function answerReports(yes: boolean | null) {
     askReports = false;
     if (yes === null) return;
-    try { startPageReports(await SettingsService.SetErrorReports(yes)); } catch { /* pergunta de novo na próxima vez */ }
+    try {
+      const r = await SettingsService.SetErrorReports(yes);
+      startPageReports(r);
+      app.reportsAnswer = r.answer;
+    } catch { /* pergunta de novo na próxima vez */ }
   }
 </script>
 

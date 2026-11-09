@@ -12,14 +12,18 @@
   import Switch from "./Switch.svelte";
 
   // Relatórios de erro (errors.go): a mesma resposta da pergunta do início.
-  let reportsOn = $state(false);
-  SettingsService.ErrorReports().then((r) => (reportsOn = r.answer === "on")).catch(() => {});
+  // A resposta fica só no app (app.reportsAnswer): a pergunta do início e
+  // esta chave mostram sempre a mesma.
+  const reportsOn = $derived(app.reportsAnswer === "on");
   async function reports(on: boolean) {
-    reportsOn = on;
+    const before = app.reportsAnswer;
+    app.reportsAnswer = on ? "on" : "off";
     try {
-      startPageReports(await SettingsService.SetErrorReports(on));
+      const r = await SettingsService.SetErrorReports(on);
+      startPageReports(r);
+      app.reportsAnswer = r.answer;
       app.say({ text: on ? t.settings.reportsOn : t.settings.reportsOff });
-    } catch (e) { reportsOn = !on; app.say({ text: message(e) }); }
+    } catch (e) { app.reportsAnswer = before; app.say({ text: message(e) }); }
   }
   async function notifications(on: boolean) {
     try {

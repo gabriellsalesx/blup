@@ -3,7 +3,8 @@ import type { DBSchema, Event, TrashItem } from "../../bindings/github.com/gabri
 import { iso } from "./calendar";
 import { warmEditor } from "./screens";
 import { t } from "../desk/i18n";
-import { BoardService, CalendarService, CloudService, NotesService, SettingsService, SpaceService, type Account, type LoginCode, type Node, type Note, type Device, type Space, type SyncResult } from "../../bindings/github.com/gabriellsalesx/blup/mobile";
+import { BoardService, CalendarService, CloudService, NotesService, SettingsService, SpaceService, type Account, type LiveSync, type LoginCode, type Node, type Note, type Device, type Space, type SyncResult } from "../../bindings/github.com/gabriellsalesx/blup/mobile";
+import { CloudSynced } from "../../bindings/events";
 
 export type Tab = "notes" | "search" | "calendar" | "account";
 type Place = { note?: string; edit?: boolean; fresh?: boolean; board?: string; over?: number; sheet?: boolean; pick?: "folder" | "tags"; event?: Event; isNew?: boolean; panel?: "add" | "day" | "menu" | "month" | "trash" | "empty" | "cloud" | "pin" | "quick" | "folder" | "vaults" | "newdb" | "lang" | "fresh" };
@@ -27,6 +28,8 @@ export function openOne(open: string[], path: string) {
 
 const AUTO_SYNC_GAP = 30_000; // the least time between two syncs of their own
 const LOCK_AFTER = 60_000; // away from the app this long, it asks the PIN again
+const ACCOUNT_GAP = 60_000; // the least time between two readings of the account on coming back
+const QUIET_SYNC = 3 * 60_000; // with no live sync, how often it syncs while on screen
 
 // The state of the app. Opening a note or a sheet goes through the browser
 // history, so the back button of the phone closes them in order.
@@ -59,9 +62,23 @@ class App {
   events = $state.raw<Event[]>([]);
   eventsLoaded = $state(false);
   day = $state(iso(new Date())); // the calendar's chosen day
+  today = $state(iso(new Date())); // follows the clock: on coming back and at midnight
   toast = $state<Toast | null>(null);
   toastTimer: ReturnType<typeof setTimeout> | undefined;
   account = $state<Account | null>(null);
+  // The account could not be read (no internet, Blup Cloud away): the Cloud
+  // card says so instead of offering to connect as if signed out.
+  accountFailed = $state(false);
+  private accountAt = 0; // when the account was last read
+  // Counts each return to the app (or of the network): what failed for want
+  // of internet is asked again when it changes.
+  resumed = $state(0);
+  // Error reports: "on", "off" or "" (not asked yet). Only here, so the
+  // question at the start and Settings show the same.
+  reportsAnswer = $state("");
+  // Notes and boards deleted or renamed by a sync while open: the history
+  // skips their steps.
+  private lost = new Set<string>();
   syncing = $state(false);
   synced = $state<SyncResult | null>(null);
   syncError = $state("");
@@ -115,6 +132,8 @@ class App {
       this.error = String(e);
       this.locked = false;
     }
+    // A sync of the live room (Go keeps it open while the app is on screen).
+    Events.On(CloudSynced, (ev) => void this.liveSynced(ev.data));
     await this.loadAccount();
     this.autoSync();
     document.addEventListener("visibilitychange", () => {
@@ -123,16 +142,105 @@ class App {
         return;
       }
       if (this.pinOn && Date.now() - this.hiddenAt > LOCK_AFTER) this.locked = true;
-      this.autoSync();
+      void this.resume();
     });
+    addEventListener("online", () => void this.resume(true));
+    // Without live sync, a light one now and then while on screen.
+    setInterval(() => {
+      if (!document.hidden && !this.account?.live) this.autoSync();
+    }, QUIET_SYNC);
+    this.atMidnight();
+  }
+
+  // Back to the app, or the network back: the day, the account (the plan,
+  // the space, the devices, a session ended elsewhere) and the notes.
+  // Without an account read (opened offline) or after a failed sync, the
+  // account is read first, so the sync is not given up for the session.
+  async resume(online = false) {
+    this.resumed++;
+    this.setToday();
+    if (online || !this.account || this.accountFailed || this.syncError || Date.now() - this.accountAt > ACCOUNT_GAP) await this.loadAccount();
+    // With live sync the room syncs by itself as it opens again.
+    if (!this.account?.live) this.autoSync();
   }
 
   async loadAccount() {
     try {
       this.account = await CloudService.Account();
+      this.accountAt = Date.now();
+      if (this.accountFailed) this.syncError = ""; // it was the account's
+      this.accountFailed = false;
     } catch (e) {
+      this.accountFailed = true;
       this.syncError = message(e);
     }
+  }
+
+  // "Sync now" when the account could not be read: read it, then sync.
+  async retry() {
+    await this.loadAccount();
+    await this.sync();
+  }
+
+  // The day changes at midnight and while the app was away: the chosen day
+  // follows when it was today.
+  private setToday() {
+    const now = iso(new Date());
+    if (now === this.today) return;
+    if (this.day === this.today) this.day = now;
+    this.today = now;
+  }
+  private atMidnight() {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 2);
+    setTimeout(() => {
+      this.setToday();
+      this.atMidnight();
+    }, next.getTime() - now.getTime());
+  }
+
+  // What a sync of the live room did: shown as one of the app's own.
+  private async liveSynced(r: LiveSync) {
+    if (r.error) {
+      this.syncError = r.error;
+      this.syncStuck = r.stuck;
+      return;
+    }
+    this.syncError = "";
+    this.syncStuck = false;
+    if (r.result.gone) return this.vaultGone();
+    this.synced = r.result;
+    this.lastSync = Date.now();
+    if (!r.result.received && !r.result.sent && !r.result.conflicts?.length) return;
+    await this.refresh();
+    await this.checkOpen();
+  }
+
+  // Deleted on another device: said once; the vault is only here now.
+  private async vaultGone() {
+    this.say({ text: t.cloud.gone });
+    this.spaces = (await SpaceService.List()) ?? [];
+    await this.loadAccount();
+  }
+
+  // The open note is no longer in the list after a sync: deleted or
+  // renamed on another device. Read once more to be sure (a note just made
+  // may not be in a list asked a moment before).
+  private async checkOpen() {
+    const id = this.place.note;
+    if (!id || this.notes.some((n) => n.id === id)) return;
+    if (await NotesService.Read(id).then(() => true, () => false)) return;
+    this.gone(id);
+  }
+
+  // A note or board open on screen is gone (deleted or renamed on another
+  // device): said, and the screen goes back to where it came from, past any
+  // sheet open over it.
+  gone(path: string) {
+    if (this.lost.has(path) || (this.place.note !== path && this.place.board !== path)) return;
+    this.lost.add(path);
+    this.say({ text: this.place.board === path ? t.boards.goneElsewhere : t.note.goneElsewhere });
+    history.back();
   }
 
   // Sync happens on opening the app and on coming back to it. An open note
@@ -162,16 +270,11 @@ class App {
       if (this.space?.id !== space) return;
       this.syncStuck = false;
       if (fresh) this.say({ text: t.cloud.freshDone });
-      if (result.gone) {
-        // Deleted on another device: said once; the vault is only here now.
-        this.say({ text: t.cloud.gone });
-        this.spaces = (await SpaceService.List()) ?? [];
-        await this.loadAccount();
-        return;
-      }
+      if (result.gone) return await this.vaultGone();
       this.synced = result;
       this.lastSync = Date.now();
       await this.refresh();
+      await this.checkOpen();
       await this.loadAccount(); // the space in use changed
     } catch (e) {
       if (this.space?.id !== space) return;
@@ -271,11 +374,20 @@ class App {
       place = { ...place, note: now };
       history.replaceState(place, "");
     }
+    // A step of a note or board gone in a sync: skipped.
+    const at = place.note ?? place.board;
+    if (at && this.lost.has(at)) {
+      history.back();
+      return;
+    }
     if (place.note !== this.place.note) this.noteKey++;
     this.place = place;
   }
 
   go(place: Place) {
+    // Opened again (it came back, or was made again): no longer skipped.
+    const at = place.note ?? place.board;
+    if (at) this.lost.delete(at);
     history.pushState(place, "");
     this.arrive(place);
   }

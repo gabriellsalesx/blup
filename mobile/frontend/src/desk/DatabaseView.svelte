@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
+  import { NotesChanged } from "../../bindings/events";
   import { AddRecord, DeleteItem, ReadDatabase, RestoreSection, SaveDatabaseSchema, SetProps } from "./studio";
   import type { DBColumn, DBRecord, DBSchema, DBView } from "../../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Table2 from "@lucide/svelte/icons/table-2";
@@ -26,12 +27,13 @@
   // columns (Hot, Warm, Cold). Each record is a note: its name opens it.
   // The search looks in every field and in the notes' text; a choice
   // filters; a column's title sorts and edits it; "+" adds a column.
-  let { path, notes, onOpenNote, onStatus, onError, bindSave }: {
+  let { path, notes, onOpenNote, onStatus, onError, onGone, bindSave }: {
     path: string; notes: { name: string; path: string }[];
     bindSave?: (save: () => Promise<void>) => void; // the workspace saves first before a rename, move or delete
     onOpenNote: (path: string) => void;
     onStatus: (s: "saved" | "saving" | "unsaved") => void;
     onError: (e: string) => void;
+    onGone?: () => void; // deleted or renamed elsewhere (a sync)
   } = $props();
   const d = t.db;
   const clean = (e: unknown) => String(e).replace(/^(Runtime)?Error: /, "");
@@ -176,13 +178,24 @@
   const lanes = $derived(groupCol ? [...(groupCol.options ?? []).map((o) => ({ value: o.value, color: o.color })), { value: "", color: "" }] : []);
   const cardFields = $derived((schema?.columns ?? []).filter((c) => c.key !== groupCol?.key).slice(0, 3));
 
-  // Changed on disk (another window, an AI, sync): read again.
-  const off = Events.On("notesChanged", (ev) => {
-    const dir = path.replace(/[^/]*$/, "") + (schema?.records ?? "") + "/";
-    const list = String(ev.data ?? "").split("\n");
+  // Changed on disk (another window, an AI, sync): read again. Paths
+  // compare in any case, as the other views do.
+  const off = Events.On(NotesChanged, async (ev) => {
+    const self = path.toLowerCase();
+    const dir = (path.replace(/[^/]*$/, "") + (schema?.records ?? "") + "/").toLowerCase();
+    const list = ev.data.split("\n").map((p) => p.toLowerCase());
+    // The database itself gone (deleted or renamed by a sync): closed, and
+    // its columns never saved again.
+    if (list.includes(self) && !(await ReadDatabase(path).then(() => true, () => false))) {
+      clearTimeout(timer);
+      dirty = false;
+      schema = null; // flush() writes nothing from here on
+      onGone?.();
+      return;
+    }
     // Read again in place (the view, the search and the menus stay),
     // unless a change of its own is waiting to be saved.
-    if (list.some((p) => p === path || p.startsWith(dir)) && !dirty) load();
+    if (list.some((p) => p === self || p.startsWith(dir)) && !dirty) load();
   });
   onDestroy(() => { off(); flush(); });
   const focus = (el: HTMLInputElement) => { setTimeout(() => el.focus(), 260); };

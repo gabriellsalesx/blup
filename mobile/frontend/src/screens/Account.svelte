@@ -19,9 +19,12 @@
   // and everything that can be set, as a list.
   const account = $derived(app.account);
   const ready = $derived(!!account?.vault && account.notes === "ready");
+  // Opened with no internet: signed in, the account just not read yet.
+  const offline = $derived(!account && app.accountFailed);
   const name = $derived(account?.signedIn && account.email ? account.email.split("@")[0] : "Blup");
   const cloud = $derived.by(() => {
     const a = t.account;
+    if (offline) return t.cloud.offline;
     if (!account?.signedIn) return a.connectHint;
     if (account.notes === "new") return a.createPassword;
     if (account.notes === "locked") return a.typePassword;
@@ -66,11 +69,12 @@
   <div class="who">
     <span class="photo"><img src="/blups/blup.svg" alt="" /></span>
     <h1>{name}</h1>
-    <p>{account?.signedIn ? [account.email, account.plan].filter(Boolean).join(" · ") : t.account.localOnly}</p>
+    <p>{account?.signedIn ? [account.email, account.plan].filter(Boolean).join(" · ") : offline ? t.cloud.offline : t.account.localOnly}</p>
   </div>
 
-  {@render row(Cloud, "Blup Cloud", app.syncError || cloud, () => app.go({ panel: "cloud" }), !!app.syncError)}
-  {#if ready}{@render row(RefreshCw, app.syncing ? t.common.syncing : t.common.syncNow, app.lastSync ? fmt(t.account.lastTime, { when: when(app.lastSync) }) : t.account.sendReceive, () => app.sync(), false, false)}{/if}
+  {@render row(Cloud, "Blup Cloud", offline ? cloud : app.syncError || cloud, () => app.go({ panel: "cloud" }), !!app.syncError)}
+  {#if offline}{@render row(RefreshCw, app.syncing ? t.common.syncing : t.common.syncNow, t.cloud.unreachable, () => app.retry(), false, false)}
+  {:else if ready}{@render row(RefreshCw, app.syncing ? t.common.syncing : t.common.syncNow, app.lastSync ? fmt(t.account.lastTime, { when: when(app.lastSync) }) : t.account.sendReceive, () => app.sync(), false, false)}{/if}
   {@render row(Library, t.account.vaults, vaults, () => app.go({ panel: "vaults" }))}
 
   <h2>{t.account.prefs}</h2>

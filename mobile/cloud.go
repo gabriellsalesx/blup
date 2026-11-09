@@ -194,6 +194,7 @@ func saveLink(l link) error {
 func (s *CloudService) Account(ctx context.Context) (Account, error) {
 	c, creds, err := client()
 	if errors.Is(err, blupcloud.ErrSignedOut) {
+		live.Want(false)
 		return Account{}, nil
 	}
 	if err != nil {
@@ -201,6 +202,7 @@ func (s *CloudService) Account(ctx context.Context) (Account, error) {
 	}
 	me, err := c.Me(ctx)
 	if errors.Is(err, blupcloud.ErrSignedOut) {
+		live.Want(false)
 		creds.BlupToken = ""
 		return Account{}, creds.Save()
 	}
@@ -237,6 +239,8 @@ func (s *CloudService) Account(ctx context.Context) (Account, error) {
 		return Account{}, err
 	}
 	a.Vault, a.Title = l.ID, l.Title
+	// The live room opens (on screen) only with something to keep live.
+	live.Want(a.Live && a.Vault != "" && a.Notes == "ready")
 	return a, nil
 }
 
@@ -566,6 +570,7 @@ func (s *CloudService) SignOut(ctx context.Context) error {
 		return err
 	}
 	_ = c.SignOut(ctx)
+	live.Want(false)
 	creds.BlupToken = ""
 	creds.ForgetNotesKey()
 	return creds.Save()

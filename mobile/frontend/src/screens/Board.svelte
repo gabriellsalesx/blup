@@ -18,6 +18,8 @@
   // (it only says so when nothing of its own is waiting to be saved).
   let version = $state(0);
   const reopen = () => version++;
+  // Deleted or renamed on another device: the app says so and goes back.
+  const gone = () => app.gone(path);
 
   async function remove() {
     try {
@@ -53,15 +55,15 @@
   {#key version}
   {#if kind === "canvas"}
     {#await import("../desk/CanvasView.svelte") then { default: CanvasView }}
-      <CanvasView {path} {notes} onStatus={() => {}} onError={fail} onOpenNote={(p) => app.open(p)} onOutside={reopen} bindSave={(s) => (save = s)} />
+      <CanvasView {path} {notes} onStatus={() => {}} onError={fail} onOpenNote={(p) => app.open(p)} onOutside={reopen} onGone={gone} bindSave={(s) => (save = s)} />
     {/await}
   {:else if kind === "drawing"}
     {#await import("../desk/DrawingView.svelte") then { default: DrawingView }}
-      <DrawingView {path} onStatus={() => {}} onError={fail} onOutside={reopen} bindSave={(s) => (save = s)} />
+      <DrawingView {path} onStatus={() => {}} onError={fail} onOutside={reopen} onGone={gone} bindSave={(s) => (save = s)} />
     {/await}
   {:else if kind === "database"}
     {#await import("../desk/DatabaseView.svelte") then { default: DatabaseView }}
-      <DatabaseView {path} {notes} onOpenNote={(p) => app.open(p)} onStatus={() => {}} onError={fail} bindSave={(s) => (save = s)} />
+      <DatabaseView {path} {notes} onOpenNote={(p) => app.open(p)} onStatus={() => {}} onError={fail} onGone={gone} bindSave={(s) => (save = s)} />
     {/await}
   {/if}
   {/key}

@@ -2,6 +2,7 @@
   import { onDestroy, onMount, tick, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
   import { OpenURL, ReadBoard, SaveBoard } from "./studio";
+  import { NotesChanged } from "../../bindings/events";
   import StickyNote from "@lucide/svelte/icons/sticky-note";
   import FileText from "@lucide/svelte/icons/file-text";
   import LinkIcon from "@lucide/svelte/icons/link";
@@ -31,13 +32,14 @@
   // the wheel (or a pinch) to zoom. Two clicks on the board make a card;
   // dragging from the dot on a card's side makes an arrow. Notes dragged
   // from the files panel land as cards.
-  let { path, notes, onStatus, onError, onOpenNote, onOutside, bindSave }: {
+  let { path, notes, onStatus, onError, onOpenNote, onOutside, onGone, bindSave }: {
     path: string; notes: NoteRef[];
     bindSave?: (save: () => Promise<void>) => void; // the workspace saves first before a rename, move or delete
     onStatus: (s: "saved" | "saving" | "unsaved") => void;
     onError: (e: string) => void;
     onOpenNote: (path: string) => void;
     onOutside: () => void;
+    onGone?: () => void; // deleted or renamed elsewhere (a sync)
   } = $props();
   const tb = t.boards;
 
@@ -445,11 +447,19 @@
 
   // Changed on disk by something else (another app, an AI): opened again,
   // unless there are changes of its own; notes on cards are read again.
-  const off = Events.On("notesChanged", async (ev) => {
-    const list = String(ev.data ?? "").split("\n").map((p) => p.toLowerCase());
+  // Gone (deleted or renamed by a sync), it is closed and never saved again.
+  const off = Events.On(NotesChanged, async (ev) => {
+    const list = ev.data.split("\n").map((p) => p.toLowerCase());
     if (nodes.some((n) => n.file && list.includes(n.file.toLowerCase()))) fileVersion++;
     if (!list.includes(path.toLowerCase())) return;
-    const now = await ReadBoard(path).catch(() => written);
+    const now = await ReadBoard(path).catch(() => null);
+    if (now === null) {
+      clearTimeout(timer);
+      loaded = false; // save() writes nothing from here on
+      dirty = false;
+      onGone?.();
+      return;
+    }
     if (now.trimEnd() !== written.trimEnd() && !dirty) onOutside();
   });
   onMount(() => bindSave?.(save));

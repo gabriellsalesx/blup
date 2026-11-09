@@ -14,16 +14,26 @@
   // typing stops, and says which notes have the term.
   let ids = $state.raw<string[]>([]);
   let looking: ReturnType<typeof setTimeout> | undefined;
+  const look = (q: string) => NotesService.Search(q).then((found) => { if (q === term) ids = found ?? []; }, () => {});
   function search(text: string) {
     query = app.searchQuery = text;
     clearTimeout(looking);
     const q = term;
     if (!q) { ids = []; return; }
-    looking = setTimeout(() => {
-      NotesService.Search(q).then((found) => { if (q === term) ids = found ?? []; }, () => {});
-    }, 150);
+    looking = setTimeout(() => look(q), 150);
   }
   search(untrack(() => query)); // the one kept, looked for again
+  // The notes changed (a save, a sync from another device): the results
+  // follow, a moment after the last change.
+  let first = true;
+  $effect(() => {
+    void app.notes;
+    if (first) { first = false; return; } // just looked for, above
+    const q = untrack(() => term);
+    if (!q) return;
+    const again = setTimeout(() => look(q), 400);
+    return () => clearTimeout(again);
+  });
   const found = $derived.by(() => {
     const byId = new Map(app.notes.map((n) => [n.id, n]));
     return term ? ids.flatMap((id) => byId.get(id) ?? []) : [];
