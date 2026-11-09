@@ -57,15 +57,22 @@ done | sort -u | while read -r dep; do
 	cp -L "$dep" "$lib/$name"
 done
 
-# AppRun: GStreamer looks only at the bundled plugins.
-grep -q GST_PLUGIN_SYSTEM_PATH_1_0 "$app/AppRun" || sed -i 's|^cd "\$usr/lib"$|# GStreamer: only the bundled plugins (build/linux/appimage/add-gstreamer.sh).\
-export GST_PLUGIN_SYSTEM_PATH_1_0="$usr/lib/gstreamer-1.0"\
-export GST_PLUGIN_PATH_1_0="$usr/lib/gstreamer-1.0"\
-export GST_PLUGIN_SCANNER_1_0="$usr/lib/gstreamer-1.0/gst-plugin-scanner"\
-gst_cache="${XDG_CACHE_HOME:-$HOME/.cache}/blup-studio"\
-mkdir -p "$gst_cache" 2>/dev/null || true\
-export GST_REGISTRY_1_0="$gst_cache/gstreamer-registry.bin"\
-cd "$usr/lib"|' "$app/AppRun"
+# AppRun: GStreamer looks only at the bundled plugins (the lines go just
+# before AppRun moves into usr/lib and starts the Studio).
+env_lines="$work/gst-env"
+cat > "$env_lines" <<'ENV'
+# GStreamer: only the bundled plugins (build/linux/appimage/add-gstreamer.sh).
+export GST_PLUGIN_SYSTEM_PATH_1_0="$usr/lib/gstreamer-1.0"
+export GST_PLUGIN_PATH_1_0="$usr/lib/gstreamer-1.0"
+export GST_PLUGIN_SCANNER_1_0="$usr/lib/gstreamer-1.0/gst-plugin-scanner"
+gst_cache="${XDG_CACHE_HOME:-$HOME/.cache}/blup-studio"
+mkdir -p "$gst_cache" 2>/dev/null || true
+export GST_REGISTRY_1_0="$gst_cache/gstreamer-registry.bin"
+ENV
+if ! grep -q GST_PLUGIN_SYSTEM_PATH_1_0 "$app/AppRun"; then
+	awk -v f="$env_lines" '$0 == "cd \"$usr/lib\"" { while ((getline l < f) > 0) print l } { print }' "$app/AppRun" > "$work/AppRun.new"
+	cat "$work/AppRun.new" > "$app/AppRun"
+fi
 grep -q GST_PLUGIN_SYSTEM_PATH_1_0 "$app/AppRun" || { echo "AppRun not patched" >&2; exit 1; }
 
 ARCH="${ARCH:-$(uname -m)}" "$tool" --no-appstream "$app" "$out" >/dev/null
