@@ -801,7 +801,7 @@
   nav .appver { gap: .4rem; font-size: .75rem; }
   .appver .dot { width: .45rem; height: .45rem; border-radius: 50%; background: var(--blue); }
   .text small.warn { color: var(--blue); font-weight: 600; }
-  .acct-id { font-family: ui-monospace, monospace; font-size: .8rem; user-select: all; overflow-wrap: anywhere; }
+  .acct-id { font-family: ui-monospace, monospace; font-size: .8rem; -webkit-user-select: all; user-select: all; overflow-wrap: anywhere; }
   .copy { display: inline-flex; align-items: center; gap: .35rem; flex-shrink: 0; }
   .cloudbox { display: grid; gap: .75rem; padding-block: .5rem 1rem; border-block-end: 1px solid var(--line); font-size: .9rem; }
   .dl span.full { background: var(--red); }

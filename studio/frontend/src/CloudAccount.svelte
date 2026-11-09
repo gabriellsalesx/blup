@@ -144,7 +144,7 @@
   .who { align-items: center; font-size: .9rem; }
   .spacer { flex: 1; }
   .grid { display: grid; gap: 1rem; max-width: 26rem; }
-  .recovery { font-size: .95rem; user-select: all; padding: .5rem .75rem; border-radius: .5rem; background: var(--soft); word-break: break-all; }
+  .recovery { font-size: .95rem; -webkit-user-select: all; user-select: all; padding: .5rem .75rem; border-radius: .5rem; background: var(--soft); word-break: break-all; }
   .check { display: flex; align-items: center; gap: .5rem; font-size: .9rem; }
   .link { color: var(--blue); text-decoration: underline; font-size: inherit; }
 </style>

@@ -742,7 +742,7 @@
 <button class="export btn ghost" disabled={!elements.length} onclick={exportPNG}><Download size={15} />{td.export}</button>
 
 <style>
-  .draw { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none; background-color: var(--bg);
+  .draw { position: absolute; inset: 0; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; background-color: var(--bg);
     background-image: radial-gradient(circle, color-mix(in srgb, var(--muted) 35%, transparent) 1px, transparent 1.2px); }
   .paper { position: absolute; inset: 0; width: 100%; height: 100%; }
   .erasing:hover { opacity: .35; }

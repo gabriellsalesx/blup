@@ -1096,7 +1096,7 @@
   .resizer.left::after { inset-inline-start: 0; }
   .resizer::after { content: ""; position: absolute; inset-block: 0; inset-inline-start: 3px; width: 2px; background: transparent; transition: background .1s; }
   .resizer:hover::after, .resizer:focus-visible::after, .ws.resizing .resizer:active::after { background: var(--blue); }
-  .ws.resizing { cursor: col-resize; user-select: none; }
+  .ws.resizing { cursor: col-resize; -webkit-user-select: none; user-select: none; }
   .ws.resizing :global(iframe) { pointer-events: none; }
   .ws.no-side.no-preview { grid-template-columns: var(--rail) minmax(0, 1fr); }
   .ribbon { position: relative; z-index: 20; grid-row: 1 / -1; grid-column: 1; display: flex; flex-direction: column; align-items: center; gap: .2rem; padding-block: .6rem; border-inline-end: 1px solid var(--line); background: var(--panel); }

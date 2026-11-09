@@ -513,7 +513,7 @@
       <!-- The cards (the keyboard works on the selection: Enter, Delete). -->
       {#each cards as n (n.id)}
         <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-        <div class="ccard {n.type}" class:sel={selected.has(n.id)} class:editing={editing === n.id} data-node={n.id}
+        <div class="ccard" class:sel={selected.has(n.id)} class:editing={editing === n.id} data-node={n.id}
           style:left="{n.x}px" style:top="{n.y}px" style:width="{n.width}px" style:height="{n.height}px" style:--c={tint(n.color)}
           role="group" onpointerdown={(e) => downCard(e, n)} ondblclick={(e) => { e.stopPropagation(); startEdit(n); }} onclick={clickLink}>
           <div class="content">
@@ -599,7 +599,7 @@
 {/if}
 
 <style>
-  .canvas { position: relative; height: 100%; overflow: hidden; background: var(--bg); user-select: none; }
+  .canvas { position: relative; height: 100%; overflow: hidden; background: var(--bg); -webkit-user-select: none; user-select: none; }
   .board { position: absolute; inset: 0; cursor: default; touch-action: none;
     background-image: radial-gradient(circle, color-mix(in srgb, var(--muted) 45%, transparent) 1px, transparent 1.2px); }
   .panning .board { cursor: grabbing; }
@@ -612,7 +612,7 @@
   .ccard.sel { outline: 2px solid var(--blue); outline-offset: 2px; }
   .content { flex: 1; min-width: 0; overflow: auto; padding: .65rem .85rem; border-radius: inherit; font-size: .95rem; line-height: 1.5; color: var(--text); }
   .ccard.editing .content { overflow: hidden; padding: 0; }
-  textarea { width: 100%; height: 100%; padding: .65rem .85rem; border: 0; border-radius: inherit; outline: none; resize: none; background: transparent; color: var(--text); font: inherit; line-height: 1.5; user-select: text; }
+  textarea { width: 100%; height: 100%; padding: .65rem .85rem; border: 0; border-radius: inherit; outline: none; resize: none; background: transparent; color: var(--text); font: inherit; line-height: 1.5; -webkit-user-select: text; user-select: text; }
   .url { width: 100%; height: 100%; padding: 0 .85rem; border: 0; outline: none; background: transparent; color: var(--text); font: inherit; }
   .site { display: flex; gap: .6rem; align-items: center; width: 100%; height: 100%; text-align: start; color: var(--text); }
   .site span { display: grid; min-width: 0; }

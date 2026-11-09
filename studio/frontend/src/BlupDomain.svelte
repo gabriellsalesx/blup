@@ -121,7 +121,7 @@
   .dns { width: 100%; border-collapse: collapse; font-size: .85rem; }
   .dns th { text-align: start; font-size: .75rem; color: var(--muted); font-weight: 600; padding: .3rem .5rem; }
   .dns td { padding: .45rem .5rem; border-block-start: 1px solid var(--line); word-break: break-all; }
-  .dns code { font-size: .85rem; user-select: all; }
+  .dns code { font-size: .85rem; -webkit-user-select: all; user-select: all; }
   .q { font-size: .85rem; }
   .danger-text { color: var(--red); }
   .btn.danger { background: var(--red); color: #fff; }

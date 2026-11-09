@@ -310,7 +310,7 @@
   .add-menu small { padding: .3rem .6rem; font-size: .75rem; }
   .link { color: var(--blue); }
   .shade { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / .45); }
-  .review { position: fixed; z-index: 61; inset-block-start: 12%; inset-inline: 0; margin-inline: auto; width: min(34rem, calc(100% - 2rem)); display: grid; gap: .75rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); box-shadow: 0 20px 50px rgb(0 0 0 / .3); }
+  .review { position: fixed; z-index: 61; inset-block-start: 12%; inset-inline: 0; margin-inline: auto; width: min(34rem, calc(100% - 2rem)); max-height: calc(88% - 1rem); overflow: auto; display: grid; gap: .75rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); box-shadow: 0 20px 50px rgb(0 0 0 / .3); }
   .review h2 { font-size: 1rem; font-weight: 700; }
   .review p { font-size: .85rem; }
   .review ul { list-style: none; padding: 0; max-height: 18rem; overflow: auto; display: grid; gap: .3rem; font-size: .85rem; }
