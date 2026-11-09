@@ -42,6 +42,17 @@
   {#if items.length === 0}
     <p class="empty muted">{tr.empty}</p>
   {:else}
+    <!-- Emptying sits at the top, before the list (the long ones hid it). -->
+    <div class="actions">
+      <Saved state={s.state} />
+      {#if askingAll}
+        <span class="q">{tr.emptyQ}</span>
+        <button class="btn ghost" onclick={() => (askingAll = false)}>{t.sec.cancel}</button>
+        <button class="btn danger" disabled={s.state.busy} onclick={empty}>{tr.emptyAll}</button>
+      {:else}
+        <button class="btn ghost" onclick={() => (askingAll = true)}>{tr.emptyAll}</button>
+      {/if}
+    </div>
     {#each items as it (it.path)}
       <section class="card item">
         <span class="ico">{#if it.dir}<Folder size={20} />{:else}<FileText size={20} />{/if}</span>
@@ -60,16 +71,6 @@
         {/if}
       </section>
     {/each}
-    <div class="actions">
-      <Saved state={s.state} />
-      {#if askingAll}
-        <span class="q">{tr.emptyQ}</span>
-        <button class="btn ghost" onclick={() => (askingAll = false)}>{t.sec.cancel}</button>
-        <button class="btn danger" disabled={s.state.busy} onclick={empty}>{tr.emptyAll}</button>
-      {:else}
-        <button class="btn ghost" onclick={() => (askingAll = true)}>{tr.emptyAll}</button>
-      {/if}
-    </div>
   {/if}
 
   {#if cloud}
