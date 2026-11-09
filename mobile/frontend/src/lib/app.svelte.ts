@@ -3,7 +3,7 @@ import type { DBSchema, Event, TrashItem } from "../../bindings/github.com/gabri
 import { iso } from "./calendar";
 import { warmEditor } from "./screens";
 import { t } from "../desk/i18n";
-import { BoardService, CalendarService, CloudService, NotesService, SettingsService, SpaceService, type Account, type Node, type Note, type Device, type Space, type SyncResult } from "../../bindings/github.com/gabriellsalesx/blup/mobile";
+import { BoardService, CalendarService, CloudService, NotesService, SettingsService, SpaceService, type Account, type LoginCode, type Node, type Note, type Device, type Space, type SyncResult } from "../../bindings/github.com/gabriellsalesx/blup/mobile";
 
 export type Tab = "notes" | "search" | "calendar" | "account";
 type Place = { note?: string; edit?: boolean; fresh?: boolean; board?: string; over?: number; sheet?: boolean; pick?: "folder" | "tags"; event?: Event; isNew?: boolean; panel?: "add" | "day" | "menu" | "month" | "trash" | "empty" | "cloud" | "pin" | "quick" | "folder" | "vaults" | "newdb" | "lang" | "fresh" };
@@ -69,6 +69,15 @@ class App {
   // continue this phone's): the Cloud card offers "Compare from scratch".
   syncStuck = $state(false);
   lastSync = $state(0); // when the notes last reached the Cloud
+  // Asked while a sync was under way (another vault opened, a note left):
+  // one more runs as soon as it ends, so nothing waits for the next one.
+  private syncAgain = false;
+  // Signing in and the recovery key live here, not in the Cloud sheet: the
+  // sheet can close (the back button, a slide down) while the browser is
+  // approving, and the recovery key is shown only once.
+  login = $state<LoginCode | null>(null); // the code to check in the browser
+  recovery = $state(""); // until the person says it is kept
+  searchQuery = $state(""); // the search stays when the tab changes
   current = $derived(this.notes.find((n) => n.id === this.place.note));
 
   async start() {
@@ -131,18 +140,26 @@ class App {
   // Back to the app a moment after the last one (a photo picked, a glance
   // at another app), it waits: each sync goes to the network.
   autoSync() {
-    if (!this.place.note && Date.now() - this.lastSync > AUTO_SYNC_GAP) this.sync();
+    if (!this.place.note && !this.place.board && Date.now() - this.lastSync > AUTO_SYNC_GAP) this.sync();
   }
 
   // fresh: "Compare from scratch", only after the person confirmed it in
   // its sheet (the phone forgets the last sync and compares file by file;
   // nothing is deleted).
   async sync(fresh = false) {
-    if (this.syncing || !this.account?.vault || this.account.notes !== "ready") return;
+    if (this.syncing) {
+      if (!fresh) this.syncAgain = true;
+      return;
+    }
+    if (!this.account?.vault || this.account.notes !== "ready") return;
     this.syncing = true;
+    this.syncAgain = false;
     this.syncError = "";
+    const space = this.space?.id;
     try {
       const result = await (fresh ? CloudService.SyncFresh() : CloudService.Sync());
+      // Another vault opened while it ran: its result is not this one's.
+      if (this.space?.id !== space) return;
       this.syncStuck = false;
       if (fresh) this.say({ text: t.cloud.freshDone });
       if (result.gone) {
@@ -157,11 +174,37 @@ class App {
       await this.refresh();
       await this.loadAccount(); // the space in use changed
     } catch (e) {
+      if (this.space?.id !== space) return;
       this.syncError = message(e);
       this.syncStuck = stuck(e);
     } finally {
       this.syncing = false;
+      if (this.syncAgain) {
+        this.syncAgain = false;
+        void this.sync();
+      }
     }
+  }
+
+  // Blup Cloud's sign in: the browser opens on the approval page and the
+  // app waits for it. Login fails when Blup Cloud can't be reached; the wait
+  // fails with what went wrong, and says nothing when the person cancelled.
+  async startLogin() {
+    this.login = await CloudService.Login();
+  }
+  async waitLogin() {
+    try {
+      this.account = await CloudService.LoginWait();
+      if (this.account?.notes === "ready" && this.account.vault) await this.sync();
+    } catch (e) {
+      if (this.login) throw e; // Cancel clears the code: no error then
+    } finally {
+      this.login = null;
+    }
+  }
+  cancelLogin() {
+    this.login = null;
+    void CloudService.LoginCancel();
   }
 
   // Everything the screens show, asked together and put on screen at once.
@@ -317,13 +360,25 @@ class App {
     const where = await CalendarService.Delete(id);
     await this.refresh();
     this.sync();
-    this.say({ text: t.notes.noteInTrash, action: { label: t.common.undo, run: async () => { await CalendarService.Restore(where); await this.refresh(); this.sync(); } } });
+    this.say({ text: t.notes.noteInTrash, action: { label: t.common.undo, run: () => this.restore(where) } });
+  }
+
+  // Undo of a trip to the trash, from a toast: nobody waits for it, so it
+  // says itself when it fails.
+  async restore(where: string) {
+    try {
+      await CalendarService.Restore(where);
+      await this.refresh();
+      this.sync();
+    } catch (e) { this.say({ text: message(e) }); }
   }
 
   async create(folder = "") {
-    const id = await NotesService.Create(folder);
-    await this.refresh();
-    this.go({ note: id, edit: true, fresh: true });
+    try {
+      const id = await NotesService.Create(folder);
+      await this.refresh();
+      this.go({ note: id, edit: true, fresh: true });
+    } catch (e) { this.say({ text: message(e) }); }
   }
 
   // The app always follows the phone's light or dark.

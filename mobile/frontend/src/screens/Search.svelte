@@ -1,11 +1,13 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { NotesService } from "../../bindings/github.com/gabriellsalesx/blup/mobile";
   import { app } from "../lib/app.svelte";
   import NoteRow from "../ui/NoteRow.svelte";
   import { plural, t } from "../desk/i18n";
   import { PAGE, nearEnd } from "../lib/paging";
 
-  let query = $state("");
+  // The search is the app's: back from another tab, it is still there.
+  let query = $state(app.searchQuery);
   const term = $derived(query.trim().toLowerCase().replace(/^#/, ""));
   const tags = $derived([...new Set(app.notes.flatMap((n) => n.tags ?? []))].sort());
   // The text of the notes stays in Go: it looks there, a moment after the
@@ -13,7 +15,7 @@
   let ids = $state.raw<string[]>([]);
   let looking: ReturnType<typeof setTimeout> | undefined;
   function search(text: string) {
-    query = text;
+    query = app.searchQuery = text;
     clearTimeout(looking);
     const q = term;
     if (!q) { ids = []; return; }
@@ -21,6 +23,7 @@
       NotesService.Search(q).then((found) => { if (q === term) ids = found ?? []; }, () => {});
     }, 150);
   }
+  search(untrack(() => query)); // the one kept, looked for again
   const found = $derived.by(() => {
     const byId = new Map(app.notes.map((n) => [n.id, n]));
     return term ? ids.flatMap((id) => byId.get(id) ?? []) : [];

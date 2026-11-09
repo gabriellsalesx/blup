@@ -40,6 +40,14 @@
       return true;
     } catch (e) {
       app.say({ text: message(e) });
+      // A step went through before the one that failed (the vault made or
+      // opened, then the Cloud refused it): the screen follows the vault
+      // open now, or it would show one and write in the other.
+      const now = await SpaceService.List().catch(() => null);
+      if (now && now.find((s) => s.current)?.id !== app.space?.id) {
+        app.back();
+        await app.entered().catch(() => {});
+      } else if (now) app.spaces = now;
       return false;
     } finally {
       busy = false;
@@ -47,9 +55,17 @@
   }
   const open = (id: string) => (id === app.space?.id ? app.back() : work(() => SpaceService.Open(id)));
   // A vault of the account comes as a new one here, tied to it.
+  // Not linked, the new vault would only be an empty one with its name: it
+  // goes again, and the one that was open opens again.
   const bring = (v: RemoteVault) => work(async () => {
-    await SpaceService.Create(v.title);
-    await CloudService.Link(v.id, v.title);
+    const was = app.space?.id ?? "";
+    const id = await SpaceService.Create(v.title);
+    try {
+      await CloudService.Link(v.id, v.title);
+    } catch (e) {
+      await SpaceService.Delete(id).then(() => SpaceService.Open(was)).catch(() => {});
+      throw e;
+    }
   });
   async function create(e: SubmitEvent) {
     e.preventDefault();

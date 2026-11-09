@@ -1,16 +1,15 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { untrack } from "svelte";
   import ShieldAlert from "@lucide/svelte/icons/shield-alert";
   import Compare from "@lucide/svelte/icons/git-compare-arrows";
-  import { CloudService, type LoginCode, type RemoteVault } from "../../bindings/github.com/gabriellsalesx/blup/mobile";
+  import { CloudService, type RemoteVault } from "../../bindings/github.com/gabriellsalesx/blup/mobile";
   import { app, bytes as size, message, when } from "../lib/app.svelte";
   import { fmt, plural, t } from "../desk/i18n";
 
-  let code = $state<LoginCode | null>(null);
-  let waiting: ReturnType<typeof CloudService.LoginWait> | null = null;
+  // The code being approved and the recovery key are the app's (app.login,
+  // app.recovery): they stay when this sheet closes and opens again.
   let password = $state("");
   let repeat = $state("");
-  let recovery = $state("");
   let vaults = $state<RemoteVault[] | null>(null);
   let busy = $state(false);
   let error = $state("");
@@ -28,42 +27,32 @@
     }
   }
 
-  const loadVaults = () => run(async () => (vaults = (await CloudService.Vaults()) ?? []));
+  // Asked by more than one step at once (the password typed, the account
+  // read again): one request answers them all.
+  let loading: Promise<void> | null = null;
+  const loadVaults = () => (loading ??= run(async () => (vaults = (await CloudService.Vaults()) ?? [])).finally(() => (loading = null)));
 
   async function login() {
     error = "";
     try {
-      code = await CloudService.Login();
+      await app.startLogin();
     } catch (e) {
       console.error("blup cloud login", e);
       error = t.cloud.unreachable;
       return;
     }
     try {
-      waiting = CloudService.LoginWait();
-      app.account = await waiting;
-      if (app.account?.notes === "ready") {
-        if (app.account.vault) await app.sync();
-        else await loadVaults();
-      }
+      await app.waitLogin();
     } catch (e) {
-      if (code) error = message(e); // Cancel clears the code: no error then
-    } finally {
-      code = null;
-      waiting = null;
+      error = message(e);
     }
-  }
-
-  function cancel() {
-    code = null;
-    CloudService.LoginCancel();
   }
 
   const create = () =>
     run(async () => {
       if ([...password].length < 8) throw new Error(t.cloud.short); // characters, as the Go side counts
       if (password !== repeat) throw new Error(t.cloud.differ);
-      recovery = await CloudService.CreatePassword(password);
+      app.recovery = await CloudService.CreatePassword(password);
       password = repeat = "";
     });
 
@@ -77,7 +66,7 @@
     });
 
   async function saw() {
-    recovery = "";
+    app.recovery = "";
     await app.loadAccount();
     await loadVaults();
   }
@@ -98,8 +87,14 @@
 
   const used = $derived(account?.storageLimit ? Math.min(100, (account.storageBytes / account.storageLimit) * 100) : 0);
 
-  onMount(() => {
-    if (account?.notes === "ready" && !account.vault) loadVaults();
+  // Ready with no vault linked (now, or once the sign in or the password is
+  // through, even when it ended with the sheet closed): the account's
+  // vaults to pick from, asked once.
+  let asked = false;
+  $effect(() => {
+    if (account?.notes !== "ready" || account.vault || app.recovery || asked) return;
+    asked = true;
+    untrack(loadVaults);
   });
 </script>
 
@@ -114,16 +109,16 @@
   </div>
   {/if}
 
-  {#if recovery}
+  {#if app.recovery}
     <h3>{t.cloud.recoveryTitle}</h3>
     <p>{t.cloud.recoveryHelp}</p>
-    <code>{recovery}</code>
+    <code>{app.recovery}</code>
     <button class="main" onclick={saw}>{t.cloud.kept}</button>
-  {:else if code}
+  {:else if app.login}
     <p>{t.cloud.checkCode}</p>
-    <code>{code.code}</code>
+    <code>{app.login.code}</code>
     <p class="muted">{t.cloud.waiting}</p>
-    <button class="plain" onclick={cancel}>{t.common.cancel}</button>
+    <button class="plain" onclick={() => app.cancelLogin()}>{t.common.cancel}</button>
   {:else if !account?.signedIn}
     <p>{t.cloud.connectLead}</p>
     <button class="main" onclick={login}>{t.cloud.connect}</button>
@@ -174,7 +169,7 @@
   {/if}
 
   {#if error || (app.syncError && !app.syncStuck)}<p class="bad">{error || app.syncError}</p>{/if}
-  {#if account?.signedIn && !recovery}
+  {#if account?.signedIn && !app.recovery}
     <button class="plain" disabled={busy} onclick={signOut}>{t.cloud.signOut}</button>
   {/if}
 </section>
