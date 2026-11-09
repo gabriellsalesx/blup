@@ -1,3 +1,4 @@
+import {clientKey} from "../security";
 import {z} from "zod";
 import {dealCategories,gameTitle} from "../../shared/deals-post";
 import {languageOf,type Language} from "../../shared/language";
@@ -105,7 +106,7 @@ export async function serveDealsSite(req:Request,env:Cloudflare.Env):Promise<Res
  site=own?await siteByHost(env,url.hostname):await siteBySlug(env,/^\/([^/]+)/.exec(url.pathname)?.[1]??"");
  if(!site)return own?null:notFound();
  if(!["GET","HEAD"].includes(req.method))return new Response(null,{status:405,headers:{allow:"GET, HEAD","cache-control":"no-store"}});
- if(!(await env.DEALS_PUBLIC_LIMIT.limit({key:`site:${req.headers.get("cf-connecting-ip")??"local"}`})).success)return new Response("Too many requests",{status:429,headers:{"retry-after":"60","cache-control":"no-store"}});
+ if(!(await env.DEALS_PUBLIC_LIMIT.limit({key:`site:${clientKey(req.headers.get("cf-connecting-ip"))}`})).success)return new Response("Too many requests",{status:429,headers:{"retry-after":"60","cache-control":"no-store"}});
 
  // Without the Deals plan (or a domain the account lost), nothing of the
  // page answers: not its logos, its search or its HTML. Checked before the

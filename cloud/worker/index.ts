@@ -34,7 +34,7 @@ import { isStudio, usageOf } from "./usage";
 import {user as userTable, session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail, RECENT_SIGN_IN_MS } from "./auth-options";
 import { turnstileOk } from "./turnstile";
-import { mutationOriginAllowed, panelCorsOrigin } from "./security";
+import { mutationOriginAllowed, panelCorsOrigin, clientKey } from "./security";
 import {reconcileAlerts,dispatchAlerts} from "./pulse/outbox";
 import {checkDue} from "./pulse/scheduler";
 import {pulseMaintenance} from "./pulse/cleanup";
@@ -84,8 +84,7 @@ app.use("*", async (c, next) => {
 
 // Codes by e-mail cost a send each: a few per minute per address.
 app.post(`/auth${SEND_CODE_PATH}`, async (c, next) => {
-	const ip = c.req.header("cf-connecting-ip") ?? "local";
-	const { success } = await c.env.OTP_LIMIT.limit({ key: `otp:${ip}` });
+	const { success } = await c.env.OTP_LIMIT.limit({ key: `otp:${clientKey(c.req.header("cf-connecting-ip"))}` });
 	if (!success) return c.json({ code: "TOO_MANY_REQUESTS", message: "Muitos pedidos. Espere um minuto." }, 429);
 	await next();
 });
@@ -95,7 +94,7 @@ app.post(`/auth${SEND_CODE_PATH}`, async (c, next) => {
 app.post("/auth/passkey/verify-registration", async (c, next) => {
 	if (await requestSession(c.req.raw)) return next();
 	const ip = c.req.header("cf-connecting-ip");
-	const { success } = await c.env.OTP_LIMIT.limit({ key: `passkey:${ip ?? "local"}` });
+	const { success } = await c.env.OTP_LIMIT.limit({ key: `passkey:${clientKey(ip)}` });
 	if (!success) return c.json({ code: "TOO_MANY_REQUESTS", message: "Muitos pedidos. Espere um minuto." }, 429);
 	if (!(await turnstileOk(c.env.TURNSTILE_SECRET_KEY, c.req.header("x-captcha-response"), ip))) return c.json({ code: "VERIFICATION_FAILED", message: "Captcha" }, 403);
 	await next();
@@ -103,8 +102,8 @@ app.post("/auth/passkey/verify-registration", async (c, next) => {
 
 // Sign-in steps that write rows or check codes without a session: 120 a
 // minute per address (Better Auth's own rate limit is off on Workers).
-app.on(["GET","POST"],["/auth/sign-in/email-otp","/auth/device/code","/auth/passkey/generate-register-options","/auth/passkey/generate-authenticate-options"],async(c,next)=>{
-	const { success } = await c.env.ABUSE_LIMIT.limit({ key: `auth:${c.req.header("cf-connecting-ip") ?? "local"}` });
+app.on(["GET","POST"],["/auth/sign-in/email-otp","/auth/email-otp/verify-email","/auth/device/code","/auth/passkey/generate-register-options","/auth/passkey/generate-authenticate-options","/auth/passkey/verify-authentication"],async(c,next)=>{
+	const { success } = await c.env.ABUSE_LIMIT.limit({ key: `auth:${clientKey(c.req.header("cf-connecting-ip"))}` });
 	if (!success) { c.header("Retry-After","60"); return c.json({ code: "TOO_MANY_REQUESTS", message: "Muitos pedidos. Espere um minuto." }, 429); }
 	await next();
 });
@@ -117,7 +116,7 @@ app.on("POST", ["/auth/email-otp/request-email-change", "/auth/email-otp/change-
 	if (!s) return c.json({ code: "UNAUTHORIZED" }, 401);
 	if (hasEmail(s.user.email)) return c.json({ code: "EMAIL_CHANGE_SUPPORT", message: "Para trocar o e-mail, fale com o suporte." }, 403);
 	if (c.req.path.endsWith("request-email-change")) {
-		const { success } = await c.env.OTP_LIMIT.limit({ key: `otp:${c.req.header("cf-connecting-ip") ?? "local"}` });
+		const { success } = await c.env.OTP_LIMIT.limit({ key: `otp:${clientKey(c.req.header("cf-connecting-ip"))}` });
 		if (!success) return c.json({ code: "TOO_MANY_REQUESTS", message: "Muitos pedidos. Espere um minuto." }, 429);
 	}
 	await next();
@@ -151,7 +150,7 @@ app.use("*",async(c,next)=>{
  if(!costly&&!bulk)return next();
  const s=await requestSession(c.req.raw);if(!s)return next();
  const binding=costly?c.env.ABUSE_LIMIT:c.env.BULK_LIMIT;
- const keys=costly?[`account:${s.user.id}`,`ip:${c.req.header("cf-connecting-ip")??"local"}`]:[`account:${s.user.id}`];
+ const keys=costly?[`account:${s.user.id}`,`ip:${clientKey(c.req.header("cf-connecting-ip"))}`]:[`account:${s.user.id}`];
  const hits=await Promise.all(keys.map(key=>binding.limit({key})));
  if(hits.some(r=>!r.success)){c.header("Retry-After",costly?"60":"10");return c.json(requestError(c.req.path,"TOO_MANY_REQUESTS","Muitos pedidos. Tente novamente em instantes."),429);}
  await next();

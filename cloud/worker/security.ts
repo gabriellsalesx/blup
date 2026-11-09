@@ -31,3 +31,16 @@ export function panelCorsOrigin(env:{PULSE_APP_URL?:string;DEALS_APP_URL?:string
  if(env.DEALS_APP_URL&&origin===env.DEALS_APP_URL&&dealsCorsPath(pathname))return origin;
  return null;
 }
+
+// The key of a rate limit for a client address. An IPv6 user usually holds
+// a whole /64 (trillions of addresses): counted one by one, a new address a
+// request would never hit any limit. So IPv6 counts by its /64; IPv4 as is.
+export function clientKey(ip: string | null | undefined): string {
+	if (!ip) return "local";
+	if (!ip.includes(":")) return ip;
+	const [head = "", tail] = ip.toLowerCase().split("::");
+	const left = head ? head.split(":") : [];
+	const right = tail ? tail.split(":") : [];
+	const groups = tail === undefined ? left : [...left, ...Array<string>(Math.max(0, 8 - left.length - right.length)).fill("0"), ...right];
+	return `${groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, "")).join(":")}::/64`;
+}
