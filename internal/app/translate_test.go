@@ -106,7 +106,7 @@ func TestTranslateSite(t *testing.T) {
 
 	n, err := TranslateSite(context.Background(), site, "es", AIOpenRouter, nil)
 	if err != nil || n.Done != 4 || n.Skipped != 0 { // A, Pasta/B and the test site's _index and Posts/Um
-		t.Fatalf("translated %d, %v", n, err)
+		t.Fatalf("translated %+v, %v", n, err)
 	}
 	if es, _ := filepath.Glob(filepath.Join(root, "Pasta", "es", "*.md")); len(es) != 1 {
 		t.Fatalf("Pasta/es = %v", es)
@@ -268,5 +268,51 @@ func TestFeedbackExamplesUnexpectedYAMLTypes(t *testing.T) {
 		if i != len(texts) {
 			t.Fatalf("different traversal count: %d / %d", i, len(texts))
 		}
+	}
+}
+
+// TestTranslateSiteGoesOnPastAFailedNote: a note the AI fails on is left
+// for later and the others are translated; a missing allowance (for every
+// note) still stops at once.
+func TestTranslateSiteGoesOnPastAFailedNote(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	creds, _ := config.LoadCredentials()
+	creds.OpenRouterToken = "k"
+	_ = SetAIConsent(AIOpenRouter, true)
+	_ = creds.Save()
+	limit := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct{ Messages []struct{ Content string } }
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if limit {
+			w.WriteHeader(http.StatusPaymentRequired)
+			_, _ = w.Write([]byte(`{"error":{"message":"acabou","code":"AI_MONTH_LIMIT"}}`))
+			return
+		}
+		if strings.Contains(req.Messages[1].Content, "Falha") {
+			_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": "Fa"}, "finish_reason": "length"}}})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": "ES"}, "finish_reason": "stop"}}})
+	}))
+	defer srv.Close()
+	openRouterURL = srv.URL
+	defer func() { openRouterURL = "" }()
+
+	site := settingsSite(t)
+	site.Lang = "pt"
+	root := site.ContentDir()
+	write(t, root, "A.md", "Um.")
+	write(t, root, "B.md", "Falha.")
+	write(t, root, "C.md", "Três.")
+
+	n, err := TranslateSite(context.Background(), site, "es", AIOpenRouter, nil)
+	if err != nil || len(n.Failed) != 1 || n.Failed[0] != "B.md" || n.Done < 2 {
+		t.Fatalf("res = %+v, err = %v", n, err)
+	}
+	write(t, root, "D.md", "Quatro.")
+	limit = true
+	if _, err := TranslateSite(context.Background(), site, "es", AIOpenRouter, nil); err == nil {
+		t.Fatal("a used up allowance must stop the batch")
 	}
 }

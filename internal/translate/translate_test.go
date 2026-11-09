@@ -102,3 +102,53 @@ func TestOpenRouterAttribution(t *testing.T) {
 		t.Fatalf("out = %q, err = %v", out, err)
 	}
 }
+
+// TestCutGoesInHalves: an answer cut for lack of room comes back as CUT;
+// the part goes again in halves (never the same text twice), and the
+// halves come back joined with the blank lines they had.
+func TestCutGoesInHalves(t *testing.T) {
+	var sent []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Text string }
+		_ = json.NewDecoder(r.Body).Decode(&b)
+		sent = append(sent, b.Text)
+		if strings.Count(b.Text, "\n\n") >= 2 {
+			w.WriteHeader(http.StatusBadGateway)
+			_, _ = w.Write([]byte(`{"error":{"message":"longa","code":"CUT"}}`))
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{"text": strings.ToUpper(b.Text)})
+	}))
+	defer srv.Close()
+	out, err := (&Client{Key: "s", BaseURL: srv.URL, Blup: true}).Text(context.Background(), "um\n\ndois\n\ntrês\n\nquatro", "pt", "en", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != "UM\n\nDOIS\n\nTRÊS\n\nQUATRO" {
+		t.Fatalf("out = %q", out)
+	}
+	if sent[0] != "um\n\ndois\n\ntrês\n\nquatro" || len(sent) < 3 {
+		t.Fatalf("sent = %q", sent)
+	}
+	for _, s := range sent[1:] {
+		if s == sent[0] {
+			t.Fatal("the cut text went again whole")
+		}
+	}
+}
+
+// TestCutAloneFails: a single paragraph cut has nothing smaller to go in,
+// so the error comes back (once, no retries of the same text).
+func TestCutAloneFails(t *testing.T) {
+	n := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n++
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte(`{"error":{"message":"longa","code":"CUT"}}`))
+	}))
+	defer srv.Close()
+	_, err := (&Client{Key: "s", BaseURL: srv.URL, Blup: true}).Text(context.Background(), "um parágrafo só", "pt", "en", nil)
+	if !errors.Is(err, ErrCut) || n != 1 {
+		t.Fatalf("err = %v, calls = %d", err, n)
+	}
+}

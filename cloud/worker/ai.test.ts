@@ -88,6 +88,16 @@ describe("translation through Blup Cloud", () => {
 		expect((await request("/ai/translate", { text: "Olá", from: "pt", to: "en" })).status).toBe(502);
 		expect(held()).toBe(0);
 	});
+	it("leaves wide room for the answer and says CUT when it was cut anyway", async () => {
+		upstream((u) => u.endsWith("/models") ? Response.json({ data: [] }) : Response.json({ model: "anthropic/claude-haiku-5.5", choices: [{ message: { content: "Hel" }, finish_reason: "length" }], usage: { cost: 0.0001 } }));
+		const text = "a".repeat(3000);
+		const res = await request("/ai/translate", { text, from: "pt", to: "en" });
+		expect(res.status).toBe(502);
+		expect((await res.json() as { error: { code: string } }).error.code).toBe("CUT");
+		expect(calls.find((c) => c.url.endsWith("/chat/completions"))?.body.max_tokens).toBe(4000);
+		expect(charged()).toBe(100);
+		expect(held()).toBe(0);
+	});
 	it("refuses a plan without AI before anything goes out", async () => {
 		upstream(() => { throw new Error("no call expected"); });
 		expect((await request("/ai/translate", { text: "Olá", from: "pt", to: "en" }, "free")).status).toBe(402);

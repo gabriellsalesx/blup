@@ -860,6 +860,12 @@ export interface SiteParts {
 export interface SiteTranslation {
     "done": number;
     "skipped": number;
+
+    /**
+     * Failed are the notes that could not be translated this time (the
+     * rest went on); translating again tries only them.
+     */
+    "failed": string[] | null;
 }
 
 /**

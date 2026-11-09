@@ -31,6 +31,9 @@ var (
 	ErrInvalidKey = errors.New("translate: invalid key")
 	ErrNoCredits  = errors.New("translate: no credits")
 	ErrLimit      = errors.New("translate: AI allowance used up")
+	// ErrCut: the answer came back cut (the model ran out of room). The
+	// same text again would be cut again: it goes in smaller parts.
+	ErrCut = errors.New("translate: the answer was cut")
 )
 
 // Client translates through OpenRouter (Blup false) or Blup Cloud (Blup
@@ -60,10 +63,14 @@ Rules:
 // Text translates text (a whole note's body, or a short field) from one
 // language to another.
 func (c *Client) Text(ctx context.Context, text, from, to string, progress func(done, total int)) (string, error) {
+	return c.text(ctx, text, from, to, MaxPart, progress)
+}
+
+func (c *Client) text(ctx context.Context, text, from, to string, max int, progress func(done, total int)) (string, error) {
 	if strings.TrimSpace(text) == "" {
 		return text, nil
 	}
-	parts := Split(text, MaxPart)
+	parts := Split(text, max)
 	var out strings.Builder
 	for i, p := range parts {
 		if progress != nil {
@@ -75,6 +82,11 @@ func (c *Client) Text(ctx context.Context, text, from, to string, progress func(
 			continue
 		}
 		t, err := c.part(ctx, body, from, to)
+		if errors.Is(err, ErrCut) && len(Split(body, len(body)/2)) > 1 {
+			// Cut: the part again in halves (at blank lines, as always),
+			// down to a single paragraph.
+			t, err = c.text(ctx, body, from, to, len(body)/2, nil)
+		}
 		if err != nil {
 			return "", err
 		}
@@ -192,7 +204,8 @@ func (c *Client) post(ctx context.Context, url string, body []byte) (text string
 		return "", true, err
 	}
 	if res.StatusCode != http.StatusOK {
-		return "", res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500, apiError(res.StatusCode, b)
+		err := apiError(res.StatusCode, b)
+		return "", !errors.Is(err, ErrCut) && (res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500), err
 	}
 	if c.Blup {
 		var r struct {
@@ -215,7 +228,7 @@ func (c *Client) post(ctx context.Context, url string, body []byte) (text string
 		return "", true, errors.New("translate: empty answer")
 	}
 	if r.Choices[0].FinishReason == "length" {
-		return "", false, errors.New("translate: the answer was cut")
+		return "", false, ErrCut
 	}
 	return r.Choices[0].Message.Content, false, nil
 }
@@ -234,6 +247,8 @@ func apiError(status int, b []byte) error {
 		msg = http.StatusText(status)
 	}
 	switch {
+	case fmt.Sprint(e.Error.Code) == "CUT":
+		return fmt.Errorf("%w: %s", ErrCut, msg)
 	case status == http.StatusUnauthorized || status == http.StatusForbidden:
 		return fmt.Errorf("%w: %s", ErrInvalidKey, msg)
 	case status == http.StatusPaymentRequired && fmt.Sprint(e.Error.Code) != "402" && fmt.Sprint(e.Error.Code) != "<nil>":

@@ -44,6 +44,8 @@ const usageSchema = z.object({usage:z.object({cost:costSchema}).optional()});
 // answer, so without a usage.cost it is not charged at the estimate.
 const errorBody = z.object({ error: z.unknown().refine((e) => e !== undefined && e !== null) });
 const answered = (res: Response, raw: unknown) => res.ok && !errorBody.safeParse(raw).success;
+// The model that answered, for the log (OpenRouter tries the list in order).
+const modelOf=(raw:unknown)=>{const m=z.object({model:z.string().max(200)}).safeParse(raw);return m.success?m.data.model:null;};
 const outputSchema = z.object({choices:z.array(z.object({message:z.object({content:z.string().max(256_000).nullable().optional()}).optional(),finish_reason:z.string().nullable().optional()})).max(16).optional()});
 
 export type SpeechModel = { name: string; perCharMicros: number; voices: string[] };
@@ -329,8 +331,12 @@ export const aiApi = new Hono<App>()
  })
  .post("/translate",validate("json",translationInput),async c=>{
   const userId=c.get("userId"),{text,from,to}=c.req.valid("json"),chars=[...text].length;
+  // Room for the answer: a translation runs longer than its original
+  // (Portuguese and Spanish, Markdown marks, a model that thinks a little
+  // before answering), and a cut answer is thrown away, so the room is
+  // wide; the hold covers it, and only what is used is charged.
   const inputTokens=Math.ceil(new TextEncoder().encode(text).length/3);
-  const maxTokens=Math.max(32,inputTokens*2);
+  const maxTokens=Math.max(256,inputTokens*4);
   // No AI on the plan: refused before anything goes out (the catalog too).
   if(!(await planOf(userId)).limits.aiUsage) return c.json(fail("O seu plano não inclui IA pelo Blup Cloud.","NO_AI"),402);
   // The staff's list (studio_translate), in order: the hold is the dearest
@@ -352,7 +358,10 @@ export const aiApi = new Hono<App>()
    // Charge before validating content: truncated/malformed answers can cost.
    if(res.ok||usageSchema.safeParse(raw).success) await settle(c.env.DB,hold,[c.env.DB.prepare("INSERT INTO ai_usage(user_id,kind,units,cost_micros) VALUES (?,'translation',?,?)").bind(userId,chars,cost)]);
    const out=outputSchema.safeParse(raw),choice=out.success?out.data.choices?.[0]:undefined;
-   if(!res.ok || !choice?.message?.content || choice.finish_reason==="length") return c.json(fail("A tradução voltou incompleta. Tente de novo.","UPSTREAM"),res.status===429?429:502);
+   // A cut answer says so (CUT): the Studio sends the note again in
+   // smaller parts instead of the same text. Why it failed goes to the log.
+   if(choice?.finish_reason==="length"){console.warn("translate: answer cut",{model:modelOf(raw),chars,maxTokens});return c.json(fail("A nota é longa demais para traduzir de uma vez.","CUT"),502);}
+   if(!res.ok || !choice?.message?.content){console.warn("translate: no translation",{status:res.status,model:modelOf(raw),finish:choice?.finish_reason??null});return c.json(fail("A tradução voltou incompleta. Tente de novo.","UPSTREAM"),res.status===429?429:502);}
    return c.json({text:choice.message.content});
   }catch{return c.json(fail("A tradução falhou agora. Tente de novo.","UPSTREAM"),502);}
   finally{await release(c.env.DB,hold);}

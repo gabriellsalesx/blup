@@ -267,6 +267,19 @@ func TranslateNote(ctx context.Context, site *config.Site, rel, lang, provider s
 	return translateNoteWith(ctx, c, site, rel, lang, progress)
 }
 
+// friendly is err with the message people read (describe), still
+// matching what it wraps (errors.Is), so the batch knows a used up
+// allowance from a note that failed alone.
+func friendly(err error) error { return friendlyErr{describe(err), err} }
+
+type friendlyErr struct {
+	msg string
+	err error
+}
+
+func (e friendlyErr) Error() string { return e.msg }
+func (e friendlyErr) Unwrap() error { return e.err }
+
 func translateNoteWith(ctx context.Context, c *translate.Client, site *config.Site, rel, lang string, progress func(done, total int)) (string, error) {
 	original, _ := NoteOrigin(site, rel)
 	op, err := notesPath(site, original)
@@ -282,24 +295,24 @@ func translateNoteWith(ctx context.Context, c *translate.Client, site *config.Si
 	}
 	title, err := c.Text(ctx, noteTitle(n, original), site.Lang, lang, nil)
 	if err != nil {
-		return "", errors.New(describe(err))
+		return "", friendly(err)
 	}
 	desc := n.String("description")
 	if desc != "" {
 		if desc, err = c.Text(ctx, desc, site.Lang, lang, nil); err != nil {
-			return "", errors.New(describe(err))
+			return "", friendly(err)
 		}
 	}
 	body, err := c.Text(ctx, n.Body, site.Lang, lang, progress)
 	if err != nil {
-		return "", errors.New(describe(err))
+		return "", friendly(err)
 	}
 	props := map[string]any{}
 	for k, v := range PropTexts(n) {
 		out := make([]string, len(v))
 		for i, text := range v {
 			if out[i], err = c.Text(ctx, text, site.Lang, lang, nil); err != nil {
-				return "", errors.New(describe(err))
+				return "", friendly(err)
 			}
 			out[i] = strings.TrimSpace(out[i])
 		}
@@ -680,6 +693,9 @@ func translationName(site *config.Site, dir, name, original string) (string, err
 type SiteTranslation struct {
 	Done    int `json:"done"`
 	Skipped int `json:"skipped"`
+	// Failed are the notes that could not be translated this time (the
+	// rest went on); translating again tries only them.
+	Failed []string `json:"failed"`
 }
 
 // TranslateSite translates every note of the site into lang that has no
@@ -719,7 +735,13 @@ func TranslateSite(ctx context.Context, site *config.Site, lang, provider string
 			progress(i, len(todo), rel)
 		}
 		if _, err := translateNoteWith(ctx, c, site, rel, lang, nil); err != nil {
-			return res, err
+			// What holds for every note (no key, no allowance, cancelled)
+			// stops here; a note that failed alone is left for later.
+			if ctx.Err() != nil || errors.Is(err, translate.ErrInvalidKey) || errors.Is(err, translate.ErrNoCredits) || errors.Is(err, translate.ErrLimit) {
+				return res, err
+			}
+			res.Failed = append(res.Failed, rel)
+			continue
 		}
 		res.Done++
 	}

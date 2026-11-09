@@ -28,6 +28,7 @@
     try {
       let n: number;
       let skipped = 0;
+      let failed: string[] = [];
       if (await useLocal()) {
         // On the computer: note by note in the window.
         const todo = (await TranslationTodo(lang)) ?? [];
@@ -42,9 +43,11 @@
         const r = await withAIConsent(() => TranslateSite(lang), "translate");
         n = r.done;
         skipped = r.skipped;
+        failed = r.failed ?? [];
       }
       toast(sl.finished.replace("{n}", String(n)).replace("{lang}", NAMES[lang]));
       if (skipped) toast(t.aip.skipped.replace("{n}", String(skipped)));
+      if (failed.length) toast(sl.failed.replace("{n}", String(failed.length)).replace("{names}", failed.map(noteName).join(", ")), { kind: "error" });
       onTree();
     } catch (e) {
       if (e instanceof ConsentCancelled) { /* nothing was sent */ }
