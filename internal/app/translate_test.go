@@ -31,7 +31,7 @@ func TestTranslateNote(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct{ Messages []struct{ Content string } }
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		text := "EN(" + req.Messages[1].Content + ")"
+		text := fakeTranslation("EN", req.Messages[1].Content)
 		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": text}, "finish_reason": "stop"}}})
 	}))
 	defer srv.Close()
@@ -137,7 +137,7 @@ func TestTranslateHomeAndSection(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct{ Messages []struct{ Content string } }
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": "ES(" + req.Messages[1].Content + ")"}, "finish_reason": "stop"}}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": fakeTranslation("ES", req.Messages[1].Content)}, "finish_reason": "stop"}}})
 	}))
 	defer srv.Close()
 	openRouterURL = srv.URL
@@ -194,7 +194,7 @@ func TestTranslateFeedbackExamples(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct{ Messages []struct{ Content string } }
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		text := "EN(" + req.Messages[1].Content + ")"
+		text := fakeTranslation("EN", req.Messages[1].Content)
 		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": text}, "finish_reason": "stop"}}})
 	}))
 	defer srv.Close()
@@ -353,4 +353,11 @@ func TestTranslateSiteSideBySide(t *testing.T) {
 	if p := peak.Load(); p < 3 || p > 2*siteWorkers {
 		t.Fatalf("peak = %d requests at once", p)
 	}
+}
+
+// fakeTranslation is a pretend model's answer: the text the Studio sent
+// (between <text> tags) marked as translated, back between the same tags.
+func fakeTranslation(prefix, sent string) string {
+	inner := strings.TrimSuffix(strings.TrimPrefix(sent, "<text>\n"), "\n</text>")
+	return "<text>\n" + prefix + "(" + inner + ")\n</text>"
 }

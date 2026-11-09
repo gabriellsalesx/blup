@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -49,7 +50,7 @@ func TestTextThroughOpenRouter(t *testing.T) {
 	if out != "\nHello **world**.\n\n" {
 		t.Fatalf("out = %q", out)
 	}
-	if got.Model != Model || got.Messages[1].Content != "Olá **mundo**." || !strings.Contains(got.Messages[0].Content, "Brazilian Portuguese to English") {
+	if got.Model != Model || got.Messages[1].Content != "<text>\nOlá **mundo**.\n</text>" || !strings.Contains(got.Messages[0].Content, "Brazilian Portuguese to English") {
 		t.Fatalf("request = %+v", got)
 	}
 	// The staff's list: OpenRouter tries them in order.
@@ -118,7 +119,7 @@ func TestCutGoesInHalves(t *testing.T) {
 			_, _ = w.Write([]byte(`{"error":{"message":"longa","code":"CUT"}}`))
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]string{"text": strings.ToUpper(b.Text)})
+		_ = json.NewEncoder(w).Encode(map[string]string{"text": upper(b.Text)})
 	}))
 	defer srv.Close()
 	out, err := (&Client{Key: "s", BaseURL: srv.URL, Blup: true}).Text(context.Background(), "um\n\ndois\n\ntrês\n\nquatro", "pt", "en", nil)
@@ -128,7 +129,7 @@ func TestCutGoesInHalves(t *testing.T) {
 	if out != "UM\n\nDOIS\n\nTRÊS\n\nQUATRO" {
 		t.Fatalf("out = %q", out)
 	}
-	if sent[0] != "um\n\ndois\n\ntrês\n\nquatro" || len(sent) < 3 {
+	if sent[0] != "<text>\num\n\ndois\n\ntrês\n\nquatro\n</text>" || len(sent) < 3 {
 		t.Fatalf("sent = %q", sent)
 	}
 	for _, s := range sent[1:] {
@@ -164,8 +165,7 @@ func TestFieldsInOneRequest(t *testing.T) {
 		var b struct{ Text string }
 		_ = json.NewDecoder(r.Body).Decode(&b)
 		sent = append(sent, b.Text)
-		out := strings.ToUpper(b.Text)
-		out = strings.ReplaceAll(out, "<!--F", "<!--f")
+		out := upper(b.Text)
 		if broken && strings.Contains(out, "<!--f1-->") {
 			out = strings.Replace(out, "<!--f1-->", "", 1)
 		}
@@ -207,5 +207,57 @@ func TestWaitsWhatTheServerAsks(t *testing.T) {
 	out, err := (&Client{Key: "s", BaseURL: srv.URL, Blup: true}).Text(context.Background(), "olá", "pt", "en", nil)
 	if err != nil || out != "ok" || n != 2 {
 		t.Fatalf("out %q, err %v, calls %d", out, err, n)
+	}
+}
+
+// upper is a pretend translation: the text in capitals, the <text> tags
+// and the field marks kept, as a model keeps them.
+func upper(s string) string {
+	s = strings.ToUpper(s)
+	s = strings.ReplaceAll(s, "<TEXT>", "<text>")
+	s = strings.ReplaceAll(s, "</TEXT>", "</text>")
+	return strings.ReplaceAll(s, "<!--F", "<!--f")
+}
+
+// TestReplyIsNotATranslation: a lone word a model takes for a message
+// gets a chat answer back; it is tried once more, then the word stays as
+// it was instead of the answer.
+func TestReplyIsNotATranslation(t *testing.T) {
+	n := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n++
+		_ = json.NewEncoder(w).Encode(map[string]string{"text": "I didn't receive any Markdown text to translate. Please paste the note you'd like translated into Brazilian Portuguese, and I'll return only the translation."})
+	}))
+	defer srv.Close()
+	out, err := (&Client{Key: "s", BaseURL: srv.URL, Blup: true}).Text(context.Background(), "Feedback", "en", "pt", nil)
+	if err != nil || out != "Feedback" || n != 2 {
+		t.Fatalf("out %q, err %v, calls %d", out, err, n)
+	}
+}
+
+// TestTagsComeOff: the translation comes back without the <text> tags; a
+// one word title in Portuguese may run a bit longer and still counts.
+func TestTagsComeOff(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]string{"text": "<text>\nAtualizar o Blup\n</text>"})
+	}))
+	defer srv.Close()
+	out, err := (&Client{Key: "s", BaseURL: srv.URL, Blup: true}).Text(context.Background(), "Update", "en", "pt", nil)
+	if err != nil || out != "Atualizar o Blup" {
+		t.Fatalf("out %q, err %v", out, err)
+	}
+}
+
+// TestSamePromptAsBlupCloud: Blup Cloud builds the request on the server
+// with its own copy of the rules (cloud/worker/ai.ts); both say the same.
+func TestSamePromptAsBlupCloud(t *testing.T) {
+	src, err := os.ReadFile("../../cloud/worker/ai.ts")
+	if err != nil {
+		t.Skip("no cloud/ next to this package")
+	}
+	rules := Prompt("en", "pt")
+	rules = rules[strings.Index(rules, "Rules:"):]
+	if !strings.Contains(string(src), rules) {
+		t.Fatal("cloud/worker/ai.ts translatePrompt has other rules than translate.Prompt")
 	}
 }
