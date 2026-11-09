@@ -1,0 +1,4 @@
+# Robots may read the pages (each one says noindex where it applies);
+# the API is not for them.
+User-agent: *
+Disallow: /api/
