@@ -2,6 +2,10 @@ plugins {
     id 'com.android.application'
 }
 
+def blupVersion = (System.getenv("VERSION") ?: "1.0.0").trim()
+def blupParts = (blupVersion =~ /^(\d+)\.(\d+)\.(\d+)/)
+def blupVersionCode = blupParts.find() ? blupParts.group(1).toInteger() * 10000 + blupParts.group(2).toInteger() * 100 + blupParts.group(3).toInteger() : 1
+
 android {
     namespace = 'com.wails.app'
     compileSdk = 36
@@ -16,8 +20,11 @@ android {
         // while idle (ReminderReceiver), which older versions lack.
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        // The release's version (VERSION=x.y.z, set by the builds), so the
+        // phone shows the right one; versionCode grows with it (1.0.3 is
+        // 10003), so Android takes each release as an update.
+        versionCode = blupVersionCode
+        versionName = blupVersion
 
         // Configure supported ABIs
         ndk {
