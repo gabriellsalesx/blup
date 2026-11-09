@@ -124,7 +124,11 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-post-head { margin-block-end: 2rem; }
   .nori-cover { margin-block-end: 1.5rem; overflow: clip; border: 1px solid var(--main-200); border-radius: .5rem; }
   .nori-cover img { width: 100%; }
-  .nori-post-head .nori-lede { margin-block-start: .5rem; }
+  /* In a post the title wraps naturally (balance leaves short lines on a
+  phone) and grows with the screen; the lede is a subtitle, not a second
+  title: body size, regular weight, contrast for normal text. */
+  .nori-post-head .nori-title { font-size: clamp(1.625rem, 1.25rem + 1.6vw, 2.25rem); line-height: 1.2; text-wrap: pretty; }
+  .nori-post-head .nori-lede { margin-block-start: .75rem; font-size: 1.125rem; font-weight: 400; line-height: 1.6; letter-spacing: 0; color: var(--main-600); text-wrap: pretty; }
   .nori-post-head .listen { margin-block-start: 1.5rem; }
   .nori-byline { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; margin-block-start: 1.5rem; }
   .nori-author { display: inline-flex; align-items: center; gap: .375rem; color: var(--main-900); }
