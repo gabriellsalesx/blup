@@ -877,3 +877,77 @@ func isAuthor(site *config.Site, rel string) bool {
 	a := obsidian.Sections(site.ContentDir())["authors"]
 	return a != "" && path.Dir(rel) == a && !strings.EqualFold(path.Base(rel), "_index.md")
 }
+
+// RemoveTranslation takes lang off the site: every folder of that
+// language (the translations, kept next to their originals) goes to the
+// Blup trash, each one restorable, and the site stops publishing lang.
+// The originals are never touched. Anything that fails halfway is put
+// back, so the notes are never left half removed. It returns where each
+// folder went, for RestoreTranslation.
+func RemoveTranslation(site *config.Site, lang string) ([]string, error) {
+	if lang == site.Lang || !slices.Contains(config.SiteLangs, lang) {
+		return nil, errors.New("translate: unknown language " + lang)
+	}
+	folders, err := langFolders(site, lang)
+	if err != nil {
+		return nil, err
+	}
+	var trashed []string
+	for _, rel := range folders {
+		t, err := toTrash(site, rel)
+		if err != nil {
+			for _, back := range trashed {
+				_ = RestoreSection(site, back)
+			}
+			return nil, err
+		}
+		trashed = append(trashed, t)
+	}
+	if i := slices.Index(site.Translations, lang); i >= 0 {
+		site.Translations = slices.Delete(site.Translations, i, i+1)
+		if err := site.Save(); err != nil {
+			return trashed, err
+		}
+		if err := scaffold.Write(site); err != nil {
+			return trashed, err
+		}
+	}
+	return trashed, nil
+}
+
+// RestoreTranslation brings back what RemoveTranslation took off, and
+// the site publishes lang again.
+func RestoreTranslation(site *config.Site, lang string, trashed []string) error {
+	var first error
+	for _, t := range trashed {
+		if err := RestoreSection(site, t); err != nil && first == nil {
+			first = err
+		}
+	}
+	if err := addSiteLang(site, lang); err != nil && first == nil {
+		first = err
+	}
+	return first
+}
+
+// langFolders are the notes' folders named lang (where the translations
+// into lang live), outermost only, outside hidden folders.
+func langFolders(site *config.Site, lang string) ([]string, error) {
+	root := site.ContentDir()
+	var out []string
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || !d.IsDir() || p == root {
+			return nil
+		}
+		if strings.HasPrefix(d.Name(), ".") {
+			return filepath.SkipDir
+		}
+		if d.Name() == lang {
+			rel, _ := filepath.Rel(root, p)
+			out = append(out, filepath.ToSlash(rel))
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	return out, err
+}

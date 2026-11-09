@@ -24,6 +24,7 @@ export type {
     PropEdit,
     RecentSite,
     Removed,
+    RemovedTranslation,
     Renamed,
     Republish,
     SiteInfo,

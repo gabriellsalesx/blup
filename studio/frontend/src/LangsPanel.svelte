@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { SiteLangs } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { SiteLangs, RemoveTranslation, RestoreTranslation } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteLangState, Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
-  import { toastError } from "./toast.svelte";
+  import { toast, toastError } from "./toast.svelte";
   import { t } from "./i18n";
-  import { job, translateSite, LANG_NAMES as NAMES } from "./translatejob.svelte";
+  import { job, onJob, translateSite, LANG_NAMES as NAMES } from "./translatejob.svelte";
 
   // The site in other languages: how much of it is translated into each,
   // and translating what is missing (or out of date). The translation is
@@ -15,20 +15,30 @@
   let langs = $state<SiteLangState[]>([]);
   const load = () => SiteLangs().then((l) => (langs = l ?? [])).catch(toastError);
   load();
-  // A job that ends (here or while another screen was open): the counts
-  // and the file tree follow.
-  let seen = job.ended;
-  $effect(() => {
-    if (job.ended !== seen) {
-      seen = job.ended;
-      load();
+  // While this screen is open, the counts follow the job note by note and
+  // the file tree its end (opened later, it loads them anyway).
+  $effect(() => onJob((what) => {
+    load();
+    if (what === "ended") onTree();
+  }));
+  // Taking a language off: asked first, here on its card; its folders go
+  // to the Blup trash, and the notice brings them back.
+  let asking = $state("");
+  let removing = $state(false);
+  async function remove(lang: string) {
+    removing = true;
+    try {
+      const r = await RemoveTranslation(lang);
+      asking = "";
       onTree();
+      load();
+      const name = NAMES[lang] ?? lang;
+      toast(sl.removed.replace("{lang}", name), { action: { label: t.toast.undo, run: () => RestoreTranslation(lang, r.trash ?? []).then(() => { onTree(); load(); }).catch(toastError) } });
+    } catch (e) {
+      toastError(e);
     }
-  });
-  // While it runs, the counts follow note by note.
-  $effect(() => {
-    if (job.running && job.done) load();
-  });
+    removing = false;
+  }
   const noteName = (p: string) => p.split("/").pop()?.replace(/\.md$/i, "") ?? "";
 </script>
 
@@ -53,6 +63,19 @@
       {:else}
         <small class="muted">{sl.none}</small>
       {/if}
+      {#if (l.done || l.stale || l.on) && !(job.running && job.lang === l.lang)}
+        {#if asking === l.lang}
+          <div class="confirm">
+            <span>{sl.removeQ.replaceAll("{lang}", NAMES[l.lang] ?? l.lang).replace("{folder}", l.lang)}</span>
+            <div class="row">
+              <button class="btn ghost" onclick={() => (asking = "")}>{sl.removeCancel}</button>
+              <button class="btn danger" disabled={removing} onclick={() => remove(l.lang)}>{sl.removeOk}</button>
+            </div>
+          </div>
+        {:else}
+          <div><button class="btn ghost" disabled={job.running} onclick={() => (asking = l.lang)}>{sl.removeBtn}</button></div>
+        {/if}
+      {/if}
     </section>
   {/each}
   <small class="muted">{sl.help}</small>
@@ -62,6 +85,9 @@
   .lang-card { display: grid; gap: .6rem; }
   .counts { display: flex; flex-wrap: wrap; gap: .4rem 1rem; margin: 0; font-size: .875rem; }
   .counts .warn { color: var(--warn, #d97706); }
+  .confirm { display: grid; gap: .5rem; font-size: .85rem; }
+  .row { display: flex; gap: .5rem; justify-content: flex-end; flex-wrap: wrap; }
+  .btn.danger { background: var(--red); color: #fff; }
   .lbar { height: 6px; border-radius: 999px; background: var(--soft); overflow: hidden; }
   .lbar span { display: block; height: 100%; border-radius: inherit; background: var(--blue); transition: width .3s ease; }
 </style>

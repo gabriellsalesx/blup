@@ -952,6 +952,15 @@ export function RemoveSection(kind: string): $CancellablePromise<$models.Removed
 }
 
 /**
+ * RemoveTranslation takes lang off the open site: its translations go to
+ * the Blup trash (restorable) and the site stops publishing it. Refused
+ * while lang is being translated.
+ */
+export function RemoveTranslation(lang: string): $CancellablePromise<$models.RemovedTranslation> {
+    return $Call.ByID(3166935249, lang);
+}
+
+/**
  * RenameAttachment renames a file and fixes the notes that use it.
  */
 export function RenameAttachment(old: string, name: string): $CancellablePromise<string> {
@@ -1012,6 +1021,13 @@ export function RestoreSection(trash: string): $CancellablePromise<$models.Node>
  */
 export function RestoreSite(dir: string): $CancellablePromise<$models.SiteInfo> {
     return $Call.ByID(3299675627, dir);
+}
+
+/**
+ * RestoreTranslation brings back what RemoveTranslation took off.
+ */
+export function RestoreTranslation(lang: string, trash: string[] | null): $CancellablePromise<$models.Node> {
+    return $Call.ByID(3077332963, lang, trash);
 }
 
 /**

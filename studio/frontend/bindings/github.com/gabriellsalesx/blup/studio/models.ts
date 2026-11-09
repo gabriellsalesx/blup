@@ -364,6 +364,15 @@ export interface Removed {
 }
 
 /**
+ * RemovedTranslation is a language taken off the site: where each of its
+ * folders went (to undo), and the notes now.
+ */
+export interface RemovedTranslation {
+    "trash": string[] | null;
+    "tree": Node;
+}
+
+/**
  * Renamed is a site's new name and notes folder, and whether Blup Cloud
  * took the name too.
  */

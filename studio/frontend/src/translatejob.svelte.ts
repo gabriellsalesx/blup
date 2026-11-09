@@ -23,16 +23,25 @@ export const job = $state({
   note: "",
   /** The language just finished, shown with a check for a moment. */
   finished: "",
-  /** Goes up when a job ends: the screens that list translations reload. */
-  ended: 0,
 });
+
+// The screens that list translations hear each note done ("progress")
+// and the end ("ended"), to load their counts again.
+type Heard = (what: "progress" | "ended") => void;
+const listeners = new Set<Heard>();
+/** Hears the job; returns the function that stops hearing it. */
+export function onJob(fn: Heard): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+const tell = (what: "progress" | "ended") => listeners.forEach((fn) => fn(what));
 
 const noteName = (p: string) => p.split("/").pop()?.replace(/\.md$/i, "") ?? "";
 let finishedTimer: ReturnType<typeof setTimeout> | undefined;
 
 function finish(lang: string, done: number, skipped: number, failed: string[], error: string) {
   Object.assign(job, { running: false, done: 0, total: 0, note: "" });
-  job.ended++;
+  tell("ended");
   if (error) {
     toastError(error);
     return;
@@ -50,7 +59,10 @@ function finish(lang: string, done: number, skipped: number, failed: string[], e
 TranslateSiteState().then((st) => { if (st.running) Object.assign(job, { running: true, lang: st.lang, done: st.done, total: st.total, note: st.note }); }).catch(() => {});
 Events.On("translateSite", (ev) => {
   const d = ev.data;
-  if (d) Object.assign(job, { running: true, lang: d.lang, done: d.done, total: d.total, note: d.note });
+  if (d) {
+    Object.assign(job, { running: true, lang: d.lang, done: d.done, total: d.total, note: d.note });
+    tell("progress");
+  }
 });
 Events.On("translateSiteDone", (ev) => {
   const d = ev.data;
@@ -70,6 +82,7 @@ export async function translateSite(lang: string, siteLang: string) {
       let n = 0;
       for (const [i, rel] of todo.entries()) {
         Object.assign(job, { done: i, total: todo.length, note: rel });
+        tell("progress");
         try {
           await translateNoteLocal(rel, siteLang, lang, undefined, false);
           n++;

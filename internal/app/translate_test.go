@@ -3,7 +3,9 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -360,4 +362,53 @@ func TestTranslateSiteSideBySide(t *testing.T) {
 func fakeTranslation(prefix, sent string) string {
 	inner := strings.TrimSuffix(strings.TrimPrefix(sent, "<text>\n"), "\n</text>")
 	return "<text>\n" + prefix + "(" + inner + ")\n</text>"
+}
+
+// TestRemoveTranslation: every folder of the language goes to the Blup
+// trash (the originals and the other languages stay), the site stops
+// publishing it, and restoring brings everything back as it was.
+func TestRemoveTranslation(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	site := settingsSite(t)
+	site.Lang = "en"
+	site.Translations = []string{"pt", "es"}
+	root := site.ContentDir()
+	write(t, root, "A.md", "One.")
+	write(t, root, "pt/A.md", "---\ntitle: A\n---\nUm.")
+	write(t, root, "Docs/B.md", "Two.")
+	write(t, root, "Docs/pt/B.md", "Dois.")
+	write(t, root, "Docs/pt/img/x.png", "png")
+	write(t, root, "Docs/es/B.md", "Dos.")
+
+	trashed, err := RemoveTranslation(site, "pt")
+	if err != nil || len(trashed) != 2 {
+		t.Fatalf("trashed %v, %v", trashed, err)
+	}
+	for _, gone := range []string{"pt", "Docs/pt"} {
+		if _, err := os.Stat(filepath.Join(root, gone)); !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("%s still there", gone)
+		}
+	}
+	for _, kept := range []string{"A.md", "Docs/B.md", "Docs/es/B.md"} {
+		if _, err := os.Stat(filepath.Join(root, kept)); err != nil {
+			t.Fatalf("%s gone: %v", kept, err)
+		}
+	}
+	if strings.Join(site.Translations, ",") != "es" {
+		t.Fatalf("translations = %v", site.Translations)
+	}
+	if err := RestoreTranslation(site, "pt", trashed); err != nil {
+		t.Fatal(err)
+	}
+	for _, back := range []string{"pt/A.md", "Docs/pt/B.md", "Docs/pt/img/x.png"} {
+		if _, err := os.Stat(filepath.Join(root, back)); err != nil {
+			t.Fatalf("%s not back: %v", back, err)
+		}
+	}
+	if !slices.Contains(site.Translations, "pt") {
+		t.Fatalf("translations = %v", site.Translations)
+	}
+	if _, err := RemoveTranslation(site, "en"); err == nil {
+		t.Fatal("the site's own language can't be removed")
+	}
 }

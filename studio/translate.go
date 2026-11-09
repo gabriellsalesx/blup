@@ -238,3 +238,47 @@ func translateProvider(p Prefs) string {
 	}
 	return ""
 }
+
+// RemovedTranslation is a language taken off the site: where each of its
+// folders went (to undo), and the notes now.
+type RemovedTranslation struct {
+	Trash []string `json:"trash"`
+	Tree  Node     `json:"tree"`
+}
+
+// RemoveTranslation takes lang off the open site: its translations go to
+// the Blup trash (restorable) and the site stops publishing it. Refused
+// while lang is being translated.
+func (s *Studio) RemoveTranslation(lang string) (RemovedTranslation, error) {
+	site, err := s.current()
+	if err != nil {
+		return RemovedTranslation{}, err
+	}
+	siteJob.Lock()
+	busy := siteJob.st.Running && siteJob.st.Lang == lang
+	siteJob.Unlock()
+	if busy {
+		return RemovedTranslation{}, errors.New("translate: this language is being translated")
+	}
+	trash, err := app.RemoveTranslation(site, lang)
+	s.previewFollows(site)
+	if err != nil {
+		return RemovedTranslation{}, err
+	}
+	tree, err := s.Tree()
+	return RemovedTranslation{trash, tree}, err
+}
+
+// RestoreTranslation brings back what RemoveTranslation took off.
+func (s *Studio) RestoreTranslation(lang string, trash []string) (Node, error) {
+	site, err := s.current()
+	if err != nil {
+		return Node{}, err
+	}
+	err = app.RestoreTranslation(site, lang, trash)
+	s.previewFollows(site)
+	if err != nil {
+		return Node{}, err
+	}
+	return s.Tree()
+}
