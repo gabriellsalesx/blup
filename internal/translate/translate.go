@@ -155,14 +155,14 @@ func (c *Client) part(ctx context.Context, text, from, to string) (string, error
 	// model told to keep them still translated "../Publishing/Custom
 	// domain.md" into a folder that doesn't exist. They go as marks and
 	// come back exactly as they were.
-	masked, targets := protectLinks(text)
+	masked, links := protectLinks(text)
 	for range 2 {
 		out, err := c.send(ctx, "<text>\n"+masked+"\n</text>", from, to)
 		if err != nil {
 			return "", err
 		}
 		if t, ok := unwrap(out, masked); ok {
-			if t, ok = restoreLinks(t, targets); ok {
+			if t, ok = links.restore(t); ok {
 				return t, nil
 			}
 		}
@@ -429,44 +429,61 @@ var mdTarget = regexp.MustCompile(`(\]\()(<[^>]+>|[^)\s]+)((?:\s+"[^"]*")?\))`)
 // (and heading) is the target; the alias is text, translated.
 var wikiTarget = regexp.MustCompile(`\[\[([^\]|]+)((?:\|[^\]]*)?)\]\]`)
 
-// linkMark stands for a target while the text is with the model.
-var linkMark = regexp.MustCompile(`#blup-(\d+)`)
+// marked is what protectLinks took out of a text: the targets, in order,
+// and the mark that stands for each (prefix plus its number).
+type marked struct {
+	prefix  string
+	re      *regexp.Regexp
+	targets []string
+}
+
+// markPrefix is "#blup-", or another one when the text already holds it
+// (a note about this very mark): a mark of the text itself would be taken
+// for a target, and the part never translated.
+func markPrefix(s string) string {
+	p := "#blup-"
+	for i := 0; strings.Contains(s, p); i++ {
+		p = "#blup" + strconv.Itoa(i) + "-"
+	}
+	return p
+}
 
 // protectLinks swaps each link, image and [[note]] target for a mark
 // (#blup-N), returning the targets in order.
-func protectLinks(s string) (string, []string) {
-	var targets []string
+func protectLinks(s string) (string, marked) {
+	m := marked{prefix: markPrefix(s)}
+	m.re = regexp.MustCompile(regexp.QuoteMeta(m.prefix) + `(\d+)`)
 	mark := func(t string) string {
-		targets = append(targets, t)
-		return "#blup-" + strconv.Itoa(len(targets)-1)
+		m.targets = append(m.targets, t)
+		return m.prefix + strconv.Itoa(len(m.targets)-1)
 	}
-	s = mdTarget.ReplaceAllStringFunc(s, func(m string) string {
-		g := mdTarget.FindStringSubmatch(m)
+	s = mdTarget.ReplaceAllStringFunc(s, func(x string) string {
+		g := mdTarget.FindStringSubmatch(x)
 		return g[1] + mark(g[2]) + g[3]
 	})
-	s = wikiTarget.ReplaceAllStringFunc(s, func(m string) string {
-		g := wikiTarget.FindStringSubmatch(m)
+	s = wikiTarget.ReplaceAllStringFunc(s, func(x string) string {
+		g := wikiTarget.FindStringSubmatch(x)
 		return "[[" + mark(g[1]) + g[2] + "]]"
 	})
-	return s, targets
+	return s, m
 }
 
-// restoreLinks puts the targets back in place of their marks; false when
-// a mark is missing, repeated or unknown (the answer lost a link).
-func restoreLinks(s string, targets []string) (string, bool) {
-	if len(targets) == 0 {
-		return s, !linkMark.MatchString(s)
+// restore puts the targets back in place of their marks; false when a
+// mark is missing, repeated or unknown (the answer lost a link).
+func (m marked) restore(s string) (string, bool) {
+	if len(m.targets) == 0 {
+		return s, !m.re.MatchString(s)
 	}
-	seen := make([]bool, len(targets))
+	seen := make([]bool, len(m.targets))
 	ok := true
-	out := linkMark.ReplaceAllStringFunc(s, func(m string) string {
-		n, err := strconv.Atoi(m[len("#blup-"):])
-		if err != nil || n >= len(targets) || seen[n] {
+	out := m.re.ReplaceAllStringFunc(s, func(x string) string {
+		n, err := strconv.Atoi(x[len(m.prefix):])
+		if err != nil || n >= len(m.targets) || seen[n] {
 			ok = false
-			return m
+			return x
 		}
 		seen[n] = true
-		return targets[n]
+		return m.targets[n]
 	})
 	for _, v := range seen {
 		ok = ok && v

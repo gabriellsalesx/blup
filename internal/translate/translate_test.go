@@ -305,3 +305,26 @@ func TestLostLinkKeepsTheOriginal(t *testing.T) {
 		t.Fatalf("out %q, err %v, calls %d", out, err, n)
 	}
 }
+
+// TestTextWithTheMarkItself: a note that writes "#blup-0" itself (about
+// this very mark) is still translated: its own text is never taken for a
+// lost or extra link, and its targets come back.
+func TestTextWithTheMarkItself(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var b struct{ Text string }
+		_ = json.NewDecoder(r.Body).Decode(&b)
+		out := strings.NewReplacer("The mark", "A marca", "stands for", "substitui", "see", "veja").Replace(b.Text)
+		_ = json.NewEncoder(w).Encode(map[string]string{"text": out})
+	}))
+	defer srv.Close()
+	c := &Client{Key: "s", BaseURL: srv.URL, Blup: true}
+	in := "The mark #blup-0 stands for a link, see [docs](../a.md)."
+	out, err := c.Text(context.Background(), in, "en", "pt", nil)
+	if want := "A marca #blup-0 substitui a link, veja [docs](../a.md)."; err != nil || out != want {
+		t.Fatalf("out %q, err %v", out, err)
+	}
+	in = "The mark #blup-1 stands for a link."
+	if out, err := c.Text(context.Background(), in, "en", "pt", nil); err != nil || out != "A marca #blup-1 substitui a link." {
+		t.Fatalf("no targets: out %q, err %v", out, err)
+	}
+}
