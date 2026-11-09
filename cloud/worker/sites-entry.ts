@@ -18,6 +18,14 @@ const HEADERS: Record<string, string> = {
 	"Strict-Transport-Security": "max-age=31536000",
 };
 
+// Set on the answer itself: a copy would lose that its body is already
+// gzipped and get it compressed twice. An answer with fixed headers (from
+// fetch) is copied instead.
+function secured(res:Response):Response{
+ const set=(r:Response)=>{for(const [k,v] of Object.entries(HEADERS))if(!r.headers.has(k))r.headers.set(k,v);return r;};
+ try{return set(res);}catch{return set(new Response(res.body,res));}
+}
+
 const domainCache=new Map<string,{slug:string;hostname:string;at:number}>();
 async function resolveDomain(env:Cloudflare.Env,host:string,canonical:string){
  const cached=domainCache.get(host);if(cached&&Date.now()-cached.at<30_000)return cached;
@@ -33,20 +41,20 @@ export default Sentry.withSentry((env:Cloudflare.Env)=>sentryOptions(env,"blup-s
 	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
 		const url = new URL(req.url);
 		const health=await serveHealth(req,env);if(health)return health;
-		if(url.hostname===env.PULSE_PUBLIC_HOST)return await servePulsePage(req,env)??new Response("Not found",{status:404});
+		if(url.hostname===env.PULSE_PUBLIC_HOST)return secured(await servePulsePage(req,env)??new Response("Not found",{status:404,headers:{"cache-control":"no-store"}}));
 		// Custom Pulse hostnames use the same verified SaaS namespace.
 		// Resolve eligibility on every request before the short public cache.
 		if(!slugOfHost(url.hostname,env.SITES_DOMAIN)){
-			const pulse=await servePulsePage(req,env);if(pulse)return pulse;
+			const pulse=await servePulsePage(req,env);if(pulse)return secured(pulse);
 			// A Deals page on its own domain (the same namespace).
-			const deals=await serveDealsSite(req,env);if(deals)return deals;
+			const deals=await serveDealsSite(req,env);if(deals)return secured(deals);
 		}
 		const local = env.SITES_DOMAIN === "localhost";
 		// Always HTTPS, and www.name.getblup.site is the same site as
 		// name.getblup.site (one address, so search engines see one).
 		const bare = url.hostname.startsWith("www.") ? url.hostname.slice(4) : url.hostname;
 		if (!local && (url.protocol === "http:" || bare !== url.hostname) && slugOfHost(bare, env.SITES_DOMAIN)) {
-			return new Response(null, { status: 301, headers: { location: `https://${bare}${url.pathname}${url.search}` } });
+			return secured(new Response(null, { status: 301, headers: { location: `https://${bare}${url.pathname}${url.search}` } }));
 		}
 		let custom:string|undefined;
 		let slug = slugOfHost(url.hostname, env.SITES_DOMAIN);
@@ -56,15 +64,12 @@ export default Sentry.withSentry((env:Cloudflare.Env)=>sentryOptions(env,"blup-s
 			const domain=await resolveDomain(env,url.hostname,canonical);
 			if(domain){
 				custom=domain.hostname;
-				if(host!==domain.hostname||url.protocol!=="https:")return new Response(null,{status:301,headers:{location:`https://${domain.hostname}${url.pathname}${url.search}`}});
+				if(host!==domain.hostname||url.protocol!=="https:")return secured(new Response(null,{status:301,headers:{location:`https://${domain.hostname}${url.pathname}${url.search}`}}));
 				slug=domain.slug;
 			}
 		}
 		const res = slug ? await serveSite(req, env, ctx, slug,custom) : new Response("Not found", { status: 404 });
-		// Set on the answer itself: a copy would lose that its body is already
-		// gzipped and get it compressed twice.
-		for (const [k, v] of Object.entries(HEADERS)) if (!res.headers.has(k)) res.headers.set(k, v);
-		return res;
+		return secured(res);
 	},
 } satisfies ExportedHandler<Cloudflare.Env>);
 

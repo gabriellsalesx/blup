@@ -49,6 +49,10 @@ describe("published site attacks and response semantics",()=>{
 		const r=await entry.fetch(new Request("http://www.slug-site.getblup.site/path?q=x"),env,ctx);expect(r.status).toBe(301);expect(r.headers.get("location")).toBe("https://slug-site.getblup.site/path?q=x");
 		expect((await entry.fetch(new Request("https://slug-site.getblup.site.evil.invalid/"),env,ctx)).status).toBe(404);
 	});
+	it("sends the security headers on the Pulse host and on redirects",async()=>{
+		const pulse=await entry.fetch(new Request("https://pulse.getblup.site/"),{...env,PULSE_PUBLIC_HOST:"pulse.getblup.site"} as Cloudflare.Env,ctx);expect(pulse.status).toBe(404);expect(pulse.headers.get("strict-transport-security")).toBe("max-age=31536000");expect(pulse.headers.get("x-content-type-options")).toBe("nosniff");
+		const moved=await entry.fetch(new Request("http://www.slug-site.getblup.site/"),env,ctx);expect(moved.headers.get("strict-transport-security")).toBe("max-age=31536000");
+	});
 	it("bounds memory used by random nonexistent host names",async()=>{
 		await serveSite(new Request("https://absent-first.getblup.site/"),env,ctx,"absent-first");
 		for(let i=0;i<1025;i++)await serveSite(new Request(`https://absent-${i}.getblup.site/`),env,ctx,`absent-${i}`);

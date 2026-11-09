@@ -83,6 +83,8 @@ it("publishes only explicit component names and incident text, escapes attacks a
  const cache=new Map<string,Response>();vi.stubGlobal("caches",{default:{match:async(key:Request)=>cache.get(key.url)?.clone(),put:async(key:Request,response:Response)=>{cache.set(key.url,response);}}});
  const page=await publicPage(state.env,"public-page"),data=JSON.stringify(page);for(const privateValue of ["PRIVATE_MONITOR_NAME","private-secret","object1","alice","Private project"])expect(data).not.toContain(privateValue);
  const html=await(await servePulsePage(new Request("https://pulse.audit.invalid/public-page/"),state.env))?.text();expect(html).toContain("&lt;script&gt;");expect(html).not.toContain("<script>attack");expect(html?.match(/<script>/g)).toHaveLength(1);
+ // Without the last slash: the page itself (no redirect), its links kept right by <base>.
+ const bare=await servePulsePage(new Request("https://pulse.audit.invalid/public-page"),state.env),bareHtml=await bare?.text()??"";expect(bare?.status).toBe(200);expect(bareHtml).toContain('<base href="https://pulse.audit.invalid/public-page/"><link rel="canonical" href="https://pulse.audit.invalid/public-page/">');expect(bare?.headers.get("content-security-policy")).toContain("base-uri 'self'");expect(html).not.toContain("<base");
  // Each day's tip is a small card: the mark, the state and the date.
  expect(html).toMatch(/<span class="tip" role="tooltip"><span class="tip-head"><span class="tip-none">.*?Not monitored<\/span><span class="tip-date">/);
  // The bars' "none" day keeps its own look: no page-wide rule for that name.

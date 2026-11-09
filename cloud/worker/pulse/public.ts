@@ -1,3 +1,4 @@
+import {clientKey} from "../security";
 import {languageOf,languageSchema,acceptedLanguage} from "../../shared/language";
 import {pulseAccess,sha256} from "./limits";
 import {z} from "zod";
@@ -56,23 +57,27 @@ const publicFiles=["/","/status.json","/badge","/logo-light","/logo-dark"];
 const badgeTheme=z.enum(["light","dark","auto"]).catch("auto");
 export async function servePulsePage(req:Request,env:Cloudflare.Env,slugOverride?:string):Promise<Response|null>{
  const url=new URL(req.url);let slug=slugOverride;
+ // The address without the last slash (typed by hand) gets the page itself,
+ // not a redirect (a whole round trip on a phone): a <base> keeps its
+ // relative links right and the canonical names the address with the slash.
+ let bare=false;
  if(!slug){
-  if(url.hostname===env.PULSE_PUBLIC_HOST){if(/^\/[^/]+$/.test(url.pathname))return new Response(null,{status:301,headers:{location:`${url.origin}${url.pathname}/`,"cache-control":"no-store"}});const match=/^\/([^/]+)\/(status\.json|badge|logo-(?:light|dark)|incidents|incidents\/[0-9a-f-]{36})?$/.exec(url.pathname);if(!match)return new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});try{slug=decodeURIComponent(match[1]??"");}catch{return new Response("Not found",{status:404});}}
+  if(url.hostname===env.PULSE_PUBLIC_HOST){bare=/^\/[^/]+$/.test(url.pathname);const match=bare?/^\/([^/]+)$/.exec(url.pathname):/^\/([^/]+)\/(status\.json|badge|logo-(?:light|dark)|incidents|incidents\/[0-9a-f-]{36})?$/.exec(url.pathname);if(!match)return new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});try{slug=decodeURIComponent(match[1]??"");}catch{return new Response("Not found",{status:404});}}
   else{const row=await env.DB.prepare("SELECT p.slug FROM pulse_page_domain d JOIN pulse_page p ON p.id=d.page_id WHERE d.hostname=? AND d.verified_at IS NOT NULL AND d.status='active' AND d.ssl='active' AND p.plan_disabled=0").bind(url.hostname).first<{slug:string}>();if(!row)return null;slug=row.slug;if(!publicFiles.includes(url.pathname)&&!/^\/incidents(?:\/[0-9a-f-]{36})?$/.test(url.pathname))return new Response("Not found",{status:404});}
  }
  if(!["GET","HEAD"].includes(req.method))return new Response(null,{status:405,headers:{allow:"GET, HEAD","cache-control":"no-store"}});
- if(!(await env.PULSE_PUBLIC_LIMIT.limit({key:`public:${req.headers.get("cf-connecting-ip")??"local"}`})).success)return Response.json({code:"TOO_MANY_REQUESTS"},{status:429,headers:{"Retry-After":"60","Cache-Control":"no-store"}});
+ if(!(await env.PULSE_PUBLIC_LIMIT.limit({key:`public:${clientKey(req.headers.get("cf-connecting-ip"))}`})).success)return Response.json({code:"TOO_MANY_REQUESTS"},{status:429,headers:{"Retry-After":"60","Cache-Control":"no-store"}});
  if(url.hostname!==env.PULSE_PUBLIC_HOST){const owned=await env.DB.prepare("SELECT p.user_id AS owner FROM pulse_page_domain d JOIN pulse_page p ON p.id=d.page_id WHERE p.slug=? AND d.hostname=? AND d.status='active' AND d.ssl='active'").bind(slug,url.hostname).first<{owner:string}>();if(!owned)return null;const access=await pulseAccess(env,owned.owner);if(!access.writable||!access.limits?.customDomain)return new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});}
  const page=await publicPage(env,slug);if(!page)return Response.json({code:"NOT_FOUND"},{status:404,headers:{"cache-control":"no-store"}});
  if(page.unavailable)return Response.json({code:"UNAVAILABLE"},{status:503,headers:{"cache-control":"no-store","Retry-After":"60"}});
  const headers={"cache-control":"public, max-age=0, must-revalidate","Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
  const respond=async(body:string,type:string,extra:Record<string,string>={})=>{const etag=`"${await sha256(body)}"`,responseHeaders={...headers,...extra,etag,"content-type":type};return new Response(req.method==="HEAD"||req.headers.get("if-none-match")===etag?null:body,{status:req.headers.get("if-none-match")===etag?304:200,headers:responseHeaders});};
- if(url.pathname.endsWith("status.json")||slugOverride)return respond(JSON.stringify(page),"application/json; charset=utf-8");
+ if((!bare&&url.pathname.endsWith("status.json"))||slugOverride)return respond(JSON.stringify(page),"application/json; charset=utf-8");
  // The badge is meant for other sites' iframes. An iframe cannot read the
  // site's language, so it speaks the visitor's (their browser's), unless
  // the code fixes one (?lang=); without either, the page's.
- if(url.pathname.endsWith("/badge")){const asked=req.headers.get("accept-language"),language=languageSchema.safeParse(url.searchParams.get("lang")).data??(asked?acceptedLanguage(asked):page.language);const body=renderBadge(page,badgeTheme.parse(url.searchParams.get("theme")),language);const etag=`"${await sha256(body)}"`;return new Response(req.method==="HEAD"||req.headers.get("if-none-match")===etag?null:body,{status:req.headers.get("if-none-match")===etag?304:200,headers:{...headers,etag,"content-type":"text/html; charset=utf-8",vary:"Accept-Language","Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors *; base-uri 'none'; form-action 'none'"}});}
- const logo=/\/logo-(light|dark)$/.exec(url.pathname);
+ if(!bare&&url.pathname.endsWith("/badge")){const asked=req.headers.get("accept-language"),language=languageSchema.safeParse(url.searchParams.get("lang")).data??(asked?acceptedLanguage(asked):page.language);const body=renderBadge(page,badgeTheme.parse(url.searchParams.get("theme")),language);const etag=`"${await sha256(body)}"`;return new Response(req.method==="HEAD"||req.headers.get("if-none-match")===etag?null:body,{status:req.headers.get("if-none-match")===etag?304:200,headers:{...headers,etag,"content-type":"text/html; charset=utf-8",vary:"Accept-Language","Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors *; base-uri 'none'; form-action 'none'"}});}
+ const logo=bare?null:/\/logo-(light|dark)$/.exec(url.pathname);
  if(logo){
   const variant=logoVariant.parse(logo[1]),version=page.logos[variant];if(!version)return new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});
   const id=(await env.DB.prepare("SELECT id FROM pulse_page WHERE slug=? AND published=1").bind(slug).first<{id:string}>())?.id,object=id?await env.PULSE_ASSETS.get(logoKey(id,variant)):null;if(!object)return new Response("Not found",{status:404,headers:{"cache-control":"no-store"}});
@@ -89,13 +94,14 @@ export async function servePulsePage(req:Request,env:Cloudflare.Env,slugOverride
  // The previous incidents (three months at a time) and one incident's own
  // page read the incidents themselves: the main page only carries the
  // latest.
- const asked=/\/incidents\/([0-9a-f-]{36})$/.exec(url.pathname)?.[1];
- if(asked||/\/incidents$/.test(url.pathname)){
+ const asked=bare?undefined:/\/incidents\/([0-9a-f-]{36})$/.exec(url.pathname)?.[1];
+ if(asked||(!bare&&/\/incidents$/.test(url.pathname))){
   const source=await publishedPage(env,slug);if(!source)return missing();
   if(asked){const incident=await incidentById(env,source,asked);if(!incident)return missing();body=renderIncidentPage(shown,incident,Date.now(),lang);}
   else{const window=monthWindow(monthParam.safeParse(url.searchParams.get("to")).data??null,source.cutoff);body=renderIncidentHistory(shown,window,await incidentsBetween(env,source,window.from,window.to),Date.now(),lang);}
  }else body=renderStatusPage(shown,Date.now(),lang);
- return respond(body,"text/html; charset=utf-8",{"Content-Security-Policy":`default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; script-src '${await themeScriptHash()}'; frame-ancestors 'none'; base-uri 'none'`});
+ if(bare){const home=`${url.origin}/${encodeURIComponent(slug)}/`;body=body.replace("<head>",`<head><base href="${home}"><link rel="canonical" href="${home}">`);}
+ return respond(body,"text/html; charset=utf-8",{"Content-Security-Policy":`default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; script-src '${await themeScriptHash()}'; frame-ancestors 'none'; base-uri ${bare?"'self'":"'none'"}`});
 }
 // The CSP source of the page's one inline script (computed once).
 let themeHash:Promise<string>|undefined;
