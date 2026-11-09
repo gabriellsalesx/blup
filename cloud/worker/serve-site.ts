@@ -129,6 +129,7 @@ export async function serveSite(req: Request, env: Cloudflare.Env, ctx: Executio
  const forwarded=new Request(url,{headers:{"accept-encoding":encoding}});
  const props={siteId:live.id,deploy:live.deploy};
  const cached=ctx.exports?.CachedSite;
+ const viaCache=typeof cached==="function";
  const answer=cached?await cached({props}).fetch(forwarded):await serveDeploy(forwarded,env,props);
  const headers=new Headers(answer.headers);
  if(answer.status===200)headers.set("cache-control",headers.get(BROWSER_CC)??"public, max-age=0, must-revalidate");
@@ -137,5 +138,12 @@ export async function serveSite(req: Request, env: Cloudflare.Env, ctx: Executio
  const etag=headers.get("etag");
  const notModified=answer.status===200&&etag!==null&&req.headers.get("if-none-match")===etag;
  if(notModified||req.method==="HEAD")await answer.body?.cancel();
- return new Response(notModified||req.method==="HEAD"?null:answer.body,{status:notModified?304:answer.status,headers,encodeBody:"manual"});
+ // Through the cached entrypoint (ctx.exports), the runtime hands the body
+ // over already unpacked, with Content-Encoding still saying gzip: sent
+ // as "manual", browsers got plain bytes labelled gzip and dropped every
+ // CSS and JS file. Left to the runtime ("automatic"), the body goes back
+ // gzipped as the header says (passed through, not packed twice). Served
+ // here directly (no ctx.exports), the body is the stored gzip itself:
+ // that one goes as it is.
+ return new Response(notModified||req.method==="HEAD"?null:answer.body,{status:notModified?304:answer.status,headers,encodeBody:viaCache?"automatic":"manual"});
 }
