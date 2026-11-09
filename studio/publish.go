@@ -72,14 +72,14 @@ func queued(fn func() error, line func(Progress)) error {
 }
 
 func reporting(fn func() error, line func(Progress)) error {
-	ui.Report = func(kind, text string) {
+	ui.SetReport(func(kind, text string) {
 		p := Progress{kind, text}
 		if line != nil {
 			line(p)
 		}
 		application.Get().Event.Emit("progress", p)
-	}
-	defer func() { ui.Report = nil }()
+	})
+	defer ui.SetReport(nil)
 	return fn()
 }
 

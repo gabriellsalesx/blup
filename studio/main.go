@@ -12,6 +12,7 @@ import (
 
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/i18n"
+	"github.com/gabriellsalesx/blup/internal/ui"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -21,6 +22,10 @@ import (
 var assets embed.FS
 
 func main() {
+	// No one answers a terminal prompt here, even when the Studio was
+	// started from a terminal: the CLI code it shares fails with a clear
+	// error instead of asking (or drawing in the terminal and waiting).
+	ui.SetHeadless()
 	// The Studio speaks the language chosen in Blup (blup language), else
 	// the system's: Portuguese on a computer in Portuguese, English on the
 	// others.

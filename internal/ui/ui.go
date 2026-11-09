@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sync/atomic"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -39,18 +40,57 @@ var (
 	box     = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(accent).Padding(0, 2)
 )
 
-// Report, when set, receives the progress lines instead of the terminal:
-// kind is "step", "ok", "warn", "error", "hint" or "spin". Blup Studio
-// sets it to show what a publish or sync is doing in its window.
-var Report func(kind, text string)
+// reporter, when set (SetReport), receives the progress lines instead of
+// the terminal: kind is "step", "ok", "warn", "error", "hint" or "spin".
+// Blup Studio sets it to show what a publish or sync is doing in its
+// window. It is atomic: the Studio sets it on one goroutine while others
+// print lines.
+var reporter atomic.Pointer[func(kind, text string)]
+
+// SetReport sends the progress lines to fn (nil: back to the terminal).
+func SetReport(fn func(kind, text string)) {
+	if fn == nil {
+		reporter.Store(nil)
+		return
+	}
+	reporter.Store(&fn)
+}
+
+// report gives the line to the reporter; false when there is none.
+func report(kind, text string) bool {
+	fn := reporter.Load()
+	if fn == nil {
+		return false
+	}
+	(*fn)(kind, text)
+	return true
+}
+
+// headless: no one answers in a terminal (Blup Studio, even when started
+// from one). Interactive is false and every prompt fails with
+// ErrNoTerminal instead of drawing in (or waiting on) a terminal.
+var headless atomic.Bool
+
+// SetHeadless marks the process as having no terminal to ask in.
+func SetHeadless() { headless.Store(true) }
+
+// Headless reports whether SetHeadless was called (the Studio is running).
+func Headless() bool { return headless.Load() }
+
+// ErrNoTerminal is returned by a prompt when there is no terminal to ask
+// in (SetHeadless). Its text is in the user's language.
+var ErrNoTerminal error = noTerminal{}
+
+type noTerminal struct{}
+
+func (noTerminal) Error() string { return i18n.T("ui.no_terminal") }
 
 // Banner prints a framed heading.
 func Banner(text string) { fmt.Println(box.Render(title.Render(text))) }
 
 // Step prints a section heading.
 func Step(text string) {
-	if Report != nil {
-		Report("step", text)
+	if report("step", text) {
 		return
 	}
 	fmt.Println("\n" + title.Render("› "+text))
@@ -58,8 +98,7 @@ func Step(text string) {
 
 // OK prints a success line.
 func OK(text string) {
-	if Report != nil {
-		Report("ok", text)
+	if report("ok", text) {
 		return
 	}
 	fmt.Println(okStyle.Render("✓ ") + text)
@@ -67,8 +106,7 @@ func OK(text string) {
 
 // Warn prints a warning line.
 func Warn(text string) {
-	if Report != nil {
-		Report("warn", text)
+	if report("warn", text) {
 		return
 	}
 	fmt.Println(warn.Render("! ") + text)
@@ -76,8 +114,7 @@ func Warn(text string) {
 
 // Error prints an error line.
 func Error(text string) {
-	if Report != nil {
-		Report("error", text)
+	if report("error", text) {
 		return
 	}
 	fmt.Fprintln(os.Stderr, errS.Render("✗ ")+text)
@@ -85,8 +122,7 @@ func Error(text string) {
 
 // Hint prints muted helper text.
 func Hint(text string) {
-	if Report != nil {
-		Report("hint", text)
+	if report("hint", text) {
 		return
 	}
 	fmt.Println(hint.Render(text))
@@ -132,6 +168,9 @@ func theme(isDark bool) *huh.Styles {
 }
 
 func run(fields ...huh.Field) error {
+	if headless.Load() {
+		return ErrNoTerminal
+	}
 	back := false
 	// Notes which key left the prompt: Esc goes back, Ctrl+C quits.
 	watch := func(_ tea.Model, msg tea.Msg) tea.Msg {
@@ -221,8 +260,7 @@ func Explain(heading, body string) error {
 
 // Spin runs fn with a spinner titled msg (a plain line without a terminal).
 func Spin(ctx context.Context, msg string, fn func(ctx context.Context) error) error {
-	if Report != nil {
-		Report("spin", msg)
+	if report("spin", msg) {
 		return fn(ctx)
 	}
 	if !Interactive() {
@@ -234,6 +272,9 @@ func Spin(ctx context.Context, msg string, fn func(ctx context.Context) error) e
 
 // Interactive reports whether stdin and stdout are terminals.
 func Interactive() bool {
+	if headless.Load() {
+		return false
+	}
 	for _, f := range []*os.File{os.Stdin, os.Stdout} {
 		st, err := f.Stat()
 		if err != nil || st.Mode()&os.ModeCharDevice == 0 {

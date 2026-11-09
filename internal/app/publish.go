@@ -66,7 +66,13 @@ func githubTokenURL() string {
 	return github.TokenURL("blup", i18n.T("gh.token_description"))
 }
 
+// githubClient is the GitHub client of the saved key, asking for one in
+// the terminal when there is none or it stopped working. Without a
+// terminal (Blup Studio) it never asks: savedGitHub's clear error instead.
 func githubClient(ctx context.Context) (*github.Client, string, error) {
+	if !ui.Interactive() {
+		return savedGitHub(ctx)
+	}
 	creds, err := config.LoadCredentials()
 	if err != nil {
 		return nil, "", err

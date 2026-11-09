@@ -131,6 +131,9 @@ func encryptLocked(ctx context.Context, site *config.Site, dir string) error {
 	}
 	pw := PostPassword(site)
 	if needsGlobal && pw == "" {
+		if ui.Headless() {
+			return errors.New(i18n.T("lock.no_global_studio"))
+		}
 		if !ui.Interactive() {
 			return errors.New(i18n.T("lock.no_global"))
 		}

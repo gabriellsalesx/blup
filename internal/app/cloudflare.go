@@ -25,7 +25,14 @@ func init() {
 	)
 }
 
+// cloudflareClient is the Cloudflare client of the saved key, asking for
+// one in the terminal when there is none or it stopped working. Without a
+// terminal (Blup Studio) it never asks: savedCloudflare's clear error
+// instead.
 func cloudflareClient(ctx context.Context) (*cfworkers.Client, error) {
+	if !ui.Interactive() {
+		return savedCloudflare()
+	}
 	creds, err := config.LoadCredentials()
 	if err != nil {
 		return nil, err
