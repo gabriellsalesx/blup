@@ -16,7 +16,7 @@
   import CloudAccount from "./CloudAccount.svelte";
   import BlupDomain from "./BlupDomain.svelte";
   import SyncFresh from "./SyncFresh.svelte";
-  import { syncJob, startSync, onSyncDone, syncStepText } from "./syncjob.svelte";
+  import { syncJob, startSync, onSyncDone, syncStepText, live as liveSync, onLive } from "./syncjob.svelte";
   import Choice from "./ui/Choice.svelte";
 
   // Two screens in one: publishing the site (where it goes; its own domain
@@ -66,7 +66,12 @@
   // Blup Cloud ready for the first time: see what a sync would do (once).
   let checkedCloud = false;
   $effect(() => {
-    if (remote === "blup" && cloud?.notes === "ready" && !checkedCloud) { checkedCloud = true; checkSync(); }
+    if (remote === "blup" && cloud?.notes === "ready" && !checkedCloud) {
+      checkedCloud = true;
+      // A live sync sending now brings its own result: no check meanwhile.
+      if (liveSync.state === "syncing") { if (liveSync.info) sync = liveSync.info; }
+      else checkSync();
+    }
   });
 
   // Cloudflare: the account's workers.dev subdomain, in every site's
@@ -108,6 +113,14 @@
   }
   if (syncJob.last?.error) ended(syncJob.last);
   $effect(() => onSyncDone(ended));
+  // The live sync sends each change a moment after it is saved: while it
+  // sends, it says so; when it is done, its result replaces what the last
+  // check saw (a note being written showed "1 to send" that had gone up).
+  $effect(() => onLive((st) => {
+    if (st.state === "synced") ended({ info: st.info, error: "", stuck: false });
+    else if (st.state === "error") ended({ info: st.info, error: st.error ?? "", stuck: !!st.stuck });
+  }));
+  const liveSending = $derived(liveSync.state === "syncing" && !syncJob.running);
 
   async function load() {
     error = "";
@@ -386,8 +399,9 @@
         {/if}
         <div class="actions">
           <button class="btn ghost" disabled={syncing} onclick={checkSync}><Refresh size={14} />{p.syncCheck}</button>
-          <button class="btn" disabled={syncing} onclick={runSync}>{syncing ? p.syncing : p.syncNow}</button>
+          <button class="btn" disabled={syncing} onclick={runSync}>{syncJob.running ? p.syncing : checking ? p.checking : p.syncNow}</button>
         </div>
+        {#if liveSending}<small class="muted">{p.liveSending}</small>{/if}
         {#if syncing && stepText}
           <div class="step">
             {#if syncJob.total}<div class="sbar" role="progressbar" aria-valuemin="0" aria-valuemax={syncJob.total} aria-valuenow={syncJob.done}><span style:width="{Math.max(2, (syncJob.done / syncJob.total) * 100)}%"></span></div>{/if}

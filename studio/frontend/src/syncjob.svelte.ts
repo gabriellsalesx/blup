@@ -7,6 +7,7 @@
 import { Events } from "@wailsio/runtime";
 import { StartSync, SyncState } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
 import type { SyncDone } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
+import type { LiveState } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
 import { toast, toastError } from "./toast.svelte";
 import { t } from "./i18n";
 
@@ -91,3 +92,22 @@ export function syncStepText(phase: string, done: number, total: number): string
     default: return p.syncing;
   }
 }
+
+// The live sync (plans with it): it sends each change a moment after it is
+// saved. The Sync screen follows it, so what it shows is never a snapshot
+// taken just before a change went up.
+export const live = $state({ state: "", info: null as LiveState["info"] | null });
+type HeardLive = (st: LiveState) => void;
+const liveListeners = new Set<HeardLive>();
+/** Hears each state of the live sync; returns the function that stops. */
+export function onLive(fn: HeardLive): () => void {
+  liveListeners.add(fn);
+  return () => liveListeners.delete(fn);
+}
+Events.On("cloudSync", (ev) => {
+  const st = ev.data;
+  if (!st) return;
+  live.state = st.state;
+  if (st.state === "synced") live.info = st.info;
+  liveListeners.forEach((fn) => fn(st));
+});
