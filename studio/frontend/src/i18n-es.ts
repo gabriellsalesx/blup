@@ -33,7 +33,7 @@ export const es: UI = {
   sites: "Tus sitios",
   sitesHelp: "Abre un sitio para escribir, ver la vista previa y publicar.",
   vaults: { title: "Bóvedas de notas", help: "Notas solo para ti, no un sitio: escribe, organiza y guárdalas.", new: "Crear una bóveda de notas", newHelp: "Un lugar para tus notas del día a día.", kind: "Bóveda", syncLead: "Guarda las notas de la bóveda en la nube y úsalas en otras computadoras." },
-  vaultNew: { fromCloud: "Traer de Blup Cloud",  title: "Nueva bóveda de notas", lead: "Ponle un nombre y listo: empieza a escribir.", name: "Nombre de la bóveda", namePh: "Mis notas", where: "Las notas viven en", useFolder: "usar una carpeta que ya existe", otherFolder: "elegir otra carpeta", create: "Crear bóveda", recent: "Abiertos recientemente" },
+  vaultNew: { helloTitle: "Guardemos tus notas.", helloLead: "Una bóveda de notas es solo tuya: escribe, organiza y guarda, sin que se vuelva un sitio.", fromCloud: "Traer de Blup Cloud",  title: "Nueva bóveda de notas", lead: "Ponle un nombre y listo: empieza a escribir.", name: "Nombre de la bóveda", namePh: "Mis notas", where: "Las notas viven en", useFolder: "usar una carpeta que ya existe", otherFolder: "elegir otra carpeta", create: "Crear bóveda", recent: "Abiertos recientemente" },
   preview: "Vista previa",
   previewStarting: "Iniciando la vista previa…",
   previewOff: "Iniciar la vista previa",

@@ -33,7 +33,7 @@ export const en: UI = {
   sites: "Your sites",
   sitesHelp: "Open a site to write, preview and publish.",
   vaults: { title: "Note vaults", help: "Notes just for you, not a site: write, organize and keep them.", new: "Create a note vault", newHelp: "A place for your everyday notes.", kind: "Vault", syncLead: "Keep the vault's notes in the cloud and use them on other computers." },
-  vaultNew: { fromCloud: "Bring from Blup Cloud",  title: "New note vault", lead: "Give it a name and that's it: just start writing.", name: "Vault name", namePh: "My notes", where: "Notes live in", useFolder: "use a folder that already exists", otherFolder: "pick another folder", create: "Create vault", recent: "Opened lately" },
+  vaultNew: { helloTitle: "Let's keep your notes.", helloLead: "A notes vault is yours alone: write, organize and keep, without it becoming a site.", fromCloud: "Bring from Blup Cloud",  title: "New note vault", lead: "Give it a name and that's it: just start writing.", name: "Vault name", namePh: "My notes", where: "Notes live in", useFolder: "use a folder that already exists", otherFolder: "pick another folder", create: "Create vault", recent: "Opened lately" },
   preview: "Preview",
   previewStarting: "Starting the preview…",
   previewOff: "Start the preview",

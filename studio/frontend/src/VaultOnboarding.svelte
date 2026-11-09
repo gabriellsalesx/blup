@@ -2,7 +2,6 @@
   import { CreateVault, DefaultVaultFolder, PickFolder, RecentSites, RestoreSite } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { RecentSite, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Loader from "@lucide/svelte/icons/loader-circle";
-  import FolderOpen from "@lucide/svelte/icons/folder-open";
   import StepScreen from "./ui/StepScreen.svelte";
   import TextField from "./ui/TextField.svelte";
   import CloudBring from "./CloudBring.svelte";
@@ -14,6 +13,7 @@
   let { onDone, onCancel }: { onDone: (v: SiteInfo) => void; onCancel: () => void } = $props();
   const v = t.vaultNew;
 
+  let step = $state<"hello" | "name">("hello");
   let name = $state("");
   let folder = $state(""); // picked folder; "" = a new one in Documents
   let where = $state("");
@@ -54,39 +54,48 @@
   }
 </script>
 
-<StepScreen image="/blups/turma-7.svg" title={v.title} lead={v.lead} closeLabel={t.ob.cancel} onClose={onCancel}>
-  <form class="card" onsubmit={create}>
-    <TextField large label={v.name} bind:value={name} oninput={showWhere} placeholder={v.namePh} autocomplete="off" error={error} />
-    <div class="where">
-      <small class="muted">{v.where} <b>{home(where)}</b></small>
-      <button type="button" class="link" onclick={pick}>{folder ? v.otherFolder : v.useFolder}</button>
-    </div>
-  </form>
-  <CloudBring title={v.fromCloud} onBrought={onDone} />
-  {#if recent.length}
-    <div class="recent">
-      <b>{v.recent}</b>
-      <ul>
-        {#each recent as r (r.dir)}
-          <li><button onclick={() => openRecent(r)}><FolderOpen size={16} /><span class="r-name">{r.title}</span><small class="muted">{home(r.folder)}</small></button></li>
-        {/each}
-      </ul>
-    </div>
-  {/if}
-  {#snippet actions()}
-    <span></span>
-    <button class="btn big" disabled={busy || !name.trim()} onclick={() => create()}>{#if busy}<span class="spin"><Loader size={16} /></span>{/if}{v.create}</button>
-  {/snippet}
-</StepScreen>
+{#if step === "hello"}
+  <!-- First, as with a new site: hello, Começar, and what can be opened or
+       brought instead (Blup Cloud, the vaults opened lately). -->
+  <StepScreen image="/blups/turma-7.svg" title={v.helloTitle} lead={v.helloLead} closeLabel={t.ob.cancel} onClose={onCancel}>
+    <button class="btn big" onclick={() => (step = "name")}>{t.ob.start}</button>
+    <CloudBring title={v.fromCloud} onBrought={onDone} />
+    {#if recent.length}
+      <div class="recent">
+        <b>{v.recent}</b>
+        <ul>
+          {#each recent as r (r.dir)}
+            <li><button onclick={() => openRecent(r)}><span class="r-name">{r.title}</span><small class="muted">{home(r.folder)}</small></button></li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
+    {#if error}<p class="bad">{error}</p>{/if}
+  </StepScreen>
+{:else}
+  <StepScreen image="/blups/turma-7.svg" title={v.title} lead={v.lead} closeLabel={t.ob.cancel} onClose={onCancel}>
+    <form class="card" onsubmit={create}>
+      <TextField large label={v.name} bind:value={name} oninput={showWhere} placeholder={v.namePh} autocomplete="off" error={error} />
+      <div class="where">
+        <small class="muted">{v.where} <b>{home(where)}</b></small>
+        <button type="button" class="link" onclick={pick}>{folder ? v.otherFolder : v.useFolder}</button>
+      </div>
+    </form>
+    {#snippet actions()}
+      <button class="btn ghost" onclick={() => (step = "hello")}>{t.ob.back}</button>
+      <button class="btn big" disabled={busy || !name.trim()} onclick={() => create()}>{#if busy}<span class="spin"><Loader size={16} /></span>{/if}{v.create}</button>
+    {/snippet}
+  </StepScreen>
+{/if}
 
 <style>
   .where { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem; font-size: .82rem; overflow-wrap: anywhere; }
-  .recent { display: grid; gap: .4rem; width: 100%; text-align: start; }
-  .recent ul { list-style: none; padding: 0; display: grid; gap: .3rem; }
-  .recent li button { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: .6rem; width: 100%; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); text-align: start; }
-  .recent li button:hover { border-color: var(--muted); }
-  .r-name { font-weight: 600; }
-  .recent small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: end; }
+  .recent { display: grid; gap: .6rem; width: min(28rem, 100%); margin-block-start: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); text-align: start; }
+  .recent ul { list-style: none; padding: 0; display: grid; gap: .2rem; max-height: 16rem; overflow: auto; }
+  .recent li button { display: grid; gap: .1rem; width: 100%; padding: .5rem .65rem; border-radius: .45rem; text-align: start; }
+  .recent li button:hover { background: var(--soft); }
+  .r-name { font-weight: 600; font-size: .9rem; }
+  .recent small { font-size: .75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .spin { display: inline-grid; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>

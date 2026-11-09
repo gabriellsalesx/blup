@@ -34,7 +34,7 @@ const pt = {
   sites: "Seus sites",
   sitesHelp: "Abra um site para escrever, ver a prévia e publicar.",
   vaults: { title: "Cofres de anotações", help: "Notas só suas, sem virar site: escreva, organize e guarde.", new: "Criar cofre de anotações", newHelp: "Um lugar para as suas notas do dia a dia.", kind: "Cofre", syncLead: "Guarde as notas do cofre na nuvem e use em outros computadores." },
-  vaultNew: { fromCloud: "Trazer do Blup Cloud",  title: "Novo cofre de anotações", lead: "Dê um nome e pronto: é só começar a escrever.", name: "Nome do cofre", namePh: "Minhas notas", where: "As notas ficam em", useFolder: "usar uma pasta que já existe", otherFolder: "escolher outra pasta", create: "Criar cofre", recent: "Abertos recentemente" },
+  vaultNew: { helloTitle: "Vamos guardar suas notas.", helloLead: "Um cofre de anotações é só seu: escreva, organize e guarde, sem virar site.", fromCloud: "Trazer do Blup Cloud",  title: "Novo cofre de anotações", lead: "Dê um nome e pronto: é só começar a escrever.", name: "Nome do cofre", namePh: "Minhas notas", where: "As notas ficam em", useFolder: "usar uma pasta que já existe", otherFolder: "escolher outra pasta", create: "Criar cofre", recent: "Abertos recentemente" },
   preview: "Prévia",
   previewStarting: "Ligando a prévia…",
   previewOff: "Ligar a prévia",
