@@ -24,6 +24,16 @@ export const CloudSync = "cloudSync";
 export const Narrate = "narrate";
 
 /**
+ * Name of the custom event "narrateSite".
+ */
+export const NarrateSite = "narrateSite";
+
+/**
+ * Name of the custom event "narrateSiteDone".
+ */
+export const NarrateSiteDone = "narrateSiteDone";
+
+/**
  * Name of the custom event "notesChanged".
  */
 export const NotesChanged = "notesChanged";

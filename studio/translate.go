@@ -189,6 +189,9 @@ func (s *Studio) StartTranslateSite(ctx context.Context, lang string) error {
 	if running, err := siteJobBusy(lang); running || err != nil {
 		return err
 	}
+	if s.NarrateSiteState().Running {
+		return app.ErrBatchNarrating(site)
+	}
 	provider := translateProvider(s.Prefs())
 	if err := app.TranslateReady(ctx, provider); err != nil {
 		return err

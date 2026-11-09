@@ -18,6 +18,8 @@ declare module "@wailsio/runtime" {
             "calendarOpen": main$0.CalendarOpen;
             "cloudSync": app$0.LiveState;
             "narrate": main$0.NarrateProgress;
+            "narrateSite": main$0.NarrateSiteProgress;
+            "narrateSiteDone": main$0.NarrateSiteDone;
             "notesChanged": string;
             "previewChanged": string;
             "previewRestarted": string;

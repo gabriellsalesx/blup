@@ -207,6 +207,14 @@ export function CalendarEvents(): $CancellablePromise<app$0.Event[] | null> {
 }
 
 /**
+ * CancelNarrateSite stops the batch after the note being read (the notes
+ * done keep their narration).
+ */
+export function CancelNarrateSite(): $CancellablePromise<void> {
+    return $Call.ByID(2349697960);
+}
+
+/**
  * CheckCookieTool tells whether an ID fits a tool ("" when it does).
  */
 export function CheckCookieTool(key: string, value: string): $CancellablePromise<string> {
@@ -620,6 +628,13 @@ export function Narrate(rel: string): $CancellablePromise<app$0.Narration> {
 }
 
 /**
+ * NarrateSiteState is the batch now: a window that opens again picks it up.
+ */
+export function NarrateSiteState(): $CancellablePromise<$models.NarrateSiteJob> {
+    return $Call.ByID(2818783891);
+}
+
+/**
  * NarrationEstimate is what narrating the note would use of the month's AI
  * allowance, when the site's voice is read through Blup Cloud (nil
  * otherwise).
@@ -634,6 +649,15 @@ export function NarrationEstimate(rel: string): $CancellablePromise<app$0.Narrat
  */
 export function NarrationHash(rel: string): $CancellablePromise<string> {
     return $Call.ByID(1764824444, rel);
+}
+
+/**
+ * NarrationPlan is what narrating the open blog's posts would do, with
+ * what it would use of the month's AI allowance when some voice goes
+ * through Blup Cloud.
+ */
+export function NarrationPlan(): $CancellablePromise<app$0.NarrationPlan> {
+    return $Call.ByID(3741638863);
 }
 
 /**
@@ -1340,6 +1364,17 @@ export function SiteParts(dir: string): $CancellablePromise<app$0.SiteParts> {
  */
 export function Sites(): $CancellablePromise<$models.SiteInfo[] | null> {
     return $Call.ByID(384821822);
+}
+
+/**
+ * StartNarrateSite narrates the open blog's posts that have no narration
+ * or an out of date one, in the background. What would stop every note
+ * (no voice, no key, the consent, an allowance too small) comes back now;
+ * the progress goes out as "narrateSite" and the end as
+ * "narrateSiteDone". Starting again while it runs only keeps it going.
+ */
+export function StartNarrateSite(): $CancellablePromise<void> {
+    return $Call.ByID(823706150);
 }
 
 /**

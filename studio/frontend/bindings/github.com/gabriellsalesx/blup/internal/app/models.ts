@@ -593,6 +593,60 @@ export interface NarrationCost {
 }
 
 /**
+ * NarrationItem is a note the batch would narrate.
+ */
+export interface NarrationItem {
+    "rel": string;
+    "lang": string;
+
+    /**
+     * Outdated: it has a narration, of a text that changed since.
+     */
+    "outdated": boolean;
+    "chars": number;
+}
+
+/**
+ * NarrationPlan is what narrating the blog's posts would do: posts of the
+ * site's language without a narration (Missing) or with an out of date one
+ * (Outdated), translations per language, password protected posts left
+ * out (Locked), the voice of each language and, when some go through Blup
+ * Cloud, what they would use of the month's AI allowance.
+ */
+export interface NarrationPlan {
+    "missing": number;
+    "outdated": number;
+    "translations": { [_ in string]?: number } | null;
+    "locked": number;
+    "total": number;
+    "chars": number;
+    "voices": NarrationVoice[] | null;
+    "items": NarrationItem[] | null;
+
+    /**
+     * Cost is set when some notes go through Blup Cloud; CostError says
+     * why it could not be worked out (the batch then can't start on it).
+     */
+    "cost": NarrationCost | null;
+    "costError": string;
+}
+
+/**
+ * NarrationVoice is the voice that reads one language of the batch.
+ */
+export interface NarrationVoice {
+    "lang": string;
+    "name": string;
+
+    /**
+     * "local", "blup" or "openrouter"
+     */
+    "engine": string;
+    "notes": number;
+    "chars": number;
+}
+
+/**
  * NewSiteOptions are the answers of the new site screens.
  */
 export interface NewSiteOptions {

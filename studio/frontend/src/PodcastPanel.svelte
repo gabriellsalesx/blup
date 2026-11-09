@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { Podcast, SavePodcast, PickCover, LinkedImage, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
-  import type { PodcastInfo } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import { onDestroy } from "svelte";
+  import { Podcast, SavePodcast, PickCover, LinkedImage, OpenURL, NarrationPlan } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import type { PodcastInfo, NarrationPlan as Plan } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
+  import { narrateJob, startNarrateSite, cancelNarrateSite, narratePercent, onNarrateEnd } from "./narratejob.svelte";
   import { Clipboard } from "@wailsio/runtime";
   import TextField from "./ui/TextField.svelte";
   import Switch from "./Switch.svelte";
@@ -68,6 +70,27 @@
   const coverOff = $derived(!!info && info.imageW > 0 && (info.imageW !== info.imageH || info.imageW < 1400 || info.imageW > 3000));
   const episodes = $derived(!info ? "" : info.episodes === 0 ? p.episodes0 : info.episodes === 1 ? p.episodes1 : p.episodesN.replace("{n}", String(info.episodes)));
 
+  // Narrating every post at once (narratejob): what it would do, read
+  // again when a batch ends, and a confirmation before it starts.
+  const a = t.narrAll;
+  let plan = $state<Plan | null>(null);
+  let planError = $state("");
+  let confirming = $state(false);
+  function loadPlan() {
+    NarrationPlan().then((x) => { plan = x; planError = ""; }).catch((e) => (planError = String(e).replace(/^(Runtime)?Error: /, "")));
+  }
+  loadPlan();
+  // A batch that ends: the counts and the episodes are read again.
+  onDestroy(onNarrateEnd(() => { loadPlan(); Podcast().then(fill).catch(() => {}); }));
+  // About 900 characters a minute, read aloud.
+  const minutes = $derived(plan ? Math.max(1, Math.round(plan.chars / 900)) : 0);
+  const blocked = $derived(!!plan && (!!plan.costError || (!!plan.cost && !plan.cost.enough)));
+  const noteName = (n: string) => n.split("/").pop()?.replace(/\.md$/i, "") ?? "";
+  function narrateAll() {
+    confirming = false;
+    startNarrateSite();
+  }
+
   async function copy(url: string) {
     await Clipboard.SetText(url);
     toast(p.copied);
@@ -82,6 +105,48 @@
     <section class="card">
       <h2>{p.episodes}</h2>
       <p>{episodes}</p>
+    </section>
+
+    <section class="card">
+      <h2>{a.title}</h2>
+      <p class="muted">{a.lead}</p>
+      {#if narrateJob.running}
+        <div class="nbar" role="progressbar" aria-label={a.title} aria-valuemin="0" aria-valuemax="100" aria-valuenow={narratePercent()}>
+          <span style:width="{Math.max(3, narratePercent())}%"></span>
+        </div>
+        <small class="muted">{narrateJob.total ? a.running.replace("{done}", String(Math.min(narrateJob.done + 1, narrateJob.total))).replace("{total}", String(narrateJob.total)).replace("{note}", noteName(narrateJob.note)) : a.starting}</small>
+        <div class="row"><button class="btn ghost" onclick={cancelNarrateSite}>{a.stop}</button></div>
+      {:else if planError}
+        <p class="bad">{planError}</p>
+      {:else if !plan}
+        <small class="muted">{a.loading}</small>
+      {:else}
+        <ul class="narr-sum">
+          {#if plan.missing}<li>{a.missing.replace("{n}", String(plan.missing))}</li>{/if}
+          {#if plan.outdated}<li>{a.outdated.replace("{n}", String(plan.outdated))}</li>{/if}
+          {#each Object.entries(plan.translations ?? {}) as [lang, n] (lang)}<li>{a.translations.replace("{n}", String(n)).replace("{lang}", NAMES[lang] ?? lang)}</li>{/each}
+          {#if plan.locked}<li class="muted">{a.locked.replace("{n}", String(plan.locked))}</li>{/if}
+        </ul>
+        {#if plan.total === 0}
+          <p>{a.none}</p>
+        {:else}
+          {#each plan.voices ?? [] as v (v.lang)}
+            <small class="muted">{a.voice.replace("{lang}", NAMES[v.lang] ?? v.lang).replace("{name}", v.name).replace("{engine}", a[v.engine as "local" | "blup" | "openrouter"] ?? v.engine)}</small>
+          {/each}
+          <small class="muted">{a.minutes.replace("{min}", String(minutes))}</small>
+          {#if plan.cost}<small class:bad={!plan.cost.enough} class:muted={plan.cost.enough}>{(plan.cost.enough ? a.cost : a.costLow).replace("{pct}", String(plan.cost.percent)).replace("{left}", String(plan.cost.left))}</small>{/if}
+          {#if plan.costError}<small class="bad">{plan.costError}</small>{/if}
+          {#if confirming}
+            <p>{a.confirm.replace("{n}", String(plan.total))}</p>
+            <div class="row">
+              <button class="btn" onclick={narrateAll}>{a.yes}</button>
+              <button class="btn ghost" onclick={() => (confirming = false)}>{a.no}</button>
+            </div>
+          {:else}
+            <div class="row"><button class="btn" disabled={blocked} onclick={() => (confirming = true)}>{a.button.replace("{n}", String(plan.total))}</button></div>
+          {/if}
+        {/if}
+      {/if}
     </section>
 
     <section class="card">
@@ -140,5 +205,8 @@
   .pod-thumb img { width: 100%; height: 100%; object-fit: cover; }
   .pod-feed { display: flex; align-items: center; gap: .5rem; }
   .pod-feed input { flex: 1; min-width: 0; }
+  .nbar { height: 6px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+  .nbar span { display: block; height: 100%; border-radius: inherit; background: var(--blue); transition: width .3s ease; }
+  .narr-sum { list-style: none; padding: 0; margin: 0; display: grid; gap: .2rem; }
   .pod-lang { flex: none; width: 5.5rem; font-size: .85rem; font-weight: 600; }
 </style>

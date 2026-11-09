@@ -27,6 +27,7 @@
   import { ACTIONS, comboOf, keysOf, type Action } from "./keys";
   import { toast, toastError } from "./toast.svelte";
   import { job, LANG_NAMES } from "./translatejob.svelte";
+  import { narrateJob, narratePercent, onNoteNarrated } from "./narratejob.svelte";
   import { syncJob, syncStepText, startSync, onSyncDone } from "./syncjob.svelte";
   import { publishJob, publishStep } from "./publishjob.svelte";
   import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
@@ -566,6 +567,15 @@
     if (status === "saved") applyOutside(note);
     else outside = true;
   });
+  // A note the batch narration just went past, open here with nothing
+  // unsaved: its properties show the new narration (only its properties
+  // changed on disk, which the check above takes for our own save).
+  const offNarrated = onNoteNarrated(async (rel) => {
+    if (!current || rel.toLowerCase() !== current.toLowerCase() || status !== "saved") return;
+    const note = await ReadNote(current).catch(() => null);
+    if (note && status === "saved" && rel.toLowerCase() === current.toLowerCase()) applyOutside(note);
+  });
+  onDestroy(offNarrated);
   function applyOutside(note: { body: string; props: JsonProps | null; kind: string }) {
     text = note.body;
     pending = note.body;
@@ -858,6 +868,14 @@
         {#if syncJob.running}<span class="ring" class:spin={syncPct < 0} style:--p={syncPct < 0 ? 25 : syncPct} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={syncPct < 0 ? undefined : syncPct}>{#if syncPct >= 0}<span class="pct">{syncPct}%</span>{/if}</span>
         {:else}<span class="ok"><CircleCheck size={19} strokeWidth={1.75} /></span>{/if}
         <span class="rib-name">{syncTip}</span>
+      </button>
+    {/if}
+    {#if !notesVault && (narrateJob.running || narrateJob.finished)}
+      {@const narrTip = narrateJob.running ? t.narrAll.ringWorking.replace("{done}", String(narrateJob.done)).replace("{total}", String(narrateJob.total)) : t.narrAll.ringDone}
+      <button class="rib job" aria-label={narrTip} data-tip={narrTip} onclick={() => openScreen("podcast")}>
+        {#if narrateJob.running}<span class="ring" class:spin={!narrateJob.total} style:--p={narrateJob.total ? narratePercent() : 25} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={narrateJob.total ? narratePercent() : undefined}>{#if narrateJob.total}<span class="pct">{narratePercent()}%</span>{/if}</span>
+        {:else}<span class="ok"><CircleCheck size={19} strokeWidth={1.75} /></span>{/if}
+        <span class="rib-name">{narrTip}</span>
       </button>
     {/if}
     {#if !notesVault && (job.running || job.finished)}

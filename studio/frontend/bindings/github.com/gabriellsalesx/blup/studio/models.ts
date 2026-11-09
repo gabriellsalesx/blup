@@ -138,6 +138,35 @@ export interface NarrateProgress {
 }
 
 /**
+ * NarrateSiteDone is how the batch ended, heard as "narrateSiteDone".
+ */
+export interface NarrateSiteDone {
+    "done": number;
+    "failed": string[] | null;
+    "error": string;
+    "cancelled": boolean;
+}
+
+/**
+ * NarrateSiteJob is the batch running now (Running false when none).
+ */
+export interface NarrateSiteJob {
+    "running": boolean;
+    "done": number;
+    "total": number;
+    "note": string;
+}
+
+/**
+ * NarrateSiteProgress is how far the batch went, heard as "narrateSite".
+ */
+export interface NarrateSiteProgress {
+    "done": number;
+    "total": number;
+    "note": string;
+}
+
+/**
  * Node is a folder or a note of the site.
  */
 export interface Node {
