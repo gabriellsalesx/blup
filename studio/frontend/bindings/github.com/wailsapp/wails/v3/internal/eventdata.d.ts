@@ -22,6 +22,9 @@ declare module "@wailsio/runtime" {
             "previewChanged": string;
             "previewRestarted": string;
             "progress": main$0.Progress;
+            "publishCount": main$0.PublishCount;
+            "publishDone": main$0.PublishDone;
+            "publishLine": main$0.Progress;
             "republish": main$0.Republish;
             "syncDone": main$0.SyncDone;
             "syncProgress": main$0.SyncJob;

@@ -336,6 +336,40 @@ export interface PropEdit {
 }
 
 /**
+ * PublishCount is how many files went up of how many, heard by the window
+ * as "publishCount" while a site goes to Blup Cloud.
+ */
+export interface PublishCount {
+    "done": number;
+    "total": number;
+}
+
+/**
+ * PublishDone is how a background publish ended, heard by the window as
+ * "publishDone": where the site is, or the error.
+ */
+export interface PublishDone {
+    "url": string;
+    "error": string;
+}
+
+/**
+ * PublishJob is the publish running in the background: one at a time,
+ * going on while the person works on other screens (the side strip shows
+ * it), with its lines kept for a Publish screen opened meanwhile.
+ */
+export interface PublishJob {
+    "running": boolean;
+    "lines": Progress[] | null;
+
+    /**
+     * Sending the files to Blup Cloud: done of total.
+     */
+    "done": number;
+    "total": number;
+}
+
+/**
  * RecentSite is a site opened lately; Listed tells if it is in the list.
  */
 export interface RecentSite {

@@ -50,11 +50,35 @@ var errBusy = errors.New("busy")
 
 // running sends the progress lines of fn to the window. One run at a time.
 func running(fn func() error) error {
+	return runningWith(fn, nil)
+}
+
+// runningWith is running, with each line also given to line.
+func runningWith(fn func() error, line func(Progress)) error {
 	if !busy.TryLock() {
 		return errBusy
 	}
 	defer busy.Unlock()
-	ui.Report = func(kind, text string) { application.Get().Event.Emit("progress", Progress{kind, text}) }
+	return reporting(fn, line)
+}
+
+// queued is runningWith for the background jobs (publish, sync): it waits
+// for the one running to end instead of failing, so a sync asked for
+// during a publish runs right after it.
+func queued(fn func() error, line func(Progress)) error {
+	busy.Lock()
+	defer busy.Unlock()
+	return reporting(fn, line)
+}
+
+func reporting(fn func() error, line func(Progress)) error {
+	ui.Report = func(kind, text string) {
+		p := Progress{kind, text}
+		if line != nil {
+			line(p)
+		}
+		application.Get().Event.Emit("progress", p)
+	}
 	defer func() { ui.Report = nil }()
 	return fn()
 }
@@ -147,18 +171,93 @@ func (s *Studio) SetTarget(t app.Target) (app.Target, error) {
 	return app.LoadTarget(site), nil
 }
 
-// Publish builds the open site and puts it online; it returns the address.
-func (s *Studio) Publish() (string, error) {
+// PublishJob is the publish running in the background: one at a time,
+// going on while the person works on other screens (the side strip shows
+// it), with its lines kept for a Publish screen opened meanwhile.
+type PublishJob struct {
+	Running bool       `json:"running"`
+	Lines   []Progress `json:"lines"`
+	// Sending the files to Blup Cloud: done of total.
+	Done  int `json:"done"`
+	Total int `json:"total"`
+}
+
+// PublishCount is how many files went up of how many, heard by the window
+// as "publishCount" while a site goes to Blup Cloud.
+type PublishCount struct {
+	Done  int `json:"done"`
+	Total int `json:"total"`
+}
+
+// PublishDone is how a background publish ended, heard by the window as
+// "publishDone": where the site is, or the error.
+type PublishDone struct {
+	URL   string `json:"url"`
+	Error string `json:"error"`
+}
+
+var publishJob struct {
+	sync.Mutex
+	st PublishJob
+}
+
+func init() {
+	application.RegisterEvent[Progress]("publishLine")
+	application.RegisterEvent[PublishDone]("publishDone")
+	application.RegisterEvent[PublishCount]("publishCount")
+}
+
+// PublishState is the background publish now, with its lines so far.
+func (s *Studio) PublishState() PublishJob {
+	publishJob.Lock()
+	defer publishJob.Unlock()
+	st := publishJob.st
+	st.Lines = slices.Clone(st.Lines)
+	return st
+}
+
+// StartPublish builds and publishes the open site in the background: each
+// line goes out as "publishLine" and the end as "publishDone". Starting
+// while one runs only keeps it going.
+func (s *Studio) StartPublish() error {
 	site, err := s.current()
 	if err != nil {
-		return "", err
-	}
-	var live string
-	err = running(func() (err error) {
-		live, err = app.PublishNow(context.Background(), site)
 		return err
+	}
+	publishJob.Lock()
+	if publishJob.st.Running {
+		publishJob.Unlock()
+		return nil
+	}
+	publishJob.st = PublishJob{Running: true}
+	publishJob.Unlock()
+	ctx := blupcloud.WithUploadProgress(context.Background(), func(done, total int) {
+		publishJob.Lock()
+		publishJob.st.Done, publishJob.st.Total = done, total
+		publishJob.Unlock()
+		application.Get().Event.Emit("publishCount", PublishCount{done, total})
 	})
-	return live, err
+	go func() {
+		var live string
+		err := queued(func() (err error) {
+			live, err = app.PublishNow(ctx, site)
+			return err
+		}, func(p Progress) {
+			publishJob.Lock()
+			publishJob.st.Lines = append(publishJob.st.Lines, p)
+			publishJob.Unlock()
+			application.Get().Event.Emit("publishLine", p)
+		})
+		end := PublishDone{URL: live}
+		if err != nil {
+			end.Error = err.Error()
+		}
+		publishJob.Lock()
+		publishJob.st.Running = false
+		publishJob.Unlock()
+		application.Get().Event.Emit("publishDone", end)
+	}()
+	return nil
 }
 
 // SyncStatus tells what syncing the notes would send and receive.
@@ -238,14 +337,14 @@ func (s *Studio) StartSync(fresh bool) error {
 	})
 	go func() {
 		var info app.SyncInfo
-		err := running(func() (err error) {
+		err := queued(func() (err error) {
 			if fresh {
 				info, err = app.ResetSync(ctx, site)
 			} else {
 				info, err = app.SyncNow(ctx, site)
 			}
 			return err
-		})
+		}, nil)
 		// The first sync through Blup Cloud creates the vault: live sync
 		// can start now (on live plans).
 		s.mu.Lock()

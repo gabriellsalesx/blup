@@ -28,6 +28,7 @@
   import { toast, toastError } from "./toast.svelte";
   import { job, LANG_NAMES } from "./translatejob.svelte";
   import { syncJob, syncStepText, startSync, onSyncDone } from "./syncjob.svelte";
+  import { publishJob, publishStep } from "./publishjob.svelte";
   import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
   import CircleCheck from "@lucide/svelte/icons/circle-check";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
@@ -843,6 +844,15 @@
       <button class="rib" aria-label={t.daily.button} data-tip={t.daily.button} onclick={dailyNote}><NotebookPen size={19} strokeWidth={1.75} /><span class="rib-name">{t.daily.button}</span></button>
     {/if}
     <span class="grow"></span>
+    {#if !notesVault && (publishJob.running || publishJob.finished)}
+      {@const pubTip = publishJob.running ? publishStep() : t.toast.published}
+      <button class="rib job" aria-label={pubTip} data-tip={pubTip} onclick={() => openScreen("publish")}>
+        {#if publishJob.running && publishJob.total}<span class="ring" style:--p={Math.floor((publishJob.done / publishJob.total) * 100)} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.floor((publishJob.done / publishJob.total) * 100)}><span class="pct">{Math.floor((publishJob.done / publishJob.total) * 100)}%</span></span>
+        {:else if publishJob.running}<span class="ring spin" style:--p={25} role="progressbar" aria-valuemin="0" aria-valuemax="100"></span>
+        {:else}<span class="ok"><CircleCheck size={19} strokeWidth={1.75} /></span>{/if}
+        <span class="rib-name">{pubTip}</span>
+      </button>
+    {/if}
     {#if syncJob.running || syncJob.finished}
       <button class="rib job" aria-label={syncTip} data-tip={syncTip} onclick={() => openScreen(syncScreen)}>
         {#if syncJob.running}<span class="ring" class:spin={syncPct < 0} style:--p={syncPct < 0 ? 25 : syncPct} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={syncPct < 0 ? undefined : syncPct}>{#if syncPct >= 0}<span class="pct">{syncPct}%</span>{/if}</span>

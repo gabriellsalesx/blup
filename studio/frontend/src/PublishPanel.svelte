@@ -1,8 +1,7 @@
 <script lang="ts">
   import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { onDestroy, untrack } from "svelte";
-  import { Events } from "@wailsio/runtime";
-  import { Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, CloudflareSubdomain, SetCloudflareSubdomain, Target, SetTarget, Publish, CheckSiteSlug, SyncRemote, SetSyncRemote, OpenNewGitHubRepo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, CloudflareSubdomain, SetCloudflareSubdomain, Target, SetTarget, CheckSiteSlug, SyncRemote, SetSyncRemote, OpenNewGitHubRepo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, Target as Dest, SyncInfo, BlupAccount } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Account } from "../bindings/github.com/gabriellsalesx/blup/internal/deploy/cfworkers/models";
   import type { SlugCheck } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
@@ -15,6 +14,7 @@
   import CloudAccount from "./CloudAccount.svelte";
   import BlupDomain from "./BlupDomain.svelte";
   import SyncFresh from "./SyncFresh.svelte";
+  import { publishJob, startPublish, publishStep } from "./publishjob.svelte";
   import { syncJob, startSync, onSyncDone, syncStepText, live as liveSync, onLive } from "./syncjob.svelte";
   import Choice from "./ui/Choice.svelte";
 
@@ -33,10 +33,14 @@
   let connecting = $state(false);
   let error = $state("");
 
-  type Line = { kind: string; text: string };
-  let log = $state<Line[]>([]);
-  let publishing = $state(false);
-  let live = $state("");
+  // Publishing is a job of the whole window (publishjob): it goes on when
+  // the screen closes, and its lines and end show here when it opens.
+  const log = $derived(publishJob.lines);
+  const publishing = $derived(publishJob.running);
+  // Where the site is: the last publish's address, else the saved one.
+  let siteAt = $state("");
+  const live = $derived(publishJob.last?.url || siteAt);
+  const publishError = $derived(publishJob.last?.error ?? "");
 
   let sync = $state<SyncInfo | null>(null);
   // Syncing is a job of the whole window (syncjob): it goes on when the
@@ -98,8 +102,6 @@
   }
   const cfAddress = $derived(cfSub && target?.project ? `${target.project}.${cfSub}.workers.dev` : "");
 
-  const off = Events.On("progress", (ev) => { log.push(ev.data); });
-  onDestroy(() => off());
   // How far a sync is: the step and, sending or receiving, X of Y.
   const stepText = $derived(syncJob.running ? syncStepText(syncJob.phase, syncJob.done, syncJob.total) : "");
   // How a sync ended: while this screen is open, as it ends; opened later,
@@ -123,7 +125,7 @@
     error = "";
     try {
       [conn, target] = await Promise.all([Connections(), Target()]);
-      live = target?.url ?? "";
+      siteAt = target?.url ?? "";
       if (conn?.cloudflare && target?.provider === "cloudflare") { accounts = (await CloudflareAccounts().catch(() => [])) ?? []; loadSub(); }
     } catch (e) { error = msg(e); }
   }
@@ -194,12 +196,12 @@
 
   async function publish() {
     if (!target) return;
-    error = ""; log = []; live = ""; publishing = true;
+    error = "";
     try {
       target = await SetTarget(target);
-      live = await Publish();
-      toast(t.toast.published);
-    } catch (e) { error = msg(e); toast(t.toast.publishFailed, { kind: "error" }); } finally { publishing = false; }
+      // The end (and its notice) comes through publishJob.
+      await startPublish();
+    } catch (e) { error = msg(e); toast(t.toast.publishFailed, { kind: "error" }); }
   }
 
   // Blup's GitHub key reaches only the repositories picked for it and
@@ -342,6 +344,13 @@
             {#each log as l, i (i)}<li class="k-{l.kind}">{#if l.kind === "ok"}<Check size={14} />{:else if l.kind === "warn" || l.kind === "error"}<Alert size={14} />{:else if l.kind === "spin" && i === log.length - 1 && publishing}<span class="spin"><Loader size={14} /></span>{:else}<span class="dot">•</span>{/if}{l.text}</li>{/each}
           </ul>
         {/if}
+        {#if publishing && publishJob.total}
+          <div class="step">
+            <div class="sbar" role="progressbar" aria-valuemin="0" aria-valuemax={publishJob.total} aria-valuenow={publishJob.done}><span style:width="{Math.max(2, (publishJob.done / publishJob.total) * 100)}%"></span></div>
+            <small class="muted">{publishStep()}</small>
+          </div>
+        {/if}
+        {#if publishError && !publishing}<p class="bad">{publishError}</p>{/if}
         {#if live && !publishing && log.length}
           <button class="btn ghost" onclick={() => OpenURL(live)}>{p.openSite} <External size={14} /></button>
         {/if}

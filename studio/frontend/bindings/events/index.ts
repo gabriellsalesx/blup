@@ -44,6 +44,21 @@ export const PreviewRestarted = "previewRestarted";
 export const Progress = "progress";
 
 /**
+ * Name of the custom event "publishCount".
+ */
+export const PublishCount = "publishCount";
+
+/**
+ * Name of the custom event "publishDone".
+ */
+export const PublishDone = "publishDone";
+
+/**
+ * Name of the custom event "publishLine".
+ */
+export const PublishLine = "publishLine";
+
+/**
  * Name of the custom event "republish".
  */
 export const Republish = "republish";

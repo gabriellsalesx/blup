@@ -286,7 +286,20 @@ type DeployResult struct {
 	Skipped  int // files the site already had
 }
 
-const siteUploads = 6 // files sent at once
+// siteUploads is how many files go at once: each waits mostly on the
+// network and on Blup Cloud, so more side by side finish a site of a
+// thousand files in a fraction of the time (well under the server's 500
+// requests per 10 s an account).
+const siteUploads = 16
+
+// uploadProgressKey carries, in a context, who hears the files sent.
+type uploadProgressKey struct{}
+
+// WithUploadProgress is ctx with fn hearing, while a site goes up, how
+// many of its files were sent of how many it lacked.
+func WithUploadProgress(ctx context.Context, fn func(done, total int)) context.Context {
+	return context.WithValue(ctx, uploadProgressKey{}, fn)
+}
 
 // DeploySite sends what the site lacks and makes files its live version.
 func (c *Client) DeploySite(ctx context.Context, siteID string, files []SiteFile) (DeployResult, error) {
@@ -300,7 +313,13 @@ func (c *Client) DeploySite(ctx context.Context, siteID string, files []SiteFile
 		hashes = append(hashes, h)
 	}
 	var res DeployResult
+	progress, _ := ctx.Value(uploadProgressKey{}).(func(done, total int))
 	send := func(missing []string) error {
+		var mu sync.Mutex
+		done := 0
+		if progress != nil {
+			progress(0, len(missing))
+		}
 		jobs := make(chan string)
 		errs := make(chan error, siteUploads)
 		var wg sync.WaitGroup
@@ -310,6 +329,12 @@ func (c *Client) DeploySite(ctx context.Context, siteID string, files []SiteFile
 					data, err := byHash[h].stored()
 					if err == nil {
 						err = siteErr(c.do(ctx, http.MethodPut, base+"/files/"+h, data, "application/octet-stream", nil))
+					}
+					if err == nil && progress != nil {
+						mu.Lock()
+						done++
+						progress(done, len(missing))
+						mu.Unlock()
 					}
 					if err != nil {
 						select {

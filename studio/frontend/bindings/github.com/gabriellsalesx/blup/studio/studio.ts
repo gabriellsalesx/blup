@@ -864,10 +864,10 @@ export function PreviewVoice(lang: string, choice: string): $CancellablePromise<
 }
 
 /**
- * Publish builds the open site and puts it online; it returns the address.
+ * PublishState is the background publish now, with its lines so far.
  */
-export function Publish(): $CancellablePromise<string> {
-    return $Call.ByID(448515553);
+export function PublishState(): $CancellablePromise<$models.PublishJob> {
+    return $Call.ByID(1689881202);
 }
 
 /**
@@ -1331,6 +1331,15 @@ export function Sites(): $CancellablePromise<$models.SiteInfo[] | null> {
  */
 export function StartPreview(): $CancellablePromise<string> {
     return $Call.ByID(192821934);
+}
+
+/**
+ * StartPublish builds and publishes the open site in the background: each
+ * line goes out as "publishLine" and the end as "publishDone". Starting
+ * while one runs only keeps it going.
+ */
+export function StartPublish(): $CancellablePromise<void> {
+    return $Call.ByID(3356169161);
 }
 
 /**
