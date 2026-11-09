@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gabriellsalesx/blup/internal/app"
+	"github.com/gabriellsalesx/blup/internal/proc"
 	"github.com/gabriellsalesx/blup/internal/update"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -132,7 +133,7 @@ func (s *Studio) InstallUpdate() error {
 	detach(restart, true)
 	if err := restart.Start(); err != nil {
 		// A job that refuses breaking away (Windows): start it inside.
-		again := exec.Command(restart.Path, restart.Args[1:]...)
+		again := proc.Hide(exec.Command(restart.Path, restart.Args[1:]...))
 		again.Env = restart.Env
 		detach(again, false)
 		if err2 := again.Start(); err2 != nil {
@@ -162,7 +163,7 @@ func installAppImage(file, target string) (*exec.Cmd, error) {
 	if err := os.Rename(file, target); err != nil {
 		return nil, fmt.Errorf("%w: %w", update.ErrNotWritable, err)
 	}
-	cmd := exec.Command("/bin/sh", "-c", waitThen+`exec "$2"`, "blup-update", strconv.Itoa(os.Getpid()), target)
+	cmd := proc.Hide(exec.Command("/bin/sh", "-c", waitThen+`exec "$2"`, "blup-update", strconv.Itoa(os.Getpid()), target))
 	cmd.Env = outsideAppImage(os.Environ())
 	return cmd, nil
 }
@@ -209,12 +210,12 @@ func installMac(dmg, bundle string) (*exec.Cmd, error) {
 		return nil, err
 	}
 	defer os.RemoveAll(mnt)
-	if out, err := exec.Command("hdiutil", "attach", "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", mnt, dmg).CombinedOutput(); err != nil {
+	if out, err := proc.Hide(exec.Command("hdiutil", "attach", "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", mnt, dmg)).CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("opening the update: %w: %s", err, out)
 	}
 	defer func() {
-		if exec.Command("hdiutil", "detach", mnt).Run() != nil {
-			_ = exec.Command("hdiutil", "detach", "-force", mnt).Run()
+		if proc.Hide(exec.Command("hdiutil", "detach", mnt)).Run() != nil {
+			_ = proc.Hide(exec.Command("hdiutil", "detach", "-force", mnt)).Run()
 		}
 	}()
 	apps, _ := filepath.Glob(filepath.Join(mnt, "*.app"))
@@ -226,7 +227,7 @@ func installMac(dmg, bundle string) (*exec.Cmd, error) {
 	old := filepath.Join(dir, "."+name+".old")
 	os.RemoveAll(staged)
 	os.RemoveAll(old)
-	if out, err := exec.Command("ditto", apps[0], staged).CombinedOutput(); err != nil {
+	if out, err := proc.Hide(exec.Command("ditto", apps[0], staged)).CombinedOutput(); err != nil {
 		os.RemoveAll(staged)
 		return nil, fmt.Errorf("%w: %v: %s", update.ErrNotWritable, err, out)
 	}
@@ -241,9 +242,9 @@ func installMac(dmg, bundle string) (*exec.Cmd, error) {
 	}
 	// Downloaded by the Studio itself, the files carry no quarantine; this
 	// only makes sure.
-	_ = exec.Command("xattr", "-dr", "com.apple.quarantine", bundle).Run()
+	_ = proc.Hide(exec.Command("xattr", "-dr", "com.apple.quarantine", bundle)).Run()
 	os.Remove(dmg)
-	return exec.Command("/bin/sh", "-c", waitThen+`rm -rf "$3"; open "$2"`, "blup-update", strconv.Itoa(os.Getpid()), bundle, old), nil
+	return proc.Hide(exec.Command("/bin/sh", "-c", waitThen+`rm -rf "$3"; open "$2"`, "blup-update", strconv.Itoa(os.Getpid()), bundle, old)), nil
 }
 
 // installWindows runs the per-user installer silently into the same
@@ -264,7 +265,7 @@ func installWindows(setup, dir string) (*exec.Cmd, error) {
 		`$p = Start-Process -FilePath %s -ArgumentList %s -Wait -PassThru; `+
 		`if ($p -and $p.ExitCode -eq 0) { Remove-Item -LiteralPath %s }; Start-Process -FilePath %s`,
 		os.Getpid(), q(setup), q("/S /D="+dir), q(setup), q(exe))
-	return exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", script), nil
+	return proc.Hide(exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", script)), nil
 }
 
 // cleanUpdateLeftovers removes what an update left behind: a new version
