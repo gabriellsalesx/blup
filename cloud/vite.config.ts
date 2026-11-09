@@ -2,7 +2,8 @@ import adapter from "@sveltejs/adapter-static";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
-import { sentryConnect } from "./shared/sentry-csp.ts";
+import { sentryConnect, statsConnect, statsScript } from "./shared/sentry-csp.ts";
+import { i18nSplit } from "./shared/i18n-split.ts";
 
 // The panel is a single-page app served by the Worker's static assets
 // (wrangler.jsonc: not_found_handling = single-page-application, which
@@ -10,6 +11,7 @@ import { sentryConnect } from "./shared/sentry-csp.ts";
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
+		i18nSplit("src/lib/i18n/catalog.ts"),
 		sveltekit({
 			adapter: adapter({ fallback: "index.html" }),
 			// Content-Security-Policy (as a <meta>, with hashes of SvelteKit's own
@@ -21,9 +23,9 @@ export default defineConfig({
 				mode: "hash",
 				directives: {
 					"default-src": ["self"],
-					"script-src": ["self", "https://challenges.cloudflare.com"],
+					"script-src": ["self", "https://challenges.cloudflare.com", ...statsScript],
 					"frame-src": ["https://challenges.cloudflare.com"],
-					"connect-src": ["self", "https://challenges.cloudflare.com", ...sentryConnect()],
+					"connect-src": ["self", "https://challenges.cloudflare.com", ...sentryConnect(), ...statsConnect],
 					"img-src": ["self", "data:"],
 					"style-src": ["self", "unsafe-inline"],
 					"font-src": ["self"],

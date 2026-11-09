@@ -13,3 +13,9 @@ export function sentryConnect(dsn = buildEnv?.VITE_SENTRY_DSN): Origin[] {
 	}
 	return [...origins];
 }
+
+// The visit statistics of the panels (static/stats.js loads Rybbit; the
+// staff area has none) and Cloudflare Web Analytics, which the edge adds to
+// the pages by itself (it reports to the page's own /cdn-cgi/rum).
+export const statsScript = ["https://app.rybbit.io", "https://static.cloudflareinsights.com"] as const;
+export const statsConnect = ["https://app.rybbit.io"] as const;
