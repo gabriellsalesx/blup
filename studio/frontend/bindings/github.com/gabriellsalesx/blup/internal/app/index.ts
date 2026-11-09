@@ -42,7 +42,6 @@ export type {
     Settings,
     SiteLangState,
     SiteParts,
-    SiteTranslation,
     Snippet,
     SyncInfo,
     Target,

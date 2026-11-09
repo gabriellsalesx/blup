@@ -435,6 +435,31 @@ export interface TranslateProgress {
 }
 
 /**
+ * TranslateSiteDone is how a background translation ended, heard by the
+ * window as "translateSiteDone".
+ */
+export interface TranslateSiteDone {
+    "lang": string;
+    "done": number;
+    "skipped": number;
+    "failed": string[] | null;
+    "error": string;
+}
+
+/**
+ * TranslateSiteJob is the site's translation running in the background:
+ * one at a time, going on while the person works on other screens (the
+ * window shows it in the side strip).
+ */
+export interface TranslateSiteJob {
+    "running": boolean;
+    "lang": string;
+    "done": number;
+    "total": number;
+    "note": string;
+}
+
+/**
  * TranslateSiteProgress is how far the translation of the whole site went.
  */
 export interface TranslateSiteProgress {

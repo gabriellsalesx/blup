@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -135,20 +137,94 @@ func (s *Studio) SiteLangs() ([]app.SiteLangState, error) {
 	return app.SiteLangs(site)
 }
 
-// TranslateSite translates the open site's notes that miss a translation
-// into lang (or have an out of date one) with the AI in the cloud chosen,
-// and tells how many it did and how many password protected posts it left
-// out.
-func (s *Studio) TranslateSite(ctx context.Context, lang string) (app.SiteTranslation, error) {
+// TranslateSiteJob is the site's translation running in the background:
+// one at a time, going on while the person works on other screens (the
+// window shows it in the side strip).
+type TranslateSiteJob struct {
+	Running bool   `json:"running"`
+	Lang    string `json:"lang"`
+	Done    int    `json:"done"`
+	Total   int    `json:"total"`
+	Note    string `json:"note"`
+}
+
+// TranslateSiteDone is how a background translation ended, heard by the
+// window as "translateSiteDone".
+type TranslateSiteDone struct {
+	Lang    string   `json:"lang"`
+	Done    int      `json:"done"`
+	Skipped int      `json:"skipped"`
+	Failed  []string `json:"failed"`
+	Error   string   `json:"error"`
+}
+
+var siteJob struct {
+	sync.Mutex
+	st TranslateSiteJob
+}
+
+func init() {
+	application.RegisterEvent[TranslateSiteDone]("translateSiteDone")
+}
+
+// TranslateSiteState is the background translation now (Running false
+// when there is none): a window that opens the screen again picks it up.
+func (s *Studio) TranslateSiteState() TranslateSiteJob {
+	siteJob.Lock()
+	defer siteJob.Unlock()
+	return siteJob.st
+}
+
+// StartTranslateSite starts translating the open site's notes that miss a
+// translation into lang (or have an out of date one) with the AI in the
+// cloud chosen, in the background. What would stop every note (no key, no
+// AI in the plan, no consent) comes back now; the progress goes out as
+// "translateSite" and the end as "translateSiteDone". Starting the same
+// language again while it runs only keeps it going: never two batches.
+func (s *Studio) StartTranslateSite(ctx context.Context, lang string) error {
 	site, err := s.current()
 	if err != nil {
-		return app.SiteTranslation{}, err
+		return err
 	}
-	n, err := app.TranslateSite(ctx, site, lang, translateProvider(s.Prefs()), func(done, total int, note string) {
-		application.Get().Event.Emit("translateSite", TranslateSiteProgress{lang, done, total, note})
-	})
-	s.previewFollows(site)
-	return n, err
+	siteJob.Lock()
+	if siteJob.st.Running {
+		same := siteJob.st.Lang == lang
+		siteJob.Unlock()
+		if same {
+			return nil
+		}
+		return errors.New("translate: another language is being translated")
+	}
+	siteJob.Unlock()
+	provider := translateProvider(s.Prefs())
+	if err := app.TranslateReady(ctx, provider); err != nil {
+		return err
+	}
+	siteJob.Lock()
+	if siteJob.st.Running {
+		siteJob.Unlock()
+		return nil
+	}
+	siteJob.st = TranslateSiteJob{Running: true, Lang: lang}
+	siteJob.Unlock()
+	go func() {
+		res, err := app.TranslateSite(context.Background(), site, lang, provider, func(done, total int, note string) {
+			siteJob.Lock()
+			siteJob.st = TranslateSiteJob{Running: true, Lang: lang, Done: done, Total: total, Note: note}
+			siteJob.Unlock()
+			application.Get().Event.Emit("translateSite", TranslateSiteProgress{lang, done, total, note})
+		})
+		s.previewFollows(site)
+		end := TranslateSiteDone{Lang: lang, Done: res.Done, Skipped: res.Skipped, Failed: res.Failed}
+		if err != nil {
+			end.Error = err.Error()
+		}
+		siteJob.Lock()
+		siteJob.st = TranslateSiteJob{}
+		siteJob.Unlock()
+		application.Get().Event.Emit("translateSiteDone", end)
+	}()
+	return nil
 }
 
 // translateProvider is the AI in the cloud the person chose to translate

@@ -1329,6 +1329,18 @@ export function StartPreview(): $CancellablePromise<string> {
 }
 
 /**
+ * StartTranslateSite starts translating the open site's notes that miss a
+ * translation into lang (or have an out of date one) with the AI in the
+ * cloud chosen, in the background. What would stop every note (no key, no
+ * AI in the plan, no consent) comes back now; the progress goes out as
+ * "translateSite" and the end as "translateSiteDone". Starting the same
+ * language again while it runs only keeps it going: never two batches.
+ */
+export function StartTranslateSite(lang: string): $CancellablePromise<void> {
+    return $Call.ByID(1174419531, lang);
+}
+
+/**
  * StopPreview stops the preview, if running.
  */
 export function StopPreview(): $CancellablePromise<void> {
@@ -1395,13 +1407,11 @@ export function TranslateNote(rel: string, lang: string): $CancellablePromise<st
 }
 
 /**
- * TranslateSite translates the open site's notes that miss a translation
- * into lang (or have an out of date one) with the AI in the cloud chosen,
- * and tells how many it did and how many password protected posts it left
- * out.
+ * TranslateSiteState is the background translation now (Running false
+ * when there is none): a window that opens the screen again picks it up.
  */
-export function TranslateSite(lang: string): $CancellablePromise<app$0.SiteTranslation> {
-    return $Call.ByID(1712606371, lang);
+export function TranslateSiteState(): $CancellablePromise<$models.TranslateSiteJob> {
+    return $Call.ByID(4070349588);
 }
 
 /**

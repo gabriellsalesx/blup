@@ -30,6 +30,8 @@ export type {
     TermData,
     TranslateInstallProgress,
     TranslateProgress,
+    TranslateSiteDone,
+    TranslateSiteJob,
     TranslateSiteProgress,
     Vault,
     VersionText,

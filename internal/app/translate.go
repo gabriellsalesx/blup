@@ -703,6 +703,13 @@ type SiteTranslation struct {
 // (provider). Password protected posts are left out and counted.
 // progress gets the notes done of total and the note being translated. It
 // stops at the first error (the notes done stay).
+// TranslateReady says whether provider can translate now (a key, a plan
+// with AI, the consent), before a batch starts on its own.
+func TranslateReady(ctx context.Context, provider string) error {
+	_, err := translator(ctx, provider)
+	return err
+}
+
 func TranslateSite(ctx context.Context, site *config.Site, lang, provider string, progress func(done, total int, note string)) (SiteTranslation, error) {
 	var res SiteTranslation
 	if lang == site.Lang || !slices.Contains(config.SiteLangs, lang) {

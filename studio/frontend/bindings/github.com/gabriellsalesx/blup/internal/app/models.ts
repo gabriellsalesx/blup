@@ -853,22 +853,6 @@ export interface SiteParts {
 }
 
 /**
- * SiteTranslation is what the translation of the whole site did: notes
- * translated, and password protected ones left out (they don't go to an AI
- * in the cloud).
- */
-export interface SiteTranslation {
-    "done": number;
-    "skipped": number;
-
-    /**
-     * Failed are the notes that could not be translated this time (the
-     * rest went on); translating again tries only them.
-     */
-    "failed": string[] | null;
-}
-
-/**
  * Snippet is a line around a link.
  */
 export interface Snippet {

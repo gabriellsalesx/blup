@@ -26,6 +26,8 @@
   import { look, setPref } from "./theme.svelte";
   import { ACTIONS, comboOf, keysOf, type Action } from "./keys";
   import { toast } from "./toast.svelte";
+  import { job, LANG_NAMES } from "./translatejob.svelte";
+  import CircleCheck from "@lucide/svelte/icons/circle-check";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import PanelLeft from "@lucide/svelte/icons/panel-left";
   import Files from "@lucide/svelte/icons/files";
@@ -479,6 +481,12 @@
     void screen;
     if (mainEl) mainEl.scrollTop = 0;
   });
+  // The site's translation in the background: a ring that fills with the
+  // percentage, then a check for a moment when it is done.
+  const jobPct = $derived(job.total ? Math.floor((job.done / job.total) * 100) : 0);
+  const jobTip = $derived(job.running
+    ? t.sitelangs.ringWorking.replace("{lang}", LANG_NAMES[job.lang] ?? job.lang).replace("{done}", String(job.done)).replace("{total}", String(job.total))
+    : t.sitelangs.ringDone.replace("{lang}", LANG_NAMES[job.finished] ?? job.finished));
   const top = $derived(screens.filter((x) => x.group !== "end"));
   const bottom = $derived(screens.filter((x) => x.group === "end"));
   const openScreen = async (key: string) => { await save(); autostart = ""; screen = key; error = ""; };
@@ -790,6 +798,13 @@
       <button class="rib" aria-label={t.daily.button} data-tip={t.daily.button} onclick={dailyNote}><NotebookPen size={19} strokeWidth={1.75} /><span class="rib-name">{t.daily.button}</span></button>
     {/if}
     <span class="grow"></span>
+    {#if !notesVault && (job.running || job.finished)}
+      <button class="rib job" class:active={screen === "langs"} aria-label={jobTip} data-tip={jobTip} onclick={() => openScreen("langs")}>
+        {#if job.running}<span class="ring" style:--p={jobPct} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={jobPct}><span class="pct">{jobPct}%</span></span>
+        {:else}<span class="ok"><CircleCheck size={19} strokeWidth={1.75} /></span>{/if}
+        <span class="rib-name">{jobTip}</span>
+      </button>
+    {/if}
     {#each bottom as { key, label, Icon } (key)}
       <button class="rib" class:active={screen === key} aria-label={label} data-tip={label} onclick={() => openScreen(key)}><Icon size={19} strokeWidth={1.75} /><span class="rib-name">{label}</span></button>
     {/each}
@@ -1026,6 +1041,10 @@
   .ribbon { position: relative; z-index: 20; grid-row: 1 / -1; grid-column: 1; display: flex; flex-direction: column; align-items: center; gap: .2rem; padding-block: .6rem; border-inline-end: 1px solid var(--line); background: var(--panel); }
   .rib { position: relative; display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: .45rem; color: var(--muted); }
   .rib-name { display: none; }
+  .ring { position: relative; display: grid; place-items: center; flex: none; width: 1.65rem; height: 1.65rem; }
+  .ring::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(var(--blue) calc(var(--p) * 1%), var(--line) 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); }
+  .pct { font-size: .5rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .ok { display: grid; color: light-dark(#16a34a, #4ade80); }
   /* The screen's name at once on hover (the system's tip waits a second). */
   .rib[data-tip]:hover::after, .rib[data-tip]:focus-visible::after { content: attr(data-tip); position: absolute; z-index: 50; inset-inline-start: calc(100% + .5rem); padding: .3rem .55rem; border-radius: .4rem; background: var(--text); color: var(--bg); font-size: .78rem; font-weight: 500; white-space: nowrap; pointer-events: none; }
   /* Names next to the icons (Settings > Look). */

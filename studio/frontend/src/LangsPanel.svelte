@@ -1,63 +1,34 @@
 <script lang="ts">
-  import { SiteLangs, TranslateSite, TranslationTodo, FollowTranslations } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { SiteLangs } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SiteLangState, Settings } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
-  import { Events } from "@wailsio/runtime";
-  import { toast, toastError } from "./toast.svelte";
+  import { toastError } from "./toast.svelte";
   import { t } from "./i18n";
-  import { useLocal, translateNoteLocal } from "./localtranslate";
-  import { withAIConsent, ConsentCancelled, needsProvider } from "./aiconsentui";
+  import { job, translateSite, LANG_NAMES as NAMES } from "./translatejob.svelte";
 
   // The site in other languages: how much of it is translated into each,
-  // and translating what is missing (or out of date) with AI.
+  // and translating what is missing (or out of date). The translation is
+  // a job of the whole window (translatejob): it goes on when this screen
+  // closes, and shows here again when it opens.
   let { settings, onTree }: { settings: Settings; onTree: () => void } = $props();
   const sl = t.sitelangs;
-  const NAMES: Record<string, string> = { pt: "Português", en: "English", es: "Español" };
 
   let langs = $state<SiteLangState[]>([]);
-  let busy = $state("");
-  let progress = $state<{ done: number; total: number; note: string } | null>(null);
   const load = () => SiteLangs().then((l) => (langs = l ?? [])).catch(toastError);
   load();
-
-  const off = Events.On("translateSite", (ev) => { if (busy && ev.data?.lang === busy) progress = ev.data; });
-  $effect(() => () => off());
-
-  async function translate(lang: string) {
-    busy = lang;
-    progress = null;
-    try {
-      let n: number;
-      let skipped = 0;
-      let failed: string[] = [];
-      if (await useLocal()) {
-        // On the computer: note by note in the window.
-        const todo = (await TranslationTodo(lang)) ?? [];
-        for (const [i, rel] of todo.entries()) {
-          progress = { done: i, total: todo.length, note: rel };
-          await translateNoteLocal(rel, settings.lang, lang, undefined, false);
-        }
-        n = todo.length;
-        await FollowTranslations();
-      } else {
-        // In the cloud: password protected posts stay out (Go skips them).
-        const r = await withAIConsent(() => TranslateSite(lang), "translate");
-        n = r.done;
-        skipped = r.skipped;
-        failed = r.failed ?? [];
-      }
-      toast(sl.finished.replace("{n}", String(n)).replace("{lang}", NAMES[lang]));
-      if (skipped) toast(t.aip.skipped.replace("{n}", String(skipped)));
-      if (failed.length) toast(sl.failed.replace("{n}", String(failed.length)).replace("{names}", failed.map(noteName).join(", ")), { kind: "error" });
+  // A job that ends (here or while another screen was open): the counts
+  // and the file tree follow.
+  let seen = job.ended;
+  $effect(() => {
+    if (job.ended !== seen) {
+      seen = job.ended;
+      load();
       onTree();
-    } catch (e) {
-      if (e instanceof ConsentCancelled) { /* nothing was sent */ }
-      else if (needsProvider(e)) toast(t.aip.chooseWho, { kind: "error" });
-      else toastError(e);
     }
-    busy = "";
-    progress = null;
-    load();
-  }
+  });
+  // While it runs, the counts follow note by note.
+  $effect(() => {
+    if (job.running && job.done) load();
+  });
   const noteName = (p: string) => p.split("/").pop()?.replace(/\.md$/i, "") ?? "";
 </script>
 
@@ -72,13 +43,13 @@
         {#if l.stale}<span class="warn">{sl.stale.replace("{n}", String(l.stale))}</span>{/if}
         {#if l.missing}<span class="muted">{sl.missing.replace("{n}", String(l.missing))}</span>{/if}
       </p>
-      {#if busy === l.lang && progress}
-        <div class="lbar" role="progressbar" aria-valuemin="0" aria-valuemax={progress.total} aria-valuenow={progress.done}>
-          <span style:width="{progress.total ? Math.max(3, (progress.done / progress.total) * 100) : 3}%"></span>
+      {#if job.running && job.lang === l.lang}
+        <div class="lbar" role="progressbar" aria-valuemin="0" aria-valuemax={job.total} aria-valuenow={job.done}>
+          <span style:width="{job.total ? Math.max(3, (job.done / job.total) * 100) : 3}%"></span>
         </div>
-        <small class="muted">{sl.working.replace("{done}", String(progress.done + 1)).replace("{total}", String(progress.total)).replace("{note}", noteName(progress.note))}</small>
+        {#if job.total}<small class="muted">{sl.working.replace("{done}", String(job.done + 1)).replace("{total}", String(job.total)).replace("{note}", noteName(job.note))}</small>{/if}
       {:else if l.missing || l.stale}
-        <div><button class="btn" disabled={!!busy} onclick={() => translate(l.lang)}>{l.missing ? sl.translate : sl.update}</button></div>
+        <div><button class="btn" disabled={job.running} onclick={() => translateSite(l.lang, settings.lang)}>{l.missing ? sl.translate : sl.update}</button></div>
       {:else}
         <small class="muted">{sl.none}</small>
       {/if}

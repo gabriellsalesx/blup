@@ -69,6 +69,11 @@ export const TranslateInstall = "translateInstall";
 export const TranslateSite = "translateSite";
 
 /**
+ * Name of the custom event "translateSiteDone".
+ */
+export const TranslateSiteDone = "translateSiteDone";
+
+/**
  * Name of the custom event "voiceInstall".
  */
 export const VoiceInstall = "voiceInstall";
