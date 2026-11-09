@@ -5,7 +5,11 @@ import {language} from "#lib/i18n.svelte.ts";
 // Blup session. The types come from the Worker's routes (RPC), so the
 // panel follows whatever the server answers.
 export const cloudURL=import.meta.env.DEV&&typeof location!=="undefined"?location.origin:"https://cloud.getblup.io";
-export const rpc=hc<AppType>(cloudURL,{init:{credentials:"include"},headers:()=>({"x-blup-language":language()})}).api;
+// The language goes as Accept-Language (a header browsers allow across
+// origins without asking first): with no custom header a GET is a "simple"
+// request and needs no preflight (OPTIONS) before it. The Worker reads it
+// the same way (requestLanguage).
+export const rpc=hc<AppType>(cloudURL,{init:{credentials:"include"},headers:()=>({"accept-language":language()})}).api;
 export const dealsApi=rpc.deals;
 export {parseResponse};
 export type Me=InferResponseType<typeof rpc.me.$get,200>;

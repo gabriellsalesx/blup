@@ -10,6 +10,8 @@
 	// nodejs_compat: o SDK do Sentry usa AsyncLocalStorage para separar os pedidos.
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": { "enabled": true },
+	// Smaller code starts faster (cold starts); names stay (keep_names).
+	"minify": true,
 	"cache": { "enabled": false },
 	"exports": {
 		"default": { "type": "worker", "cache": { "enabled": false } },

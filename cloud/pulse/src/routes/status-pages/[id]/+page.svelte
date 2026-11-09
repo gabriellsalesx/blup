@@ -29,6 +29,8 @@
  import {pulseApi,parseResponse} from "../../../lib/api";
  import {panel} from "../../../lib/panel.svelte";
  import {getPages,getIncidents,getMaintenance,type Incident,type Maintenance} from "../../../lib/status-pages";
+ import {onMount} from "svelte";
+ import {refreshOnReturn} from "#lib/refresh-on-return.ts";
  import {ago} from "../../../lib/monitor";
  // One status page: its title and monitors, its own domain and the
  // incidents told to visitors (each opens its own page, with its updates;
@@ -42,6 +44,9 @@
  // starts on settings, or on the tab in the address (?tab=incidents).
  const tabs=$derived([{value:"settings",label:t("pulseSettings")},{value:"incidents",label:t("pulseIncidents")},{value:"maintenance",label:t("pulseMaintenance")},{value:"domain",label:t("pulseDomainTab")}] as const);
  let tab=$derived<"settings"|"incidents"|"maintenance"|"domain">(data.tab);
+ // Back to the tab after a while: the incidents and maintenance load again
+ // (the settings form is left as it is).
+ onMount(()=>refreshOnReturn(async()=>{const current=page;if(!current)return;const [nextIncidents,nextMaintenance]=await Promise.all([getIncidents(current.id),getMaintenance(current.id)]);if(page?.id===current.id){incidents=nextIncidents;maintenance=nextMaintenance;}},()=>!busy));
  const maintenanceLabel=(s:Maintenance["state"])=>s==="scheduled"?t("pulseMaintenanceScheduled"):s==="active"?t("pulseMaintenanceActive"):t("pulseMaintenanceFinished");
  // The mark of an incident: green once resolved, else by how bad it is.
  const toneOf=(i:Incident)=>i.state==="resolved"?"up" as const:i.impact==="major_outage"||i.impact==="partial_outage"?"down" as const:"partial" as const;

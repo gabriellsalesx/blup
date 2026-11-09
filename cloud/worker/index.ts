@@ -29,7 +29,7 @@ import { sitesApi } from "./sites";
 import { forgetOld, remindersApi, sendDue } from "./reminders";
 import { cleanUp } from "./cleanup";
 import { cleanExpiredAuth } from "./auth-cleanup";
-import { aiApi, aiUsageOf, studioAIApi } from "./ai";
+import { aiApi, aiSpent, aiUsageFrom, studioAIApi } from "./ai";
 import { isStudio, usageOf } from "./usage";
 import {user as userTable, session as sessionTable } from "./db/schema";
 import { SEND_CODE_PATH, hasEmail, RECENT_SIGN_IN_MS } from "./auth-options";
@@ -40,7 +40,7 @@ import {checkDue} from "./pulse/scheduler";
 import {pulseMaintenance} from "./pulse/cleanup";
 import {servePulsePage} from "./pulse/public";
 import {pulseApi} from "./pulse/api";
-import {Sentry,sentryOptions,reportError,watched} from "./observability";
+import {instrumentDurableObjectWithSentry,withSentry,sentryOptions,reportError,watched} from "./observability";
 import {serveHealth} from "./health";
 import {SyncLive as SyncLiveObject} from "./live";
 import {PulseProject as PulseProjectObject} from "./pulse/project";
@@ -187,10 +187,12 @@ const routes = app
 	.get("/me", session, async (c) => {
 		const { user } = c.get("session");
 		// The portal cancels by setting cancel_at, not cancel_at_period_end.
-		const sub = await activeSubscription(user.id);
+		// The three reads leave together (each one round trip): the
+		// subscription, the usage (one batch) and the AI spent (one batch).
+		const [sub, usage, spent] = await Promise.all([activeSubscription(user.id), usageOf(user.id), aiSpent(user.id)]);
 		const gift = isOwner(user.email, user.emailVerified);
 		const plan = planNamed(gift ? GIFT_PLAN : sub?.plan);
-		const [usage, ai] = await Promise.all([usageOf(user.id), aiUsageOf(user.id, plan)]);
+		const ai = aiUsageFrom(plan, spent);
 		return c.json({
 			usage,
 			ai: { percent: ai.percent, resetsAt: ai.resetsAt, included: plan.limits.aiUsage > 0 },
@@ -261,8 +263,8 @@ app.onError(async (err, c) => {
 export type AppType = typeof routes;
 
 // The Durable Objects, with their errors reported to Pulse too.
-export const SyncLive=Sentry.instrumentDurableObjectWithSentry(sentryOptions,SyncLiveObject);
-export const PulseProject=Sentry.instrumentDurableObjectWithSentry(sentryOptions,PulseProjectObject);
+export const SyncLive=instrumentDurableObjectWithSentry(sentryOptions,SyncLiveObject);
+export const PulseProject=instrumentDurableObjectWithSentry(sentryOptions,PulseProjectObject);
 // Each background job on its own: one failing is reported, the others go on.
 const all=(...jobs:Promise<unknown>[])=>Promise.all(jobs.map(watched));
 
@@ -295,7 +297,7 @@ function secure(res: Response): Response {
 const DAILY = "0 4 * * *";
 
 // Wrapped by the Sentry SDK: what throws (requests, cron) reaches Pulse.
-export default Sentry.withSentry(sentryOptions,{
+export default withSentry(sentryOptions,{
 	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
 		const url = new URL(req.url);
 		const health=await serveHealth(req,env);if(health)return health;
@@ -304,7 +306,10 @@ export default Sentry.withSentry(sentryOptions,{
 		// deals.getblup.site: the deals pages (/<slug>/), else the short links (/r/).
 		if(env.DEALS_PUBLIC_HOST&&url.hostname===env.DEALS_PUBLIC_HOST)return secure(await serveDealsSite(req,env)??await serveDealsLink(req,env));
 		const corsOrigin=panelCorsOrigin(env,req.headers.get("origin"),url.pathname);
-		if(corsOrigin&&req.method==="OPTIONS")return secure(new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":corsOrigin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Methods":"GET, POST, PUT, PATCH, DELETE, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-Blup-Language, X-Captcha-Response","Access-Control-Max-Age":"600",Vary:"Origin"}}));
+		// What still needs a preflight (writes with JSON) keeps its answer for
+		// two hours, the most Chromium keeps one (the panels' GETs need none:
+		// their language goes as Accept-Language).
+		if(corsOrigin&&req.method==="OPTIONS")return secure(new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":corsOrigin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Methods":"GET, POST, PUT, PATCH, DELETE, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-Blup-Language, X-Captcha-Response","Access-Control-Max-Age":"7200",Vary:"Origin"}}));
 		const staffApi = url.pathname.startsWith("/api/staff");
 		const staffPage = url.pathname === "/staff" || url.pathname.startsWith("/staff/");
 		if (env.STAFF_HOST) {

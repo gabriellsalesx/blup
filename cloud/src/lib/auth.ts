@@ -12,7 +12,9 @@ export function createBlupAuthClient(baseURL?: string) {
 	return createAuthClient({
 		...(baseURL ? { baseURL } : {}),
 		basePath: "/api/auth",
-		fetchOptions: { ...(baseURL ? { credentials: "include" as const } : {}), onRequest: (ctx) => { ctx.headers.set("x-blup-language", language()); } },
+		// From another origin the language goes as Accept-Language, a header
+		// browsers send across origins without a preflight (OPTIONS) first.
+		fetchOptions: { ...(baseURL ? { credentials: "include" as const } : {}), onRequest: (ctx) => { ctx.headers.set(baseURL ? "accept-language" : "x-blup-language", language()); } },
 		plugins: [emailOTPClient(), passkeyClient(), deviceAuthorizationClient()],
 	});
 }

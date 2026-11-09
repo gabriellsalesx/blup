@@ -5,7 +5,7 @@
  import {page} from "$app/state";
  import type {RouteId} from "$app/types";
  import "../app.css";
- import {onDestroy} from "svelte";
+ import {onDestroy,onMount} from "svelte";
  import {toast} from "#lib/toast.svelte.ts";
  import PulseSelection from "#lib/ui/PulseSelection.svelte";
  import Button from "#lib/ui/Button.svelte";
@@ -16,6 +16,8 @@
  import Bug from "@lucide/svelte/icons/bug";
  import {intlLocale,language,i18n,t} from "#lib/i18n.svelte.ts";
  import {createLanguageSaver} from "#lib/language-save.ts";
+ import {refreshOnReturn} from "#lib/refresh-on-return.ts";
+ import {refreshAll} from "$app/navigation";
  import PanelShell from "#lib/ui/PanelShell.svelte";
  import Toaster from "#lib/ui/Toaster.svelte";
  import ConfirmHost from "#lib/ui/ConfirmHost.svelte";
@@ -38,6 +40,11 @@
  async function signOut(){try{const {pulseAuth}=await import("../lib/auth");await pulseAuth.signOut();}finally{location.href=resolve("/sign-in");}}
  let alive=true;onDestroy(()=>{alive=false;});
  const saver=createLanguageSaver((language)=>parseResponse(rpc.me.language.$put({json:{language}})),id=>alive&&panel.me?.id===id,()=>toast(()=>t("errorGeneric"),{kind:"error"}));
+ // Back to the tab after a while: the projects, monitors and status pages
+ // load again (the pages that only show them; the issues page and a status
+ // page's incidents reload on their own, keeping filters and forms).
+ const fresh:ReadonlySet<string>=new Set(["/","/monitors","/monitors/[id]","/status-pages"] satisfies RouteId[]);
+ onMount(()=>refreshOnReturn(refreshAll,()=>fresh.has(page.route.id??"")));
  $effect(()=>{document.documentElement.lang=intlLocale();});
  $effect(()=>{const me=panel.me,selected=language(),revision=i18n.revision;void revision;if(me)void saver.schedule(me.id,selected,me.language);});
 </script>

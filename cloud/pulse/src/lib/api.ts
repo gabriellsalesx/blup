@@ -2,7 +2,11 @@ import {hc,parseResponse,type InferResponseType} from "hono/client";
 import type {AppType} from "../../../src/lib/rpc";
 import {language} from "#lib/i18n.svelte.ts";
 export const cloudURL=import.meta.env.DEV&&typeof location!=="undefined"?location.origin:"https://cloud.getblup.io";
-export const rpc=hc<AppType>(cloudURL,{init:{credentials:"include"},headers:()=>({"x-blup-language":language()})}).api;
+// The language goes as Accept-Language (a header browsers allow across
+// origins without asking first): with no custom header a GET is a "simple"
+// request and needs no preflight (OPTIONS) before it. The Worker reads it
+// the same way (requestLanguage).
+export const rpc=hc<AppType>(cloudURL,{init:{credentials:"include"},headers:()=>({"accept-language":language()})}).api;
 export const pulseApi=rpc.pulse;
 export {parseResponse};
 export type Me=InferResponseType<typeof rpc.me.$get,200>;

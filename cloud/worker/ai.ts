@@ -137,29 +137,35 @@ type AIUsage = {
 
 const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
-async function spent(userId: string, since: Date) {
-	const [row] = await db
-		.select({ total: sum(aiUsage.costMicros) })
-		.from(aiUsage)
-		.where(and(eq(aiUsage.userId, userId), gte(aiUsage.createdAt, since)));
-	return Number(row?.total ?? 0);
+const spentSince = (userId: string, since: Date) => db
+	.select({ total: sum(aiUsage.costMicros) })
+	.from(aiUsage)
+	.where(and(eq(aiUsage.userId, userId), gte(aiUsage.createdAt, since)));
+
+// What the account spent on AI this month and in the last 7 days, in one
+// round trip (a batch).
+export async function aiSpent(userId: string, now = new Date()): Promise<{ month: number; week: number }> {
+	const [[month], [week]] = await db.batch([spentSince(userId, monthStart(now)), spentSince(userId, new Date(now.getTime() - 7 * 86_400_000))]);
+	return { month: Number(month?.total ?? 0), week: Number(week?.total ?? 0) };
 }
 
-export async function aiUsageOf(userId: string, plan: Plan): Promise<AIUsage> {
-	const now = new Date();
-	const month = monthStart(now);
-	const week = new Date(now.getTime() - 7 * 86_400_000);
-	const [usedMonth, usedWeek] = await Promise.all([spent(userId, month), spent(userId, week)]);
+// The account's AI usage from what it spent (aiSpent) and its plan.
+export function aiUsageFrom(plan: Plan, spent: { month: number; week: number }, now = new Date()): AIUsage {
 	const monthMicros = plan.limits.aiUsage * PRO_MONTH_MICROS;
 	return {
 		monthMicros,
 		weekCapMicros: Math.floor(monthMicros / 2),
-		usedMonthMicros: usedMonth,
-		usedWeekMicros: usedWeek,
+		usedMonthMicros: spent.month,
+		usedWeekMicros: spent.week,
 		perCharMicros: PER_CHAR_MICROS,
-		percent: monthMicros ? Math.min(100, Math.round((usedMonth / monthMicros) * 100)) : 0,
+		percent: monthMicros ? Math.min(100, Math.round((spent.month / monthMicros) * 100)) : 0,
 		resetsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString(),
 	};
+}
+
+export async function aiUsageOf(userId: string, plan: Plan): Promise<AIUsage> {
+	const now = new Date();
+	return aiUsageFrom(plan, await aiSpent(userId, now), now);
 }
 
 // OpenRouter's error shape, so the Studio's client reads it as usual.

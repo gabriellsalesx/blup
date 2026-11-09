@@ -9,6 +9,9 @@
 	// A limpeza diária das versões antigas e dos blocos sem uso (04:00 UTC).
 	"triggers": { "crons": ["0 4 * * *", "*/5 * * * *", "* * * * *"] },
 	"upload_source_maps": true,
+	// Smaller code starts faster (cold starts); the names stay (keep_names,
+	// on by default), and the source maps map the stacks back.
+	"minify": true,
 	// O Worker roda perto do D1, não perto de quem pede. Cada pedido faz
 	// várias consultas seguidas (sessão, plano, cota, trava...); longe do
 	// banco, cada uma custava ~250 ms (um bloco da sincronização levava

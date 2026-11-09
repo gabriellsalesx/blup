@@ -8,6 +8,8 @@
 	"main": "worker/edge.ts",
 	"compatibility_date": "2026-10-28",
 	"observability": { "enabled": true },
+	// Smaller code starts faster (cold starts); names stay (keep_names).
+	"minify": true,
 	"assets": {
 		"directory": "./build",
 		"not_found_handling": "single-page-application",

@@ -54,6 +54,19 @@ async function measure(run:()=>Promise<Response>){
 }
 const send=(path:string,init:RequestInit)=>worker.fetch(new Request(`https://cloud.audit.invalid/api${path}`,{...init,headers:{authorization:"Bearer audit-owner",...init.headers}}),runtime.env,ctx);
 
+describe("round trips of the account panel",()=>{
+	it("GET /me: the session, its check, then the subscription, the usage and the AI spent together",async()=>{
+		// The first one also builds the folders' head references (once).
+		await send("/me",{method:"GET"});
+		const m=await measure(()=>send("/me",{method:"GET"}));
+		console.info("GET /me",m);
+		expect(m.status).toBe(200);expect(m.sessions).toBe(1);
+		// accountAllowed, activeSubscription, the usage batch and the AI batch
+		// (the last three at the same time).
+		expect(m.d1).toBeLessThanOrEqual(4);expect(m.r2).toBe(0);
+	});
+});
+
 describe("round trips of the upload routes",()=>{
 	it("PUT /sync/blocks/:id (without a ticket)",async()=>{
 		const body=new Uint8Array([1,2,3]),id=await hex(body);

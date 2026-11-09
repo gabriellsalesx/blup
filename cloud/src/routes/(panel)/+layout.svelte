@@ -3,8 +3,11 @@
 	import { resolve } from "$app/paths";
  import {i18n,t} from "#lib/i18n.svelte.ts";
  import {api} from "#lib/api.ts";
- import {onDestroy} from "svelte";
+ import {onDestroy,onMount} from "svelte";
  import {createLanguageSaver} from "#lib/language-save.ts";
+ import {refreshOnReturn} from "#lib/refresh-on-return.ts";
+ import {refreshAll} from "$app/navigation";
+ import type {RouteId} from "$app/types";
  import {toast} from "#lib/toast.svelte.ts";
 	import { page } from "$app/state";
 	import User from "@lucide/svelte/icons/user";
@@ -21,6 +24,10 @@
  let alive=true;
  onDestroy(()=>{alive=false;});
  const saver=createLanguageSaver(language=>api.setLanguage(language),id=>alive&&data.me.id===id,()=>toast(()=>t("languageSaveError"),{kind:"error"}));
+ // Back to the tab after a while: the account, its plan, storage, devices
+ // and sites load again (not the plans page, whose choices would reset).
+ const fresh:ReadonlySet<string>=new Set(["/(panel)/account","/(panel)/account/sync","/(panel)/account/sites"] satisfies RouteId[]);
+ onMount(()=>refreshOnReturn(refreshAll,()=>fresh.has(page.route.id??"")));
  // Synchronize an external account preference. The saver only changes
  // its non-reactive queue; it does not assign Svelte state in this effect.
  $effect(()=>{

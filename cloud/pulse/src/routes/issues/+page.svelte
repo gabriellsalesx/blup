@@ -2,7 +2,7 @@
  import type {PageProps} from "./$types";
  import {resolve} from "$app/paths";
  import {goto} from "$app/navigation";
- import {onDestroy} from "svelte";
+ import {onDestroy,onMount} from "svelte";
  import CircleCheck from "@lucide/svelte/icons/circle-check";
  import EyeOff from "@lucide/svelte/icons/eye-off";
  import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
@@ -24,6 +24,7 @@
  import {pulseApi,parseResponse,type Project,type Issue} from "../../lib/api";
  import {ago} from "../../lib/monitor";
  import {issuePage,stateEdge,levelTone,levelName,issueFacets,issueCounts} from "../../lib/issues";
+ import {refreshOnReturn} from "#lib/refresh-on-return.ts";
  // The issues of one project at a time (chosen at the top, kept in the
  // address): counters of how many are open, resolved and ignored (those
  // cards choose which the list shows), the total and the occurrences, then
@@ -53,6 +54,9 @@
  let typing:ReturnType<typeof setTimeout>|undefined;
  function typed(){clearTimeout(typing);typing=setTimeout(()=>void run(load),300);}
  onDestroy(()=>clearTimeout(typing));
+ // Back to the tab after a while: the list and its counters load again,
+ // with the filters as they are.
+ onMount(()=>refreshOnReturn(async()=>{const id=projectId;await Promise.all([load(),recount(),issueFacets(id).then(next=>{if(projectId===id)facets=next;})]);},()=>!busy));
  function clearFilters(){search="";environment="";release="";filtersChanged();}
 
  function choose(id:string){projectId=id;environment="";release="";void issueFacets(id).then(next=>{if(projectId===id)facets=next;});void recount();void goto(resolve(`/issues?${new URLSearchParams({project:id})}`),{replace:true,shallow:true});void run(load);}

@@ -5,7 +5,7 @@
  import {page} from "$app/state";
  import type {RouteId} from "$app/types";
  import "../app.css";
- import {onDestroy} from "svelte";
+ import {onDestroy,onMount} from "svelte";
  import {toast} from "#lib/toast.svelte.ts";
  import Button from "#lib/ui/Button.svelte";
  import Tag from "@lucide/svelte/icons/tag";
@@ -15,6 +15,8 @@
  import MousePointerClick from "@lucide/svelte/icons/mouse-pointer-click";
  import {intlLocale,language,i18n,t,formatDate} from "#lib/i18n.svelte.ts";
  import {createLanguageSaver} from "#lib/language-save.ts";
+ import {refreshOnReturn} from "#lib/refresh-on-return.ts";
+ import {refreshAll} from "$app/navigation";
  import PanelShell from "#lib/ui/PanelShell.svelte";
  import Toaster from "#lib/ui/Toaster.svelte";
  import ConfirmHost from "#lib/ui/ConfirmHost.svelte";
@@ -38,6 +40,10 @@
   {href:resolve("/affiliates"),label:t("dealsAffiliates"),Icon:Handshake},
   {href:resolve("/stats"),label:t("dealsStats"),Icon:MousePointerClick},
  ]);
+ // Back to the tab after a while: the deals, hunts, channels, stores and
+ // clicks load again (the pages that only show them).
+ const fresh:ReadonlySet<string>=new Set(["/","/hunts","/channels","/affiliates","/stats"] satisfies RouteId[]);
+ onMount(()=>refreshOnReturn(refreshAll,()=>fresh.has(page.route.id??"")));
  // The tab's title: the page's name, then the app's.
  const pageTitles:Partial<Record<RouteId,()=>string>>={
   "/":()=>t("dealsOffers"),"/offers/new":()=>t("dealsPasteTitle"),"/hunts":()=>t("dealsHunts"),"/hunts/new":()=>t("dealsNewHuntTitle"),"/hunts/[id]":()=>t("dealsEditHunt"),

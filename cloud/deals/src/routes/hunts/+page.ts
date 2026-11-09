@@ -1,10 +1,9 @@
 import {dealsApi,parseResponse,type Channel,type Hunt} from "../../lib/api";
-import {attempt} from "../../lib/load";
+import {early} from "../../lib/load";
 export async function load({parent}){
- if(!(await parent()).signedIn)return {hunts:[] as Hunt[],channels:[] as Channel[]};
  const [hunts,channels]=await Promise.all([
-  attempt(async()=>(await parseResponse(dealsApi.hunts.$get())).hunts,[] as Hunt[]),
-  attempt(async()=>(await parseResponse(dealsApi.channels.$get())).channels,[] as Channel[]),
+  early(async()=>(await parseResponse(dealsApi.hunts.$get())).hunts,parent,[] as Hunt[]),
+  early(async()=>(await parseResponse(dealsApi.channels.$get())).channels,parent,[] as Channel[]),
  ]);
  return {hunts,channels};
 }

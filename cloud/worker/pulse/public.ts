@@ -1,6 +1,7 @@
 import {clientKey} from "../security";
 import {languageOf,languageSchema,acceptedLanguage} from "../../shared/language";
 import {pulseAccess,sha256} from "./limits";
+import {plansWithPulse,sqlPlans} from "../../shared/pulse-plans";
 import {z} from "zod";
 import {pageSlug,serviceStatus,maintenanceStateAt} from "./page-rules";
 import {renderStatusPage,renderIncidentPage,renderIncidentHistory,renderBadge,THEME_SCRIPT} from "./public-html";
@@ -9,31 +10,58 @@ import {navLinks,linksOf,logoVariant,logoKey,logoVersion,logoType} from "./page-
 const affectedStatus=serviceStatus.exclude(["none"]);
 
 const publicSchema=z.object({unavailable:z.literal(false),domain:z.string().max(253).nullable(),title:z.string().max(100),showTitle:z.boolean(),links:navLinks,logos:z.object({light:logoVersion.nullable(),dark:logoVersion.nullable()}),slug:pageSlug,language:z.enum(["pt","en","es"]),historyDays:z.number().int().min(1).max(90),components:z.array(z.object({name:z.string().max(80),description:z.string().max(200),state:z.enum(["up","down","unknown"]),lastCheckedAt:z.iso.datetime().nullable(),incident:z.enum(["downtime","degraded"]).nullable(),maintenance:z.boolean(),days:z.array(z.object({date:z.string(),up:z.number().int().nonnegative(),down:z.number().int().nonnegative(),unknown:z.number().int().nonnegative(),maintenance:z.number().int().nonnegative()})).max(90)})).max(50),maintenance:z.array(z.object({title:z.string().max(120),body:z.string().max(2000),state:z.enum(["scheduled","active"]),startsAt:z.iso.datetime(),endsAt:z.iso.datetime(),services:z.array(z.string().max(80)).max(50)})).max(10),incidents:z.array(z.object({id:z.uuid(),title:z.string().max(120),state:z.string(),impact:z.string(),createdAt:z.iso.datetime(),updatedAt:z.iso.datetime(),services:z.array(z.object({name:z.string().max(80),status:affectedStatus})).max(50),updates:z.array(z.object({body:z.string().max(2000),state:z.string(),createdAt:z.iso.datetime()})).max(20)})).max(20)});
+// The rows of one statement of a batch (D1 types a batch by one row type).
+const rowsOf=<T,>(result:D1Result<unknown>|undefined):T[]=>(result?.results??[]) as T[];
+const cacheKey=(pageId:string)=>new Request(`https://pulse.getblup.site/.pulse-cache/${pageId}`);
 export async function publicPage(env:Cloudflare.Env,slug:string){
  const parsed=pageSlug.safeParse(slug);if(!parsed.success)return null;
+ // A cached page costs one query, not the whole check below: the page
+ // published, its account allowed, eligible for Pulse (the owner, or a
+ // subscription with Pulse) and not read-only or being purged. What fails
+ // here goes through the full check (pulseAccess), which also records it.
+ // Only this closed, public DTO is cached, for at most 15 seconds.
+ const cache=typeof caches==="undefined"?null:caches.default;
+ if(cache){
+  const shown=await env.DB.prepare(`SELECT p.id FROM pulse_page p JOIN user u ON u.id=p.user_id WHERE p.slug=? AND p.published=1 AND p.plan_disabled=0 AND u.banned=0 AND NOT EXISTS(SELECT 1 FROM resource_quota q WHERE q.user_id=u.id AND q.deleted_at IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM pulse_account a WHERE a.user_id=u.id AND (a.purge_started IS NOT NULL OR a.read_only_until IS NOT NULL)) AND (u.email_verified=1 AND lower(u.email)=? OR EXISTS(SELECT 1 FROM subscription s WHERE s.reference_id=u.id AND s.plan IN(${sqlPlans(plansWithPulse())}) AND s.status IN('active','trialing','past_due')))`).bind(parsed.data,(env.STAFF_OWNER_EMAIL??"").trim().toLowerCase()).first<{id:string}>();
+  if(shown)try{const hit=await cache.match(cacheKey(shown.id));if(hit){const cached=publicSchema.safeParse(await hit.json());if(cached.success)return cached.data;}}catch{}
+ }
  const page=await env.DB.prepare("SELECT id,user_id AS userId,title,slug,language,show_title AS showTitle,nav_links AS navLinks,logo_light AS logoLight,logo_dark AS logoDark FROM pulse_page WHERE slug=? AND published=1 AND plan_disabled=0").bind(parsed.data).first<{id:string;userId:string;title:string;slug:string;language:string;showTitle:number;navLinks:string;logoLight:string|null;logoDark:string|null}>();if(!page)return null;
  const access=await pulseAccess(env,page.userId);if(!access.writable)return {unavailable:true as const};
- const cache=typeof caches==="undefined"?null:caches.default,key=new Request(`https://pulse.getblup.site/.pulse-cache/${page.id}`);
- // The gateway checks publication, account and plan before every cache
- // hit. Only this closed, public DTO is cached, for at most 15 seconds.
- try{const hit=await cache?.match(key);if(hit){const parsed=publicSchema.safeParse(await hit.json());if(parsed.success)return parsed.data;}}catch{}
+ const key=cacheKey(page.id);
  const cutoff=Date.now()-(access.limits?.retentionDays??30)*86_400_000;
- const components=await env.DB.prepare("SELECT c.monitor_id AS id,c.name,c.description,m.state,m.last_at AS lastAt,m.interval_minutes AS intervalMinutes,m.project_id AS projectId,p.object_name AS objectName FROM pulse_component c JOIN pulse_monitor m ON m.id=c.monitor_id JOIN pulse_project p ON p.id=m.project_id WHERE c.page_id=? AND m.user_id=? AND m.active=1 AND m.plan_disabled=0 AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL ORDER BY c.position LIMIT 50").bind(page.id,page.userId).all<{id:string;name:string;description:string;state:string;lastAt:number|null;intervalMinutes:number;projectId:string;objectName:string}>();
- const incidents=await env.DB.prepare("SELECT id,title,state,impact,created_at AS createdAt,updated_at AS updatedAt FROM pulse_incident WHERE page_id=? AND updated_at>? ORDER BY created_at DESC LIMIT 20").bind(page.id,cutoff).all<{id:string;title:string;state:string;impact:string;createdAt:number;updatedAt:number}>();
+ const now=Date.now();
+ // The page's parts, which don't depend on each other, in one round trip
+ // (a batch): its services, incidents and the services each one affects,
+ // the maintenance not over yet and its services, and its own domain.
+ const parts=await env.DB.batch<unknown>([
+  env.DB.prepare("SELECT c.monitor_id AS id,c.name,c.description,m.state,m.last_at AS lastAt,m.interval_minutes AS intervalMinutes,m.project_id AS projectId,p.object_name AS objectName FROM pulse_component c JOIN pulse_monitor m ON m.id=c.monitor_id JOIN pulse_project p ON p.id=m.project_id WHERE c.page_id=? AND m.user_id=? AND m.active=1 AND m.plan_disabled=0 AND p.active=1 AND p.plan_disabled=0 AND p.deleted_at IS NULL ORDER BY c.position LIMIT 50").bind(page.id,page.userId),
+  env.DB.prepare("SELECT id,title,state,impact,created_at AS createdAt,updated_at AS updatedAt FROM pulse_incident WHERE page_id=? AND updated_at>? ORDER BY created_at DESC LIMIT 20").bind(page.id,cutoff),
+  env.DB.prepare("SELECT ic.incident_id AS incidentId,ic.monitor_id AS monitorId,c.name,ic.status FROM pulse_incident_component ic JOIN pulse_incident i ON i.id=ic.incident_id JOIN pulse_component c ON c.page_id=i.page_id AND c.monitor_id=ic.monitor_id WHERE i.page_id=? AND i.updated_at>? ORDER BY c.position").bind(page.id,cutoff),
+  env.DB.prepare("SELECT id,title,body,starts_at AS startsAt,ends_at AS endsAt FROM pulse_maintenance WHERE page_id=? AND ends_at>? ORDER BY starts_at LIMIT 10").bind(page.id,now),
+  env.DB.prepare("SELECT mc.maintenance_id AS maintenanceId,mc.monitor_id AS monitorId,c.name FROM pulse_maintenance_component mc JOIN pulse_maintenance m ON m.id=mc.maintenance_id JOIN pulse_component c ON c.page_id=m.page_id AND c.monitor_id=mc.monitor_id WHERE m.page_id=? AND m.ends_at>? ORDER BY c.position").bind(page.id,now),
+  // The page's own domain, when it is live and the plan allows it.
+  ...(access.limits?.customDomain?[env.DB.prepare("SELECT hostname FROM pulse_page_domain WHERE page_id=? AND verified_at IS NOT NULL AND status='active' AND ssl='active'").bind(page.id)]:[]),
+ ]);
+ const components={results:rowsOf<{id:string;name:string;description:string;state:string;lastAt:number|null;intervalMinutes:number;projectId:string;objectName:string}>(parts[0])};
+ const incidents={results:rowsOf<{id:string;title:string;state:string;impact:string;createdAt:number;updatedAt:number}>(parts[1])};
  // How each incident leaves the services of this page, by their public
  // names; a service down or slow in an open incident shows it.
- const affected=(await env.DB.prepare("SELECT ic.incident_id AS incidentId,ic.monitor_id AS monitorId,c.name,ic.status FROM pulse_incident_component ic JOIN pulse_incident i ON i.id=ic.incident_id JOIN pulse_component c ON c.page_id=i.page_id AND c.monitor_id=ic.monitor_id WHERE i.page_id=? AND i.updated_at>? ORDER BY c.position").bind(page.id,cutoff).all<{incidentId:string;monitorId:string;name:string;status:string}>()).results.flatMap(r=>{const status=affectedStatus.safeParse(r.status);return status.success?[{...r,status:status.data}]:[];});
+ const affected=rowsOf<{incidentId:string;monitorId:string;name:string;status:string}>(parts[2]).flatMap(r=>{const status=affectedStatus.safeParse(r.status);return status.success?[{...r,status:status.data}]:[];});
  const open=new Set(incidents.results.filter(i=>i.state!=="resolved").map(i=>i.id));
  const incidentOf=(monitor:string)=>{const now=affected.filter(a=>open.has(a.incidentId)&&a.monitorId===monitor);return now.some(a=>a.status==="downtime")?"downtime" as const:now.some(a=>a.status==="degraded")?"degraded" as const:null;};
  // Maintenance not over yet, soonest first, with the public names of its
  // services; a service in one going on now shows it.
- const now=Date.now();
- const windows=(await env.DB.prepare("SELECT id,title,body,starts_at AS startsAt,ends_at AS endsAt FROM pulse_maintenance WHERE page_id=? AND ends_at>? ORDER BY starts_at LIMIT 10").bind(page.id,now).all<{id:string;title:string;body:string;startsAt:number;endsAt:number}>()).results;
- const inWindow=(await env.DB.prepare("SELECT mc.maintenance_id AS maintenanceId,mc.monitor_id AS monitorId,c.name FROM pulse_maintenance_component mc JOIN pulse_maintenance m ON m.id=mc.maintenance_id JOIN pulse_component c ON c.page_id=m.page_id AND c.monitor_id=mc.monitor_id WHERE m.page_id=? AND m.ends_at>? ORDER BY c.position").bind(page.id,now).all<{maintenanceId:string;monitorId:string;name:string}>()).results;
+ const windows=rowsOf<{id:string;title:string;body:string;startsAt:number;endsAt:number}>(parts[3]);
+ const inWindow=rowsOf<{maintenanceId:string;monitorId:string;name:string}>(parts[4]);
+ const domain=rowsOf<{hostname:string}>(parts[5])[0]?.hostname??null;
  const activeNow=new Set(windows.filter(w=>w.startsAt<=now).map(w=>w.id)),inMaintenance=(monitor:string)=>inWindow.some(m=>m.monitorId===monitor&&activeNow.has(m.maintenanceId));
  const publicMaintenance=windows.map(w=>({title:w.title,body:w.body,state:maintenanceStateAt(w.startsAt,w.endsAt,now)==="active"?"active" as const:"scheduled" as const,startsAt:new Date(w.startsAt).toISOString(),endsAt:new Date(w.endsAt).toISOString(),services:inWindow.filter(m=>m.maintenanceId===w.id).map(m=>m.name)}));
- // The histories in parallel (one Durable Object call each), in order.
- const histories=await Promise.all(components.results.map(c=>env.PULSE_PROJECT.getByName(c.objectName).monitorHistory(c.id,access.limits?.retentionDays??30)));
+ // The histories in parallel (one Durable Object call each), in order,
+ // together with the updates of every incident in one round trip (a batch).
+ const [histories,updateRows]=await Promise.all([
+  Promise.all(components.results.map(c=>env.PULSE_PROJECT.getByName(c.objectName).monitorHistory(c.id,access.limits?.retentionDays??30))),
+  incidents.results.length?env.DB.batch<{body:string;state:string;createdAt:number}>(incidents.results.map(item=>env.DB.prepare("SELECT body,state,created_at AS createdAt FROM pulse_incident_update WHERE incident_id=? AND created_at>? ORDER BY created_at DESC LIMIT 20").bind(item.id,cutoff))):[],
+ ]);
  const publicComponents=[];
  for(const [i,c] of components.results.entries()){
   const history=histories[i];
@@ -41,12 +69,8 @@ export async function publicPage(env:Cloudflare.Env,slug:string){
   // Closed public projection. No private names, URLs, DSNs or issues.
   publicComponents.push({name:c.name,description:c.description,state,incident:incidentOf(c.id),maintenance:inMaintenance(c.id),lastCheckedAt:c.lastAt===null?null:new Date(c.lastAt).toISOString(),days:(history?.days??[]).map(d=>({date:new Date(d.day*86_400_000).toISOString().slice(0,10),up:d.up,down:d.down,unknown:d.unknown,maintenance:d.maintenance??0}))});
  }
- // The updates of every incident in one round trip (a batch).
- const updateRows=incidents.results.length?await env.DB.batch<{body:string;state:string;createdAt:number}>(incidents.results.map(item=>env.DB.prepare("SELECT body,state,created_at AS createdAt FROM pulse_incident_update WHERE incident_id=? AND created_at>? ORDER BY created_at DESC LIMIT 20").bind(item.id,cutoff))):[];
  const publicIncidents=[];
  for(const [i,item] of incidents.results.entries()){const updates=updateRows[i];publicIncidents.push({id:item.id,title:item.title,state:item.state,impact:item.impact,createdAt:new Date(item.createdAt).toISOString(),updatedAt:new Date(item.updatedAt).toISOString(),services:affected.filter(a=>a.incidentId===item.id).map(a=>({name:a.name,status:a.status})),updates:(updates?.results??[]).map(u=>({...u,createdAt:new Date(u.createdAt).toISOString()}))});}
- // The page's own domain, when it is live and the plan allows it.
- const domain=access.limits?.customDomain?(await env.DB.prepare("SELECT hostname FROM pulse_page_domain WHERE page_id=? AND verified_at IS NOT NULL AND status='active' AND ssl='active'").bind(page.id).first<{hostname:string}>())?.hostname??null:null;
  const result=publicSchema.parse({unavailable:false,domain,title:page.title,showTitle:!!page.showTitle,links:linksOf(page.navLinks),logos:{light:page.logoLight,dark:page.logoDark},slug:page.slug,language:languageOf(page.language)??"en",historyDays:access.limits?.retentionDays??30,components:publicComponents,incidents:publicIncidents,maintenance:publicMaintenance});
  try{await cache?.put(key,Response.json(result,{headers:{"cache-control":"public, max-age=15"}}));}catch{}
  return result;

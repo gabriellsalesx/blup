@@ -5,7 +5,7 @@ import { cachedSiteProps,serveDeploy } from "./serve-site";
 import { drainSitePurges } from "./site-cache-purge";
 import { serveSite } from "./serve-site";
 import { slugOfHost } from "./site-rules";
-import { Sentry, sentryOptions } from "./observability";
+import { withSentry, sentryOptions } from "./observability";
 import { serveHealth } from "./health";
 
 // The Worker of the published sites (<slug>.getblup.site), apart from the
@@ -37,7 +37,7 @@ async function resolveDomain(env:Cloudflare.Env,host:string,canonical:string){
 
 // Wrapped by the Sentry SDK: what throws reaches Pulse (through the
 // network: the ingest lives in the Cloud's Worker).
-export default Sentry.withSentry((env:Cloudflare.Env)=>sentryOptions(env,"blup-sites"),{
+export default withSentry((env:Cloudflare.Env)=>sentryOptions(env,"blup-sites"),{
 	async fetch(req: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
 		const url = new URL(req.url);
 		const health=await serveHealth(req,env);if(health)return health;

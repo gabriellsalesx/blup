@@ -1,6 +1,5 @@
 import {dealsApi,parseResponse,type Channel} from "../../lib/api";
-import {attempt} from "../../lib/load";
+import {early} from "../../lib/load";
 export async function load({parent}){
- if(!(await parent()).signedIn)return {channels:[] as Channel[]};
- return {channels:await attempt(async()=>(await parseResponse(dealsApi.channels.$get())).channels,[] as Channel[])};
+ return {channels:await early(async()=>(await parseResponse(dealsApi.channels.$get())).channels,parent,[] as Channel[])};
 }

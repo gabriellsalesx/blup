@@ -1,4 +1,6 @@
-import * as Sentry from "@sentry/cloudflare";
+// Named imports, not the whole namespace: only what is used goes into the
+// bundle (the namespace object pulled in every export of the SDK).
+import {captureException,instrumentDurableObjectWithSentry,withSentry,type CloudflareOptions} from "@sentry/cloudflare";
 import {pulseIngest} from "./pulse/ingest";
 import {BLUP_VERSION} from "../shared/version";
 
@@ -12,7 +14,7 @@ import {BLUP_VERSION} from "../shared/version";
 type Env=Cloudflare.Env;
 
 // `name`: the part of the Cloud the errors come from (its release name).
-export function sentryOptions(env:Env,name:"blup-cloud"|"blup-sites"="blup-cloud"):Sentry.CloudflareOptions{
+export function sentryOptions(env:Env,name:"blup-cloud"|"blup-sites"="blup-cloud"):CloudflareOptions{
  if(!env.SENTRY_DSN)return {enabled:false};
  let ingestHost="";
  try{ingestHost=new URL(env.SENTRY_DSN).hostname;}catch{return {enabled:false};}
@@ -45,7 +47,7 @@ export function sentryOptions(env:Env,name:"blup-cloud"|"blup-sites"="blup-cloud
 // An error a handler answered itself (a 500 from onError): it reaches Pulse
 // too, without changing the answer.
 export function reportError(error:unknown){
- try{Sentry.captureException(error);}catch{/* never break the answer */}
+ try{captureException(error);}catch{/* never break the answer */}
 }
 
 // Work that runs past the response (ctx.waitUntil): its failure is reported.
@@ -53,4 +55,4 @@ export function watched<T>(work:Promise<T>):Promise<T|undefined>{
  return work.catch(error=>{reportError(error);console.error("[blup] background_failed",error instanceof Error?error.name:"error");return undefined;});
 }
 
-export {Sentry};
+export {instrumentDurableObjectWithSentry,withSentry};
