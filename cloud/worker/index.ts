@@ -20,6 +20,7 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { auth, db, type Session } from "./auth";
+import { requestSession } from "./request-session";
 import { activeSubscription, planOf, isOwner, GIFT_PLAN } from "./account";
 import { planNamed } from "./plans";
 import { staffApi } from "./staff";
@@ -92,7 +93,7 @@ app.post(`/auth${SEND_CODE_PATH}`, async (c, next) => {
 // A new account by passkey (no session yet): the same guards as the e-mail
 // code, a few per minute per address and Turnstile.
 app.post("/auth/passkey/verify-registration", async (c, next) => {
-	if (await auth.api.getSession({ headers: c.req.raw.headers })) return next();
+	if (await requestSession(c.req.raw)) return next();
 	const ip = c.req.header("cf-connecting-ip");
 	const { success } = await c.env.OTP_LIMIT.limit({ key: `passkey:${ip ?? "local"}` });
 	if (!success) return c.json({ code: "TOO_MANY_REQUESTS", message: "Muitos pedidos. Espere um minuto." }, 429);
@@ -112,7 +113,7 @@ app.on(["GET","POST"],["/auth/sign-in/email-otp","/auth/device/code","/auth/pass
 // e-mail goes through support for now (it would need the current one
 // confirmed first).
 app.on("POST", ["/auth/email-otp/request-email-change", "/auth/email-otp/change-email"], async (c, next) => {
-	const s = await auth.api.getSession({ headers: c.req.raw.headers });
+	const s = await requestSession(c.req.raw);
 	if (!s) return c.json({ code: "UNAUTHORIZED" }, 401);
 	if (hasEmail(s.user.email)) return c.json({ code: "EMAIL_CHANGE_SUPPORT", message: "Para trocar o e-mail, fale com o suporte." }, 403);
 	if (c.req.path.endsWith("request-email-change")) {
@@ -127,13 +128,13 @@ app.post("/auth/subscription/upgrade",c=>c.json({code:"BILLING_USE_PREVIEW"},409
 
 // Approval and the pending slot are committed in one D1 transaction.
 app.post("/auth/device/approve",validate("json",approvalBody),async c=>{
- const s=await auth.api.getSession({headers:c.req.raw.headers});
+ const s=await requestSession(c.req.raw);
  if(!s||!await accountAllowed(c.env.DB,s.user.id))return c.json({code:"UNAUTHORIZED"},401);
  const result=await approveDevice(c.env.DB,s.user.id,c.req.valid("json").userCode,(await planOf(s.user.id)).limits.devices);
  return result==="OK"?c.json({success:true}):c.json({code:result},result==="DEVICES_LIMIT"?403:400);
 });
 app.post("/auth/delete-user",validate("json",z.strictObject({})),async c=>{
- const s=await auth.api.getSession({headers:c.req.raw.headers});
+ const s=await requestSession(c.req.raw);
  if(!s||!await accountAllowed(c.env.DB,s.user.id))return c.json({code:"UNAUTHORIZED"},401);
  if(!Number.isFinite(new Date(s.session.createdAt).getTime())||Date.now()-new Date(s.session.createdAt).getTime()>RECENT_SIGN_IN_MS)return c.json({code:"SESSION_EXPIRED"},403);
  await softDelete(c.env,s.user.id);
@@ -148,7 +149,7 @@ app.use("*",async(c,next)=>{
  const costly=((c.req.path.startsWith("/api/pulse/")||c.req.path.startsWith("/api/deals/")||c.req.path.startsWith("/api/billing/"))&&!["GET","HEAD"].includes(method))||(method==="POST"&&/^\/api\/(?:ai\/(?:audio\/speech|translate)|sites\/?|sync\/vaults)$/.test(path)) || /\/api\/sites\/[^/]+\/domain$/.test(path) || method==="GET"&&path==="/api/sites/check" || method==="PUT"&&/^\/api\/reminders\/?$/.test(path) || /\/api\/sync\/vaults\/[^/]+\/(?:prepare|history)$/.test(path) || method==="PUT"&&path==="/api/sites/retained" || method==="DELETE"&&/^\/api\/sites\/[^/]+$/.test(path);
  const bulk=!costly&&(path.startsWith("/api/pulse/")||path.startsWith("/api/deals/")||/^\/api\/sync\//.test(path)||/^\/api\/sites\/[^/]+\/(?:files|missing|deploys)(?:\/|$)/.test(path));
  if(!costly&&!bulk)return next();
- const s=await auth.api.getSession({headers:c.req.raw.headers});if(!s)return next();
+ const s=await requestSession(c.req.raw);if(!s)return next();
  const binding=costly?c.env.ABUSE_LIMIT:c.env.BULK_LIMIT;
  const keys=costly?[`account:${s.user.id}`,`ip:${c.req.header("cf-connecting-ip")??"local"}`]:[`account:${s.user.id}`];
  const hits=await Promise.all(keys.map(key=>binding.limit({key})));
@@ -171,7 +172,7 @@ app.get("/auth/subscription/success",validate("query",z.object({callbackURL:z.st
 app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
 
 const session = createMiddleware<App>(async(c,next)=>{
- const s=await auth.api.getSession({headers:c.req.raw.headers});
+ const s=await requestSession(c.req.raw);
  if(!s||!await accountAllowed(c.env.DB,s.user.id))return c.json({code:"UNAUTHORIZED"},401);
  c.set("session",s);await next();
 });

@@ -1,5 +1,6 @@
 import {createMiddleware} from "hono/factory";
-import {auth,type Session} from "../auth";
+import {type Session} from "../auth";
+import {requestSession} from "../request-session";
 import {accountAllowed} from "../lifecycle";
 
 // Who has Deals and how (entitlement.ts, kept apart from the session so
@@ -9,7 +10,7 @@ import {dealsAccess,type DealsAccess} from "./entitlement";
 
 export type DealsApp={Bindings:Cloudflare.Env;Variables:{session:Session;access:DealsAccess}};
 export const dealsSession=createMiddleware<DealsApp>(async(c,next)=>{
- const session=await auth.api.getSession({headers:c.req.raw.headers});if(!session||!await accountAllowed(c.env.DB,session.user.id))return c.json({code:"UNAUTHORIZED"},401);
+ const session=await requestSession(c.req.raw);if(!session||!await accountAllowed(c.env.DB,session.user.id))return c.json({code:"UNAUTHORIZED"},401);
  c.set("session",session);c.set("access",await dealsAccess(c.env,session.user.id));await next();
 });
 // Changes need the plan: without it, the code PLAN (like Pulse).

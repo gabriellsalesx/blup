@@ -2,7 +2,8 @@ import { accountAllowed } from "./lifecycle";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { and, eq, gte, sum } from "drizzle-orm";
-import { auth, db } from "./auth";
+import { db } from "./auth";
+import { requestSession } from "./request-session";
 import { aiUsage } from "./db/schema";
 import { planOf } from "./account";
 import { z } from "zod";
@@ -118,7 +119,7 @@ const PRO_MONTH_MICROS = 660_000;
 const MAX_INPUT = 4000;
 
 const signedIn = createMiddleware<App>(async (c, next) => {
-	const s = await auth.api.getSession({ headers: c.req.raw.headers });
+	const s = await requestSession(c.req.raw);
 	if (!s || !await accountAllowed(c.env.DB,s.user.id)) return c.json(fail("Entre de novo no Blup Cloud.","UNAUTHORIZED"),401);
 	c.set("userId", s.user.id);
 	await next();

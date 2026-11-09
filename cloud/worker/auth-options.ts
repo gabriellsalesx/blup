@@ -109,7 +109,10 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 		// draws the rest from crypto.getRandomValues.
 		// The client's address is the one Cloudflare sets (X-Forwarded-For
 		// would be whatever the client sent): sessions and Turnstile use it.
-		advanced: { database: { generateId: () => uuidv7() }, ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
+		// joins: the session and its user in one query (Drizzle's relational
+		// query, from the relations in db/auth-schema.ts) instead of two
+		// trips to D1 on every signed in request.
+		advanced: { database: { generateId: () => uuidv7(), joins: true }, ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
 		// No passwords: codes and passkeys only.
 		emailAndPassword: { enabled: false },
 		// A blocked (by the staff) or deleted account can't sign in.

@@ -20,6 +20,8 @@ const moduleURL = (import.meta as unknown as {url:string}).url;
 export class TestD1 {
 	readonly sqlite = new DatabaseSync(":memory:");
 	readonly statements: { sql: string; bindings: number }[] = [];
+	// Calls that would each be one network round trip to D1 (a batch is one).
+	roundTrips = 0;
 	constructor(through?:string) {
 		this.sqlite.exec("PRAGMA foreign_keys=ON");
 		for (const name of readdirSync(new URL("../migrations/", moduleURL)).filter(n => n.endsWith(".sql")&&(!through||n<=through)).sort()) {
@@ -29,6 +31,7 @@ export class TestD1 {
 	applyMigration(name:string){this.sqlite.exec(readFileSync(new URL(`../migrations/${name}`,moduleURL),"utf8"));}
 	prepare(sql: string) { return new TestStatement(this, sql); }
 	async batch(statements: TestStatement[]) {
+		this.roundTrips++;
 		this.sqlite.exec("BEGIN");
 		try { const result = statements.map(s => s.execute()); this.sqlite.exec("COMMIT"); return result; }
 		catch(e) { this.sqlite.exec("ROLLBACK"); throw e; }
@@ -49,28 +52,37 @@ class TestStatement {
 		const { n } = this.db.sqlite.prepare("SELECT changes() AS n").get() as { n: number };
 		return { success: true, results, meta: { changes: n } };
 	}
-	async all() { return this.execute(); }
-	async run() { return this.execute(); }
-	async first(column?: string) { const r = this.execute().results[0]; return column ? r?.[column] : r ?? null; }
-	async raw() { return this.execute().results.map(r => Object.values(r)); }
+	async all() { this.db.roundTrips++; return this.execute(); }
+	async run() { this.db.roundTrips++; return this.execute(); }
+	async first(column?: string) { this.db.roundTrips++; const r = this.execute().results[0]; return column ? r?.[column] : r ?? null; }
+	async raw() { this.db.roundTrips++; return this.execute().results.map(r => Object.values(r)); }
 }
 
 export class TestBucket {
 	readonly objects = new Map<string, Uint8Array>();
 	readonly types = new Map<string, string>();
-	async put(key: string, body: string | ArrayBuffer | Uint8Array | ReadableStream, options?: {httpMetadata?:{contentType?:string}}) {
+	// R2 operations (each one network round trip).
+	operations = 0;
+	async put(key: string, body: string | ArrayBuffer | Uint8Array | ReadableStream, options?: {httpMetadata?:{contentType?:string};sha256?:string}) {
+		this.operations++;
+		const bytes=body instanceof ReadableStream?new Uint8Array(await new Response(body).arrayBuffer()):typeof body === "string" ? new TextEncoder().encode(body) : new Uint8Array(body);
+		// R2 refuses a put whose bytes do not match the given SHA-256.
+		if(options?.sha256!==undefined){
+			const digest=[...new Uint8Array(await crypto.subtle.digest("SHA-256",bytes))].map(b=>b.toString(16).padStart(2,"0")).join("");
+			if(digest!==options.sha256)throw new Error("put: The SHA-256 checksum you specified did not match what we received. (10037)");
+		}
 		if(options?.httpMetadata?.contentType)this.types.set(key,options.httpMetadata.contentType);
-		if(body instanceof ReadableStream){this.objects.set(key,new Uint8Array(await new Response(body).arrayBuffer()));return;}
-		this.objects.set(key, typeof body === "string" ? new TextEncoder().encode(body) : new Uint8Array(body));
+		this.objects.set(key, bytes);
 	}
-	async head(key: string) { const bytes=this.objects.get(key);return bytes?{size:bytes.byteLength}:null; }
+	async head(key: string) { this.operations++; const bytes=this.objects.get(key);return bytes?{size:bytes.byteLength}:null; }
 	async get(key: string) {
+		this.operations++;
 		const bytes = this.objects.get(key);
 		if (!bytes) return null;
 		return { body: new Blob([bytes as Uint8Array<ArrayBuffer>]).stream(), httpMetadata: {contentType: this.types.get(key)}, text: async () => new TextDecoder().decode(bytes), json: async () => JSON.parse(new TextDecoder().decode(bytes)) };
 	}
-	async delete(keys: string | string[]) { for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key); }
-	async list({prefix}: {prefix:string}) { return {objects:[...this.objects.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key,uploaded:new Date(0)})),truncated:false}; }
+	async delete(keys: string | string[]) { this.operations++; for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key); }
+	async list({prefix}: {prefix:string}) { this.operations++; return {objects:[...this.objects.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key,uploaded:new Date(0)})),truncated:false}; }
 	asR2() { return this as unknown as R2Bucket; }
 }
 

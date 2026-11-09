@@ -152,12 +152,13 @@ describe("storage grace and net reservations",()=>{
 		const firstWrite=Promise.withResolvers<void>(),finishFirst=Promise.withResolvers<void>(),secondLease=Promise.withResolvers<void>(),resumeSecond=Promise.withResolvers<void>();
 		const originalPut=notes.put.bind(notes);let writes=0;
 		vi.spyOn(notes,"put").mockImplementation(async(key,body)=>{await originalPut(key,body);if(key.includes(`/t/${ticket}/b/`)&&++writes===1){firstWrite.resolve();await finishFirst.promise;}});
-		const original=db.prepare.bind(db);let attempts=0;
-		vi.spyOn(db,"prepare").mockImplementation(sql=>{
-			const statement=original(sql);if(!sql.startsWith("INSERT INTO site_lease"))return statement;
-			const bind=statement.bind.bind(statement);vi.spyOn(statement,"bind").mockImplementation((...values)=>{
-				const prepared=bind(...values);if(values[0]===`sync-block:${ticket}:${H}`&&++attempts===2){const first=prepared.first.bind(prepared);vi.spyOn(prepared,"first").mockImplementation(async column=>{secondLease.resolve();await resumeSecond.promise;return first(column);});}return prepared;
-			});return statement;
+		// The block's lock opens the batch that reads the ticket's state: the
+		// second PUT is held right before that batch runs.
+		const originalBatch=db.batch.bind(db);let attempts=0;
+		vi.spyOn(db,"batch").mockImplementation(async statements=>{
+			const lock=statements[0];
+			if(lock?.sql.startsWith("INSERT INTO site_lease")&&lock.values[0]===`sync-block:${ticket}:${H}`&&++attempts===2){secondLease.resolve();await resumeSecond.promise;}
+			return originalBatch(statements);
 		});
 		const first=put(H,new Uint8Array([1]),ticket);await firstWrite.promise;
 		const second=put(H,new Uint8Array([2]),ticket);await secondLease.promise;finishFirst.resolve();expect((await first).status).toBe(200);

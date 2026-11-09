@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { reserve,release,settle,siteLock,unlockSite } from "./quota";
+import { reserve,release,settle,siteLock,siteLockStatement,unlockSite,unlockStatement } from "./quota";
 import { cleanupPlan,cleanupSchema,cleanupWrites,drainSyncGarbage,ensureHeadReferences,headReferenceWrites,leaseGuard,lockSync,storageLimit,syncLockKey,SyncError,unlockSync,versionsOf } from "./sync-storage";
 import { deletePrefix } from "./lifecycle";
 import { hashId,safeInt } from "./validation";
@@ -15,11 +15,14 @@ const blockList=z.string().max(1_900_000).transform((value,ctx):unknown=>{
 export const preparationSchema=z.object({parent:safeInt,blocks:blockList,manifest:z.instanceof(File).refine(f=>f.size>0&&f.size<=32*1024*1024)});
 const transferPlanSchema=z.object({refs:z.array(hashId).max(20_000),cleanup:cleanupSchema,newBytes:z.number().int().min(0)});
 type Transfer={id:string;user_id:string;vault_id:string;parent:number;key:string;size:number;reservation_id:string;reserved:number;lease:string;expires_at:number;created_at:number;completed_version:number|null};
-async function owned(env:Cloudflare.Env,userId:string,id:string,allowExpired=false){
-	const row=await env.DB.prepare("SELECT * FROM sync_transfer WHERE id=? AND user_id=?").bind(id,userId).first<Transfer>();
+const transferRead=(env:Cloudflare.Env,userId:string,id:string)=>env.DB.prepare("SELECT * FROM sync_transfer WHERE id=? AND user_id=?").bind(id,userId);
+function usable(row:Transfer|null|undefined){
 	if(!row)throw new SyncError("NOT_FOUND",404);
-	if(!allowExpired&&(row.completed_version===0||row.completed_version===null&&row.expires_at<=Date.now()))throw new SyncError("TICKET_EXPIRED",410);
+	if(row.completed_version===0||row.completed_version===null&&row.expires_at<=Date.now())throw new SyncError("TICKET_EXPIRED",410);
 	return row;
+}
+async function owned(env:Cloudflare.Env,userId:string,id:string){
+	return usable(await transferRead(env,userId,id).first<Transfer>());
 }
 async function renew(env:Cloudflare.Env,row:Transfer){
 	const until=Math.min(Date.now()+TTL,row.created_at+24*3600_000);
@@ -43,7 +46,10 @@ export async function prepareTransfer(env:Cloudflare.Env,userId:string,vaultId:s
 		if(!await env.DB.prepare("SELECT user_id FROM sync_account WHERE user_id=?").bind(userId).first())throw new SyncError("NO_KEY",409);
 		await ensureHeadReferences(env,userId);
 		const existing=new Map<string,number>();
-		for(let i=0;i<input.blocks.length;i+=99){const part=input.blocks.slice(i,i+99);const rows=await env.DB.prepare(`SELECT id,size FROM sync_block WHERE user_id=? AND id IN (${part.map(()=>"?").join(",")})`).bind(userId,...part.map(b=>b.id)).all<{id:string;size:number}>();for(const b of rows.results)existing.set(b.id,b.size);}
+		// Up to 20 000 blocks in chunks of 99 (D1's bound values): one batch.
+		const lookups:D1PreparedStatement[]=[];
+		for(let i=0;i<input.blocks.length;i+=99){const part=input.blocks.slice(i,i+99);lookups.push(env.DB.prepare(`SELECT id,size FROM sync_block WHERE user_id=? AND id IN (${part.map(()=>"?").join(",")})`).bind(userId,...part.map(b=>b.id)));}
+		for(const page of lookups.length?await env.DB.batch<{id:string;size:number}>(lookups):[])for(const b of page.results)existing.set(b.id,b.size);
 		const missing=input.blocks.filter(b=>!existing.has(b.id));
 		if(missing.some(b=>b.size===0))throw new SyncError("INVALID",400);
 		const refs=input.blocks.map(b=>b.id),refBytes=new TextEncoder().encode(refs.join("\n")),size=input.manifest.size+refBytes.byteLength;
@@ -77,17 +83,24 @@ export async function prepareTransfer(env:Cloudflare.Env,userId:string,vaultId:s
 }
 
 export async function putPreparedBlock(env:Cloudflare.Env,userId:string,ticket:string,id:string,body:Uint8Array<ArrayBuffer>){
- const lock=await siteLock(env.DB,`sync-block:${ticket}:${id}`);if(!lock)throw new SyncError("SYNC_BUSY",409);
- let physical:string|undefined,adopted=false,unknownAdoption=false;
+ const lockKey=`sync-block:${ticket}:${id}`,lock=crypto.randomUUID();
+ // A delayed duplicate may acquire the lock after another PUT committed:
+ // the state is read in the same transaction, right after the lock.
+ const [locked,transfer,declared,stored]=await env.DB.batch([
+  siteLockStatement(env.DB,lockKey,lock),
+  transferRead(env,userId,ticket),
+  env.DB.prepare("SELECT size,ready FROM sync_transfer_block WHERE ticket_id=? AND block_id=?").bind(ticket,id),
+  env.DB.prepare("SELECT id FROM sync_block WHERE user_id=? AND id=?").bind(userId,id),
+ ]);
+ if(!locked?.results.length)throw new SyncError("SYNC_BUSY",409);
+ let physical:string|undefined,adopted=false,unknownAdoption=false,unlocked=false;
  try{
-  // A delayed duplicate may acquire the lock after another PUT committed.
-  // Read state only after acquiring the block lock.
-  const row=await owned(env,userId,ticket);
+  const row=usable(transfer?.results[0] as Transfer|undefined);
   if(row.completed_version!==null){
-   if(await env.DB.prepare("SELECT id FROM sync_block WHERE user_id=? AND id=?").bind(userId,id).first())return {ok:true};
+   if(stored?.results.length)return {ok:true};
    throw new SyncError("NOT_FOUND",404);
   }
-  const block=await env.DB.prepare("SELECT size,ready FROM sync_transfer_block WHERE ticket_id=? AND block_id=?").bind(ticket,id).first<{size:number;ready:number}>();
+  const block=declared?.results[0] as {size:number;ready:number}|undefined;
   if(!block||block.size!==body.byteLength)throw new SyncError("INVALID",400);
   await renew(env,row);
   if(block.ready)return {ok:true};
@@ -96,14 +109,15 @@ export async function putPreparedBlock(env:Cloudflare.Env,userId:string,ticket:s
   physical=`${row.key}/b/${id}-${crypto.randomUUID()}`;
   await env.NOTES.put(physical,body);
   unknownAdoption=true;
-  const result=await env.DB.batch([leaseGuard(env.DB,userId,row.lease),env.DB.prepare("UPDATE sync_transfer_block SET ready=1,object_key=? WHERE ticket_id=? AND block_id=? AND ready=0 RETURNING block_id").bind(physical,ticket,id)]);
-  adopted=!!result[1]?.results.length;unknownAdoption=false;
+  // The receipt and the unlock in one batch (the guard rolls both back).
+  const result=await env.DB.batch([leaseGuard(env.DB,userId,row.lease),env.DB.prepare("UPDATE sync_transfer_block SET ready=1,object_key=? WHERE ticket_id=? AND block_id=? AND ready=0 RETURNING block_id").bind(physical,ticket,id),unlockStatement(env.DB,lockKey,lock)]);
+  adopted=!!result[1]?.results.length;unknownAdoption=false;unlocked=true;
   return {ok:true};
  }finally{
   // A lost D1 acknowledgement may already have adopted the object.
   // Keep it for ticket cancellation/expiry rather than deleting live bytes.
   if(physical&&!adopted&&!unknownAdoption)await env.NOTES.delete(physical).catch(()=>{});
-  await unlockSite(env.DB,`sync-block:${ticket}:${id}`,lock);
+  if(!unlocked)await unlockSite(env.DB,lockKey,lock);
  }
 }
 export async function commitTransfer(env:Cloudflare.Env,userId:string,vaultId:string,ticket:string){

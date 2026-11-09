@@ -1,22 +1,23 @@
 import { queueSitePurge } from "./site-cache-purge";
-import { accountAllowed,deletePrefix } from "./lifecycle";
+import { deletePrefix } from "./lifecycle";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { v7 as uuidv7 } from "uuid";
-import { auth, db } from "./auth";
-import { site, siteBlob } from "./db/schema";
-import { reserve, release, settle, siteLock, unlockSite } from "./quota";
+import { db } from "./auth";
+import { requestSession } from "./request-session";
+import { site } from "./db/schema";
+import { reserve, release, releaseStatements, reservationStatements, settle, siteLock, unlockSite, unlockStatement } from "./quota";
 import { idParam, hashId, validate, safeInt } from "./validation";
 import { removeDomainProvider,DomainError } from "./domain-provider";
-import { storageLimit } from "./sync-storage";
+import { storageLimitOf } from "./sync-storage";
 import { siteDowngrade } from "./site-entitlement";
 import { opaqueId } from "./validation";
 import { domainsApi } from "./domains";
-import { stageFile } from "./upload";
-import { planOf } from "./account";
+import { receiveFile } from "./upload";
+import { accountAccess, type Access } from "./account";
 import { ownSite as ownDealsPage, siteAddress as dealsPageAddress } from "./deals/sites";
 import { HASH, deploySchema, fileKey, manifestKey, slugAllowed, slugCandidates, slugProblem, toManifest } from "./site-rules";
 
@@ -32,17 +33,32 @@ import { HASH, deploySchema, fileKey, manifestKey, slugAllowed, slugCandidates, 
 // Only the live deploy is kept; files no deploy uses go when the next one
 // lands.
 
-type App = { Bindings: Cloudflare.Env; Variables: { userId: string } };
+type App = { Bindings: Cloudflare.Env; Variables: { userId: string; access: Access } };
 
 const MB = 1024 * 1024;
 
+// The session (shared with the rate limit), then the account and its plan
+// in one trip to D1.
 const signedIn = createMiddleware<App>(async (c, next) => {
-	const s = await auth.api.getSession({ headers: c.req.raw.headers });
-	if (!s || !await accountAllowed(c.env.DB,s.user.id)) return c.json({ code: "UNAUTHORIZED" }, 401);
+	const s = await requestSession(c.req.raw);
+	const access = s ? await accountAccess(c.env.DB, s.user.id) : null;
+	if (!s || !access?.allowed) return c.json({ code: "UNAUTHORIZED" }, 401);
 	c.set("userId", s.user.id);
+	c.set("access", access);
 	await next();
 });
 
+
+const ownedSite=(d1:D1Database,userId:string,id:string)=>d1.prepare("SELECT id FROM site WHERE id=? AND user_id=?").bind(id,userId);
+const blobRead=(d1:D1Database,siteId:string,hash:string)=>d1.prepare("SELECT hash FROM site_blob WHERE site_id=? AND hash=?").bind(siteId,hash);
+// Which of these hashes the site stores, in chunks of 99 (D1's bound
+// values) sent in one batch.
+async function storedHashes(d1:D1Database,siteId:string,hashes:string[]){
+	const lookups:D1PreparedStatement[]=[];
+	for(let i=0;i<hashes.length;i+=99){const part=hashes.slice(i,i+99);lookups.push(d1.prepare(`SELECT hash FROM site_blob WHERE site_id=? AND hash IN (${part.map(()=>"?").join(",")})`).bind(siteId,...part));}
+	const pages=lookups.length?await d1.batch<{hash:string}>(lookups):[];
+	return new Set(pages.flatMap(page=>page.results.map(r=>r.hash)));
+}
 
 async function ownSite(userId: string, id: string) {
 	const [s] = await db.select().from(site).where(and(eq(site.id, id), eq(site.userId, userId))).limit(1);
@@ -70,8 +86,8 @@ export const sitesApi = new Hono<App>()
 	// the Deals page, which counts as one.
 	.get("/", async (c) => {
 		const userId = c.get("userId");
-		const [plan, rows, deals] = await Promise.all([
-			planOf(userId),
+		const {plan}=c.get("access");
+		const [rows, deals] = await Promise.all([
 			db.select({ id: site.id, slug: site.slug, title: site.title, bytes: site.bytes, files: site.files, live: site.deploy, updatedAt: site.updatedAt }).from(site).where(eq(site.userId, userId)).orderBy(desc(site.updatedAt)),
 			ownDealsPage(c.env,userId),
 		]);
@@ -89,7 +105,7 @@ export const sitesApi = new Hono<App>()
 	.put("/retained",validate("json",z.strictObject({siteId:opaqueId})),async c=>{
 		const userId=c.get("userId"),{siteId}=c.req.valid("json");
 		if(!await ownSite(userId,siteId))return c.json({code:"NOT_FOUND"},404);
-		const plan=await planOf(userId);
+		const {plan}=c.get("access");
 		const count=await c.env.DB.prepare("SELECT count(*) AS n FROM site WHERE user_id=?").bind(userId).first<{n:number}>();
 		if(plan.limits.sites!==1||!count||count.n<=1)return c.json({code:"SELECTION_CLOSED"},409);
 		const won=await c.env.DB.prepare("UPDATE resource_quota SET selected_site_id=? WHERE user_id=? AND grace_until>? AND deleted_at IS NULL AND EXISTS(SELECT 1 FROM site WHERE id=? AND user_id=?) RETURNING user_id").bind(siteId,userId,Date.now(),siteId,userId).first();
@@ -115,7 +131,7 @@ export const sitesApi = new Hono<App>()
 	.post("/", validate("json", created), async (c) => {
 		const userId = c.get("userId");
 		const { slug, title } = c.req.valid("json");
-		const plan = await planOf(userId);
+		const {plan} = c.get("access");
 		if (plan.limits.sites === 0) return c.json({ code: "PLAN" }, 403);
 		const reservation = await reserve(c.env.DB,userId,"sites",1,plan.limits.sites);
 		if (!reservation) return c.json({code:"SITES_LIMIT",limit:plan.limits.sites},403);
@@ -158,49 +174,61 @@ export const sitesApi = new Hono<App>()
 		const s = await ownSite(c.get("userId"), c.req.valid("param").id);
 		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
 		const hashes = [...new Set(c.req.valid("json").hashes)];
-		const found = new Set<string>();
-		for (let i = 0; i < hashes.length; i += 99) {
-			const rows = await db.select({ hash: siteBlob.hash }).from(siteBlob).where(and(eq(siteBlob.siteId, s.id), inArray(siteBlob.hash, hashes.slice(i, i + 99))));
-			for (const r of rows) found.add(r.hash);
-		}
+		const found = await storedHashes(c.env.DB, s.id, hashes);
 		return c.json({ missing: hashes.filter((h) => !found.has(h)) });
 	})
 
 	// One file, as stored; its name is the SHA-256 of these bytes.
 	.put("/:id/files/:hash", validate("param",idParam.extend({hash:hashId})), async (c) => {
 		const userId = c.get("userId");
-		const { hash } = c.req.valid("param");
-		const s = await ownSite(userId, c.req.valid("param").id);
-		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
-		const plan = await planOf(userId);
-		if (plan.limits.sites === 0) return c.json({ code: "PLAN" }, 403);
-		const [have] = await db.select({hash:siteBlob.hash}).from(siteBlob).where(and(eq(siteBlob.siteId,s.id),eq(siteBlob.hash,hash))).limit(1);
-		if(have) return c.json({ok:true});
+		const { id, hash } = c.req.valid("param");
+		const { plan, state } = c.get("access");
 		const rawLength=c.req.header("content-length"),length=rawLength===undefined?null:safeInt.safeParse(rawLength);
-		if(length && !length.success) return c.json({code:"INVALID"},400);
-		if(length?.success && length.data>plan.limits.maxFileMB*MB) return c.json({code:"TOO_LARGE",limitMB:plan.limits.maxFileMB},413);
+		// The refusals that need no lock, in the order they always had: not
+		// found, plan, already stored, invalid or too large.
+		const early=plan.limits.sites===0?{code:"PLAN",status:403} as const:length&&!length.success?{code:"INVALID",status:400} as const:length?.success&&length.data>plan.limits.maxFileMB*MB?{code:"TOO_LARGE",status:413} as const:null;
+		if(early){
+			const [owned,have]=await c.env.DB.batch([ownedSite(c.env.DB,userId,id),blobRead(c.env.DB,id,hash)]);
+			if(!owned?.results.length)return c.json({code:"NOT_FOUND"},404);
+			if(early.code!=="PLAN"&&have?.results.length)return c.json({ok:true});
+			return early.code==="TOO_LARGE"?c.json({code:early.code,limitMB:plan.limits.maxFileMB},413):c.json({code:early.code},early.status);
+		}
 		// Reserve before receiving a large object. Unknown lengths are bounded
 		// to a single sync-sized chunk and reserve that upper bound.
 		const upper=length?.success?length.data:Math.min(4*MB,plan.limits.maxFileMB*MB);
-		const reservation=await reserve(c.env.DB,userId,"storage",upper,await storageLimit(c.env.DB,userId,plan));
-		if(!reservation) return c.json({code:"QUOTA",limitMB:plan.limits.storageMB},413);
-		await c.env.DB.prepare("INSERT OR IGNORE INTO retired_deploy(site_id,deploy,delete_after) VALUES (?,'gc:',?)").bind(s.id,Date.now()+600_000).run();
-		const staging=`s/${s.id}/tmp/${crypto.randomUUID()}`;
-		const lock=await siteLock(c.env.DB,`blob:${s.id}:${hash}`,180_000);
-		if(!lock){await release(c.env.DB,reservation);return c.json({code:"DEPLOY_BUSY"},409);}
+		// One trip to D1: the blob's lock (only for the owner's site, and only
+		// while the file is not stored yet), the reservation (only under that
+		// lock) and the clean-up mark for a write that never settles. Each
+		// statement reads what the ones before it left, in one transaction.
+		const lockKey=`blob:${id}:${hash}`,lock=crypto.randomUUID(),now=Date.now();
+		const held={sql:"EXISTS(SELECT 1 FROM site_lease WHERE site_id=? AND token=?)",values:[lockKey,lock]};
+		const hold=reservationStatements(c.env.DB,userId,"storage",upper,storageLimitOf(plan,state),undefined,undefined,held);
+		const claimed=await c.env.DB.batch([
+			ownedSite(c.env.DB,userId,id),
+			blobRead(c.env.DB,id,hash),
+			c.env.DB.prepare("INSERT INTO site_lease(site_id,token,expires_at) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM site WHERE id=? AND user_id=?) AND NOT EXISTS(SELECT 1 FROM site_blob WHERE site_id=? AND hash=?) ON CONFLICT(site_id) DO UPDATE SET token=excluded.token,expires_at=excluded.expires_at WHERE expires_at<=? RETURNING token").bind(lockKey,lock,now+180_000,id,userId,id,hash,now),
+			...hold.statements,
+			c.env.DB.prepare(`INSERT OR IGNORE INTO retired_deploy(site_id,deploy,delete_after) SELECT ?,'gc:',? WHERE ${held.sql}`).bind(id,now+600_000,...held.values),
+		]);
+		if(!claimed[0]?.results.length)return c.json({code:"NOT_FOUND"},404);
+		if(claimed[1]?.results.length)return c.json({ok:true});
+		if(!claimed[2]?.results.length)return c.json({code:"DEPLOY_BUSY"},409);
+		const reservation=hold.reservation;
+		if(!claimed[4]?.results.length){await unlockStatement(c.env.DB,lockKey,lock).run();return c.json({code:"QUOTA",limitMB:plan.limits.storageMB},413);}
+		let settled=false;
 		try {
-			const stored=await stageFile(c.req.raw,c.env.SITES,staging,plan.limits.maxFileMB*MB);
+			// Straight to its final name: R2 checks the SHA-256 and refuses
+			// other bytes, so nothing but this file is ever stored there.
+			const stored=await receiveFile(c.req.raw,c.env.SITES,fileKey(id,hash),hash,plan.limits.maxFileMB*MB);
 			if(stored.hash!==hash) return c.json({code:"HASH_MISMATCH"},400);
-			const obj=await c.env.SITES.get(staging);
-			if(!obj) throw new Error("Staged object missing");
-			await c.env.SITES.put(fileKey(s.id,hash),obj.body.pipeThrough(new FixedLengthStream(stored.size),{signal:AbortSignal.timeout(30_000)}));
+			// The blob, the reservation's release and the unlock in one batch.
 			await settle(c.env.DB,reservation,[
-				c.env.DB.prepare("INSERT INTO site_blob(site_id,hash,size) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM site WHERE id=? AND user_id=?) ON CONFLICT DO NOTHING").bind(s.id,hash,stored.size,s.id,userId),
-				c.env.DB.prepare("UPDATE site SET bytes=bytes+? WHERE id=? AND changes()>0").bind(stored.size,s.id),
-			]);
+				c.env.DB.prepare("INSERT INTO site_blob(site_id,hash,size) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM site WHERE id=? AND user_id=?) ON CONFLICT DO NOTHING").bind(id,hash,stored.size,id,userId),
+				c.env.DB.prepare("UPDATE site SET bytes=bytes+? WHERE id=? AND changes()>0").bind(stored.size,id),
+			],[unlockStatement(c.env.DB,lockKey,lock)]);
+			settled=true;
 			return c.json({ok:true},201);
-		}finally{await Promise.allSettled([c.env.SITES.delete(staging),release(c.env.DB,reservation),unlockSite(c.env.DB,`blob:${s.id}:${hash}`,lock)]);}
-
+		}finally{if(!settled)await c.env.DB.batch([...releaseStatements(c.env.DB,reservation),unlockStatement(c.env.DB,lockKey,lock)]);}
 	})
 
 	// A deploy: every path and its file. Live as soon as it is saved.
@@ -208,17 +236,13 @@ export const sitesApi = new Hono<App>()
 		const userId = c.get("userId");
 		const s = await ownSite(userId, c.req.valid("param").id);
 		if (!s) return c.json({ code: "NOT_FOUND" }, 404);
-		if ((await planOf(userId)).limits.sites === 0) return c.json({ code: "PLAN" }, 403);
+		if (c.get("access").plan.limits.sites === 0) return c.json({ code: "PLAN" }, 403);
 		const lock=await siteLock(c.env.DB,s.id);
 		if(!lock) return c.json({code:"DEPLOY_BUSY"},409);
 		try {
 		const { files } = c.req.valid("json");
 		const hashes = [...new Set(files.map((f) => f.hash))];
-		const have = new Set<string>();
-		for (let i = 0; i < hashes.length; i += 99) {
-			const rows = await db.select({ hash: siteBlob.hash }).from(siteBlob).where(and(eq(siteBlob.siteId, s.id), inArray(siteBlob.hash, hashes.slice(i, i + 99))));
-			for (const r of rows) have.add(r.hash);
-		}
+		const have = await storedHashes(c.env.DB, s.id, hashes);
 		const missing = hashes.filter((h) => !have.has(h));
 		if (missing.length) return c.json({ code: "MISSING_FILES", missing: missing.slice(0, 1000) }, 409);
 

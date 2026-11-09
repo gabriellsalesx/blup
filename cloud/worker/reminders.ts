@@ -6,7 +6,8 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { and, eq } from "drizzle-orm";
 import { validate } from "./validation";
-import { auth, db } from "./auth";
+import { db } from "./auth";
+import { requestSession } from "./request-session";
 import { reminderMonth } from "./db/schema";
 import { planOf } from "./account";
 import { sendReminder } from "./email";
@@ -21,7 +22,7 @@ import { DAY, LATE, keep, listSchema, monthOf } from "./reminder-rules";
 type App = { Bindings: Cloudflare.Env; Variables: { userId: string } };
 
 const signedIn = createMiddleware<App>(async (c, next) => {
-	const s = await auth.api.getSession({ headers: c.req.raw.headers });
+	const s = await requestSession(c.req.raw);
 	if (!s || !await accountAllowed(c.env.DB,s.user.id)) return c.json({ code: "UNAUTHORIZED" }, 401);
 	c.set("userId", s.user.id);
 	await next();

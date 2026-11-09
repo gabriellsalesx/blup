@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { unlockSite } from "./quota";
+import { reservationStatements,unlockSite } from "./quota";
 import { readPlanState } from "./lifecycle";
 import type { Plan } from "./plans";
 
@@ -15,6 +15,19 @@ export async function lockUpload(db:D1Database,userId:string,id:string){
  const row=await db.prepare("INSERT INTO site_lease(site_id,token,expires_at) SELECT ?,?,? WHERE NOT EXISTS(SELECT 1 FROM site_lease WHERE site_id=? AND expires_at>?) ON CONFLICT(site_id) DO UPDATE SET token=excluded.token,expires_at=excluded.expires_at WHERE expires_at<=? RETURNING token").bind(key,token,now+120_000,syncLockKey(userId),now,now).first();
  return row?{key,token}:null;
 }
+// One trip to D1 before a block upload (no ticket): the block's lock is
+// taken only when the account has a key and the block is not stored yet,
+// then the storage is reserved only while that lock is this request's.
+// Each check reads what the statements before it left, in one transaction.
+export function uploadClaim(db:D1Database,userId:string,id:string,size:number,limit:number){
+ const token=crypto.randomUUID(),now=Date.now(),key=uploadPrefix(userId)+id;
+ const hold=reservationStatements(db,userId,"storage",size,limit,undefined,undefined,{sql:"EXISTS(SELECT 1 FROM site_lease WHERE site_id=? AND token=?)",values:[key,token]});
+ return {lock:{key,token},reservation:hold.reservation,statements:[
+  db.prepare("INSERT INTO site_lease(site_id,token,expires_at) SELECT ?,?,? WHERE NOT EXISTS(SELECT 1 FROM site_lease WHERE site_id=? AND expires_at>?) AND EXISTS(SELECT 1 FROM sync_account WHERE user_id=?) AND NOT EXISTS(SELECT 1 FROM sync_block WHERE user_id=? AND id=?) ON CONFLICT(site_id) DO UPDATE SET token=excluded.token,expires_at=excluded.expires_at WHERE expires_at<=? RETURNING token").bind(key,token,now+120_000,syncLockKey(userId),now,userId,userId,id,now),
+  db.prepare("SELECT EXISTS(SELECT 1 FROM sync_block WHERE user_id=? AND id=?) AS have,EXISTS(SELECT 1 FROM sync_account WHERE user_id=?) AS account").bind(userId,id,userId),
+  ...hold.statements,
+ ]};
+}
 export function uploadGuard(db:D1Database,userId:string,lock:{key:string;token:string}){
  return db.prepare("UPDATE resource_quota SET storage=CASE WHEN deleted_at IS NULL AND EXISTS(SELECT 1 FROM site_lease WHERE site_id=? AND token=? AND expires_at>?) THEN storage ELSE NULL END WHERE user_id=?").bind(lock.key,lock.token,Date.now(),userId);
 }
@@ -23,9 +36,13 @@ export const unlockSync=(db:D1Database,userId:string,token:string)=>unlockSite(d
 export class SyncError extends Error{
 	constructor(readonly code:string,readonly status:400|404|409|410|413|503,readonly head?:number){super(code);}
 }
-export async function storageLimit(db:D1Database,userId:string,plan:Plan,now=Date.now()){
-	const state=await readPlanState(db,userId),current=plan.limits.storageMB*1024*1024;
+// The storage cap: the plan's, or the previous plan's during the grace.
+export function storageLimitOf(plan:Plan,state:{graceUntil:number|null;storageGraceLimit:number|null}|null,now=Date.now()){
+	const current=plan.limits.storageMB*1024*1024;
 	return state?.graceUntil&&state.graceUntil>now&&state.storageGraceLimit!==null?Math.max(current,state.storageGraceLimit):current;
+}
+export async function storageLimit(db:D1Database,userId:string,plan:Plan,now=Date.now()){
+	return storageLimitOf(plan,await readPlanState(db,userId),now);
 }
 type StoredVersion={vaultId:string;n:number;key:string;size:number;createdAt:number;head:number};
 type StoredBlock={id:string;size:number;objectKey:string;createdAt:number};

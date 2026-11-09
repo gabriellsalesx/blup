@@ -1,17 +1,17 @@
-import { accountAllowed } from "./lifecycle";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, desc, eq, lt } from "drizzle-orm";
 import { z } from "zod";
 
 import { v7 as uuidv7 } from "uuid";
-import { auth, db } from "./auth";
-import { syncAccount, syncBlock, vault, vaultVersion } from "./db/schema";
-import { planOf } from "./account";
+import { db } from "./auth";
+import { requestSession } from "./request-session";
+import { syncAccount, vault, vaultVersion } from "./db/schema";
+import { accountAccess, type Access } from "./account";
 import { purgeVaultHistory, deleteVault } from "./sync-history";
 import { prepareTransfer,putPreparedBlock,commitTransfer,cancelTransfer,preparationSchema } from "./sync-transfers";
-import { lockUpload,unlockUpload,uploadGuard,storageLimit,SyncError } from "./sync-storage";
-import { reserve, release, settle } from "./quota";
+import { uploadClaim,uploadGuard,storageLimitOf,SyncError } from "./sync-storage";
+import { reserve, release, releaseStatements, settle, unlockStatement } from "./quota";
 import { validate, idParam, hashId, safeInt, boundedBody,opaqueId } from "./validation";
 
 // Sync of the notes of each site (a vault), end-to-end encrypted by the
@@ -27,17 +27,21 @@ import { validate, idParam, hashId, safeInt, boundedBody,opaqueId } from "./vali
 // another computer got there first the answer is 409 and the Studio
 // compares again.
 
-type App = { Bindings: Cloudflare.Env; Variables: { userId: string } };
+type App = { Bindings: Cloudflare.Env; Variables: { userId: string; access: Access } };
 
 const BLOCK_ID = /^[0-9a-f]{64}$/;
 // A block holds at most 4 MiB plus the seal (cloudcrypt.BlockSize).
 const MAX_BLOCK = 4 * 1024 * 1024 + 64;
 const MAX_MANIFEST = 32 * 1024 * 1024;
 
+// The session (shared with the rate limit), then the account and its plan
+// in one trip to D1.
 const signedIn = createMiddleware<App>(async (c, next) => {
-	const s = await auth.api.getSession({ headers: c.req.raw.headers });
-	if (!s || !await accountAllowed(c.env.DB,s.user.id)) return c.json({ code: "UNAUTHORIZED" }, 401);
+	const s = await requestSession(c.req.raw);
+	const access = s ? await accountAccess(c.env.DB, s.user.id) : null;
+	if (!s || !access?.allowed) return c.json({ code: "UNAUTHORIZED" }, 401);
 	c.set("userId", s.user.id);
+	c.set("access", access);
 	await next();
 });
 
@@ -71,7 +75,7 @@ export const syncApi = new Hono<App>()
 	.get("/live", async (c) => {
 		if (c.req.header("upgrade") !== "websocket") return c.json({ code: "UPGRADE_REQUIRED" }, 426);
 		const userId = c.get("userId");
-		if (!(await planOf(userId)).limits.live) return c.json({ code: "NOT_LIVE" }, 403);
+		if (!c.get("access").plan.limits.live) return c.json({ code: "NOT_LIVE" }, 403);
 		return c.env.SYNC_LIVE.getByName(userId).fetch(c.req.raw);
 	})
 
@@ -153,7 +157,7 @@ export const syncApi = new Hono<App>()
 		const parsed=z.object({parent:safeInt,blocks:z.string().max(1_500_000).transform(s=>s.split("\n").filter(Boolean)).pipe(z.array(hashId).max(20_000).refine(ids=>new Set(ids).size===ids.length)),manifest:z.instanceof(File).refine(f=>f.size>0&&f.size<=MAX_MANIFEST)}).safeParse({parent:form.get("parent"),blocks:form.get("blocks"),manifest:form.get("manifest")});
 		if(!parsed.success || [...form.keys()].some(k=>form.getAll(k).length!==1)) return c.json({code:"INVALID"},400);
 		const {parent,blocks,manifest}=parsed.data;
-		const plan=await planOf(userId);
+		const {plan}=c.get("access");
 		let ticket:string|undefined;
 		try{
 			const prepared=await prepareTransfer(c.env,userId,id,{parent,blocks:blocks.map(id=>({id,size:0})),manifest},plan);ticket=prepared.ticket;
@@ -177,11 +181,11 @@ export const syncApi = new Hono<App>()
 		const form=await c.req.formData().catch(()=>null);if(!form)return c.json({code:"INVALID"},400);
 		const parsed=preparationSchema.safeParse({parent:form.get("parent"),blocks:form.get("blocks"),manifest:form.get("manifest")});
 		if(!parsed.success||[...form.keys()].some(k=>form.getAll(k).length!==1))return c.json({code:"INVALID"},400);
-		return c.json(await prepareTransfer(c.env,c.get("userId"),c.req.valid("param").id,parsed.data,await planOf(c.get("userId"))));
+		return c.json(await prepareTransfer(c.env,c.get("userId"),c.req.valid("param").id,parsed.data,c.get("access").plan));
 	})
 	.post("/vaults/:id/commit",validate("param",idParam),validate("json",z.strictObject({ticket:opaqueId})),async c=>{
 		const result=await commitTransfer(c.env,c.get("userId"),c.req.valid("param").id,c.req.valid("json").ticket);
-		if((await planOf(c.get("userId"))).limits.live)c.executionCtx.waitUntil(c.env.SYNC_LIVE.getByName(c.get("userId")).notify(c.req.valid("param").id,result.n));
+		if(c.get("access").plan.limits.live)c.executionCtx.waitUntil(c.env.SYNC_LIVE.getByName(c.get("userId")).notify(c.req.valid("param").id,result.n));
 		return c.json(result);
 	})
 	.delete("/preparations/:ticket",validate("param",z.object({ticket:opaqueId})),async c=>{
@@ -192,12 +196,12 @@ export const syncApi = new Hono<App>()
 	.post("/blocks/missing", validate("json", z.strictObject({ ids: z.array(z.string().regex(BLOCK_ID)).max(1000) })), async (c) => {
 		const userId = c.get("userId");
 		const ids = [...new Set(c.req.valid("json").ids)];
-		const found = new Set<string>();
-		// D1 takes at most 100 bound values per statement.
-		for (let i = 0; i < ids.length; i += 99) {
-			const rows = await db.select({ id: syncBlock.id }).from(syncBlock).where(and(eq(syncBlock.userId, userId), inArray(syncBlock.id, ids.slice(i, i + 99))));
-			for (const r of rows) found.add(r.id);
-		}
+		// D1 takes at most 100 bound values per statement: the chunks go in
+		// one batch (one trip to D1).
+		const chunks: string[][] = [];
+		for (let i = 0; i < ids.length; i += 99) chunks.push(ids.slice(i, i + 99));
+		const pages = chunks.length ? await c.env.DB.batch<{ id: string }>(chunks.map((part) => c.env.DB.prepare(`SELECT id FROM sync_block WHERE user_id=? AND id IN (${part.map(() => "?").join(",")})`).bind(userId, ...part))) : [];
+		const found = new Set(pages.flatMap((page) => page.results.map((r) => r.id)));
 		return c.json({ missing: ids.filter((id) => !found.has(id)) });
 	})
 	.put("/blocks/:id", validate("param",z.object({id:hashId})), async (c) => {
@@ -207,29 +211,34 @@ export const syncApi = new Hono<App>()
 		if (body.byteLength === 0 || body.byteLength > MAX_BLOCK) return c.json({ code: "BAD_REQUEST" }, 400);
 		const ticket=c.req.header("x-blup-upload-ticket");
 		if(ticket)return c.json(await putPreparedBlock(c.env,userId,ticket,id,body));
-		const [plan,acc]=await Promise.all([planOf(userId),account(userId)]);
-		if(!acc)return c.json({code:"NO_KEY"},409);
-		const lock=await lockUpload(c.env.DB,userId,id);if(!lock)throw new SyncError("SYNC_BUSY",409);
-		let hold:Awaited<ReturnType<typeof reserve>>=null;
+		const {plan,state}=c.get("access");
+		// One trip: lock, checks and reservation (uploadClaim).
+		const claim=uploadClaim(c.env.DB,userId,id,body.byteLength,storageLimitOf(plan,state));
+		const claimed=await c.env.DB.batch(claim.statements);
+		const checks=z.object({have:z.number(),account:z.number()}).parse(claimed[1]?.results[0]);
+		if(!checks.account)return c.json({code:"NO_KEY"},409);
+		if(checks.have)return c.json({ok:true});
+		if(!claimed[0]?.results.length)throw new SyncError("SYNC_BUSY",409);
+		const {lock,reservation:hold}=claim;
+		if(!claimed[3]?.results.length){await unlockStatement(c.env.DB,lock.key,lock.token).run();return c.json({code:"QUOTA",limitMB:plan.limits.storageMB},413);}
 		const physical=`u/${userId}/b/${id}-${uuidv7()}`;
+		let settled=false;
 		try{
-			const have=await c.env.DB.prepare("SELECT id FROM sync_block WHERE user_id=? AND id=?").bind(userId,id).first();
-			if(have)return c.json({ok:true});
-			hold=await reserve(c.env.DB,userId,"storage",body.byteLength,await storageLimit(c.env.DB,userId,plan));
-			if(!hold)return c.json({code:"QUOTA",limitMB:plan.limits.storageMB},413);
 			await c.env.NOTES.put(physical,body);
+			// The usage, the reservation's release and the unlock in one batch.
 			await settle(c.env.DB,hold,[
 				uploadGuard(c.env.DB,userId,lock),
 				c.env.DB.prepare("INSERT INTO sync_block(user_id,id,size,object_key) VALUES (?,?,?,?)").bind(userId,id,body.byteLength,physical),
 				c.env.DB.prepare("UPDATE sync_account SET storage_bytes=storage_bytes+? WHERE user_id=?").bind(body.byteLength,userId),
-			]);return c.json({ok:true},201);
+			],[unlockStatement(c.env.DB,lock.key,lock.token)]);
+			settled=true;
+			return c.json({ok:true},201);
 		}catch(e){
-   // D1 may have committed before its acknowledgement was lost.
-   try{const adopted=await c.env.DB.prepare("SELECT object_key AS key FROM sync_block WHERE user_id=? AND id=?").bind(userId,id).first<{key:string|null}>();if(adopted?.key!==physical)await c.env.NOTES.delete(physical);}catch{console.error("[blup] upload_cleanup_retry");}
-   throw e;
-  }
-		finally{if(hold)await release(c.env.DB,hold);await unlockUpload(c.env.DB,lock);}
-
+			// D1 may have committed before its acknowledgement was lost.
+			try{const adopted=await c.env.DB.prepare("SELECT object_key AS key FROM sync_block WHERE user_id=? AND id=?").bind(userId,id).first<{key:string|null}>();if(adopted?.key!==physical)await c.env.NOTES.delete(physical);}catch{console.error("[blup] upload_cleanup_retry");}
+			throw e;
+		}
+		finally{if(!settled)await c.env.DB.batch([...releaseStatements(c.env.DB,hold),unlockStatement(c.env.DB,lock.key,lock.token)]);}
 	})
 	.get("/blocks/:id", validate("param",z.object({id:hashId})), async (c) => {
 		const { id } = c.req.valid("param");

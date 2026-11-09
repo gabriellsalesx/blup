@@ -20,11 +20,17 @@ type PlanState={lastPlan:string|null;graceUntil:number|null;storageGraceLimit:nu
 export async function readPlanState(db:D1Database,userId:string){
  return db.prepare("SELECT last_plan AS lastPlan,grace_until AS graceUntil,storage_grace_limit AS storageGraceLimit,selected_site_id AS selectedSiteId,domain_grace_until AS domainGraceUntil FROM resource_quota WHERE user_id=?").bind(userId).first<PlanState>();
 }
-export async function observePlan(db:D1Database,userId:string,name:string,now=Date.now()):Promise<PlanState|null> {
- await ensureQuota(db,userId);
+export type PlanStateRow=PlanState&{used:number;sites:number;domains:number};
+// What observePlan compares, for an account's resource_quota row (alias q).
+export const PLAN_STATE_COLUMNS="q.last_plan AS lastPlan,q.grace_until AS graceUntil,q.storage_grace_limit AS storageGraceLimit,q.selected_site_id AS selectedSiteId,q.domain_grace_until AS domainGraceUntil,coalesce((SELECT storage_bytes FROM sync_account WHERE user_id=q.user_id),0)+coalesce((SELECT sum(bytes) FROM site WHERE user_id=q.user_id),0) AS used,(SELECT count(*) FROM site WHERE user_id=q.user_id) AS sites,(SELECT count(*) FROM site_domain d JOIN site s ON s.id=d.site_id WHERE s.user_id=q.user_id AND d.status<>'disabled') AS domains";
+export const planStateRead=(db:D1Database,userId:string)=>db.prepare(`SELECT ${PLAN_STATE_COLUMNS} FROM resource_quota q WHERE q.user_id=? AND q.deleted_at IS NULL`).bind(userId);
+// `read`: the row as just read in the same batch as ensureQuota (see
+// account.ts), which saves the first two trips to D1. Undefined: read here.
+export async function observePlan(db:D1Database,userId:string,name:string,now=Date.now(),read?:PlanStateRow|null):Promise<PlanState|null> {
+ if(read===undefined)await ensureQuota(db,userId);
  const plan=planNamed(name),limit=plan.limits.storageMB*1024*1024;
  for(let attempt=0;attempt<4;attempt++){
-  const row=await db.prepare("SELECT last_plan AS lastPlan,grace_until AS graceUntil,storage_grace_limit AS storageGraceLimit,selected_site_id AS selectedSiteId,domain_grace_until AS domainGraceUntil,coalesce((SELECT storage_bytes FROM sync_account WHERE user_id=q.user_id),0)+coalesce((SELECT sum(bytes) FROM site WHERE user_id=q.user_id),0) AS used,(SELECT count(*) FROM site WHERE user_id=q.user_id) AS sites,(SELECT count(*) FROM site_domain d JOIN site s ON s.id=d.site_id WHERE s.user_id=q.user_id AND d.status<>'disabled') AS domains FROM resource_quota q WHERE user_id=? AND deleted_at IS NULL").bind(userId).first<PlanState&{used:number;sites:number;domains:number}>();
+  const row=attempt===0&&read!==undefined?read:await planStateRead(db,userId).first<PlanStateRow>();
   if(!row)return null;
   const excessSites=plan.limits.sites>=0&&row.sites>plan.limits.sites,excessStorage=row.used>limit;
   const graceUntil=excessSites||excessStorage?(row.graceUntil??now+14*DAY):null;

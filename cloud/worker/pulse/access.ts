@@ -1,10 +1,11 @@
 import {createMiddleware} from "hono/factory";
-import {auth,type Session} from "../auth";
+import {type Session} from "../auth";
+import {requestSession} from "../request-session";
 import {accountAllowed} from "../lifecycle";
 import {pulseAccess,projectId} from "./limits";
 export type PulseApp={Bindings:Cloudflare.Env;Variables:{session:Session;access:Awaited<ReturnType<typeof pulseAccess>>}};
 export const pulseSession=createMiddleware<PulseApp>(async(c,next)=>{
- const session=await auth.api.getSession({headers:c.req.raw.headers});if(!session||!await accountAllowed(c.env.DB,session.user.id))return c.json({code:"UNAUTHORIZED"},401);
+ const session=await requestSession(c.req.raw);if(!session||!await accountAllowed(c.env.DB,session.user.id))return c.json({code:"UNAUTHORIZED"},401);
  c.set("session",session);c.set("access",await pulseAccess(c.env,session.user.id));await next();
 });
 export const pulseWrite=createMiddleware<PulseApp>(async(c,next)=>{if(!c.get("access").writable)return c.json({code:"PLAN"},403);await next();});
