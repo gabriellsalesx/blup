@@ -107,7 +107,11 @@
 				{ "pattern": "cloud.getblup.io", "custom_domain": true },
 				{ "pattern": "ingest.getblup.io", "custom_domain": true },
 				{ "pattern": "pulse.getblup.site", "custom_domain": true },
-				{ "pattern": "deals.getblup.site", "custom_domain": true },
+				// Uma rota, não um Custom Domain: o Worker dos sites tem a rota
+				// curinga */* na zona getblup.site, e rota ganha de Custom
+				// Domain; só uma rota mais específica ganha da curinga. Sem isso,
+				// as páginas do Deals e os links /r/ caíam no Worker dos sites (404).
+				{ "pattern": "deals.getblup.site/*", "zone_name": "getblup.site" },
 				{ "pattern": "staff.getblup.io", "custom_domain": true }
 			],
 			"d1_databases": [
