@@ -537,6 +537,7 @@
           <small class="muted">{s.updateReadyHelp}</small>
         {:else if updateJob.phase === "failed"}
           <p class="bad">{s.updateDlFail}</p>
+          {#if updateJob.error}<small class="muted">{updateJob.error}</small>{/if}
           <div class="row"><button class="btn ghost" onclick={() => OpenURL(downloadPage())}>{s.updateSite}</button></div>
         {/if}
       </div>

@@ -17,9 +17,10 @@ func TestStudioSelfUpdate(t *testing.T) {
 		kind                        update.StudioKind
 		target                      string
 	}{
-		{"appimage", "linux", "amd64", "/tmp/.mount_x/usr/bin/blup-studio", "", map[string]string{"APPIMAGE": "/home/a/bin/blup-studio.AppImage"}, update.StudioAppImage, "/home/a/bin/blup-studio.AppImage"},
+		{"appimage", "linux", "amd64", "/tmp/.mount_x/usr/bin/blup-studio", "", map[string]string{"APPIMAGE": "/home/a/bin/blup-studio.AppImage", "APPDIR": "/tmp/.mount_x"}, update.StudioAppImage, "/home/a/bin/blup-studio.AppImage"},
 		{"appimage on arm64", "linux", "arm64", "/tmp/.mount_x/usr/bin/blup-studio", "", map[string]string{"APPIMAGE": "/home/a/blup.AppImage"}, "", ""},
 		{"linux tarball", "linux", "amd64", "/home/a/blup-studio", "", nil, "", ""},
+		{"started from another AppImage", "linux", "amd64", "/home/a/blup-studio", "", map[string]string{"APPIMAGE": "/home/a/Terminal.AppImage", "APPDIR": "/tmp/.mount_term"}, "", ""},
 		{"deb", "linux", "amd64", "/usr/bin/blup-studio", "package", nil, "", ""},
 		{"flatpak", "linux", "amd64", "/app/bin/blup-studio", "flatpak", map[string]string{"APPIMAGE": "/x.AppImage"}, "", ""},
 		{"macos", "darwin", "arm64", "/Applications/Blup Studio.app/Contents/MacOS/blup-studio", "", nil, update.StudioMac, "/Applications/Blup Studio.app"},

@@ -9,6 +9,6 @@ import (
 
 // detach starts cmd in a session of its own: it outlives this Studio and
 // a terminal closing never stops it.
-func detach(cmd *exec.Cmd) {
+func detach(cmd *exec.Cmd, _ bool) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 }

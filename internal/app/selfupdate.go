@@ -33,7 +33,12 @@ func studioSelfUpdate(goos, goarch, exe, updatesBy string, env func(string) stri
 	switch goos {
 	case "linux":
 		// Only the x86_64 AppImage is published; APPIMAGE names its file.
-		if file := env("APPIMAGE"); file != "" && goarch == "amd64" && filepath.IsAbs(file) {
+		// APPIMAGE passes on to every program started from an AppImage (a
+		// terminal packaged as one): it counts only when this Studio runs
+		// from inside that AppImage's own mount (APPDIR), else the update
+		// would overwrite the other program's file.
+		file, appdir := env("APPIMAGE"), env("APPDIR")
+		if file != "" && appdir != "" && goarch == "amd64" && filepath.IsAbs(file) && strings.HasPrefix(exe, filepath.Clean(appdir)+string(filepath.Separator)) {
 			return update.StudioAppImage, file
 		}
 	case "windows":

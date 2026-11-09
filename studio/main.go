@@ -77,6 +77,9 @@ func main() {
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		fitWindow(win, 900, 560)
 	})
+	// What a past update left behind (a download never installed, the old
+	// macOS app), off the window's way.
+	go cleanUpdateLeftovers()
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}

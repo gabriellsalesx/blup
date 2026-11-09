@@ -33,8 +33,8 @@ func TestInstallAppImageSwapsTheFile(t *testing.T) {
 }
 
 func TestOutsideAppImage(t *testing.T) {
-	env := outsideAppImage([]string{"HOME=/home/a", "LD_LIBRARY_PATH=/tmp/.mount/usr/lib", "GST_PLUGIN_PATH_1_0=/x", "APPIMAGE=/a.AppImage", "WEBKIT_INJECTED_BUNDLE_PATH=/y", "PATH=/usr/bin"})
-	if !slices.Equal(env, []string{"HOME=/home/a", "PATH=/usr/bin"}) {
+	env := outsideAppImage([]string{"HOME=/home/a", "APPDIR=/tmp/.mount_x", "LD_LIBRARY_PATH=/tmp/.mount_x/usr/lib", "GST_PLUGIN_PATH_1_0=/x", "APPIMAGE=/a.AppImage", "WEBKIT_INJECTED_BUNDLE_PATH=/y", "PATH=/tmp/.mount_x/usr/bin:/usr/bin", "XDG_DATA_DIRS=/tmp/.mount_x/usr/share:/usr/share"})
+	if !slices.Equal(env, []string{"HOME=/home/a", "PATH=/usr/bin", "XDG_DATA_DIRS=/usr/share"}) {
 		t.Fatalf("got %v", env)
 	}
 }
@@ -45,7 +45,7 @@ func TestInstallWindowsScript(t *testing.T) {
 		t.Fatal(err)
 	}
 	script := cmd.Args[len(cmd.Args)-1]
-	for _, want := range []string{"Wait-Process -Id", `'/S /D=C:\Users\a\AppData\Local\Programs\Blup Studio'`, `'C:\Users\a\AppData\Local\blup\studio-update\setup''s.exe'`} {
+	for _, want := range []string{"while (Get-Process -Id", "-PassThru", "ExitCode -eq 0", `'/S /D=C:\Users\a\AppData\Local\Programs\Blup Studio'`, `'C:\Users\a\AppData\Local\blup\studio-update\setup''s.exe'`} {
 		if !strings.Contains(script, want) {
 			t.Fatalf("script lacks %q:\n%s", want, script)
 		}
