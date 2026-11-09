@@ -27,7 +27,7 @@ type Overrides = Record<string, Record<string, Json>>;
 // (VITE_SENTRY_DSN, the Pulse project of the panels).
 const BUILD_ENV = "build_env";
 
-const CONFIGS = ["wrangler.jsonc", "wrangler.sites.jsonc", "wrangler.pulse.jsonc", "wrangler.deals.jsonc"] as const;
+const CONFIGS = ["wrangler.jsonc", "wrangler.sites.jsonc", "wrangler.edge.jsonc", "wrangler.pulse.jsonc", "wrangler.deals.jsonc"] as const;
 // The sites Worker only gets what it reads; auth, Stripe, AI and CF_API_TOKEN stay in the Cloud Worker.
 const SITES_SECRETS = ["STAFF_OWNER_EMAIL", "SENTRY_DSN"];
 const PLACEHOLDERS: Record<string, string> = {
@@ -133,11 +133,11 @@ function main() {
 	const [command, ...flags] = process.argv.slice(2);
 	const configs = prepareConfigs();
 	const cloud = configs["wrangler.jsonc"]!, sites = configs["wrangler.sites.jsonc"]!;
-	const pulse = configs["wrangler.pulse.jsonc"]!, deals = configs["wrangler.deals.jsonc"]!;
+	const pulse = configs["wrangler.pulse.jsonc"]!, deals = configs["wrangler.deals.jsonc"]!, edge = configs["wrangler.edge.jsonc"]!;
 	switch (command) {
 		case "check":
 			build();
-			for (const c of [sites, cloud, pulse, deals]) wrangler("deploy", "-c", c, "--env", "production", "--dry-run");
+			for (const c of [sites, cloud, edge, pulse, deals]) wrangler("deploy", "-c", c, "--env", "production", "--dry-run");
 			break;
 		case "migrate":
 			wrangler("d1", "migrations", "apply", "DB", "--remote", "--env", "production", "-c", cloud);
@@ -149,6 +149,10 @@ function main() {
 			build();
 			wrangler("deploy", "-c", sites, "--env", "production", "--secrets-file", secrets.sites);
 			wrangler("deploy", "-c", cloud, "--env", "production", "--secrets-file", secrets.cloud);
+			// After the Cloud's Worker, which it calls: cloud.getblup.io and
+			// staff.getblup.io move to it (the first time wrangler asks to take
+			// them from blup-cloud-production: answer yes).
+			wrangler("deploy", "-c", edge, "--env", "production");
 			wrangler("deploy", "-c", pulse, "--env", "production");
 			wrangler("deploy", "-c", deals, "--env", "production");
 			break;

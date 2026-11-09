@@ -104,15 +104,17 @@
 			"triggers": { "crons": ["0 4 * * *", "*/5 * * * *", "* * * * *"] },
 			"preview_urls": false,
 			"routes": [
-				{ "pattern": "cloud.getblup.io", "custom_domain": true },
+				// cloud.getblup.io and staff.getblup.io belong to the Worker at the
+				// edge (wrangler.edge.jsonc), which passes /api, /staff and /_blup
+				// here: with Smart Placement this Worker runs near the database,
+				// and the panel's pages would travel there and back for nothing.
 				{ "pattern": "ingest.getblup.io", "custom_domain": true },
 				{ "pattern": "pulse.getblup.site", "custom_domain": true },
 				// Uma rota, não um Custom Domain: o Worker dos sites tem a rota
 				// curinga */* na zona getblup.site, e rota ganha de Custom
 				// Domain; só uma rota mais específica ganha da curinga. Sem isso,
 				// as páginas do Deals e os links /r/ caíam no Worker dos sites (404).
-				{ "pattern": "deals.getblup.site/*", "zone_name": "getblup.site" },
-				{ "pattern": "staff.getblup.io", "custom_domain": true }
+				{ "pattern": "deals.getblup.site/*", "zone_name": "getblup.site" }
 			],
 			"d1_databases": [
 				{

@@ -1,0 +1,28 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	// The panel at the edge (worker/edge.ts): cloud.getblup.io and
+	// staff.getblup.io. The pages (the same build as the Cloud's Worker) come
+	// from the nearest location; /api, /staff and /_blup go to the Cloud's
+	// Worker, near the database, by a service binding.
+	"name": "blup-cloud-edge",
+	"main": "worker/edge.ts",
+	"compatibility_date": "2026-10-28",
+	"observability": { "enabled": true },
+	"assets": {
+		"directory": "./build",
+		"not_found_handling": "single-page-application",
+		"run_worker_first": ["/api/*", "/staff", "/staff/*", "/_blup/*"]
+	},
+	"services": [{ "binding": "BACKEND", "service": "blup-cloud" }],
+	"env": {
+		"production": {
+			"workers_dev": false,
+			"preview_urls": false,
+			"routes": [
+				{ "pattern": "cloud.getblup.io", "custom_domain": true },
+				{ "pattern": "staff.getblup.io", "custom_domain": true }
+			],
+			"services": [{ "binding": "BACKEND", "service": "blup-cloud-production" }]
+		}
+	}
+}
