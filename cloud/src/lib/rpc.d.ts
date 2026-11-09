@@ -3098,18 +3098,6 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
-                code: string;
-            };
-            outputFormat: "json";
-            status: 403;
-        } | {
-            input: {
-                param: {
-                    id: string;
-                    hash: string;
-                };
-            };
-            output: {
                 ok: true;
             };
             outputFormat: "json";
@@ -3122,10 +3110,22 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
+                code: "INVALID" | "PLAN";
+            };
+            outputFormat: "json";
+            status: 400 | 403;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                    hash: string;
+                };
+            };
+            output: {
                 code: string;
             };
             outputFormat: "json";
-            status: 400;
+            status: 409;
         } | {
             input: {
                 param: {
@@ -3150,7 +3150,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 code: string;
             };
             outputFormat: "json";
-            status: 409;
+            status: 400;
         };
     };
 }) & {
