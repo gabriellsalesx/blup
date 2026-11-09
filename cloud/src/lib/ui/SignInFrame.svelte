@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
+	import { MediaQuery } from "svelte/reactivity";
 	import Check from "@lucide/svelte/icons/check";
 	import { t } from "#lib/i18n.svelte.ts";
 	import cloudScene from "#lib/assets/login-blups.svg?raw";
@@ -25,6 +26,9 @@
 		deals: { brand: "bg-[#c2410c]", title: "dealsAccessTitle", lead: "dealsAccessLead", perks: ["dealsAccessChannels", "dealsAccessIds", "dealsAccessGames"], scene: dealsScene, mint: false, coral: true },
 	} as const;
 	const look = $derived(looks[app]);
+	// Only the band of this screen size is drawn (Tailwind's md, 48rem): the
+	// drawing and its animation are the heaviest part of the page.
+	const wide = new MediaQuery("min-width: 48rem");
 </script>
 
 
@@ -37,6 +41,7 @@
 	</svg>
 
 	<div class="relative flex min-h-dvh w-full max-w-5xl flex-col md:grid md:min-h-[42rem] md:grid-cols-[minmax(0,26rem)_1fr] md:overflow-hidden md:rounded-3xl md:bg-white md:shadow-sm md:dark:bg-neutral-900">
+		{#if !wide.current}
 		<!-- Phone: the band in the app color. -->
 		<header class="panel relative flex items-end gap-2 overflow-hidden px-6 pt-6 pb-12 text-white md:hidden">
 			<div class="min-w-0 flex-1 self-start">
@@ -45,7 +50,7 @@
 			</div>
 			<div class="-mr-4 -mb-6 w-[56%] shrink-0"><Scene svg={look.scene} /></div>
 		</header>
-
+		{:else}
 		<!-- Large screens: the panel in the app color. -->
 		<aside class="panel relative hidden flex-col {look.brand} px-10 pt-10 text-white md:flex">
 			<BlupLogo mint={look.mint} coral={look.coral} class="h-9 w-auto self-start text-white" />
@@ -58,11 +63,12 @@
 			</ul>
 			<div class="-mx-4 mt-auto pt-6"><Scene svg={look.scene} /></div>
 		</aside>
+		{/if}
 
 		<!-- The form: a sheet on the phone, the right half on large screens. -->
-		<div class="relative -mt-6 flex flex-1 flex-col rounded-t-3xl bg-white px-6 pt-10 pb-10 md:mt-0 md:grid md:place-items-center md:rounded-none md:px-16 md:py-12 dark:bg-neutral-900">
+		<main class="relative -mt-6 flex flex-1 flex-col rounded-t-3xl bg-white px-6 pt-10 pb-10 md:mt-0 md:grid md:place-items-center md:rounded-none md:px-16 md:py-12 dark:bg-neutral-900">
 			<div class="w-full max-w-[400px]">{@render children()}</div>
-		</div>
+		</main>
 	</div>
 
 	<div class="absolute top-4 right-4 z-10 flex items-center gap-2"><LanguagePicker /><ThemePicker /></div>
