@@ -118,18 +118,47 @@ func writeShared(s *config.Site) error {
 	return os.WriteFile(p, b, 0o644)
 }
 
-// readShared applies settings that came from another computer.
-func readShared(s *config.Site) error {
+// readShared applies settings that came from another computer. s is
+// never changed (another goroutine may be reading it): the settings go on
+// a copy, saved and returned, and whoever holds the site (OnSiteSettings)
+// swaps it in.
+func readShared(s *config.Site) (*config.Site, error) {
 	b, err := os.ReadFile(sharedPath(s))
 	if err != nil {
-		return err
+		return s, err
 	}
 	sh, err := parseShared(b)
 	if err != nil {
-		return err
+		return s, err
 	}
-	sh.apply(s)
-	return s.Save()
+	fresh := *s
+	fresh.Translations = slices.Clone(s.Translations)
+	sh.apply(&fresh)
+	if err := fresh.Save(); err != nil {
+		return s, err
+	}
+	siteSettings.Lock()
+	fn := siteSettings.fn
+	siteSettings.Unlock()
+	if fn != nil {
+		fn(&fresh)
+	}
+	return &fresh, nil
+}
+
+// siteSettings is who hears of settings that came from another computer.
+var siteSettings struct {
+	sync.Mutex
+	fn func(*config.Site)
+}
+
+// OnSiteSettings makes fn hear each site whose settings came from another
+// computer with a sync (the site as it is now, a new value: the old one
+// is left as it was). nil stops it.
+func OnSiteSettings(fn func(*config.Site)) {
+	siteSettings.Lock()
+	siteSettings.fn = fn
+	siteSettings.Unlock()
 }
 
 // CloudSite is a Blup site found on the user's GitHub.
@@ -257,7 +286,7 @@ func BringSite(ctx context.Context, owner, repo string) (*config.Site, error) {
 	if _, err := syncSite(ctx, site, false); err != nil {
 		return nil, err
 	}
-	if err := readShared(site); err != nil {
+	if site, err = readShared(site); err != nil {
 		return nil, err
 	}
 	if err := RememberSite(dir); err != nil {

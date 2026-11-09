@@ -1,6 +1,9 @@
 package main
 
-import "github.com/wailsapp/wails/v3/pkg/application"
+import (
+	"github.com/gabriellsalesx/blup/internal/app"
+	"github.com/wailsapp/wails/v3/pkg/application"
+)
 
 // The events the window hears that no other file registers. A registered
 // event gets its data type in the bindings (eventdata.d.ts), so the
@@ -12,6 +15,44 @@ func init() {
 	application.RegisterEvent[string]("previewChanged")
 	// A click on a calendar reminder: the window opens that day.
 	application.RegisterEvent[CalendarOpen]("calendarOpen")
+	// The Blup Cloud account changed: signed in, signed out, the notes
+	// password made or typed, or the plan changed in the browser. The
+	// account as it is now (SignedIn false when signed out).
+	application.RegisterEvent[app.BlupAccount]("blupAccount")
+	// The open site's settings changed outside its screens (they came
+	// with a sync from another computer, or hugo.toml was edited).
+	application.RegisterEvent[SiteSettingsChanged]("siteSettingsChanged")
+	// A GitHub, Cloudflare or OpenRouter key was connected or forgotten:
+	// the screens that show the connections read them again.
+	application.RegisterEvent[ConnectionsChanged]("connectionsChanged")
+	// Notes changed on disk (an agent, another editor, the sync).
+	application.RegisterEvent[NotesChanged]("notesChanged")
+}
+
+// SiteSettingsChanged is heard as "siteSettingsChanged": the site's folder.
+type SiteSettingsChanged struct {
+	Dir string `json:"dir"`
+}
+
+// ConnectionsChanged is heard as "connectionsChanged": "github",
+// "cloudflare" or "openrouter".
+type ConnectionsChanged struct {
+	Account string `json:"account"`
+}
+
+// NotesChanged is heard as "notesChanged": the site's folder and the
+// notes that changed, relative to its notes folder, with "/".
+type NotesChanged struct {
+	Dir   string   `json:"dir"`
+	Paths []string `json:"paths"`
+}
+
+// emit sends an event to the window (nothing when there is no app, as in
+// the tests).
+func emit[T any](name string, data T) {
+	if a := application.Get(); a != nil {
+		a.Event.Emit(name, data)
+	}
 }
 
 // CalendarOpen is the reminder the person clicked, heard by the window as

@@ -6,6 +6,7 @@
   import { saver } from "./saving.svelte";
   import { t } from "./i18n";
   import { toast, toastError } from "./toast.svelte";
+  import { onNotesChanged } from "./changes";
   import Upload from "@lucide/svelte/icons/upload";
   import FileText from "@lucide/svelte/icons/file-text";
   import Music from "@lucide/svelte/icons/music";
@@ -38,6 +39,9 @@
     for (const a of list) if (a.kind === "image" && thumbs[a.name] === undefined) thumbs[a.name] = await Thumbnail(a.name).catch(() => "");
   }
   load();
+  // Files added, renamed or taken out on disk (the sync, another app), or
+  // a note that links one: read again.
+  $effect(() => onNotesChanged(() => { load().catch(() => {}); }));
 
   const shown = $derived(list.filter((a) =>
     (filter === "all" || (filter === "image" ? a.kind === "image" : filter === "other" ? a.kind !== "image" : !a.uses?.length)) &&

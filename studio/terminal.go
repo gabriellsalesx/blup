@@ -4,10 +4,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"io/fs"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,7 +38,6 @@ type TermData struct {
 
 func init() {
 	application.RegisterEvent[TermData]("term")
-	application.RegisterEvent[string]("notesChanged")
 	application.RegisterEvent[app.LiveState]("cloudSync")
 }
 
@@ -238,15 +239,21 @@ var (
 	watchReady chan struct{}
 )
 
-// notesChanged tells the window which notes changed (one per line).
-var notesChanged = func(list string) { application.Get().Event.Emit("notesChanged", list) }
+// notesChanged tells the window which notes changed.
+var notesChanged = func(c NotesChanged) { emit("notesChanged", c) }
+
+// siteFileChanged tells the window the site's settings file (hugo.toml)
+// changed on disk.
+var siteFileChanged = func(dir string) { emit("siteSettingsChanged", SiteSettingsChanged{Dir: dir}) }
 
 // watchNotes tells the window when notes change on disk (an agent, another
-// editor), at most every half second. Hidden folders are left out. The
+// editor), at most every half second; and when the site's hugo.toml in
+// dir (the site's folder) changes. Hidden folders are left out. The
 // folders are gone through in the watcher's own goroutine, so opening a
 // big vault doesn't wait for it; another site opened meanwhile closes this
-// watcher, and the walk stops at its next folder.
-func watchNotes(root string) {
+// watcher, the walk stops at its next folder, and what was waiting to be
+// told of it is dropped.
+func watchNotes(dir, root string) {
 	watchMu.Lock()
 	defer watchMu.Unlock()
 	if watcher != nil {
@@ -258,20 +265,39 @@ func watchNotes(root string) {
 	}
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
+		log.Printf("blup studio: watching the notes: %v", err)
 		return
 	}
 	watcher = w
 	ready := make(chan struct{})
 	watchReady = ready
+	// hugo.toml lives in the site's folder, outside the notes (most of
+	// the time): that folder is watched too, alone.
+	hugoFile := ""
+	if dir != "" {
+		hugoFile = filepath.Join(dir, "hugo.toml")
+		if rel, err := filepath.Rel(root, dir); err != nil || strings.HasPrefix(rel, "..") {
+			if err := w.Add(dir); err != nil {
+				log.Printf("blup studio: watching %s: %v", dir, err)
+			}
+		}
+	}
+	// current tells whether w is still the watcher (not one closed by
+	// another site opened).
+	current := func() bool {
+		watchMu.Lock()
+		defer watchMu.Unlock()
+		return watcher == w
+	}
 	// The folders at the top of the notes, to know a removed name was one.
 	// Only the goroutine below touches it.
 	top := map[string]bool{}
-	add := func(dir string) {
-		filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-			if err != nil || !d.IsDir() {
+	add := func(d string) {
+		filepath.WalkDir(d, func(p string, e fs.DirEntry, err error) error {
+			if err != nil || !e.IsDir() {
 				return nil
 			}
-			if p != dir && strings.HasPrefix(d.Name(), ".") {
+			if p != d && strings.HasPrefix(e.Name(), ".") {
 				return filepath.SkipDir
 			}
 			if filepath.Dir(p) == root {
@@ -279,6 +305,8 @@ func watchNotes(root string) {
 			}
 			if err := w.Add(p); errors.Is(err, fsnotify.ErrClosed) {
 				return filepath.SkipAll // another site opened: this walk is over
+			} else if err != nil {
+				log.Printf("blup studio: watching %s: %v", p, err)
 			}
 			return nil
 		})
@@ -287,19 +315,55 @@ func watchNotes(root string) {
 		// Changes during the walk wait in the system's queue, read below.
 		add(root)
 		close(ready)
-		var timer *time.Timer
+		var (
+			mu         sync.Mutex
+			timer      *time.Timer
+			settingsAt *time.Timer
+			closed     bool
+		)
 		changed := map[string]bool{}
-		var mu sync.Mutex
+		defer func() {
+			// Closed: nothing waiting goes out (the paths are of a site
+			// no longer open).
+			mu.Lock()
+			closed = true
+			if timer != nil {
+				timer.Stop()
+			}
+			if settingsAt != nil {
+				settingsAt.Stop()
+			}
+			mu.Unlock()
+		}()
 		for {
 			select {
 			case ev, ok := <-w.Events:
 				if !ok {
 					return
 				}
+				if hugoFile != "" && ev.Name == hugoFile {
+					if ev.Op == fsnotify.Chmod {
+						continue
+					}
+					mu.Lock()
+					if settingsAt == nil {
+						settingsAt = time.AfterFunc(500*time.Millisecond, func() {
+							mu.Lock()
+							settingsAt = nil
+							gone := closed
+							mu.Unlock()
+							if !gone && current() {
+								siteFileChanged(dir)
+							}
+						})
+					}
+					mu.Unlock()
+					continue
+				}
 				rel, err := filepath.Rel(root, ev.Name)
 				// A change of permissions or access time only (a backup tool,
 				// an indexer) changes nothing to read.
-				if err != nil || strings.HasPrefix(filepath.Base(ev.Name), ".") || ev.Op == fsnotify.Chmod {
+				if err != nil || strings.HasPrefix(rel, "..") || strings.HasPrefix(filepath.Base(ev.Name), ".") || ev.Op == fsnotify.Chmod {
 					continue
 				}
 				if ev.Has(fsnotify.Create) {
@@ -325,10 +389,15 @@ func watchNotes(root string) {
 						for k := range changed {
 							list = append(list, k)
 						}
+						slices.Sort(list)
 						changed = map[string]bool{}
 						timer = nil
+						gone := closed
 						mu.Unlock()
-						notesChanged(strings.Join(list, "\n"))
+						if gone || !current() {
+							return
+						}
+						notesChanged(NotesChanged{Dir: dir, Paths: list})
 						watchMu.Lock()
 						f := onNotesChanged
 						watchMu.Unlock()
@@ -338,10 +407,13 @@ func watchNotes(root string) {
 					})
 				}
 				mu.Unlock()
-			case _, ok := <-w.Errors:
+			case err, ok := <-w.Errors:
 				if !ok {
 					return
 				}
+				// The system's queue overflowed or a folder can't be read:
+				// said, not hidden (changes may have been missed).
+				log.Printf("blup studio: watching the notes: %v", err)
 			}
 		}
 	}()

@@ -10,6 +10,7 @@
   import { KIND_ICON, iso, parse, addDays, byDay, type Event, type Kind } from "./calendar";
   import EventForm from "./EventForm.svelte";
   import { toast, toastError } from "./toast.svelte";
+  import { onNotesChanged } from "./changes";
 
   // The calendar of a vault: the month on the left, the chosen day and
   // what is coming up on the right. A click on a day picks it; "Add on this
@@ -44,6 +45,9 @@
 
   const load = () => CalendarEvents().then((list) => { events = list ?? []; loaded = true; }).catch(toastError);
   load();
+  // An event changed on disk (the sync, an agent, another editor): read
+  // again, quietly.
+  $effect(() => onNotesChanged(() => { CalendarEvents().then((list) => (events = list ?? [])).catch(() => {}); }));
 
   // The weeks shown: six, from the week of the month's first day (Sunday
   // first; Monday in Spanish).

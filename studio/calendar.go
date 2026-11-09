@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gabriellsalesx/blup/internal/app"
@@ -51,8 +52,10 @@ func (s *Studio) SaveEvent(ev app.Event) (string, error) {
 // reminders sends the notifications; it starts with the window.
 var reminders struct {
 	once sync.Once
-	svc  *notifications.NotificationService
-	ok   bool
+	// svc is set once, when the notifications started (nil: none on this
+	// computer); read from any goroutine.
+	svc  atomic.Pointer[notifications.NotificationService]
+	ok   atomic.Bool
 	mu   sync.Mutex
 	sent map[string]int64 // event path|day|remind -> when it was sent (unix)
 	// pushed: the last list of times sent to Blup Cloud (a hash), and when.
@@ -79,7 +82,8 @@ func (s *Studio) startReminders() {
 			showWindow()
 			application.Get().Event.Emit("calendarOpen", calendarOpenData(r.Response.UserInfo))
 		})
-		reminders.svc, reminders.ok = svc, true
+		reminders.svc.Store(svc)
+		reminders.ok.Store(true)
 		loadSent()
 		// The app's context ends when it quits, and the checks with it.
 		ctx := application.Get().Context()
@@ -101,8 +105,8 @@ func (s *Studio) startReminders() {
 // askNotifications asks the system to allow them (macOS asks once; the
 // others don't ask).
 func askNotifications() {
-	if reminders.ok {
-		reminders.svc.RequestNotificationAuthorization()
+	if svc := reminders.svc.Load(); svc != nil {
+		svc.RequestNotificationAuthorization()
 	}
 }
 
@@ -160,7 +164,9 @@ func (s *Studio) remind(now time.Time) {
 				if icon := notifyIcon(); icon != "" {
 					opts.Attachments = []notifications.NotificationAttachment{{ID: "icon", Path: icon}}
 				}
-				reminders.svc.SendNotification(opts)
+				if svc := reminders.svc.Load(); svc != nil {
+					svc.SendNotification(opts)
+				}
 			}
 		}
 	}
@@ -216,15 +222,13 @@ func (s *Studio) ReminderEmails(ctx context.Context) blupcloud.ReminderUse {
 // SetNotifications turns the reminders on or off; off, the ones waiting
 // in Blup Cloud are cancelled right away.
 func (s *Studio) SetNotifications(on bool) error {
-	p := s.Prefs()
-	p.Notifications = on
-	if err := savePrefs(p); err != nil {
+	if err := updatePrefs(func(p *Prefs) { p.Notifications = on }); err != nil {
 		return err
 	}
 	reminders.pushMu.Lock()
 	reminders.pushed, reminders.failedAt, reminders.pushedAt = "", time.Time{}, time.Time{}
 	reminders.pushMu.Unlock()
-	if reminders.ok {
+	if reminders.ok.Load() {
 		go s.remind(time.Now())
 	} else if !on {
 		go s.cancelMailUntilDone() // offline: tried again later (cloud.go)
@@ -343,6 +347,7 @@ func saveSent(now time.Time) {
 
 // ServiceStartup runs as the Studio starts: the reminders begin.
 func (s *Studio) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
+	app.OnSiteSettings(s.settingsFromSync)
 	go s.startReminders()
 	go s.cloudStartup()
 	return nil

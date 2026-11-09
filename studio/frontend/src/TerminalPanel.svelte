@@ -33,7 +33,14 @@
   let adding = $state(false); // the AI menu (the sparkles)
   let host: HTMLDivElement;
 
-  Agents().then((a) => (agents = a ?? []));
+  // Read again each time the panel shows and when the window comes back
+  // into view: an agent installed meanwhile (in this terminal or another
+  // one) shows up without restarting the Studio.
+  const loadAgents = () => Agents().then((a) => (agents = a ?? [])).catch(() => {});
+  $effect(() => { if (visible) loadAgents(); });
+  // And when the AI menu opens (what it lists is current).
+  $effect(() => { if (adding) loadAgents(); });
+  const onVisible = () => { if (document.visibilityState === "visible" && visible) loadAgents(); };
   const installed = $derived(agents.filter((a) => a.installed));
   const missing = $derived(agents.filter((a) => !a.installed));
 
@@ -182,6 +189,7 @@
 </script>
 
 <svelte:window onclick={() => { adding = false; menu = null; }} onkeydowncapture={(e) => { if (e.key === "Escape" && menu) { e.stopPropagation(); menu = null; } }} />
+<svelte:document onvisibilitychange={onVisible} />
 
 <section class="term-panel">
   <!-- Tabs on the left; on the right, a new terminal (+), the AIs

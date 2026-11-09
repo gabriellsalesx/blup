@@ -17,17 +17,17 @@ func TestFolderGoneRestartsPreview(t *testing.T) {
 	}
 	gone := make(chan struct{}, 8)
 	before := notesChanged
-	notesChanged = func(string) {}
+	notesChanged = func(NotesChanged) {}
 	watchMu.Lock()
 	onFolderGone = func() { gone <- struct{}{} }
 	watchMu.Unlock()
-	watchNotes(root)
+	watchNotes("", root)
 	watchMu.Lock()
 	ready := watchReady
 	watchMu.Unlock()
 	<-ready // the folders are watched in the background
 	t.Cleanup(func() {
-		watchNotes("")
+		watchNotes("", "")
 		watchMu.Lock()
 		onFolderGone = nil
 		watchMu.Unlock()

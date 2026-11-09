@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 
 	"github.com/gabriellsalesx/blup/internal/config"
 )
@@ -88,7 +89,7 @@ func (s *Studio) SaveLayout(items []HomeItem) error {
 	if err := os.MkdirAll(filepath.Dir(f), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(f, b, 0o644)
+	return writeFileAtomic(f, b, 0o644)
 }
 
 // Prefs are the Studio's own choices (studio-prefs.json).
@@ -132,9 +133,15 @@ func defaultPrefs() Prefs {
 	return Prefs{Theme: "system", EditorFont: 16, EditorWidth: "narrow", Spellcheck: true, TermFont: 13, ToggleKey: "Alt+Space", Notifications: true}
 }
 
+// prefsMu runs one change of the choices at a time: each reads the file,
+// changes its part and writes it whole, so two at once would lose one.
+var prefsMu sync.Mutex
+
 // Prefs reads the Studio's choices. A damaged file (not JSON, null, a
 // field of the wrong type) gives the defaults, never half of it.
-func (s *Studio) Prefs() Prefs {
+func (s *Studio) Prefs() Prefs { return readPrefs() }
+
+func readPrefs() Prefs {
 	p := defaultPrefs()
 	if f, err := prefsFile(); err == nil {
 		if b, err := os.ReadFile(f); err == nil {
@@ -151,8 +158,19 @@ func (s *Studio) Prefs() Prefs {
 // own (remember), and so is the answer about error reports
 // (SetErrorReports): the page's copy may be old, so the saved ones are kept.
 func (s *Studio) SavePrefs(p Prefs) error {
-	saved := s.Prefs()
-	p.Recent, p.ErrorReports = saved.Recent, saved.ErrorReports
+	return updatePrefs(func(saved *Prefs) {
+		recent, reports := saved.Recent, saved.ErrorReports
+		*saved = p
+		saved.Recent, saved.ErrorReports = recent, reports
+	})
+}
+
+// updatePrefs changes the saved choices with fn, one change at a time.
+func updatePrefs(fn func(*Prefs)) error {
+	prefsMu.Lock()
+	defer prefsMu.Unlock()
+	p := readPrefs()
+	fn(&p)
 	return savePrefs(p.normalized())
 }
 
@@ -188,6 +206,7 @@ func (p Prefs) normalized() Prefs {
 	return p
 }
 
+// savePrefs writes p whole (through updatePrefs, which holds prefsMu).
 func savePrefs(p Prefs) error {
 	f, err := prefsFile()
 	if err != nil {
@@ -200,5 +219,27 @@ func savePrefs(p Prefs) error {
 	if err := os.MkdirAll(filepath.Dir(f), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(f, b, 0o644)
+	return writeFileAtomic(f, b, 0o644)
+}
+
+// writeFileAtomic writes b to a file next to path and renames it there:
+// a crash or a full disk leaves the old file, never half of the new one.
+func writeFileAtomic(path string, b []byte, mode os.FileMode) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(b); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(mode); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
 }

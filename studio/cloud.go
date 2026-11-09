@@ -9,7 +9,6 @@ import (
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // CloudSites lists the Blup sites found on the user's GitHub (their notes
@@ -36,9 +35,62 @@ func (s *Studio) GeneralPassword() bool { return app.HasGeneralPassword() }
 func (s *Studio) SetGeneralPassword(password string) error { return app.SetGeneralPassword(password) }
 
 // BlupAccount is the Blup Cloud account signed in here (SignedIn false
-// when none).
+// when none). A change found here (the plan changed in the browser) goes
+// to the whole window as "blupAccount", and a plan that now syncs live
+// starts the live sync waiting on it.
 func (s *Studio) BlupAccount(ctx context.Context) (app.BlupAccount, error) {
-	return app.LoadBlupAccount(ctx)
+	a, err := app.LoadBlupAccount(ctx)
+	if err != nil {
+		return a, err
+	}
+	s.accountIs(a, false)
+	if a.Live {
+		s.mu.Lock()
+		l := s.live
+		s.mu.Unlock()
+		l.Recheck()
+	}
+	return a, nil
+}
+
+// accountKey is what of the account the window follows (who, the plan and
+// its limits that change screens, the notes password).
+type accountKey struct {
+	signedIn bool
+	id, plan string
+	live     bool
+	history  int
+	ai       bool
+	notes    string
+	sites    int
+}
+
+func keyOfAccount(a app.BlupAccount) accountKey {
+	return accountKey{a.SignedIn, a.ID, a.Plan, a.Live, a.HistoryDays, a.AI, a.Notes, a.SitesMax}
+}
+
+// accountIs tells the window of the account as it is now ("blupAccount"),
+// when it changed since last told (always, with force).
+func (s *Studio) accountIs(a app.BlupAccount, force bool) {
+	k := keyOfAccount(a)
+	s.mu.Lock()
+	changed := force || !s.acctKnown || s.acct != k
+	first := !s.acctKnown
+	s.acct, s.acctKnown = k, true
+	s.mu.Unlock()
+	if changed && !(first && !force) {
+		emit("blupAccount", a)
+	}
+}
+
+// accountChanged reads the account again and tells the window (the live
+// sync found the plan changed, or the session ended).
+func (s *Studio) accountChanged() {
+	ctx, cancel := context.WithTimeout(jobContext(), 20*time.Second)
+	defer cancel()
+	if a, err := app.LoadBlupAccount(ctx); err == nil {
+		s.accountIs(a, true)
+	}
 }
 
 // PurgeHistory deletes the old versions of the open site's notes on Blup
@@ -95,6 +147,7 @@ func (s *Studio) BlupLoginWait(ctx context.Context) (app.BlupAccount, error) {
 	}
 	a, err := app.FinishBlupLogin(ctx, l)
 	if err == nil {
+		s.accountIs(a, true)
 		s.restartLive()
 	}
 	return a, err
@@ -130,6 +183,9 @@ func (s *Studio) BlupSignOut() (pending bool, err error) {
 	reminders.pushMu.Lock()
 	reminders.pushed, reminders.pushedAt = "", time.Time{}
 	reminders.pushMu.Unlock()
+	if err == nil {
+		s.accountIs(app.BlupAccount{}, true)
+	}
 	return pending, err
 }
 
@@ -148,7 +204,7 @@ func (s *Studio) cloudStartup() {
 	}
 	cancel()
 	s.startReminders() // waits for the one already starting
-	if !reminders.ok && !s.Prefs().Notifications {
+	if !reminders.ok.Load() && !s.Prefs().Notifications {
 		s.cancelMailUntilDone()
 	}
 }
@@ -208,6 +264,7 @@ func (s *Studio) CreateNotesPassword(ctx context.Context, password string) (stri
 	r, err := app.CreateNotesPassword(ctx, password)
 	if err == nil {
 		s.restartLive()
+		go s.accountChanged()
 	}
 	return r, err
 }
@@ -218,6 +275,7 @@ func (s *Studio) UnlockNotes(ctx context.Context, secret string) error {
 		return err
 	}
 	s.restartLive()
+	go s.accountChanged()
 	return nil
 }
 
@@ -244,16 +302,28 @@ func (s *Studio) SetSyncRemote(remote string) error {
 }
 
 // startLive starts the live sync of site (nil stops it); the window hears
-// of it through "cloudSync".
+// of it through "cloudSync" (a stopped one as "off", so no state of it
+// stays on screen).
 func (s *Studio) startLive(site *config.Site) {
 	s.mu.Lock()
-	s.live.Stop()
+	defer s.mu.Unlock()
+	s.startLiveLocked(site)
+}
+
+// startLiveLocked is startLive with s.mu held.
+func (s *Studio) startLiveLocked(site *config.Site) {
+	if old := s.live; old != nil {
+		old.Stop()
+		emit("cloudSync", app.LiveState{Dir: old.Dir(), State: "off", At: time.Now()})
+	}
 	s.live = nil
 	if site != nil {
-		s.live = app.StartLive(site, func(st app.LiveState) { application.Get().Event.Emit("cloudSync", st) })
+		s.live = app.StartLiveHooks(site, app.LiveHooks{
+			Report:  func(st app.LiveState) { emit("cloudSync", st) },
+			Account: func() { go s.accountChanged() },
+		})
 	}
 	l := s.live
-	s.mu.Unlock()
 	watchMu.Lock()
 	onNotesChanged = l.Changed
 	watchMu.Unlock()

@@ -51,7 +51,11 @@ func (s *Studio) AIConnected() (bool, error) { return app.AIConnected() }
 
 // ConnectAI checks an OpenRouter key and saves it for every site.
 func (s *Studio) ConnectAI(ctx context.Context, key string) error {
-	return app.ConnectOpenRouter(ctx, key)
+	if err := app.ConnectOpenRouter(ctx, key); err != nil {
+		return err
+	}
+	emit("connectionsChanged", ConnectionsChanged{Account: "openrouter"})
+	return nil
 }
 
 // OpenAIKeyPage opens OpenRouter's page of keys in the browser.

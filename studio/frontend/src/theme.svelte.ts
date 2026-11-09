@@ -34,7 +34,20 @@ export async function loadTheme() {
   spell();
 }
 
-export function setPref<K extends keyof P>(key: K, value: P[K]) {
+// The choices as Go has them: version goes up after each save reaches
+// the file, and when what can narrate changes (a key connected, the local
+// voice installed). Screens that ask Go what the choices give (the
+// narration's voices, what it costs) read again when it changes.
+export const prefs = $state({ version: 0 });
+/** Tells the screens that follow prefs.version to read again. */
+export const prefsChanged = () => { prefs.version++; };
+
+// The saves go one after the other, each with the choices as they were
+// when it was asked: a later one never lands before an earlier one.
+let saving: Promise<void> = Promise.resolve();
+
+/** Changes a choice; resolves once it is saved (and prefs.version went up). */
+export function setPref<K extends keyof P>(key: K, value: P[K]): Promise<void> {
   look[key] = value;
   apply();
   if (key === "words") {
@@ -42,7 +55,9 @@ export function setPref<K extends keyof P>(key: K, value: P[K]) {
     if (wordRemoved(words, spellWords)) spell();
     spellWords = wordCount(words);
   } else if (key === "spellLang" || key === "spellcheck") spell();
-  SavePrefs({ ...look }).catch(() => {});
+  const now: P = { ...look };
+  saving = saving.then(() => SavePrefs(now)).catch(() => {}).then(prefsChanged);
+  return saving;
 }
 
 export const setTheme = (theme: string) => setPref("theme", theme);

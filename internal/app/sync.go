@@ -113,7 +113,7 @@ func syncNotes(ctx context.Context, _ *config.Global, site *config.Site) error {
 		return err
 	}
 	if slices.Contains(rep.Downloaded, notesync.SiteFile) {
-		if err := readShared(site); err != nil {
+		if _, err := readShared(site); err != nil {
 			return err
 		}
 	}

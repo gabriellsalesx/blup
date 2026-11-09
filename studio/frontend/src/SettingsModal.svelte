@@ -33,7 +33,8 @@
   import LockKeyhole from "@lucide/svelte/icons/lock-keyhole";
   import { ACTIONS, keysOf, type Action } from "./keys";
   import Switch from "./Switch.svelte";
-  import { look, setPref, spellLang, spell } from "./theme.svelte";
+  import { look, setPref, spellLang, spell, prefsChanged } from "./theme.svelte";
+  import { onConnections } from "./changes";
   import { t, setLanguage } from "./i18n";
   import { updateJob, downloadUpdate, installUpdate, updatePercent } from "./updatejob.svelte";
 
@@ -162,6 +163,8 @@
   const shownVersion = $derived(/^\d/.test(version) ? `v${version}` : version);
   const loadConn = () => Connections().then((c) => (conn = c)).catch((e) => (error = String(e)));
   loadConn();
+  // A key connected or forgotten on another screen (Publish, Comments).
+  $effect(() => onConnections(loadConn));
 
   // The general password of protected posts, for every site.
   let generalPw = $state(false);
@@ -203,9 +206,9 @@
     if (account === "openrouter") { aiOn = false; aiChanged(); toast(t.ai.disconnected); }
   }
 
-  // Tells the rest of the window (the note's narration) that the voices
-  // that can narrate changed.
-  const aiChanged = () => window.dispatchEvent(new Event("blup:ai"));
+  // Tells the rest of the window (the note's narration, the podcast) that
+  // the voices that can narrate changed.
+  const aiChanged = prefsChanged;
 
   // The AI (OpenRouter): one key for every site, used by the narration.
   const ai = t.ai;

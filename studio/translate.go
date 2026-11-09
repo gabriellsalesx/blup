@@ -112,6 +112,29 @@ func (s *Studio) sectionsChanged() {
 	go s.restartPreview()
 }
 
+// settingsFromSync takes in a site whose settings came from another
+// computer with a sync (app.OnSiteSettings): when it is the open one, the
+// new value replaces it (the old one is left as it was for whoever still
+// reads it), the live sync goes on with it, the preview follows (a new
+// language), and the window hears "siteSettingsChanged".
+func (s *Studio) settingsFromSync(fresh *config.Site) {
+	s.mu.Lock()
+	open := s.site != nil && s.site.Dir() == fresh.Dir()
+	if open {
+		s.site = fresh
+	}
+	l := s.live
+	s.mu.Unlock()
+	if !open {
+		return
+	}
+	l.SetSite(fresh)
+	if !fresh.IsNotes() {
+		go s.previewFollows(fresh)
+	}
+	emit("siteSettingsChanged", SiteSettingsChanged{Dir: fresh.Dir()})
+}
+
 // FollowTranslations brings the preview up to date after translations
 // saved one by one (the local translation of a whole site).
 func (s *Studio) FollowTranslations() {
@@ -204,8 +227,8 @@ func (s *Studio) StartTranslateSite(ctx context.Context, lang string) error {
 		}
 		return err
 	}
-	go func() {
-		res, err := app.TranslateSite(context.Background(), site, lang, provider, func(done, total int, note string) {
+	goJob(func() {
+		res, err := app.TranslateSite(jobContext(), site, lang, provider, func(done, total int, note string) {
 			siteJob.Lock()
 			siteJob.st = TranslateSiteJob{Running: true, Lang: lang, Done: done, Total: total, Note: note}
 			siteJob.Unlock()
@@ -220,7 +243,7 @@ func (s *Studio) StartTranslateSite(ctx context.Context, lang string) error {
 		siteJob.st = TranslateSiteJob{}
 		siteJob.Unlock()
 		application.Get().Event.Emit("translateSiteDone", end)
-	}()
+	})
 	return nil
 }
 

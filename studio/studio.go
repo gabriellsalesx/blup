@@ -47,6 +47,9 @@ type Studio struct {
 	cancel context.CancelFunc
 	// live keeps the open site synced through Blup Cloud (live plans).
 	live *app.Live
+	// acct is the account the window was last told of ("blupAccount").
+	acct      accountKey
+	acctKnown bool
 	// republished is when each site was last published alone (its own
 	// domain changed), so a check doesn't do it again at once.
 	republished map[string]time.Time
@@ -107,7 +110,7 @@ func (s *Studio) Open(dir string) (Node, error) {
 	watchMu.Lock()
 	onFolderGone = s.sectionsChanged
 	watchMu.Unlock()
-	watchNotes(site.ContentDir())
+	watchNotes(site.Dir(), site.ContentDir())
 	s.startLive(site)
 	s.remember(dir)
 	s.backupLater(site)
@@ -317,7 +320,8 @@ func (s *Studio) startPreview(site *config.Site) (url string, err error) {
 func (s *Studio) adopt(site *config.Site, cmd *exec.Cmd, guard *app.PreviewGuard, cfg []byte) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.site != site {
+	// The same site, its settings read again meanwhile, is still the one.
+	if s.site == nil || s.site.Dir() != site.Dir() {
 		cmd.Process.Kill()
 		guard.Close()
 		return "", errors.New("another site was opened")
@@ -345,6 +349,10 @@ func (s *Studio) StopPreview() {
 func (s *Studio) shutdown() {
 	s.StopPreview()
 	closeTerminals(s)
+	s.startLive(nil)
+	watchNotes("", "")
+	// The background jobs stop; a moment for them to end their file.
+	stopJobs(3 * time.Second)
 	startReports(false) // what is waiting goes before closing
 }
 

@@ -125,7 +125,9 @@ export function BlupAIUsage(): $CancellablePromise<app$0.AIQuota> {
 
 /**
  * BlupAccount is the Blup Cloud account signed in here (SignedIn false
- * when none).
+ * when none). A change found here (the plan changed in the browser) goes
+ * to the whole window as "blupAccount", and a plan that now syncs live
+ * starts the live sync waiting on it.
  */
 export function BlupAccount(): $CancellablePromise<app$0.BlupAccount> {
     return $Call.ByID(1555261248);
@@ -441,7 +443,8 @@ export function DeletedNotes(): $CancellablePromise<blupcloud$0.DeletedFile[] | 
 }
 
 /**
- * Disconnect forgets the key of "github" or "cloudflare".
+ * Disconnect forgets the key of "github" or "cloudflare" (or
+ * "openrouter"); the window hears it as "connectionsChanged".
  */
 export function Disconnect(account: string): $CancellablePromise<void> {
     return $Call.ByID(1930147756, account);

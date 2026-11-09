@@ -10,6 +10,7 @@
   import Loader from "@lucide/svelte/icons/loader-circle";
   import { t } from "./i18n";
   import { toast } from "./toast.svelte";
+  import { onConnections } from "./changes";
 
   // Comments, in three steps the first time: the GitHub key, the public
   // repository Blup creates, and the login app installed on it (so people
@@ -27,7 +28,10 @@
   const s = saver();
   const msg = (e: unknown) => String(e).replace(/^(Runtime)?Error: /, "");
 
-  Connections().then((x) => (github = x.github ?? "")).catch(() => (github = ""));
+  const loadGitHub = () => Connections().then((x) => (github = x.github ?? "")).catch(() => (github = ""));
+  loadGitHub();
+  // GitHub connected or forgotten on another screen (Settings, Publish).
+  $effect(() => onConnections(loadGitHub));
   if (start.feedbackRepo) FeedbackState().then((x) => (setup = x)).catch(() => {});
 
   async function run(fn: () => Promise<void>) {

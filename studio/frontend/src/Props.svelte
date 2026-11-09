@@ -12,10 +12,13 @@
   import { t } from "./i18n";
   import type { Json, JsonProps } from "./db";
   import NoteLangs from "./NoteLangs.svelte";
+  import { prefs } from "./theme.svelte";
 
   // The note's properties as fields. onEdit(key, value) reports a change;
   // note is the note's path; onSettings opens the Studio's settings (tab).
-  let { props, kind, isIndex, note, onEdit, onSettings, onOpenNote }: { props: JsonProps; kind: string; isIndex: boolean; note: string; onEdit: (key: string, value: Json) => void; onSettings: (tab: string) => void; onOpenNote?: (path: string) => void } = $props();
+  // saved goes up each time the note is saved or changes on disk (the
+  // warning about a narration out of date follows the text).
+  let { props, kind, isIndex, note, saved = 0, onEdit, onSettings, onOpenNote }: { props: JsonProps; kind: string; isIndex: boolean; note: string; saved?: number; onEdit: (key: string, value: Json) => void; onSettings: (tab: string) => void; onOpenNote?: (path: string) => void } = $props();
 
   const p = t.props;
   let open = $state(false);
@@ -78,11 +81,20 @@
     aiOn = !!cost || (await AIConnected().catch(() => false)) || (await LocalVoice().catch(() => null))?.installed === true;
     nowHash = await NarrationHash(note).catch(() => "");
   };
-  checkNarration();
-  // The settings changed what can narrate (local voice, OpenRouter key).
+  // Read again when the choices saved or what can narrate changed
+  // (prefs.version: the voice, a key, the local voice), and a moment after
+  // the note is saved (its text may now differ from the one narrated).
   $effect(() => {
-    window.addEventListener("blup:ai", checkNarration);
-    return () => window.removeEventListener("blup:ai", checkNarration);
+    void prefs.version;
+    untrack(checkNarration);
+  });
+  $effect(() => {
+    if (!saved || !canNarrate) return;
+    const id = setTimeout(async () => {
+      nowHash = await NarrationHash(note).catch(() => nowHash);
+      cost = await NarrationEstimate(note).catch(() => cost);
+    }, 600);
+    return () => clearTimeout(id);
   });
   const stale = $derived(!!audio && !!nowHash && !!audioHash && nowHash !== audioHash);
   // Where the narration is: preparing the text (no parts yet), reading part

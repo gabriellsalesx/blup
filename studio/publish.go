@@ -19,7 +19,7 @@ import (
 )
 
 // Publishing and syncing from the window: accounts, destination, and the
-// progress of each run, sent as "progress" events.
+// progress of each run (the background jobs' own events).
 
 // Progress is a line of what a publish or sync is doing.
 type Progress struct {
@@ -39,7 +39,6 @@ type Republish struct {
 }
 
 func init() {
-	application.RegisterEvent[Progress]("progress")
 	application.RegisterEvent[Republish]("republish")
 }
 
@@ -48,7 +47,7 @@ var busy sync.Mutex
 // errBusy: another publish or sync is running.
 var errBusy = errors.New("busy")
 
-// running sends the progress lines of fn to the window. One run at a time.
+// running runs fn, its progress lines going nowhere. One run at a time.
 func running(fn func() error) error {
 	return runningWith(fn, nil)
 }
@@ -73,11 +72,9 @@ func queued(fn func() error, line func(Progress)) error {
 
 func reporting(fn func() error, line func(Progress)) error {
 	ui.SetReport(func(kind, text string) {
-		p := Progress{kind, text}
 		if line != nil {
-			line(p)
+			line(Progress{kind, text})
 		}
-		application.Get().Event.Emit("progress", p)
 	})
 	defer ui.SetReport(nil)
 	return fn()
@@ -111,17 +108,32 @@ func (s *Studio) OpenURL(link string) {
 
 // ConnectGitHub checks and saves a GitHub key; it returns the login.
 func (s *Studio) ConnectGitHub(ctx context.Context, token string) (string, error) {
-	return app.ConnectGitHub(ctx, token)
+	login, err := app.ConnectGitHub(ctx, token)
+	if err == nil {
+		emit("connectionsChanged", ConnectionsChanged{Account: "github"})
+	}
+	return login, err
 }
 
 // ConnectCloudflare checks and saves a Cloudflare key; it returns the
 // accounts it can publish to.
 func (s *Studio) ConnectCloudflare(ctx context.Context, token string) ([]cfworkers.Account, error) {
-	return app.ConnectCloudflare(ctx, token)
+	list, err := app.ConnectCloudflare(ctx, token)
+	if err == nil {
+		emit("connectionsChanged", ConnectionsChanged{Account: "cloudflare"})
+	}
+	return list, err
 }
 
-// Disconnect forgets the key of "github" or "cloudflare".
-func (s *Studio) Disconnect(account string) error { return app.Disconnect(account) }
+// Disconnect forgets the key of "github" or "cloudflare" (or
+// "openrouter"); the window hears it as "connectionsChanged".
+func (s *Studio) Disconnect(account string) error {
+	if err := app.Disconnect(account); err != nil {
+		return err
+	}
+	emit("connectionsChanged", ConnectionsChanged{Account: account})
+	return nil
+}
 
 // CloudflareAccounts lists the accounts of the saved Cloudflare key.
 func (s *Studio) CloudflareAccounts(ctx context.Context) ([]cfworkers.Account, error) {
@@ -231,13 +243,13 @@ func (s *Studio) StartPublish() error {
 	}
 	publishJob.st = PublishJob{Running: true}
 	publishJob.Unlock()
-	ctx := blupcloud.WithUploadProgress(context.Background(), func(done, total int) {
+	ctx := blupcloud.WithUploadProgress(jobContext(), func(done, total int) {
 		publishJob.Lock()
 		publishJob.st.Done, publishJob.st.Total = done, total
 		publishJob.Unlock()
 		application.Get().Event.Emit("publishCount", PublishCount{done, total})
 	})
-	go func() {
+	goJob(func() {
 		var live string
 		err := queued(func() (err error) {
 			live, err = app.PublishNow(ctx, site)
@@ -256,7 +268,7 @@ func (s *Studio) StartPublish() error {
 		publishJob.st.Running = false
 		publishJob.Unlock()
 		application.Get().Event.Emit("publishDone", end)
-	}()
+	})
 	return nil
 }
 
@@ -328,14 +340,14 @@ func (s *Studio) StartSync(fresh bool) error {
 	}
 	syncJob.st = SyncJob{Running: true, Fresh: fresh}
 	syncJob.Unlock()
-	ctx := app.WithSyncProgress(context.Background(), func(p notesync.Progress) {
+	ctx := app.WithSyncProgress(jobContext(), func(p notesync.Progress) {
 		st := SyncJob{Running: true, Phase: string(p.Phase), Done: p.Done, Total: p.Total, Fresh: fresh}
 		syncJob.Lock()
 		syncJob.st = st
 		syncJob.Unlock()
 		application.Get().Event.Emit("syncProgress", st)
 	})
-	go func() {
+	goJob(func() {
 		var info app.SyncInfo
 		err := queued(func() (err error) {
 			if fresh {
@@ -349,9 +361,7 @@ func (s *Studio) StartSync(fresh bool) error {
 		// can start now (on live plans). Only while the site is still the
 		// open one: another opened meanwhile has its own live sync (or
 		// none), never the one of the site that was synced.
-		if s.liveAfterSync(site, err) {
-			s.startLive(site)
-		}
+		s.liveAfterSync(site, err)
 		end := SyncDone{Info: info, Fresh: fresh}
 		if err != nil {
 			end.Error = err.Error()
@@ -361,17 +371,23 @@ func (s *Studio) StartSync(fresh bool) error {
 		syncJob.st = SyncJob{}
 		syncJob.Unlock()
 		application.Get().Event.Emit("syncDone", end)
-	}()
+	})
 	return nil
 }
 
-// liveAfterSync tells whether the live sync starts after a sync of site
-// that ended with err.
+// liveAfterSync starts the live sync after a sync of site that ended
+// with err, when it should; checked and started under the same lock, so
+// another site opened meanwhile never gets this one's live sync. It tells
+// whether it started.
 func (s *Studio) liveAfterSync(site *config.Site, err error) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	open := s.site != nil && s.site.Dir() == site.Dir()
-	return err == nil && open && (s.live == nil || s.live.Gone()) && site.Sync.Remote == app.RemoteBlup
+	if err != nil || !open || (s.live != nil && !s.live.Gone()) || s.site.Sync.Remote != app.RemoteBlup {
+		return false
+	}
+	s.startLiveLocked(s.site)
+	return true
 }
 
 // OpenNewGitHubRepo opens GitHub's "new repository" form filled in for the
@@ -467,7 +483,7 @@ func (s *Studio) republish(site *config.Site) {
 	var live string
 	err := running(func() (err error) {
 		emit(Republish{State: "start"})
-		live, err = app.PublishNow(context.Background(), site)
+		live, err = app.PublishNow(jobContext(), site)
 		return err
 	})
 	switch {

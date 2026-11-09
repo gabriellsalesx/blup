@@ -439,7 +439,7 @@
   // Changed on disk by something else (another app, an AI): opened again,
   // unless there are changes of its own; notes on cards are read again.
   const off = Events.On("notesChanged", async (ev) => {
-    const list = String(ev.data ?? "").split("\n").map((p) => p.toLowerCase());
+    const list = (ev.data?.paths ?? []).map((p) => p.toLowerCase());
     if (nodes.some((n) => n.file && list.includes(n.file.toLowerCase()))) fileVersion++;
     if (!list.includes(path.toLowerCase())) return;
     const now = await ReadBoard(path).catch(() => written);

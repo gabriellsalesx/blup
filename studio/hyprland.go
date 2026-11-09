@@ -129,9 +129,7 @@ func (s *Studio) bindHyprland(accel string) error {
 	if !onHyprland() {
 		return errors.New("not on Hyprland")
 	}
-	p := s.Prefs()
-	p.ToggleKey = accel
-	if err := s.SavePrefs(p); err != nil {
+	if err := updatePrefs(func(p *Prefs) { p.ToggleKey = accel }); err != nil {
 		return err
 	}
 	if !onOmarchy() {

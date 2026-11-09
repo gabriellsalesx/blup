@@ -496,7 +496,14 @@ export interface GraphNode {
  */
 export interface LiveState {
     /**
-     * "syncing", "synced", "error" or "gone" (deleted on another device)
+     * Dir is the site's folder: a window open on another site ignores it.
+     */
+    "dir": string;
+
+    /**
+     * State: "syncing", "synced", "error", "gone" (deleted on another
+     * device), "off" (stopped, or a plan without live sync: by button) or
+     * "signedOut" (no Blup Cloud session).
      */
     "state": string;
     "at": string;

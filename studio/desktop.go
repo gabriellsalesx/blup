@@ -221,9 +221,7 @@ func (s *Studio) SetAutostart(on bool) error {
 
 // SetTray turns the tray icon on or off (and saves the choice).
 func (s *Studio) SetTray(on bool) error {
-	p := s.Prefs()
-	p.Tray = on
-	if err := s.SavePrefs(p); err != nil {
+	if err := updatePrefs(func(p *Prefs) { p.Tray = on }); err != nil {
 		return err
 	}
 	if desk.tray != nil {
@@ -248,9 +246,7 @@ func (s *Studio) SetToggleHotkey(accel string) error {
 	if err := setHotkey(accel); err != nil {
 		return err
 	}
-	p := s.Prefs()
-	p.ToggleKey = accel
-	return s.SavePrefs(p)
+	return updatePrefs(func(p *Prefs) { p.ToggleKey = accel })
 }
 
 func startHidden(args []string) bool { return slices.Contains(args, hiddenArg) }

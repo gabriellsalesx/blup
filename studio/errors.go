@@ -168,12 +168,11 @@ func (s *Studio) ErrorReports() ErrorReports {
 // SetErrorReports saves the person's answer and turns the reports on or
 // off at once.
 func (s *Studio) SetErrorReports(on bool) (ErrorReports, error) {
-	p := s.Prefs()
-	p.ErrorReports = "off"
+	answer := "off"
 	if on {
-		p.ErrorReports = "on"
+		answer = "on"
 	}
-	if err := savePrefs(p); err != nil {
+	if err := updatePrefs(func(p *Prefs) { p.ErrorReports = answer }); err != nil {
 		return ErrorReports{}, err
 	}
 	startReports(on)

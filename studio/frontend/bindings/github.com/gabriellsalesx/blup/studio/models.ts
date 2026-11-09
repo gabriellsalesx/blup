@@ -40,6 +40,14 @@ export interface CalendarOpen {
 }
 
 /**
+ * ConnectionsChanged is heard as "connectionsChanged": "github",
+ * "cloudflare" or "openrouter".
+ */
+export interface ConnectionsChanged {
+    "account": string;
+}
+
+/**
  * ErrorReports is what the page needs: the person's answer ("" = not
  * asked yet, "on" or "off") and, when on, the DSN and the release for the
  * page's own errors.
@@ -219,6 +227,15 @@ export interface NoteData {
      */
     "table"?: string;
     "database"?: app$0.DBSchema | null;
+}
+
+/**
+ * NotesChanged is heard as "notesChanged": the site's folder and the
+ * notes that changed, relative to its notes folder, with "/".
+ */
+export interface NotesChanged {
+    "dir": string;
+    "paths": string[] | null;
 }
 
 /**
@@ -486,6 +503,13 @@ export interface SiteInfo {
      * "" a site, "notes" a vault of notes
      */
     "kind": string;
+}
+
+/**
+ * SiteSettingsChanged is heard as "siteSettingsChanged": the site's folder.
+ */
+export interface SiteSettingsChanged {
+    "dir": string;
 }
 
 /**

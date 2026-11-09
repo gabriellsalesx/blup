@@ -15,19 +15,21 @@ import type * as main$0 from "../../../../gabriellsalesx/blup/studio/models.js";
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
+            "blupAccount": app$0.BlupAccount;
             "calendarOpen": main$0.CalendarOpen;
             "cloudSync": app$0.LiveState;
+            "connectionsChanged": main$0.ConnectionsChanged;
             "narrate": main$0.NarrateProgress;
             "narrateSite": main$0.NarrateSiteProgress;
             "narrateSiteDone": main$0.NarrateSiteDone;
-            "notesChanged": string;
+            "notesChanged": main$0.NotesChanged;
             "previewChanged": string;
             "previewRestarted": string;
-            "progress": main$0.Progress;
             "publishCount": main$0.PublishCount;
             "publishDone": main$0.PublishDone;
             "publishLine": main$0.Progress;
             "republish": main$0.Republish;
+            "siteSettingsChanged": main$0.SiteSettingsChanged;
             "studioUpdate": main$0.UpdateProgress;
             "syncDone": main$0.SyncDone;
             "syncProgress": main$0.SyncJob;

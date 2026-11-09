@@ -4,6 +4,7 @@
   import { toast, toastError } from "./toast.svelte";
   import { t } from "./i18n";
   import { job, onJob, translateSite, LANG_NAMES as NAMES } from "./translatejob.svelte";
+  import { onNotesChanged } from "./changes";
 
   // The site in other languages: how much of it is translated into each,
   // and translating what is missing (or out of date). The translation is
@@ -15,6 +16,9 @@
   let langs = $state<SiteLangState[]>([]);
   const load = () => SiteLangs().then((l) => (langs = l ?? [])).catch(toastError);
   load();
+  // Notes or translations changed on disk (the sync, an agent, the
+  // editor): the counts follow, quietly.
+  $effect(() => onNotesChanged(() => { SiteLangs().then((l) => (langs = l ?? [])).catch(() => {}); }, 800));
   // While this screen is open, the counts follow the job note by note and
   // the file tree its end (opened later, it loads them anyway).
   $effect(() => onJob((what) => {

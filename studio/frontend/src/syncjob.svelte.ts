@@ -107,7 +107,14 @@ export function onLive(fn: HeardLive): () => void {
 Events.On("cloudSync", (ev) => {
   const st = ev.data;
   if (!st) return;
-  live.state = st.state;
-  if (st.state === "synced") live.info = st.info;
+  // Stopped (signed out, another place to sync, a plan without it, another
+  // site opened): nothing of it stays.
+  if (st.state === "off" || st.state === "signedOut") {
+    live.state = "";
+    live.info = null;
+  } else {
+    live.state = st.state;
+    if (st.state === "synced") live.info = st.info;
+  }
   liveListeners.forEach((fn) => fn(st));
 });

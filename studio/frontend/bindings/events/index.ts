@@ -9,6 +9,11 @@ import type {} from "../github.com/wailsapp/wails/v3/internal/eventdata.js";
 import "../github.com/wailsapp/wails/v3/internal/eventcreate.js";
 
 /**
+ * Name of the custom event "blupAccount".
+ */
+export const BlupAccount = "blupAccount";
+
+/**
  * Name of the custom event "calendarOpen".
  */
 export const CalendarOpen = "calendarOpen";
@@ -17,6 +22,11 @@ export const CalendarOpen = "calendarOpen";
  * Name of the custom event "cloudSync".
  */
 export const CloudSync = "cloudSync";
+
+/**
+ * Name of the custom event "connectionsChanged".
+ */
+export const ConnectionsChanged = "connectionsChanged";
 
 /**
  * Name of the custom event "narrate".
@@ -49,11 +59,6 @@ export const PreviewChanged = "previewChanged";
 export const PreviewRestarted = "previewRestarted";
 
 /**
- * Name of the custom event "progress".
- */
-export const Progress = "progress";
-
-/**
  * Name of the custom event "publishCount".
  */
 export const PublishCount = "publishCount";
@@ -72,6 +77,11 @@ export const PublishLine = "publishLine";
  * Name of the custom event "republish".
  */
 export const Republish = "republish";
+
+/**
+ * Name of the custom event "siteSettingsChanged".
+ */
+export const SiteSettingsChanged = "siteSettingsChanged";
 
 /**
  * Name of the custom event "studioUpdate".

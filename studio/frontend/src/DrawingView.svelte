@@ -556,7 +556,7 @@
   // Changed on disk by something else (an AI in the terminal, sync):
   // opened again, unless there are changes of its own.
   const off = Events.On("notesChanged", async (ev) => {
-    const list = String(ev.data ?? "").split("\n").map((p) => p.toLowerCase());
+    const list = (ev.data?.paths ?? []).map((p) => p.toLowerCase());
     if (!list.includes(path.toLowerCase())) return;
     const now = await ReadBoard(path).catch(() => written);
     if (now.trimEnd() !== written.trimEnd() && !dirty) onOutside();

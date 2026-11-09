@@ -36,7 +36,8 @@ func TestSharedSiteTravelsWithoutLocalThings(t *testing.T) {
 	other.Vault = a.Vault
 	other.Folder = a.Folder
 	other.Password = "outra"
-	if err := readShared(other); err != nil {
+	other, err = readShared(other)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if other.Title != "Meu site" || other.Model != "nori" || other.Cookies.Umami != "abc" || other.Password != "outra" {
@@ -112,7 +113,8 @@ api = "https://evil.example"
 	if err := os.WriteFile(p, []byte(old), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := readShared(s); err != nil {
+	s, err := readShared(s)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if s.Deploy.Provider != "github" || s.Deploy.GitHub.Repo != "meu" || s.Deploy.Cloudflare.Account != "" || s.Deploy.Blup.Slug != "" {
@@ -127,11 +129,11 @@ api = "https://evil.example"
 
 	// The new format: translations travel (also "none"), unknown ones out.
 	os.WriteFile(p, []byte("version = 1\ntitle = 'Site'\nlang = 'pt'\nmodel = 'mochi'\ntranslations = ['es', '../x', 'pt']\n"), 0o644)
-	if err := readShared(s); err != nil || strings.Join(s.Translations, ",") != "es" {
+	if s, err = readShared(s); err != nil || strings.Join(s.Translations, ",") != "es" {
 		t.Fatalf("translations = %v, %v", s.Translations, err)
 	}
 	os.WriteFile(p, []byte("version = 1\ntitle = 'Site'\nlang = 'pt'\nmodel = 'mochi'\ntranslations = []\n"), 0o644)
-	if err := readShared(s); err != nil || len(s.Translations) != 0 {
+	if s, err = readShared(s); err != nil || len(s.Translations) != 0 {
 		t.Fatalf("translations = %v, %v", s.Translations, err)
 	}
 }

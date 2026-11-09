@@ -166,7 +166,7 @@ func (s *Studio) closeIfOpen(dir string) {
 	}
 	s.StopPreview()
 	closeTerminals(s)
-	watchNotes("")
+	watchNotes("", "")
 	s.startLive(nil)
 	s.mu.Lock()
 	s.site = nil
@@ -183,12 +183,12 @@ const maxRecent = 12
 
 // remember puts dir first in the recent sites.
 func (s *Studio) remember(dir string) {
-	p := s.Prefs()
-	p.Recent = append([]string{dir}, slices.DeleteFunc(p.Recent, func(d string) bool { return d == dir })...)
-	if len(p.Recent) > maxRecent {
-		p.Recent = p.Recent[:maxRecent]
-	}
-	_ = savePrefs(p)
+	_ = updatePrefs(func(p *Prefs) {
+		p.Recent = append([]string{dir}, slices.DeleteFunc(p.Recent, func(d string) bool { return d == dir })...)
+		if len(p.Recent) > maxRecent {
+			p.Recent = p.Recent[:maxRecent]
+		}
+	})
 }
 
 // RecentSites lists the sites opened lately that still exist, newest

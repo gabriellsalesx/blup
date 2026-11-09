@@ -177,7 +177,7 @@
   // Changed on disk (another window, an AI, sync): read again.
   const off = Events.On("notesChanged", (ev) => {
     const dir = path.replace(/[^/]*$/, "") + (schema?.records ?? "") + "/";
-    const list = String(ev.data ?? "").split("\n");
+    const list = ev.data?.paths ?? [];
     // Read again in place (the view, the search and the menus stay),
     // unless a change of its own is waiting to be saved.
     if (list.some((p) => p === path || p.startsWith(dir)) && !dirty) load();

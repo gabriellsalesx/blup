@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte";
-  import { look } from "./theme.svelte";
+  import { look, prefs } from "./theme.svelte";
   import { Podcast, SavePodcast, PickCover, LinkedImage, OpenURL, NarrationPlan, RemoveNarrations, RestoreNarrations } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { PodcastInfo, NarrationPlan as Plan } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import { narrateJob, startNarrateSite, cancelNarrateSite, narratePercent, onNarrateEnd, narratesSite } from "./narratejob.svelte";
@@ -85,15 +85,16 @@
     NarrationPlan($state.snapshot(look.voices ?? {})).then((x) => { plan = x; planError = ""; }).catch((e) => (planError = String(e).replace(/^(Runtime)?Error: /, "")));
   }
   // Read again when the voices change (Settings > Narrations: a voice or a
-  // model), when what can narrate changes ("blup:ai") and when the window
-  // comes back into view.
+  // model), when the choices saved or what can narrate changed
+  // (prefs.version: a key connected, the local voice installed) and when
+  // the window comes back into view. A burst of changes reads once.
   const voicesKey = $derived(JSON.stringify(look.voices ?? {}));
   $effect(() => {
     void voicesKey;
-    untrack(loadPlan);
+    void prefs.version;
+    const id = setTimeout(() => untrack(loadPlan), 150);
+    return () => clearTimeout(id);
   });
-  window.addEventListener("blup:ai", loadPlan);
-  onDestroy(() => window.removeEventListener("blup:ai", loadPlan));
   const onVisible = () => { if (document.visibilityState === "visible") loadPlan(); };
 
   // Taking the narrations the Studio made off (to the Trash, with Undo).

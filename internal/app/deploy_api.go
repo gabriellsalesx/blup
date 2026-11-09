@@ -422,7 +422,7 @@ func syncSiteWith(ctx context.Context, site *config.Site, share, fresh bool) (Sy
 	}
 	// Settings changed on another computer.
 	if share && slices.Contains(rep.Downloaded, notesync.SiteFile) {
-		if err := readShared(site); err != nil {
+		if _, err := readShared(site); err != nil {
 			return SyncInfo{}, err
 		}
 	}

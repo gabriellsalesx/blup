@@ -200,7 +200,7 @@ func (s *Studio) StartNarrateSite(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	jctx, cancel := context.WithCancel(context.Background())
+	jctx, cancel := context.WithCancel(jobContext())
 	ok, err := claimNarrJob(site.Dir(), cancel)
 	if !ok {
 		cancel()
@@ -235,7 +235,7 @@ func (s *Studio) StartNarrateSite(ctx context.Context) error {
 	narrJob.Lock()
 	narrJob.st = NarrateSiteJob{Running: true, Site: site.Dir(), Total: len(plan.Items)}
 	narrJob.Unlock()
-	go func() {
+	goJob(func() {
 		defer cancel()
 		res, err := app.NarrateSite(jctx, site, plan, voices, func(done, total int, note string) {
 			narrJob.Lock()
@@ -252,6 +252,6 @@ func (s *Studio) StartNarrateSite(ctx context.Context) error {
 		}
 		releaseNarrJob()
 		application.Get().Event.Emit("narrateSiteDone", end)
-	}()
+	})
 	return nil
 }

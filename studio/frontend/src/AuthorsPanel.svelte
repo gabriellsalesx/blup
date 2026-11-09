@@ -9,6 +9,7 @@
   import Pencil from "@lucide/svelte/icons/pencil";
   import { NETWORKS } from "./social";
   import SocialLinks from "./ui/SocialLinks.svelte";
+  import { onNotesChanged } from "./changes";
 
   // The site's authors as cards; one opens as a form (name, photo, role,
   // bio, profiles). Each author is a note in the authors folder, which the
@@ -34,6 +35,8 @@
     for (const x of list) if (x.photo && !photos[x.photo]) photos[x.photo] = await LinkedImage(x.photo).catch(() => "");
   }
   load();
+  // Authors or their posts changed on disk (the sync, an agent): read again.
+  $effect(() => onNotesChanged(() => { load().catch(() => {}); }));
 
   function edit(x: Author | null) {
     form = x ? { ...x } : blank();

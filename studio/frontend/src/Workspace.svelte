@@ -65,6 +65,7 @@
   import { t, shown } from "./i18n";
   import { byDay, iso, parse, type Event as CalEvent } from "./calendar";
   import { lazy } from "./lazy";
+  import { onNotesChanged } from "./changes";
   // The views and panels opened now and then load when first opened: a
   // lighter start, on any computer.
   const CanvasView = lazy(() => import("./CanvasView.svelte"));
@@ -414,7 +415,11 @@
   // user pastes a line first: the tip leads there.
   const showTip = $derived(!!look.toggleKey && !look.shortcutTip);
   let manual = $state(false);
-  HyprlandSetup(look.toggleKey ?? "").then((h) => (manual = h.on && !h.auto)).catch(() => {});
+  // Follows the shortcut chosen in Settings (another one, or none).
+  $effect(() => {
+    const key = look.toggleKey ?? "";
+    HyprlandSetup(key).then((h) => { if (key === (look.toggleKey ?? "")) manual = h.on && !h.auto; }).catch(() => {});
+  });
   function okTip() { setPref("shortcutTip", true); }
   // The invitation to Blup Cloud: once, to whoever has a site and no account.
   let signedIn = $state(true);
@@ -422,6 +427,24 @@
   let account = $state<BlupAccountInfo | null>(null);
   const loadAccount = () => BlupAccount().then((a) => { account = a; signedIn = a.signedIn; }).catch(() => {});
   loadAccount();
+  // Signed in or out (Settings, the Sync screen), the notes password made,
+  // or the plan changed in the browser: the account, where the notes sync
+  // and the history of versions follow (the history can go away too).
+  const offAccount = Events.On("blupAccount", (ev) => {
+    const a = ev.data;
+    if (!a) return;
+    account = a;
+    signedIn = a.signedIn;
+    if (!a.signedIn) cloud = null;
+    loadRemote();
+    checkHistory();
+  });
+  onDestroy(() => offAccount());
+  // Back into view: the plan may have changed in the browser (Go starts
+  // the live sync when it now has it).
+  function onVisible() {
+    if (document.visibilityState === "visible") loadAccount();
+  }
 
   // The check by the note's title: saved here, sent to the cloud, or not
   // yet (plans without live sync, GitHub), or an error. It is also the
@@ -456,16 +479,24 @@
   const fullOn = $derived(full && !!board && screen === "write");
   let settings = $state<Settings | null>(null);
   const reload = () => LoadSettings().then((s) => (settings = s)).catch((e) => (error = String(e)));
+  // The settings changed outside the screens (they came with a sync from
+  // another computer, or hugo.toml was edited): read again.
+  const offSettings = Events.On("siteSettingsChanged", (ev) => { if (ev.data?.dir === site.dir) reload(); });
+  onDestroy(() => offSettings());
   // A vault of notes: the editor, attachments, sync and trash; no site.
   const notesVault = $derived(site.kind === "notes");
   // A note of the day (Diário/2026-11-01.md): what the calendar has on
   // its day, shown at its top.
   const dailyDay = $derived(notesVault && current.startsWith(t.daily.folder + "/") ? (current.slice(t.daily.folder.length + 1).match(/^(\d{4}-\d{2}-\d{2})\.md$/)?.[1] ?? "") : "");
   let dayEvents = $state<CalEvent[]>([]);
+  // Events changed on disk (the calendar, the sync, an agent): read again.
+  let eventsN = $state(0);
+  onDestroy(onNotesChanged(() => { if (dailyDay) eventsN++; }, 500));
   $effect(() => {
     const d = dailyDay;
-    dayEvents = [];
-    if (d) CalendarEvents().then((list) => { if (d === dailyDay) dayEvents = byDay(list ?? [], parse(d), parse(d)).get(d) ?? []; }).catch(() => {});
+    void eventsN;
+    if (!d) { dayEvents = []; return; }
+    CalendarEvents().then((list) => { if (d === dailyDay) dayEvents = byDay(list ?? [], parse(d), parse(d)).get(d) ?? []; }).catch(() => {});
   });
   // The terminal button's hint, with its shortcut when there is one.
   const termTip = $derived(t.term.button + (keysOf(look.keys, "terminal") ? ` (${keysOf(look.keys, "terminal")})` : ""));
@@ -519,7 +550,13 @@
   const syncTip = $derived(syncJob.running ? syncStepText(syncJob.phase, syncJob.done, syncJob.total) : t.toast.synced);
   const top = $derived(screens.filter((x) => x.group !== "end"));
   const bottom = $derived(screens.filter((x) => x.group === "end"));
-  const openScreen = async (key: string) => { await save(); autostart = ""; screen = key; error = ""; loadRemote(); };
+  const openScreen = async (key: string) => { await save(); autostart = ""; screen = key; error = ""; };
+  // Each screen opened (from the menu, a shortcut, a notice) reads where
+  // the notes sync again: the Sync screen may have changed it.
+  $effect(() => {
+    void screen;
+    untrack(loadRemote);
+  });
 
   // The terminal at the bottom, and its height (dragging its top edge).
   let termOpen = $state(false);
@@ -548,9 +585,15 @@
   // Notes changed on disk (an agent in the terminal, another editor): the
   // tree follows; the open note too, unless it has changes of its own.
   let reloadN = $state(0);
+  // Goes up when the open note is saved or changes on disk (the note's
+  // properties follow: a narration out of date).
+  let savedN = $state(0);
   let outside = $state(false);
   const offNotes = Events.On("notesChanged", async (ev) => {
-    const list = String(ev.data ?? "").split("\n");
+    if (ev.data?.dir && ev.data.dir !== site.dir) return;
+    const list = ev.data?.paths ?? [];
+    // The site's settings file inside the notes folder: read again.
+    if (list.includes("hugo.toml")) reload();
     const isOpen = (p: string) => !!current && p.toLowerCase() === current.toLowerCase();
     // A canvas or a drawing looks after itself.
     const mine = !!current && !board && list.some(isOpen);
@@ -563,6 +606,7 @@
     if (!(ours && list.every(isOpen))) {
       try { tree = (await LoadTree()).children ?? []; } catch {}
     }
+    if (mine) savedN++;
     if (!note || ours) return;
     if (status === "saved") applyOutside(note);
     else outside = true;
@@ -597,6 +641,14 @@
   // After each sync the use may have changed (a refusal for the storage,
   // or space freed): the banner follows.
   const offCloud = Events.On("cloudSync", (ev) => {
+    // Another site's live sync (one opened before this): not this one's.
+    if (!ev.data || (ev.data.dir && ev.data.dir !== site.dir)) return;
+    // Stopped (signed out, another place to sync, a plan without it):
+    // nothing of it stays on the check.
+    if (ev.data.state === "off" || ev.data.state === "signedOut") {
+      cloud = null;
+      return;
+    }
     // Deleted from Blup Cloud on another device: said once, and the notes
     // stop syncing until the person clicks Sync.
     if (ev.data?.state === "gone") {
@@ -721,6 +773,7 @@
       if (pending !== written || Object.keys(edits).length) later();
       else {
         status = "saved";
+        savedN++;
         if (syncRemote && !liveSync) unsent = true;
       }
     } catch (e) {
@@ -835,6 +888,7 @@
 {/snippet}
 
 <svelte:window onresize={fit} onkeydown={shortcut} onclick={() => (switching = false)} />
+<svelte:document onvisibilitychange={onVisible} />
 
 <div class="ws" class:names={look.railNames} class:no-preview={!previewOn} class:no-side={!sideOpen} class:resizing style:--side="{sideW}px" style:--prev={prevW ? `${prevW}px` : "minmax(0, 1fr)"}>
   <!-- The ribbon: icons only, the name on hover. -->
@@ -995,7 +1049,7 @@
             {#await DatabaseView() then { default: C }}<C path={current} bindSave={(fn) => (boardSave = fn)} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onOpenNote={openNote} onStatus={(st) => (status = st)} onError={(e) => (error = e)} />{/await}
           {:else}
           <div class="note">
-            {#if !notesVault}<Props props={noteProps} {kind} note={current} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} onOpenNote={openNote} />{/if}
+            {#if !notesVault}<Props props={noteProps} {kind} note={current} saved={savedN} isIndex={current.split("/").pop() === "_index.md"} onEdit={editProp} onSettings={(tab) => { prefsTab = tab; prefsOpen = true; }} onOpenNote={openNote} />{/if}
             <div class="body">{#key shown.lang}<Editor {text} note={current} notes={flat(tree).map((n) => ({ name: n.name, path: n.path }))} onChange={changed} onSave={save} onError={(e) => (error = e)} onOpenNote={openNote} onNewBoard={notesVault ? (kind) => makeBoard(kind) : undefined} header={notesVault ? noteHead : undefined} {atEnd} onReady={() => (atEnd = false)} />{/key}</div>
             {#if notesVault}<Backlinks note={current} onOpenNote={openNote} />{/if}
           </div>
@@ -1019,8 +1073,8 @@
         {:else if screen === "feedback"}{#await FeedbackPanel() then { default: C }}<C />{/await}
         {:else if screen === "podcast"}{#await PodcastPanel() then { default: C }}<C siteDir={site.dir} />{/await}
         {:else if screen === "cookies"}{#await CookiesPanel() then { default: C }}<C {settings} {reload} onOpenNote={openNote} />{/await}
-        {:else if screen === "publish"}{#await PublishPanel() then { default: C }}<C autostart={autostart} notes={notesVault} />{/await}
-        {:else if screen === "sync"}{#await PublishPanel() then { default: C }}<C autostart="sync" />{/await}
+        {:else if screen === "publish"}{#await PublishPanel() then { default: C }}<C autostart={autostart} notes={notesVault} onRemote={loadRemote} />{/await}
+        {:else if screen === "sync"}{#await PublishPanel() then { default: C }}<C autostart="sync" onRemote={loadRemote} />{/await}
         {:else if screen === "authors"}{#await AuthorsPanel() then { default: C }}<C onTree={async () => (tree = (await LoadTree()).children ?? [])} />{/await}
         {:else if screen === "attach"}{#await AttachmentsPanel() then { default: C }}<C onOpenNote={openNote} />{/await}
         {:else if screen === "trash"}{#await TrashPanel() then { default: C }}<C {reload} onTree={(n) => (tree = n.children ?? [])} />{/await}

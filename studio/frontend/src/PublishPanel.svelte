@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { onDestroy, untrack } from "svelte";
+  import { onConnections } from "./changes";
   import { Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, CloudflareSubdomain, SetCloudflareSubdomain, Target, SetTarget, CheckSiteSlug, SyncRemote, SetSyncRemote, OpenNewGitHubRepo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, Target as Dest, SyncInfo, BlupAccount } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Account } from "../bindings/github.com/gabriellsalesx/blup/internal/deploy/cfworkers/models";
@@ -22,7 +23,9 @@
   // only on Blup Cloud, once it is online) and syncing the notes. notes: a vault of notes
   // has no site, so only syncing shows; a site's Sync button opens the
   // sync part (autostart "sync").
-  let { autostart = "", notes = false }: { autostart?: string; notes?: boolean } = $props();
+  // onRemote: where the notes sync was picked here (the window's check by
+  // the note's title follows).
+  let { autostart = "", notes = false, onRemote }: { autostart?: string; notes?: boolean; onRemote?: (remote: string) => void } = $props();
   const syncOnly = $derived(notes || autostart === "sync");
   const p = t.pubs;
 
@@ -63,6 +66,7 @@
   async function pickRemote(r: string) {
     await SetSyncRemote(r);
     remote = r; sync = null; syncError = ""; syncStuck = false; checkedCloud = false;
+    onRemote?.(r);
   }
   const canSync = $derived(remote === "blup" ? cloud?.signedIn && cloud.notes === "ready" : !!conn?.github);
   // Blup Cloud ready for the first time: see what a sync would do (once).
@@ -228,6 +232,16 @@
   load().then(() => {
     if (autostart === "publish" && ready) publish();
   });
+  // A key connected or forgotten on another screen (Settings, Comments):
+  // the accounts shown follow; what is being filled in here stays.
+  $effect(() => onConnections(async () => {
+    conn = await Connections().catch(() => conn);
+    if (target?.provider === "cloudflare") {
+      accounts = conn?.cloudflare ? ((await CloudflareAccounts().catch(() => [])) ?? []) : [];
+      loadSub();
+    }
+    remote = await SyncRemote().catch(() => remote);
+  }));
 </script>
 
 <div class="panel">

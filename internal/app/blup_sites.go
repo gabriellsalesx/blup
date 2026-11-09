@@ -116,7 +116,7 @@ func BringBlupSite(ctx context.Context, vault string) (*config.Site, error) {
 		return nil, err
 	}
 	if _, err := os.Stat(sharedPath(site)); err == nil {
-		if err := readShared(site); err != nil {
+		if site, err = readShared(site); err != nil {
 			return nil, err
 		}
 	}

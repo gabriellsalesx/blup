@@ -6,6 +6,10 @@
   import { t } from "./i18n";
   import { useLocal, translateNoteLocal } from "./localtranslate";
   import { withAIConsent, ConsentCancelled, needsProvider } from "./aiconsentui";
+  import { onJob } from "./translatejob.svelte";
+  import { onNotesChanged, onConnections } from "./changes";
+  import { prefs } from "./theme.svelte";
+  import { untrack } from "svelte";
 
   // The note's languages: the original and each translation (a folder en,
   // es or pt next to the note), to open, translate with AI, or translate
@@ -22,6 +26,21 @@
 
   const load = (rel: string) => NoteLangs(rel).then((l) => { if (rel === note) langs = l ?? []; }).catch(() => { if (rel === note) langs = []; });
   $effect(() => { load(note); });
+  // Read again as the site's translation goes (each note done, its end),
+  // and when the note or one of its translations (the same name, in
+  // another language's folder) changes on disk.
+  const fileName = (p: string) => p.split("/").pop()?.toLowerCase() ?? "";
+  $effect(() => onJob(() => untrack(() => load(note))));
+  $effect(() => onNotesChanged((paths) => untrack(() => {
+    const name = fileName(note);
+    if (paths.some((p) => p === note || fileName(p) === name)) load(note);
+  }), 500));
+  // A provider chosen, a key connected: the hint to set one up goes.
+  $effect(() => {
+    void prefs.version;
+    untrack(() => { needKey = false; needWho = false; });
+  });
+  $effect(() => onConnections(() => { needKey = false; needWho = false; }));
 
   const off = Events.On("translate", (ev) => { if (busy && ev.data?.lang === busy) part = { done: ev.data.done, total: ev.data.total }; });
   $effect(() => () => off());

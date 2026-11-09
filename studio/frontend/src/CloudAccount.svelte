@@ -2,7 +2,7 @@
   import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { BlupAccount, BlupLogin, BlupLoginWait, BlupLoginCancel, BlupSignOut, CreateNotesPassword, UnlockNotes, OpenBlupCloud, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { BlupAccount as Account } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
-  import { Clipboard } from "@wailsio/runtime";
+  import { Clipboard, Events } from "@wailsio/runtime";
   import Lock from "@lucide/svelte/icons/lock";
   import Copy from "@lucide/svelte/icons/copy";
   import Check from "@lucide/svelte/icons/check";
@@ -40,6 +40,9 @@
     try { account = await BlupAccount(); } catch (e) { error = msg(e); }
   }
   load();
+  // Signed in or out on another screen, or the plan changed in the
+  // browser: every place that shows the account follows.
+  $effect(() => Events.On("blupAccount", (ev) => { if (ev.data) account = ev.data; }));
 
   async function signIn() {
     error = "";

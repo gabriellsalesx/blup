@@ -45,11 +45,17 @@ func TestEmittedEventsAreRegistered(t *testing.T) {
 			if ix, ok := fun.(*ast.IndexExpr); ok {
 				fun = ix.X
 			}
-			sel, ok := fun.(*ast.SelectorExpr)
-			if !ok {
-				return true
+			// emit(name, data) (events.go) is an Emit too.
+			var fname string
+			switch f := fun.(type) {
+			case *ast.SelectorExpr:
+				fname = f.Sel.Name
+			case *ast.Ident:
+				if f.Name == "emit" {
+					fname = "Emit"
+				}
 			}
-			switch sel.Sel.Name {
+			switch fname {
 			case "RegisterEvent":
 				registered[name] = true
 			case "Emit":
