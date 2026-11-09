@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from "svelte";
  import {t,language} from "#lib/i18n.svelte.ts";
 	import Mail from "@lucide/svelte/icons/mail";
 	import Fingerprint from "@lucide/svelte/icons/fingerprint-pattern";
@@ -20,16 +19,6 @@
 	let error = $state<(()=>string)|null>(null);
 	let captcha = $state("");
 	let widgetId = "";
-	// Already signed in (the "Sign in" link of the site, a bookmark): go on
-	// to the panel instead of asking again. The form shows only when there
-	// is no session, or the check fails.
-	let checking = $state(true);
-	onMount(() => {
-		client
-			.getSession()
-			.then(({ data }) => (data ? ondone() : (checking = false)))
-			.catch(() => (checking = false));
-	});
 
 	// The Turnstile widget, rendered into its box once the script loads.
 	function turnstile(el: HTMLDivElement) {
@@ -105,7 +94,6 @@
 	}
 </script>
 
-{#if !checking}
 <section class="w-full">
 	{#if step === "email"}
 		<h1 class="text-3xl font-extrabold tracking-tight">{t("welcome")}</h1>
@@ -150,4 +138,3 @@
 
 	{#if error}<p class="mt-4 text-center text-sm text-red-600" role="alert">{error()}</p>{/if}
 </section>
-{/if}

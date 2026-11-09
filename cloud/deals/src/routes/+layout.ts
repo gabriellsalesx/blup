@@ -2,6 +2,7 @@ import {redirect} from "@sveltejs/kit";
 import {resolve} from "$app/paths";
 import {DetailedError} from "hono/client";
 import {nextParam} from "../../../shared/panel-paths";
+import {returnPath} from "#lib/auth.ts";
 import {rpc,dealsApi,parseResponse} from "../lib/api";
 import {panel} from "../lib/panel.svelte";
 import {refreshSetup} from "../lib/setup";
@@ -12,6 +13,8 @@ export const ssr=false;
 export async function load({url,route}){
  if(!panel.ready){try{const [me,usage]=await Promise.all([parseResponse(rpc.me.$get()),parseResponse(dealsApi.usage.$get())]);panel.me=me;panel.usage=usage;panel.signedOut=false;}catch(e){panel.error=true;panel.signedOut=e instanceof DetailedError&&e.statusCode===401;}panel.ready=true;}
  if(panel.signedOut&&route.id!=="/sign-in")redirect(307,`${resolve("/sign-in")}?${new URLSearchParams({[nextParam]:url.pathname+url.search})}`);
+ // Already signed in: the sign-in goes on to the page that asked.
+ if(panel.me&&route.id==="/sign-in")redirect(307,returnPath(url.search,resolve("/")));
  refreshSetup();
  return {signedIn:!!panel.me};
 }
