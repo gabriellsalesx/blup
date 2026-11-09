@@ -2,7 +2,7 @@
   import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { onDestroy, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
-  import { Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, CloudflareSubdomain, SetCloudflareSubdomain, Target, SetTarget, Publish, CheckSiteSlug, SyncStatus, Sync, SyncRemote, SetSyncRemote, OpenNewGitHubRepo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, CloudflareSubdomain, SetCloudflareSubdomain, Target, SetTarget, Publish, CheckSiteSlug, SyncStatus, SyncRemote, SetSyncRemote, OpenNewGitHubRepo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, Target as Dest, SyncInfo, BlupAccount } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Account } from "../bindings/github.com/gabriellsalesx/blup/internal/deploy/cfworkers/models";
   import type { SlugCheck } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
@@ -16,6 +16,7 @@
   import CloudAccount from "./CloudAccount.svelte";
   import BlupDomain from "./BlupDomain.svelte";
   import SyncFresh from "./SyncFresh.svelte";
+  import { syncJob, startSync, onSyncDone, syncStepText } from "./syncjob.svelte";
   import Choice from "./ui/Choice.svelte";
 
   // Two screens in one: publishing the site (where it goes; its own domain
@@ -39,7 +40,10 @@
   let live = $state("");
 
   let sync = $state<SyncInfo | null>(null);
-  let syncing = $state(false);
+  // Checking (what a sync would do) is this screen's; syncing is a job of
+  // the whole window (syncjob), going on when the screen closes.
+  let checking = $state(false);
+  const syncing = $derived(checking || syncJob.running);
   let syncError = $state("");
   // The sync stopped for safety (the cloud shows a version that does not
   // continue this device's): "Compare from scratch" instead of the error.
@@ -95,22 +99,15 @@
   const off = Events.On("progress", (ev) => { log.push(ev.data); });
   onDestroy(() => off());
   // How far a sync is: the step and, sending or receiving, X of Y.
-  let syncStep = $state<{ phase: string; done: number; total: number } | null>(null);
-  const offStep = Events.On("syncProgress", (ev) => { if (syncing && ev.data) syncStep = ev.data; });
-  onDestroy(() => offStep());
-  const stepText = $derived.by(() => {
-    if (!syncStep) return "";
-    const n = (s: string) => s.replace("{done}", String(syncStep!.done)).replace("{total}", String(syncStep!.total));
-    switch (syncStep.phase) {
-      case "scan": return p.stepScan;
-      case "compare": return p.stepCompare;
-      case "upload": return n(p.stepUpload);
-      case "download": return n(p.stepDownload);
-      case "commit": return p.stepCommit;
-      case "retry": return p.stepRetry;
-      default: return "";
-    }
-  });
+  const stepText = $derived(syncJob.running ? syncStepText(syncJob.phase, syncJob.done, syncJob.total) : "");
+  // How a sync ended: while this screen is open, as it ends; opened later,
+  // the last end (a stop for safety, an error).
+  function ended(end: { info: SyncInfo; error: string; stuck: boolean }) {
+    if (end.error) { syncStuck = end.stuck; syncError = end.stuck ? "" : end.error; }
+    else { syncStuck = false; syncError = ""; sync = end.info; }
+  }
+  if (syncJob.last?.error) ended(syncJob.last);
+  $effect(() => onSyncDone(ended));
 
   async function load() {
     error = "";
@@ -210,12 +207,14 @@
   }
 
   async function checkSync() {
-    syncError = ""; syncStuck = false; syncing = true;
-    try { sync = await SyncStatus(); } catch (e) { failed(e); } finally { syncing = false; syncStep = null; }
+    syncError = ""; syncStuck = false; checking = true;
+    try { sync = await SyncStatus(); } catch (e) { failed(e); } finally { checking = false; }
   }
   async function runSync() {
-    syncError = ""; syncStuck = false; syncing = true;
-    try { sync = await Sync(); toast(t.toast.synced); } catch (e) { failed(e); } finally { syncing = false; syncStep = null; }
+    syncError = ""; syncStuck = false;
+    // The end comes through onSyncDone (also when the screen closes and
+    // opens again meanwhile); only a refusal to start lands here.
+    startSync().catch(failed);
   }
 
   load().then(() => {
@@ -391,7 +390,7 @@
         </div>
         {#if syncing && stepText}
           <div class="step">
-            {#if syncStep?.total}<div class="sbar" role="progressbar" aria-valuemin="0" aria-valuemax={syncStep.total} aria-valuenow={syncStep.done}><span style:width="{Math.max(2, (syncStep.done / syncStep.total) * 100)}%"></span></div>{/if}
+            {#if syncJob.total}<div class="sbar" role="progressbar" aria-valuemin="0" aria-valuemax={syncJob.total} aria-valuenow={syncJob.done}><span style:width="{Math.max(2, (syncJob.done / syncJob.total) * 100)}%"></span></div>{/if}
             <small class="muted">{stepText}</small>
           </div>
         {/if}

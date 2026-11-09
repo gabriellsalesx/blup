@@ -984,17 +984,6 @@ export function RenameSite(dir: string, title: string): $CancellablePromise<$mod
 }
 
 /**
- * ResetSync is "Compare from scratch", offered only after a sync stopped
- * for safety (app.ErrSyncStuck) and confirmed by the person: this computer
- * forgets the last sync of the open site's notes and compares file by file
- * with Blup Cloud, as a new computer; what differs becomes a conflict copy
- * and no note is deleted.
- */
-export function ResetSync(): $CancellablePromise<app$0.SyncInfo> {
-    return $Call.ByID(2838786082);
-}
-
-/**
  * ResizeTerminal follows the panel's size.
  */
 export function ResizeTerminal(id: string, cols: number, rows: number): $CancellablePromise<void> {
@@ -1345,6 +1334,19 @@ export function StartPreview(): $CancellablePromise<string> {
 }
 
 /**
+ * StartSync sends and receives the open site's notes in the background,
+ * telling the window how far it went ("syncProgress") and how it ended
+ * ("syncDone"). fresh is "Compare from scratch", offered only after a sync
+ * stopped for safety (app.ErrSyncStuck) and confirmed by the person: this
+ * computer forgets the last sync and compares file by file with Blup
+ * Cloud, as a new computer; what differs becomes a conflict copy and no
+ * note is deleted. Starting while one runs only keeps it going.
+ */
+export function StartSync(fresh: boolean): $CancellablePromise<void> {
+    return $Call.ByID(1235865609, fresh);
+}
+
+/**
  * StartTranslateSite starts translating the open site's notes that miss a
  * translation into lang (or have an out of date one) with the AI in the
  * cloud chosen, in the background. What would stop every note (no key, no
@@ -1371,17 +1373,18 @@ export function SuggestPlaces(title: string): $CancellablePromise<$models.Places
 }
 
 /**
- * Sync sends and receives the notes (private GitHub repository).
- */
-export function Sync(): $CancellablePromise<app$0.SyncInfo> {
-    return $Call.ByID(2376889985);
-}
-
-/**
  * SyncRemote is where the open site's notes are synced: "blup" or "github".
  */
 export function SyncRemote(): $CancellablePromise<string> {
     return $Call.ByID(2025102391);
+}
+
+/**
+ * SyncState is the background sync now (Running false when there is
+ * none): a window that opens the screen again picks it up.
+ */
+export function SyncState(): $CancellablePromise<$models.SyncJob> {
+    return $Call.ByID(1202940626);
 }
 
 /**

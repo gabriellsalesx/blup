@@ -170,70 +170,101 @@ func (s *Studio) SyncStatus(ctx context.Context) (app.SyncInfo, error) {
 	return app.SyncStatus(ctx, site)
 }
 
-// SyncProgress is how far the sync of the notes went, heard by the window
-// as "syncProgress": phase ("scan", "compare", "upload", "download",
-// "commit", "retry", "done") and, sending or receiving, done of total.
-type SyncProgress struct {
-	Phase string `json:"phase"`
-	Done  int    `json:"done"`
-	Total int    `json:"total"`
+// SyncJob is the sync of the notes running in the background: one at a
+// time, going on while the person works on other screens (the window
+// shows it in the side strip). Phase ("scan", "compare", "upload",
+// "download", "commit", "retry") and, sending or receiving, done of total.
+type SyncJob struct {
+	Running bool   `json:"running"`
+	Phase   string `json:"phase"`
+	Done    int    `json:"done"`
+	Total   int    `json:"total"`
+	Fresh   bool   `json:"fresh"`
+}
+
+// SyncDone is how a background sync ended, heard by the window as
+// "syncDone". Stuck: it stopped for safety (app.ErrSyncStuck), and the
+// window offers "Compare from scratch".
+type SyncDone struct {
+	Info  app.SyncInfo `json:"info"`
+	Error string       `json:"error"`
+	Stuck bool         `json:"stuck"`
+	Fresh bool         `json:"fresh"`
+}
+
+var syncJob struct {
+	sync.Mutex
+	st SyncJob
 }
 
 func init() {
-	application.RegisterEvent[SyncProgress]("syncProgress")
+	application.RegisterEvent[SyncJob]("syncProgress")
+	application.RegisterEvent[SyncDone]("syncDone")
 }
 
-// syncProgress is a context whose syncs tell the window how far they went.
-func syncProgress() context.Context {
-	return app.WithSyncProgress(context.Background(), func(p notesync.Progress) {
-		application.Get().Event.Emit("syncProgress", SyncProgress{string(p.Phase), p.Done, p.Total})
-	})
+// SyncState is the background sync now (Running false when there is
+// none): a window that opens the screen again picks it up.
+func (s *Studio) SyncState() SyncJob {
+	syncJob.Lock()
+	defer syncJob.Unlock()
+	return syncJob.st
 }
 
-// Sync sends and receives the notes (private GitHub repository).
-func (s *Studio) Sync() (app.SyncInfo, error) {
+// StartSync sends and receives the open site's notes in the background,
+// telling the window how far it went ("syncProgress") and how it ended
+// ("syncDone"). fresh is "Compare from scratch", offered only after a sync
+// stopped for safety (app.ErrSyncStuck) and confirmed by the person: this
+// computer forgets the last sync and compares file by file with Blup
+// Cloud, as a new computer; what differs becomes a conflict copy and no
+// note is deleted. Starting while one runs only keeps it going.
+func (s *Studio) StartSync(fresh bool) error {
 	site, err := s.current()
 	if err != nil {
-		return app.SyncInfo{}, err
-	}
-	var info app.SyncInfo
-	err = running(func() (err error) {
-		info, err = app.SyncNow(syncProgress(), site)
 		return err
+	}
+	syncJob.Lock()
+	if syncJob.st.Running {
+		syncJob.Unlock()
+		return nil
+	}
+	syncJob.st = SyncJob{Running: true, Fresh: fresh}
+	syncJob.Unlock()
+	ctx := app.WithSyncProgress(context.Background(), func(p notesync.Progress) {
+		st := SyncJob{Running: true, Phase: string(p.Phase), Done: p.Done, Total: p.Total, Fresh: fresh}
+		syncJob.Lock()
+		syncJob.st = st
+		syncJob.Unlock()
+		application.Get().Event.Emit("syncProgress", st)
 	})
-	// The first sync through Blup Cloud creates the vault: live sync can
-	// start now (on live plans).
-	s.mu.Lock()
-	start := err == nil && (s.live == nil || s.live.Gone()) && site.Sync.Remote == app.RemoteBlup
-	s.mu.Unlock()
-	if start {
-		s.startLive(site)
-	}
-	return info, err
-}
-
-// ResetSync is "Compare from scratch", offered only after a sync stopped
-// for safety (app.ErrSyncStuck) and confirmed by the person: this computer
-// forgets the last sync of the open site's notes and compares file by file
-// with Blup Cloud, as a new computer; what differs becomes a conflict copy
-// and no note is deleted.
-func (s *Studio) ResetSync() (app.SyncInfo, error) {
-	site, err := s.current()
-	if err != nil {
-		return app.SyncInfo{}, err
-	}
-	var info app.SyncInfo
-	err = running(func() (err error) {
-		info, err = app.ResetSync(syncProgress(), site)
-		return err
-	})
-	s.mu.Lock()
-	start := err == nil && (s.live == nil || s.live.Gone()) && site.Sync.Remote == app.RemoteBlup
-	s.mu.Unlock()
-	if start {
-		s.startLive(site)
-	}
-	return info, err
+	go func() {
+		var info app.SyncInfo
+		err := running(func() (err error) {
+			if fresh {
+				info, err = app.ResetSync(ctx, site)
+			} else {
+				info, err = app.SyncNow(ctx, site)
+			}
+			return err
+		})
+		// The first sync through Blup Cloud creates the vault: live sync
+		// can start now (on live plans).
+		s.mu.Lock()
+		start := err == nil && (s.live == nil || s.live.Gone()) && site.Sync.Remote == app.RemoteBlup
+		s.mu.Unlock()
+		if start {
+			s.startLive(site)
+		}
+		end := SyncDone{Info: info, Fresh: fresh}
+		if err != nil {
+			end.Error = err.Error()
+			end.Stuck = errors.Is(err, app.ErrSyncStuck)
+		}
+		syncJob.Lock()
+		syncJob.st = SyncJob{}
+		syncJob.Unlock()
+		application.Get().Event.Emit("syncDone", end)
+	}()
+	return nil
 }
 
 // OpenNewGitHubRepo opens GitHub's "new repository" form filled in for the

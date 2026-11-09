@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { ResetSync } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { SyncInfo } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import ShieldAlert from "@lucide/svelte/icons/shield-alert";
   import Compare from "@lucide/svelte/icons/git-compare-arrows";
@@ -7,6 +6,7 @@
   import Loader from "@lucide/svelte/icons/loader-circle";
   import { t } from "./i18n";
   import { toast } from "./toast.svelte";
+  import { startSync } from "./syncjob.svelte";
 
   // A sync stopped for safety (Blup Cloud shows a version that does not
   // continue this device's): the notice, and "Compare from scratch". It is
@@ -23,10 +23,12 @@
   async function fresh() {
     busy = true; error = "";
     try {
-      const info = await ResetSync();
+      // A background sync like the others (side strip, other screens).
+      const end = await startSync(true);
+      if (end.error) throw new Error(end.error);
       asking = false;
       toast(p.freshDone);
-      done(info);
+      done(end.info);
     } catch (e) {
       error = String(e).replace(/^(Runtime)?Error: /, "");
     } finally { busy = false; }

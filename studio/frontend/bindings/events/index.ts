@@ -49,6 +49,11 @@ export const Progress = "progress";
 export const Republish = "republish";
 
 /**
+ * Name of the custom event "syncDone".
+ */
+export const SyncDone = "syncDone";
+
+/**
  * Name of the custom event "syncProgress".
  */
 export const SyncProgress = "syncProgress";

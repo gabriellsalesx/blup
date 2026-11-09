@@ -415,14 +415,29 @@ export interface SiteInfo {
 }
 
 /**
- * SyncProgress is how far the sync of the notes went, heard by the window
- * as "syncProgress": phase ("scan", "compare", "upload", "download",
- * "commit", "retry", "done") and, sending or receiving, done of total.
+ * SyncDone is how a background sync ended, heard by the window as
+ * "syncDone". Stuck: it stopped for safety (app.ErrSyncStuck), and the
+ * window offers "Compare from scratch".
  */
-export interface SyncProgress {
+export interface SyncDone {
+    "info": app$0.SyncInfo;
+    "error": string;
+    "stuck": boolean;
+    "fresh": boolean;
+}
+
+/**
+ * SyncJob is the sync of the notes running in the background: one at a
+ * time, going on while the person works on other screens (the window
+ * shows it in the side strip). Phase ("scan", "compare", "upload",
+ * "download", "commit", "retry") and, sending or receiving, done of total.
+ */
+export interface SyncJob {
+    "running": boolean;
     "phase": string;
     "done": number;
     "total": number;
+    "fresh": boolean;
 }
 
 /**

@@ -27,6 +27,7 @@
   import { ACTIONS, comboOf, keysOf, type Action } from "./keys";
   import { toast } from "./toast.svelte";
   import { job, LANG_NAMES } from "./translatejob.svelte";
+  import { syncJob, syncStepText } from "./syncjob.svelte";
   import CircleCheck from "@lucide/svelte/icons/circle-check";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import PanelLeft from "@lucide/svelte/icons/panel-left";
@@ -487,6 +488,11 @@
   const jobTip = $derived(job.running
     ? t.sitelangs.ringWorking.replace("{lang}", LANG_NAMES[job.lang] ?? job.lang).replace("{done}", String(job.done)).replace("{total}", String(job.total))
     : t.sitelangs.ringDone.replace("{lang}", LANG_NAMES[job.finished] ?? job.finished));
+  // The sync of the notes in the background, the same way: the ring with
+  // the percentage while sending or receiving, turning while it reads,
+  // compares or saves, then the check.
+  const syncPct = $derived(syncJob.total ? Math.floor((syncJob.done / syncJob.total) * 100) : -1);
+  const syncTip = $derived(syncJob.running ? syncStepText(syncJob.phase, syncJob.done, syncJob.total) : t.toast.synced);
   const top = $derived(screens.filter((x) => x.group !== "end"));
   const bottom = $derived(screens.filter((x) => x.group === "end"));
   const openScreen = async (key: string) => { await save(); autostart = ""; screen = key; error = ""; };
@@ -798,6 +804,13 @@
       <button class="rib" aria-label={t.daily.button} data-tip={t.daily.button} onclick={dailyNote}><NotebookPen size={19} strokeWidth={1.75} /><span class="rib-name">{t.daily.button}</span></button>
     {/if}
     <span class="grow"></span>
+    {#if syncJob.running || syncJob.finished}
+      <button class="rib job" aria-label={syncTip} data-tip={syncTip} onclick={() => openScreen("publish")}>
+        {#if syncJob.running}<span class="ring" class:spin={syncPct < 0} style:--p={syncPct < 0 ? 25 : syncPct} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={syncPct < 0 ? undefined : syncPct}>{#if syncPct >= 0}<span class="pct">{syncPct}%</span>{/if}</span>
+        {:else}<span class="ok"><CircleCheck size={19} strokeWidth={1.75} /></span>{/if}
+        <span class="rib-name">{syncTip}</span>
+      </button>
+    {/if}
     {#if !notesVault && (job.running || job.finished)}
       <button class="rib job" aria-label={jobTip} data-tip={jobTip} onclick={() => openScreen("langs")}>
         {#if job.running}<span class="ring" style:--p={jobPct} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={jobPct}><span class="pct">{jobPct}%</span></span>
@@ -1043,6 +1056,9 @@
   .rib-name { display: none; }
   .ring { position: relative; display: grid; place-items: center; flex: none; width: 1.65rem; height: 1.65rem; }
   .ring::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(var(--blue) calc(var(--p) * 1%), var(--line) 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); }
+  .ring.spin::before { animation: ring-spin 1s linear infinite; }
+  @keyframes ring-spin { to { transform: rotate(1turn); } }
+  @media (prefers-reduced-motion: reduce) { .ring.spin::before { animation: none; } }
   .pct { font-size: .5rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
   .ok { display: grid; color: light-dark(#16a34a, #4ade80); }
   /* The screen's name at once on hover (the system's tip waits a second). */
