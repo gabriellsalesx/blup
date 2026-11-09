@@ -77,7 +77,9 @@ if(sent.length!==1||(sent[0].body.match(/blup:feedback/g)||[]).length!==1||!sent
 				fmt.Fprintf(w, `<!doctype html><html lang="en"><body>%s<script>%s</script><script src="/feedback.js" %s></script><script>setTimeout(async()=>{try{%s}catch(e){document.body.dataset.result="FAIL: "+e.message}},50)</script></body></html>`, markup, setup, attrs, probe)
 			}))
 			defer server.Close()
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			// A cold Chromium on a CI machine can take most of half a minute
+			// to start (it waits on a session bus that is not there).
+			ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, chrome, "--headless", "--no-sandbox", "--disable-gpu", "--disable-background-networking", "--no-first-run", "--no-default-browser-check", "--user-data-dir="+t.TempDir(), "--dump-dom", "--virtual-time-budget=500", server.URL)
 			// Chromium uses a Unix socket below TMPDIR (108-byte path limit).
@@ -86,7 +88,7 @@ if(sent.length!==1||(sent[0].body.match(/blup:feedback/g)||[]).length!==1||!sent
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = os.RemoveAll(short) })
-			cmd.Env = append(os.Environ(), "TMPDIR="+short)
+			cmd.Env = append(os.Environ(), "TMPDIR="+short, "DBUS_SESSION_BUS_ADDRESS=")
 			var stderr bytes.Buffer
 			cmd.Stderr = &stderr
 			out, err := cmd.Output()
