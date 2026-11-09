@@ -13,6 +13,7 @@ import (
 
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
+	"github.com/gabriellsalesx/blup/internal/i18n"
 	"github.com/gabriellsalesx/blup/internal/kokoro"
 	"github.com/gabriellsalesx/blup/internal/narrate"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
@@ -208,8 +209,10 @@ func NarrationVoices(ctx context.Context, lang, model, blupModel string) ([]Voic
 		if m.ID != blupModel || m.PerThousand <= 0 { // free ones aren't offered through the plan
 			continue
 		}
-		for _, v := range narrate.VoicesFor(m, lang) {
-			name := narrate.VoiceName(v)
+		vs := narrate.VoicesFor(m, lang)
+		labels := narrate.VoiceLabels(vs, uiLang())
+		for i, v := range vs {
+			name := labels[i]
 			if v == "" {
 				name = byLangCode(lang, "Voz padrão do modelo", "The model's default voice", "Voz predeterminada del modelo")
 			}
@@ -220,8 +223,10 @@ func NarrationVoices(ctx context.Context, lang, model, blupModel string) ([]Voic
 		if m.ID != model {
 			continue
 		}
-		for _, v := range narrate.VoicesFor(m, lang) {
-			name := narrate.VoiceName(v)
+		vs := narrate.VoicesFor(m, lang)
+		labels := narrate.VoiceLabels(vs, uiLang())
+		for i, v := range vs {
+			name := labels[i]
 			if v == "" {
 				name = byLangCode(lang, "Voz padrão do modelo", "The model's default voice", "Voz predeterminada del modelo")
 			}
@@ -326,18 +331,31 @@ func resolveOpenRouter(ctx context.Context, lang, choice string) (model, voice, 
 		if slices.Contains(vs, voice) {
 			return model, voice, "", nil
 		}
-		return model, vs[0], voiceName(vs[0], lang), nil
+		return model, vs[0], voiceNameIn(vs, 0, lang), nil
 	}
 	if m, vs := find(narrate.DefaultModel); len(vs) > 0 {
-		return m.ID, vs[0], m.Name + ", " + voiceName(vs[0], lang), nil
+		return m.ID, vs[0], m.Name + ", " + voiceNameIn(vs, 0, lang), nil
 	}
 	for _, m := range list {
 		if vs := narrate.VoicesFor(m, lang); len(vs) > 0 {
-			return m.ID, vs[0], m.Name + ", " + voiceName(vs[0], lang), nil
+			return m.ID, vs[0], m.Name + ", " + voiceNameIn(vs, 0, lang), nil
 		}
 	}
 	return "", "", "", errors.New(byLangCode(lang, "O OpenRouter não tem nenhuma voz para o idioma do site agora. Use a voz local.", "OpenRouter has no voice for the site's language right now. Use the local voice.", "OpenRouter no tiene ninguna voz para el idioma del sitio en este momento. Usa la voz local."))
 }
+
+// voiceNameIn is the i-th voice of list as its list shows it (the region
+// when another has the same name).
+func voiceNameIn(list []string, i int, lang string) string {
+	if list[i] == "" {
+		return voiceName("", lang)
+	}
+	return narrate.VoiceLabels(list, uiLang())[i]
+}
+
+// uiLang is the Studio's language ("pt", "en" or "es"), for the names of
+// the voices' regions.
+func uiLang() string { return string(i18n.Current()) }
 
 func voiceName(v, lang string) string {
 	if v == "" {

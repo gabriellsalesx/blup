@@ -44,6 +44,7 @@ type NarrationItem struct {
 
 // NarrationVoice is the voice that reads one language of the batch.
 type NarrationVoice struct {
+	ID     string `json:"id"` // the voice's choice, as the voice lists give it
 	Lang   string `json:"lang"`
 	Name   string `json:"name"`
 	Engine string `json:"engine"` // "local", "blup" or "openrouter"
@@ -74,6 +75,10 @@ type NarrationPlan struct {
 	// why it could not be worked out (the batch then can't start on it).
 	Cost      *NarrationCost `json:"cost"`
 	CostError string         `json:"costError"`
+	// Made / MadeLangs: the narrations the Studio made, in which languages
+	// (what "Remove narrations" would take off).
+	Made      int      `json:"made"`
+	MadeLangs []string `json:"madeLangs"`
 }
 
 // minNarrationSpaces is the least text a note needs to be narrated (the
@@ -225,7 +230,7 @@ func NarrationTodo(site *config.Site, voices map[string]string) (NarrationPlan, 
 		v := byLang[it.Lang]
 		if v == nil {
 			voice := voiceFor(it.Lang, voices[it.Lang])
-			v = &NarrationVoice{Lang: it.Lang, Name: voiceLabel(it.Lang, voice), Engine: engineOf(voice)}
+			v = &NarrationVoice{ID: voice, Lang: it.Lang, Name: voiceLabel(it.Lang, voice), Engine: engineOf(voice)}
 			byLang[it.Lang] = v
 		}
 		v.Notes++
@@ -266,6 +271,28 @@ func voiceLabel(lang, voice string) string {
 	rest := strings.TrimPrefix(voice, blupPrefix)
 	_, v := splitChoice(rest)
 	return voiceName(v, lang)
+}
+
+// NarrationVoiceNames names the plan's voices in the cloud as the voice
+// lists do (the region when two share a name), from the models' lists.
+func NarrationVoiceNames(ctx context.Context, plan *NarrationPlan) {
+	for i, v := range plan.Voices {
+		var own, blup string
+		switch v.Engine {
+		case "blup":
+			blup, _ = blupChoice(strings.TrimPrefix(v.ID, blupPrefix))
+		case "openrouter":
+			own, _ = splitChoice(v.ID)
+		default:
+			continue
+		}
+		list, _ := NarrationVoices(ctx, v.Lang, own, blup)
+		for _, e := range list {
+			if e.ID == v.ID {
+				plan.Voices[i].Name = e.Name
+			}
+		}
+	}
 }
 
 // NarrationPlanCost is what the plan's notes read through Blup Cloud would
@@ -525,4 +552,13 @@ func errTranslationOfHidden(site *config.Site) error {
 		"O post original desta tradução não é publicado (rascunho, escondido ou fora do site): a tradução também não ganha narração.",
 		"The original post of this translation is not published (a draft, hidden or kept off the site): the translation is not narrated either.",
 		"El post original de esta traducción no se publica (borrador, oculto o fuera del sitio): la traducción tampoco se narra."))
+}
+
+// ErrJobsRunning: the site's translation or the narration of its posts
+// runs; the narrations wait for it to end.
+func ErrJobsRunning(site *config.Site) error {
+	return errors.New(byLang(site,
+		"Uma tradução ou narração do site está em andamento. Espere terminar para mexer nas narrações.",
+		"A translation or narration of the site is running. Wait for it to finish to change the narrations.",
+		"Una traducción o narración del sitio está en curso. Espera a que termine para cambiar las narraciones."))
 }

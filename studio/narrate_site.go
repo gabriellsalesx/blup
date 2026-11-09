@@ -106,12 +106,16 @@ func releaseNarrJob() {
 // NarrationPlan is what narrating the open blog's posts would do, with
 // what it would use of the month's AI allowance when some voice goes
 // through Blup Cloud, and of the person's OpenRouter key when it is theirs.
-func (s *Studio) NarrationPlan(ctx context.Context) (app.NarrationPlan, error) {
+// voices are the narration's voices as the window has them now (it saves
+// them a moment later); nil: the saved ones.
+func (s *Studio) NarrationPlan(ctx context.Context, voices map[string]string) (app.NarrationPlan, error) {
 	site, err := s.current()
 	if err != nil {
 		return app.NarrationPlan{}, err
 	}
-	voices := s.Prefs().Voices
+	if voices == nil {
+		voices = s.Prefs().Voices
+	}
 	plan, err := app.NarrationTodo(site, voices)
 	if err != nil {
 		return plan, err
@@ -122,7 +126,50 @@ func (s *Studio) NarrationPlan(ctx context.Context) (app.NarrationPlan, error) {
 	}
 	plan.Cost = cost
 	app.NarrationOpenRouterCost(ctx, &plan, voices)
+	app.NarrationVoiceNames(ctx, &plan)
+	plan.Made, plan.MadeLangs, _ = app.NarrationsMade(site)
 	return plan, nil
+}
+
+// jobsRunning tells whether a background job (the translation, the narration) holds
+// the notes.
+func jobsRunning() bool {
+	siteJob.Lock()
+	translating := siteJob.st.Running
+	siteJob.Unlock()
+	return translating || narrateRunning()
+}
+
+// RemoveNarrations takes the narrations the Studio made off the open
+// blog's posts (translations included; an audio of the person's own
+// stays): the MP3s go to the Blup trash, together. Refused while the
+// site's translation or a narration runs. RestoreNarrations undoes it.
+func (s *Studio) RemoveNarrations() (app.RemovedNarrations, error) {
+	site, err := s.current()
+	if err != nil {
+		return app.RemovedNarrations{}, err
+	}
+	jobsMu.Lock()
+	defer jobsMu.Unlock()
+	if jobsRunning() {
+		return app.RemovedNarrations{}, app.ErrJobsRunning(site)
+	}
+	return app.RemoveNarrations(site)
+}
+
+// RestoreNarrations puts back what RemoveNarrations took off (trash: the
+// folder it gave).
+func (s *Studio) RestoreNarrations(trash string) error {
+	site, err := s.current()
+	if err != nil {
+		return err
+	}
+	jobsMu.Lock()
+	defer jobsMu.Unlock()
+	if jobsRunning() {
+		return app.ErrJobsRunning(site)
+	}
+	return app.RestoreNarrations(site, trash)
 }
 
 // NarrateSiteState is the batch now: a window that opens again picks it up.

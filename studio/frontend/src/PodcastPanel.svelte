@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
-  import { Podcast, SavePodcast, PickCover, LinkedImage, OpenURL, NarrationPlan } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { onDestroy, untrack } from "svelte";
+  import { look } from "./theme.svelte";
+  import { Podcast, SavePodcast, PickCover, LinkedImage, OpenURL, NarrationPlan, RemoveNarrations, RestoreNarrations } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { PodcastInfo, NarrationPlan as Plan } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import { narrateJob, startNarrateSite, cancelNarrateSite, narratePercent, onNarrateEnd, narratesSite } from "./narratejob.svelte";
   import { Clipboard } from "@wailsio/runtime";
@@ -8,7 +9,7 @@
   import Switch from "./Switch.svelte";
   import Saved from "./Saved.svelte";
   import { saver } from "./saving.svelte";
-  import { toast } from "./toast.svelte";
+  import { toast, toastError } from "./toast.svelte";
   import { t } from "./i18n";
 
   // A blog's podcast: the show's details (properties of the Podcast
@@ -78,10 +79,37 @@
   let plan = $state<Plan | null>(null);
   let planError = $state("");
   let confirming = $state(false);
+  // With the voices as the window has them (Settings saves them a moment
+  // after they change).
   function loadPlan() {
-    NarrationPlan().then((x) => { plan = x; planError = ""; }).catch((e) => (planError = String(e).replace(/^(Runtime)?Error: /, "")));
+    NarrationPlan($state.snapshot(look.voices ?? {})).then((x) => { plan = x; planError = ""; }).catch((e) => (planError = String(e).replace(/^(Runtime)?Error: /, "")));
   }
-  loadPlan();
+  // Read again when the voices change (Settings > Narrations: a voice or a
+  // model), when what can narrate changes ("blup:ai") and when the window
+  // comes back into view.
+  const voicesKey = $derived(JSON.stringify(look.voices ?? {}));
+  $effect(() => {
+    void voicesKey;
+    untrack(loadPlan);
+  });
+  window.addEventListener("blup:ai", loadPlan);
+  onDestroy(() => window.removeEventListener("blup:ai", loadPlan));
+  const onVisible = () => { if (document.visibilityState === "visible") loadPlan(); };
+
+  // Taking the narrations the Studio made off (to the Trash, with Undo).
+  let removing = $state(false);
+  async function removeAll() {
+    removing = false;
+    try {
+      const r = await RemoveNarrations();
+      loadPlan();
+      Podcast().then(fill).catch(() => {});
+      if (!r.notes) return;
+      toast(a.removed.replace("{n}", String(r.notes)), { action: { label: t.toast.undo, run: () => RestoreNarrations(r.trash).then(() => { loadPlan(); Podcast().then(fill).catch(() => {}); }).catch(toastError) } });
+    } catch (e) {
+      toastError(e);
+    }
+  }
   // A batch that ends: the counts and the episodes are read again.
   onDestroy(onNarrateEnd(() => { loadPlan(); Podcast().then(fill).catch(() => {}); }));
   // About 900 characters a minute, read aloud.
@@ -100,6 +128,8 @@
     toast(p.copied);
   }
 </script>
+
+<svelte:document onvisibilitychange={onVisible} />
 
 <div class="panel">
   <h1>{p.title}</h1>
@@ -154,6 +184,17 @@
             </div>
           {:else}
             <div class="row"><button class="btn" disabled={blocked || narrateJob.running} onclick={() => (confirming = true)}>{a.button.replace("{n}", String(plan.total))}</button></div>
+          {/if}
+        {/if}
+        {#if plan.made && !confirming}
+          {#if removing}
+            <p>{a.removeQ.replace("{n}", String(plan.made)).replace("{langs}", (plan.madeLangs ?? []).map((l) => NAMES[l] ?? l).join(", "))}</p>
+            <div class="row">
+              <button class="btn" onclick={removeAll}>{a.removeOk}</button>
+              <button class="btn ghost" onclick={() => (removing = false)}>{a.no}</button>
+            </div>
+          {:else}
+            <div class="row"><button class="btn ghost" disabled={narrateJob.running} onclick={() => (removing = true)}>{a.removeBtn}</button></div>
           {/if}
         {/if}
       {/if}

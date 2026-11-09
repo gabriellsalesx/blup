@@ -41,6 +41,7 @@ export type {
     NoteLang,
     PodcastFeed,
     PodcastInfo,
+    RemovedNarrations,
     SearchHit,
     Section,
     Settings,

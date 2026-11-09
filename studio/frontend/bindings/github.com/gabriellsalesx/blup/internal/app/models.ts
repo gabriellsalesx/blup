@@ -639,12 +639,23 @@ export interface NarrationPlan {
      */
     "cost": NarrationCost | null;
     "costError": string;
+
+    /**
+     * Made / MadeLangs: the narrations the Studio made, in which languages
+     * (what "Remove narrations" would take off).
+     */
+    "made": number;
+    "madeLangs": string[] | null;
 }
 
 /**
  * NarrationVoice is the voice that reads one language of the batch.
  */
 export interface NarrationVoice {
+    /**
+     * the voice's choice, as the voice lists give it
+     */
+    "id": string;
     "lang": string;
     "name": string;
 
@@ -776,6 +787,16 @@ export interface PodcastInfo {
      * posts with a narration, in the site's language
      */
     "episodes": number;
+}
+
+/**
+ * RemovedNarrations is what RemoveNarrations did: how many notes, in which
+ * languages, and the trash folder that undoes it.
+ */
+export interface RemovedNarrations {
+    "notes": number;
+    "langs": string[] | null;
+    "trash": string;
 }
 
 /**

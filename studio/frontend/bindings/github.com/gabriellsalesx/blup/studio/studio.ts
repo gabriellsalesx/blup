@@ -655,9 +655,11 @@ export function NarrationHash(rel: string): $CancellablePromise<string> {
  * NarrationPlan is what narrating the open blog's posts would do, with
  * what it would use of the month's AI allowance when some voice goes
  * through Blup Cloud, and of the person's OpenRouter key when it is theirs.
+ * voices are the narration's voices as the window has them now (it saves
+ * them a moment later); nil: the saved ones.
  */
-export function NarrationPlan(): $CancellablePromise<app$0.NarrationPlan> {
-    return $Call.ByID(3741638863);
+export function NarrationPlan(voices: { [_ in string]?: string } | null): $CancellablePromise<app$0.NarrationPlan> {
+    return $Call.ByID(3741638863, voices);
 }
 
 /**
@@ -985,6 +987,16 @@ export function RemoveLocalVoice(): $CancellablePromise<void> {
 }
 
 /**
+ * RemoveNarrations takes the narrations the Studio made off the open
+ * blog's posts (translations included; an audio of the person's own
+ * stays): the MP3s go to the Blup trash, together. Refused while the
+ * site's translation or a narration runs. RestoreNarrations undoes it.
+ */
+export function RemoveNarrations(): $CancellablePromise<app$0.RemovedNarrations> {
+    return $Call.ByID(3729081921);
+}
+
+/**
  * RemoveSection takes a Bento section off (its folder goes to the Blup
  * trash, so it can come back).
  */
@@ -1029,6 +1041,14 @@ export function RenameSite(dir: string, title: string): $CancellablePromise<$mod
  */
 export function ResizeTerminal(id: string, cols: number, rows: number): $CancellablePromise<void> {
     return $Call.ByID(3867034702, id, cols, rows);
+}
+
+/**
+ * RestoreNarrations puts back what RemoveNarrations took off (trash: the
+ * folder it gave).
+ */
+export function RestoreNarrations(trash: string): $CancellablePromise<void> {
+    return $Call.ByID(1469477179, trash);
 }
 
 /**
