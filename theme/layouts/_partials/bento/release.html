@@ -21,7 +21,13 @@
   {{- if .link }}
   {{- /* In the list, entries stay out of the search index: each one is
   found on its own page. */}}
-  {{- if partial "locked.html" $p }}{{ partial "mochi/lock.html" $p }}{{ else }}<div class="prose">{{ partial "content.html" $p }}</div>{{ end }}
+  {{- /* A long version shows only its start, fading out, with a link to
+  read the rest on its own page: the list stays easy to scan. */}}
+  {{- if partial "locked.html" $p }}{{ partial "mochi/lock.html" $p }}
+  {{- else if gt $p.WordCount 90 }}
+  <div class="release-body"><div class="prose clip">{{ partial "content.html" $p }}</div>
+  <a class="release-more" href="{{ $p.RelPermalink }}">{{ T "clReadMore" }}<span aria-hidden="true"> →</span></a></div>
+  {{- else }}<div class="prose">{{ partial "content.html" $p }}</div>{{ end }}
   {{ partial "bento/feedback-mini.html" (dict "page" $p "mode" "reactions") }}
   {{- else }}
   {{ partial "bento/body.html" $p }}
