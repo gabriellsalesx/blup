@@ -2,7 +2,7 @@
   import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
   import { onDestroy, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
-  import { Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, CloudflareSubdomain, SetCloudflareSubdomain, Target, SetTarget, Publish, CheckSiteSlug, SyncStatus, SyncRemote, SetSyncRemote, OpenNewGitHubRepo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { Connections, OpenKeyPage, OpenURL, OpenBlupCloud, ConnectGitHub, ConnectCloudflare, Disconnect, CloudflareAccounts, CloudflareSubdomain, SetCloudflareSubdomain, Target, SetTarget, Publish, CheckSiteSlug, SyncRemote, SetSyncRemote, OpenNewGitHubRepo } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Connections as Conn, Target as Dest, SyncInfo, BlupAccount } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Account } from "../bindings/github.com/gabriellsalesx/blup/internal/deploy/cfworkers/models";
   import type { SlugCheck } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
@@ -10,7 +10,6 @@
   import Alert from "@lucide/svelte/icons/circle-alert";
   import Loader from "@lucide/svelte/icons/loader-circle";
   import External from "@lucide/svelte/icons/external-link";
-  import Refresh from "@lucide/svelte/icons/refresh-cw";
   import { t } from "./i18n";
   import { toast } from "./toast.svelte";
   import CloudAccount from "./CloudAccount.svelte";
@@ -40,10 +39,9 @@
   let live = $state("");
 
   let sync = $state<SyncInfo | null>(null);
-  // Checking (what a sync would do) is this screen's; syncing is a job of
-  // the whole window (syncjob), going on when the screen closes.
-  let checking = $state(false);
-  const syncing = $derived(checking || syncJob.running);
+  // Syncing is a job of the whole window (syncjob): it goes on when the
+  // screen closes, and the check by the note's title shows it too.
+  const syncing = $derived(syncJob.running);
   let syncError = $state("");
   // The sync stopped for safety (the cloud shows a version that does not
   // continue this device's): "Compare from scratch" instead of the error.
@@ -68,9 +66,8 @@
   $effect(() => {
     if (remote === "blup" && cloud?.notes === "ready" && !checkedCloud) {
       checkedCloud = true;
-      // A live sync sending now brings its own result: no check meanwhile.
-      if (liveSync.state === "syncing") { if (liveSync.info) sync = liveSync.info; }
-      else checkSync();
+      // The last live result, for its warnings (conflicts, files too large).
+      if (liveSync.info) sync = liveSync.info;
     }
   });
 
@@ -215,14 +212,10 @@
   let ghKey = $state("");
   async function connectGitHubForSync() {
     connecting = true; syncError = "";
-    try { await ConnectGitHub(ghKey); ghKey = ""; conn = await Connections(); await checkSync(); }
+    try { await ConnectGitHub(ghKey); ghKey = ""; conn = await Connections(); }
     catch (e) { syncError = msg(e); } finally { connecting = false; }
   }
 
-  async function checkSync() {
-    syncError = ""; syncStuck = false; checking = true;
-    try { sync = await SyncStatus(); } catch (e) { failed(e); } finally { checking = false; }
-  }
   async function runSync() {
     syncError = ""; syncStuck = false;
     // The end comes through onSyncDone (also when the screen closes and
@@ -232,7 +225,6 @@
 
   load().then(() => {
     if (autostart === "publish" && ready) publish();
-    if (autostart === "sync" && remote === "github" && conn?.github) checkSync();
   });
 </script>
 
@@ -390,17 +382,19 @@
         <SyncFresh done={(info) => { syncStuck = false; sync = info; }} />
       {:else if canSync}
         {#if sync}
-          <p class="sum">{sync.upToDate && !sync.send && !sync.receive ? p.syncUpToDate : p.syncPlan.replace("{send}", String(sync.send)).replace("{receive}", String(sync.receive))} · <b>{sync.repo}</b></p>
           {#each sync.conflicts ?? [] as c (c)}<p class="bad">{p.conflict} {c}</p>{/each}
           {#if sync.tooLarge?.length}
             <p class="warn">{cl.tooLarge.replace("{mb}", String(cloud?.maxFileMB ?? 100))}</p>
             <ul class="large">{#each sync.tooLarge as f (f)}<li>{f}</li>{/each}</ul>
           {/if}
         {/if}
-        <div class="actions">
-          <button class="btn ghost" disabled={syncing} onclick={checkSync}><Refresh size={14} />{p.syncCheck}</button>
-          <button class="btn" disabled={syncing} onclick={runSync}>{syncJob.running ? p.syncing : checking ? p.checking : p.syncNow}</button>
-        </div>
+        <!-- Plans with live sync send by themselves; the others (and
+             GitHub) by this button or by the check by the note's title. -->
+        {#if !(remote === "blup" && cloud?.live)}
+          <div class="actions">
+            <button class="btn" disabled={syncing} onclick={runSync}>{syncJob.running ? p.syncing : p.syncNow}</button>
+          </div>
+        {/if}
         {#if liveSending}<small class="muted">{p.liveSending}</small>{/if}
         {#if syncing && stepText}
           <div class="step">

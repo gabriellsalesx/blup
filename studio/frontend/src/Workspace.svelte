@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
-  import { CalendarEvents, HyprlandSetup, OpenURL, Sites, RecentSites, SearchNotes, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, CreateDatabase, SaveDatabaseSchema, DailyNote, RenameItem, MoveItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { CalendarEvents, HyprlandSetup, OpenURL, Sites, RecentSites, SearchNotes, CreateNote, CreateFolder, CreateCanvas, CreateDrawing, CreateDatabase, SaveDatabaseSchema, DailyNote, RenameItem, MoveItem, Open, Tree as LoadTree, ReadNote, SaveNote, StartPreview, StopPreview, PreviewPage, NoteAt, Settings as LoadSettings, CloudHistory, BlupAccount, SetSyncRemote, SyncRemote, SyncStatus } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Node, SiteInfo } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import type { Settings, SearchHit } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import Tree from "./Tree.svelte";
@@ -25,9 +25,10 @@
   import CircleHelp from "@lucide/svelte/icons/circle-question-mark";
   import { look, setPref } from "./theme.svelte";
   import { ACTIONS, comboOf, keysOf, type Action } from "./keys";
-  import { toast } from "./toast.svelte";
+  import { toast, toastError } from "./toast.svelte";
   import { job, LANG_NAMES } from "./translatejob.svelte";
-  import { syncJob, syncStepText } from "./syncjob.svelte";
+  import { syncJob, syncStepText, startSync, onSyncDone } from "./syncjob.svelte";
+  import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
   import CircleCheck from "@lucide/svelte/icons/circle-check";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
   import PanelLeft from "@lucide/svelte/icons/panel-left";
@@ -40,8 +41,6 @@
   import { Events } from "@wailsio/runtime";
   import type { BlupAccount as BlupAccountInfo } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import StorageBanner from "./StorageBanner.svelte";
-  import CloudCheck from "@lucide/svelte/icons/cloud-check";
-  import CloudAlert from "@lucide/svelte/icons/cloud-alert";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import Check from "@lucide/svelte/icons/check";
   import Cloud from "@lucide/svelte/icons/cloud";
@@ -421,11 +420,31 @@
   let account = $state<BlupAccountInfo | null>(null);
   const loadAccount = () => BlupAccount().then((a) => { account = a; signedIn = a.signedIn; }).catch(() => {});
   loadAccount();
+
+  // The check by the note's title: saved here, sent to the cloud, or not
+  // yet (plans without live sync, GitHub), or an error. It is also the
+  // sync button: a click sends now, or opens where to sync (none chosen
+  // yet, or an error to read).
+  let syncRemote = $state("");
+  // Saved here but not sent yet (plans without live sync): a click sends.
+  let unsent = $state(false);
+  const liveSync = $derived(syncRemote === "blup" && !!account?.live);
+  function loadRemote() {
+    SyncRemote().then((r) => {
+      const first = r !== syncRemote;
+      syncRemote = r;
+      // Opening: whether something waits to go (only where a click sends).
+      if (first && r && !(r === "blup" && account?.live)) SyncStatus().then((i) => (unsent = !!i.send)).catch(() => {});
+    }).catch(() => {});
+  }
+  loadRemote();
+  $effect(() => onSyncDone((end) => { if (!end.error) unsent = false; }));
   const cloudTip = $derived(!look.cloudTip && !signedIn);
   async function cloudYes() {
     setPref("cloudTip", true);
     await SetSyncRemote("blup").catch(() => {});
-    go("publish", "sync");
+    if (notesVault) go("publish", "sync");
+    else go("sync", "");
   }
   function chooseTip() { setPref("shortcutTip", true); prefsTab = "keys"; prefsOpen = true; }
   let previewBusy = $state(false);
@@ -472,6 +491,9 @@
     // A blog's podcast, when it has the section.
     ...(site.model !== "bento" && settings?.sections?.some((x) => x.kind === "podcast" && x.present) ? [{ key: "podcast", label: t.nav.podcast, Icon: Podcast, group: "public" }] : []),
     { key: "cookies", label: t.nav.cookies, Icon: Cookie, group: "privacy" },
+    // Where the notes sync (Blup Cloud or GitHub): the check by the note's
+    // title shows and runs the sync itself.
+    { key: "sync", label: t.sync, Icon: RefreshCw, group: "end" },
     { key: "publish", label: t.nav.publish, Icon: Upload, group: "end" },
     { key: "trash", label: t.nav.trash, Icon: Trash2, group: "end" },
   ]);
@@ -495,7 +517,7 @@
   const syncTip = $derived(syncJob.running ? syncStepText(syncJob.phase, syncJob.done, syncJob.total) : t.toast.synced);
   const top = $derived(screens.filter((x) => x.group !== "end"));
   const bottom = $derived(screens.filter((x) => x.group === "end"));
-  const openScreen = async (key: string) => { await save(); autostart = ""; screen = key; error = ""; };
+  const openScreen = async (key: string) => { await save(); autostart = ""; screen = key; error = ""; loadRemote(); };
 
   // The terminal at the bottom, and its height (dragging its top edge).
   let termOpen = $state(false);
@@ -612,6 +634,20 @@
   checkHistory();
   $effect(() => { if (cloud?.state === "synced" && !cloudHistory) checkHistory(); });
   const cloudTitle = $derived(!cloud ? undefined : cloud.state === "error" && cloud.stuck ? t.pubs.stuck : cloud.state === "error" ? t.cloudError.replace("{error}", cloud.error ?? "") : cloud.state === "syncing" ? t.cloudSyncing : t.cloudSynced);
+  const syncScreen = $derived(notesVault ? "publish" : "sync");
+  const syncErr = $derived(cloud?.state === "error" ? (cloud.error ?? "") : (syncJob.last?.error ?? ""));
+  const mark = $derived(status !== "saved" || syncJob.running || cloud?.state === "syncing" ? "saving" : syncErr ? "error" : syncRemote && !liveSync && unsent ? "pending" : "saved");
+  const markCloud = $derived(
+    !syncRemote ? t.mark.choose
+    : syncJob.running ? syncStepText(syncJob.phase, syncJob.done, syncJob.total)
+    : syncErr ? t.cloudError.replace("{error}", syncErr) + " " + t.mark.see
+    : !liveSync ? (unsent ? t.mark.pending : t.cloudSynced)
+    : cloudTitle ?? t.cloudSynced);
+  function markClick() {
+    if (!syncRemote || mark === "error") { openScreen(syncScreen); return; }
+    if (mark === "saving") return;
+    startSync().catch(toastError);
+  }
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pending = ""; // text not saved yet
@@ -672,7 +708,10 @@
       await SaveNote(current, pending, Object.entries(changed).map(([key, value]) => ({ key, value })));
       // Typed (or changed) while it was saving: that goes in the next save.
       if (pending !== written || Object.keys(edits).length) later();
-      else status = "saved";
+      else {
+        status = "saved";
+        if (syncRemote && !liveSync) unsent = true;
+      }
     } catch (e) {
       status = "unsaved";
       error = String(e);
@@ -805,7 +844,7 @@
     {/if}
     <span class="grow"></span>
     {#if syncJob.running || syncJob.finished}
-      <button class="rib job" aria-label={syncTip} data-tip={syncTip} onclick={() => openScreen("publish")}>
+      <button class="rib job" aria-label={syncTip} data-tip={syncTip} onclick={() => openScreen(syncScreen)}>
         {#if syncJob.running}<span class="ring" class:spin={syncPct < 0} style:--p={syncPct < 0 ? 25 : syncPct} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={syncPct < 0 ? undefined : syncPct}>{#if syncPct >= 0}<span class="pct">{syncPct}%</span>{/if}</span>
         {:else}<span class="ok"><CircleCheck size={19} strokeWidth={1.75} /></span>{/if}
         <span class="rib-name">{syncTip}</span>
@@ -896,22 +935,20 @@
         {/each}
       </nav>
       <strong class="title">{fileTitle(current)}</strong>
-      <span class="status" role="img" aria-label={status === "saved" ? t.savedHere : t.savingHere}>
-        {#if status === "saved"}<span class="state saved"><Check size={11} strokeWidth={3.5} /></span>
-        {:else}<span class="state saving"><RefreshCw size={10} strokeWidth={3} /></span>{/if}
+      <button class="status" aria-label={`${status === "saved" ? t.savedHere : t.savingHere}. ${markCloud}`} onclick={markClick}>
+        {#if mark === "saving"}<span class="state saving"><RefreshCw size={10} strokeWidth={3} /></span>
+        {:else if mark === "error"}<span class="state error"><TriangleAlert size={10} strokeWidth={3} /></span>
+        {:else}<span class={["state", mark]}><Check size={11} strokeWidth={3.5} /></span>{/if}
         <span class="status-info" role="tooltip">
           <span><Monitor size={15} />{status === "saved" ? t.savedHere : t.savingHere}</span>
-          {#if cloud && signedIn}<span><Cloud size={15} />{cloudTitle}</span>{/if}
+          <span><Cloud size={15} />{markCloud}</span>
         </span>
-      </span>
+      </button>
     {:else}
       <strong class="title">{site.title}</strong>
     {/if}
     <span class="spacer"></span>
     {#if !notesVault}<button class="btn ghost" onclick={togglePreview}>{#if previewOn}<Check size={14} aria-hidden="true" />{/if}{t.preview}</button>{/if}
-    <button class="btn ghost" title={cloudTitle} onclick={() => go("publish", "sync")}>
-      {#if cloud?.state === "syncing"}<span class="spin"><RefreshCw size={14} /></span>{:else if cloud?.state === "error"}<CloudAlert size={14} class="bad" />{:else if cloud}<CloudCheck size={14} />{/if}{t.sync}
-    </button>
     {#if !notesVault}<button class="btn" onclick={() => go("publish", "publish")}>{t.publish}</button>{/if}
   </header>
 
@@ -955,6 +992,7 @@
         {:else if screen === "podcast"}{#await PodcastPanel() then { default: C }}<C />{/await}
         {:else if screen === "cookies"}{#await CookiesPanel() then { default: C }}<C {settings} {reload} onOpenNote={openNote} />{/await}
         {:else if screen === "publish"}{#await PublishPanel() then { default: C }}<C autostart={autostart} notes={notesVault} />{/await}
+        {:else if screen === "sync"}{#await PublishPanel() then { default: C }}<C autostart="sync" />{/await}
         {:else if screen === "authors"}{#await AuthorsPanel() then { default: C }}<C onTree={async () => (tree = (await LoadTree()).children ?? [])} />{/await}
         {:else if screen === "attach"}{#await AttachmentsPanel() then { default: C }}<C onOpenNote={openNote} />{/await}
         {:else if screen === "trash"}{#await TrashPanel() then { default: C }}<C {reload} onTree={(n) => (tree = n.children ?? [])} />{/await}
@@ -1125,6 +1163,8 @@
   .state { display: grid; place-items: center; width: 1.1rem; height: 1.1rem; border-radius: 50%; }
   .state.saved { background: #16a34a; color: #fff; }
   .state.saving { background: var(--soft); color: var(--text); }
+  .state.pending { background: var(--soft); color: var(--muted); }
+  .state.error { background: var(--red); color: #fff; }
   .state.saving :global(svg) { animation: spin 1s linear infinite; }
   .status-info { position: absolute; z-index: 40; inset-block-start: calc(100% + .45rem); inset-inline-start: 50%; translate: -50% 0; display: none; gap: .4rem; padding: .55rem .75rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--panel); box-shadow: 0 8px 20px rgb(0 0 0 / .18); font-size: .8rem; font-weight: 500; white-space: nowrap; }
   .status-info span { display: flex; align-items: center; gap: .45rem; }

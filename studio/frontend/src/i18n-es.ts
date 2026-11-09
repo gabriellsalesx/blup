@@ -39,6 +39,7 @@ export const es: UI = {
   previewOff: "Iniciar la vista previa",
   cloudSyncing: "Sincronizando con Blup Cloud…",
   cloudSynced: "Sincronizado con Blup Cloud",
+  mark: { choose: "Todavía no sincroniza. Haz clic para elegir dónde guardar las notas.", pending: "Todavía no enviado. Haz clic para sincronizar.", see: "Haz clic para ver." },
   cloudError: "Falló la sincronización: {error}",
   savedHere: "Guardado en esta computadora",
   savingHere: "Guardando en esta computadora",

@@ -40,6 +40,7 @@ const pt = {
   previewOff: "Ligar a prévia",
   cloudSyncing: "Sincronizando com o Blup Cloud…",
   cloudSynced: "Sincronizado com o Blup Cloud",
+  mark: { choose: "Ainda não sincroniza. Clique para escolher onde guardar as notas.", pending: "Ainda não enviado. Clique para sincronizar.", see: "Clique para ver." },
   cloudError: "A sincronização falhou: {error}",
   savedHere: "Salvo neste computador",
   savingHere: "Salvando neste computador",
