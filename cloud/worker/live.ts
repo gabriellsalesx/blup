@@ -1,3 +1,4 @@
+import {closeCodeToSend} from "./live-close";
 import { DurableObject } from "cloudflare:workers";
 
 // The live room of an account (plans with live sync): every Blup Studio
@@ -37,7 +38,10 @@ export class SyncLive extends DurableObject<Cloudflare.Env> {
 	// Studios only listen; anything they send is ignored.
 	override async webSocketMessage(): Promise<void> {}
 
+	// The close is answered with the same code, except the ones only a
+	// receiver may see (1005 none sent, 1006 dropped without a close, 1015
+	// TLS): sending those throws, so a dropped connection says 1000.
 	override async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
-		ws.close(code, reason);
+		try{ws.close(closeCodeToSend(code), reason);}catch{/* already closed */}
 	}
 }
