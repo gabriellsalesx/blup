@@ -133,6 +133,9 @@
   let update = $state<UpdateInfo | null>(null);
   let updateState = $state<"" | "checking" | "fail">("");
   CheckUpdate(false).then((u) => (update = u)).catch(() => {});
+  // The new version comes from the site's download page (friendlier than
+  // GitHub's release page), in the Studio's language.
+  const downloadPage = () => (t.lang === "pt" ? "https://getblup.io/pt/download/" : t.lang === "es" ? "https://getblup.io/es/descargar/" : "https://getblup.io/download/");
   // Who brings new versions when Blup doesn't (see app.UpdatesBy).
   const updatesBy = (by: string) => ({ msstore: s.updatesStore, flatpak: s.updatesFlatpak }[by] ?? s.updatesPackage);
   async function checkUpdate() {
@@ -507,14 +510,14 @@
       <p class="muted lead">{s.aboutLead}</p>
       <div class="item">
         <div class="text"><b>{s.version}</b><small>Blup Studio {shownVersion}</small></div>
-        <button class="btn ghost" onclick={() => OpenURL("https://getblup.pages.dev/bento/changelog/")}>{s.news}</button>
+        <button class="btn ghost" onclick={() => OpenURL("https://center.getblup.site/changelog/")}>{s.news}</button>
       </div>
       <div class="item">
         <div class="text"><b>{s.update}</b>
           <small class:warn={update?.newer}>{version === "dev" ? s.updateDev : update?.updatesBy ? updatesBy(update.updatesBy) : updateState === "checking" ? s.updateChecking : updateState === "fail" ? s.updateFail : update?.newer ? s.updateNew.replace("{v}", update.latest) : update?.latest ? s.updateCurrent : ""}</small>
         </div>
         <!-- A store or the system's packages update it: nothing to look for here. -->
-        {#if update?.newer && !update.updatesBy}<button class="btn" onclick={() => OpenURL(update!.url)}>{s.updateGet}</button>
+        {#if update?.newer && !update.updatesBy}<button class="btn" onclick={() => OpenURL(downloadPage())}>{s.updateGet}</button>
         {:else if version !== "dev" && !update?.updatesBy}<button class="btn ghost" disabled={updateState === "checking"} onclick={checkUpdate}>{s.updateCheck}</button>{/if}
       </div>
       <div class="item">
