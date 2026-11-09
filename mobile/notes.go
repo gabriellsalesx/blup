@@ -404,15 +404,17 @@ func (s *NotesService) Save(id, body string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := writeSafe(path, []byte(body)); err != nil {
-		return "", err
-	}
 	today := time.Now().Format("2006-01-02")
-	list := []obsidian.Prop{{Key: "updated", Value: today}}
-	if own, err := obsidian.ReadNote(path); err == nil && own.String("created") == "" {
-		list = append(list, obsidian.Prop{Key: "created", Value: today})
+	dates := func(tmp string) []obsidian.Prop {
+		list := []obsidian.Prop{{Key: "updated", Value: today}}
+		if own, err := obsidian.ReadNote(tmp); err == nil && own.String("created") == "" {
+			list = append(list, obsidian.Prop{Key: "created", Value: today})
+		}
+		return list
 	}
-	if err := obsidian.SetProperties(path, list...); err != nil {
+	// The text and its dates reach the disk together. Properties broken by
+	// hand keep the dates as they are: the text is what must be saved.
+	if _, err := saveWithProps(path, []byte(body), dates); err != nil {
 		return "", err
 	}
 	data, err := os.ReadFile(path)
@@ -432,7 +434,7 @@ func (s *NotesService) SetProps(id, created, updated string, tags []string) (str
 	if updated != "" {
 		list = append(list, obsidian.Prop{Key: "updated", Value: updated})
 	}
-	if err := obsidian.SetProperties(path, list...); err != nil {
+	if err := setPropsSafe(path, list...); err != nil {
 		return "", err
 	}
 	data, err := os.ReadFile(path)

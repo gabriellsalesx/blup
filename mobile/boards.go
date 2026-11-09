@@ -348,5 +348,5 @@ func (b *BoardService) SetProps(rel string, edits []PropEdit) error {
 	for _, e := range edits {
 		props = append(props, obsidian.Prop{Key: e.Key, Value: propValue(e.Value)})
 	}
-	return obsidian.SetProperties(p, props...)
+	return setPropsSafe(p, props...)
 }
