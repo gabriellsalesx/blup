@@ -72,11 +72,12 @@ Events.On("translateSiteDone", (ev) => {
 /** Translates what the site misses in lang; siteLang is its main language. */
 export async function translateSite(lang: string, siteLang: string) {
   if (job.running) return;
-  job.finished = "";
+  // Taken before the first await: a second click while useLocal() answers
+  // would else start a second batch of the same notes.
+  Object.assign(job, { running: true, lang, done: 0, total: 0, note: "", finished: "" });
   try {
     if (await useLocal()) {
       // On the computer: note by note in the window.
-      Object.assign(job, { running: true, lang, done: 0, total: 0, note: "" });
       const todo = (await TranslationTodo(lang)) ?? [];
       const failed: string[] = [];
       let n = 0;
@@ -95,7 +96,6 @@ export async function translateSite(lang: string, siteLang: string) {
       return;
     }
     // In the cloud: Go runs it and tells (events above).
-    Object.assign(job, { running: true, lang, done: 0, total: 0, note: "" });
     await withAIConsent(() => StartTranslateSite(lang), "translate");
   } catch (e) {
     Object.assign(job, { running: false, done: 0, total: 0, note: "" });

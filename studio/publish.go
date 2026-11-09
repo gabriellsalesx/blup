@@ -346,11 +346,10 @@ func (s *Studio) StartSync(fresh bool) error {
 			return err
 		}, nil)
 		// The first sync through Blup Cloud creates the vault: live sync
-		// can start now (on live plans).
-		s.mu.Lock()
-		start := err == nil && (s.live == nil || s.live.Gone()) && site.Sync.Remote == app.RemoteBlup
-		s.mu.Unlock()
-		if start {
+		// can start now (on live plans). Only while the site is still the
+		// open one: another opened meanwhile has its own live sync (or
+		// none), never the one of the site that was synced.
+		if s.liveAfterSync(site, err) {
 			s.startLive(site)
 		}
 		end := SyncDone{Info: info, Fresh: fresh}
@@ -364,6 +363,15 @@ func (s *Studio) StartSync(fresh bool) error {
 		application.Get().Event.Emit("syncDone", end)
 	}()
 	return nil
+}
+
+// liveAfterSync tells whether the live sync starts after a sync of site
+// that ended with err.
+func (s *Studio) liveAfterSync(site *config.Site, err error) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	open := s.site != nil && s.site.Dir() == site.Dir()
+	return err == nil && open && (s.live == nil || s.live.Gone()) && site.Sync.Remote == app.RemoteBlup
 }
 
 // OpenNewGitHubRepo opens GitHub's "new repository" form filled in for the

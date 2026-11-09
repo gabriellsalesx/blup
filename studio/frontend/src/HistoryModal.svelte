@@ -32,7 +32,12 @@
   async function pick(v: NoteVersion) {
     picked = v;
     text = null;
-    try { text = await NoteVersionText(path, v.n); } catch (e) { error = msg(e); }
+    // A version picked meanwhile wins: a slower answer for the one before
+    // never shows under it.
+    try {
+      const got = await NoteVersionText(path, v.n);
+      if (picked?.n === v.n) text = got;
+    } catch (e) { if (picked?.n === v.n) error = msg(e); }
   }
 
   async function restore() {
@@ -77,7 +82,7 @@
 
 <style>
   .shade { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / .35); }
-  .dialog { position: fixed; z-index: 41; inset-block-start: 8%; inset-inline: 0; margin-inline: auto; width: min(52rem, calc(100% - 2rem)); display: grid; gap: .75rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); box-shadow: 0 20px 50px rgb(0 0 0 / .3); }
+  .dialog { position: fixed; z-index: 41; inset-block-start: 8%; inset-inline: 0; margin-inline: auto; width: min(52rem, calc(100% - 2rem)); max-height: calc(92% - 1rem); overflow: auto; display: grid; gap: .75rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); box-shadow: 0 20px 50px rgb(0 0 0 / .3); }
   h2 { font-size: 1rem; font-weight: 700; }
   p { font-size: .85rem; }
   .split { display: grid; grid-template-columns: 14rem 1fr; gap: .75rem; min-height: 0; }

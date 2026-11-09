@@ -186,27 +186,17 @@ func (s *Studio) StartTranslateSite(ctx context.Context, lang string) error {
 	if err != nil {
 		return err
 	}
-	siteJob.Lock()
-	if siteJob.st.Running {
-		same := siteJob.st.Lang == lang
-		siteJob.Unlock()
-		if same {
-			return nil
-		}
-		return errors.New("translate: another language is being translated")
+	if running, err := siteJobBusy(lang); running || err != nil {
+		return err
 	}
-	siteJob.Unlock()
 	provider := translateProvider(s.Prefs())
 	if err := app.TranslateReady(ctx, provider); err != nil {
 		return err
 	}
-	siteJob.Lock()
-	if siteJob.st.Running {
-		siteJob.Unlock()
-		return nil
+	// Checked again: another start may have taken the job meanwhile.
+	if ok, err := claimSiteJob(lang); !ok {
+		return err
 	}
-	siteJob.st = TranslateSiteJob{Running: true, Lang: lang}
-	siteJob.Unlock()
 	go func() {
 		res, err := app.TranslateSite(context.Background(), site, lang, provider, func(done, total int, note string) {
 			siteJob.Lock()
@@ -225,6 +215,40 @@ func (s *Studio) StartTranslateSite(ctx context.Context, lang string) error {
 		application.Get().Event.Emit("translateSiteDone", end)
 	}()
 	return nil
+}
+
+var errOtherLang = errors.New("translate: another language is being translated")
+
+// siteJobBusy tells whether the site's translation runs already: with no
+// error when in lang (starting again only keeps it going), with
+// errOtherLang when in another language.
+func siteJobBusy(lang string) (bool, error) {
+	siteJob.Lock()
+	defer siteJob.Unlock()
+	if !siteJob.st.Running {
+		return false, nil
+	}
+	if siteJob.st.Lang != lang {
+		return true, errOtherLang
+	}
+	return true, nil
+}
+
+// claimSiteJob takes the job for lang. False when it runs already (taken
+// by another start meanwhile), with errOtherLang when in another
+// language: never two batches, and never a silent "started" for a
+// language that is not the one running.
+func claimSiteJob(lang string) (bool, error) {
+	siteJob.Lock()
+	defer siteJob.Unlock()
+	if siteJob.st.Running {
+		if siteJob.st.Lang != lang {
+			return false, errOtherLang
+		}
+		return false, nil
+	}
+	siteJob.st = TranslateSiteJob{Running: true, Lang: lang}
+	return true, nil
 }
 
 // translateProvider is the AI in the cloud the person chose to translate
