@@ -124,7 +124,7 @@ jobs:
           lib=/a/usr/lib
           export LD_LIBRARY_PATH="$lib" GST_PLUGIN_SYSTEM_PATH_1_0="$lib/gstreamer-1.0" GST_PLUGIN_PATH_1_0="$lib/gstreamer-1.0" \
             GST_PLUGIN_SCANNER_1_0="$lib/gstreamer-1.0/gst-plugin-scanner" GST_REGISTRY_1_0=/tmp/gst-registry.bin
-          for e in autoaudiosink pulsesink playbin uridecodebin appsrc appsink audioconvert audioresample volume mpg123audiodec qtdemux opusdec vorbisdec; do
+          for e in autoaudiosink pulsesink playbin uridecodebin appsrc appsink audioconvert audioresample volume mpg123audiodec qtdemux opusdec vorbisdec giostreamsrc deinterleave parsebin typefind queue2; do
             /a/gst-inspect-1.0 "$e" >/dev/null || { echo "GStreamer element missing in the AppImage: $e"; exit 1; }
           done
           echo "GStreamer elements load"

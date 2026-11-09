@@ -25,10 +25,14 @@ scanner="/usr/lib/$triplet/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner"
 # Playing a file: reading and typing it, demuxing, decoding the usual
 # formats (mp3, aac in mp4, ogg/opus/vorbis, wav, flac, webm), converting,
 # and the outputs (PulseAudio, which PipeWire also serves, and ALSA).
+# Web Audio's decodeAudioData (the voice samples in Settings) reads the
+# bytes with giostreamsrc (gio) and splits the channels with deinterleave
+# (interleave): without them the decoding never ends, with no error.
 plugins=(coreelements typefindfunctions playback app autodetect pulseaudio alsa
 	audioconvert audioresample volume audioparsers audiorate
 	mpg123 isomp4 matroska ogg opus vorbis wavparse flac
-	videoconvertscale videorate)
+	videoconvertscale videorate
+	gio interleave)
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT

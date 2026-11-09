@@ -166,12 +166,22 @@ func VoicesFor(m ModelInfo, lang string) []string {
 		}
 		return nil
 	}
-	var out []string
+	// One voice per name: the catalog may list a voice both for the
+	// language and without one ("pt-BR-Grant" and "Grant"), which the
+	// list would show as two "Grant". The language's own one stays.
+	own := map[string]bool{}
 	for _, v := range m.Voices {
-		switch vl := voiceLang(v); {
-		case vl == lang:
-			out = append(out, v)
-		case vl == "" && (m.Multilingual || lang == "en"):
+		if voiceLang(v) == lang {
+			own[VoiceName(v)] = true
+		}
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, v := range m.Voices {
+		vl := voiceLang(v)
+		keep := vl == lang || (vl == "" && (m.Multilingual || lang == "en") && !own[VoiceName(v)])
+		if keep && !seen[v] {
+			seen[v] = true
 			out = append(out, v)
 		}
 	}
