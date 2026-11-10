@@ -57,6 +57,8 @@ interface __BaseEnv_CloudflareBindings {
 	STAFF_OWNER_EMAIL: string;
 	STAFF_DEV_EMAIL: string;
 	OPENROUTER_API_KEY: string;
+	REVIEW_EMAIL: string;
+	REVIEW_CODE: string;
 	OPENROUTER_URL: string;
 	SYNC_LIVE: DurableObjectNamespace<import("./index").SyncLive>;
 }
@@ -121,6 +123,8 @@ declare namespace Cloudflare {
 		STAFF_OWNER_EMAIL: string;
 		STAFF_DEV_EMAIL: string;
 		OPENROUTER_API_KEY: string;
+		REVIEW_EMAIL: string;
+		REVIEW_CODE: string;
 		OPENROUTER_URL: string;
 		SYNC_LIVE: DurableObjectNamespace<import("./index").SyncLive>;
 	}
@@ -131,7 +135,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "APP_URL" | "PASSKEY_RP_ID" | "MAIL_FROM" | "TURNSTILE_SITE_KEY" | "EMAIL_MODE" | "STAFF_HOST" | "SITES_DOMAIN" | "BETTER_AUTH_SECRET" | "TURNSTILE_SECRET_KEY" | "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET" | "ACCESS_TEAM_DOMAIN" | "ACCESS_AUD" | "STAFF_OWNER_EMAIL" | "STAFF_DEV_EMAIL" | "OPENROUTER_API_KEY" | "OPENROUTER_URL">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "APP_URL" | "PASSKEY_RP_ID" | "MAIL_FROM" | "TURNSTILE_SITE_KEY" | "EMAIL_MODE" | "STAFF_HOST" | "SITES_DOMAIN" | "BETTER_AUTH_SECRET" | "TURNSTILE_SECRET_KEY" | "STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET" | "ACCESS_TEAM_DOMAIN" | "ACCESS_AUD" | "STAFF_OWNER_EMAIL" | "STAFF_DEV_EMAIL" | "OPENROUTER_API_KEY" | "OPENROUTER_URL" | "REVIEW_EMAIL" | "REVIEW_CODE">> {}
 }
 declare module "*.txt" {
 	const value: string;

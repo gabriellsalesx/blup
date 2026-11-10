@@ -35,7 +35,21 @@ type AuthConfig = {
 	deviceMark?: (userId:string,body:unknown)=>Promise<boolean>;
 	finishDevice?: (userId:string,body:unknown)=>Promise<void>;
 	sendCode: (email: string, code: string, kind: string,language:Language) => void;
+	// The Google Play review account (see reviewLogin).
+	review?: ReviewLogin|null;
 };
+
+// The store reviewers can't read a mailbox, and the e-mailed code expires,
+// so one account (REVIEW_EMAIL, a secret) signs in with a fixed code
+// (REVIEW_CODE, a secret). Only that e-mail and only to sign in: the code
+// is not sent, and an e-mail change or any other account keeps the random
+// code. Both unset (or malformed): no review account.
+export type ReviewLogin={email:string;code:string};
+export function reviewLogin(email:string|undefined,code:string|undefined):ReviewLogin|null{
+	const e=email?.trim().toLowerCase(),c=code?.trim();
+	return e&&c&&/^\d{6}$/.test(c)&&z.email().safeParse(e).success?{email:e,code:c}:null;
+}
+const isReview=(review:ReviewLogin|null|undefined,email:string)=>!!review&&email.trim().toLowerCase()===review.email;
 
 // Blocked by the staff (BANNED) or deleted by its owner and still
 // recoverable for 30 days (ACCOUNT_DELETED). Both stop a sign in only after
@@ -151,8 +165,10 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 				storeOTP: "hashed",
 				// Linking (or changing) the e-mail: a code goes to the new address.
 				changeEmail: { enabled: true },
+				// The review account's fixed code; undefined: a random one.
+				generateOTP: ({email,type})=>type==="sign-in"&&isReview(cfg.review,email)?cfg.review!.code:undefined,
 				// Not awaited: waiting would tell whether the e-mail exists.
-				sendVerificationOTP: async ({ email, otp, type },ctx) => cfg.sendCode(email, otp, type,requestLanguage(ctx?.headers)),
+				sendVerificationOTP: async ({ email, otp, type },ctx) => {if(type==="sign-in"&&isReview(cfg.review,email))return;cfg.sendCode(email, otp, type,requestLanguage(ctx?.headers));},
 			}),
 			passkey({
 				rpID: cfg.rpID,

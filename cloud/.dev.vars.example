@@ -28,3 +28,7 @@ DEALS_TELEGRAM_WEBHOOK_SECRET=
 DEALS_RAKUTEN_CLIENT_ID=
 DEALS_RAKUTEN_CLIENT_SECRET=
 DEALS_RAKUTEN_SID=
+# Google Play: a conta de revisão entra com um código fixo (6 dígitos) em vez
+# do código por e-mail. Só em produção, como secret; vazios: sem conta de revisão.
+REVIEW_EMAIL=
+REVIEW_CODE=

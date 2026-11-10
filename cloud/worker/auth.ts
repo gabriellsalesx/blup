@@ -3,7 +3,7 @@ import { env, waitUntil } from "cloudflare:workers";
 import { betterAuth } from "better-auth";
 import { drizzle } from "drizzle-orm/d1";
 
-import { accountBlock, authOptions } from "./auth-options";
+import { accountBlock, authOptions, reviewLogin } from "./auth-options";
 import { sendCode } from "./email";
 import * as schema from "./db/schema";
 
@@ -24,6 +24,7 @@ export const auth = betterAuth(
 		finishDevice:(id,body)=>finishDevice(env.DB,id,body),
 		// The e-mail goes out after the answer.
 		sendCode: (email, code, kind,language) => waitUntil(sendCode(env, email, code, kind,language)),
+		review:reviewLogin(env.REVIEW_EMAIL,env.REVIEW_CODE),
 	}),
 );
 
