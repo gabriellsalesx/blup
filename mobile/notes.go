@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/obsidian"
+	"github.com/gabriellsalesx/blup/internal/scaffold"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -237,6 +239,15 @@ type cachedNote struct {
 }
 
 // List returns every note, the newest first, with its backlinks filled in.
+// agentGuide tells whether path is one of the guides Blup Studio keeps at
+// the top of the notes folder for AI agents (AGENTS.md, CLAUDE.md,
+// GEMINI.md, INSTRUCTIONS.md): they stay in the folder and sync, but are
+// not notes of the person, so the phone never lists or finds them (the
+// Studio hides them too).
+func agentGuide(root, path string) bool {
+	return filepath.Dir(path) == root && slices.Contains(scaffold.AgentGuides, filepath.Base(path))
+}
+
 func (s *NotesService) List() ([]Note, error) {
 	dir, err := vaultDir()
 	if err != nil {
@@ -256,7 +267,7 @@ func (s *NotesService) List() ([]Note, error) {
 		if d.IsDir() && path != dir && strings.HasPrefix(d.Name(), ".") {
 			return filepath.SkipDir // the sync's own files
 		}
-		if d.IsDir() || filepath.Ext(path) != ".md" {
+		if d.IsDir() || filepath.Ext(path) != ".md" || agentGuide(dir, path) {
 			return nil
 		}
 		// The date and size before the text: a note saved in between is
@@ -366,7 +377,7 @@ func (s *NotesService) Search(term string) ([]string, error) {
 		if d.IsDir() && path != dir && strings.HasPrefix(d.Name(), ".") {
 			return filepath.SkipDir
 		}
-		if d.IsDir() || filepath.Ext(path) != ".md" || term == "" {
+		if d.IsDir() || filepath.Ext(path) != ".md" || term == "" || agentGuide(dir, path) {
 			return nil
 		}
 		body, err := os.ReadFile(path)

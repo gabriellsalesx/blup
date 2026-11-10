@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -115,5 +116,57 @@ func TestClip(t *testing.T) {
 		if got := clip(c.in, c.n); got != c.want {
 			t.Errorf("clip(%q, %d) = %q, want %q", c.in, c.n, got, c.want)
 		}
+	}
+}
+
+// The guides for AI agents at the top of the vault stay on disk but are
+// never listed or found; a note with the same name in a folder is a note.
+func TestAgentGuidesHidden(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	dir, err := vaultDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"AGENTS.md", "CLAUDE.md", "GEMINI.md", "INSTRUCTIONS.md", "Ideias.md"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("blup"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "Projetos"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "Projetos", "CLAUDE.md"), []byte("blup"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := &NotesService{}
+	list, err := s.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, n := range list {
+		ids = append(ids, n.ID)
+	}
+	check := func(what string, got []string) {
+		t.Helper()
+		for _, g := range []string{"AGENTS.md", "CLAUDE.md", "GEMINI.md", "INSTRUCTIONS.md"} {
+			if slices.Contains(got, g) {
+				t.Errorf("%s shows the guide %s: %v", what, g, got)
+			}
+		}
+		for _, w := range []string{"Ideias.md", filepath.Join("Projetos", "CLAUDE.md")} {
+			if !slices.Contains(got, w) {
+				t.Errorf("%s misses the note %s: %v", what, w, got)
+			}
+		}
+	}
+	check("list", ids)
+	found, err := s.Search("blup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("search", found)
+	if _, err := os.Stat(filepath.Join(dir, "AGENTS.md")); err != nil {
+		t.Fatal("the guide stays on disk")
 	}
 }
