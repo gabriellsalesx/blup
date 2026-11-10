@@ -32,3 +32,8 @@ DEALS_RAKUTEN_SID=
 # do código por e-mail. Só em produção, como secret; vazios: sem conta de revisão.
 REVIEW_EMAIL=
 REVIEW_CODE=
+# AppSumo: a chave do HMAC dos códigos (o banco guarda só o HMAC). Pelo menos
+# 32 caracteres aleatórios; nunca troque: trocar invalida todos os códigos
+# importados. Vazio ou mais curto: resgate, importação e reembolsos respondem
+# indisponível.
+APPSUMO_CODE_PEPPER=

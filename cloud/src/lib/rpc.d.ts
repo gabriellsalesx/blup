@@ -202,6 +202,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         reminderEmails: number;
                     };
                     gift: boolean;
+                    lifetime: boolean;
                     status: string | null;
                     renewsAt: string | null;
                     cancelsAtPeriodEnd: boolean;
@@ -271,6 +272,124 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 }) | import("hono/types").MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                level: number;
+                max: number;
+                plan: "max_pulse" | "ultra_pulse_deals" | "pro" | "max" | "ultra" | "free";
+                codes: {
+                    id: string;
+                    last4: string;
+                    redeemedAt: number;
+                }[];
+                stripeActive: boolean;
+                available: boolean;
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    code: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    code: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    code: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                json: {
+                    code: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 429;
+        } | {
+            input: {
+                json: {
+                    code: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    code: string;
+                };
+            };
+            output: {
+                redeemed: {
+                    last4: string;
+                };
+                level: number;
+                max: number;
+                plan: "max_pulse" | "ultra_pulse_deals" | "pro" | "max" | "ultra" | "free";
+                codes: {
+                    id: string;
+                    last4: string;
+                    redeemedAt: number;
+                }[];
+                stripeActive: boolean;
+                available: boolean;
+            };
+            outputFormat: "json";
+            status: 200;
+        } | {
+            input: {
+                json: {
+                    code: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 409;
+        };
+    };
+}, "/api/redeem"> | import("hono/types").MergeSchemaPath<{
     "/me": {
         $get: {
             input: {};
@@ -433,6 +552,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                     };
                     status: string | null;
                     periodEnd: string | null;
+                    lifetime: boolean;
                     cancelAtPeriodEnd: boolean;
                 };
                 usage: {
@@ -501,6 +621,15 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                         };
                     } | null;
                 };
+                appsumo: {
+                    id: string;
+                    last4: string;
+                    status: "available" | "redeemed" | "revoked";
+                    importedAt: number;
+                    redeemedAt: number | null;
+                    revokedAt: number | null;
+                    revokeReason: "staff" | "refund" | null;
+                }[];
                 billing: {
                     id: number;
                     type: string;
@@ -947,6 +1076,193 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
         };
     };
 } & {
+    "/appsumo": {
+        $get: {
+            input: {};
+            output: {
+                available: boolean;
+                codes: {
+                    available: number;
+                    redeemed: number;
+                    revoked: number;
+                };
+                levels: {
+                    level: number;
+                    plan: "max_pulse" | "ultra_pulse_deals" | "pro" | "max" | "ultra" | "free";
+                    users: number;
+                }[];
+            };
+            outputFormat: "json";
+            status: import("hono/utils/http-status").ContentfulStatusCode;
+        };
+    };
+} & {
+    "/appsumo/codes": {
+        $post: {
+            input: {
+                json: {
+                    codes: string[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    codes: string[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    codes: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                json: {
+                    codes: string[];
+                };
+            };
+            output: {
+                added: number;
+                skipped: number;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/appsumo/refunds": {
+        $post: {
+            input: {
+                json: {
+                    codes: string[];
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    codes: string[];
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                json: {
+                    codes: string[];
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 503;
+        } | {
+            input: {
+                json: {
+                    codes: string[];
+                };
+            };
+            output: {
+                revoked: number;
+                notFound: number;
+                users: number;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/users/:id/appsumo/:code/revoke": {
+        $post: {
+            input: {
+                param: {
+                    id: string;
+                    code: string;
+                };
+            };
+            output: {
+                code: string;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                    code: string;
+                };
+            };
+            output: {
+                code: string;
+                fields: string[];
+            };
+            outputFormat: "json";
+            status: 400;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                    code: string;
+                };
+            };
+            output: {
+                code: string;
+            };
+            outputFormat: "json";
+            status: 404;
+        } | {
+            input: {
+                param: {
+                    id: string;
+                    code: string;
+                };
+            };
+            output: {
+                ok: true;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
     "/team": {
         $get: {
             input: {};
@@ -1092,7 +1408,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 features: {
                     feature: "deals_describe" | "deals_curate" | "deals_extract" | "deals_suggest" | "deals_translate" | "studio_translate" | "studio_translate_own" | "studio_voice" | "studio_voice_own";
                     kind: "chat" | "speech";
-                    max: 10 | 5;
+                    max: 5 | 10;
                     recommended: string | null;
                     models: ({
                         id: string;
@@ -6095,7 +6411,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
-                state: "taken" | "available";
+                state: "available" | "taken";
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;
@@ -12223,7 +12539,7 @@ export type AppType = import("hono/hono-base").HonoBase<{}, ({
                 };
             };
             output: {
-                state: "taken" | "available" | "yours";
+                state: "available" | "taken" | "yours";
             };
             outputFormat: "json";
             status: import("hono/utils/http-status").ContentfulStatusCode;

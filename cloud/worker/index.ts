@@ -24,6 +24,8 @@ import { requestSession } from "./request-session";
 import { activeSubscription, planOf, isOwner, GIFT_PLAN } from "./account";
 import { planNamed } from "./plans";
 import { staffApi } from "./staff";
+import { redeemApi, settleRevoked } from "./appsumo";
+import { isLifetimeId } from "../shared/appsumo-levels";
 import { syncApi } from "./sync";
 import { sitesApi } from "./sites";
 import { forgetOld, remindersApi, sendDue } from "./reminders";
@@ -201,7 +203,7 @@ const routes = app
 			email: hasEmail(user.email) ? user.email : null,
 			name: user.name,
 			createdAt: user.createdAt,
-			plan: { name: plan.basePlan,billingName:plan.name,billingInterval:z.enum(["month","year"]).nullable().catch(null).parse(sub?.billingInterval??null),pulse:{enabled:plan.pulse!==null,limits:plan.pulse},deals:{enabled:plan.deals!==null,limits:plan.deals}, label: planLabel(plan.name,requestLanguage(c.req.raw.headers)), limits: plan.limits, gift, status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
+			plan: { name: plan.basePlan,billingName:plan.name,billingInterval:z.enum(["month","year"]).nullable().catch(null).parse(sub?.billingInterval??null),pulse:{enabled:plan.pulse!==null,limits:plan.pulse},deals:{enabled:plan.deals!==null,limits:plan.deals}, label: planLabel(plan.name,requestLanguage(c.req.raw.headers)), limits: plan.limits, gift, lifetime: !gift && isLifetimeId(sub?.id), status: sub?.status ?? null, renewsAt: sub?.cancelAt ?? sub?.periodEnd ?? null, cancelsAtPeriodEnd: !!(sub?.cancelAtPeriodEnd || sub?.cancelAt) },
 		});
 	})
 	// The Blup Studio installs signed in (each is a session), to see and
@@ -229,6 +231,8 @@ const routes = app
 		await c.env.SYNC_LIVE.getByName(user.id).revoke();
 		return c.json({ ok: true });
 	})
+	// AppSumo codes: the lifetime plan (appsumo.ts).
+	.route("/redeem",redeemApi)
 	.route("/staff",staffApi)
 	.route("/sync",syncApi)
 	.route("/sites",sitesApi)
@@ -328,7 +332,7 @@ export default withSentry(sentryOptions,{
 	// clean-up of old versions and unused blocks.
 	async scheduled(controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
 		if(controller.cron==="* * * * *"){ctx.waitUntil(all(checkDue(env).then(()=>reconcileAlerts(env)).then(()=>dispatchAlerts(env)),collectDeals(env).then(()=>collectMirrors(env)).then(()=>collectShops(env)).then(()=>dispatchDeals(env))));return;}
-		if (controller.cron === DAILY) ctx.waitUntil(all(pulseMaintenance(env,true),dealsCleanup(env,dealsLimits.historyDays),dealsLifecycle(env),cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cleanExpiredAuth(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env))));
+		if (controller.cron === DAILY) ctx.waitUntil(all(pulseMaintenance(env,true),dealsCleanup(env,dealsLimits.historyDays),dealsLifecycle(env),cleanUp(env), forgetOld(env),cleanWebhookReceipts(env.DB),cleanExpiredAuth(env.DB),cancelDeletedBilling(env).then(()=>purgeAccounts(env)),settleRevoked(env)));
 		else ctx.waitUntil(all(pulseMaintenance(env),sendDue(env),expireReservations(env.DB),cleanSites(env),cancelDeletedBilling(env),expirePastDue(env).then(()=>downgradeNotices(env)),expireDomains(env),expireTransfers(env),drainSyncGarbage(env)).then(()=>watched(flushSitePurges(env))));
 	},
 } satisfies ExportedHandler<Cloudflare.Env>);

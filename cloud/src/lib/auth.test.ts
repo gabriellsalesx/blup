@@ -20,3 +20,9 @@ describe("return path of another panel",()=>{
 		expect(returnPath("",  "/")).toBe("/");
 	});
 });
+describe("AppSumo's redemption link",()=>{
+	it("comes back to /redeem with its code after signing in",()=>{
+		vi.stubGlobal("location",new URL("https://cloud.audit.invalid/sign-in"));
+		expect(returnPath("?next="+encodeURIComponent("/redeem?code=BLUP-ABCD-1234"),"/account")).toBe("/redeem?code=BLUP-ABCD-1234");
+	});
+});

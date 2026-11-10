@@ -32,11 +32,13 @@ interface __BaseEnv_CloudflareBindings {
 	DEALS_RAKUTEN_SID: string;
 	PULSE_INGEST_HOST: string;
 	SENTRY_DSN?: string;
+	APPSUMO_CODE_PEPPER?: string;
 	SENTRY_ENVIRONMENT?: string;
 	PULSE_PUBLIC_HOST: string;
 	OTP_LIMIT: RateLimit;
 	ABUSE_LIMIT: RateLimit;
 	BULK_LIMIT: RateLimit;
+	REDEEM_LIMIT: RateLimit;
 	CF_API_TOKEN: string;
 	CF_ZONE_ID: string;
 	SITES_CNAME_TARGET: string;
@@ -98,11 +100,13 @@ declare namespace Cloudflare {
 	DEALS_RAKUTEN_SID: string;
 	PULSE_INGEST_HOST: string;
 	SENTRY_DSN?: string;
+	APPSUMO_CODE_PEPPER?: string;
 	SENTRY_ENVIRONMENT?: string;
 	PULSE_PUBLIC_HOST: string;
 	OTP_LIMIT: RateLimit;
 	ABUSE_LIMIT: RateLimit;
 	BULK_LIMIT: RateLimit;
+	REDEEM_LIMIT: RateLimit;
 	CF_API_TOKEN: string;
 	CF_ZONE_ID: string;
 	SITES_CNAME_TARGET: string;

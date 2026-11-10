@@ -4,6 +4,9 @@ const state=vi.hoisted(()=>({env:{} as Cloudflare.Env}));
 vi.mock("cloudflare:workers",()=>({env:state.env}));
 vi.mock("./auth",()=>({auth:{api:{getSession:async({headers}:{headers:Headers})=>{const id=headers.get("authorization")?.replace("Bearer ","");return id?{user:{id}}:null;}}}}));
 import {billingApi} from "./billing-api";
+import {buildQuote,BillingFlowError,type FlowSubscription} from "./billing-flow";
+import {planNamed} from "./plans";
+import {supersetOf} from "../shared/pulse-plans";
 
 // Stripe: expires_at "can be anywhere from 30 minutes to 24 hours after
 // Checkout Session creation" (API reference, Create a Checkout Session).
@@ -48,4 +51,31 @@ it("cancels a stale never created Checkout without calling Stripe again",async()
  vi.setSystemTime(Date.now()+40*60_000);
  expect((await request("/checkout","DELETE")).status).toBe(200);expect(posts).toHaveLength(1);
  expect(db.sqlite.prepare("SELECT count(*) AS n FROM billing_checkout").get()).toEqual({n:0});
+});
+
+// An AppSumo lifetime plan is never lost to a Stripe one: only a plan with
+// all of it and more is sold next to it.
+const lifetime=(plan:string)=>db.sqlite.prepare("INSERT INTO subscription(id,plan,reference_id,status,period_start) VALUES ('appsumo-alice',?,'alice','active',1)").run(plan);
+const codeOf=async(res:Response)=>({status:res.status,code:(await res.json() as {code?:string}).code});
+it("refuses a Checkout the lifetime Ultra already covers, and sells Ultra with Pulse",async()=>{
+ lifetime("ultra");
+ for(const plan of ["pro","max","max_pulse","ultra"])expect(await codeOf(await request("/checkout","POST",{plan,annual:false}))).toEqual({status:409,code:"LIFETIME_COVERS"});
+ expect(posts).toHaveLength(0);
+ expect((await request("/checkout","POST",{plan:"ultra_pulse",annual:false})).status).toBe(200);
+});
+it("never sells a lifetime Max with Pulse a plan without Pulse",async()=>{
+ lifetime("max_pulse");
+ expect(await codeOf(await request("/checkout","POST",{plan:"ultra",annual:false}))).toEqual({status:409,code:"LIFETIME_COVERS"});
+ expect((await request("/checkout","POST",{plan:"ultra_pulse",annual:false})).status).toBe(200);
+});
+it("refuses the same plan changes in the preview and its confirmation (buildQuote), but not a cancellation",async()=>{
+ lifetime("ultra");
+ const sub={} as FlowSubscription,quote=(plan:"max"|"ultra"|"free")=>buildQuote(db.asD1(),{} as never,sub,"alice",planNamed(plan),false,0);
+ for(const plan of ["max","ultra"] as const)await expect(quote(plan)).rejects.toMatchObject({code:"LIFETIME_COVERS"});
+ await expect(quote("free")).rejects.not.toBeInstanceOf(BillingFlowError);
+});
+it("compares plans by base and add-ons",()=>{
+ expect(supersetOf("ultra_pulse","ultra")).toBe(true);expect(supersetOf("ultra_deals","ultra")).toBe(true);expect(supersetOf("ultra","ultra")).toBe(false);
+ expect(supersetOf("ultra","max_pulse")).toBe(false);expect(supersetOf("ultra_pulse","max_pulse")).toBe(true);expect(supersetOf("max","pro")).toBe(true);
+ expect(supersetOf("ultra_pulse","ultra_pulse_deals")).toBe(false);expect(supersetOf("ultra_pulse_deals","ultra_pulse")).toBe(true);
 });

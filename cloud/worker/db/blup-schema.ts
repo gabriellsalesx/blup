@@ -317,3 +317,20 @@ export const aiModelSetting = sqliteTable("ai_model_setting", {
 export const subscriptionGrace=sqliteTable("subscription_grace",{
  subscriptionId:text("subscription_id").primaryKey(),userId:text("user_id").notNull(),pastDueSince:integer("past_due_since").notNull(),
 },t=>[index("subscription_grace_since_idx").on(t.pastDueSince),index("subscription_grace_user_idx").on(t.userId)]);
+
+// AppSumo codes (lifetime deal, up to 5 per account). Only an HMAC of the
+// normalized code is kept (APPSUMO_CODE_PEPPER), never the code: a leak of
+// the table gives no usable code. last4 is what the panel and the staff
+// show. A used or refunded code stays forever (user_id goes NULL when the
+// account is purged), so it can never be redeemed again.
+export const appsumoCode=sqliteTable("appsumo_code",{
+ codeHash:text("code_hash").primaryKey(),last4:text("last4").notNull(),
+ status:text("status",{enum:["available","redeemed","revoked"]}).default("available").notNull(),
+ userId:text("user_id"),importedAt:integer("imported_at").notNull(),
+ redeemedAt:integer("redeemed_at"),revokedAt:integer("revoked_at"),revokeReason:text("revoke_reason"),
+},t=>[index("appsumo_code_user_idx").on(t.userId,t.status)]);
+// Failed redemptions of an account in the current hour (10 lock it out
+// until the hour ends); a success clears it.
+export const appsumoAttempt=sqliteTable("appsumo_attempt",{
+ userId:text("user_id").primaryKey(),windowStart:integer("window_start").notNull(),failures:integer("failures").notNull(),
+});

@@ -4,6 +4,7 @@ import { createStripe } from "./stripe-client";
 import { PLANS } from "./plans";
 import { siteLock,unlockSite } from "./quota";
 import { PAST_DUE_GRACE,settlePlan } from "./lifecycle";
+import { isLifetimeId,LIFETIME_ID_SQL } from "../shared/appsumo-levels";
 
 const id=z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/).max(255);
 const reference=z.union([id,z.object({id})]).transform(v=>typeof v==="string"?v:v.id);
@@ -115,7 +116,8 @@ async function subscriptionWrites(db:D1Database,stripe:Stripe,subscriptionId:str
  if(!token)throw new BillingError();
  locks.push({id:accountLock,token});
  let existing=await db.prepare("SELECT id,plan,reference_id AS userId,stripe_customer_id AS customer,stripe_subscription_id AS stripeId FROM subscription WHERE stripe_subscription_id=? LIMIT 1").bind(current.id).first<Existing>();
- if(!existing&&current.metadata.subscriptionId){
+ // An AppSumo lifetime row is never Stripe's, whatever the metadata says.
+ if(!existing&&current.metadata.subscriptionId&&!isLifetimeId(current.metadata.subscriptionId)){
   existing=await db.prepare("SELECT id,plan,reference_id AS userId,stripe_customer_id AS customer,stripe_subscription_id AS stripeId FROM subscription WHERE id=?").bind(current.metadata.subscriptionId).first<Existing>();
  }
  if(existing&&(existing.userId!==owner.id||existing.customer&&existing.customer!==current.customer))throw new BillingError();
@@ -143,8 +145,9 @@ async function subscriptionWrites(db:D1Database,stripe:Stripe,subscriptionId:str
  else if(current.status!=="unpaid")writes.push(db.prepare("DELETE FROM subscription_grace WHERE subscription_id=?").bind(rowId));
  // Past the grace, the local status is 'unpaid' while Stripe still says
  // past_due: every reader of this table then sees the account on Grátis.
+ // The WHERE keeps a lifetime row from ever taking Stripe's data.
  writes.push(db.prepare(`INSERT INTO subscription (id,plan,reference_id,stripe_customer_id,stripe_subscription_id,status,period_start,period_end,trial_start,trial_end,cancel_at_period_end,cancel_at,canceled_at,ended_at,seats,billing_interval,stripe_schedule_id)
- VALUES (?,?,?,?,?,CASE WHEN ?='past_due' AND EXISTS(SELECT 1 FROM subscription_grace WHERE subscription_id=? AND past_due_since<=?) THEN 'unpaid' ELSE ? END,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET plan=excluded.plan,stripe_customer_id=excluded.stripe_customer_id,stripe_subscription_id=excluded.stripe_subscription_id,status=excluded.status,period_start=excluded.period_start,period_end=excluded.period_end,trial_start=excluded.trial_start,trial_end=excluded.trial_end,cancel_at_period_end=excluded.cancel_at_period_end,cancel_at=excluded.cancel_at,canceled_at=excluded.canceled_at,ended_at=excluded.ended_at,seats=excluded.seats,billing_interval=excluded.billing_interval,stripe_schedule_id=excluded.stripe_schedule_id`).bind(rowId,matched?.plan??existing?.plan??"free",owner.id,current.customer,current.id,current.status,rowId,now-PAST_DUE_GRACE,current.status,millis(item.current_period_start),millis(item.current_period_end),millis(current.trial_start),millis(current.trial_end),current.cancel_at_period_end?1:0,millis(current.cancel_at),millis(current.canceled_at),millis(current.ended_at),item.quantity,item.price.recurring.interval,current.schedule));
+ VALUES (?,?,?,?,?,CASE WHEN ?='past_due' AND EXISTS(SELECT 1 FROM subscription_grace WHERE subscription_id=? AND past_due_since<=?) THEN 'unpaid' ELSE ? END,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET plan=excluded.plan,stripe_customer_id=excluded.stripe_customer_id,stripe_subscription_id=excluded.stripe_subscription_id,status=excluded.status,period_start=excluded.period_start,period_end=excluded.period_end,trial_start=excluded.trial_start,trial_end=excluded.trial_end,cancel_at_period_end=excluded.cancel_at_period_end,cancel_at=excluded.cancel_at,canceled_at=excluded.canceled_at,ended_at=excluded.ended_at,seats=excluded.seats,billing_interval=excluded.billing_interval,stripe_schedule_id=excluded.stripe_schedule_id WHERE NOT ${LIFETIME_ID_SQL}`).bind(rowId,matched?.plan??existing?.plan??"free",owner.id,current.customer,current.id,current.status,rowId,now-PAST_DUE_GRACE,current.status,millis(item.current_period_start),millis(item.current_period_end),millis(current.trial_start),millis(current.trial_end),current.cancel_at_period_end?1:0,millis(current.cancel_at),millis(current.canceled_at),millis(current.ended_at),item.quantity,item.price.recurring.interval,current.schedule));
  // A paid Checkout is finished: its saved row would keep offering the
  // completed session and keep the panel's plan buttons disabled.
  if(["active","trialing","past_due"].includes(current.status))writes.push(db.prepare("DELETE FROM billing_checkout WHERE user_id=?").bind(owner.id));

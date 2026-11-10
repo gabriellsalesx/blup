@@ -105,7 +105,10 @@ npx wrangler secret put STAFF_OWNER_EMAIL --env production
 npx wrangler secret put PULSE_CHANNEL_KEY --env production
 npx wrangler secret put PULSE_TELEGRAM_TOKEN --env production
 npx wrangler secret put PULSE_TELEGRAM_WEBHOOK_SECRET --env production
+npx wrangler secret put APPSUMO_CODE_PEPPER --env production
 ```
+
+`APPSUMO_CODE_PEPPER` é opcional e só do Worker Cloud: a chave do HMAC-SHA256 dos códigos do AppSumo (o banco guarda só o HMAC e os 4 últimos caracteres, nunca o código). Use pelo menos 32 caracteres aleatórios (por exemplo `openssl rand -base64 32`) e nunca troque o valor: trocar a chave invalida todos os códigos importados, que teriam de ser importados de novo. Sem ele, ou com menos de 32 caracteres, o resgate, a importação e os reembolsos respondem 503 `UNAVAILABLE`.
 
 Os secrets Pulse são exclusivos do Worker Cloud. `PULSE_CHANNEL_KEY` deve conter 32 bytes aleatórios em base64, preservados entre publicações; não trocar sem plano de recifragem dos destinos existentes. `PULSE_TELEGRAM_TOKEN` vem do BotFather, e `PULSE_TELEGRAM_WEBHOOK_SECRET` deve ser aleatório, compatível com `secret_token` da Bot API. Não incluir nenhum desses valores no cliente ou no Worker dos sites.
 

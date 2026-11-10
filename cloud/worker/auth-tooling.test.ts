@@ -14,6 +14,12 @@ describe("auth configuration and logging",()=>{
 		const response=await auth.handler(new Request("http://localhost/api/auth/stripe/webhook",{method:"POST",body:"{}",headers:{"content-type":"application/json"}}));
 		expect(response.status).toBe(404);
 	});
+	it("disables the plugin's subscription paths, which would misread the AppSumo lifetime rows",async()=>{
+		const context=await auth.$context;
+		for(const path of ["/subscription/upgrade","/subscription/cancel","/subscription/restore","/subscription/list","/subscription/success","/subscription/billing-portal"])expect(context.options.disabledPaths).toContain(path);
+		const response=await auth.handler(new Request("http://localhost/api/auth/subscription/list",{method:"GET"}));
+		expect(response.status).toBe(404);
+	});
 	it("keeps SDK errors from logging customer or credential fields",()=>{
 		const options=authOptions(drizzle(async()=>{throw new Error("No SQL");}),{}, {appUrl:"https://cloud.audit.invalid",rpID:"audit.invalid",secret:"audit-placeholder-long-secret",turnstileSecret:"fixture",stripeSecret:"sk_test_fixture",stripeWebhookSecret:"whsec_fixture",accountBlock:async()=>null,sendCode:()=>{}});
 		const log=vi.spyOn(console,"error").mockImplementation(()=>{});

@@ -11,6 +11,8 @@ export const cloudPaths = {
 	sites: "/account/sites",
 	pulse: "/account/pulse",
 	device: "/device",
+	// AppSumo sends buyers here (https://cloud.getblup.io/redeem?code=...).
+	redeem: "/redeem",
 } as const satisfies Record<string, `/${string}`>;
 
 // After signing in, the page that asked for it: /sign-in?next=/account/plan

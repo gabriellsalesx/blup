@@ -4,6 +4,8 @@ import {purgeDealsAccount} from "./deals/purge";
 import {languageOf} from "../shared/language";
 import { queueAccountPurge,queueSitePurge } from "./site-cache-purge";
 import { planNamed, ownerMatches,GIFT_PLAN } from "./plans";
+import { planOrder } from "../shared/pulse-plans";
+import { LIFETIME_ID_SQL } from "../shared/appsumo-levels";
 import { ensureQuota } from "./quota";
 import { createStripe } from "./stripe-client";
 import { removeDomainProvider } from "./domain-provider";
@@ -60,7 +62,7 @@ export const PAID_SUBSCRIPTION="(s.status IN ('active','trialing') OR s.status='
 // Used by the public Worker too. No session or owner-supplied e-mail is
 // trusted: owner gift and subscription are looked up in D1.
 export async function accountPlan(env:Cloudflare.Env,userId:string,now=Date.now()) {
-	const row=await env.DB.prepare(`SELECT email,email_verified AS verified,(SELECT s.plan FROM subscription s WHERE s.reference_id=user.id AND ${PAID_SUBSCRIPTION} LIMIT 1) AS plan FROM user WHERE id=? AND banned=0`).bind(now-PAST_DUE_GRACE,userId).first<{email:string;verified:number;plan:string|null}>();
+	const row=await env.DB.prepare(`SELECT email,email_verified AS verified,(SELECT s.plan FROM subscription s WHERE s.reference_id=user.id AND ${PAID_SUBSCRIPTION} ORDER BY ${planOrder("s")} LIMIT 1) AS plan FROM user WHERE id=? AND banned=0`).bind(now-PAST_DUE_GRACE,userId).first<{email:string;verified:number;plan:string|null}>();
 	if(!row) return null;
 	const plan=planNamed(ownerMatches(env.STAFF_OWNER_EMAIL,row.email,!!row.verified)?GIFT_PLAN:row.plan);
 	return plan;
@@ -148,7 +150,9 @@ export async function purgeAccounts(env:Cloudflare.Env,now=Date.now()) {
 			env.DB.prepare("DELETE FROM vault_head_block WHERE vault_id IN (SELECT id FROM vault WHERE user_id=?)").bind(id),
 			env.DB.prepare("DELETE FROM sync_transfer_block WHERE ticket_id IN (SELECT id FROM sync_transfer WHERE user_id=?)").bind(id),
 			env.DB.prepare("DELETE FROM vault_version WHERE vault_id IN (SELECT id FROM vault WHERE user_id=?)").bind(id),
-			...["vault","sync_block","sync_account","site","ai_usage","reminder","reminder_month","device_approval","resource_reservation","sync_transfer","sync_garbage","subscription_grace","stripe_webhook_event","pulse_billing_ticket","pulse_selection","billing_checkout"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(id)),
+			...["vault","sync_block","sync_account","site","ai_usage","reminder","reminder_month","device_approval","resource_reservation","sync_transfer","sync_garbage","subscription_grace","stripe_webhook_event","pulse_billing_ticket","pulse_selection","billing_checkout","appsumo_attempt"].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(id)),
+			// A used AppSumo code stays used: only its account is forgotten.
+			env.DB.prepare("UPDATE appsumo_code SET user_id=NULL WHERE user_id=?").bind(id),
 			env.DB.prepare("DELETE FROM subscription WHERE reference_id=?").bind(id),
 			env.DB.prepare("DELETE FROM device_code WHERE user_id=?").bind(id),
 			env.DB.prepare("DELETE FROM billing_event WHERE user_id=?").bind(id),
@@ -174,7 +178,9 @@ export async function cancelDeletedBilling(env:Cloudflare.Env){
 				}
 			}
 			await env.DB.batch([
-				env.DB.prepare("UPDATE subscription SET status='canceled' WHERE reference_id=?").bind(row.id),
+				// The AppSumo lifetime row is no Stripe subscription: it stays, so a
+				// restored account keeps the plan it redeemed.
+				env.DB.prepare(`UPDATE subscription SET status='canceled' WHERE reference_id=? AND NOT ${LIFETIME_ID_SQL}`).bind(row.id),
 				env.DB.prepare("UPDATE resource_quota SET billing_cancel_pending=0 WHERE user_id=?").bind(row.id),
 			]);
 		}catch{console.error("[blup] billing_cancellation_retry");}

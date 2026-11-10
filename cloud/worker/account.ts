@@ -2,7 +2,8 @@ import { observePlan,PAST_DUE_GRACE,PAID_SUBSCRIPTION,PLAN_STATE_COLUMNS,type Pl
 import { ensureQuotaStatement } from "./quota";
 import type { Plan } from "./plans";
 import { env } from "cloudflare:workers";
-import { and, eq, exists, gt, inArray, or } from "drizzle-orm";
+import { and, eq, exists, gt, inArray, or, sql } from "drizzle-orm";
+import { planOrder } from "../shared/pulse-plans";
 import { db } from "./auth";
 import { subscription, subscriptionGrace } from "./db/schema";
 import { GIFT_PLAN, ownerMatches, planNamed } from "./plans";
@@ -24,9 +25,11 @@ const paying = (now: number) => or(
 // The subscription that is paid (or on trial), if any.
 export async function activeSubscription(userId: string, now = Date.now()) {
 	const [sub] = await db
-		.select({ plan: subscription.plan, status: subscription.status, periodEnd: subscription.periodEnd, cancelAtPeriodEnd: subscription.cancelAtPeriodEnd, cancelAt: subscription.cancelAt,billingInterval:subscription.billingInterval })
+		.select({ id: subscription.id, plan: subscription.plan, status: subscription.status, periodEnd: subscription.periodEnd, cancelAtPeriodEnd: subscription.cancelAtPeriodEnd, cancelAt: subscription.cancelAt,billingInterval:subscription.billingInterval })
 		.from(subscription)
 		.where(and(eq(subscription.referenceId, userId), paying(now)))
+		// The highest plan when there are two (Stripe and the AppSumo lifetime).
+		.orderBy(sql.raw(planOrder()))
 		.limit(1);
 	return sub;
 }
@@ -43,7 +46,7 @@ export type Access = { allowed: boolean; plan: Plan; state: PlanState | null };
 export async function accountAccess(d1: D1Database, userId: string, now = Date.now()): Promise<Access> {
 	const [, read] = await d1.batch<AccountRow>([
 		ensureQuotaStatement(d1, userId),
-		d1.prepare(`SELECT u.email,u.email_verified AS verified,u.banned,q.user_id AS quotaUserId,q.deleted_at AS deletedAt,(SELECT s.plan FROM subscription s WHERE s.reference_id=u.id AND ${PAID_SUBSCRIPTION} LIMIT 1) AS plan,${PLAN_STATE_COLUMNS} FROM user u LEFT JOIN resource_quota q ON q.user_id=u.id WHERE u.id=?`).bind(now - PAST_DUE_GRACE, userId),
+		d1.prepare(`SELECT u.email,u.email_verified AS verified,u.banned,q.user_id AS quotaUserId,q.deleted_at AS deletedAt,(SELECT s.plan FROM subscription s WHERE s.reference_id=u.id AND ${PAID_SUBSCRIPTION} ORDER BY ${planOrder("s")} LIMIT 1) AS plan,${PLAN_STATE_COLUMNS} FROM user u LEFT JOIN resource_quota q ON q.user_id=u.id WHERE u.id=?`).bind(now - PAST_DUE_GRACE, userId),
 	]);
 	const row = read?.results[0];
 	const plan = planNamed(row && isOwner(row.email, !!row.verified) ? GIFT_PLAN : row?.plan);

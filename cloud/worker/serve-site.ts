@@ -4,6 +4,7 @@ import { siteTags } from "./site-cache-purge";
 import { retainedSiteIds } from "./site-entitlement";
 import { observePlan } from "./lifecycle";
 import { planNamed,ownerMatches } from "./plans";
+import { planOrder } from "../shared/pulse-plans";
 import { manifestSchema } from "./site-rules";
 import { acceptsGzip, cacheControl, fileKey, manifestKey, resolvePath, type Manifest } from "./site-rules";
 
@@ -17,7 +18,7 @@ export type CachedSiteProps = z.infer<typeof cachedSiteProps>;
 
 type SiteHead={id:string;deploy:string;owner:string;email:string;verified:number;grace:number|null;chosen:string|null;lastPlan:string|null;plan:string|null;sites:number;hostname:string|null;domainStatus:string|null;ssl:string|null;proof:number|null;disableAt:number|null};
 async function siteHead(env:Cloudflare.Env,slug:string){
- return env.DB.prepare("SELECT s.id,s.deploy,s.user_id AS owner,u.email,u.email_verified AS verified,q.grace_until AS grace,q.selected_site_id AS chosen,q.last_plan AS lastPlan,(SELECT count(*) FROM site WHERE user_id=u.id) AS sites,(SELECT plan FROM subscription WHERE reference_id=u.id AND status IN ('active','trialing','past_due') LIMIT 1) AS plan,d.hostname,d.status AS domainStatus,d.ssl,d.verified_at AS proof,d.disable_at AS disableAt FROM site s JOIN user u ON u.id=s.user_id LEFT JOIN resource_quota q ON q.user_id=u.id LEFT JOIN site_domain d ON d.site_id=s.id WHERE s.slug=? AND u.banned=0 AND q.deleted_at IS NULL LIMIT 1").bind(slug).first<SiteHead>();
+ return env.DB.prepare(`SELECT s.id,s.deploy,s.user_id AS owner,u.email,u.email_verified AS verified,q.grace_until AS grace,q.selected_site_id AS chosen,q.last_plan AS lastPlan,(SELECT count(*) FROM site WHERE user_id=u.id) AS sites,(SELECT plan FROM subscription WHERE reference_id=u.id AND status IN ('active','trialing','past_due') ORDER BY ${planOrder()} LIMIT 1) AS plan,d.hostname,d.status AS domainStatus,d.ssl,d.verified_at AS proof,d.disable_at AS disableAt FROM site s JOIN user u ON u.id=s.user_id LEFT JOIN resource_quota q ON q.user_id=u.id LEFT JOIN site_domain d ON d.site_id=s.id WHERE s.slug=? AND u.banned=0 AND q.deleted_at IS NULL LIMIT 1`).bind(slug).first<SiteHead>();
 }
 async function liveDeploy(env:Cloudflare.Env,slug:string,customHostname:string|undefined){
  let row=await siteHead(env,slug);if(!row)return null;

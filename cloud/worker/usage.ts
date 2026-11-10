@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { observePlan,planStateRead,PAID_SUBSCRIPTION,PAST_DUE_GRACE,type PlanStateRow } from "./lifecycle";
 import { historyBytes } from "./sync-history";
 import { GIFT_PLAN,ownerMatches,planNamed } from "./plans";
+import { planOrder } from "../shared/pulse-plans";
 import { eq } from "drizzle-orm";
 import { session } from "./db/schema";
 
@@ -46,7 +47,7 @@ export async function usageOf(userId: string): Promise<Usage> {
 		// The Deals page counts as one of the plan's sites.
 		d1.prepare("SELECT count(*) AS n FROM deals_site WHERE user_id=?").bind(userId),
 		d1.prepare("SELECT count(*) AS n FROM session WHERE user_id=? AND studio_device=1 AND expires_at>?").bind(userId, now),
-		d1.prepare(`SELECT email,email_verified AS verified,(SELECT s.plan FROM subscription s WHERE s.reference_id=user.id AND ${PAID_SUBSCRIPTION} LIMIT 1) AS plan FROM user WHERE id=? AND banned=0`).bind(now - PAST_DUE_GRACE, userId),
+		d1.prepare(`SELECT email,email_verified AS verified,(SELECT s.plan FROM subscription s WHERE s.reference_id=user.id AND ${PAID_SUBSCRIPTION} ORDER BY ${planOrder("s")} LIMIT 1) AS plan FROM user WHERE id=? AND banned=0`).bind(now - PAST_DUE_GRACE, userId),
 		d1.prepare("INSERT OR IGNORE INTO resource_quota (user_id) SELECT id FROM user WHERE id = ? AND banned=0").bind(userId),
 		planStateRead(d1, userId),
 		d1.prepare("SELECT id FROM vault WHERE user_id=? AND head_refs_ready=0 LIMIT 1").bind(userId),

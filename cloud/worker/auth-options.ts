@@ -113,7 +113,12 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 		// handler must never write an older event after that reconciliation.
 		// There are no passwords: the e-mail OTP plugin's password reset
 		// routes would send codes to any account without Turnstile.
-		disabledPaths: ["/stripe/webhook","/subscription/success","/subscription/upgrade","/subscription/billing-portal","/subscription/cancel","/subscription/restore","/email-otp/request-password-reset","/forget-password/email-otp","/email-otp/reset-password"],
+		// The subscription table also holds AppSumo's lifetime rows
+		// (appsumo-<user>, no Stripe ids), which the plugin would read as its
+		// own: never enable its upgrade/cancel/list/webhook paths, nor call
+		// auth.api.upgradeSubscription, cancelSubscription or
+		// listActiveSubscriptions on the server (billing-flow.ts does billing).
+		disabledPaths: ["/stripe/webhook","/subscription/success","/subscription/upgrade","/subscription/billing-portal","/subscription/cancel","/subscription/restore","/subscription/list","/email-otp/request-password-reset","/forget-password/email-otp","/email-otp/reset-password"],
 		secret: cfg.secret,
 		trustedOrigins: [cfg.appUrl,...[cfg.pulseUrl,cfg.dealsUrl].filter((url):url is string=>!!url)],
 		database: drizzleAdapter(db, { provider: "sqlite", schema }),

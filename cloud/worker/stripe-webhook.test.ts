@@ -165,6 +165,13 @@ describe("signed Stripe reconciliation against current provider state",()=>{
   const query=d1.statements.at(-1)!.sql;
   expect(JSON.stringify(d1.sqlite.prepare("EXPLAIN QUERY PLAN "+query).all(Date.now()))).toContain("stripe_webhook_event_processed_idx");
  });
+ it("never adopts or overwrites an AppSumo lifetime row named in the metadata",async()=>{
+  d1.sqlite.exec("INSERT INTO subscription (id,plan,reference_id,status,period_start) VALUES ('appsumo-alice','ultra','alice','active',1)");
+  objects.set("/v1/subscriptions/sub_audit",{...current("sub_audit","active","pro"),metadata:{userId:"alice",referenceId:"alice",subscriptionId:"appsumo-alice"}});
+  expect((await deliver(hookEvent("evt_lifetime"))).status).toBe(200);
+  expect(d1.sqlite.prepare("SELECT plan,status,stripe_subscription_id AS stripeId,stripe_customer_id AS customer,period_end AS periodEnd FROM subscription WHERE id='appsumo-alice'").get()).toEqual({plan:"ultra",status:"active",stripeId:null,customer:null,periodEnd:null});
+  expect(d1.sqlite.prepare("SELECT plan FROM subscription WHERE stripe_subscription_id='sub_audit'").get()).toEqual({plan:"pro"});
+ });
  it("clears the finished Checkout once the paid subscription is reconciled",async()=>{
   const seed=(user:string)=>d1.sqlite.prepare("INSERT INTO billing_checkout(user_id,id,plan,annual,params,session_id,url,expires_at) VALUES(?,?,'max',0,'{}','cs_done','https://checkout.stripe.com/c/pay/cs_done',?)").run(user,`intent_${user}`,Date.now()+3_600_000);
   seed("alice");seed("bob");

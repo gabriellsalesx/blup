@@ -11,6 +11,8 @@ export type AIModels=InferResponseType<typeof client.ai.$get,200>;
 export type AIFeature=AIModels["features"][number]["feature"];
 export type AccountDetail=InferResponseType<(typeof client.users)[":id"]["$get"],200>;
 export type Addons=AccountDetail["addons"];
+export type AppsumoStats=InferResponseType<typeof client.appsumo.$get,200>;
+export type AppsumoCode=AccountDetail["appsumo"][number];
 export class StaffError extends Error {
  constructor(public status:number,public code:string){super(code);}
 }
@@ -38,6 +40,12 @@ export const staffApi={
  removeMember:(email:string)=>call(parseResponse(client.team[":email"].$delete({param:{email}}))),
  ai:()=>call(parseResponse(client.ai.$get())),
  setModels:(feature:AIFeature,models:string[],recommended:string|null)=>call(parseResponse(client.ai[":feature"].$put({param:{feature},json:{models,recommended}}))),
+ // AppSumo: the counts, importing codes (the owner), AppSumo's refunds and
+ // one account's code (admins).
+ appsumo:()=>call(parseResponse(client.appsumo.$get())),
+ importCodes:(codes:string[])=>call(parseResponse(client.appsumo.codes.$post({json:{codes}}))),
+ refundCodes:(codes:string[])=>call(parseResponse(client.appsumo.refunds.$post({json:{codes}}))),
+ revokeCode:(id:string,code:string)=>call(parseResponse(client.users[":id"].appsumo[":code"].revoke.$post({param:{id,code}}))),
  log:(cursor:string|null)=>call(parseResponse(client.log.$get({query:cursor?{cursor}:{}}))),
 };
 
@@ -58,6 +66,9 @@ export const actionLabel: Record<string, string> = {
 	"team.set": "Mudou a equipe",
 	"team.remove": "Tirou da equipe",
 	"ai.models": "Mudou os modelos de IA",
+	"appsumo.import": "Importou códigos do AppSumo",
+	"appsumo.refund": "Revogou códigos por reembolso do AppSumo",
+	"appsumo.revoke": "Revogou um código do AppSumo",
 	// Refused: only the owner (STAFF_OWNER_EMAIL) may do these.
 	"denied.sessions.revoke": "Tentou encerrar as sessões (negado)",
 	"denied.passkey.remove": "Tentou remover uma passkey (negado)",
@@ -79,4 +90,4 @@ export const billingLabel: Record<string, { text: string; alert: boolean }> = {
 export const money = (cents: number | null, currency: string | null) =>
 	cents === null || currency === null ? "" : formatMoney(cents,currency);
 
-export const when = (d: string | null) => d===null?"Sem data":new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+export const when = (d: string | number | null) => d===null?"Sem data":new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });

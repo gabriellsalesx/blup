@@ -8,7 +8,8 @@ import {siteLock,unlockSite} from "./quota";
 import {hasEmail} from "./auth-options";
 import {sha256} from "./pulse/limits";
 import {stripeLocale,languageOf} from "../shared/language";
-import {planNameSchema} from "../shared/pulse-plans";
+import {planNameSchema,supersetOf,planOrder,type PlanName} from "../shared/pulse-plans";
+import {LIFETIME_ID_SQL} from "../shared/appsumo-levels";
 import {cloudPaths,checkoutParam} from "../shared/panel-paths";
 export const stripeOptions={timeout:5000,maxNetworkRetries:0} as const;
 const id=z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/).max(255),meta=z.record(z.string(),z.string()).default({}),money=z.number().int(),seconds=z.number().int().nonnegative().max(8_640_000_000_000);
@@ -29,6 +30,15 @@ export async function selectedPrice(stripe:Stripe,plan:Plan,annual:boolean){
 }
 export async function billingOwner(env:Cloudflare.Env,userId:string){
  const owner=await env.DB.prepare("SELECT id,email,email_verified AS verified,stripe_customer_id AS customer,language FROM user WHERE id=? AND banned=0 AND NOT EXISTS(SELECT 1 FROM resource_quota WHERE user_id=user.id AND deleted_at IS NOT NULL)").bind(userId).first<{id:string;email:string;verified:number;customer:string|null;language:string}>();if(!owner)throw new BillingFlowError("UNAUTHORIZED",403);if(ownerMatches(env.STAFF_OWNER_EMAIL,owner.email,!!owner.verified))throw new BillingFlowError("BILLING_GIFT",403);return owner;
+}
+// An AppSumo lifetime plan is never lost to a paid one: Stripe sells such an
+// account only a plan that holds all of it and more (supersetOf). Grátis
+// (cancelling a Stripe subscription next to it) is always allowed.
+export async function refuseCoveredPlan(db:D1Database,userId:string,target:PlanName){
+ if(target==="free")return;
+ const row=await db.prepare(`SELECT plan FROM subscription WHERE reference_id=? AND ${LIFETIME_ID_SQL} AND status='active' ORDER BY ${planOrder()} LIMIT 1`).bind(userId).first<{plan:string}>();
+ const lifetime=planNameSchema.safeParse(row?.plan);
+ if(lifetime.success&&!supersetOf(target,lifetime.data))throw new BillingFlowError("LIFETIME_COVERS");
 }
 type BillingContext={stripe:Stripe;sub:FlowSubscription;owner:Awaited<ReturnType<typeof billingOwner>>;locks:{id:string;token:string}[]};
 export async function withSubscription<T>(env:Cloudflare.Env,userId:string,fn:(context:BillingContext)=>Promise<T>):Promise<T>{
@@ -58,6 +68,7 @@ export async function resourceChoices(db:D1Database,userId:string){
  const pages=await db.prepare("SELECT id,title AS name FROM pulse_page WHERE user_id=? AND (retire_at IS NULL OR retire_at>?) ORDER BY created_at,id LIMIT 3").bind(userId,Date.now()).all<{id:string;name:string}>();return {projects:projects.results,monitors:monitors.results,pages:pages.results};
 }
 export async function buildQuote(db:D1Database,stripe:Stripe,sub:FlowSubscription,userId:string,target:Plan,annual:boolean,prorationDate:number):Promise<BillingQuote>{
+ await refuseCoveredPlan(db,userId,target.name);
  const item=sub.items.data[0],current=pricePlan(item.price);if(!current)throw new BillingFlowError("BILLING_UNSUPPORTED");
  if(sub.pending_update)throw new BillingFlowError("BILLING_PENDING");
  const resources=await resourceChoices(db,userId),rank={free:0,pro:1,max:2,ultra:3};
@@ -99,7 +110,7 @@ export const checkoutParamsSchema=z.object({mode:z.literal("subscription"),custo
 export async function checkout(env:Cloudflare.Env,userId:string,plan:Plan,annual:boolean){
  const token=await siteLock(env.DB,`billing-account:${userId}`,60_000);if(!token)throw new BillingFlowError("BILLING_BUSY",503);
  try{
-  const owner=await billingOwner(env,userId);if(!hasEmail(owner.email)||!owner.verified)throw new BillingFlowError("EMAIL_REQUIRED",403);if(!await purchaseAvailable(env,plan.name,annual))throw new BillingFlowError("PRICING_UNAVAILABLE",503);const stripe=createStripe(env.STRIPE_SECRET_KEY);
+  const owner=await billingOwner(env,userId);if(!hasEmail(owner.email)||!owner.verified)throw new BillingFlowError("EMAIL_REQUIRED",403);await refuseCoveredPlan(env.DB,userId,plan.name);if(!await purchaseAvailable(env,plan.name,annual))throw new BillingFlowError("PRICING_UNAVAILABLE",503);const stripe=createStripe(env.STRIPE_SECRET_KEY);
   if(!owner.customer){const customer=z.object({id:id.startsWith("cus_")}).parse(await stripe.customers.create({email:owner.email,metadata:{blup_user:userId}},{...stripeOptions,idempotencyKey:`blup-customer:${userId}`}));await env.DB.prepare("UPDATE user SET stripe_customer_id=? WHERE id=? AND stripe_customer_id IS NULL").bind(customer.id,userId).run();owner.customer=customer.id;}
   const subscriptions=z.object({has_more:z.literal(false),data:z.array(z.object({id,status:z.string()})).max(100)}).parse(await stripe.subscriptions.list({customer:owner.customer,status:"all",limit:100},stripeOptions));
   if(subscriptions.data.some(s=>!["canceled","incomplete_expired"].includes(s.status)))throw new BillingFlowError("BILLING_USE_PREVIEW");

@@ -8,7 +8,7 @@
 	import External from "@lucide/svelte/icons/external-link";
 	import KeyRound from "@lucide/svelte/icons/key-round";
 	import Trash from "@lucide/svelte/icons/trash-2";
-	import { staffApi, staffHref, actionLabel, billingLabel, money, when } from "#lib/staff.ts";
+	import { staffApi, staffHref, actionLabel, billingLabel, money, when, type AppsumoCode } from "#lib/staff.ts";
 	import { toast } from "#lib/toast.svelte.ts";
 	import { confirm } from "#lib/confirm.svelte.ts";
 	import Button from "#lib/ui/Button.svelte";
@@ -85,6 +85,15 @@
 		finally { busy = false; }
 	}
 
+	// An AppSumo code of the account (admins): the account goes down to the
+	// codes it still has.
+	async function revokeCode(c: AppsumoCode) {
+		if (!(await confirm({ title: `Revogar o código …${c.last4}?`, message: "O código deixa de valer para sempre e a conta desce um nível do plano vitalício na hora. Não dá para desfazer.", confirmLabel: "Revogar", danger: true }))) return;
+		run(() => staffApi.revokeCode(id, c.id), "Código revogado");
+	}
+	const codeStatus: Record<AppsumoCode["status"], string> = { available: "Disponível", redeemed: "Resgatado", revoked: "Revogado" };
+	const revokeReason: Record<"refund" | "staff", string> = { refund: "reembolso do AppSumo", staff: "pela staff" };
+
 	async function run(fn: () => Promise<unknown>, done: string) {
 		busy = true;
 		try { await fn(); toast(done); await refreshAll(); }
@@ -116,7 +125,7 @@
 	<div class="mt-2">
 		{#if tab === "summary"}
 		<Row title="ID da conta" help={accountIdHelp()}><div class="mt-2"><AccountId id={d.user.id} emphasis /></div></Row>
-		<Row title={`Plano ${d.plan.label}`} help={d.plan.periodEnd ? `${d.plan.cancelAtPeriodEnd ? "Termina" : "Renova"} em ${when(d.plan.periodEnd)}` : "Sem assinatura paga."}>
+		<Row title={`Plano ${d.plan.label}`} help={d.plan.lifetime ? "Vitalício (AppSumo). Não renova; os códigos estão em Pagamentos." : d.plan.periodEnd ? `${d.plan.cancelAtPeriodEnd ? "Termina" : "Renova"} em ${when(d.plan.periodEnd)}` : "Sem assinatura paga."}>
 			{#snippet action()}
 				{#if d.stripeUrl}<a class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-4 py-2.5 font-semibold hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900" href={d.stripeUrl} target="_blank" rel="noreferrer">Abrir no Stripe <External class="size-4" /></a>{/if}
 			{/snippet}
@@ -143,6 +152,22 @@
 					</li>
 				{:else}
 					<li class="text-neutral-500">Nada ainda.</li>
+				{/each}
+			</ul>
+		</Row>
+
+		<Row title="Códigos do AppSumo" help={d.plan.lifetime ? "Vitalício (AppSumo): um nível por código resgatado, até 5. Só os 4 últimos caracteres." : "Só os 4 últimos caracteres de cada código."}>
+			<ul class="mt-3 grid gap-2 text-sm">
+				{#each d.appsumo as c (c.id)}
+					<li class="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800">
+						<span class="min-w-0 flex-1">
+							<b class="font-mono">…{c.last4}</b> <span class="text-neutral-500">· {codeStatus[c.status]}</span>
+							<span class="block text-neutral-500">Importado em {when(c.importedAt)}{#if c.redeemedAt !== null} · resgatado em {when(c.redeemedAt)}{/if}{#if c.revokedAt !== null} · revogado em {when(c.revokedAt)}{#if c.revokeReason} ({revokeReason[c.revokeReason]}){/if}{/if}</span>
+						</span>
+						{#if admin && c.status === "redeemed"}<Button variant="secondary" small {busy} onclick={() => revokeCode(c)}>Revogar</Button>{/if}
+					</li>
+				{:else}
+					<li class="text-neutral-500">Nenhum código.</li>
 				{/each}
 			</ul>
 		</Row>

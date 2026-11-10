@@ -1,7 +1,7 @@
 import { queueAccountPurge } from "./site-cache-purge";
 import { Hono, type Context } from "hono";
 import { createMiddleware } from "hono/factory";
-import { and, asc, count, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, lt } from "drizzle-orm";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 import { z } from "zod";
@@ -14,6 +14,9 @@ import { GIFT_PLAN, isOwner } from "./account";
 import { hasEmail } from "./auth-options";
 import { usageOf } from "./usage";
 import { addonUsageOf } from "./addon-usage";
+import { byPlanOrder, planOrder } from "../shared/pulse-plans";
+import { isLifetimeId } from "../shared/appsumo-levels";
+import { appsumoStats, codeList, codesOf, importCodes, pepperOf, refundCodes, revokeCode, settleLifetime, settleLifetimes } from "./appsumo";
 import { aiUsageOf, aiFeatures, aiFeatureNames, modelId, modelList, modelListFor, settingFor, chatModels, speechCatalog } from "./ai";
 
 // The staff area (support and administration). In production Cloudflare
@@ -136,7 +139,9 @@ export const staffApi = new Hono<App>()
 			db.select({ total: count() }).from(user),
 			db.select({ recent: count() }).from(user).where(gte(user.createdAt, week)),
 			db.select({ banned: count() }).from(user).where(eq(user.banned, true)),
-			db.select({ plan: subscription.plan, n: sql<number>`count(distinct ${subscription.referenceId})` }).from(subscription).where(inArray(subscription.status, ACTIVE)).groupBy(subscription.plan),
+			// Each account once, by its highest plan (Stripe and AppSumo can both
+			// be there).
+			c.env.DB.prepare(`SELECT plan,count(*) AS n FROM (SELECT plan,row_number() OVER (PARTITION BY reference_id ORDER BY ${planOrder()}) AS k FROM subscription WHERE status IN ('active','trialing','past_due')) WHERE k=1 GROUP BY plan`).all<{ plan: string; n: number }>().then((r) => r.results),
 		]);
 		const paying = paid.reduce((sum, p) => sum + p.n, 0);
 		const res = c.json({
@@ -175,13 +180,13 @@ export const staffApi = new Hono<App>()
 		const rows = found.slice(0, size);
 		const last = rows.at(-1);
 		const nextCursor = found.length > size && last ? key(last) : null;
-		const subs: { ref: string; plan: string }[] = [];
+		const subs: { id: string; ref: string; plan: string; periodEnd: Date | null }[] = [];
 		// The statuses consume three of D1's 100 bindings.
 		for (let i = 0; i < rows.length; i += 97) {
-			subs.push(...await db.select({ ref: subscription.referenceId, plan: subscription.plan }).from(subscription)
+			subs.push(...await db.select({ id: subscription.id, ref: subscription.referenceId, plan: subscription.plan, periodEnd: subscription.periodEnd }).from(subscription)
 				.where(and(inArray(subscription.referenceId, rows.slice(i, i + 97).map((r) => r.id)), inArray(subscription.status, ACTIVE))));
 		}
-		return c.json({ items: rows.map(({ emailVerified, ...r }) => ({ ...r, email: hasEmail(r.email) ? r.email : null, plan: isOwner(r.email, emailVerified) ? `${planNamed(GIFT_PLAN).label} (cortesia)` : planNamed(subs.find((s) => s.ref === r.id)?.plan).label })), nextCursor });
+		return c.json({ items: rows.map(({ emailVerified, ...r }) => ({ ...r, email: hasEmail(r.email) ? r.email : null, plan: isOwner(r.email, emailVerified) ? `${planNamed(GIFT_PLAN).label} (cortesia)` : planNamed(subs.filter((s) => s.ref === r.id).sort(byPlanOrder)[0]?.plan).label })), nextCursor });
 	})
 
 	.get("/users/:id", validate("param",idParam), async (c) => {
@@ -195,10 +200,10 @@ export const staffApi = new Hono<App>()
 			db.select().from(staffLog).where(eq(staffLog.userId, id)).orderBy(desc(staffLog.createdAt)).limit(20),
 			db.select({ id: billingEvent.id, type: billingEvent.type, amount: billingEvent.amount, currency: billingEvent.currency, createdAt: billingEvent.createdAt }).from(billingEvent).where(eq(billingEvent.userId, id)).orderBy(desc(billingEvent.id)).limit(20),
 		]);
-		const active = subs.find((s) => ACTIVE.includes(s.status));
+		const active = subs.filter((s) => ACTIVE.includes(s.status)).sort(byPlanOrder)[0];
 		const gift = isOwner(u.email, u.emailVerified);
 		const plan = planNamed(gift ? GIFT_PLAN : active?.plan);
-		const [usage, ai, addons] = await Promise.all([usageOf(id), aiUsageOf(id, plan), addonUsageOf(c.env, id, plan)]);
+		const [usage, ai, addons, appsumo] = await Promise.all([usageOf(id), aiUsageOf(id, plan), addonUsageOf(c.env, id, plan), codesOf(c.env, id)]);
 		const [state]=await db.select({deletedAt:resourceQuota.deletedAt,purgeAfter:resourceQuota.purgeAfter,purgeStarted:resourceQuota.purgeStarted}).from(resourceQuota).where(eq(resourceQuota.userId,id)).limit(1);
 		const stripeMode = /^[rs]k_live_/.test(c.env.STRIPE_SECRET_KEY) ? "" : "test/";
 		const owner=ownerEmail(c.env);
@@ -206,11 +211,14 @@ export const staffApi = new Hono<App>()
 			ownerAccount:!!owner&&u.email.toLowerCase()===owner,
 			deletion:{requestedAt:state?.deletedAt?new Date(state.deletedAt).toISOString():null,purgeAfter:state?.purgeAfter?new Date(state.purgeAfter).toISOString():null,restorable:!!state?.deletedAt&&!!state.purgeAfter&&state.purgeAfter>Date.now()&&!state.purgeStarted},
 			user: { id: u.id, email: hasEmail(u.email) ? u.email : null, emailVerified: u.emailVerified, createdAt: u.createdAt, banned: u.banned, banReason: u.banReason },
-			plan: { label: gift ? `${plan.label} (cortesia)` : plan.label, gift, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.cancelAt ?? active?.periodEnd ?? null, cancelAtPeriodEnd: !!(active?.cancelAtPeriodEnd || active?.cancelAt) },
+			plan: { label: gift ? `${plan.label} (cortesia)` : plan.label, gift, limits: plan.limits, status: active?.status ?? null, periodEnd: active?.cancelAt ?? active?.periodEnd ?? null, lifetime: !gift && isLifetimeId(active?.id), cancelAtPeriodEnd: !!(active?.cancelAtPeriodEnd || active?.cancelAt) },
 			usage,
 			ai: { percent: ai.percent, resetsAt: ai.resetsAt, included: plan.limits.aiUsage > 0 },
 			// Blup Pulse and Blup Deals, when the plan includes them.
 			addons,
+			// The AppSumo codes of the account (last 4 only; id: the start of the
+			// code's hash, for revoking one).
+			appsumo,
 			billing,
 			stripeUrl: u.stripeCustomerId ? `https://dashboard.stripe.com/${stripeMode}customers/${u.stripeCustomerId}` : null,
 			sessions,
@@ -285,6 +293,32 @@ export const staffApi = new Hono<App>()
 	 const {id}=c.req.valid("param");
 	 if(!await restoreAccount(c.env.DB,id,Date.now(),c.get("staff").email))return c.json({code:"NOT_FOUND"},404);
 	 return c.json({ok:true});
+	})
+
+	// AppSumo codes. Importing makes codes valid (the owner only); a refund
+	// or a revocation lowers accounts (admins). Without APPSUMO_CODE_PEPPER
+	// (or with one under 32 characters) no code can be hashed: 503
+	// UNAVAILABLE. The log never has a code.
+	.get("/appsumo", async (c) => c.json({ ...await appsumoStats(c.env), available: !!pepperOf(c.env) }))
+	.post("/appsumo/codes", ownerOnly, body(z.strictObject({ codes: codeList })), async (c) => {
+		const pepper = pepperOf(c.env);
+		if (!pepper) return c.json({ code: "UNAVAILABLE" }, 503);
+		return c.json(await importCodes(c.env, pepper, c.req.valid("json").codes, c.get("staff").email), 200);
+	})
+	.post("/appsumo/refunds", adminOnly, body(z.strictObject({ codes: codeList })), async (c) => {
+		const pepper = pepperOf(c.env);
+		if (!pepper) return c.json({ code: "UNAVAILABLE" }, 503);
+		const { affected, ...result } = await refundCodes(c.env, pepper, c.req.valid("json").codes, c.get("staff").email);
+		// The plans settle after the answer (a downgrade like Stripe's), 10 at
+		// a time; what does not settle here, the daily cron does (settleRevoked).
+		c.executionCtx.waitUntil(settleLifetimes(c.env, affected));
+		return c.json(result, 200);
+	})
+	.post("/users/:id/appsumo/:code/revoke", adminOnly, validate("param", idParam.extend({ code: z.string().regex(/^[0-9a-f]{16}$/) })), async (c) => {
+		const { id, code } = c.req.valid("param");
+		if (!await revokeCode(c.env, id, code, c.get("staff").email)) return c.json({ code: "NOT_FOUND" }, 404);
+		await settleLifetime(c.env, id);
+		return c.json({ ok: true }, 200);
 	})
 
 	// The team (admin only). Making, unmaking or removing an admin: the
