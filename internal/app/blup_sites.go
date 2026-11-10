@@ -115,8 +115,16 @@ func BringBlupSite(ctx context.Context, vault string) (*config.Site, error) {
 	if _, err := syncSite(ctx, site, false); err != nil {
 		return nil, err
 	}
+	shared := false
 	if _, err := os.Stat(sharedPath(site)); err == nil {
+		shared = true
 		if site, err = readShared(site); err != nil {
+			return nil, err
+		}
+	}
+	if broughtAsNotes(shared) && !site.IsNotes() {
+		site.Kind = config.KindNotes
+		if err := site.Save(); err != nil {
 			return nil, err
 		}
 	}
@@ -130,3 +138,10 @@ func BringBlupSite(ctx context.Context, vault string) (*config.Site, error) {
 	}
 	return site, nil
 }
+
+// broughtAsNotes tells whether a vault brought from Blup Cloud is a vault
+// of notes when its settings don't say otherwise. Blup Studio sends every
+// site's settings (.blup/site.toml) with its notes, and they carry the
+// kind; a vault without them was made in Blup Notes on the phone, which
+// keeps notes only: it is a vault of notes, never a site.
+func broughtAsNotes(sharedFound bool) bool { return !sharedFound }
