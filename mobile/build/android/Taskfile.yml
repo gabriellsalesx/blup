@@ -110,6 +110,9 @@ tasks:
 
         export CGO_ENABLED=1
         export GOOS=android
+        # Google Play requires native libraries aligned to 16 KB pages
+        # (Android 15+ devices); it also runs on the 4 KB ones.
+        export CGO_LDFLAGS="${CGO_LDFLAGS:+$CGO_LDFLAGS }-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
 
         mkdir -p {{.BIN_DIR}}
         mkdir -p build/android/app/src/main/jniLibs/$JNI_DIR
