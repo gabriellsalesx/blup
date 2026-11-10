@@ -58,11 +58,11 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-title { font-size: 1.875rem; font-weight: 600; line-height: 2.25rem; letter-spacing: -.01em; color: var(--main-900); text-wrap: balance; }
   .nori-lede-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-block-start: .25rem; }
   .nori-lede { font-size: 1.875rem; font-weight: 600; line-height: 2.25rem; letter-spacing: -.01em; color: light-dark(#8b8b8b, #656565); } /* large text, 3:1 on the page in both schemes */
-  /* On a phone a long lede at title size fills the screen: smaller and
-  lighter there, still the larger text of the page. */
+  /* On a phone a long lede at title size fills the screen: a step smaller
+  there, same look (bold and lighter gray, still large text). */
   @media (width < 48rem) {
     .nori-head .nori-title { font-size: 1.625rem; line-height: 2rem; }
-    .nori-head .nori-lede { font-size: 1.25rem; font-weight: 500; line-height: 1.75rem; letter-spacing: 0; color: var(--main-600); text-wrap: pretty; }
+    .nori-head .nori-lede { font-size: 1.25rem; line-height: 1.625rem; text-wrap: pretty; }
   }
   .nori-meta { font-size: .8125rem; line-height: 1.25rem; color: var(--main-600); font-variant-numeric: tabular-nums; }
 
@@ -137,10 +137,10 @@ neutral palette and layout. Bundled into one file by css.Build. */
   .nori-cover { margin-block-end: 1.5rem; overflow: clip; border: 1px solid var(--main-200); border-radius: .5rem; }
   .nori-cover img { width: 100%; }
   /* In a post the title wraps naturally (balance leaves short lines on a
-  phone) and grows with the screen; the lede is a subtitle, not a second
-  title: body size, regular weight, contrast for normal text. */
+  phone) and grows with the screen; the lede keeps the theme's look (bold,
+  lighter gray, still large text for its 3:1 contrast) a step smaller. */
   .nori-post-head .nori-title { font-size: clamp(1.625rem, 1.25rem + 1.6vw, 2.25rem); line-height: 1.2; text-wrap: pretty; }
-  .nori-post-head .nori-lede { margin-block-start: .75rem; font-size: 1.125rem; font-weight: 400; line-height: 1.6; letter-spacing: 0; color: var(--main-600); text-wrap: pretty; }
+  .nori-post-head .nori-lede { margin-block-start: .25rem; font-size: clamp(1.25rem, 1.05rem + 1vw, 1.5rem); line-height: 1.3; text-wrap: pretty; }
   .nori-post-head .listen { margin-block-start: 1.5rem; }
   .nori-byline { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; margin-block-start: 1.5rem; }
   .nori-author { display: inline-flex; align-items: center; gap: .375rem; color: var(--main-900); }
