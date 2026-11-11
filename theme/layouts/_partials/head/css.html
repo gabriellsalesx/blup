@@ -20,3 +20,10 @@ there; and its feed, for podcast apps that look for it on the page. */}}
 {{- if true }}
 <script>document.documentElement.classList.add("js");try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 {{- end }}
+{{- /* In the Studio's preview the page takes the Studio's light or dark (the
+_blup_scheme of the address, kept for the links followed inside the frame):
+the WebView of some systems doesn't pass the system's dark mode to a page
+in a frame, and the preview follows the Studio's own choice anyway. */}}
+{{- if eq (os.Getenv "HUGO_BLUP_MODE") "preview" }}
+<script>try{var s=new URLSearchParams(location.search).get("_blup_scheme");if(s)sessionStorage.setItem("blup-scheme",s);else s=sessionStorage.getItem("blup-scheme");if(s==="light"||s==="dark")document.documentElement.dataset.theme=s}catch(e){}</script>
+{{- end }}

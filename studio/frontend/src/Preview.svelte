@@ -2,6 +2,7 @@
   import { onDestroy, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
   import { samePage, previewMessage } from "./previewurl";
+  import { scheme } from "./theme.svelte";
 
   // The live preview without flashes: a rebuilt page loads in a hidden
   // frame, scrolls to where the reader was, and only then takes the place
@@ -13,7 +14,10 @@
 
   let seq = 0;
   const mark = () => String(++seq);
-  const withMark = (url: string, m: string) => url + (url.includes("?") ? "&" : "?") + "_blup=" + m;
+  // The page takes the Studio's light or dark (the theme's preview script
+  // reads _blup_scheme): a page in a frame doesn't always get the system's.
+  const schemeName = () => (scheme.dark ? "dark" : "light");
+  const withMark = (url: string, m: string) => url + (url.includes("?") ? "&" : "?") + "_blup=" + m + "&_blup_scheme=" + schemeName();
 
   const first = mark();
   let frames = $state<{ src: string; mark: string }[]>([{ src: withMark(untrack(() => src), first), mark: first }, { src: "", mark: "" }]);
@@ -65,6 +69,13 @@
   // A note was saved and the site rebuilt: same page, same place.
   const off = Events.On("previewChanged", () => load(path ? origin() + path : src, y));
   onDestroy(() => { off(); if (pending) clearTimeout(pending.timer); });
+
+  // The Studio turned light or dark: the pages shown follow.
+  $effect(() => {
+    const v = schemeName();
+    const o = untrack(origin);
+    for (const el of untrack(() => els)) el?.contentWindow?.postMessage({ blup: "scheme", v }, o);
+  });
 
   // Another note was opened: its page, from the top.
   let shown = untrack(() => src);

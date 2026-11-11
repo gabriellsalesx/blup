@@ -19,5 +19,5 @@ repository; without it, voting and commenting link to GitHub. */}}
 scrolled and scrolls when asked, so the Studio swaps in the rebuilt page at
 the same place, without a flash. Preview only, never published. */}}
 {{- if eq (os.Getenv "HUGO_BLUP_MODE") "preview" }}
-<script>if(parent!==window){const t=(m)=>parent.postMessage(Object.assign({blup:m},{y:scrollY,path:location.pathname,q:location.search}),"*");addEventListener("scroll",()=>t("scroll"),{passive:true});addEventListener("message",(e)=>{if(e.data&&e.data.blup==="scrollTo"){scrollTo(0,e.data.y);setTimeout(()=>t("ready"),16)}});t("loaded")}</script>
+<script>if(parent!==window){const t=(m)=>parent.postMessage(Object.assign({blup:m},{y:scrollY,path:location.pathname,q:location.search}),"*");addEventListener("scroll",()=>t("scroll"),{passive:true});addEventListener("message",(e)=>{if(e.source!==parent||!e.data)return;if(e.data.blup==="scrollTo"){scrollTo(0,e.data.y);setTimeout(()=>t("ready"),16)}else if(e.data.blup==="scheme"&&(e.data.v==="light"||e.data.v==="dark")){document.documentElement.dataset.theme=e.data.v;try{sessionStorage.setItem("blup-scheme",e.data.v)}catch(_){}}});t("loaded")}</script>
 {{- end }}
