@@ -68,6 +68,7 @@ export async function expireReservations(db: D1Database, now = Date.now()) {
 	for (const r of rows.results) await release(db,r);
 	await db.prepare("DELETE FROM site_lease WHERE site_id IN (SELECT site_id FROM site_lease WHERE expires_at<=? ORDER BY expires_at LIMIT 100)").bind(now).run();
 	await db.prepare("DELETE FROM device_approval WHERE code_hash IN (SELECT code_hash FROM device_approval WHERE expires_at<=? ORDER BY expires_at LIMIT 100)").bind(now).run();
+	await db.prepare("DELETE FROM device_pending WHERE code_hash IN (SELECT code_hash FROM device_pending WHERE expires_at<=? ORDER BY expires_at LIMIT 100)").bind(now).run();
 }
 
 // The lock as a statement for a caller's batch: RETURNING a row when taken.

@@ -42,7 +42,15 @@
 		if (err && "code" in err && err.code === "DEVICES_LIMIT") return (error = ()=>data.me.plan.limits.devices===1?t("deviceLimitOne",{plan:planLabel(data.me.plan.name,language())}):t("deviceLimit",{plan:planLabel(data.me.plan.name,language()),count:data.me.plan.limits.devices}));
 		if (err) return (error = ()=>t("deviceInvalid"));
 		step = approve ? "approved" : "denied";
+		if (approve && data.notes) backToNotes();
 	}
+
+	// Blup Notes waits on the phone: the app comes back on screen (its
+	// intent filter for blupnotes://signed-in). Chrome and Samsung Internet
+	// open it right after the tap; the button does it when a browser asks
+	// for another tap.
+	const NOTES_INTENT = "intent://signed-in#Intent;scheme=blupnotes;package=io.getblup.notes;end";
+	const backToNotes = () => location.assign(NOTES_INTENT);
 </script>
 
 <PageHeader title={t("deviceTitle")}/>
@@ -71,8 +79,9 @@
 	{:else if step === "approved"}
 		<div class="flex items-start gap-4">
 			<CircleCheck class="mt-1 size-6 shrink-0 text-green-600" />
-			<p>{t("deviceApprovedHelp")}</p>
+			<p>{t(data.notes ? "deviceApprovedNotes" : "deviceApprovedHelp")}</p>
 		</div>
+		{#if data.notes}<div class="mt-6"><Button onclick={backToNotes}>{t("deviceBackNotes")}</Button></div>{/if}
 	{:else}
 		<p>{t("deviceDeniedHelp")}</p>
 	{/if}

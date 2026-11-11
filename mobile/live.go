@@ -277,7 +277,11 @@ func (s *CloudService) ServiceStartup(context.Context, application.ServiceOption
 	if a == nil {
 		return nil
 	}
-	on := func(*application.ApplicationEvent) { live.Foreground(true) }
+	on := func(*application.ApplicationEvent) {
+		// Connections Android cut while the app was away are not reused.
+		dropStaleConns()
+		live.Foreground(true)
+	}
 	off := func(*application.ApplicationEvent) { live.Foreground(false) }
 	a.Event.OnApplicationEvent(events.Android.ActivityResumed, on)
 	a.Event.OnApplicationEvent(events.Android.ActivityPaused, off)

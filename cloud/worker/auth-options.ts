@@ -10,6 +10,7 @@ import { stripe } from "@better-auth/stripe";
 import { createStripe } from "./stripe-client";
 import { PLANS } from "./plans";
 import { v7 as uuidv7 } from "uuid";
+import { DEVICE_HEADER, type DeviceGrant } from "./devices";
 
 // Blup Cloud's sign in: only a code by e-mail (which also creates the
 // account) and passkeys, which a signed in person can add. Blup Studio
@@ -32,8 +33,13 @@ type AuthConfig = {
 	stripeWebhookSecret: string;
 	// Why the account can't sign in (null: it can).
 	accountBlock: (userId: string) => Promise<AccountBlock | null>;
-	deviceMark?: (userId:string,body:unknown)=>Promise<boolean>;
-	finishDevice?: (userId:string,body:unknown)=>Promise<void>;
+	// The device sign in (devices.ts): the approval still holding its place
+	// (null: not any more) with the account's id of the device, and, once the
+	// session is made, the approval released and the device's older sessions
+	// removed (how many). rememberDevice keeps the device behind a new code.
+	deviceMark?: (userId:string,body:unknown)=>Promise<DeviceGrant|null>;
+	finishDevice?: (userId:string,body:unknown,session:{id:string;deviceId?:string|null})=>Promise<number>;
+	rememberDevice?: (deviceCode:unknown,device:string|null,expiresIn:unknown)=>Promise<void>;
 	sendCode: (email: string, code: string, kind: string,language:Language) => void;
 	// The Google Play review account (see reviewLogin).
 	review?: ReviewLogin|null;
@@ -86,6 +92,9 @@ const PASSKEY_REGISTRATION = new Set(["/passkey/generate-register-options", "/pa
 // The Studio asks for a code with its client ID only: no account pre-bound
 // (user_id) by whoever calls this public route.
 const deviceCodeBody = z.strictObject({ client_id: z.string().min(1).max(64), scope: z.string().max(256).optional() });
+// What /device/code answers (RFC 8628), as far as the device's mark needs.
+const deviceCodeAnswer = z.object({ device_code: z.string().min(1).max(512), expires_in: z.number().int().positive() });
+const sessionDevice = z.object({ deviceId: z.string().nullish() });
 // The profile changes only the name (the panel's field allows 80).
 const updateUserBody = z.strictObject({ name: z.string().trim().max(80) });
 
@@ -145,8 +154,18 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 				language:{type:"string",defaultValue:"pt",input:false},
 			},
 		},
-		hooks: { before: guardAuthRequest },
-		session: {additionalFields:{studioDevice:{type:"boolean",defaultValue:false,input:false}}},
+		hooks: {
+			before: guardAuthRequest,
+			// A new sign-in code keeps the device that asked for it (the mark
+			// Blup Studio and Blup Notes send): the code's response has the
+			// device_code it is kept by.
+			after: createAuthMiddleware(async (ctx) => {
+				if (ctx.path !== "/device/code" || !cfg.rememberDevice) return;
+				const returned = deviceCodeAnswer.safeParse(ctx.context.returned);
+				if (returned.success) await cfg.rememberDevice(returned.data.device_code, ctx.headers?.get(DEVICE_HEADER) ?? null, returned.data.expires_in);
+			}),
+		},
+		session: {additionalFields:{studioDevice:{type:"boolean",defaultValue:false,input:false},deviceId:{type:"string",required:false,input:false}}},
 		databaseHooks: {
 			user:{create:{before:async(user,ctx)=>({data:{...user,language:requestLanguage(ctx?.headers)}})}},
 			session: {
@@ -155,10 +174,11 @@ export function authOptions(db: Parameters<typeof drizzleAdapter>[0], schema: Re
 						const block = await cfg.accountBlock(session.userId);
 						if (block) throw new APIError("FORBIDDEN", { message: BLOCK_MESSAGE[block], code: block });
 						const device=ctx?.path==="/device/token";
-						if(device && cfg.deviceMark && !await cfg.deviceMark(session.userId,ctx?.body))throw new APIError("FORBIDDEN",{code:"DEVICES_LIMIT",message:"Aprovação de aparelho inválida ou expirada."});
-						return {data:{...session,studioDevice:device&&!!cfg.deviceMark}};
+						const grant=device&&cfg.deviceMark?await cfg.deviceMark(session.userId,ctx?.body):null;
+						if(device && cfg.deviceMark && !grant)throw new APIError("FORBIDDEN",{code:"DEVICES_LIMIT",message:"Aprovação de aparelho inválida ou expirada."});
+						return {data:{...session,studioDevice:device&&!!cfg.deviceMark,deviceId:grant?.deviceId??null}};
 					},
-					after: async(session,ctx)=>{if(ctx?.path==="/device/token")await cfg.finishDevice?.(session.userId,ctx.body);},
+					after: async(session,ctx)=>{if(ctx?.path==="/device/token")await cfg.finishDevice?.(session.userId,ctx.body,{id:session.id,deviceId:sessionDevice.safeParse(session).data?.deviceId??null});},
 				},
 			},
 		},

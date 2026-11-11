@@ -330,6 +330,13 @@
       "when": 1794339738495,
       "tag": "0046_codigos_appsumo",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1794405503624,
+      "tag": "0047_aparelho_da_sessao",
+      "breakpoints": true
     }
   ]
 }

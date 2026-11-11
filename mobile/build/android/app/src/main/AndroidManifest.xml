@@ -40,6 +40,15 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Blup Cloud's approval page, once the sign in is approved,
+                 brings the app back on screen (singleTask: the same app,
+                 never a second one). The address carries nothing. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="blupnotes" android:host="signed-in" />
+            </intent-filter>
         </activity>
 
         <provider

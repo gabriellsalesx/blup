@@ -11,6 +11,15 @@
   let sliding = $state(false);
   const share = $derived(layer && dx ? 1 - Math.min(1, dx / layer.offsetWidth) : 0);
 
+  // What sliding the note away goes back to: another note is drawn as it is
+  // under this one (App.svelte); a board, by its name here. Either way not
+  // the list this layer lies over, which back doesn't reach.
+  const ghost = $derived.by(() => {
+    const below = app.below;
+    if (below?.board && below.board !== app.place.board) return { title: below.board.split("/").pop()?.replace(/\.[^.]+$/, "") ?? "", text: "" };
+    return null;
+  });
+
   $effect(() => {
     const el = layer;
     if (!el) return;
@@ -72,12 +81,24 @@
   });
 </script>
 
+{#if dx && ghost}
+  <div class="ghost" aria-hidden="true">
+    <div class="bar"></div>
+    <p class="title">{ghost.title}</p>
+    {#if ghost.text}<p class="text">{ghost.text}</p>{/if}
+  </div>
+{/if}
 {#if dx}<div class="shade" style:opacity={share * 0.3}></div>{/if}
 <div bind:this={layer} class={["layer", { sliding, moved: dx > 0 }]} style:transform={dx ? `translateX(${dx}px)` : null}>
   {@render children()}
 </div>
 
 <style>
+  /* The note back goes to, drawn like the editor's page (Editor.svelte). */
+  .ghost { position: absolute; inset: 0; z-index: 18; overflow: hidden; background: var(--bg); pointer-events: none; }
+  .ghost .bar { height: calc(3.4rem + var(--sat)); border-block-end: 1px solid var(--line); }
+  .ghost .title { padding: 2.6rem 1.5rem .4rem; font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
+  .ghost .text { padding: .5rem 1.1rem; color: var(--text); line-height: 1.5; white-space: pre-line; }
   .shade { position: absolute; inset: 0; z-index: 18; background: #000; pointer-events: none; }
   .layer { position: absolute; inset: 0; z-index: 19; display: flex; flex-direction: column; background: var(--bg); transition: transform .2s; }
   .layer.sliding { transition: none; }

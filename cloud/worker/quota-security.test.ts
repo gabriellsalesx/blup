@@ -51,8 +51,8 @@ describe("device approval reservations",()=>{
 		code("codeaa");
 		d1.sqlite.prepare("INSERT INTO session(id,token,user_id,expires_at,updated_at,user_agent) VALUES ('web','fixture','quota-owner',?,?,'Blup Studio forged')").run(Date.now()+900_000,Date.now());
 		expect(await approveDevice(d1.asD1(),"quota-owner","CODEAA",1)).toBe("OK");
-		expect(await deviceMark(d1.asD1(),"quota-owner",{device_code:"secret-fixture-codeaa"})).toBe(true);
-		expect(await deviceMark(d1.asD1(),"another-account",{device_code:"secret-fixture-codeaa"})).toBe(false);
+		expect(await deviceMark(d1.asD1(),"quota-owner",{device_code:"secret-fixture-codeaa"})).toEqual({deviceId:null});
+		expect(await deviceMark(d1.asD1(),"another-account",{device_code:"secret-fixture-codeaa"})).toBeNull();
 		d1.sqlite.prepare("INSERT INTO session(id,token,user_id,expires_at,updated_at,studio_device) VALUES ('device','fixture2','quota-owner',?,?,1)").run(Date.now()+900_000,Date.now());
 		await finishDevice(d1.asD1(),"quota-owner",{device_code:"secret-fixture-codeaa"});
 		code("codebb");expect(await approveDevice(d1.asD1(),"quota-owner","CODEBB",1)).toBe("DEVICES_LIMIT");

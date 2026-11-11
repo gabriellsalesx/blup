@@ -99,6 +99,7 @@ func prepare() error {
 	if _, err := vaultDir(); err != nil {
 		return err
 	}
+	loadDevice()
 	base := cmp.Or(cloudURL, blupcloud.DefaultURL)
 	if !safeURL(base) {
 		return fail("unsafeCloud", base)
@@ -127,6 +128,20 @@ func safeURL(raw string) bool {
 		return ip != nil && ip.IsLoopback()
 	}
 	return false
+}
+
+// fromNotes marks the approval page as opened by Blup Notes (app=notes):
+// once approved, the page brings the app back on screen
+// (blupnotes://signed-in, the intent filter in AndroidManifest.xml).
+func fromNotes(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	q := u.Query()
+	q.Set("app", "notes")
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 func client() (*blupcloud.Client, config.Credentials, error) {
@@ -261,8 +276,9 @@ func (s *CloudService) Login(ctx context.Context) (LoginCode, error) {
 	s.mu.Lock()
 	s.login = l
 	s.mu.Unlock()
-	application.Mobile.OpenURL(l.URL)
-	return LoginCode{Code: l.Code, URL: l.URL}, nil
+	open := fromNotes(l.URL)
+	application.Mobile.OpenURL(open)
+	return LoginCode{Code: l.Code, URL: open}, nil
 }
 
 // LoginWait waits for the approval and keeps the session.

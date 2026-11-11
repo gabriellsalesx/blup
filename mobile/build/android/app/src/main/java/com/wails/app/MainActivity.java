@@ -114,6 +114,8 @@ public class MainActivity extends AppCompatActivity {
         });
         setContentView(R.layout.activity_main);
 
+        writeDeviceInfo();
+
         String devURL = WailsBridge.devServerURL(this);
         if (devURL != null) devServer = Uri.parse(devURL);
 
@@ -890,6 +892,31 @@ public class MainActivity extends AppCompatActivity {
         // Lock/unlock are signals (no payload); name carries the state.
         if (bridge != null) {
             bridge.emitSystemEvent(locked ? "android:ScreenLocked" : "android:ScreenUnlocked", "{}");
+        }
+    }
+
+    /**
+     * The phone's id and name for Blup Cloud (read by the Go side,
+     * mobile/device.go): Settings.Secure.ANDROID_ID, which Android scopes to
+     * this app's signing key and keeps across reinstalls, and the name the
+     * person sees in the phone's settings ("Galaxy S23"), else the model.
+     * The id never leaves the app as it is: Go turns it into an HMAC.
+     */
+    private void writeDeviceInfo() {
+        try {
+            String id = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
+            String name = android.provider.Settings.Global.getString(getContentResolver(), android.provider.Settings.Global.DEVICE_NAME);
+            if (name == null || name.trim().isEmpty()) name = Build.MODEL;
+            JSONObject o = new JSONObject();
+            o.put("id", id == null ? "" : id);
+            o.put("name", name == null ? "" : name);
+            File tmp = new File(getFilesDir(), "device.json.tmp");
+            try (FileOutputStream out = new FileOutputStream(tmp)) {
+                out.write(o.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            if (!tmp.renameTo(new File(getFilesDir(), "device.json"))) tmp.delete();
+        } catch (Exception e) {
+            Log.w("BlupNotes", "device info not written", e);
         }
     }
 

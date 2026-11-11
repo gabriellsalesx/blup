@@ -1,6 +1,7 @@
 // What a session's User-Agent says about where it is: the system (its
 // mark in the panels) and a short name. Blup Studio names itself
-// ("Blup Studio (Linux; my-pc)"; older ones sent Go's names, "android");
+// ("Blup Studio (Linux; my-pc)"; older ones sent Go's names, "android"),
+// and Blup Notes the phone ("Blup Notes (Android; Galaxy S23)");
 // a browser is read by its usual words ("Chrome on Linux").
 
 export const devicePlatforms = ["android", "ios", "macos", "linux", "windows", "other"] as const;
@@ -13,7 +14,7 @@ export type AgentInfo = {
 	platform: DevicePlatform;
 	// The system's name ("Linux"), or null when it is not known.
 	system: string | null;
-	// Blup Studio, with the computer's own name.
+	// Blup Studio or Blup Notes, with the computer's or phone's own name.
 	studio: { host: string } | null;
 	// A browser's name ("Chrome"), or null.
 	browser: string | null;
@@ -21,7 +22,7 @@ export type AgentInfo = {
 
 export function readAgent(agent: string | null | undefined): AgentInfo {
 	const text = agent ?? "";
-	const studio = /^Blup Studio \((.+?);\s*(.+)\)/.exec(text);
+	const studio = /^Blup (?:Studio|Notes) \((.+?);\s*(.+)\)/.exec(text);
 	if (studio) {
 		const known = studioSystems[studio[1]!.trim().toLowerCase()];
 		return { platform: known ?? "other", system: known ? systemNames[known] : studio[1]!.trim(), studio: { host: studio[2]!.trim() }, browser: null };

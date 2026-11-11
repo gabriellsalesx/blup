@@ -242,6 +242,14 @@ export const deviceApproval = sqliteTable("device_approval", {
 	reservationId: text("reservation_id").notNull(), expiresAt: integer("expires_at").notNull(),
 }, t => [index("device_approval_expiry_idx").on(t.expiresAt)]);
 
+// The device asking for a sign-in code (devices.ts): the HMAC Blup Studio
+// or Blup Notes sends (X-Blup-Device), by the code's SHA-256, until the
+// code is redeemed or expires. With it, the same computer or phone signing
+// in again takes its old session's place instead of counting twice.
+export const devicePending = sqliteTable("device_pending", {
+	codeHash: text("code_hash").primaryKey(), device: text("device").notNull(), expiresAt: integer("expires_at").notNull(),
+}, t => [index("device_pending_expiry_idx").on(t.expiresAt)]);
+
 // A file of a site in R2 (s/<site>/f/<sha256 of what is stored>): the same
 // file is stored once per site, whatever deploy or path uses it.
 export const siteBlob = sqliteTable(

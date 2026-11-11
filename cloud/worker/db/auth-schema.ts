@@ -43,11 +43,12 @@ export const session = sqliteTable(
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     studioDevice: integer("studio_device", { mode: "boolean" }).default(false).notNull(),
+    deviceId: text("device_id"),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
   },
-  (table) => [index("session_userId_idx").on(table.userId)],
+  (table) => [index("session_userId_idx").on(table.userId), index("session_user_device_idx").on(table.userId, table.deviceId)],
 );
 
 export const account = sqliteTable(

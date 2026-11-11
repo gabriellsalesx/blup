@@ -2,7 +2,7 @@
   import { onDestroy, onMount, untrack } from "svelte";
   import { Events } from "@wailsio/runtime";
   import { EditorView, basicSetup } from "codemirror";
-  import { tooltips } from "@codemirror/view";
+  import { tooltips, type ViewUpdate } from "@codemirror/view";
   import { Transaction } from "@codemirror/state";
   import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
   import { languages } from "@codemirror/language-data";
@@ -60,7 +60,10 @@
 
   const LIST = /^(\s*)([-*+] \[[ x]\] |[-*+] |\d+\. )/;
 
-  let { note }: { note: Note } = $props();
+  // still: the note shown under the open one while it slides away (the
+  // place back goes to, App.svelte): drawn as it is, but it never takes the
+  // focus, opens a panel, saves or syncs.
+  let { note, still = false }: { note: Note; still?: boolean } = $props();
 
   // The note is read once: from here on the text being typed is the truth.
   let id = $state(untrack(() => note.id));
@@ -71,7 +74,7 @@
   // The name is the file's, as in the Studio.
   let name = $state(untrack(() => note.title));
   let title = untrack(() => note.title); // the file's, as last saved
-  const fresh = untrack(() => !!app.place.fresh);
+  const fresh = untrack(() => !still && !!app.place.fresh);
   let titleField = $state<HTMLInputElement>();
   let gone = false;
   let deleted = false;
@@ -81,6 +84,44 @@
   let canRedo = $state(false);
   let host = $state<HTMLDivElement>();
   let view: EditorView; // made once the text has come (start)
+
+  // The note scrolls in .page, not in the editor's own scroller. The editor
+  // measures lines only when they come into view, and one that comes in
+  // taller or shorter than it guessed (wrapped text, pictures, tables,
+  // callouts) moved the text under the finger while reading. As the editor's
+  // author recommends, the updates with heightChanged say when that
+  // happened: the line at the top of the screen goes back to where it was.
+  let page: HTMLElement | undefined;
+  // The line at the top of the screen (pos) and where it was on screen (y);
+  // null while the editor's top is still in view (nothing above to move).
+  let anchor: { pos: number; y: number } | null = null;
+
+  function markAnchor() {
+    if (!view || !page) { anchor = null; return; }
+    const inDoc = page.getBoundingClientRect().top - view.documentTop;
+    if (inDoc <= 0) { anchor = null; return; }
+    const line = view.lineBlockAtHeight(inDoc);
+    anchor = { pos: line.from, y: view.documentTop + line.top };
+  }
+
+  function holdAnchor(u: ViewUpdate) {
+    if (!u.heightChanged) return;
+    // A change of the text moves what follows it, as it should.
+    if (anchor && page && !u.docChanged) {
+      const line = u.view.lineBlockAt(Math.min(anchor.pos, u.state.doc.length));
+      // On screen, not in the document: when the editor already kept the
+      // place (while typing), this is 0 and nothing scrolls twice.
+      const moved = u.view.documentTop + line.top - anchor.y;
+      if (Math.abs(moved) > 1) page.scrollTop += moved;
+    }
+    markAnchor();
+  }
+
+  function keepAnchor(el: HTMLElement) {
+    page = el;
+    el.addEventListener("scroll", markAnchor, { passive: true });
+    return () => { el.removeEventListener("scroll", markAnchor); page = undefined; };
+  }
   let timer: ReturnType<typeof setTimeout>;
 
   // One save at a time (serial): a pause in the typing while the last save
@@ -253,6 +294,7 @@
             return true;
           },
         }),
+        EditorView.updateListener.of(holdAnchor),
         EditorView.updateListener.of((u) => {
           canUndo = undoDepth(u.state) > 0;
           canRedo = redoDepth(u.state) > 0;
@@ -265,10 +307,11 @@
         }),
       ],
     });
+    if (!still) app.noteDrawn(id);
     if (fresh) {
       titleField?.focus();
       titleField?.select();
-    } else if (app.place.edit) {
+    } else if (!still && app.place.edit) {
       view.focus();
       view.dispatch({ selection: { anchor: body.length }, scrollIntoView: true });
     }
@@ -370,7 +413,7 @@
     leaveCell();
     gone = true;
     clearTimeout(timer);
-    if (deleted) return;
+    if (deleted || still) return;
     try {
       if (fresh && !body.trim() && name.trim() === title) {
         await NotesService.Delete(id);
@@ -405,7 +448,7 @@
   {/if}
 </header>
 
-<div class="page">
+<div class="page" {@attach keepAnchor}>
   <div class="chips">
     <button type="button" class="chip" aria-label={fmt(t.note.folder, { name: note.folder || t.folderPick.none })} onclick={() => app.go({ ...app.place, pick: "folder" })}><Folder size={15} /><span>{note.folder || t.folderPick.none}</span><ChevronDown size={15} /></button>
     {#each (note.tags ?? []).slice(0, 3) as tag (tag)}<button type="button" class="chip tag" onclick={() => app.go({ ...app.place, pick: "tags" })}><span>{tag}</span></button>{/each}
@@ -422,7 +465,7 @@
   <MentionedIn {id} />
 </div>
 
-{#if app.keyboard}
+{#if app.keyboard && !still}
   <div class="bar">
     {#if menu === "heading"}
       <div class="pop" role="menu" aria-label={t.note.headings}>
@@ -466,12 +509,12 @@
 <input bind:this={picker} type="file" accept="image/*" hidden onchange={addImage} />
 
 {#if dropLine}<div class="drop-line" style:left="{dropLine.x}px" style:top="{dropLine.y}px" style:width="{dropLine.width}px"></div>{/if}
-{#if app.place.sheet}
+{#if app.place.sheet && !still}
   <NotePanel {note} onprops={setProps} onremove={remove} />
 {/if}
-{#if app.place.pick === "folder"}
+{#if !still && app.place.pick === "folder"}
   <FolderPick current={note.folder} onpick={move} oncreate={newFolder} />
-{:else if app.place.pick === "tags"}
+{:else if !still && app.place.pick === "tags"}
   <TagPick {note} onchange={(tags) => setProps(note.created, note.changed, tags)} />
 {/if}
 

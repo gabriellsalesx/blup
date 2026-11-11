@@ -66,7 +66,9 @@
 .editor .cm-md-bar.left { grid-area: 2 / 1; }
 .editor .cm-md-bar.right { grid-area: 2 / 3; }
 .editor .cm-md-bar.bottom { grid-area: 3 / 2; }
-.editor .cm-md-table:hover .cm-md-bar, .editor .cm-md-table:focus-within .cm-md-bar { visibility: visible; }
+/* Only for a table being edited: on a phone a tap leaves :hover stuck,
+   and the bars then showed squeezed behind the table. */
+.editor .cm-md-table:focus-within .cm-md-bar { visibility: visible; }
 .editor .cm-md-bar:hover:not(:disabled) { background: var(--blue); color: #fff; }
 .editor .cm-md-bar:is(.top, .left, .corner):hover:not(:disabled) { background: var(--red); }
 .editor .cm-md-bar:disabled { opacity: .3; cursor: default; }

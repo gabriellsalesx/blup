@@ -5,9 +5,12 @@ import { authClient } from "#lib/auth.ts";
 // check claims the code for this session: it waits for the sign-in check.
 export async function load({ url, parent }) {
 	const code = url.searchParams.get("user_code") ?? "";
+	// Opened by Blup Notes (the phone): once approved, the page brings the
+	// app back on screen.
+	const notes = url.searchParams.get("app") === "notes";
 	const clean = code.replace(/[^0-9a-z]/gi, "").toUpperCase();
 	await parent();
-	if (!clean) return { code, checked: null };
+	if (!clean) return { code, notes, checked: null };
 	const { error } = await authClient.device({ query: { user_code: clean } });
-	return { code, checked: !error };
+	return { code, notes, checked: !error };
 }

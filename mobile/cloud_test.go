@@ -123,3 +123,13 @@ func TestStuckErrorReachesTheScreen(t *testing.T) {
 		}
 	}
 }
+
+func TestFromNotes(t *testing.T) {
+	got := fromNotes("https://cloud.getblup.io/device?user_code=ABCD1234")
+	if got != "https://cloud.getblup.io/device?app=notes&user_code=ABCD1234" {
+		t.Fatalf("got %s", got)
+	}
+	if !safeURL(got) {
+		t.Fatal("the marked address must still be a safe one")
+	}
+}

@@ -63,7 +63,8 @@ var (
 )
 
 // UserAgent names this computer to Blup Cloud, as the account panel lists
-// it: "Blup Studio (Linux; my-pc)".
+// it: "Blup Studio (Linux; my-pc)", or the phone, "Blup Notes (Android;
+// Galaxy S23)".
 func UserAgent() string {
 	host, _ := os.Hostname()
 	if host == "" {
@@ -73,12 +74,12 @@ func UserAgent() string {
 	if osName == "" {
 		osName = runtime.GOOS
 	}
-	return fmt.Sprintf("Blup Studio (%s; %s)", osName, strings.Map(func(r rune) rune {
-		if r == '(' || r == ')' || r == ';' || r < ' ' {
-			return -1
-		}
-		return r
-	}, host))
+	// Blup Notes names the phone (SetDevice): "Blup Notes (Android; Galaxy
+	// S23)"; its host name is only "localhost".
+	if name := deviceName(); name != "" {
+		return fmt.Sprintf("Blup Notes (%s; %s)", osName, name)
+	}
+	return fmt.Sprintf("Blup Studio (%s; %s)", osName, cleanName(host))
 }
 
 // BaseURL is DefaultURL or BLUP_CLOUD_URL.
@@ -255,6 +256,13 @@ func (c *Client) send(ctx context.Context, method, path string, data []byte, has
 			req.Header.Set("Authorization", "Bearer "+c.Token)
 		}
 		req.Header.Set("User-Agent", UserAgent())
+		// The device's mark goes only with the request for a sign-in code
+		// (see device.go).
+		if path == "/auth/device/code" {
+			if m := DeviceMark(); m != "" {
+				req.Header.Set(DeviceHeader, m)
+			}
+		}
 		if t, _ := ctx.Value(ticketKey{}).(string); t != "" {
 			req.Header.Set("x-blup-upload-ticket", t)
 		}

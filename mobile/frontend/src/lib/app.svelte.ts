@@ -7,7 +7,9 @@ import { BoardService, CalendarService, CloudService, NotesService, SettingsServ
 import { CloudSynced } from "../../bindings/events";
 
 export type Tab = "notes" | "search" | "calendar" | "account";
-type Place = { note?: string; edit?: boolean; fresh?: boolean; board?: string; over?: number; sheet?: boolean; pick?: "folder" | "tags"; event?: Event; isNew?: boolean; panel?: "add" | "day" | "menu" | "month" | "trash" | "empty" | "cloud" | "pin" | "quick" | "folder" | "vaults" | "newdb" | "lang" | "fresh" };
+// depth: how many steps into the history the place is (0: where the app
+// started), so the place one step back is known (Place.depth - 1).
+type Place = { depth?: number; note?: string; edit?: boolean; fresh?: boolean; board?: string; over?: number; sheet?: boolean; pick?: "folder" | "tags"; event?: Event; isNew?: boolean; panel?: "add" | "day" | "menu" | "month" | "trash" | "empty" | "cloud" | "pin" | "quick" | "folder" | "vaults" | "newdb" | "lang" | "fresh" };
 export type View = { kind: "all" | "untagged" | "trash" | "folder" | "tag"; name?: string };
 export type Toast = { text: string; action?: { label: string; run: () => void } };
 
@@ -367,6 +369,23 @@ class App {
     } catch {}
   }
 
+  // The places by their depth in the history, as far as the app went: the
+  // one before the current one is where back goes (the note slid away shows
+  // it underneath, NoteLayer). Gone after the app starts again.
+  private trail: Place[] = [{}];
+  below = $state<Place | null>(null);
+  // Back onto the note drawn under the open one: that drawing stays on top
+  // until the note's own editor has drawn (noteDrawn), so there is no blank
+  // moment while its text is read (App.svelte).
+  handoff = $state<string | null>(null);
+  private handoffTimer: ReturnType<typeof setTimeout> | undefined;
+
+  noteDrawn(id: string) {
+    if (this.handoff !== id) return;
+    // Two frames: the editor's first picture is on screen.
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (this.handoff === id) this.handoff = null; }));
+  }
+
   arrive(place: Place) {
     // The history may still hold the old ID of a note renamed or moved.
     const now = place.note && this.renamed.get(place.note);
@@ -380,7 +399,15 @@ class App {
       history.back();
       return;
     }
+    const back = !!place.note && place.note !== this.place.note && place.note === this.below?.note;
+    clearTimeout(this.handoffTimer);
+    this.handoff = back ? place.note! : null;
+    // Should the editor never say it drew (an error reading the note).
+    if (back) this.handoffTimer = setTimeout(() => (this.handoff = null), 1500);
     if (place.note !== this.place.note) this.noteKey++;
+    const depth = place.depth ?? 0;
+    this.trail[depth] = place;
+    this.below = depth > 0 ? (this.trail[depth - 1] ?? null) : null;
     this.place = place;
   }
 
@@ -388,12 +415,16 @@ class App {
     // Opened again (it came back, or was made again): no longer skipped.
     const at = place.note ?? place.board;
     if (at) this.lost.delete(at);
+    place = { ...place, depth: (this.place.depth ?? 0) + 1 };
+    // Going on from a step back drops the steps that were ahead of it.
+    this.trail.length = place.depth!;
     history.pushState(place, "");
     this.arrive(place);
   }
 
   // Goes to a place in the current one's stead, so back skips what it replaced.
   swap(place: Place) {
+    place = { ...place, depth: this.place.depth ?? 0 };
     history.replaceState(place, "");
     this.arrive(place);
   }
