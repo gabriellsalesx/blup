@@ -19,6 +19,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/config"
+	"github.com/gabriellsalesx/blup/internal/proc"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -134,7 +135,7 @@ func (s *Studio) OpenTerminal(agent string, cols, rows int) (string, error) {
 	}
 	c := p.Command(name, args...)
 	c.Dir = site.ContentDir()
-	c.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
+	c.Env = append(proc.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
 	if err := c.Start(); err != nil {
 		p.Close()
 		return "", err

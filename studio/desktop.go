@@ -107,7 +107,7 @@ func setupDesktop(s *Studio, app *application.App, win *application.WebviewWindo
 		_ = setHotkey(prefs.ToggleKey)
 	}
 	go fixBinding(prefs.ToggleKey)
-	go fixAutostart(app)
+	go fixAutostart()
 }
 
 func showWindow() {
@@ -173,35 +173,35 @@ func (s *Studio) AutostartEnabled() bool {
 // linuxAutostartFile is the Studio's .desktop file in the autostart folder
 // ("" when there is none, or not on Linux).
 func linuxAutostartFile() string {
-	if runtime.GOOS != "linux" {
+	f := autostartPath()
+	if f == "" {
 		return ""
 	}
-	dir := os.Getenv("XDG_CONFIG_HOME")
-	if dir == "" {
-		home, _ := os.UserHomeDir()
-		dir = filepath.Join(home, ".config")
-	}
-	f := filepath.Join(dir, "autostart", autostartID+".desktop")
 	if _, err := os.Stat(f); err != nil {
 		return ""
 	}
 	return f
 }
 
-// fixAutostart points the "open with the computer" entry at this program
-// again when the Studio moved (an update, another install place): the old
-// one would run nothing at login.
-func fixAutostart(app *application.App) {
+func autostartOptions() application.AutostartOptions {
+	return application.AutostartOptions{Identifier: autostartID, Arguments: []string{hiddenArg}}
+}
+
+// fixAutostart points the "open with the computer" entry at the Studio
+// again when it moved (an update, another install place) or when an older
+// version pointed it at an AppImage's temporary mount: the old one would
+// run nothing at login.
+func fixAutostart() {
 	f := linuxAutostartFile()
 	if f == "" {
 		return
 	}
-	exe, err := os.Executable()
-	if err != nil || strings.Contains(filepath.Base(exe), "server") {
+	exe := launchPath()
+	if exe == "" || strings.Contains(filepath.Base(exe), "server") {
 		return
 	}
-	if b, err := os.ReadFile(f); err == nil && !strings.Contains(string(b), exe) {
-		_ = app.Autostart.EnableWithOptions(application.AutostartOptions{Identifier: autostartID, Arguments: []string{hiddenArg}})
+	if b, err := os.ReadFile(f); err == nil && !strings.Contains(string(b), "\nExec="+autostartExec(exe)+"\n") {
+		_ = enableAutostart()
 	}
 }
 
@@ -216,7 +216,7 @@ func (s *Studio) SetAutostart(on bool) error {
 		}
 		return desk.app.Autostart.Disable()
 	}
-	return desk.app.Autostart.EnableWithOptions(application.AutostartOptions{Identifier: autostartID, Arguments: []string{hiddenArg}})
+	return enableAutostart()
 }
 
 // SetTray turns the tray icon on or off (and saves the choice).

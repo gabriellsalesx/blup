@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github.com/gabriellsalesx/blup/internal/proc"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -75,8 +76,10 @@ func validAccel(accel string) bool {
 var accelPart = regexp.MustCompile("^(?:[\\p{L}\\p{N}]+|[`~!@$%&*()\\-_=\\[\\]{};:<>./?|^])$")
 
 // hyprLine is the binding for accel ("Alt+Space"), in the config's language.
+// It runs launchPath: in an AppImage, the AppImage file, never the
+// temporary mount this program runs from.
 func hyprLine(accel string, lua bool) string {
-	exe, _ := os.Executable()
+	exe := launchPath()
 	cmd := "'" + strings.ReplaceAll(exe, "'", `'\''`) + "' " + toggleArg
 	parts := strings.Split(accel, "+")
 	key := strings.ToUpper(parts[len(parts)-1])
@@ -159,12 +162,15 @@ func writeBinding(accel string) error {
 	if err := os.WriteFile(file, []byte(text), 0o644); err != nil {
 		return err
 	}
-	return exec.Command("hyprctl", "reload").Run()
+	cmd := exec.Command("hyprctl", "reload")
+	cmd.Env = proc.Environ()
+	return cmd.Run()
 }
 
 // fixBinding writes the Studio's binding when it is missing (the default
 // shortcut on a first run) or when the Studio moved (an update, another
-// install place): the line must run this program.
+// install place, or an older version that pointed it at an AppImage's
+// temporary mount): the line must run this Studio.
 func fixBinding(accel string) {
 	if accel == "" || !validAccel(accel) || !onHyprland() || !onOmarchy() {
 		return

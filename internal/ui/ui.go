@@ -18,6 +18,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/gabriellsalesx/blup/internal/i18n"
+	"github.com/gabriellsalesx/blup/internal/proc"
 )
 
 // ErrAborted is returned when the user leaves a prompt with Ctrl+C.
@@ -300,6 +301,7 @@ func OpenBrowser(url string) {
 		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
 	default:
 		cmd = exec.Command("xdg-open", url)
+		cmd.Env = proc.Environ()
 	}
 	_ = cmd.Start()
 }

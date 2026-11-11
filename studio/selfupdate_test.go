@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 )
@@ -29,13 +28,6 @@ func TestInstallAppImageSwapsTheFile(t *testing.T) {
 	}
 	if cmd.Args[len(cmd.Args)-1] != target || !strings.Contains(cmd.Args[2], "kill -0") {
 		t.Fatalf("restart command %v", cmd.Args)
-	}
-}
-
-func TestOutsideAppImage(t *testing.T) {
-	env := outsideAppImage([]string{"HOME=/home/a", "APPDIR=/tmp/.mount_x", "LD_LIBRARY_PATH=/tmp/.mount_x/usr/lib", "GST_PLUGIN_PATH_1_0=/x", "APPIMAGE=/a.AppImage", "WEBKIT_INJECTED_BUNDLE_PATH=/y", "PATH=/tmp/.mount_x/usr/bin:/usr/bin", "XDG_DATA_DIRS=/tmp/.mount_x/usr/share:/usr/share"})
-	if !slices.Equal(env, []string{"HOME=/home/a", "PATH=/usr/bin", "XDG_DATA_DIRS=/usr/share"}) {
-		t.Fatalf("got %v", env)
 	}
 }
 

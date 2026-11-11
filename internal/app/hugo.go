@@ -15,6 +15,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/i18n"
 	"github.com/gabriellsalesx/blup/internal/lock"
 	"github.com/gabriellsalesx/blup/internal/pagefind"
+	"github.com/gabriellsalesx/blup/internal/proc"
 	"github.com/gabriellsalesx/blup/internal/pwa"
 	"github.com/gabriellsalesx/blup/internal/scaffold"
 	"github.com/gabriellsalesx/blup/internal/ui"
@@ -59,7 +60,7 @@ func build(ctx context.Context, site *config.Site, baseURL string) (string, erro
 		err := ui.Spin(ctx, i18n.T("build.running"), func(ctx context.Context) error {
 			cmd := bin.Command(ctx, site.Dir(), "--gc", "--minify", "--cleanDestinationDir",
 				"--environment", "production", "--baseURL", baseURL, "--destination", out, "--logLevel", "warn")
-			cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=publish")
+			cmd.Env = append(proc.Environ(), "HUGO_BLUP_MODE=publish")
 			cmd.Stdout, cmd.Stderr = &log, &log
 			return cmd.Run()
 		})

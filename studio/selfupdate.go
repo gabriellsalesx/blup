@@ -164,41 +164,8 @@ func installAppImage(file, target string) (*exec.Cmd, error) {
 		return nil, fmt.Errorf("%w: %w", update.ErrNotWritable, err)
 	}
 	cmd := proc.Hide(exec.Command("/bin/sh", "-c", waitThen+`exec "$2"`, "blup-update", strconv.Itoa(os.Getpid()), target))
-	cmd.Env = outsideAppImage(os.Environ())
+	cmd.Env = proc.Environ()
 	return cmd, nil
-}
-
-// outsideAppImage drops what this AppImage's AppRun set for itself (its
-// libraries, GStreamer and WebKit paths): the new one sets its own.
-func outsideAppImage(env []string) []string {
-	appdir := ""
-	for _, kv := range env {
-		if v, ok := strings.CutPrefix(kv, "APPDIR="); ok && v != "" {
-			appdir = filepath.Clean(v)
-		}
-	}
-	out := env[:0:0]
-	for _, kv := range env {
-		k, v, _ := strings.Cut(kv, "=")
-		// Its folders in PATH and XDG_DATA_DIRS: gone once it closes.
-		if (k == "PATH" || k == "XDG_DATA_DIRS") && appdir != "" {
-			var keep []string
-			for _, d := range strings.Split(v, ":") {
-				if d != appdir && !strings.HasPrefix(d, appdir+"/") {
-					keep = append(keep, d)
-				}
-			}
-			out = append(out, k+"="+strings.Join(keep, ":"))
-			continue
-		}
-		switch {
-		case k == "LD_LIBRARY_PATH", k == "WEBKIT_INJECTED_BUNDLE_PATH", k == "GSETTINGS_SCHEMA_DIR",
-			k == "APPIMAGE", k == "APPDIR", k == "ARGV0", k == "OWD", strings.HasPrefix(k, "GST_"):
-			continue
-		}
-		out = append(out, kv)
-	}
-	return out
 }
 
 // installMac copies the .app from the disk image next to the installed

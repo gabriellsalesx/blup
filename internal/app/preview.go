@@ -22,6 +22,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/hugo"
 	"github.com/gabriellsalesx/blup/internal/i18n"
 	"github.com/gabriellsalesx/blup/internal/pagefind"
+	"github.com/gabriellsalesx/blup/internal/proc"
 	"github.com/gabriellsalesx/blup/internal/scaffold"
 	"github.com/gabriellsalesx/blup/internal/ui"
 )
@@ -54,7 +55,7 @@ func preview(ctx context.Context, _ *config.Global, site *config.Site) error {
 	args := append([]string{"server", "--config", scaffold.PreviewConfig, "--renderToMemory", "--buildDrafts", "--navigateToChanged"},
 		guard.HugoArgs()...)
 	cmd := bin.Command(ctx, site.Dir(), append(args, "--logLevel", "warn")...)
-	cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=preview")
+	cmd.Env = append(proc.Environ(), "HUGO_BLUP_MODE=preview")
 	pr, pw := io.Pipe()
 	cmd.Stdout, cmd.Stderr = pw, pw
 	if err := cmd.Start(); err != nil {
@@ -99,7 +100,7 @@ func previewSearch(ctx context.Context, bin hugo.Binary, site *config.Site) {
 	defer os.RemoveAll(tmp)
 	err = ui.Spin(ctx, i18n.T("preview.indexing"), func(ctx context.Context) error {
 		cmd := bin.Command(ctx, site.Dir(), "--buildDrafts", "--baseURL", "http://localhost/", "--destination", tmp, "--quiet")
-		cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=preview")
+		cmd.Env = append(proc.Environ(), "HUGO_BLUP_MODE=preview")
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("%w: %s", err, out)
 		}

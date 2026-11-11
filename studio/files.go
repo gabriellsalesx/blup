@@ -12,6 +12,7 @@ import (
 
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/config"
+	"github.com/gabriellsalesx/blup/internal/proc"
 )
 
 // The file explorer's right-click menu.
@@ -84,6 +85,7 @@ func openExternal(target string) error {
 		c = exec.Command("rundll32", "url.dll,FileProtocolHandler", target)
 	default:
 		c = exec.Command("xdg-open", target)
+		c.Env = proc.Environ()
 	}
 	return c.Start()
 }

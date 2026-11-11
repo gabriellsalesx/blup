@@ -23,6 +23,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/hugo"
+	"github.com/gabriellsalesx/blup/internal/proc"
 	"github.com/gabriellsalesx/blup/internal/scaffold"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -264,7 +265,7 @@ func (s *Studio) startPreview(site *config.Site) (url string, err error) {
 	args := append([]string{"server", "--config", scaffold.PreviewConfig, "--renderToMemory", "--buildDrafts", "--disableLiveReload"},
 		guard.HugoArgs()...)
 	cmd := bin.Command(ctx, site.Dir(), append(args, "--logLevel", "info")...)
-	cmd.Env = append(os.Environ(), "HUGO_BLUP_MODE=preview")
+	cmd.Env = append(proc.Environ(), "HUGO_BLUP_MODE=preview")
 	if !canPlayMP3() {
 		// No player the window can't play (see media.go).
 		cmd.Env = append(cmd.Env, "HUGO_BLUP_NO_MP3=1")

@@ -79,5 +79,11 @@ if ! grep -q GST_PLUGIN_SYSTEM_PATH_1_0 "$app/AppRun"; then
 fi
 grep -q GST_PLUGIN_SYSTEM_PATH_1_0 "$app/AppRun" || { echo "AppRun not patched" >&2; exit 1; }
 
+# Readable by everyone. The extraction above happens in a mktemp folder,
+# which is private (0700), and so would the AppImage's root be: anyone
+# other than its builder (the AppImage catalog's test, which runs it in
+# firejail) got "AppRun: Permission denied".
+chmod -R u+rwX,go+rX,go-w "$app"
+
 ARCH="${ARCH:-$(uname -m)}" "$tool" --no-appstream "$app" "$out" >/dev/null
 echo "AppImage with $(ls "$dest" | wc -l) GStreamer files: $out"
