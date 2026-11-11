@@ -209,6 +209,31 @@ tasks:
     cmds:
       - go run ./scripts/flatpak-tools -out studio/bin
 
+  setup:flatpak:builder:
+    summary: Prepares the official Builder and GNOME SDK in the local build installation
+    cmds:
+      - flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - flatpak --user install -y --noninteractive --no-related flathub org.flatpak.Builder org.gnome.Sdk//51
+    env:
+      FLATPAK_USER_DIR: '{{.ROOT_DIR}}/bin/flatpak-runtime'
+      XDG_CACHE_HOME: '{{.ROOT_DIR}}/bin/flatpak-cache'
+
+  lint:flatpak:metainfo:
+    summary: Checks the upstream MetaInfo with the official Flathub linter
+    cmds:
+      - flatpak --user run --command=flatpak-builder-lint org.flatpak.Builder appstream "$BLUP_FLATPAK_METAINFO"
+    env:
+      FLATPAK_USER_DIR: '{{.ROOT_DIR}}/bin/flatpak-runtime'
+      BLUP_FLATPAK_METAINFO: '{{.ROOT_DIR}}/build/linux/io.getblup.Studio.metainfo.xml'
+
+  lint:flatpak:bundle:
+    summary: Checks the direct bundle's exported application with the official linter
+    cmds:
+      - bash build/linux/flatpak/lint-bundle.sh "$BLUP_FLATPAK_BUNDLE"
+    env:
+      FLATPAK_USER_DIR: '{{.ROOT_DIR}}/bin/flatpak-runtime'
+      BLUP_FLATPAK_BUNDLE: '{{.FLATPAK_BUNDLE | default "bin/blup-studio_1.1.0-test.1_x86_64.flatpak"}}'
+
   check:flatpak:
     summary: Installs a bundle temporarily and tests runtime libraries and tools offline
     desc: |

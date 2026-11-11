@@ -97,8 +97,45 @@ tasks:
     cmds:
       - go run ./tools/storepreview -capture
 
+  store:preview:flatpak:
+    summary: Opens a Flatpak bundle with disposable example notes for GUI testing
+    env:
+      BLUP_PREVIEW_FLATPAK: '{{.FLATPAK_BUNDLE | default "bin/blup-studio_1.1.0-test.1_x86_64.flatpak"}}'
+      BLUP_FLATPAK_RUNTIME_DIR: '{{.RUNTIME_DIR | default "bin/flatpak-runtime"}}'
+      BLUP_PREVIEW_VIEW: '{{.VIEW | default "notes"}}'
+      BLUP_PREVIEW_THEME: '{{.THEME | default "light"}}'
+      BLUP_PREVIEW_SESSION: '{{.SESSION | default ""}}'
+    cmds:
+      - go run ./tools/storepreview
+
+  store:inspect:
+    summary: Inspects Studio window identity without logging other windows or note contents
+    env:
+      BLUP_PREVIEW_SESSION: '{{.SESSION | default ""}}'
+    cmds:
+      - go run ./tools/storepreview -inspect
+
+  store:exercise:flatpak:
+    summary: Tests editing, creating a note and the terminal only in the disposable Flatpak
+    env:
+      BLUP_PREVIEW_SESSION: '{{.SESSION | default ""}}'
+    cmds:
+      - go run ./tools/storepreview -exercise
+
+  store:probe:flatpak:
+    summary: Checks update channel, bundled tools and portal access inside the disposable Flatpak
+    env:
+      CGO_ENABLED: '0'
+      BLUP_PREVIEW_SESSION: '{{.SESSION | default ""}}'
+      BLUP_FLATPAK_RUNTIME_DIR: '{{.RUNTIME_DIR | default "bin/flatpak-runtime"}}'
+    cmds:
+      - go build -trimpath -buildvcs=false -o bin/blup-flatpak-probe ./tools/storepreview
+      - go run ./tools/storepreview -check-sandbox
+
   store:stop:
     summary: Stops only this project's disposable Studio preview executable
+    env:
+      BLUP_PREVIEW_SESSION: '{{.SESSION | default ""}}'
     cmds:
       - go run ./tools/storepreview -stop
 

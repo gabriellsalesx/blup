@@ -51,6 +51,17 @@ install -Dm644 "$work/metainfo.xml" "$files/share/metainfo/$app.metainfo.xml"
 install -Dm644 ../THIRD_PARTY_NOTICES.md "$files/share/licenses/$app/THIRD_PARTY_NOTICES.md"
 install -Dm644 ../LICENSE "$files/share/licenses/$app/LICENSE"
 
+# Export the AppStream catalogue as well as the original MetaInfo. Software
+# centres and the repository linter read share/app-info/xmls/<app-id>.xml.gz.
+compose=(--no-net --origin=flatpak --prefix=/ --components="$app"
+  --data-dir="$files/share/app-info/xmls"
+  --icons-dir="$files/share/app-info/icons/flatpak")
+if appstreamcli compose --help | grep -q -- '--image-format'; then
+  compose+=(--image-format=png)
+fi
+appstreamcli compose "${compose[@]}" "$files"
+mv "$files/share/app-info/xmls/flatpak.xml.gz" "$files/share/app-info/xmls/$app.xml.gz"
+
 # Permissions, each for a reason:
 #   wayland, fallback-x11, ipc, dri: the window (WebKit draws with the GPU).
 #   network: publishing, Blup Cloud and optional remote AI services.

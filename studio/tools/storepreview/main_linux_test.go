@@ -65,3 +65,25 @@ func TestSessionFileDoesNotImportServiceCredentials(t *testing.T) {
 		}
 	}
 }
+
+func TestFlatpakPreviewEnvironmentDoesNotCarryCredentials(t *testing.T) {
+	t.Setenv("BLUP_TOKEN", "fixture")
+	t.Setenv("CLOUDFLARE_API_TOKEN", "fixture")
+	for _, entry := range previewEnvironment(map[string]string{"DISPLAY": ":99", "BLUP_TOKEN": "fixture"}) {
+		if strings.HasPrefix(entry, "BLUP_TOKEN=") || strings.HasPrefix(entry, "CLOUDFLARE_API_TOKEN=") {
+			t.Fatal("service credential entered the preview environment")
+		}
+	}
+}
+
+func TestFlatpakPreviewRejectsUnrelatedProcessState(t *testing.T) {
+	for _, state := range []previewState{
+		{PID: 0, Root: "/tmp/blup-store-preview-fixture", Instance: "123"},
+		{PID: 1, Root: "/tmp/another-app", Instance: "123"},
+		{PID: 1, Root: "/tmp/blup-store-preview-fixture", Instance: "io.getblup.Studio"},
+	} {
+		if validateFlatpakPreview(state) == nil {
+			t.Fatal("accepted non-preview process state")
+		}
+	}
+}

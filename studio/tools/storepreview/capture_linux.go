@@ -17,6 +17,7 @@ import (
 
 type desktopWindow struct {
 	Address string `json:"address"`
+	Class   string `json:"class"`
 	PID     int    `json:"pid"`
 	At      []int  `json:"at"`
 	Size    []int  `json:"size"`
@@ -40,10 +41,16 @@ func captureWindow(session, output string) error {
 	if state.PID <= 0 || !strings.HasPrefix(filepath.Base(state.Root), "blup-store-preview-") {
 		return errors.New("invalid preview state")
 	}
-	exe, err := os.Readlink(filepath.Join("/proc", strconv.Itoa(state.PID), "exe"))
-	expected, pathErr := filepath.Abs("bin/blup-studio-store-preview")
-	if err != nil || pathErr != nil || strings.TrimSuffix(exe, " (deleted)") != expected {
-		return errors.New("the isolated preview is not running")
+	if state.Instance != "" {
+		if err := validateFlatpakPreview(state); err != nil {
+			return err
+		}
+	} else {
+		exe, err := os.Readlink(filepath.Join("/proc", strconv.Itoa(state.PID), "exe"))
+		expected, pathErr := filepath.Abs("bin/blup-studio-store-preview")
+		if err != nil || pathErr != nil || strings.TrimSuffix(exe, " (deleted)") != expected {
+			return errors.New("the isolated preview is not running")
+		}
 	}
 	if filepath.Ext(output) != ".png" {
 		return errors.New("capture destination must be a PNG")
@@ -69,7 +76,7 @@ func captureWindow(session, output string) error {
 			return desktopWindow{}, err
 		}
 		for _, w := range windows {
-			if w.PID == state.PID && w.Mapped && !w.Hidden && regexp.MustCompile(`^0x[0-9a-fA-F]+$`).MatchString(w.Address) {
+			if previewOwnsWindow(state, w) && w.Mapped && !w.Hidden && regexp.MustCompile(`^0x[0-9a-fA-F]+$`).MatchString(w.Address) {
 				return w, nil
 			}
 		}
@@ -108,7 +115,7 @@ func captureWindow(session, output string) error {
 	if err := json.Unmarshal(activeData, &active); err != nil {
 		return err
 	}
-	if active.PID != state.PID || active.Address != w.Address {
+	if active.PID != w.PID || active.Address != w.Address {
 		return errors.New("capture cancelled: another window has focus")
 	}
 	if len(w.At) != 2 || len(w.Size) != 2 || w.Size[0] < 900 || w.Size[1] < 560 {

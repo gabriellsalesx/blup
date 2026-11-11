@@ -27,9 +27,10 @@ import (
 var sessionKeys = []string{"DISPLAY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "XDG_SESSION_TYPE", "DBUS_SESSION_BUS_ADDRESS", "HYPRLAND_INSTANCE_SIGNATURE"}
 
 type previewState struct {
-	PID  int    `json:"pid"`
-	Root string `json:"root"`
-	View string `json:"view"`
+	PID      int    `json:"pid"`
+	Root     string `json:"root"`
+	View     string `json:"view"`
+	Instance string `json:"flatpakInstance,omitempty"`
 }
 
 func main() {
@@ -38,14 +39,38 @@ func main() {
 	theme := flag.String("theme", envDefault("BLUP_PREVIEW_THEME", "light"), "light or dark")
 	session := flag.String("session", os.Getenv("BLUP_PREVIEW_SESSION"), "optional local desktop-session file (never committed)")
 	capture := flag.Bool("capture", false, "capture only the isolated preview window on Hyprland")
+	inspect := flag.Bool("inspect", false, "inspect only Studio window identity and preview process metadata")
+	exercise := flag.Bool("exercise", false, "exercise editing, note creation and the terminal in the isolated Flatpak")
+	probe := flag.Bool("probe", false, "check sandbox features from inside the disposable Flatpak")
+	probeDir := flag.String("probe-dir", "", "disposable examples directory for the sandbox probe")
+	checkSandbox := flag.Bool("check-sandbox", false, "run the compiled sandbox probe in the preview installation")
 	stop := flag.Bool("stop", false, "stop only this project's dedicated preview executable")
+	bundle := flag.String("flatpak", os.Getenv("BLUP_PREVIEW_FLATPAK"), "launch this Flatpak bundle with disposable example data")
+	runtimeDir := flag.String("runtime-dir", os.Getenv("BLUP_FLATPAK_RUNTIME_DIR"), "private runtime installation for the Flatpak preview")
 	output := flag.String("output", envDefault("BLUP_PREVIEW_OUTPUT", "bin/store-preview.png"), "PNG capture destination")
 	flag.Parse()
 	var err error
-	if *stop {
-		err = stopPreview(*studio)
+	if *probe {
+		err = probeSandbox(*probeDir)
+	} else if *checkSandbox {
+		err = checkPreviewSandbox(*session, *runtimeDir)
+	} else if *stop {
+		b, _ := os.ReadFile("bin/store-preview.json")
+		var state previewState
+		_ = json.Unmarshal(b, &state)
+		if state.Instance != "" {
+			err = stopFlatpakPreview(state, *session)
+		} else {
+			err = stopPreview(*studio)
+		}
+	} else if *exercise {
+		err = exerciseFlatpak(*session)
+	} else if *inspect {
+		err = inspectPreview(*session)
 	} else if *capture {
 		err = captureWindow(*session, *output)
+	} else if *bundle != "" {
+		err = runFlatpak(*bundle, *runtimeDir, *view, *theme, *session)
 	} else {
 		err = run(*studio, *view, *theme, *session)
 	}
