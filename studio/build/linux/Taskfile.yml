@@ -162,6 +162,11 @@ tasks:
       - task: generate:dotdesktop
       - task: generate:aur
 
+  validate:metainfo:
+    summary: Validates the checked-in MetaInfo with network checks enabled
+    cmds:
+      - appstreamcli validate --strict build/linux/io.getblup.Studio.metainfo.xml
+
   bundle:flatpak:
     summary: Bundles the already built Studio, Hugo and Pagefind as a direct Flatpak
     desc: |

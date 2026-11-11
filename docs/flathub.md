@@ -26,7 +26,7 @@ Os [IDs de aplicação](https://docs.flathub.org/docs/for-app-authors/requiremen
 
 ## Capturas da interface
 
-As três capturas mostram o Studio nativo no Linux, em inglês: notas no claro, notas no escuro e editor de site com a prévia ao lado. Foram revisadas visualmente e contêm somente textos de exemplo. Foram capturadas sem o cursor do mouse e com a barra lateral padrão (só ícones). Os PNGs originais têm 2176 × 1376 pixels, sem metadados de texto e sem edição da imagem. O MetaInfo aponta para o commit `1d51db056ea1453c53ef4986e269e1a0861364fc`; os links públicos só estarão disponíveis depois de enviar esse commit ao GitHub.
+As três capturas mostram o Studio nativo no Linux, em inglês: notas no claro, notas no escuro e editor de site com a prévia ao lado. Foram revisadas visualmente e contêm somente textos de exemplo. Foram capturadas sem o cursor do mouse e com a barra lateral padrão (só ícones). Os PNGs originais têm 2176 × 1376 pixels, sem metadados de texto e sem edição da imagem. O MetaInfo aponta para o commit `1d51db056ea1453c53ef4986e269e1a0861364fc`, publicado no GitHub em 11/11/2026. A API do GitHub confirmou os três arquivos e suas URLs de download fixadas nesse commit.
 
 O [auxiliar de captura](../studio/tools/storepreview/README.md) usa outro identificador de instância e diretórios temporários para configuração, notas e cache. Ele não copia as notas ou credenciais da pessoa e não importa tokens do ambiente. As referências da sessão gráfica, os perfis temporários, os executáveis e os logs não fazem parte dos commits. No Hyprland, a captura identifica a janela pelo processo e confere o foco antes de capturar apenas sua área; em outros ambientes, usar a ferramenta de captura de janela do sistema.
 
@@ -57,6 +57,7 @@ As tarefas locais, executadas a partir de `studio/`, são:
 wails3 task build VERSION=X.Y.Z
 wails3 task linux:prepare:flatpak:tools
 wails3 task linux:setup:flatpak:runtime
+wails3 task linux:validate:metainfo
 wails3 task linux:bundle:flatpak VERSION=X.Y.Z
 wails3 task linux:check:flatpak RUNTIME_DIR="$PWD/bin/flatpak-runtime"
 ```
@@ -101,6 +102,7 @@ Em 11/11/2026:
 - `go test ./...` em `studio/` passou novamente após adicionar o auxiliar de capturas, incluindo testes do isolamento dos exemplos e da exclusão de credenciais fornecidas no arquivo de sessão. As três capturas nativas foram obtidas e revisadas; o processo de demonstração foi encerrado.
 - Frontend de produção recompilado e binário Go com `-tags production`, `-trimpath` e versão `1.1.0-test.1` construído. A versão de teste foi acrescentada somente numa cópia temporária do MetaInfo; o histórico de releases do repositório foi preservado.
 - Bundle `1.1.0-test.1` x86_64 construído com GNOME 51, instalado numa instalação temporária e testado com a rede desativada: bibliotecas do Studio resolvidas, Hugo 0.169.0 e Pagefind 1.5.2 executados, uma página HTML gerada e um índice de busca criado. A mesma verificação inicial também passou com o runtime 49. Os pacotes, caches e logs não entram nos commits.
+- As fontes foram enviadas à `main` do GitHub, incluindo os commits das capturas e do MetaInfo corrigido. O envio avançou de `667e2fc` a `e8b8afc`, sem forçar o histórico e sem enviar ao segundo destino de push. O commit remoto foi conferido pela API. A validação estrita do MetaInfo com rede habilitada também passou; permaneceu somente a sugestão pedante sobre a grafia do ID.
 
 O ambiente tinha `GOROOT` apontando para Go 1.27.4 enquanto o comando selecionava 1.27.3. A execução dos testes usou explicitamente a toolchain e o GOROOT 1.27.3, com cache em `/tmp`, sem mudar a configuração da máquina.
 
