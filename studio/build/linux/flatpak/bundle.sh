@@ -15,6 +15,10 @@ version="${1:?version}"
 out="${2:?output .flatpak}"
 app=io.getblup.Studio
 runtime="${RUNTIME:-51}"
+if ! grep -q "<release version=\"$version\"" "build/linux/$app.metainfo.xml"; then
+  echo "Add <release version=\"$version\"> to build/linux/$app.metainfo.xml first." >&2
+  exit 1
+fi
 for tool in blup-studio hugo pagefind; do
   if [[ ! -x "bin/$tool" ]]; then
     echo "Missing bin/$tool: build the Studio and prepare flatpak-tools first." >&2
@@ -38,8 +42,7 @@ install -Dm644 "$work/app.desktop" "$files/share/applications/$app.desktop"
 for size in 128 256 512; do
   install -Dm644 "build/linux/icons/${size}x${size}/blup-studio.png" "$files/share/icons/hicolor/${size}x${size}/apps/$app.png"
 done
-sed -e "s/@VERSION@/$version/" -e "s/@DATE@/$(date -u +%F)/" \
-  -e "s#<launchable type=\"desktop-id\">blup-studio.desktop#<launchable type=\"desktop-id\">$app.desktop#" \
+sed -e "s#<launchable type=\"desktop-id\">blup-studio.desktop#<launchable type=\"desktop-id\">$app.desktop#" \
   "build/linux/$app.metainfo.xml" >"$work/metainfo.xml"
 install -Dm644 "$work/metainfo.xml" "$files/share/metainfo/$app.metainfo.xml"
 install -Dm644 ../THIRD_PARTY_NOTICES.md "$files/share/licenses/$app/THIRD_PARTY_NOTICES.md"

@@ -134,8 +134,13 @@ jobs:
       - name: Metainfo and desktop file
         working-directory: studio
         run: |
-          sed -e "s/@VERSION@/${TAG#v}/" -e "s/@DATE@/$(date -u +%F)/" \
-            build/linux/io.getblup.Studio.metainfo.xml > bin/io.getblup.Studio.metainfo.xml
+          # The metainfo lists every release by hand (Flathub builds from the
+          # source, so it must be valid as it is in the repository): this
+          # tag has to be there.
+          if ! grep -q "<release version=\"${TAG#v}\"" build/linux/io.getblup.Studio.metainfo.xml; then
+            echo "::error::Add <release version=\"${TAG#v}\" date=\"YYYY-MM-DD\" /> to studio/build/linux/io.getblup.Studio.metainfo.xml"; exit 1
+          fi
+          cp build/linux/io.getblup.Studio.metainfo.xml bin/io.getblup.Studio.metainfo.xml
           appstreamcli validate --no-net bin/io.getblup.Studio.metainfo.xml
           desktop-file-validate build/linux/blup-studio.desktop
       - name: .deb
