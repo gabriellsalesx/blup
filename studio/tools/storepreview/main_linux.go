@@ -196,7 +196,9 @@ func prepare(root, view, theme string) error {
 	if view == "library" {
 		last = ""
 	}
-	prefs := map[string]any{"theme": theme, "welcomed": true, "cloudTip": true, "shortcutTip": true, "toggleKey": "", "notifications": false, "errorReports": "off", "spellcheck": false, "lastSite": last, "lastNotes": map[string]string{last: note}, "sideWidth": 290, "railNames": true}
+	// railNames off: the Studio's default rail (icons only), and no label
+	// cut short at the screenshot's width.
+	prefs := map[string]any{"theme": theme, "welcomed": true, "cloudTip": true, "shortcutTip": true, "toggleKey": "", "notifications": false, "errorReports": "off", "spellcheck": false, "lastSite": last, "lastNotes": map[string]string{last: note}, "sideWidth": 290, "railNames": false}
 	b, err := json.MarshalIndent(prefs, "", "  ")
 	if err != nil {
 		return err

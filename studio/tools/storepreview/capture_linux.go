@@ -118,6 +118,14 @@ func captureWindow(session, output string) error {
 		return err
 	}
 	geometry := fmt.Sprintf("%d,%d %dx%d", w.At[0], w.At[1], w.Size[0], w.Size[1])
+	// The pointer goes just outside the window's top-left corner, so no
+	// cursor (or hover highlight) lands in the picture: Hyprland may draw
+	// the cursor into what grim copies.
+	park := fmt.Sprintf("hl.dispatch(hl.dsp.cursor.move({x=%d,y=%d}))", max(0, w.At[0]-20), max(0, w.At[1]-20))
+	if _, err := command("hyprctl", "eval", park); err != nil {
+		return errors.New("could not move the pointer off the preview window")
+	}
+	time.Sleep(400 * time.Millisecond)
 	if _, err := command("grim", "-g", geometry, output); err != nil {
 		return errors.New("native window capture failed")
 	}
