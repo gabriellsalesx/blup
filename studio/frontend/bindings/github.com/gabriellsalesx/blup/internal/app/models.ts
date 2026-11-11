@@ -7,6 +7,9 @@ import * as blupcloud$0 from "../blupcloud/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as config$0 from "../config/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as update$0 from "../update/models.js";
 
 /**
  * AIConsent is what the person accepted: their notes' text may go to
@@ -1042,6 +1045,12 @@ export interface UpdateInfo {
      * place itself (StudioSelfUpdate); else the site's download page.
      */
     "selfUpdate": boolean;
+
+    /**
+     * Changes: what every version after this one changed, up to the latest
+     * (newest first), in the Studio's language.
+     */
+    "changes": update$0.VersionNotes[] | null;
 }
 
 /**

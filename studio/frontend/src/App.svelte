@@ -7,6 +7,7 @@
   import { startPageReports } from "./errorreports";
   import { look, setPref } from "./theme.svelte";
   import Toaster from "./Toaster.svelte";
+  import UpdateNotice from "./UpdateNotice.svelte";
   import { lazy } from "./lazy";
 
   // Screens of the first steps, shown once or rarely: loaded when asked.
@@ -68,5 +69,7 @@
 {/if}
 
 {#if askReports && ready && !welcome}<ErrorReportsAsk onAnswer={answerReports} />{/if}
+<!-- A newer Studio, told on opening (not during the first steps). -->
+{#if ready && !welcome}<UpdateNotice />{/if}
 
 <Toaster />

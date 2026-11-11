@@ -14,7 +14,7 @@ func TestUpdatesBy(t *testing.T) {
 	}{
 		{"windows", `C:\Program Files\WindowsApps\Blup.Studio_1.2.0.0_x64__abc\blup-studio.exe`, none, "msstore"},
 		{"windows", `C:\Users\ana\AppData\Local\Programs\Blup Studio\blup-studio.exe`, none, ""},
-		{"linux", "/app/bin/blup-studio", env(map[string]string{"FLATPAK_ID": "io.github.gabriellsalesx.BlupStudio"}), "flatpak"},
+		{"linux", "/app/bin/blup-studio", env(map[string]string{"FLATPAK_ID": "io.getblup.Studio"}), "flatpak"},
 		{"linux", "/usr/bin/blup-studio", none, "package"},
 		{"linux", "/usr/local/bin/blup-studio", none, ""},
 		{"linux", "/tmp/.mount_BlupSt/usr/bin/blup-studio", env(map[string]string{"APPIMAGE": "/home/ana/Blup_Studio.AppImage"}), ""},
@@ -39,7 +39,7 @@ func TestStoreBuildDoesntLookUp(t *testing.T) {
 	defer func() { Channel, Version = "", "dev" }()
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:1") // any request would fail
-	info, err := CheckUpdate(t.Context(), true)
+	info, err := CheckUpdate(t.Context(), true, "pt")
 	if err != nil || info.UpdatesBy != "msstore" || info.Newer || info.Latest != "" {
 		t.Fatalf("store build = %+v, %v", info, err)
 	}

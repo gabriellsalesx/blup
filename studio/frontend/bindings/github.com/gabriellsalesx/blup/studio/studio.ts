@@ -240,7 +240,8 @@ export function CheckSiteSlug(slug: string): $CancellablePromise<blupcloud$0.Slu
 
 /**
  * CheckUpdate tells whether a newer Blup Studio is out (force asks GitHub
- * now instead of using the day's answer).
+ * now instead of using the day's answer), with what changed since this one
+ * in the Studio's language.
  */
 export function CheckUpdate(force: boolean): $CancellablePromise<app$0.UpdateInfo> {
     return $Call.ByID(642306771, force);
@@ -687,6 +688,15 @@ export function NextAuthorAvatar(): $CancellablePromise<string> {
  */
 export function NoteAt(page: string): $CancellablePromise<string> {
     return $Call.ByID(3914056179, page);
+}
+
+/**
+ * NoteDates reads a note's dates: the file's change time, and its
+ * "created" property (written by Blup, the same on every device), else the
+ * file's creation time where the system keeps one.
+ */
+export function NoteDates(rel: string): $CancellablePromise<$models.NoteDates> {
+    return $Call.ByID(2801202403, rel);
 }
 
 /**
@@ -1489,6 +1499,9 @@ export function Tags(): $CancellablePromise<string[] | null> {
 
 /**
  * Target is where the open site is published.
+ * 
+ * A site taken down in the Blup Cloud panel is forgotten first (asked to
+ * the cloud, for a few seconds at most): its address can be chosen again.
  */
 export function Target(): $CancellablePromise<app$0.Target> {
     return $Call.ByID(2323651595);

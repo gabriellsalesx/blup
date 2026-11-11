@@ -161,12 +161,27 @@ func (c *Client) Latest(ctx context.Context) (Release, error) {
 	if err := json.NewDecoder(io.LimitReader(resp.Body, maxSmall*8)).Decode(&r); err != nil {
 		return Release{}, fmt.Errorf("checking for updates: %w", err)
 	}
+	// GitHub's "latest" should be the computer's: Blup Notes' releases are
+	// published as not latest (notes-release.yml). Should one be marked
+	// anyway, the newest vX.Y.Z of the list is the latest.
+	if v, isV := strings.CutPrefix(r.Tag, "v"); !isV || !validVersion(v) {
+		rels, err := c.Releases(ctx)
+		if err != nil {
+			return Release{}, err
+		}
+		if len(rels) == 0 {
+			return Release{}, errors.New("checking for updates: no release of Blup")
+		}
+		return rels[0], nil
+	}
 	rel := Release{Version: strings.TrimPrefix(r.Tag, "v"), Notes: strings.TrimSpace(r.Body), URL: r.HTMLURL, assets: map[string]string{}}
 	for _, a := range r.Assets {
 		rel.assets[a.Name] = a.URL
 	}
 	return rel, nil
 }
+
+func validVersion(v string) bool { _, ok := parse(v); return ok }
 
 // Newer reports whether version a is newer than b (x.y.z, optional "v").
 // Development builds ("dev") are never compared as older.
@@ -431,6 +446,9 @@ type Cache struct {
 	Notes   string    `json:"notes"`
 	URL     string    `json:"url"`
 	Skipped string    `json:"skipped"` // version the user chose not to hear about
+	// History holds the notes of the recent versions (newest first), for
+	// what changed between the running one and the latest.
+	History []VersionNotes `json:"history,omitempty"`
 }
 
 func cachePath() (string, error) {

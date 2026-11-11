@@ -230,6 +230,17 @@ export interface NoteData {
 }
 
 /**
+ * NoteDates is what the file list shows while the mouse rests on a note:
+ * when it was last changed and when it was made, as "2006-01-02 15:04"
+ * (Created only a date when the note's "created" property gives a day).
+ * Created is "" when neither the note nor the system says.
+ */
+export interface NoteDates {
+    "modified": string;
+    "created": string;
+}
+
+/**
  * NotesChanged is heard as "notesChanged": the site's folder and the
  * notes that changed, relative to its notes folder, with "/".
  */

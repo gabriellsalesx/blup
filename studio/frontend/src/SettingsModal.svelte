@@ -36,7 +36,7 @@
   import { look, setPref, spellLang, spell, prefsChanged } from "./theme.svelte";
   import { onConnections } from "./changes";
   import { t, setLanguage } from "./i18n";
-  import { updateJob, downloadUpdate, installUpdate, updatePercent } from "./updatejob.svelte";
+  import { updateJob, downloadUpdate, installUpdate, updatePercent, downloadPage, CHANGELOG } from "./updatejob.svelte";
 
   // The Studio's settings: a window with sections on the
   // left. They are the Studio's (and Blup's), not the open site's.
@@ -135,9 +135,6 @@
   let update = $state<UpdateInfo | null>(null);
   let updateState = $state<"" | "checking" | "fail">("");
   CheckUpdate(false).then((u) => (update = u)).catch(() => {});
-  // The new version comes from the site's download page (friendlier than
-  // GitHub's release page), in the Studio's language.
-  const downloadPage = () => (t.lang === "pt" ? "https://getblup.io/pt/download/" : t.lang === "es" ? "https://getblup.io/es/descargar/" : "https://getblup.io/download/");
   // Who brings new versions when Blup doesn't (see app.UpdatesBy).
   const updatesBy = (by: string) => ({ msstore: s.updatesStore, flatpak: s.updatesFlatpak }[by] ?? s.updatesPackage);
   async function checkUpdate() {
@@ -514,7 +511,7 @@
       <p class="muted lead">{s.aboutLead}</p>
       <div class="item">
         <div class="text"><b>{s.version}</b><small>Blup Studio {shownVersion}</small></div>
-        <button class="btn ghost" onclick={() => OpenURL("https://center.getblup.site/changelog/")}>{s.news}</button>
+        <button class="btn ghost" onclick={() => OpenURL(CHANGELOG)}>{s.news}</button>
       </div>
       <div class="item column">
         <div class="row">

@@ -52,3 +52,10 @@ export async function installUpdate() {
 
 /** How much came, from 0 to 100 (0 while the size is unknown). */
 export const updatePercent = () => (updateJob.total ? Math.min(100, Math.round((updateJob.done / updateJob.total) * 100)) : 0);
+
+// The new version for an install that doesn't update itself comes from the
+// site's download page (friendlier than GitHub's), in the Studio's language.
+export const downloadPage = () => (t.lang === "pt" ? "https://getblup.io/pt/download/" : t.lang === "es" ? "https://getblup.io/es/descargar/" : "https://getblup.io/download/");
+
+/** What changed in each version (Blup Center's changelog). */
+export const CHANGELOG = "https://center.getblup.site/changelog/";

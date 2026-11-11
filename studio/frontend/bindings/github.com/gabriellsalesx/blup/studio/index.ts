@@ -22,6 +22,7 @@ export type {
     NarrateSiteProgress,
     Node,
     NoteData,
+    NoteDates,
     NotesChanged,
     Places,
     Prefs,

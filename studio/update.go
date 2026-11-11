@@ -7,7 +7,8 @@ import (
 )
 
 // CheckUpdate tells whether a newer Blup Studio is out (force asks GitHub
-// now instead of using the day's answer).
+// now instead of using the day's answer), with what changed since this one
+// in the Studio's language.
 func (s *Studio) CheckUpdate(ctx context.Context, force bool) (app.UpdateInfo, error) {
-	return app.CheckUpdate(ctx, force)
+	return app.CheckUpdate(ctx, force, s.Language())
 }
