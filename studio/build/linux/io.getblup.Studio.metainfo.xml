@@ -45,6 +45,27 @@
     <keyword>Hugo</keyword>
   </keywords>
 
+  <screenshots>
+    <screenshot type="default">
+      <image type="source" width="2553" height="1552">https://raw.githubusercontent.com/gabriellsalesx/blup/0087c29a89ed3d9b34abd700b96c3020db508cdc/.github/assets/screenshots/site-preview.png</image>
+      <caption>Write and preview a website side by side</caption>
+      <caption xml:lang="pt-BR">Escreva e veja a prévia do site lado a lado</caption>
+      <caption xml:lang="es">Escribe y ve la vista previa del sitio lado a lado</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source" width="2553" height="1552">https://raw.githubusercontent.com/gabriellsalesx/blup/0087c29a89ed3d9b34abd700b96c3020db508cdc/.github/assets/screenshots/notes-light.png</image>
+      <caption>Organize and connect Markdown notes</caption>
+      <caption xml:lang="pt-BR">Organize e conecte notas em Markdown</caption>
+      <caption xml:lang="es">Organiza y conecta notas en Markdown</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source" width="2553" height="1552">https://raw.githubusercontent.com/gabriellsalesx/blup/0087c29a89ed3d9b34abd700b96c3020db508cdc/.github/assets/screenshots/notes-dark.png</image>
+      <caption>Write notes with the dark appearance</caption>
+      <caption xml:lang="pt-BR">Escreva notas com a aparência escura</caption>
+      <caption xml:lang="es">Escribe notas con la apariencia oscura</caption>
+    </screenshot>
+  </screenshots>
+
   <branding>
     <color type="primary" scheme_preference="light">#a5d8ff</color>
     <color type="primary" scheme_preference="dark">#1c3a5e</color>

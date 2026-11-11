@@ -8,7 +8,7 @@ O Flathub é um novo canal pretendido em 11/11/2026. O projeto já tem um bundle
 
 A [política atual de IA](https://docs.flathub.org/docs/for-app-authors/requirements#generative-ai-policy), conferida em 11/11/2026, exige declarar material gerado por IA e sua extensão. Ela proíbe assistência de IA no manifesto e na autoria ou automação do PR de submissão, incluindo mensagens de commit e respostas da revisão. O mantenedor precisa escrever o manifesto e conduzir essa interação pessoalmente. Código da aplicação com assistência de IA é avaliado pelos revisores após declaração; sua presença não estabelece aprovação nem rejeição automática.
 
-Nesta preparação, a configuração de identidade Flatpak, os metadados e o empacotamento do Studio, as adaptações de ferramentas, inicialização automática, atalhos e terminal, os testes e esta documentação receberam assistência de IA. Os avisos novos do terminal e seus bindings também receberam essa assistência. Nenhum manifesto, texto de PR ou mensagem de commit para o Flathub foi criado. A declaração do mantenedor também precisa abranger o histórico real do restante do projeto.
+Nesta preparação, a configuração de identidade Flatpak, os metadados e o empacotamento do Studio, as adaptações de ferramentas, inicialização automática, atalhos e terminal, os testes e esta documentação receberam assistência de IA. Os avisos novos do terminal e seus bindings também receberam essa assistência. O auxiliar de demonstração e os textos de exemplo das capturas foram escritos com essa assistência; as imagens são capturas nativas da interface em execução, sem edição. Nenhum manifesto, texto de PR ou mensagem de commit para o Flathub foi criado. A declaração do mantenedor também precisa abranger o histórico real do restante do projeto.
 
 ## Base existente e pendências
 
@@ -17,12 +17,20 @@ Nesta preparação, a configuração de identidade Flatpak, os metadados e o emp
 | Fontes | Repositório público `gabriellsalesx/blup`, licença AGPL-3.0-only, tags até `v1.0.8`. O checkout tem alterações ainda não publicadas. | Escolher uma release estável com todas as correções necessárias e conferir o commit exato publicado. |
 | Identidade | `io.getblup.Studio`, adotado em 11/11/2026. Configuração Wails, metadados Linux/macOS/Windows e templates iOS do Studio usam esse identificador. | Preservar o ID no pacote do Flathub e verificar o domínio `getblup.io`. |
 | Menu e ícones | `studio/build/linux/blup-studio.desktop` e PNGs de 128, 256 e 512 pixels estão presentes. | Conferir os nomes exportados pelo pacote final e o ícone na janela Wayland. |
-| MetaInfo | `studio/build/linux/io.getblup.Studio.metainfo.xml` declara licença, desenvolvedor, descrições em três idiomas e release com placeholders. | Acrescentar capturas reais do Studio com URLs permanentes; preencher versão/data reais e conferir o desktop ID instalado. |
+| MetaInfo | `studio/build/linux/io.getblup.Studio.metainfo.xml` declara licença, desenvolvedor, descrições e legendas em três idiomas, três capturas nativas fixadas em commit e release com placeholders. | Publicar o commit das capturas, preencher versão/data reais e conferir o desktop ID instalado. |
 | Atualizações | `internal/app/channel.go` reconhece `FLATPAK_ID` e `/.flatpak-info`; a atualização interna fica a cargo do canal. | Confirmar o comportamento em Sobre no pacote instalado. |
 | Identidade da janela | `studio/main.go` passa `FLATPAK_ID` para `Linux.ApplicationID` e para a conexão de instância única. O Wails deriva também o nome da janela Wayland desse ID. | Testar abertura, ícone e segunda inicialização na sandbox. |
 | Runtime | O bundle e o workflow apontam para `org.gnome.Platform//51`; o computador desta conferência tem GNOME 49 instalado. | Conferir disponibilidade e suporte do runtime escolhido e instalar seu SDK e ferramentas de build no ambiente de empacotamento. |
 
-Os [IDs de aplicação](https://docs.flathub.org/docs/for-app-authors/requirements#application-id) vinculam o pacote a um domínio ou repositório. As [diretrizes de MetaInfo](https://docs.flathub.org/docs/for-app-authors/metainfo-guidelines#screenshots) exigem capturas de aplicativos gráficos e URLs fixadas em tag ou commit quando hospedadas em Git. As imagens atuais de temas em `.github/assets/` não substituem uma captura da interface do Studio.
+Os [IDs de aplicação](https://docs.flathub.org/docs/for-app-authors/requirements#application-id) vinculam o pacote a um domínio ou repositório. As [diretrizes de MetaInfo](https://docs.flathub.org/docs/for-app-authors/metainfo-guidelines#screenshots) exigem capturas de aplicativos gráficos e URLs fixadas em tag ou commit quando hospedadas em Git. As capturas da interface estão em `.github/assets/screenshots/`; as outras imagens de temas não as substituem.
+
+## Capturas da interface
+
+As três capturas mostram o Studio nativo no Linux, em inglês: notas no claro, notas no escuro e editor de site com a prévia ao lado. Foram revisadas visualmente e contêm somente textos de exemplo. Os PNGs originais têm 2553 × 1552 pixels, sem metadados de texto e sem edição da imagem. O MetaInfo aponta para o commit `0087c29a89ed3d9b34abd700b96c3020db508cdc`; os links públicos só estarão disponíveis depois de enviar esse commit ao GitHub.
+
+O [auxiliar de captura](../studio/tools/storepreview/README.md) usa outro identificador de instância e diretórios temporários para configuração, notas e cache. Ele não copia as notas ou credenciais da pessoa e não importa tokens do ambiente. As referências da sessão gráfica, os perfis temporários, os executáveis e os logs não fazem parte dos commits. No Hyprland, a captura identifica a janela pelo processo e confere o foco antes de capturar apenas sua área; em outros ambientes, usar a ferramenta de captura de janela do sistema.
+
+Nesta preparação, as tarefas nativas foram executadas pelo MCP do Wails com acesso à sessão gráfica. Isso demonstrou a interface real e a prévia local do site fora da sandbox Flatpak; não substitui o teste gráfico do pacote instalado.
 
 ## Verificação pelo domínio
 
@@ -71,15 +79,16 @@ Em 11/11/2026:
 - `go mod verify` em `studio/`: todos os módulos verificados.
 - `go test ./...` em `studio/`: passou, com Go 1.27.3 e GTK4/WebKitGTK nativos. Houve avisos de APIs X11 obsoletas no Wails.
 - Build Go de produção com tag `production`, versão injetada para a verificação e saída em `/tmp`: passou. Usou o frontend já compilado no checkout; ainda falta recompilá-lo no ambiente de empacotamento sem rede.
-- `appstreamcli validate --no-net --strict`: passou numa cópia temporária do MetaInfo `io.getblup.Studio` com placeholders preenchidos para validação. A verificação pedantic sugere ID inteiramente minúsculo, mas não bloqueia a validação; foi mantida a grafia escolhida. Isso não resolve a ausência de capturas exigidas pelo Flathub.
+- `appstreamcli validate --no-net --strict`: passou numa cópia temporária do MetaInfo `io.getblup.Studio` com as três capturas e placeholders preenchidos para validação. A verificação pedantic sugere ID inteiramente minúsculo, mas não bloqueia a validação; foi mantida a grafia escolhida. A opção sem rede não comprova disponibilidade pública das imagens.
 - `desktop-file-validate`: passou, com sugestão de categoria adicional `Utility`.
 - Identificadores e sintaxe de XML, plists e YAML conferidos; script do bundle passou em `bash -n`. Os testes `TestUpdatesBy` e `TestStoreBuildDoesntLookUp` passaram com o novo ID no caso Flatpak.
 - Os testes de Hugo/Pagefind cobrem seleção da ferramenta do pacote, rejeição de versões incompatíveis e recusa do cache e do download de executáveis no Flatpak. Os testes desktop cobrem shell, proteção da configuração do host e respostas de aprovação, recusa e cancelamento do portal com uma implementação simulada.
 - O frontend passou no `svelte-check`, nos 16 arquivos de testes Node e no build Vite com os novos avisos em três idiomas.
+- `go test ./...` em `studio/` passou novamente após adicionar o auxiliar de capturas, incluindo testes do isolamento dos exemplos e da exclusão de credenciais fornecidas no arquivo de sessão. As três capturas nativas foram obtidas e revisadas; o processo de demonstração foi encerrado.
 
 O ambiente tinha `GOROOT` apontando para Go 1.27.4 enquanto o comando selecionava 1.27.3. A execução dos testes usou explicitamente a toolchain e o GOROOT 1.27.3, com cache em `/tmp`, sem mudar a configuração da máquina.
 
-Ainda faltam build completo sem rede, linter específico do Flathub, instalação, capturas reais e teste gráfico do pacote, incluindo outra arquitetura quando oferecida. O ambiente desta preparação bloqueia criação de sockets, impedindo a sessão D-Bus privada e o servidor local necessários à validação gráfica. Os testes simulados e nativos não demonstram execução real do Flatpak ou do portal do sistema.
+Ainda faltam build completo sem rede, linter específico do Flathub, instalação e teste gráfico do pacote, incluindo outra arquitetura quando oferecida. A execução pelo shell restrito bloqueia criação de sockets; as capturas nativas foram viabilizadas pelas tarefas do MCP do Wails na sessão desktop. Os testes simulados e nativos não demonstram execução real do Flatpak ou do portal do sistema.
 
 ## Sequência para publicação
 
