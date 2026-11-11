@@ -49,6 +49,26 @@ tasks:
     cmds:
       - task: common:setup:docker
 
+  sources:publish:
+    summary: Publishes a clean main branch to the project's GitHub repository
+    desc: |
+      Defaults to a dry run. Pass PUBLISH=true to send the commits to GitHub.
+      Uses the explicit GitHub URL because origin also has a second push URL.
+      Does not create tags, releases or a Flathub submission.
+    preconditions:
+      - sh: test "$(git branch --show-current)" = main
+        msg: Source publication requires the main branch.
+      - sh: git diff --quiet && git diff --cached --quiet
+        msg: Commit or set aside tracked changes before publishing sources.
+      - sh: test "$(git remote get-url origin)" = https://github.com/gabriellsalesx/blup.git
+        msg: Source publication requires this project's GitHub origin.
+    env:
+      GIT_TERMINAL_PROMPT: '0'
+    cmds:
+      - git push {{if ne .PUBLISH "true"}}--dry-run{{end}} --porcelain https://github.com/gabriellsalesx/blup.git HEAD:refs/heads/main
+    vars:
+      PUBLISH: '{{.PUBLISH | default "false"}}'
+
   build:server:
     summary: Builds the application in server mode (no GUI, HTTP server only)
     cmds:

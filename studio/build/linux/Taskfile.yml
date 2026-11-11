@@ -162,6 +162,61 @@ tasks:
       - task: generate:dotdesktop
       - task: generate:aur
 
+  bundle:flatpak:
+    summary: Bundles the already built Studio, Hugo and Pagefind as a direct Flatpak
+    desc: |
+      First build the Studio with VERSION and run linux:prepare:flatpak:tools.
+      Requires flatpak and the selected GNOME Platform runtime installed.
+      This is the project's direct bundle, not a Flathub source build.
+      VERSION must be listed in the MetaInfo. METAINFO can select temporary
+      test metadata; FLATPAK_OUTPUT selects the bundle destination.
+    cmds:
+      - bash build/linux/flatpak/bundle.sh "$BLUP_FLATPAK_VERSION" "$BLUP_FLATPAK_OUTPUT"
+    vars:
+      VERSION: '{{.VERSION | default "1.0.0"}}'
+      FLATPAK_OUTPUT: '{{.FLATPAK_OUTPUT | default "bin/blup-studio.flatpak"}}'
+      DEFAULT_RUNTIME_DIR: '{{.ROOT_DIR}}/bin/flatpak-runtime'
+      RUNTIME_DIR: '{{.RUNTIME_DIR | default .DEFAULT_RUNTIME_DIR}}'
+    env:
+      RUNTIME: '{{.RUNTIME | default "51"}}'
+      BLUP_FLATPAK_VERSION: '{{.VERSION}}'
+      BLUP_FLATPAK_OUTPUT: '{{.FLATPAK_OUTPUT}}'
+      BLUP_FLATPAK_METAINFO: '{{.METAINFO | default "build/linux/io.getblup.Studio.metainfo.xml"}}'
+      FLATPAK_USER_DIR: '{{.RUNTIME_DIR}}'
+
+  setup:flatpak:runtime:
+    summary: Installs the GNOME runtime into the ignored local build directory
+    cmds:
+      - flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - flatpak --user install -y --noninteractive --no-related flathub "org.gnome.Platform//$RUNTIME"
+    vars:
+      RUNTIME: '{{.RUNTIME | default "51"}}'
+      DEFAULT_RUNTIME_DIR: '{{.ROOT_DIR}}/bin/flatpak-runtime'
+      RUNTIME_DIR: '{{.RUNTIME_DIR | default .DEFAULT_RUNTIME_DIR}}'
+    env:
+      RUNTIME: '{{.RUNTIME}}'
+      FLATPAK_USER_DIR: '{{.RUNTIME_DIR}}'
+      XDG_CACHE_HOME: '{{.ROOT_DIR}}/bin/flatpak-cache'
+
+  prepare:flatpak:tools:
+    summary: Prepares the checksum-verified Hugo and Pagefind for the direct bundle
+    dir: ..
+    cmds:
+      - go run ./scripts/flatpak-tools -out studio/bin
+
+  check:flatpak:
+    summary: Installs a bundle temporarily and tests runtime libraries and tools offline
+    desc: |
+      Requires the bundle's runtime to be installed. Uses a disposable Flatpak
+      installation and example content. Does not open the Studio GUI.
+    cmds:
+      - bash build/linux/flatpak/check-bundle.sh "$BLUP_FLATPAK_BUNDLE"
+    vars:
+      FLATPAK_BUNDLE: '{{.FLATPAK_BUNDLE | default "bin/blup-studio.flatpak"}}'
+    env:
+      BLUP_FLATPAK_BUNDLE: '{{.FLATPAK_BUNDLE}}'
+      BLUP_FLATPAK_RUNTIME_DIR: '{{.RUNTIME_DIR | default ""}}'
+
   generate:deb:
     summary: Creates a deb package
     cmds:

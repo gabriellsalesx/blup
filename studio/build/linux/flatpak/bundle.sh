@@ -15,8 +15,11 @@ version="${1:?version}"
 out="${2:?output .flatpak}"
 app=io.getblup.Studio
 runtime="${RUNTIME:-51}"
-if ! grep -q "<release version=\"$version\"" "build/linux/$app.metainfo.xml"; then
-  echo "Add <release version=\"$version\"> to build/linux/$app.metainfo.xml first." >&2
+# A local test can supply temporary metadata without adding an unreleased
+# version to the source repository. Releases use the checked-in file.
+metainfo="${BLUP_FLATPAK_METAINFO:-build/linux/$app.metainfo.xml}"
+if ! grep -Fq "<release version=\"$version\"" "$metainfo"; then
+  echo "Add <release version=\"$version\"> to $metainfo first." >&2
   exit 1
 fi
 for tool in blup-studio hugo pagefind; do
@@ -43,7 +46,7 @@ for size in 128 256 512; do
   install -Dm644 "build/linux/icons/${size}x${size}/blup-studio.png" "$files/share/icons/hicolor/${size}x${size}/apps/$app.png"
 done
 sed -e "s#<launchable type=\"desktop-id\">blup-studio.desktop#<launchable type=\"desktop-id\">$app.desktop#" \
-  "build/linux/$app.metainfo.xml" >"$work/metainfo.xml"
+  "$metainfo" >"$work/metainfo.xml"
 install -Dm644 "$work/metainfo.xml" "$files/share/metainfo/$app.metainfo.xml"
 install -Dm644 ../THIRD_PARTY_NOTICES.md "$files/share/licenses/$app/THIRD_PARTY_NOTICES.md"
 install -Dm644 ../LICENSE "$files/share/licenses/$app/LICENSE"

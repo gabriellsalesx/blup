@@ -2,7 +2,7 @@
 
 O alvo é o aplicativo desktop de `studio/`, em Go/Wails 3 e Svelte 5. Ele compartilha o módulo Go da raiz com a CLI, incorpora o tema Hugo e o frontend compilado e mantém as notas em arquivos locais. Blup Cloud é um serviço opcional; o aplicativo Android de `mobile/` tem outro processo de distribuição.
 
-O Flathub é um novo canal pretendido em 11/11/2026. O projeto já tem um bundle Flatpak para distribuir pelo GitHub, mas ainda precisa de empacotamento a partir das fontes e testes na sandbox antes da submissão.
+O Flathub é um novo canal pretendido em 11/11/2026. O bundle direto do GitHub já foi construído, instalado temporariamente e testado por linha de comando na sandbox GNOME 51. Ainda faltam o empacotamento a partir das fontes para a loja e os testes gráficos e de portais antes da submissão.
 
 ## Responsabilidade pela submissão
 
@@ -14,13 +14,13 @@ Nesta preparação, a configuração de identidade Flatpak, os metadados e o emp
 
 | Item | Situação no projeto | Próxima ação |
 | --- | --- | --- |
-| Fontes | Repositório público `gabriellsalesx/blup`, licença AGPL-3.0-only, tags até `v1.0.8`. O checkout tem alterações ainda não publicadas. | Escolher uma release estável com todas as correções necessárias e conferir o commit exato publicado. |
+| Fontes | Repositório `gabriellsalesx/blup`, licença AGPL-3.0-only, tags até `v1.0.8`. As adaptações para o Flatpak estão na `main`, à espera da próxima release. | Escolher uma release estável com todas as correções necessárias e conferir o commit exato publicado. |
 | Identidade | `io.getblup.Studio`, adotado em 11/11/2026. Configuração Wails, metadados Linux/macOS/Windows e templates iOS do Studio usam esse identificador. | Preservar o ID no pacote do Flathub e verificar o domínio `getblup.io`. |
 | Menu e ícones | `studio/build/linux/blup-studio.desktop` e PNGs de 128, 256 e 512 pixels estão presentes. | Conferir os nomes exportados pelo pacote final e o ícone na janela Wayland. |
-| MetaInfo | `studio/build/linux/io.getblup.Studio.metainfo.xml` declara licença, desenvolvedor, descrições e legendas em três idiomas, três capturas nativas fixadas em commit e a lista real de versões e datas (sem placeholders; o fluxo de release recusa uma tag ausente da lista). | Publicar o commit das capturas e conferir o desktop ID instalado. |
+| MetaInfo | `studio/build/linux/io.getblup.Studio.metainfo.xml` declara licença, desenvolvedor, descrições e legendas em três idiomas, três capturas nativas fixadas em commit e a lista real de versões e datas (sem placeholders; o fluxo de release recusa uma tag ausente da lista). | Conferir a disponibilidade pública das capturas e o desktop ID instalado no pacote final. |
 | Atualizações | `internal/app/channel.go` reconhece `FLATPAK_ID` e `/.flatpak-info`; a atualização interna fica a cargo do canal. | Confirmar o comportamento em Sobre no pacote instalado. |
 | Identidade da janela | `studio/main.go` passa `FLATPAK_ID` para `Linux.ApplicationID` e para a conexão de instância única. O Wails deriva também o nome da janela Wayland desse ID. | Testar abertura, ícone e segunda inicialização na sandbox. |
-| Runtime | O bundle e o workflow apontam para `org.gnome.Platform//51`; o computador desta conferência tem GNOME 49 instalado. | Conferir disponibilidade e suporte do runtime escolhido e instalar seu SDK e ferramentas de build no ambiente de empacotamento. |
+| Runtime | O bundle e o workflow apontam para `org.gnome.Platform//51`. O runtime 51 foi instalado num diretório local de build, e o bundle passou na instalação e nos testes de ferramentas offline. | Preparar também o SDK para o build a partir das fontes e testar a interface e os portais. |
 
 Os [IDs de aplicação](https://docs.flathub.org/docs/for-app-authors/requirements#application-id) vinculam o pacote a um domínio ou repositório. As [diretrizes de MetaInfo](https://docs.flathub.org/docs/for-app-authors/metainfo-guidelines#screenshots) exigem capturas de aplicativos gráficos e URLs fixadas em tag ou commit quando hospedadas em Git. As capturas da interface estão em `.github/assets/screenshots/`; as outras imagens de temas não as substituem.
 
@@ -47,9 +47,23 @@ Para quem já instalou o bundle anterior `io.github.gabriellsalesx.blupstudio`, 
 
 ## Compilação e ferramentas
 
-O [bundle.sh](../studio/build/linux/flatpak/bundle.sh) copia o Studio, Hugo e Pagefind já compilados para o runtime. Ele serve à distribuição direta e não comprova o build a partir das fontes exigido pelo Flathub. O workflow atual verifica bibliotecas com `ldd` dentro do Flatpak; essa verificação não abre a janela nem exercita os recursos do aplicativo.
+O [bundle.sh](../studio/build/linux/flatpak/bundle.sh) copia o Studio, Hugo e Pagefind já compilados para o runtime. Ele serve à distribuição direta e não comprova o build a partir das fontes exigido pelo Flathub. O [check-bundle.sh](../studio/build/linux/flatpak/check-bundle.sh) instala o bundle temporariamente e verifica bibliotecas, executa as ferramentas e gera uma página e seu índice sem rede. Esse teste não abre a janela nem exercita os portais desktop.
 
 Para o bundle direto do GitHub, o workflow prepara as ferramentas com `go run ./scripts/flatpak-tools -out studio/bin`. Esse comando usa os downloads com checksum da aplicação, e o bundle exige os três executáveis antes de iniciar. No Flathub, o mantenedor deve compilar Hugo e Pagefind a partir das fontes no ambiente de empacotamento.
+
+As tarefas locais, executadas a partir de `studio/`, são:
+
+```sh
+wails3 task build VERSION=X.Y.Z
+wails3 task linux:prepare:flatpak:tools
+wails3 task linux:setup:flatpak:runtime
+wails3 task linux:bundle:flatpak VERSION=X.Y.Z
+wails3 task linux:check:flatpak RUNTIME_DIR="$PWD/bin/flatpak-runtime"
+```
+
+Substituir `X.Y.Z` pela versão que já consta no MetaInfo, com sua data real. A tarefa de runtime usa `studio/bin/flatpak-runtime`, ignorado pelo Git, e não instala nada na instalação normal do usuário. O teste usa outra instalação temporária, lê o runtime local e apaga sua instalação ao terminar. `FLATPAK_OUTPUT` e `FLATPAK_BUNDLE` selecionam os arquivos de saída e de teste. `METAINFO` permite usar uma cópia temporária para testes de pré-lançamento; sem essa opção, o bundle continua exigindo a versão no arquivo do repositório.
+
+Para publicar somente as fontes no GitHub, `wails3 task sources:publish` simula o envio. Depois de conferir os commits, `wails3 task sources:publish PUBLISH=true` envia a `main` para a URL explícita do GitHub, sem usar o segundo destino de push do `origin`. A tarefa exige a `main` sem alterações rastreadas pendentes e não cria tags nem releases.
 
 O build para a loja precisa resolver estes pontos:
 
@@ -85,10 +99,12 @@ Em 11/11/2026:
 - Os testes de Hugo/Pagefind cobrem seleção da ferramenta do pacote, rejeição de versões incompatíveis e recusa do cache e do download de executáveis no Flatpak. Os testes desktop cobrem shell, proteção da configuração do host e respostas de aprovação, recusa e cancelamento do portal com uma implementação simulada.
 - O frontend passou no `svelte-check`, nos 16 arquivos de testes Node e no build Vite com os novos avisos em três idiomas.
 - `go test ./...` em `studio/` passou novamente após adicionar o auxiliar de capturas, incluindo testes do isolamento dos exemplos e da exclusão de credenciais fornecidas no arquivo de sessão. As três capturas nativas foram obtidas e revisadas; o processo de demonstração foi encerrado.
+- Frontend de produção recompilado e binário Go com `-tags production`, `-trimpath` e versão `1.1.0-test.1` construído. A versão de teste foi acrescentada somente numa cópia temporária do MetaInfo; o histórico de releases do repositório foi preservado.
+- Bundle `1.1.0-test.1` x86_64 construído com GNOME 51, instalado numa instalação temporária e testado com a rede desativada: bibliotecas do Studio resolvidas, Hugo 0.169.0 e Pagefind 1.5.2 executados, uma página HTML gerada e um índice de busca criado. A mesma verificação inicial também passou com o runtime 49. Os pacotes, caches e logs não entram nos commits.
 
 O ambiente tinha `GOROOT` apontando para Go 1.27.4 enquanto o comando selecionava 1.27.3. A execução dos testes usou explicitamente a toolchain e o GOROOT 1.27.3, com cache em `/tmp`, sem mudar a configuração da máquina.
 
-Ainda faltam build completo sem rede, linter específico do Flathub, instalação e teste gráfico do pacote, incluindo outra arquitetura quando oferecida. A execução pelo shell restrito bloqueia criação de sockets; as capturas nativas foram viabilizadas pelas tarefas do MCP do Wails na sessão desktop. Os testes simulados e nativos não demonstram execução real do Flatpak ou do portal do sistema.
+Ainda faltam build completo a partir das fontes sem rede, linter específico do Flathub e teste gráfico do pacote, incluindo outra arquitetura quando oferecida. A execução pelo shell restrito bloqueia criação de sockets; as capturas nativas e os testes reais do bundle foram viabilizados pelas tarefas do MCP do Wails. Os testes por linha de comando na sandbox não demonstram o funcionamento da interface ou dos portais do sistema.
 
 ## Sequência para publicação
 
