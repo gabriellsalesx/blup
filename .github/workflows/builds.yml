@@ -3,8 +3,10 @@
 # publica nada: o blup update e o site não veem estes arquivos.
 #
 # Disparo manual (Actions > builds > Run workflow), com a versão que vai
-# dentro dos apps. O release.yml também chama este workflow a cada tag
-# vX.Y.Z, e aí os arquivos vão para a release junto com os do Linux. Sem assinatura de desenvolvedor no Windows e no macOS (o
+# dentro dos apps e quais apps montar. O release.yml chama este workflow a
+# cada tag vX.Y.Z só com os apps do computador (os arquivos vão para a
+# release junto com os do Linux), e o notes-release.yml a cada tag
+# notes-vX.Y.Z só com o Blup Notes: cada um tem a sua versão. Sem assinatura de desenvolvedor no Windows e no macOS (o
 # .app leva só a assinatura ad hoc). O APK sai assinado com a chave de
 # publicação do Blup Notes, vinda dos secrets:
 # - ANDROID_KEYSTORE_BASE64: o .jks em base64;
@@ -20,12 +22,21 @@ on:
         description: "Versão dentro dos apps (por exemplo 1.0.0-rc.1)"
         required: true
         default: "1.0.0-rc.1"
+      apps:
+        description: "Quais apps montar"
+        type: choice
+        options: [all, desktop, notes]
+        default: all
   workflow_call:
     inputs:
       version:
-        description: "A tag (vX.Y.Z) ou a versão"
+        description: "A versão com v (vX.Y.Z)"
         required: true
         type: string
+      apps:
+        description: "all, desktop (Windows e macOS) ou notes (Android)"
+        type: string
+        default: all
 
 permissions:
   contents: read
@@ -36,6 +47,7 @@ env:
 
 jobs:
   studio-windows:
+    if: inputs.apps != 'notes'
     runs-on: windows-latest
     env:
       SENTRY_DSN: ${{ vars.STUDIO_SENTRY_DSN }}
@@ -68,6 +80,7 @@ jobs:
           if-no-files-found: error
 
   studio-macos:
+    if: inputs.apps != 'notes'
     runs-on: macos-latest
     env:
       SENTRY_DSN: ${{ vars.STUDIO_SENTRY_DSN }}
@@ -99,6 +112,7 @@ jobs:
           if-no-files-found: error
 
   notes-android:
+    if: inputs.apps != 'desktop'
     runs-on: ubuntu-24.04
     env:
       SENTRY_DSN: ${{ vars.NOTES_SENTRY_DSN }}

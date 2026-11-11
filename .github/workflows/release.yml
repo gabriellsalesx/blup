@@ -135,8 +135,8 @@ jobs:
         working-directory: studio
         run: |
           sed -e "s/@VERSION@/${TAG#v}/" -e "s/@DATE@/$(date -u +%F)/" \
-            build/linux/io.github.gabriellsalesx.blupstudio.metainfo.xml > bin/io.github.gabriellsalesx.blupstudio.metainfo.xml
-          appstreamcli validate --no-net bin/io.github.gabriellsalesx.blupstudio.metainfo.xml
+            build/linux/io.getblup.Studio.metainfo.xml > bin/io.getblup.Studio.metainfo.xml
+          appstreamcli validate --no-net bin/io.getblup.Studio.metainfo.xml
           desktop-file-validate build/linux/blup-studio.desktop
       - name: .deb
         working-directory: studio
@@ -154,7 +154,7 @@ jobs:
           flatpak --user install -y --noninteractive --no-related flathub org.gnome.Platform//51
           build/linux/flatpak/bundle.sh "${TAG#v}" bin/blup-studio.flatpak
           flatpak --user install -y --noninteractive bin/blup-studio.flatpak
-          dbus-run-session -- flatpak --user run --command=sh io.github.gabriellsalesx.blupstudio -c 'if ldd /app/bin/blup-studio | grep "not found"; then exit 1; fi'
+          dbus-run-session -- flatpak --user run --command=sh io.getblup.Studio -c 'if ldd /app/bin/blup-studio | grep "not found"; then exit 1; fi'
       - name: Name the files
         working-directory: studio/bin
         run: |
@@ -234,18 +234,20 @@ jobs:
           path: dist-msix/*.msix
           if-no-files-found: error
 
-  # The Windows installer, the macOS .dmg and the Blup Notes APK, from the
-  # same workflow as the test builds (builds.yml).
+  # The Windows installer and the macOS .dmg, from the same workflow as the
+  # test builds (builds.yml). Blup Notes has its own versions and release
+  # (notes-release.yml, tags notes-vX.Y.Z).
   apps:
     needs: release
     uses: ./.github/workflows/builds.yml
     with:
       version: ${{ inputs.version || github.ref_name }}
+      apps: desktop
     secrets: inherit
 
-  # The Linux, Windows, macOS and Android files go up to the release with
-  # their sha256 and the owner's Ed25519 signature over the list, as
-  # checksums.txt does for the CLI.
+  # The Linux, Windows and macOS files go up to the release with their
+  # sha256 and the owner's Ed25519 signature over the list, as checksums.txt
+  # does for the CLI.
   studio-publish:
     needs: [studio-linux, apps]
     if: github.event_name == 'push'
@@ -261,7 +263,7 @@ jobs:
           go-version-file: go.mod
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: "{studio-linux,studio-windows,studio-macos,notes-android}"
+          pattern: "{studio-linux,studio-windows,studio-macos}"
           merge-multiple: true
           path: dist-studio
       - name: Checksums, signature and upload

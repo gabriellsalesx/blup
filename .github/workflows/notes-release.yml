@@ -1,0 +1,79 @@
+name: notes-release
+
+# Blup Notes (Android) has its own versions: a tag notes-vX.Y.Z makes its
+# release, apart from the computer's (release.yml, tags vX.Y.Z). The APK
+# goes to the release with notes-checksums.txt and the owner's Ed25519
+# signature over it; the Google Play bundle (.aab) stays in this run's
+# artifacts. The number keeps growing across both: Android's versionCode
+# comes from it (mobile/build/android/app/build.gradle) and Google Play
+# refuses a smaller one.
+#
+# The release is never marked "latest": that one stays the computer's, which
+# install.sh, `blup update` and the Studio read.
+
+on:
+  push:
+    tags: ["notes-v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Version (notes-v1.1.0 -> v1.1.0)
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          v="${TAG#notes-}"
+          if ! [[ "$v" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then echo "::error::$TAG is not notes-vX.Y.Z"; exit 1; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - name: Release (the notes are written by hand after)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --latest=false \
+              --title "Blup Notes ${VERSION#v}" --notes ""
+
+  android:
+    needs: release
+    uses: ./.github/workflows/builds.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+      apps: notes
+    secrets: inherit
+
+  publish:
+    needs: android
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: notes-android
+          path: dist-notes
+      - name: Checksums, signature and upload
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BLUP_RELEASE_KEY: ${{ secrets.BLUP_RELEASE_KEY }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          (cd dist-notes && sha256sum -- * > notes-checksums.txt)
+          go run ./scripts/sign-release -in dist-notes/notes-checksums.txt -out dist-notes/notes-checksums.txt.sig
+          gh release upload "$TAG" dist-notes/* --clobber
