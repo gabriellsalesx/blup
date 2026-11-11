@@ -12,11 +12,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gabriellsalesx/blup/internal/proc"
+	"github.com/gabriellsalesx/blup/internal/sandbox"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -28,8 +30,23 @@ const Pinned = "1.5.2"
 // ErrUnsupportedPlatform means Pagefind has no build for this OS/arch.
 var ErrUnsupportedPlatform = errors.New("no Pagefind build for this platform")
 
-// Ensure returns the cached binary, downloading it on first use.
+// ErrBundledMissing means the Flatpak needs a compatible Pagefind in PATH.
+var ErrBundledMissing = errors.New("this Flatpak must include Pagefind " + Pinned + "; reinstall or update the application")
+
+// Ensure prefers the pinned Pagefind in PATH, then the cached download.
+// Flatpak installations only use their packaged tool, never downloaded code.
 func Ensure(ctx context.Context) (string, error) {
+	if p, err := exec.LookPath("pagefind"); err == nil {
+		vctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		out, err := proc.Hide(exec.CommandContext(vctx, p, "--version")).Output()
+		cancel()
+		if err == nil && pagefindVersion.FindString(string(out)) == Pinned {
+			return p, nil
+		}
+	}
+	if sandbox.Flatpak() {
+		return "", ErrBundledMissing
+	}
 	dest, err := cachedPath()
 	if err != nil {
 		return "", err
@@ -71,6 +88,8 @@ func Ensure(ctx context.Context) (string, error) {
 	}
 	return dest, os.Rename(dest+".part", dest)
 }
+
+var pagefindVersion = regexp.MustCompile(`\b\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\b`)
 
 // Index writes the search index of the site in dir to dir/pagefind.
 func Index(ctx context.Context, bin, dir string) ([]byte, error) {

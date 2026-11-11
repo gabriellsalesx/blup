@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/app"
 	"github.com/gabriellsalesx/blup/internal/config"
 	"github.com/gabriellsalesx/blup/internal/proc"
+	"github.com/gabriellsalesx/blup/internal/sandbox"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -86,6 +88,11 @@ func shell() (string, []string) {
 	if runtime.GOOS == "windows" {
 		return "powershell.exe", []string{"-NoLogo"}
 	}
+	if sandbox.Flatpak() {
+		// SHELL may name a host-only shell. Do not load the user's host
+		// startup files, which can launch programs unavailable in the sandbox.
+		return "/bin/bash", []string{"--noprofile", "--norc"}
+	}
 	if sh := os.Getenv("SHELL"); sh != "" {
 		return sh, []string{"-l"}
 	}
@@ -113,6 +120,9 @@ func (s *Studio) OpenTerminal(agent string, cols, rows int) (string, error) {
 		if run == "" {
 			return "", errors.New("unknown agent " + agent)
 		}
+		if _, err := exec.LookPath(run); err != nil {
+			return "", fmt.Errorf("%s is not available in this installation", run)
+		}
 	}
 	snap := ""
 	if run != "" {
@@ -136,6 +146,9 @@ func (s *Studio) OpenTerminal(agent string, cols, rows int) (string, error) {
 	c := p.Command(name, args...)
 	c.Dir = site.ContentDir()
 	c.Env = append(proc.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
+	if sandbox.Flatpak() {
+		c.Env = append(c.Env, "SHELL=/bin/bash")
+	}
 	if err := c.Start(); err != nil {
 		p.Close()
 		return "", err
@@ -170,6 +183,10 @@ func (s *Studio) OpenTerminal(agent string, cols, rows int) (string, error) {
 	}
 	return id, nil
 }
+
+// InFlatpak lets the terminal explain that host-installed tools are outside
+// this installation. It does not grant access to the host.
+func (s *Studio) InFlatpak() bool { return sandbox.Flatpak() }
 
 func termOf(id string) *term {
 	termsMu.Lock()

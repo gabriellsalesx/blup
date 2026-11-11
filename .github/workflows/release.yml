@@ -147,6 +147,10 @@ jobs:
           VERSION="${TAG#v}" GOARCH=amd64 wails3 tool package -name blup-studio -format deb \
             -config ./build/linux/nfpm/nfpm.yaml -out "$PWD/bin"
           lintian --fail-on error bin/blup-studio.deb
+      - name: Hugo and Pagefind for the direct Flatpak bundle
+        env:
+          XDG_CACHE_HOME: ${{ runner.temp }}/blup-flatpak-tools
+        run: go run ./scripts/flatpak-tools -out studio/bin
       - name: .flatpak (GNOME 51 runtime)
         working-directory: studio
         run: |

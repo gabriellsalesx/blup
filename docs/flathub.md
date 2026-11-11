@@ -8,7 +8,7 @@ O Flathub é um novo canal pretendido em 11/11/2026. O projeto já tem um bundle
 
 A [política atual de IA](https://docs.flathub.org/docs/for-app-authors/requirements#generative-ai-policy), conferida em 11/11/2026, exige declarar material gerado por IA e sua extensão. Ela proíbe assistência de IA no manifesto e na autoria ou automação do PR de submissão, incluindo mensagens de commit e respostas da revisão. O mantenedor precisa escrever o manifesto e conduzir essa interação pessoalmente. Código da aplicação com assistência de IA é avaliado pelos revisores após declaração; sua presença não estabelece aprovação nem rejeição automática.
 
-Nesta preparação, a configuração de identidade Flatpak em `studio/main.go`, os ajustes de identidade nos metadados e no empacotamento do Studio, suas referências no workflow de release e esta documentação receberam assistência de IA. Nenhum manifesto, texto de PR ou mensagem de commit para o Flathub foi criado. A declaração do mantenedor também precisa abranger o histórico real do restante do projeto.
+Nesta preparação, a configuração de identidade Flatpak, os metadados e o empacotamento do Studio, as adaptações de ferramentas, inicialização automática, atalhos e terminal, os testes e esta documentação receberam assistência de IA. Os avisos novos do terminal e seus bindings também receberam essa assistência. Nenhum manifesto, texto de PR ou mensagem de commit para o Flathub foi criado. A declaração do mantenedor também precisa abranger o histórico real do restante do projeto.
 
 ## Base existente e pendências
 
@@ -39,26 +39,28 @@ Para quem já instalou o bundle anterior `io.github.gabriellsalesx.blupstudio`, 
 
 ## Compilação e ferramentas
 
-O [bundle.sh](../studio/build/linux/flatpak/bundle.sh) copia um binário já compilado para o runtime. Ele serve à distribuição direta e não comprova o build a partir das fontes exigido pelo Flathub. O workflow atual verifica bibliotecas com `ldd` dentro do Flatpak; essa verificação não abre a janela nem exercita os recursos do aplicativo.
+O [bundle.sh](../studio/build/linux/flatpak/bundle.sh) copia o Studio, Hugo e Pagefind já compilados para o runtime. Ele serve à distribuição direta e não comprova o build a partir das fontes exigido pelo Flathub. O workflow atual verifica bibliotecas com `ldd` dentro do Flatpak; essa verificação não abre a janela nem exercita os recursos do aplicativo.
+
+Para o bundle direto do GitHub, o workflow prepara as ferramentas com `go run ./scripts/flatpak-tools -out studio/bin`. Esse comando usa os downloads com checksum da aplicação, e o bundle exige os três executáveis antes de iniciar. No Flathub, o mantenedor deve compilar Hugo e Pagefind a partir das fontes no ambiente de empacotamento.
 
 O build para a loja precisa resolver estes pontos:
 
 - Compilar os dois módulos Go juntos, preservando o `replace ... => ../` de `studio/go.mod`. A versão mínima declarada é Go 1.27.3.
 - Preparar dependências Go e npm a partir dos lockfiles dos dois módulos e de `studio/frontend/package-lock.json`. A compilação no Flathub ocorre sem acesso à rede; as tarefas atuais executam instalação de dependências e algumas chamam `go mod tidy`. O mantenedor deve usar ferramentas oficiais de preparação de dependências, como os [geradores do Flatpak](https://github.com/flatpak/flatpak-builder-tools), em seu fluxo de empacotamento.
 - Compilar o frontend antes do Go, porque `studio/main.go` incorpora `frontend/dist`. Usar as flags de produção e injetar a versão publicada conforme [testes e build](spec/testes-e-build.md).
-- Compilar e incluir Hugo, usado pela prévia e publicação. `internal/hugo/hugo.go` procura uma versão compatível no PATH, mas baixa um executável quando não encontra.
-- Preparar Pagefind para a busca do site. `internal/pagefind/pagefind.go` atualmente só consulta seu cache e baixa o executável; ainda precisa aceitar uma ferramenta fornecida pelo pacote. Um teste de publicação deve confirmar a geração do índice.
+- Compilar e incluir Hugo, usado pela prévia e publicação. `internal/hugo/hugo.go` exige uma versão compatível no PATH do Flatpak; nesse canal, não usa downloads antigos do cache nem baixa executáveis. Nas instalações nativas, mantém o comportamento anterior.
+- Compilar e incluir Pagefind na versão fixada em `internal/pagefind/pagefind.go`. A aplicação procura essa versão no PATH; no Flatpak, não usa downloads antigos do cache nem baixa executáveis. Um teste de publicação ainda deve confirmar a geração real do índice.
 - Avaliar separadamente os motores e modelos opcionais de voz e tradução locais. Os downloads atuais e suas dependências nativas não foram demonstrados dentro da sandbox.
 
 ## Integração com a sandbox
 
 O seletor de pastas usa os diálogos do Wails com GTK4. A permissão persistente sobre uma pasta escolhida, a reabertura depois de reiniciar e o monitoramento de alterações precisam ser testados com os [portais desktop](https://docs.flatpak.org/en/latest/desktop-integration.html#portals). As permissões amplas usadas no bundle atual não devem ser tomadas como aprovadas para a loja.
 
-Há três integrações que exigem trabalho específico:
+As adaptações da aplicação já implementadas precisam ser conferidas no pacote instalado:
 
-- **Terminal e agentes:** `studio/terminal.go` procura shell e agentes pelo PATH do processo. No Flatpak, programas e configurações do host não ficam disponíveis automaticamente. Definir e testar o comportamento suportado antes de anunciar esse recurso no pacote.
-- **Abrir com o computador:** `studio/launchpath.go` e `studio/desktop.go` usam arquivos de autostart. Dentro da sandbox, isso não registra necessariamente a inicialização no host; precisa de integração desktop apropriada.
-- **Atalho global:** `studio/hyprland.go` lê e pode escrever configuração do Hyprland. O pacote precisa de um comportamento compatível com a sandbox, sem depender de liberar a configuração do compositor.
+- **Terminal e agentes:** no Flatpak, `studio/terminal.go` usa o Bash do runtime sem carregar arquivos de inicialização do host. Os agentes disponíveis são os do PATH da sandbox. Terminal e Configurações explicam essa limitação em português, inglês e espanhol e orientam usar o terminal do computador para agentes instalados fora do Flatpak. A aplicação não solicita acesso à execução no host.
+- **Abrir com o computador:** no Flatpak, `studio/background_linux.go` usa `org.freedesktop.portal.Background.RequestBackground`. Somente uma resposta de autorização registra a preferência; recusa e cancelamento não ativam a opção. A aplicação guarda a última autorização em seu próprio diretório de configuração, pois o portal não oferece consulta do estado atual de autostart. Uma revogação externa exige nova confirmação no sistema. As instalações nativas mantêm a implementação anterior.
+- **Atalho global:** no Flatpak, a aplicação deixa o Wails usar seu backend de atalhos, que usa `GlobalShortcuts` no Wayland. Não tenta escrever configuração do Hyprland. A disponibilidade do portal e a combinação de teclas concedida dependem do ambiente desktop.
 
 Validar também notificações e seus cliques, bandeja, login pelo navegador, sync, reprodução de áudio, importação/exportação e publicação de um site de teste. Não usar notas pessoais ou serviços pagos reais nos testes automatizados.
 
@@ -72,10 +74,12 @@ Em 11/11/2026:
 - `appstreamcli validate --no-net --strict`: passou numa cópia temporária do MetaInfo `io.getblup.Studio` com placeholders preenchidos para validação. A verificação pedantic sugere ID inteiramente minúsculo, mas não bloqueia a validação; foi mantida a grafia escolhida. Isso não resolve a ausência de capturas exigidas pelo Flathub.
 - `desktop-file-validate`: passou, com sugestão de categoria adicional `Utility`.
 - Identificadores e sintaxe de XML, plists e YAML conferidos; script do bundle passou em `bash -n`. Os testes `TestUpdatesBy` e `TestStoreBuildDoesntLookUp` passaram com o novo ID no caso Flatpak.
+- Os testes de Hugo/Pagefind cobrem seleção da ferramenta do pacote, rejeição de versões incompatíveis e recusa do cache e do download de executáveis no Flatpak. Os testes desktop cobrem shell, proteção da configuração do host e respostas de aprovação, recusa e cancelamento do portal com uma implementação simulada.
+- O frontend passou no `svelte-check`, nos 16 arquivos de testes Node e no build Vite com os novos avisos em três idiomas.
 
 O ambiente tinha `GOROOT` apontando para Go 1.27.4 enquanto o comando selecionava 1.27.3. A execução dos testes usou explicitamente a toolchain e o GOROOT 1.27.3, com cache em `/tmp`, sem mudar a configuração da máquina.
 
-Ainda faltam build completo sem rede, linter específico do Flathub, instalação e teste gráfico do pacote, incluindo outra arquitetura quando oferecida. Esses resultados nativos não demonstram execução do Flatpak.
+Ainda faltam build completo sem rede, linter específico do Flathub, instalação, capturas reais e teste gráfico do pacote, incluindo outra arquitetura quando oferecida. O ambiente desta preparação bloqueia criação de sockets, impedindo a sessão D-Bus privada e o servidor local necessários à validação gráfica. Os testes simulados e nativos não demonstram execução real do Flatpak ou do portal do sistema.
 
 ## Sequência para publicação
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"errors"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/gabriellsalesx/blup/internal/sandbox"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -163,6 +166,9 @@ const autostartID = "blup-studio"
 
 // AutostartEnabled tells whether the Studio opens with the computer.
 func (s *Studio) AutostartEnabled() bool {
+	if sandbox.Flatpak() {
+		return portalAutostartEnabled()
+	}
 	if desk.app == nil {
 		return false
 	}
@@ -192,6 +198,9 @@ func autostartOptions() application.AutostartOptions {
 // version pointed it at an AppImage's temporary mount: the old one would
 // run nothing at login.
 func fixAutostart() {
+	if sandbox.Flatpak() {
+		return
+	}
 	f := linuxAutostartFile()
 	if f == "" {
 		return
@@ -206,7 +215,10 @@ func fixAutostart() {
 }
 
 // SetAutostart makes the Studio open (in the tray) when the computer starts.
-func (s *Studio) SetAutostart(on bool) error {
+func (s *Studio) SetAutostart(ctx context.Context, on bool) error {
+	if sandbox.Flatpak() {
+		return portalAutostart(ctx, on, s.lang)
+	}
 	if desk.app == nil {
 		return errors.New("not available")
 	}

@@ -10,3 +10,7 @@ build/ios/xcode/gen/
 build/android/overlay.json
 build/android/gen/# go build in this folder
 /studio
+
+# Inputs copied by the AppImage packaging task
+/build/linux/appimage/blup-studio
+/build/linux/appimage/blup-studio.png

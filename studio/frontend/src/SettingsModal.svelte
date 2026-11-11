@@ -1,7 +1,7 @@
 <script lang="ts">
   import { DOCS } from "./docs";
   import { Page } from "../bindings/github.com/gabriellsalesx/blup/internal/blupcloud/models";
-  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails, AIConsent, SetAIConsent, ErrorReports, SetErrorReports } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { HyprlandSetup, AutostartEnabled, SetAutostart, SetTray, SetToggleHotkey, Version, SetLanguage, Language, Connections, Disconnect, Agents, InFlatpak, OpenURL, AIConnected, ConnectAI, OpenAIKeyPage, Voices, VoiceModels, PreviewVoice, LocalVoice, InstallLocalVoice, RemoveLocalVoice, GeneralPassword, SetGeneralPassword, BlupAccount, BlupAIUsage, OpenBlupCloud, CheckUpdate, PickBackupDir, BackupNow, LocalTranslate, InstallLocalTranslate, RemoveLocalTranslate, SetNotifications, ReminderEmails, AIConsent, SetAIConsent, ErrorReports, SetErrorReports } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import { startPageReports } from "./errorreports";
   import type { Connections as Conn, BlupAccount as Account, AIQuota, AIConsent as Consent, UpdateInfo } from "../bindings/github.com/gabriellsalesx/blup/internal/app/models";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
@@ -128,6 +128,8 @@
   let lang = $state("");
   let conn = $state<Conn | null>(null);
   let agents = $state<Agent[]>([]);
+  let inFlatpak = $state(false);
+  InFlatpak().then((v) => (inFlatpak = v)).catch(() => {});
   let error = $state("");
   Version().then((v) => (version = v));
   // A newer Studio: checked once a day (from the day's answer otherwise),
@@ -794,12 +796,12 @@
         <input type="range" min="11" max="20" value={look.termFont} oninput={(e) => setPref("termFont", +e.currentTarget.value)} />
       </div>
       <h3>{s.agents}</h3>
-      <p class="muted lead">{s.agentsHelp}</p>
+      <p class="muted lead">{inFlatpak ? t.term.flatpakHelp : s.agentsHelp}</p>
       {#each agents as a (a.key)}
         <div class="item">
           <div class="text"><b>{a.name}</b><small>{a.installed ? s.installed : s.missing}</small></div>
           {#if a.installed}<span class="ok"><Check size={18} /></span>
-          {:else}<button class="btn ghost" onclick={() => OpenURL(a.site)}>{s.install}</button>{/if}
+          {:else if !inFlatpak}<button class="btn ghost" onclick={() => OpenURL(a.site)}>{s.install}</button>{/if}
         </div>
       {/each}
     {/if}

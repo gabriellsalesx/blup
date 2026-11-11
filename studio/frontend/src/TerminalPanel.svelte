@@ -4,7 +4,7 @@
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import "@xterm/xterm/css/xterm.css";
-  import { AIChanges, UndoAI, Agents, OpenTerminal, WriteTerminal, ResizeTerminal, CloseTerminal, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
+  import { AIChanges, UndoAI, Agents, InFlatpak, OpenTerminal, WriteTerminal, ResizeTerminal, CloseTerminal, OpenURL } from "../bindings/github.com/gabriellsalesx/blup/studio/studio";
   import type { Agent } from "../bindings/github.com/gabriellsalesx/blup/studio/models";
   import Sparkles from "@lucide/svelte/icons/sparkles";
   import SquareTerminal from "@lucide/svelte/icons/square-terminal";
@@ -29,6 +29,8 @@
   let tabs = $state<Tab[]>([]);
   let active = $state("");
   let agents = $state<Agent[]>([]);
+  let inFlatpak = $state(false);
+  InFlatpak().then((v) => (inFlatpak = v)).catch(() => {});
   let error = $state("");
   let adding = $state(false); // the AI menu (the sparkles)
   let host: HTMLDivElement;
@@ -229,7 +231,9 @@
             {/each}
             {#if !installed.length}
               <small class="muted">{tt.noAgents}</small>
-              {#each missing.slice(0, 3) as a (a.key)}<button class="link" onclick={() => OpenURL(a.site)}>{a.name}</button>{/each}
+              {#if !inFlatpak}
+                {#each missing.slice(0, 3) as a (a.key)}<button class="link" onclick={() => OpenURL(a.site)}>{a.name}</button>{/each}
+              {/if}
             {/if}
           </div>
         {/if}
@@ -237,6 +241,7 @@
       <button class="tool" title={tt.close} onclick={onClose}><ChevronDown size={17} /></button>
     </div>
   </header>
+  {#if inFlatpak}<p class="sandbox-note">{tt.flatpakHelp}</p>{/if}
   {#if error}<p class="bad err">{error}</p>{/if}
   <div class="host" bind:this={host}>
     {#each tabs as tab (tab.uid)}
@@ -294,6 +299,7 @@
 {/if}
 
 <style>
+  .sandbox-note { margin: 0; padding: .4rem .8rem; font-size: .8rem; color: var(--muted); border-block-end: 1px solid var(--line); }
   /* A column: the terminal's area takes all the room left (with or without
      an error line above it). */
   .term-panel { display: flex; flex-direction: column; height: 100%; background: var(--panel); border-block-start: 1px solid var(--line); }

@@ -6,7 +6,8 @@
 #
 #   build/linux/flatpak/bundle.sh <version> <out.flatpak>
 #
-# Run from studio/. Needs flatpak and org.gnome.Platform//$RUNTIME installed
+# Run `go run ./scripts/flatpak-tools -out studio/bin` from the repository
+# root first. Run this script from studio/. Needs flatpak and the runtime
 # (flatpak --user install flathub org.gnome.Platform//51).
 set -euo pipefail
 
@@ -14,6 +15,12 @@ version="${1:?version}"
 out="${2:?output .flatpak}"
 app=io.getblup.Studio
 runtime="${RUNTIME:-51}"
+for tool in blup-studio hugo pagefind; do
+  if [[ ! -x "bin/$tool" ]]; then
+    echo "Missing bin/$tool: build the Studio and prepare flatpak-tools first." >&2
+    exit 1
+  fi
+done
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
@@ -21,6 +28,8 @@ trap 'rm -rf "$work"' EXIT
 flatpak build-init "$work/build" "$app" org.gnome.Platform org.gnome.Platform "$runtime"
 files="$work/build/files"
 install -Dm755 bin/blup-studio "$files/bin/blup-studio"
+install -Dm755 bin/hugo "$files/bin/hugo"
+install -Dm755 bin/pagefind "$files/bin/pagefind"
 # Inside the sandbox the desktop file, icon and GTK window carry the app
 # id. The Studio reads it from FLATPAK_ID.
 sed -e "s/^Icon=.*/Icon=$app/" build/linux/blup-studio.desktop >"$work/app.desktop"
@@ -38,7 +47,7 @@ install -Dm644 ../LICENSE "$files/share/licenses/$app/LICENSE"
 
 # Permissions, each for a reason:
 #   wayland, fallback-x11, ipc, dri: the window (WebKit draws with the GPU).
-#   network: publishing, Blup Cloud, the AI and downloading Hugo.
+#   network: publishing, Blup Cloud and optional remote AI services.
 #   pulseaudio: the posts' narration plays in the window.
 #   xdg-documents, ~/Blup: where Blup makes sites and note vaults. Other
 #     folders (notes kept elsewhere) are picked through the file

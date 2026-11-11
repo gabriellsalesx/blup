@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gabriellsalesx/blup/internal/proc"
+	"github.com/gabriellsalesx/blup/internal/sandbox"
 	"io"
 	"net/http"
 	"os"
@@ -39,6 +40,9 @@ const Minimum = "0.169.0"
 // OS/arch (macOS only ships .pkg installers).
 var ErrUnsupportedPlatform = errors.New("no Hugo download for this platform")
 
+// ErrBundledMissing means the Flatpak needs to provide Hugo in PATH.
+var ErrBundledMissing = errors.New("this Flatpak must include Hugo " + Minimum + " or newer; reinstall or update the application")
+
 // Binary is a Hugo executable and its version.
 type Binary struct {
 	Path    string
@@ -52,8 +56,10 @@ func Find(ctx context.Context) (Binary, bool) {
 	if p, err := exec.LookPath("hugo"); err == nil {
 		candidates = append(candidates, p)
 	}
-	if p, err := cachedPath(); err == nil {
-		candidates = append(candidates, p)
+	if !sandbox.Flatpak() {
+		if p, err := cachedPath(); err == nil {
+			candidates = append(candidates, p)
+		}
 	}
 	for _, p := range candidates {
 		v, err := version(ctx, p)
@@ -67,6 +73,9 @@ func Find(ctx context.Context) (Binary, bool) {
 // Download fetches the pinned release, checks its SHA-256 against the
 // official checksums file and unpacks the binary into the cache folder.
 func Download(ctx context.Context, progress func(done, total int64)) (Binary, error) {
+	if sandbox.Flatpak() {
+		return Binary{}, ErrBundledMissing
+	}
 	asset, err := assetName()
 	if err != nil {
 		return Binary{}, err

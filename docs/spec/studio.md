@@ -426,7 +426,7 @@ O painel web da conta permite escolher o site retido no downgrade para Pro antes
 
 ## Terminal e agentes locais
 
-`terminal.go` usa `go-pty` e `TerminalPanel.svelte` usa xterm.js com addon de ajuste e abas para vários terminais. Inicia shell na pasta das notas: PowerShell em Windows, `$SHELL -l` nos demais ou `/bin/bash -l`. Define ambiente de terminal de 256 cores. Dados binários de saída são transmitidos em base64.
+`terminal.go` usa `go-pty` e `TerminalPanel.svelte` usa xterm.js com addon de ajuste e abas para vários terminais. Inicia shell na pasta das notas: PowerShell em Windows, `$SHELL -l` nos demais ou `/bin/bash -l`. No Flatpak, usa `/bin/bash --noprofile --norc`, sem carregar inicialização do host, e só encontra agentes disponíveis no PATH da sandbox. Terminal e Configurações explicam essa limitação em três idiomas. Define ambiente de terminal de 256 cores. Dados binários de saída são transmitidos em base64.
 
 O seletor reconhece Claude Code (`claude`), Codex (`codex`), OpenCode (`opencode`), Gemini CLI (`gemini`) e Antigravity (`agy`), verificando o PATH. Não instala esses programas. Ao iniciar um agente, dispara o comando dentro do shell; sair do agente deixa o shell aberto.
 
@@ -444,7 +444,7 @@ O watcher fsnotify acompanha subpastas não ocultas, acrescenta novas pastas e a
 
 `desktop.go` cria bandeja com abrir e sair. Quando habilitada, fechar ou minimizar a janela a oculta e mantém os terminais em execução. Sair pelo menu encerra a aplicação. Sem bandeja, aplica o comportamento de janela correspondente. O atalho global fora do Hyprland usa `GlobalShortcut` do Wails.
 
-Autostart usa a API Wails com identificador `blup-studio` e argumento `--hidden`. Em Linux o Studio também reconhece `~/.config/autostart/blup-studio.desktop`, respeitando `XDG_CONFIG_HOME`, e pode corrigir o caminho do executável após mudança de instalação. A detecção de autostart não fica no JSON de preferências.
+Autostart nativo usa a API Wails com identificador `blup-studio` e argumento `--hidden`. Em Linux o Studio também reconhece `~/.config/autostart/blup-studio.desktop`, respeitando `XDG_CONFIG_HOME`, e pode corrigir o caminho do executável após mudança de instalação. No Flatpak usa o portal Background, sem escrever arquivos de autostart nativos, e guarda somente a última autorização confirmada em `flatpak-autostart`, no diretório de configuração do Blup. O portal não oferece consulta do estado atual dessa autorização. A detecção de autostart não fica no JSON de preferências.
 
 ## Hyprland e Omarchy
 

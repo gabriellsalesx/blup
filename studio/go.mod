@@ -7,6 +7,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gabriellsalesx/blup v0.0.0
 	github.com/getsentry/sentry-go v0.50.0
+	github.com/godbus/dbus/v5 v5.2.2
 	github.com/wailsapp/wails/v3 v3.1.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/image v0.47.0
@@ -36,7 +37,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.11.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect

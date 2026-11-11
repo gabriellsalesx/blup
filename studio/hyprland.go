@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/gabriellsalesx/blup/internal/proc"
+	"github.com/gabriellsalesx/blup/internal/sandbox"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,7 +21,7 @@ import (
 const toggleArg = "--toggle"
 
 func onHyprland() bool {
-	return runtime.GOOS == "linux" && os.Getenv("HYPRLAND_INSTANCE_SIGNATURE") != ""
+	return runtime.GOOS == "linux" && !sandbox.Flatpak() && os.Getenv("HYPRLAND_INSTANCE_SIGNATURE") != ""
 }
 
 // Hyprland describes the Hyprland setup for the Shortcuts screen.
@@ -144,6 +145,9 @@ func (s *Studio) bindHyprland(accel string) error {
 // writeBinding puts the Studio's binding for accel in Omarchy's bindings
 // file (replacing an older one; "" removes it) and reloads Hyprland.
 func writeBinding(accel string) error {
+	if sandbox.Flatpak() {
+		return errors.New("global shortcuts are managed by the desktop portal in Flatpak")
+	}
 	if accel != "" && !validAccel(accel) {
 		return errors.New("invalid shortcut")
 	}

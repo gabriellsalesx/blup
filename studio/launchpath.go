@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/gabriellsalesx/blup/internal/sandbox"
 )
 
 // launchPath is the file that starts the Studio, for what runs it later:
@@ -66,7 +68,7 @@ func enableAutostart() error {
 // autostartPath is where the Studio's .desktop autostart entry goes on
 // Linux ("" elsewhere), whether or not it exists.
 func autostartPath() string {
-	if runtime.GOOS != "linux" {
+	if runtime.GOOS != "linux" || sandbox.Flatpak() {
 		return ""
 	}
 	dir := os.Getenv("XDG_CONFIG_HOME")

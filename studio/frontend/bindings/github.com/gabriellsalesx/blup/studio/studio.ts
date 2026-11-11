@@ -531,6 +531,14 @@ export function ImageData(file: string): $CancellablePromise<string> {
 }
 
 /**
+ * InFlatpak lets the terminal explain that host-installed tools are outside
+ * this installation. It does not grant access to the host.
+ */
+export function InFlatpak(): $CancellablePromise<boolean> {
+    return $Call.ByID(2298632610);
+}
+
+/**
  * InstallLocalTranslate downloads, checks and unpacks the local
  * translation; progress goes out as "translateInstall" events.
  */
