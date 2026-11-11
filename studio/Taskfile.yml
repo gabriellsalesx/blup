@@ -54,6 +54,34 @@ tasks:
     cmds:
       - task: common:build:server
 
+  store:preview:
+    summary: Opens the native Studio with disposable example notes for store screenshots
+    desc: |
+      Uses the compiled frontend. Configuration, notes and credentials are
+      isolated in a temporary directory. SESSION points to an optional local
+      desktop-session file; it must never be committed. VIEW is notes, site
+      or library. THEME is light or dark.
+    env:
+      BLUP_PREVIEW_VIEW: '{{.VIEW | default "notes"}}'
+      BLUP_PREVIEW_THEME: '{{.THEME | default "light"}}'
+      BLUP_PREVIEW_SESSION: '{{.SESSION | default ""}}'
+    cmds:
+      - go build -buildvcs=false -ldflags="-X main.studioInstanceID=io.getblup.Studio.StorePreview" -o bin/blup-studio-store-preview .
+      - go run ./tools/storepreview
+
+  store:capture:
+    summary: Captures only the disposable Studio preview window on Hyprland
+    env:
+      BLUP_PREVIEW_SESSION: '{{.SESSION | default ""}}'
+      BLUP_PREVIEW_OUTPUT: '{{.OUTPUT | default "bin/store-preview.png"}}'
+    cmds:
+      - go run ./tools/storepreview -capture
+
+  store:stop:
+    summary: Stops only this project's disposable Studio preview executable
+    cmds:
+      - go run ./tools/storepreview -stop
+
   run:server:
     summary: Runs the application in server mode
     cmds:

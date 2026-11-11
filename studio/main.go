@@ -22,6 +22,10 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// Isolated desktop previews override this at build time so they never
+// activate a Studio instance that has the person's real notes open.
+var studioInstanceID = "dev.blup.studio"
+
 func main() {
 	// No one answers a terminal prompt here, even when the Studio was
 	// started from a terminal: the CLI code it shares fails with a clear
@@ -42,7 +46,7 @@ func main() {
 	// names under the installed app's ID. Keep the window's identity there
 	// too, so Wayland can match it to the exported desktop entry and icon.
 	linux := application.LinuxOptions{}
-	instanceID := "dev.blup.studio"
+	instanceID := studioInstanceID
 	if id := os.Getenv("FLATPAK_ID"); runtime.GOOS == "linux" && id != "" {
 		linux.ApplicationID = id
 		instanceID = id
