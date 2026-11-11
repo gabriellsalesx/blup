@@ -36,6 +36,9 @@ var (
 	ErrSlugTaken = errors.New("blupcloud: that address is taken")
 	// ErrFileTooLarge: a file is over the plan's size limit.
 	ErrFileTooLarge = errors.New("blupcloud: a file is over the plan's limit")
+	// ErrSiteMissing (404 NOT_FOUND): the account has no site with that id
+	// (taken down in the panel, or another account).
+	ErrSiteMissing = errors.New("blupcloud: site not found")
 )
 
 // SiteSlug is a site's address on Blup Cloud: <slug>.getblup.site.
@@ -162,6 +165,8 @@ func siteErr(err error) error {
 			return ErrSlugTaken
 		case "TOO_LARGE":
 			return ErrFileTooLarge
+		case "NOT_FOUND":
+			return ErrSiteMissing
 		}
 	}
 	return err

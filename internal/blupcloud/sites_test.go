@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -111,5 +112,26 @@ func TestDeploySite(t *testing.T) {
 	// Again: nothing new goes up.
 	if res, _ = c.DeploySite(context.Background(), "s1", files); res.Uploaded != 0 || res.Skipped != 2 {
 		t.Fatalf("second = %+v", res)
+	}
+}
+
+// A site taken down in the panel answers 404 NOT_FOUND: the Studio gets
+// ErrSiteMissing, not a bare error, and can forget it.
+func TestDeploySiteMissing(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"code":"NOT_FOUND"}`))
+	}))
+	defer srv.Close()
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "index.html"), []byte("<p>oi</p>"), 0o644)
+	files, err := PackSite(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &Client{BaseURL: srv.URL, Token: "t", HTTP: srv.Client()}
+	if _, err := c.DeploySite(t.Context(), "gone", files); !errors.Is(err, ErrSiteMissing) {
+		t.Fatalf("got %v, want ErrSiteMissing", err)
 	}
 }

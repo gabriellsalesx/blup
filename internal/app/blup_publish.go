@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/gabriellsalesx/blup/internal/blupcloud"
@@ -21,7 +22,43 @@ func init() {
 		knownError{blupcloud.ErrSlugTaken, "pub.blup_taken"},
 		knownError{blupcloud.ErrFileTooLarge, "pub.blup_too_large"},
 		knownError{blupcloud.ErrDeployBusy, "pub.blup_busy"},
+		knownError{ErrBlupSiteGone, "pub.blup_gone"},
 	)
+}
+
+// ErrBlupSiteGone: the site was taken down in the Blup Cloud panel. The
+// Studio forgot it; its address is free to choose again before the next
+// publish.
+var ErrBlupSiteGone = errors.New("app: the site was taken down on Blup Cloud")
+
+// blupSiteGone tells whether the account no longer has the site with id
+// (taken down in the panel). An error listing the sites says nothing.
+func blupSiteGone(ctx context.Context, c *blupcloud.Client, id string) bool {
+	sites, _, err := c.Sites(ctx)
+	return err == nil && !slices.ContainsFunc(sites, func(s blupcloud.Site) bool { return s.ID == id })
+}
+
+// forgetBlupSite drops the site's Blup Cloud site, keeping its old address
+// as the suggestion: the address field is free again.
+func forgetBlupSite(site *config.Site) error {
+	site.Deploy.Blup = config.BlupSite{Slug: site.Deploy.Blup.Slug}
+	return site.Save()
+}
+
+// RefreshBlupSite forgets the site's Blup Cloud site when the panel took it
+// down, so the publishing screen lets the person choose an address again
+// instead of failing at the next publish. Offline or signed out, nothing
+// changes. It tells whether the site was forgotten.
+func RefreshBlupSite(ctx context.Context, site *config.Site) bool {
+	id := site.Deploy.Blup.ID
+	if id == "" {
+		return false
+	}
+	c, _, err := blupClient()
+	if err != nil || !blupSiteGone(ctx, c, id) {
+		return false
+	}
+	return forgetBlupSite(site) == nil
 }
 
 // blupSlug suggests an address from the site's title: "Revista Nori" ->
@@ -105,6 +142,15 @@ func deployBlup(ctx context.Context, site *config.Site) (string, error) {
 		res, err = c.DeploySite(ctx, d.ID, files)
 		return err
 	}); err != nil {
+		// Taken down in the panel since the last publish: forget it, so the
+		// person picks the address (the old one, or another) and publishes
+		// again, instead of failing every time.
+		if errors.Is(err, blupcloud.ErrSiteMissing) && blupSiteGone(ctx, c, d.ID) {
+			if ferr := forgetBlupSite(site); ferr != nil {
+				return "", ferr
+			}
+			return "", ErrBlupSiteGone
+		}
 		return "", err
 	}
 	ui.OK(i18n.T("pub.uploaded", res.Uploaded, res.Skipped))

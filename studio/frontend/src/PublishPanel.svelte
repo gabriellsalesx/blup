@@ -44,6 +44,14 @@
   let siteAt = $state("");
   const live = $derived(publishJob.last?.url || siteAt);
   const publishError = $derived(publishJob.last?.error ?? "");
+  // A publish that failed because the site was taken down in the Blup
+  // Cloud panel: the Studio forgot that site, so the address unlocks here.
+  $effect(() => {
+    if (!publishError || !untrack(() => target?.slugFixed)) return;
+    Target().then((next) => {
+      if (target?.slugFixed && next && !next.slugFixed) { target = next; siteAt = next.url ?? ""; }
+    }).catch(() => {});
+  });
 
   let sync = $state<SyncInfo | null>(null);
   // Syncing is a job of the whole window (syncjob): it goes on when the

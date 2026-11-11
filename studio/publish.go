@@ -16,6 +16,7 @@ import (
 	"github.com/gabriellsalesx/blup/internal/notesync"
 	"github.com/gabriellsalesx/blup/internal/ui"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"runtime"
 )
 
 // Publishing and syncing from the window: accounts, destination, and the
@@ -102,6 +103,12 @@ func (s *Studio) OpenKeyPage(account string) {
 // system.
 func (s *Studio) OpenURL(link string) {
 	if u, err := url.Parse(strings.TrimSpace(link)); err == nil && slices.Contains([]string{"http", "https", "mailto", "tel"}, strings.ToLower(u.Scheme)) {
+		if runtime.GOOS == "linux" {
+			// xdg-open with the system's environment: the browser started
+			// from an AppImage must not load the AppImage's libraries.
+			_ = openExternal(u.String())
+			return
+		}
 		_ = application.Get().Browser.OpenURL(u.String())
 	}
 }
@@ -163,10 +170,18 @@ func (s *Studio) CheckSiteSlug(ctx context.Context, slug string) (blupcloud.Slug
 }
 
 // Target is where the open site is published.
+//
+// A site taken down in the Blup Cloud panel is forgotten first (asked to
+// the cloud, for a few seconds at most): its address can be chosen again.
 func (s *Studio) Target() (app.Target, error) {
 	site, err := s.current()
 	if err != nil {
 		return app.Target{}, err
+	}
+	if site.Deploy.Blup.ID != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		app.RefreshBlupSite(ctx, site)
+		cancel()
 	}
 	return app.LoadTarget(site), nil
 }
