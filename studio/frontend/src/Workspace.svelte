@@ -19,6 +19,8 @@
   import Waypoints from "@lucide/svelte/icons/waypoints";
   import Preview from "./Preview.svelte";
   import FileMenu from "./FileMenu.svelte";
+  import NoteTip from "./NoteTip.svelte";
+  import { hideNoteTip } from "./notetip.svelte";
   import ContextMenu, { type MenuEntry } from "./ContextMenu.svelte";
   import { DOCS } from "./docs";
   import Gear from "@lucide/svelte/icons/settings";
@@ -955,8 +957,8 @@
       </div>
       {#if sideTab === "files"}
         <div class="side-tools">
-          <button title={t.side.newNote} onclick={() => startCreate("note")}><SquarePen size={17} strokeWidth={1.75} /></button>
-          <button title={t.side.newFolder} onclick={() => startCreate("folder")}><FolderPlus size={17} strokeWidth={1.75} /></button>
+          <button title={t.side.newNote} onclick={() => topNew("note")}><SquarePen size={17} strokeWidth={1.75} /></button>
+          <button title={t.side.newFolder} onclick={() => topNew("folder")}><FolderPlus size={17} strokeWidth={1.75} /></button>
           <!-- One button: collapse when a folder is open, else expand. -->
           {#if anyOpen}
             <button title={t.side.collapse} onclick={() => (openMap = {})}><ChevronsDownUp size={17} strokeWidth={1.75} /></button>
@@ -965,7 +967,7 @@
           {/if}
         </div>
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="files" ondragover={overTop} ondrop={dropTop} oncontextmenu={emptyMenu}>
+        <div class="files" ondragover={overTop} ondrop={dropTop} oncontextmenu={emptyMenu} onscroll={hideNoteTip}>
           <Tree nodes={tree} {current} {folder} bind:open={openMap} {renaming} onRename={rename}
             creating={creating ? { folder, kind: creating, placeholder: creating === "folder" ? t.side.folderPh : t.side.notePh } : null} onCreate={finishCreate} onMove={notesVault ? moveTo : undefined} onPick={(p) => { screen = "write"; pick(p); }} onFolder={(p) => (folder = p)} onMenu={openMenu} />
         </div>
@@ -1129,6 +1131,7 @@
   {#if historyFor}
     {#key historyFor}{#await HistoryModal() then { default: C }}<C path={historyFor} onClose={() => (historyFor = "")} />{/await}{/key}
   {/if}
+  <NoteTip />
   {#if sideMenu}<ContextMenu x={sideMenu.x} y={sideMenu.y} items={sideItems()} onClose={() => (sideMenu = null)} />{/if}
   {#if menu}
     <FileMenu node={menu.node} x={menu.x} y={menu.y} {current} folders={folders(tree)} boards={notesVault} onRename={(n) => (renaming = n.path)} onClose={() => (menu = null)} onChanged={menuChanged} onNew={menuNew} onHistory={cloudHistory ? (p) => (historyFor = p) : undefined} />

@@ -7,6 +7,7 @@
 
 <script lang="ts">
   import Tree from "./Tree.svelte";
+  import { showNoteTip, hideNoteTip } from "./notetip.svelte";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import PenTool from "@lucide/svelte/icons/pen-tool";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
@@ -152,7 +153,8 @@
           <Tree nodes={n.children} {current} {folder} bind:open {renaming} {creating} parent={n.path} {onPick} {onFolder} {onMenu} {onRename} {onCreate} {onMove} depth={depth + 1} />
         {/if}
       {:else}
-        <button class="row note" class:active={n.path === current} draggable="true" ondragstart={(e) => dragStart(e, n)} ondragend={dragEnd} ondragover={(e) => dragOver(e, n)} ondrop={(e) => drop(e, n)} onclick={() => onPick(n.path)} oncontextmenu={(e) => { e.preventDefault(); onMenu(n, e); }}>
+        <button class="row note" class:active={n.path === current} draggable="true" ondragstart={(e) => { hideNoteTip(); dragStart(e, n); }} ondragend={dragEnd} ondragover={(e) => dragOver(e, n)} ondrop={(e) => drop(e, n)} onclick={() => { hideNoteTip(); onPick(n.path); }} oncontextmenu={(e) => { hideNoteTip(); e.preventDefault(); onMenu(n, e); }}
+          onmouseenter={(e) => { if (!n.kind) showNoteTip(n.path, e.currentTarget); }} onmouseleave={hideNoteTip}>
           {@render icon(n)}<span class="name">{n.name}</span>
         </button>
       {/if}
