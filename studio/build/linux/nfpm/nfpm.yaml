@@ -1,7 +1,7 @@
 # Blup Studio's .deb (and .rpm): wails3 tool package -format deb
 #   -config ./build/linux/nfpm/nfpm.yaml, run from studio/ after the build.
 # VERSION is the release (1.2.3) and the metainfo is the one the release
-# workflow fills (bin/io.github.gabriellsalesx.blupstudio.metainfo.xml).
+# workflow fills (bin/io.getblup.Studio.metainfo.xml).
 # https://nfpm.goreleaser.com/configuration/
 
 name: "blup-studio"
@@ -35,8 +35,8 @@ contents:
     dst: "/usr/share/applications/blup-studio.desktop"
     file_info:
       mode: 0644
-  - src: "./bin/io.github.gabriellsalesx.blupstudio.metainfo.xml"
-    dst: "/usr/share/metainfo/io.github.gabriellsalesx.blupstudio.metainfo.xml"
+  - src: "./bin/io.getblup.Studio.metainfo.xml"
+    dst: "/usr/share/metainfo/io.getblup.Studio.metainfo.xml"
     file_info:
       mode: 0644
   - src: "./build/linux/icons/128x128/blup-studio.png"

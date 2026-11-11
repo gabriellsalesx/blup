@@ -440,7 +440,7 @@ O watcher fsnotify acompanha subpastas não ocultas, acrescenta novas pastas e a
 
 ## Bandeja, instância única e autostart
 
-`main.go` usa instância única com ID `dev.blup.studio`. Nova abertura mostra e foca a janela existente. Se a segunda invocação tem `--toggle`, alterna mostrar e ocultar/minimizar. `--hidden` só inicia oculto quando a preferência de bandeja está ativa.
+`main.go` usa instância única com ID `dev.blup.studio` nas instalações nativas. No Flatpak, `FLATPAK_ID` define tanto `Linux.ApplicationID` quanto a instância única; o pacote usa `io.getblup.Studio`. Nova abertura mostra e foca a janela existente. Se a segunda invocação tem `--toggle`, alterna mostrar e ocultar/minimizar. `--hidden` só inicia oculto quando a preferência de bandeja está ativa.
 
 `desktop.go` cria bandeja com abrir e sair. Quando habilitada, fechar ou minimizar a janela a oculta e mantém os terminais em execução. Sair pelo menu encerra a aplicação. Sem bandeja, aplica o comportamento de janela correspondente. O atalho global fora do Hyprland usa `GlobalShortcut` do Wails.
 

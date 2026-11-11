@@ -25,7 +25,7 @@ A Apple informa que essa opção fica disponível por cerca de uma hora após a 
 
 ## Linux
 
-Os canais definidos são AppImage, AUR, bundle `.flatpak` no GitHub e `.deb`. Flathub está fora deste lançamento. A existência dos arquivos no repositório não significa que os pacotes já foram publicados.
+Os canais definidos são AppImage, AUR, bundle `.flatpak` no GitHub e `.deb`. A publicação no Flathub está [em preparação](flathub.md). A existência dos arquivos no repositório não significa que os pacotes já foram publicados.
 
 ### AppImage
 
@@ -44,10 +44,12 @@ Baixe o arquivo `.flatpak` da release e abra-o no instalador de aplicativos da d
 
 ```sh
 flatpak --user install ./blup-studio_X.Y.Z_x86_64.flatpak
-flatpak --user run io.github.gabriellsalesx.blupstudio
+flatpak --user run io.getblup.Studio
 ```
 
 O pacote usa `org.gnome.Platform//51`. O Flatpak pode buscar esse runtime no Flathub; o aplicativo vem do arquivo do projeto. Pode ser necessário baixar o runtime mesmo com o bundle em disco. A atualização deste canal é a instalação do bundle novo, sem repositório próprio de atualizações configurado. Veja [bundles Flatpak](https://docs.flatpak.org/en/latest/single-file-bundles.html).
+
+O ID passou a ser `io.getblup.Studio` em 11/11/2026. Quem instalou um bundle anterior com outro ID terá uma instalação separada e precisará reabrir suas pastas de notas. As configurações privadas do Flatpak anterior não são migradas automaticamente; os cuidados estão no [guia](flathub.md#verificação-pelo-domínio).
 
 ### AUR
 

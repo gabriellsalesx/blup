@@ -8,6 +8,7 @@ import (
 	"embed"
 	"log"
 	"os"
+	"runtime"
 	"slices"
 
 	"github.com/gabriellsalesx/blup/internal/config"
@@ -37,6 +38,15 @@ func main() {
 	studio := &Studio{lang: lang}
 	// Error reports, if the person said yes before (errors.go).
 	startReports(studio.Prefs().ErrorReports == "on")
+	// Flatpak permits GTK/WebKit and the single-instance connection to own
+	// names under the installed app's ID. Keep the window's identity there
+	// too, so Wayland can match it to the exported desktop entry and icon.
+	linux := application.LinuxOptions{}
+	instanceID := "dev.blup.studio"
+	if id := os.Getenv("FLATPAK_ID"); runtime.GOOS == "linux" && id != "" {
+		linux.ApplicationID = id
+		instanceID = id
+	}
 	app := application.New(application.Options{
 		Name:        "Blup Studio",
 		Description: "Write in Markdown, preview and publish your site",
@@ -45,12 +55,13 @@ func main() {
 		// they were downloaded (/local-translate/...).
 		Assets:     application.AssetOptions{Handler: application.AssetFileServerFS(assets), Middleware: assetMiddleware},
 		Mac:        application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
+		Linux:      linux,
 		OnShutdown: studio.shutdown,
 		// A panic is reported to Blup Pulse when the person allowed it.
 		PanicHandler: onPanic,
 		// Opening it again shows the window already running.
 		SingleInstance: &application.SingleInstanceOptions{
-			UniqueID: "dev.blup.studio",
+			UniqueID: instanceID,
 			OnSecondInstanceLaunch: func(d application.SecondInstanceData) {
 				if slices.Contains(d.Args, toggleArg) {
 					toggleWindow() // a shortcut of the desktop (Hyprland) called it

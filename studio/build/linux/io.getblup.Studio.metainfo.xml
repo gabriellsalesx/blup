@@ -2,7 +2,7 @@
 <!-- Blup Studio's AppStream metadata (.deb, AppImage and the .flatpak of the
      GitHub release). @VERSION@ and @DATE@ are filled by the release workflow. -->
 <component type="desktop-application">
-  <id>io.github.gabriellsalesx.blupstudio</id>
+  <id>io.getblup.Studio</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>AGPL-3.0-only</project_license>
 
@@ -11,7 +11,7 @@
   <summary xml:lang="pt-BR">Escreva em Markdown, veja a prévia e publique o seu site</summary>
   <summary xml:lang="es">Escribe en Markdown, ve la vista previa y publica tu sitio</summary>
 
-  <developer id="io.github.gabriellsalesx">
+  <developer id="io.getblup">
     <name>Gabriell Sales</name>
   </developer>
 
@@ -29,7 +29,7 @@
     <binary>blup-studio</binary>
   </provides>
 
-  <url type="homepage">https://github.com/gabriellsalesx/blup</url>
+  <url type="homepage">https://getblup.io/</url>
   <url type="bugtracker">https://github.com/gabriellsalesx/blup/issues</url>
   <url type="vcs-browser">https://github.com/gabriellsalesx/blup</url>
 

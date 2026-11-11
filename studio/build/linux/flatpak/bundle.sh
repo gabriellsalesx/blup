@@ -12,7 +12,7 @@ set -euo pipefail
 
 version="${1:?version}"
 out="${2:?output .flatpak}"
-app=io.github.gabriellsalesx.blupstudio
+app=io.getblup.Studio
 runtime="${RUNTIME:-51}"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -21,19 +21,20 @@ trap 'rm -rf "$work"' EXIT
 flatpak build-init "$work/build" "$app" org.gnome.Platform org.gnome.Platform "$runtime"
 files="$work/build/files"
 install -Dm755 bin/blup-studio "$files/bin/blup-studio"
-# Inside the sandbox the desktop file and the icon carry the app id. The
-# window's id is the program name (blup-studio): StartupWMClass ties them.
+# Inside the sandbox the desktop file, icon and GTK window carry the app
+# id. The Studio reads it from FLATPAK_ID.
 sed -e "s/^Icon=.*/Icon=$app/" build/linux/blup-studio.desktop >"$work/app.desktop"
-echo "StartupWMClass=blup-studio" >>"$work/app.desktop"
+echo "StartupWMClass=$app" >>"$work/app.desktop"
 install -Dm644 "$work/app.desktop" "$files/share/applications/$app.desktop"
 for size in 128 256 512; do
   install -Dm644 "build/linux/icons/${size}x${size}/blup-studio.png" "$files/share/icons/hicolor/${size}x${size}/apps/$app.png"
 done
 sed -e "s/@VERSION@/$version/" -e "s/@DATE@/$(date -u +%F)/" \
   -e "s#<launchable type=\"desktop-id\">blup-studio.desktop#<launchable type=\"desktop-id\">$app.desktop#" \
-  build/linux/io.github.gabriellsalesx.blupstudio.metainfo.xml >"$work/metainfo.xml"
+  "build/linux/$app.metainfo.xml" >"$work/metainfo.xml"
 install -Dm644 "$work/metainfo.xml" "$files/share/metainfo/$app.metainfo.xml"
 install -Dm644 ../THIRD_PARTY_NOTICES.md "$files/share/licenses/$app/THIRD_PARTY_NOTICES.md"
+install -Dm644 ../LICENSE "$files/share/licenses/$app/LICENSE"
 
 # Permissions, each for a reason:
 #   wayland, fallback-x11, ipc, dri: the window (WebKit draws with the GPU).
@@ -43,7 +44,7 @@ install -Dm644 ../THIRD_PARTY_NOTICES.md "$files/share/licenses/$app/THIRD_PARTY
 #     folders (notes kept elsewhere) are picked through the file
 #     chooser portal.
 #   Notifications: calendar reminders. StatusNotifier: the tray icon.
-#   dev.blup.studio.SingleInstance: a second launch shows the open window.
+#   Single instance uses the app id's namespace, allowed by Flatpak.
 flatpak build-finish "$work/build" \
   --command=blup-studio \
   --socket=wayland --socket=fallback-x11 --share=ipc --device=dri \
@@ -51,8 +52,7 @@ flatpak build-finish "$work/build" \
   --socket=pulseaudio \
   --filesystem=xdg-documents --filesystem=~/Blup:create \
   --talk-name=org.freedesktop.Notifications \
-  --talk-name=org.kde.StatusNotifierWatcher --own-name=org.kde.* \
-  --own-name=dev.blup.studio.SingleInstance
+  --talk-name=org.kde.StatusNotifierWatcher --own-name=org.kde.*
 
 flatpak build-export "$work/repo" "$work/build" stable
 flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \

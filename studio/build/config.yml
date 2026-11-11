@@ -7,7 +7,7 @@ version: '3'
 info:
   companyName: "Gabriell Sales" # The name of the company
   productName: "Blup Studio" # The name of the application
-  productIdentifier: "io.github.gabriellsalesx.blupstudio" # The unique product identifier
+  productIdentifier: "io.getblup.Studio" # The unique product identifier
   description: "Write in Markdown, preview and publish your site" # The application description
   copyright: "(c) 2026, Gabriell Sales" # Copyright text
   comments: "Made with Blup" # Comments

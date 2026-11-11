@@ -5,7 +5,7 @@
     <key>CFBundleExecutable</key>
     <string>blup-studio</string>
     <key>CFBundleIdentifier</key>
-    <string>io.github.gabriellsalesx.blupstudio.dev</string>
+    <string>io.getblup.Studio.dev</string>
     <key>CFBundleName</key>
     <string>Blup Studio (Dev)</string>
     <key>CFBundleDisplayName</key>

@@ -180,7 +180,7 @@
 					"$(inherited)",
 					"-ObjC",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "io.github.gabriellsalesx.blupstudio";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.getblup.Studio";
 				PRODUCT_NAME = "Blup Studio";
 				CODE_SIGNING_ALLOWED = NO;
 				SDKROOT = iphoneos;
@@ -196,7 +196,7 @@
 					"$(inherited)",
 					"-ObjC",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "io.github.gabriellsalesx.blupstudio";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.getblup.Studio";
 				PRODUCT_NAME = "Blup Studio";
 				CODE_SIGNING_ALLOWED = NO;
 				SDKROOT = iphoneos;

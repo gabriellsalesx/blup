@@ -16,6 +16,7 @@ O Blup é um editor de notas e publicador de sites. O Studio permite escrever no
 | [Segurança](docs/seguranca.md) | Cifra, dados visíveis, ameaças, limites e cotas |
 | [Blup Cloud](cloud/README.md) | Desenvolvimento do painel e dos Workers |
 | [Testes e build](docs/spec/testes-e-build.md) | Dois módulos Go, frontend, integração e pacotes |
+| [Preparação para o Flathub](docs/flathub.md) | Diagnóstico atual, compatibilidade Flatpak e passos de submissão pelo mantenedor |
 
 A documentação foi revisada em 02/11/2026 contra o código. Recursos disponíveis no código e configuração de uma conta de produção são coisas distintas; o guia de deploy identifica os passos operacionais.
 

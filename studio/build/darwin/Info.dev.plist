@@ -11,7 +11,7 @@
 		<key>CFBundleIconName</key>
 		<string>appicon</string>
 		<key>CFBundleIdentifier</key>
-		<string>io.github.gabriellsalesx.blupstudio</string>
+		<string>io.getblup.Studio</string>
 		<key>CFBundleName</key>
 		<string>Blup Studio</string>
 		<key>CFBundlePackageType</key>
